@@ -5,6 +5,7 @@ if (sessionStorage.getItem('erp_auth_master') !== 'true') {
     window.location.href = 'login.html'; 
 }
 
+// Configuração do Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyDIlmd3zUTof-lwxyT7j3UxmenPKs_sMJg",
     authDomain: "lojafc-a31f9.firebaseapp.com",
@@ -19,7 +20,7 @@ if (!firebase.apps.length) {
 }
 const firestore = firebase.firestore();
 
-// Variáveis Globais de Banco de Dados
+// Variáveis Globais do Banco de Dados
 let db = { 
     produtos: [], clientes: [], fornecedores: [], vendas: [], movimentacoes: [], 
     financeiro: [], compras: [], caixa: { status: 'FECHADO', saldo: 0, historico: [] }, 
@@ -38,11 +39,14 @@ function showToast(msg, type = 'info') {
     setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 3000);
 }
 
-// INICIALIZAÇÃO UNIVERSAL
+// ==========================================
+// INICIALIZAÇÃO UNIVERSAL E INJETOR WHITE LABEL
+// ==========================================
 async function initGlobalData(funcaoDeRenderizacaoDaPagina) {
     try {
         const docRef = firestore.collection("fc_moveis").doc("banco_principal");
         const docSnap = await docRef.get();
+        
         if (docSnap.exists) {
             db = docSnap.data();
             if(!db.movimentacoes) db.movimentacoes = [];
@@ -58,7 +62,10 @@ async function initGlobalData(funcaoDeRenderizacaoDaPagina) {
             await docRef.set(db); 
         }
         
-        // Executa a função específica da página (ex: carregar produtos, ou carregar dashboard)
+        // APLICA IDENTIDADE VISUAL E TEMA ASSIM QUE O BANCO CARREGA
+        aplicarIdentidadeVisualGlobal();
+
+        // Executa a função específica da página (ex: renderizar produtos, gráficos)
         if(funcaoDeRenderizacaoDaPagina) {
             funcaoDeRenderizacaoDaPagina();
         }
@@ -69,9 +76,19 @@ async function initGlobalData(funcaoDeRenderizacaoDaPagina) {
     }
 }
 
-function saveDB() { firestore.collection("fc_moveis").doc("banco_principal").set(db).catch(e => showToast("Falha ao salvar dados.", "error")); }
+function salvarKardex(ref, prodId, prodNome, qtd, tipo) { 
+    if(!db.movimentacoes) db.movimentacoes = [];
+    db.movimentacoes.unshift({ id: Date.now() + Math.random(), data: new Date().toISOString(), ref: ref || '', prodId: prodId || '', prodNome: prodNome || 'Produto', qtd: qtd || 0, tipo: tipo || 'AJUSTE' }); 
+}
 
-function fazerLogout() { sessionStorage.removeItem('erp_auth_master'); window.location.href = 'login.html'; }
+function saveDB() { 
+    firestore.collection("fc_moveis").doc("banco_principal").set(db).catch(e => showToast("Falha ao salvar dados.", "error")); 
+}
+
+function fazerLogout() { 
+    sessionStorage.removeItem('erp_auth_master'); 
+    window.location.href = 'login.html'; 
+}
 
 function toggleMenu() {
     const sidebar = document.getElementById('sidebar');
@@ -84,3 +101,64 @@ function toggleMenu() {
         overlay.classList.add('hidden');
     }
 }
+
+// ==========================================
+// MÓDULO: MOTOR DE TEMA E IDENTIDADE DA EMPRESA
+// ==========================================
+function aplicarIdentidadeVisualGlobal() {
+    if (!db || !db.config) return;
+
+    // 1. Injeta Nome e Logo no Menu Lateral
+    if (db.config.empresa) {
+        const elNome = document.getElementById('menu-empresa-nome');
+        const elLogo = document.getElementById('menu-logo');
+        const elPlaceholder = document.getElementById('menu-logo-placeholder');
+
+        if (elNome && db.config.empresa.nome) {
+            elNome.innerText = db.config.empresa.nome; 
+        }
+        
+        if (elLogo && elPlaceholder && db.config.empresa.logo) {
+            elLogo.src = db.config.empresa.logo; 
+            elLogo.classList.remove('hidden'); 
+            elPlaceholder.classList.add('hidden'); 
+        }
+    }
+
+    // 2. Decide Qual Tema Usar (Claro, Escuro ou Automático)
+    let temaFinal = db.config.tema || 'claro';
+    if (temaFinal === 'auto') {
+        // Puxa do Windows, Mac, Android ou iOS a cor do sistema atual
+        temaFinal = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro';
+    }
+
+    // 3. Aplica o Tema Escuro com a Trava do Menu Cinza
+    let styleEl = document.getElementById('estilo-tema-escuro');
+    
+    if (temaFinal === 'escuro') {
+        document.documentElement.classList.add('tema-escuro');
+        if (!styleEl) {
+            const style = document.createElement('style');
+            style.id = 'estilo-tema-escuro';
+            style.innerHTML = `
+                .tema-escuro { filter: invert(0.92) hue-rotate(180deg); background-color: #111; } 
+                .tema-escuro img, .tema-escuro video, .tema-escuro iframe { filter: invert(1) hue-rotate(180deg); }
+                
+                /* TRAVA MÁGICA: Reverte a cor do menu lateral para manter o Cinza Escuro e os botões corretos */
+                .tema-escuro aside { filter: invert(1) hue-rotate(180deg); }
+                .tema-escuro aside img { filter: none !important; }
+            `;
+            document.head.appendChild(style);
+        }
+    } else {
+        document.documentElement.classList.remove('tema-escuro');
+        if (styleEl) styleEl.remove();
+    }
+}
+
+// Fica escutando se o usuário mudar o celular/PC de claro para escuro (para o modo Automático)
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+    if (db.config && db.config.tema === 'auto') {
+        aplicarIdentidadeVisualGlobal();
+    }
+});
