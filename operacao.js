@@ -109,6 +109,7 @@ function mudarVisaoLocal(viewId) {
 
 function inicializarOperacao() {
     aplicarIdentidadeVisualNoMenu(); 
+    
     const urlParams = new URLSearchParams(window.location.search);
     const view = urlParams.get('view') || 'pdv'; 
     mudarVisaoLocal(view);
@@ -124,7 +125,6 @@ function abrirConfirmacao(titulo, mensagem, acao) {
     document.getElementById('modal-confirm-msg').innerText = mensagem; 
     acaoConfirmacaoPendente = acao; 
     document.getElementById('modal-confirmacao').classList.remove('hidden'); 
-    // CORREÇÃO: Passar a função anonimamente para o clique (Sem Loop!)
     document.getElementById('modal-confirm-btn').onclick = function() { 
         if (acaoConfirmacaoPendente) acaoConfirmacaoPendente(); 
         fecharModalConfirmacao(); 
@@ -166,7 +166,7 @@ function salvarKardex(ref, prodId, prodNome, qtd, tipo) {
 }
 
 // ==========================================
-// 4. CADASTRO DE CLIENTE RÁPIDO (NOVIDADE)
+// 4. CADASTRO DE CLIENTE RÁPIDO
 // ==========================================
 function atualizarListaClientesPDV(selecionarId = null) {
     const sCli = document.getElementById('pdv-cliente'); 
@@ -268,38 +268,48 @@ function removerFotoOS(index) {
 }
 
 // ==========================================
-// 6. IMPRESSÃO E PDF (CORRIGIDO PROBLEMA EM BRANCO)
+// 6. IMPRESSÃO E PDF (SEM ERRO DE CHROME LOCAL)
 // ==========================================
 function printHtmlSeguro(htmlCompleto) {
     showToast("Preparando documento para impressão...", "info");
     
-    let oldIframe = document.getElementById('print-iframe-sys');
-    if (oldIframe) oldIframe.remove();
-    
-    let iframe = document.createElement('iframe');
-    iframe.id = 'print-iframe-sys';
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0px';
-    iframe.style.height = '0px';
-    iframe.style.border = 'none';
-    document.body.appendChild(iframe);
-    
-    // Escrever usando Document (Seguro e destrava o print)
-    const doc = iframe.contentWindow.document;
-    doc.open();
-    doc.write(htmlCompleto);
-    doc.close();
-    
-    setTimeout(() => {
-        try {
-            iframe.contentWindow.focus();
-            iframe.contentWindow.print();
-        } catch (e) {
-            showToast("Erro ao abrir a impressora.", "error");
-            console.error(e);
+    let oldContainer = document.getElementById('print-temp-container');
+    if (oldContainer) oldContainer.remove();
+    let oldStyle = document.getElementById('print-style-temp');
+    if (oldStyle) oldStyle.remove();
+
+    const printContainer = document.createElement('div');
+    printContainer.id = 'print-temp-container';
+    printContainer.innerHTML = htmlCompleto;
+    document.body.appendChild(printContainer);
+
+    const style = document.createElement('style');
+    style.id = 'print-style-temp';
+    style.innerHTML = `
+        @media screen {
+            #print-temp-container { display: none !important; }
         }
+        @media print {
+            body > :not(#print-temp-container) { display: none !important; }
+            #print-temp-container { 
+                display: block !important; 
+                position: absolute !important; 
+                left: 0 !important; 
+                top: 0 !important; 
+                width: 100% !important; 
+                background: white !important; 
+            }
+            @page { margin: 0.5cm; }
+        }
+    `;
+    document.head.appendChild(style);
+
+    setTimeout(() => {
+        window.print();
+        setTimeout(() => {
+            printContainer.remove();
+            style.remove();
+        }, 1000);
     }, 500);
 }
 
@@ -308,26 +318,16 @@ function imprimirArea(areaId) {
     const printContent = document.getElementById(areaId).innerHTML; 
     
     const htmlCompleto = `
-        <html>
-        <head>
-            <title>Relatório - ${emp.nome}</title>
-            <style>
-                body { font-family: Arial, sans-serif; background: #fff; color: #000; padding: 20px; } 
-                .print\\:hidden { display: none !important; } 
-                table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; } 
-                th, td { padding: 8px; border-bottom: 1px solid #ddd; text-align: left; }
-            </style>
-        </head>
-        <body>
+        <div style="padding: 20px; font-family: Arial, sans-serif; background: #fff; color: #000;">
             <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
                 ${emp.logoHtml}
                 <h2 style="font-size: 20px; font-weight: bold; margin: 5px 0; text-transform: uppercase;">${emp.nome}</h2>
                 <p style="margin: 0; font-size: 12px; color: #555;">CNPJ: ${emp.cnpj} | Relatório Oficial</p>
             </div>
             ${printContent}
-        </body>
-        </html>
+        </div>
     `; 
+    
     printHtmlSeguro(htmlCompleto);
 }
 
@@ -336,67 +336,59 @@ function printAction(type) {
     const widthStyle = type === 'thermal' ? 'width: 80mm; font-size: 12px; font-family: monospace; padding: 2mm; margin: 0 auto;' : 'width: 210mm; font-size: 14px; font-family: Arial, sans-serif; padding: 15mm; margin: 0 auto;'; 
     
     const htmlCompleto = `
-        <html>
-        <head>
-            <title>Documento</title>
-            <style>
-                @page { margin: 0; } 
-                body { margin: 0; padding: 0; background: #fff; color: #000; } 
-                .print-container { ${widthStyle} } 
-                table { width: 100%; border-collapse: collapse; } 
-                th, td { padding: 8px; text-align: left; }
-            </style>
-        </head>
-        <body>
-            <div class="print-container">${printContent}</div>
-        </body>
-        </html>
+        <div style="${widthStyle} background: #fff; color: #000;">
+            ${printContent}
+        </div>
     `; 
+    
     printHtmlSeguro(htmlCompleto);
 }
 
+// === MOTOR DE PDF SEGURO ===
 function baixarPDF(areaId, filename) { 
-    if (typeof html2pdf === 'undefined') { 
+    if (typeof window.html2pdf === 'undefined') { 
         showToast('Biblioteca PDF carregando...', 'error'); 
         return; 
     } 
     showToast("Gerando PDF, aguarde...", "info");
     
     const element = document.getElementById(areaId); 
-    const clone = element.cloneNode(true); 
-    clone.querySelectorAll('.print\\:hidden').forEach(el => el.style.display = 'none'); 
     
-    // Correção PDF em Branco (Posiciona visível mas atrás do Z-Index)
-    const wrapper = document.createElement('div');
-    wrapper.style.position = 'absolute';
-    wrapper.style.top = '0';
-    wrapper.style.left = '0';
-    wrapper.style.zIndex = '-9999';
-    wrapper.style.background = '#ffffff';
-    wrapper.style.width = '800px'; 
-    wrapper.style.padding = '20px';
-    wrapper.appendChild(clone);
-    document.body.appendChild(wrapper);
+    // Método 100% blindado: Crio uma div atrás do sistema (invisível para você, visível para a máquina)
+    const tempDiv = document.createElement('div');
+    tempDiv.style.position = 'absolute';
+    tempDiv.style.top = '0';
+    tempDiv.style.left = '0';
+    tempDiv.style.width = '210mm'; // Força largura de A4
+    tempDiv.style.backgroundColor = '#ffffff';
+    tempDiv.style.zIndex = '-9999'; // Joga para trás
+    tempDiv.innerHTML = element.innerHTML;
+    
+    // Remove os botões de fechar e imprimir da cópia
+    tempDiv.querySelectorAll('.print\\:hidden').forEach(el => el.remove());
+    
+    document.body.appendChild(tempDiv);
+    window.scrollTo(0, 0);
 
     const opt = { 
         margin: 10, 
         filename: `${filename}_${Date.now()}.pdf`, 
         image: { type: 'jpeg', quality: 0.98 }, 
-        html2canvas: { scale: 2 }, 
+        html2canvas: { scale: 2, useCORS: true, scrollY: 0 }, // Removido allowTaint que gerava a tela branca
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
     }; 
     
     try {
-        html2pdf().set(opt).from(clone).save().then(() => { 
-            wrapper.remove(); 
+        html2pdf().set(opt).from(tempDiv).save().then(() => { 
+            tempDiv.remove(); 
             showToast('PDF gerado com sucesso!', 'success'); 
         }).catch(err => { 
             console.error(err); 
-            wrapper.remove(); 
-            showToast('Erro ao gerar PDF.', 'error'); 
+            tempDiv.remove(); 
+            showToast('Erro de segurança no navegador ao gerar PDF.', 'error'); 
         }); 
     } catch(e) {
-        wrapper.remove(); 
+        tempDiv.remove(); 
         showToast('Falha na biblioteca de PDF.', 'error'); 
     }
 }
@@ -475,7 +467,6 @@ function imprimirContratoObj(v) {
     }).join('');
 
     const prazoOs = v.servicoDetalhes && v.servicoDetalhes.prazo ? v.servicoDetalhes.prazo.split('-').reverse().join('/') : '___/___/20__';
-
     const dataEmissaoOperacao = v.data ? new Date(v.data).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
 
     const html = `
@@ -548,11 +539,11 @@ function imprimirContratoObj(v) {
     </div>
     `;
 
-    printHtmlSeguro(`<html><head><title>Contrato ${numPedStr}</title><style>@page { margin: 10mm; } body { margin: 0; padding: 0; background: #fff; color: #000; }</style></head><body>${html}</body></html>`);
+    printHtmlSeguro(`<div style="width: 210mm; margin: 0 auto; padding: 15mm; background: #fff;">${html}</div>`);
 }
 
 // ==========================================
-// 8. LEITOR DE CÓDIGO DE BARRAS 
+// 8. LEITOR DE CÓDIGO DE BARRAS
 // ==========================================
 function abrirLeitorCamera() { 
     document.getElementById('modal-leitor-codigo').classList.remove('hidden'); 
@@ -1459,7 +1450,7 @@ function reimprimirVenda(id) {
         <div style="display: flex; justify-content: space-around; margin-top: 60px; text-align: center; font-size: 13px;">
             <div style="width: 40%;">
                 <div style="border-top: 1px solid #000; padding-top: 5px;">Assinatura do Cliente</div>
-                <div style="font-size: 11px; margin-top: 3px; color: #475569;">${isOrcamento ? 'Reconheço o orçamento acima' : (v.tipo === 'SERVIÇO' ? 'Aprovo a execução do serviço.' : 'Declaro ter recebido os itens acima.')}</div>
+                <div style="font-size: 11px; margin-top: 3px; color: #475569;">${isOrcamento ? 'Reconheço o orçamento acima' : (isServico ? 'Aprovo a execução do serviço.' : 'Declaro ter recebido os itens acima.')}</div>
             </div>
             <div style="width: 40%;">
                 <div style="border-top: 1px solid #000; padding-top: 5px;">Assinatura da Empresa</div>
@@ -1523,7 +1514,7 @@ function fecharModalDetalhesVenda() {
 }
 
 // ==========================================
-// 13. EDITAR / REABRIR VENDA (BLINDADO COM STRING)
+// 13. EDITAR / REABRIR VENDA NO PDV
 // ==========================================
 function editarVenda(id) {
     const v = db.vendas.find(x => String(x.id) === String(id)); 
