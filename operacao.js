@@ -125,6 +125,8 @@ function abrirConfirmacao(titulo, mensagem, acao) {
     document.getElementById('modal-confirm-msg').innerText = mensagem; 
     acaoConfirmacaoPendente = acao; 
     document.getElementById('modal-confirmacao').classList.remove('hidden'); 
+    
+    // CORREÇÃO: Passar a função anonimamente para o clique (Sem Loop!)
     document.getElementById('modal-confirm-btn').onclick = function() { 
         if (acaoConfirmacaoPendente) acaoConfirmacaoPendente(); 
         fecharModalConfirmacao(); 
@@ -268,7 +270,7 @@ function removerFotoOS(index) {
 }
 
 // ==========================================
-// 6. IMPRESSÃO E PDF (SEM ERRO DE CHROME LOCAL)
+// 6. IMPRESSÃO E PDF (CORRIGIDOS PARA USO LOCAL)
 // ==========================================
 function printHtmlSeguro(htmlCompleto) {
     showToast("Preparando documento para impressão...", "info");
@@ -344,7 +346,7 @@ function printAction(type) {
     printHtmlSeguro(htmlCompleto);
 }
 
-// === MOTOR DE PDF SEGURO ===
+// === MOTOR DE PDF ===
 function baixarPDF(areaId, filename) { 
     if (typeof window.html2pdf === 'undefined') { 
         showToast('Biblioteca PDF carregando...', 'error'); 
@@ -353,42 +355,43 @@ function baixarPDF(areaId, filename) {
     showToast("Gerando PDF, aguarde...", "info");
     
     const element = document.getElementById(areaId); 
+    const clone = element.cloneNode(true); 
+    clone.querySelectorAll('.print\\:hidden').forEach(el => el.style.display = 'none'); 
     
-    // Método 100% blindado: Crio uma div atrás do sistema (invisível para você, visível para a máquina)
-    const tempDiv = document.createElement('div');
-    tempDiv.style.position = 'absolute';
-    tempDiv.style.top = '0';
-    tempDiv.style.left = '0';
-    tempDiv.style.width = '210mm'; // Força largura de A4
-    tempDiv.style.backgroundColor = '#ffffff';
-    tempDiv.style.zIndex = '-9999'; // Joga para trás
-    tempDiv.innerHTML = element.innerHTML;
-    
-    // Remove os botões de fechar e imprimir da cópia
-    tempDiv.querySelectorAll('.print\\:hidden').forEach(el => el.remove());
-    
-    document.body.appendChild(tempDiv);
+    // Método Blindado: Cria uma div em um nível profundo para a máquina ler, sem sumir com a cor.
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'absolute';
+    wrapper.style.top = '0';
+    wrapper.style.left = '0';
+    wrapper.style.width = '800px'; 
+    wrapper.style.background = '#ffffff';
+    wrapper.style.zIndex = '-100'; // Atrás do sistema, mas 100% visível para o html2canvas
+    wrapper.style.pointerEvents = 'none';
+
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
+
     window.scrollTo(0, 0);
 
     const opt = { 
         margin: 10, 
         filename: `${filename}_${Date.now()}.pdf`, 
         image: { type: 'jpeg', quality: 0.98 }, 
-        html2canvas: { scale: 2, useCORS: true, scrollY: 0 }, // Removido allowTaint que gerava a tela branca
+        html2canvas: { scale: 2, useCORS: true, scrollY: 0 }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
     }; 
     
     try {
-        html2pdf().set(opt).from(tempDiv).save().then(() => { 
-            tempDiv.remove(); 
+        html2pdf().set(opt).from(clone).save().then(() => { 
+            wrapper.remove(); 
             showToast('PDF gerado com sucesso!', 'success'); 
         }).catch(err => { 
             console.error(err); 
-            tempDiv.remove(); 
-            showToast('Erro de segurança no navegador ao gerar PDF.', 'error'); 
+            wrapper.remove(); 
+            showToast('Erro ao processar imagem do PDF.', 'error'); 
         }); 
     } catch(e) {
-        tempDiv.remove(); 
+        wrapper.remove(); 
         showToast('Falha na biblioteca de PDF.', 'error'); 
     }
 }
@@ -1223,7 +1226,7 @@ function renderVendas() {
                 <td class="p-3 text-right font-black text-emerald-600">${typeof formatMoney === 'function' ? formatMoney(lucroDaVenda) : lucroDaVenda}</td>
                 <td class="p-3 text-center flex justify-center gap-1 print:hidden">
                     <button onclick="verDetalhesVenda('${v.id}')" class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-1.5 rounded font-bold text-xs" title="Ver Detalhes"><i class="fa-solid fa-eye"></i></button>
-                    <button onclick="reimprimirVenda('${v.id}')" class="text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2 py-1.5 rounded font-bold text-xs" title="Reimprimir"><i class="fa-solid fa-print"></i></button>
+                    <button onclick="reimprimirVenda('${v.id}')" class="text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2 py-1.5 rounded font-bold text-xs" title="Imprimir"><i class="fa-solid fa-print"></i></button>
                     <button onclick="editarVenda('${v.id}')" class="text-amber-500 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-1.5 rounded font-bold text-xs ml-1" title="Editar / Reabrir no PDV"><i class="fa-solid fa-pen"></i></button>
                     <button onclick="excluirVenda('${v.id}')" class="text-red-500 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2 py-1.5 rounded font-bold text-xs ml-1" title="Excluir"><i class="fa-solid fa-trash"></i></button>
                 </td>
@@ -1450,7 +1453,7 @@ function reimprimirVenda(id) {
         <div style="display: flex; justify-content: space-around; margin-top: 60px; text-align: center; font-size: 13px;">
             <div style="width: 40%;">
                 <div style="border-top: 1px solid #000; padding-top: 5px;">Assinatura do Cliente</div>
-                <div style="font-size: 11px; margin-top: 3px; color: #475569;">${isOrcamento ? 'Reconheço o orçamento acima' : (isServico ? 'Aprovo a execução do serviço.' : 'Declaro ter recebido os itens acima.')}</div>
+                <div style="font-size: 11px; margin-top: 3px; color: #475569;">${isOrcamento ? 'Reconheço o orçamento acima' : (v.tipo === 'SERVIÇO' ? 'Aprovo a execução do serviço.' : 'Declaro ter recebido os itens acima.')}</div>
             </div>
             <div style="width: 40%;">
                 <div style="border-top: 1px solid #000; padding-top: 5px;">Assinatura da Empresa</div>
@@ -1514,7 +1517,7 @@ function fecharModalDetalhesVenda() {
 }
 
 // ==========================================
-// 13. EDITAR / REABRIR VENDA NO PDV
+// 13. EDITAR / REABRIR VENDA (BLINDADO COM STRING E SEM LOOP)
 // ==========================================
 function editarVenda(id) {
     const v = db.vendas.find(x => String(x.id) === String(id)); 
