@@ -1,6 +1,5 @@
 // ==========================================
-// OPERACAO.JS - PDV, Histórico, Orçamentos, Serviços e Contratos
-// SISTEMA 100% WHITE LABEL (DADOS DINÂMICOS DA EMPRESA)
+// OPERACAO.JS - SISTEMA 100% WHITE LABEL E BLINDADO
 // ==========================================
 
 let cart = [];
@@ -8,10 +7,12 @@ let html5QrCode = null;
 let acaoConfirmacaoPendente = null;
 let pagamentosVendaAtual = [];
 let pdvTotalAtual = 0; 
-let osFotosArray = []; // MÚLTIPLAS FOTOS DE SERVIÇO
+let osFotosArray = []; 
+window.vendaEmEdicao = null; 
+window.vendaAtualImpressao = null;
 
 // ==========================================
-// MOTOR INTELIGENTE QUE PUXA A IDENTIDADE DA EMPRESA
+// 1. MOTOR INTELIGENTE: IDENTIDADE DA EMPRESA E CLIENTE
 // ==========================================
 function obterDadosEmpresa() {
     const defaultName = 'Empresa Não Cadastrada';
@@ -31,234 +32,432 @@ function obterDadosEmpresa() {
     return { nome: defaultName, cnpj: defaultCnpj, tel: defaultTel, end: defaultEnd, logoHtml: '' };
 }
 
+function aplicarIdentidadeVisualNoMenu() {
+    const empNomeEl = document.getElementById('menu-empresa-nome');
+    const logoImg = document.getElementById('menu-logo');
+    const logoPlaceholder = document.getElementById('menu-logo-placeholder');
+
+    if (db.config && db.config.empresa) {
+        if (empNomeEl && db.config.empresa.nome) {
+            empNomeEl.innerText = db.config.empresa.nome;
+        }
+        if (logoImg && logoPlaceholder && db.config.empresa.logo) {
+            logoImg.src = db.config.empresa.logo;
+            logoImg.classList.remove('hidden');
+            logoPlaceholder.classList.add('hidden');
+        }
+    }
+}
+
+function obterDadosClientePDV(cId) {
+    const c = cId && cId !== "0" && db.clientes ? db.clientes.find(x => String(x.id) === String(cId)) : null;
+    if(!c) return { nome: 'Consumidor Final', doc: 'Não informado', tel: 'Não informado', endCompleto: 'Não informado', bairro: '', cidade: '', cep: '' };
+    
+    const doc = c.cpfCnpj || c.documento || c.cnpj || c.cpf || c.doc || c.cpf_cnpj || 'Não informado';
+    const tel = c.whatsapp || c.wpp || c.celular || c.telefone || c.telefoneFixo || c.tel || 'Não informado';
+    
+    const rua = c.rua || c.logradouro || c.endereco || c.end || '';
+    const num = c.numero ? ', ' + c.numero : '';
+    const endCompleto = rua ? (rua + num) : 'Não informado';
+    
+    return {
+        nome: c.nome || c.razaoSocial || 'Consumidor Final',
+        doc: doc,
+        tel: tel,
+        endCompleto: endCompleto,
+        bairro: c.bairro || 'Não informado',
+        cidade: c.cidade || 'Não informado',
+        cep: c.cep || 'Não informado'
+    };
+}
+
 // ==========================================
-// 1. INICIALIZAÇÃO E NAVEGAÇÃO
+// 2. INICIALIZAÇÃO E NAVEGAÇÃO
 // ==========================================
 function mudarVisaoLocal(viewId) {
-    document.querySelectorAll('.view-section').forEach(el => { el.classList.add('hidden'); el.classList.remove('active'); });
-    document.getElementById(`view-${viewId}`).classList.remove('hidden');
-    document.getElementById(`view-${viewId}`).classList.add('active');
+    document.querySelectorAll('.view-section').forEach(el => { 
+        el.classList.add('hidden'); 
+        el.classList.remove('active'); 
+    });
     
-    document.querySelectorAll('.nav-btn[data-target]').forEach(btn => { btn.classList.remove('bg-blue-600', 'text-white'); btn.classList.add('text-slate-300'); });
+    const viewTarget = document.getElementById(`view-${viewId}`);
+    if(viewTarget) {
+        viewTarget.classList.remove('hidden');
+        viewTarget.classList.add('active');
+    }
+    
+    document.querySelectorAll('.nav-btn[data-target]').forEach(btn => { 
+        btn.classList.remove('bg-blue-600', 'text-white'); 
+        btn.classList.add('text-slate-300'); 
+    });
+    
     const activeBtn = document.querySelector(`.nav-btn[data-target="${viewId}"]`);
-    if(activeBtn) { activeBtn.classList.remove('text-slate-300'); activeBtn.classList.add('bg-blue-600', 'text-white'); }
+    if (activeBtn) { 
+        activeBtn.classList.remove('text-slate-300'); 
+        activeBtn.classList.add('bg-blue-600', 'text-white'); 
+    }
     
     if (window.innerWidth < 768) {
         document.getElementById('sidebar').classList.add('-translate-x-full');
         document.getElementById('sidebar-overlay').classList.add('hidden');
     }
     
-    if(viewId === 'pdv') prepararPDV();
-    if(viewId === 'vendas') renderVendas();
-    if(viewId === 'orcamentos') renderOrcamentos();
+    if (viewId === 'pdv') prepararPDV();
+    if (viewId === 'vendas') renderVendas();
+    if (viewId === 'orcamentos') renderOrcamentos();
 }
 
 function inicializarOperacao() {
-    prepararPDV();
+    aplicarIdentidadeVisualNoMenu(); 
+    
     const urlParams = new URLSearchParams(window.location.search);
-    if(urlParams.get('view') === 'vendas') mudarVisaoLocal('vendas');
-    else if(urlParams.get('view') === 'orcamentos') mudarVisaoLocal('orcamentos');
+    const view = urlParams.get('view') || 'pdv'; 
+    mudarVisaoLocal(view);
 }
 
 window.onload = () => { initGlobalData(inicializarOperacao); };
 
 // ==========================================
-// 2. FUNÇÕES GENÉRICAS E MODAIS
+// 3. FUNÇÕES GENÉRICAS E MODAIS
 // ==========================================
 function abrirConfirmacao(titulo, mensagem, acao) { 
     document.getElementById('modal-confirm-title').innerText = titulo; 
     document.getElementById('modal-confirm-msg').innerText = mensagem; 
     acaoConfirmacaoPendente = acao; 
     document.getElementById('modal-confirmacao').classList.remove('hidden'); 
-    document.getElementById('modal-confirm-btn').onclick = function() {
-        if(acaoConfirmacaoPendente) acaoConfirmacaoPendente();
-        fecharModalConfirmacao();
-    };
+    document.getElementById('modal-confirm-btn').onclick = function() { 
+        if (acaoConfirmacaoPendente) acaoConfirmacaoPendente(); 
+        fecharModalConfirmacao(); 
+    }; 
 }
-function fecharModalConfirmacao() { document.getElementById('modal-confirmacao').classList.add('hidden'); acaoConfirmacaoPendente = null; document.getElementById('modal-confirm-btn').onclick = null; }
-function abrirZoom(src) { if(!src) return; document.getElementById('zoom-img-src').src = src; document.getElementById('modal-zoom').classList.remove('hidden'); }
-function fecharZoom() { document.getElementById('modal-zoom').classList.add('hidden'); document.getElementById('zoom-img-src').src = ''; }
-function abrirZoomCart(index) { if(cart[index] && cart[index].foto) abrirZoom(cart[index].foto); }
+
+function fecharModalConfirmacao() { 
+    document.getElementById('modal-confirmacao').classList.add('hidden'); 
+    acaoConfirmacaoPendente = null; 
+    document.getElementById('modal-confirm-btn').onclick = null; 
+}
+
+function abrirZoom(src) { 
+    if(!src) return; 
+    document.getElementById('zoom-img-src').src = src; 
+    document.getElementById('modal-zoom').classList.remove('hidden'); 
+}
+
+function fecharZoom() { 
+    document.getElementById('modal-zoom').classList.add('hidden'); 
+    document.getElementById('zoom-img-src').src = ''; 
+}
+
+function abrirZoomCart(index) { 
+    if(cart[index] && cart[index].foto) abrirZoom(cart[index].foto); 
+}
+
 function salvarKardex(ref, prodId, prodNome, qtd, tipo) { 
-    if(!db.movimentacoes) db.movimentacoes = [];
-    db.movimentacoes.unshift({ id: Date.now() + Math.random(), data: new Date().toISOString(), ref: ref || '', prodId: prodId || '', prodNome: prodNome || 'Produto', qtd: qtd || 0, tipo: tipo || 'AJUSTE' }); 
+    if(!db.movimentacoes) db.movimentacoes = []; 
+    db.movimentacoes.unshift({ 
+        id: Date.now() + Math.random(), 
+        data: new Date().toISOString(), 
+        ref: ref || '', 
+        prodId: prodId || '', 
+        prodNome: prodNome || 'Produto', 
+        qtd: qtd || 0, 
+        tipo: tipo || 'AJUSTE' 
+    }); 
 }
 
 // ==========================================
-// FOTOS DA ORDEM DE SERVIÇO
+// 4. CADASTRO DE CLIENTE RÁPIDO
+// ==========================================
+function atualizarListaClientesPDV(selecionarId = null) {
+    const sCli = document.getElementById('pdv-cliente'); 
+    if(!sCli) return;
+    sCli.innerHTML = '<option value="0">Consumidor Final</option>' + (db.clientes || []).map(c => `<option value="${c.id}">${c.nome}</option>`).join(''); 
+    if(selecionarId) sCli.value = selecionarId;
+}
+
+function abrirModalClienteRapido() {
+    document.getElementById('cli-rapido-nome').value = '';
+    document.getElementById('cli-rapido-wpp').value = '';
+    document.getElementById('cli-rapido-doc').value = '';
+    document.getElementById('modal-cliente-rapido').classList.remove('hidden');
+}
+
+function fecharModalClienteRapido() {
+    document.getElementById('modal-cliente-rapido').classList.add('hidden');
+}
+
+function salvarClienteRapido() {
+    const nome = document.getElementById('cli-rapido-nome').value.trim();
+    if(!nome) return showToast('Nome do cliente é obrigatório!', 'error');
+
+    const novoCliente = {
+        id: Date.now(),
+        nome: nome,
+        wpp: document.getElementById('cli-rapido-wpp').value.trim(),
+        documento: document.getElementById('cli-rapido-doc').value.trim(),
+        dataCadastro: new Date().toISOString()
+    };
+
+    if(!db.clientes) db.clientes = [];
+    db.clientes.push(novoCliente);
+    saveDB();
+    
+    fecharModalClienteRapido();
+    atualizarListaClientesPDV(novoCliente.id);
+    showToast('Cliente cadastrado e selecionado!', 'success');
+}
+
+// ==========================================
+// 5. FOTOS DA ORDEM DE SERVIÇO
 // ==========================================
 function processarMultiplasFotosOS(event) {
-    const files = event.target.files;
+    const files = event.target.files; 
     if (!files || files.length === 0) return;
     
-    Array.from(files).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const img = new Image();
-            img.onload = function() {
-                const canvas = document.createElement('canvas');
-                let w = img.width, h = img.height;
+    Array.from(files).forEach(file => { 
+        const reader = new FileReader(); 
+        reader.onload = function(e) { 
+            const img = new Image(); 
+            img.onload = function() { 
+                const canvas = document.createElement('canvas'); 
+                let w = img.width, h = img.height; 
                 const MAX = 600; 
-                if(w > h) { if(w > MAX) { h *= MAX/w; w = MAX; } } else { if(h > MAX) { w *= MAX/h; h = MAX; } }
-                canvas.width = w; canvas.height = h;
-                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-                
-                osFotosArray.push(dataUrl);
-                renderizarFotosOS();
-            };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
+                if (w > h) { 
+                    if (w > MAX) { h *= MAX/w; w = MAX; } 
+                } else { 
+                    if (h > MAX) { w *= MAX/h; h = MAX; } 
+                } 
+                canvas.width = w; 
+                canvas.height = h; 
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h); 
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.8); 
+                osFotosArray.push(dataUrl); 
+                renderizarFotosOS(); 
+            }; 
+            img.src = e.target.result; 
+        }; 
+        reader.readAsDataURL(file); 
     });
     event.target.value = '';
 }
 
-function renderizarFotosOS() {
-    const grid = document.getElementById('os-fotos-preview-grid');
-    if (!grid) return;
+function renderizarFotosOS() { 
+    const grid = document.getElementById('os-fotos-preview-grid'); 
+    if (!grid) return; 
     
-    if (osFotosArray.length === 0) {
-        grid.classList.add('hidden');
-        grid.innerHTML = '';
-        return;
-    }
+    if (osFotosArray.length === 0) { 
+        grid.classList.add('hidden'); 
+        grid.innerHTML = ''; 
+        return; 
+    } 
     
-    grid.classList.remove('hidden');
+    grid.classList.remove('hidden'); 
     grid.innerHTML = osFotosArray.map((foto, idx) => `
         <div class="relative w-14 h-14 border border-purple-300 rounded overflow-hidden shadow-sm group">
             <div class="w-full h-full bg-cover bg-center cursor-zoom-in" style="background-image: url('${foto}')" onclick="abrirZoom('${foto}')"></div>
-            <button onclick="removerFotoOS(${idx})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity" title="Remover Foto"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="removerFotoOS(${idx})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
         </div>
-    `).join('');
+    `).join(''); 
 }
 
-function removerFotoOS(index) {
-    osFotosArray.splice(index, 1);
-    renderizarFotosOS();
+function removerFotoOS(index) { 
+    osFotosArray.splice(index, 1); 
+    renderizarFotosOS(); 
 }
 
 // ==========================================
-// IMPRESSÃO E PDF (RELATÓRIOS DO SISTEMA E EXPORTAÇÕES)
+// 6. IMPRESSÃO E PDF (SEM ERRO DE CHROME LOCAL)
 // ==========================================
-function imprimirArea(areaId) {
-    const emp = obterDadosEmpresa();
-    const printContent = document.getElementById(areaId).innerHTML;
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'absolute'; iframe.style.width = '0px'; iframe.style.height = '0px'; iframe.style.border = 'none';
-    document.body.appendChild(iframe);
+function printHtmlSeguro(htmlCompleto) {
+    showToast("Preparando documento para impressão...", "info");
     
-    const doc = iframe.contentWindow.document;
-    doc.write(`
-        <html>
-        <head>
-            <title>Relatório - ${emp.nome}</title>
-            <style>
-                body { font-family: Arial, sans-serif; background: #fff; color: #000; padding: 20px; } 
-                .print\\:hidden { display: none !important; } 
-                table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; } 
-                th, td { padding: 8px; border-bottom: 1px solid #ddd; text-align: left; }
-            </style>
-        </head>
-        <body>
+    let oldContainer = document.getElementById('print-temp-container');
+    if (oldContainer) oldContainer.remove();
+    let oldStyle = document.getElementById('print-style-temp');
+    if (oldStyle) oldStyle.remove();
+
+    const printContainer = document.createElement('div');
+    printContainer.id = 'print-temp-container';
+    printContainer.innerHTML = htmlCompleto;
+    document.body.appendChild(printContainer);
+
+    const style = document.createElement('style');
+    style.id = 'print-style-temp';
+    style.innerHTML = `
+        @media screen {
+            #print-temp-container { display: none !important; }
+        }
+        @media print {
+            body > :not(#print-temp-container) { display: none !important; }
+            #print-temp-container { 
+                display: block !important; 
+                position: absolute !important; 
+                left: 0 !important; 
+                top: 0 !important; 
+                width: 100% !important; 
+                background: white !important; 
+            }
+            @page { margin: 0.5cm; }
+        }
+    `;
+    document.head.appendChild(style);
+
+    setTimeout(() => {
+        window.print();
+        setTimeout(() => {
+            printContainer.remove();
+            style.remove();
+        }, 1000);
+    }, 500);
+}
+
+function imprimirArea(areaId) { 
+    const emp = obterDadosEmpresa();
+    const printContent = document.getElementById(areaId).innerHTML; 
+    
+    const htmlCompleto = `
+        <div style="padding: 20px; font-family: Arial, sans-serif; background: #fff; color: #000;">
             <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
                 ${emp.logoHtml}
                 <h2 style="font-size: 20px; font-weight: bold; margin: 5px 0; text-transform: uppercase;">${emp.nome}</h2>
-                <p style="margin: 0; font-size: 12px; color: #555;">CNPJ: ${emp.cnpj} | Relatório Oficial do Sistema</p>
+                <p style="margin: 0; font-size: 12px; color: #555;">CNPJ: ${emp.cnpj} | Relatório Oficial</p>
             </div>
             ${printContent}
-        </body>
-        </html>
-    `);
-    doc.close();
+        </div>
+    `; 
     
-    iframe.contentWindow.focus();
-    setTimeout(() => { iframe.contentWindow.print(); setTimeout(() => document.body.removeChild(iframe), 1000); }, 500);
+    printHtmlSeguro(htmlCompleto);
 }
 
-function printAction(type) {
-    const printContent = document.getElementById('print-area').innerHTML;
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'absolute'; iframe.style.width = '0px'; iframe.style.height = '0px'; iframe.style.border = 'none';
-    document.body.appendChild(iframe);
+function printAction(type) { 
+    const printContent = document.getElementById('print-area').innerHTML; 
+    const widthStyle = type === 'thermal' ? 'width: 80mm; font-size: 12px; font-family: monospace; padding: 2mm; margin: 0 auto;' : 'width: 210mm; font-size: 14px; font-family: Arial, sans-serif; padding: 15mm; margin: 0 auto;'; 
     
-    const doc = iframe.contentWindow.document;
-    const widthStyle = type === 'thermal' ? 'width: 80mm; font-size: 12px; font-family: monospace; padding: 2mm; margin: 0 auto;' : 'width: 210mm; font-size: 14px; font-family: Arial, sans-serif; padding: 15mm; margin: 0 auto;';
+    const htmlCompleto = `
+        <div style="${widthStyle} background: #fff; color: #000;">
+            ${printContent}
+        </div>
+    `; 
     
-    doc.write(`<html><head><title>Documento</title><style>@page { margin: 0; } body { margin: 0; padding: 0; background: #fff; color: #000; } .print-container { ${widthStyle} } table { width: 100%; border-collapse: collapse; } th, td { padding: 8px; text-align: left; }</style></head><body><div class="print-container">${printContent}</div></body></html>`);
-    doc.close();
-    
-    iframe.contentWindow.focus();
-    setTimeout(() => { iframe.contentWindow.print(); setTimeout(() => document.body.removeChild(iframe), 1000); }, 500);
+    printHtmlSeguro(htmlCompleto);
 }
 
-function baixarPDF(areaId, filename) {
-    if (typeof html2pdf === 'undefined') { showToast('Biblioteca PDF carregando...', 'error'); return; }
-    const element = document.getElementById(areaId);
-    const clone = element.cloneNode(true);
-    clone.querySelectorAll('.print\\:hidden').forEach(el => el.style.display = 'none');
-    clone.style.display = 'block'; clone.style.position = 'absolute'; clone.style.top = '-9999px'; clone.style.width = '297mm'; clone.style.padding = '20px'; clone.style.backgroundColor = '#ffffff';
-    document.body.appendChild(clone);
+// === MOTOR DE PDF SEGURO ===
+function baixarPDF(areaId, filename) { 
+    if (typeof window.html2pdf === 'undefined') { 
+        showToast('Biblioteca PDF carregando...', 'error'); 
+        return; 
+    } 
+    showToast("Gerando PDF, aguarde...", "info");
+    
+    const element = document.getElementById(areaId); 
+    
+    // Método 100% blindado: Crio uma div atrás do sistema (invisível para você, visível para a máquina)
+    const tempDiv = document.createElement('div');
+    tempDiv.style.position = 'absolute';
+    tempDiv.style.top = '0';
+    tempDiv.style.left = '0';
+    tempDiv.style.width = '210mm'; // Força largura de A4
+    tempDiv.style.backgroundColor = '#ffffff';
+    tempDiv.style.zIndex = '-9999'; // Joga para trás
+    tempDiv.innerHTML = element.innerHTML;
+    
+    // Remove os botões de fechar e imprimir da cópia
+    tempDiv.querySelectorAll('.print\\:hidden').forEach(el => el.remove());
+    
+    document.body.appendChild(tempDiv);
+    window.scrollTo(0, 0);
 
-    const opt = { margin: 10, filename: filename + '_' + Date.now() + '.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } };
-    html2pdf().set(opt).from(clone).save().then(() => { document.body.removeChild(clone); showToast('PDF Gerado!', 'success'); });
-}
-
-function downloadPDF(areaId, filename) {
-    if (typeof html2pdf === 'undefined') { showToast('Biblioteca PDF carregando...', 'error'); return; }
-    const element = document.getElementById(areaId);
-    const clone = element.cloneNode(true);
-    clone.style.display = 'block'; clone.style.position = 'absolute'; clone.style.top = '-9999px'; clone.style.width = '210mm'; clone.style.padding = '20px'; clone.style.backgroundColor = '#ffffff'; clone.style.color = '#000000';
-    document.body.appendChild(clone);
-
-    const opt = { margin: 10, filename: `${filename}_${Date.now()}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
-    html2pdf().set(opt).from(clone).save().then(() => { document.body.removeChild(clone); showToast('PDF baixado!', 'success'); });
-}
-
-function exportarExcel(tabelaId, filename) {
-    let table = document.getElementById(tabelaId); if(!table) return showToast('Tabela não encontrada.', 'error');
-    let rows = table.querySelectorAll('tr'); let csv = [];
-    for (let i = 0; i < rows.length; i++) {
-        let row = [], cols = rows[i].querySelectorAll('td:not(.print\\:hidden), th:not(.print\\:hidden)');
-        for (let j = 0; j < cols.length; j++) { row.push('"' + cols[j].innerText.replace(/"/g, '""').trim() + '"'); }
-        csv.push(row.join(';'));
+    const opt = { 
+        margin: 10, 
+        filename: `${filename}_${Date.now()}.pdf`, 
+        image: { type: 'jpeg', quality: 0.98 }, 
+        html2canvas: { scale: 2, useCORS: true, scrollY: 0 }, // Removido allowTaint que gerava a tela branca
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
+    }; 
+    
+    try {
+        html2pdf().set(opt).from(tempDiv).save().then(() => { 
+            tempDiv.remove(); 
+            showToast('PDF gerado com sucesso!', 'success'); 
+        }).catch(err => { 
+            console.error(err); 
+            tempDiv.remove(); 
+            showToast('Erro de segurança no navegador ao gerar PDF.', 'error'); 
+        }); 
+    } catch(e) {
+        tempDiv.remove(); 
+        showToast('Falha na biblioteca de PDF.', 'error'); 
     }
-    let csvFile = new Blob(["\uFEFF"+csv.join('\n')], {type: 'text/csv;charset=utf-8;'});
-    let link = document.createElement("a"); link.href = window.URL.createObjectURL(csvFile); link.setAttribute("download", filename + "_" + Date.now() + ".csv");
-    document.body.appendChild(link); link.click(); showToast('Excel exportado!', 'success');
+}
+
+function downloadPDF(areaId, filename) { 
+    baixarPDF(areaId, filename); 
+}
+
+function exportarExcel(tabelaId, filename) { 
+    let table = document.getElementById(tabelaId); 
+    if(!table) return showToast('Tabela não encontrada.', 'error'); 
+    
+    let rows = table.querySelectorAll('tr'); 
+    let csv = []; 
+    
+    for (let i = 0; i < rows.length; i++) { 
+        let row = [], cols = rows[i].querySelectorAll('td:not(.print\\:hidden), th:not(.print\\:hidden)'); 
+        for (let j = 0; j < cols.length; j++) { 
+            row.push('"' + cols[j].innerText.replace(/"/g, '""').trim() + '"'); 
+        } 
+        csv.push(row.join(';')); 
+    } 
+    
+    let csvFile = new Blob(["\uFEFF"+csv.join('\n')], {type: 'text/csv;charset=utf-8;'}); 
+    let link = document.createElement("a"); 
+    link.href = window.URL.createObjectURL(csvFile); 
+    link.setAttribute("download", filename + "_" + Date.now() + ".csv"); 
+    document.body.appendChild(link); 
+    link.click(); 
+    showToast('Excel exportado!', 'success'); 
 }
 
 // ==========================================
-// GERADOR DE CONTRATO PROFISSIONAL COM DADOS DINÂMICOS
+// 7. GERADOR DE CONTRATO PROFISSIONAL
 // ==========================================
-function imprimirContratoById(id) {
-    const v = db.vendas.find(x => x.id === id);
-    if(v) imprimirContratoObj(v);
+function imprimirContratoAtual() {
+    if (window.vendaAtualImpressao) {
+        imprimirContratoObj(window.vendaAtualImpressao);
+    } else {
+        showToast("Nenhuma venda selecionada para imprimir.", "error");
+    }
+}
+
+function imprimirContratoById(id) { 
+    const v = db.vendas.find(x => String(x.id) === String(id)); 
+    if(v) imprimirContratoObj(v); 
 }
 
 function imprimirContratoObj(v) {
     if(!v) return;
-    const emp = obterDadosEmpresa(); // PUXA OS DADOS DA EMPRESA
+    const emp = obterDadosEmpresa();
+    
     const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
     
-    const c = db.clientes ? db.clientes.find(x => String(x.id) === String(v.clienteId)) : null;
-    const cliCpf = c && c.documento ? c.documento : '_______________________';
-    const cliTel = c && c.telefone ? c.telefone : '_______________________';
-    const cliEnd = c && c.endereco ? `${c.endereco}${c.numero ? ', '+c.numero : ''}` : '___________________________________________________';
-    const cliBairro = c && c.bairro ? c.bairro : '_______________________';
-    const cliCidade = c && c.cidade ? c.cidade : '_______________________';
-    const cliCep = c && c.cep ? c.cep : '_______________________';
+    const cliInfo = obterDadosClientePDV(v.clienteId);
+    const cliNome = v.clienteNome || cliInfo.nome || 'Consumidor Final';
+    const cliCpf = v.clienteDoc || cliInfo.doc || 'Não informado';
+    const cliTel = v.clienteTel || cliInfo.tel || 'Não informado';
+    const cliEndCompleto = v.clienteEnd || cliInfo.endCompleto || 'Não informado';
 
     let itensHtml = (v.itens || []).map((i, idx) => {
         const prodDb = (db.produtos || []).find(p => String(p.id) === String(i.id));
         const fotoHtml = prodDb && prodDb.foto ? `<div style="margin-right: 15px; flex-shrink: 0;"><img src="${prodDb.foto}" style="width: 90px; height: 90px; object-fit: cover; border-radius: 6px; border: 1px solid #ccc;"></div>` : '';
-
         return `
         <div style="margin-bottom: 15px; display: flex; align-items: flex-start; border-bottom: 1px dashed #eee; padding-bottom: 10px;">
             ${fotoHtml}
             <div style="flex: 1;">
                 <strong>PRODUTO/SERVIÇO ${idx + 1}</strong><br>
-                Modelo / Descrição: ${i.nome} ${i.obsVenda ? ` - Obs: ${i.obsVenda}` : ''}<br>
+                Descrição: ${i.nome} ${i.obsVenda ? ` - Obs: ${i.obsVenda}` : ''}<br>
                 Quantidade: ${i.qtd} unidade(s)<br>
                 Valor: ${formatMoney(i.preco * i.qtd)}<br>
                 Situação do produto: ( ) Produto em estoque &nbsp;&nbsp;&nbsp; ( ) Produto sob fabricação
@@ -268,62 +467,57 @@ function imprimirContratoObj(v) {
     }).join('');
 
     const prazoOs = v.servicoDetalhes && v.servicoDetalhes.prazo ? v.servicoDetalhes.prazo.split('-').reverse().join('/') : '___/___/20__';
+    const dataEmissaoOperacao = v.data ? new Date(v.data).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
 
     const html = `
-    <div style="font-family: Arial, sans-serif; color: #000; max-width: 800px; margin: 0 auto; padding: 10px; line-height: 1.5; font-size: 14px;">
+    <div style="font-family: Arial, sans-serif; color: #000; width: 100%; max-width: 800px; margin: 0 auto; line-height: 1.5; font-size: 14px;">
         <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 20px;">
             ${emp.logoHtml}
             <h1 style="margin: 0; font-size: 24px; font-weight: bold; text-transform: uppercase;">${emp.nome}</h1>
-            <p style="margin: 5px 0 0 0; font-size: 12px;">
-                CNPJ: ${emp.cnpj}<br>
-                Endereço: ${emp.end}<br>
-                Telefone / WhatsApp: ${emp.tel}
-            </p>
+            <p style="margin: 5px 0 0 0; font-size: 12px;">CNPJ: ${emp.cnpj}<br>Endereço: ${emp.end}<br>Telefone / WhatsApp: ${emp.tel}</p>
         </div>
 
-        <h2 style="text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 5px;">CONTRATO DE COMPRA E VENDA DE PRODUTOS E SERVIÇOS</h2>
+        <h2 style="text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 5px;">CONTRATO DE COMPRA E VENDA E SERVIÇOS</h2>
         <p style="text-align: center; font-weight: bold; margin-top: 0; margin-bottom: 20px;">PEDIDO Nº ${numPedStr}</p>
 
         <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">DADOS DO CLIENTE (COMPRADOR)</h3>
         <p style="margin-top: 0;">
-            <strong>Nome completo:</strong> ${v.clienteNome}<br>
+            <strong>Nome completo:</strong> ${cliNome}<br>
             <strong>CPF/CNPJ:</strong> ${cliCpf}<br>
             <strong>Telefone / WhatsApp:</strong> ${cliTel}<br>
-            <strong>Endereço:</strong> ${cliEnd}<br>
-            <strong>Bairro:</strong> ${cliBairro} &nbsp;&nbsp;&nbsp; <strong>Cidade/UF:</strong> ${cliCidade} &nbsp;&nbsp;&nbsp; <strong>CEP:</strong> ${cliCep}
+            <strong>Endereço:</strong> ${cliEndCompleto}
         </p>
 
         <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">OBJETO DO CONTRATO</h3>
-        <p style="margin-top: 0; margin-bottom: 15px;">O presente contrato tem como objeto a venda do(s) item(ns) descrito(s) abaixo:</p>
+        <p style="margin-top: 0; margin-bottom: 15px;">O presente contrato tem como objeto a venda do(s) produto(s) / serviço(s) descrito(s) abaixo:</p>
         ${itensHtml}
 
         <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px; margin-top: 20px;">VALOR TOTAL DA COMPRA</h3>
         <p style="margin-top: 0;">
             <strong>Valor total:</strong> ${formatMoney(v.tot)}<br>
             <strong>Forma de pagamento registrada:</strong> ${v.pag || '_________________________________'}<br>
-            <strong>Data da Operação:</strong> ${new Date(v.data).toLocaleDateString('pt-BR')}
+            <strong>Data da Operação:</strong> ${dataEmissaoOperacao}
         </p>
 
         <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">PRAZO DE ENTREGA E GARANTIA</h3>
-        <p style="margin-top: 0; text-align: justify;">
-            Caso o produto esteja disponível em estoque, o prazo de entrega será de até 3 (três) dias úteis após a confirmação do pagamento.<br>
-            Caso o produto seja fabricado sob encomenda ou serviço, o prazo de produção/execução será de até 30 (trinta) dias corridos após a confirmação do pedido.<br>
-            O produto/serviço possui garantia legal de 90 (noventa) dias contra defeitos de fabricação.<br>
-            <strong>A garantia não cobre:</strong> Mau uso do produto; Danos causados após a entrega; Exposição à umidade excessiva; Sobrecarga de peso; Alterações feitas por terceiros.
-        </p>
+        <p style="margin-top: 0; text-align: justify;">Caso o produto esteja disponível em estoque, o prazo de entrega será de até 3 (três) dias úteis após a confirmação do pagamento.<br>Caso o produto seja fabricado sob encomenda, o prazo de produção e entrega será de até 30 (trinta) dias corridos após a confirmação do pedido e pagamento da entrada.<br>O produto/serviço possui garantia legal de 90 (noventa) dias contra defeitos de fabricação.<br>Os prazos poderão sofrer alterações em casos de força maior, problemas logísticos, transporte, fornecedores ou condições climáticas.</p>
 
-        <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">MEDIDAS, TRANSPORTE E ACESSO AO LOCAL</h3>
-        <p style="margin-top: 0; text-align: justify;">
-            O cliente declara que verificou as medidas do local de instalação e acesso (portas, corredores, elevadores e escadas). Caso o móvel não possa ser entregue ou instalado por falta de espaço ou acesso, a empresa não se responsabiliza por custos adicionais de transporte ou nova entrega.
-        </p>
+        <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">LOCAL DE ENTREGA</h3>
+        <p style="margin-top: 0;"><strong>Endereço:</strong> ${cliEndCompleto}<br><strong>Data prevista:</strong> ${prazoOs}</p>
+
+        <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">TRANSPORTE E MONTAGEM</h3>
+        <p style="margin-top: 0;">( ) Entrega realizada pela empresa &nbsp;&nbsp;&nbsp; ( ) Retirada pelo cliente<br>Montagem: ( ) Inclusa &nbsp;&nbsp;&nbsp; ( ) Não inclusa<br>Caso a entrega seja realizada pela empresa, o cliente deve garantir acesso adequado ao local.</p>
+
+        <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">MEDIDAS E ACESSO AO LOCAL</h3>
+        <p style="margin-top: 0; text-align: justify;">O cliente declara que verificou as medidas do local de instalação e acesso (portas, corredores, elevadores e escadas). Caso o móvel não possa ser entregue ou instalado por falta de espaço ou acesso, a empresa não se responsabiliza por custos adicionais de transporte ou nova entrega.</p>
+
+        <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">CONFERÊNCIA NO ATO DA ENTREGA</h3>
+        <p style="margin-top: 0; text-align: justify;">O cliente deverá verificar o produto no momento da entrega. Após assinatura do recebimento, entende-se que o produto foi entregue em perfeitas condições.<br><strong>A garantia não cobre:</strong> Mau uso do produto; Danos causados após a entrega; Exposição à umidade excessiva; Sobrecarga de peso; Alterações feitas por terceiros.</p>
 
         <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">CANCELAMENTO E ATRASO</h3>
-        <p style="margin-top: 0; text-align: justify;">
-            Pedidos de produtos fabricados sob encomenda não poderão ser cancelados após o início da produção. Caso haja cancelamento após início da fabricação, poderá ser cobrada taxa referente aos custos de produção.<br>
-            Em caso de atraso no pagamento do saldo, poderá ser aplicada multa de 2% sobre o valor devido, além de juros de 1% ao mês.
-        </p>
+        <p style="margin-top: 0; text-align: justify;">Pedidos de produtos fabricados sob encomenda não poderão ser cancelados após o início da produção. Caso haja cancelamento após início da fabricação, poderá ser cobrada taxa referente aos custos de produção.<br>Em caso de atraso no pagamento do saldo, poderá ser aplicada multa de 2% sobre o valor devido, além de juros de 1% ao mês.</p>
 
-        <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">OBSERVAÇÕES GERAIS DO PEDIDO</h3>
+        <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">OBSERVAÇÕES DO PEDIDO</h3>
         <p style="margin-top: 0;">${v.obs || 'Sem observação.'}</p>
 
         <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">ACEITE DAS CONDIÇÕES</h3>
@@ -338,147 +532,173 @@ function imprimirContratoObj(v) {
                 </div>
                 <div style="width: 45%;">
                     <div style="border-top: 1px solid #000; padding-top: 5px; font-weight: bold;">COMPRADOR(A)</div>
-                    <p style="font-size: 12px; margin-top: 2px;">Nome: ${v.clienteNome}</p>
+                    <p style="font-size: 12px; margin-top: 2px;">Nome: ${cliNome}</p>
                 </div>
             </div>
         </div>
     </div>
     `;
 
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'absolute'; iframe.style.width = '0px'; iframe.style.height = '0px'; iframe.style.border = 'none';
-    document.body.appendChild(iframe);
-    
-    const doc = iframe.contentWindow.document;
-    doc.write(`<html><head><title>Contrato ${numPedStr}</title><style>@page { margin: 10mm; } body { margin: 0; padding: 0; background: #fff; color: #000; }</style></head><body>${html}</body></html>`);
-    doc.close();
-    
-    iframe.contentWindow.focus();
-    setTimeout(() => { iframe.contentWindow.print(); setTimeout(() => document.body.removeChild(iframe), 1000); }, 500);
+    printHtmlSeguro(`<div style="width: 210mm; margin: 0 auto; padding: 15mm; background: #fff;">${html}</div>`);
 }
 
 // ==========================================
-// 3. LEITOR DE CÓDIGO DE BARRAS (CÂMERA)
+// 8. LEITOR DE CÓDIGO DE BARRAS
 // ==========================================
-function abrirLeitorCamera() {
-    document.getElementById('modal-leitor-codigo').classList.remove('hidden');
-    if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+function abrirLeitorCamera() { 
+    document.getElementById('modal-leitor-codigo').classList.remove('hidden'); 
+    if (!html5QrCode) html5QrCode = new Html5Qrcode("reader"); 
+    
     html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 150 } }, onScanSuccess)
-    .catch(err => { showToast("Erro ao acessar a câmera.", "error"); fecharLeitorCamera(); });
+    .catch(err => { 
+        showToast("Erro ao acessar a câmera.", "error"); 
+        fecharLeitorCamera(); 
+    }); 
 }
-function fecharLeitorCamera() {
-    document.getElementById('modal-leitor-codigo').classList.add('hidden');
-    if (html5QrCode && html5QrCode.isScanning) html5QrCode.stop().catch(err => console.log(err));
+
+function fecharLeitorCamera() { 
+    document.getElementById('modal-leitor-codigo').classList.add('hidden'); 
+    if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().catch(err => console.log(err)); 
+    }
 }
-function onScanSuccess(decodedText) {
-    fecharLeitorCamera();
-    const buscaInput = document.getElementById('pdv-produto-busca');
-    buscaInput.value = decodedText;
-    const prod = db.produtos.find(x => String(x.ean) === decodedText || String(x.id) === decodedText);
-    if(prod && prod.ativo !== false) { processarAdicaoProduto(prod); showToast('Código lido com sucesso!', 'success'); }
-    else { showToast('Produto não encontrado pelo código.', 'error'); }
-    buscaInput.value = '';
+
+function onScanSuccess(decodedText) { 
+    fecharLeitorCamera(); 
+    const buscaInput = document.getElementById('pdv-produto-busca'); 
+    buscaInput.value = decodedText; 
+    const prod = db.produtos.find(x => String(x.ean) === decodedText || String(x.id) === decodedText); 
+    
+    if(prod && prod.ativo !== false) { 
+        processarAdicaoProduto(prod); 
+        showToast('Código lido com sucesso!', 'success'); 
+    } else { 
+        showToast('Produto não encontrado pelo código.', 'error'); 
+    } 
+    buscaInput.value = ''; 
 }
 
 // ==========================================
-// 4. PDV E CARRINHO DE COMPRAS
+// 9. PDV E CARRINHO DE COMPRAS
 // ==========================================
 function prepararPDV() {
     if(!db.caixa) db.caixa = { status: 'FECHADO', saldo: 0, historico: [] };
     
-    const opSelect = document.getElementById('pdv-operacao');
-    if(opSelect) {
-        opSelect.addEventListener('change', () => {
-            atualizarResumoPagamentosVenda();
-            togglePanelServico();
-        });
+    const opSelect = document.getElementById('pdv-operacao'); 
+    if(opSelect) { 
+        opSelect.addEventListener('change', () => { 
+            atualizarResumoPagamentosVenda(); 
+            togglePanelServico(); 
+        }); 
     }
     
-    const sCli = document.getElementById('pdv-cliente'); 
-    sCli.innerHTML = '<option value="0">Consumidor Final</option>' + (db.clientes || []).map(c => `<option value="${c.id}">${c.nome}</option>`).join(''); 
+    atualizarListaClientesPDV();
+    
     document.getElementById('pdv-busca-resultados').classList.add('hidden'); 
     document.getElementById('pdv-produto-busca').value = '';
     
     const badgeCaixa = document.getElementById('pdv-status-caixa');
-    if(db.caixa.status === 'ABERTO') { badgeCaixa.className = "bg-emerald-100 text-emerald-800 font-bold px-3 py-1.5 rounded-lg text-xs uppercase tracking-wider"; badgeCaixa.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i> Caixa Aberto'; } 
-    else { badgeCaixa.className = "bg-red-100 text-red-800 font-bold px-3 py-1.5 rounded-lg text-xs uppercase tracking-wider"; badgeCaixa.innerHTML = '<i class="fa-solid fa-lock mr-1"></i> Caixa Fechado'; }
+    if(db.caixa.status === 'ABERTO') { 
+        badgeCaixa.className = "bg-emerald-100 text-emerald-800 font-bold px-3 py-1.5 rounded-lg text-xs uppercase tracking-wider"; 
+        badgeCaixa.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i> Caixa Aberto'; 
+    } else { 
+        badgeCaixa.className = "bg-red-100 text-red-800 font-bold px-3 py-1.5 rounded-lg text-xs uppercase tracking-wider"; 
+        badgeCaixa.innerHTML = '<i class="fa-solid fa-lock mr-1"></i> Caixa Fechado'; 
+    }
     
     togglePanelServico();
 }
 
 function togglePanelServico() {
-    const op = document.getElementById('pdv-operacao');
+    const op = document.getElementById('pdv-operacao'); 
     const panel = document.getElementById('panel-servico');
-    if (op && panel) {
-        if (op.value === 'Serviço') {
-            panel.classList.remove('hidden');
-            panel.classList.add('flex');
-        } else {
-            panel.classList.add('hidden');
-            panel.classList.remove('flex');
-        }
+    
+    if (op && panel) { 
+        if (op.value === 'Serviço') { 
+            panel.classList.remove('hidden'); 
+            panel.classList.add('flex'); 
+        } else { 
+            panel.classList.add('hidden'); 
+            panel.classList.remove('flex'); 
+        } 
     }
 }
 
 function filtrarProdutosPDV(termo) {
-    const dropdown = document.getElementById('pdv-busca-resultados');
-    if (!dropdown) return; dropdown.innerHTML = '';
+    const dropdown = document.getElementById('pdv-busca-resultados'); 
+    if (!dropdown) return; 
+    
+    dropdown.innerHTML = '';
     const listaProdutos = db.produtos || []; 
     const busca = termo ? String(termo).trim().toLowerCase() : '';
     
-    const produtosFiltrados = busca === '' ? listaProdutos : listaProdutos.filter(p => {
-        const nomeStr = p.nome ? String(p.nome).toLowerCase() : '';
-        const eanStr = p.ean ? String(p.ean) : '';
-        return (nomeStr.includes(busca) || eanStr === busca) && p.ativo !== false;
+    const produtosFiltrados = busca === '' ? listaProdutos : listaProdutos.filter(p => { 
+        const nomeStr = p.nome ? String(p.nome).toLowerCase() : ''; 
+        const eanStr = p.ean ? String(p.ean) : ''; 
+        return (nomeStr.includes(busca) || eanStr === busca) && p.ativo !== false; 
     });
-
-    if (produtosFiltrados.length === 0) { dropdown.classList.add('hidden'); return; }
-
+    
+    if (produtosFiltrados.length === 0) { 
+        dropdown.classList.add('hidden'); 
+        return; 
+    }
+    
     produtosFiltrados.forEach(prod => {
-        if(prod.ativo === false) return;
-        const div = document.createElement('div');
+        if(prod.ativo === false) return; 
+        
+        const div = document.createElement('div'); 
         div.className = 'p-3 hover:bg-slate-100 cursor-pointer border-b border-slate-100 text-sm flex justify-between items-center transition-colors';
-        const precoFormatado = Number(prod.preco || 0).toFixed(2).replace('.', ',');
+        const precoFormatado = Number(prod.preco || 0).toFixed(2).replace('.', ','); 
         const nomeProd = prod.nome || 'Produto Sem Nome';
         
         div.innerHTML = `<span class="font-medium text-slate-700">${nomeProd}</span> <span class="font-bold text-emerald-600">R$ ${precoFormatado}</span>`;
-        div.onclick = () => {
-            processarAdicaoProduto(prod);
-            document.getElementById('pdv-produto-busca').value = '';
-            dropdown.classList.add('hidden');
-            document.getElementById('pdv-produto-busca').focus();
-        };
+        div.onclick = () => { 
+            processarAdicaoProduto(prod); 
+            document.getElementById('pdv-produto-busca').value = ''; 
+            dropdown.classList.add('hidden'); 
+            document.getElementById('pdv-produto-busca').focus(); 
+        }; 
         dropdown.appendChild(div);
     });
+    
     dropdown.classList.remove('hidden');
 }
 
-document.addEventListener('click', function(event) {
-    const dropdown = document.getElementById('pdv-busca-resultados');
-    if (dropdown && !event.target.closest('#pdv-produto-busca') && !event.target.closest('#pdv-busca-resultados')) dropdown.classList.add('hidden');
+document.addEventListener('click', function(event) { 
+    const dropdown = document.getElementById('pdv-busca-resultados'); 
+    if (dropdown && !event.target.closest('#pdv-produto-busca') && !event.target.closest('#pdv-busca-resultados')) {
+        dropdown.classList.add('hidden'); 
+    }
 });
 
 function processarAdicaoProduto(p) { 
-    const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : 'Venda';
+    const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : 'Venda'; 
     const isOrcamento = op === 'Orçamento';
-
     const idx = cart.findIndex(i => String(i.id) === String(p.id)); 
+    
     if(idx >= 0) { 
         cart[idx].qtd++; 
-        if(!isOrcamento && cart[idx].qtd > (p.estoque || 0)) showToast(`Estoque NEGATIVO! Restam ${p.estoque || 0}.`, 'info'); 
+        if(!isOrcamento && cart[idx].qtd > (p.estoque || 0)) {
+            showToast(`Estoque NEGATIVO! Restam ${p.estoque || 0}.`, 'info'); 
+        }
     } else { 
         cart.push({ id: p.id || '', nome: p.nome || 'Produto', preco: Number(p.preco) || 0, custo: Number(p.custo) || 0, qtd: 1, foto: p.foto || '', obsVenda: '' }); 
-        if(!isOrcamento && (p.estoque || 0) < 1) showToast(`Estoque NEGATIVO!`, 'info'); 
+        if(!isOrcamento && (p.estoque || 0) < 1) {
+            showToast(`Estoque NEGATIVO!`, 'info'); 
+        }
     } 
     renderCarrinho(); 
 }
 
-function pdvMudarObsItem(i, val) { cart[i].obsVenda = val || ''; }
+function pdvMudarObsItem(i, val) { 
+    cart[i].obsVenda = val || ''; 
+}
 
 function renderCarrinho() {
     document.getElementById('pdv-carrinho-body').innerHTML = cart.map((item, i) => { 
         const fHtml = item.foto ? `<img src="${item.foto}" onclick="abrirZoomCart(${i})" class="w-10 h-10 rounded object-cover border border-slate-200 mx-auto cursor-zoom-in hover:opacity-80 transition" title="Ver foto em tela cheia">` : `<div class="w-10 h-10 mx-auto rounded bg-slate-100 flex items-center justify-center text-slate-400 text-xs border border-slate-200"><i class="fa-regular fa-image"></i></div>`; 
-        return `<tr class="hover:bg-slate-50 border-b border-slate-50">
+        return `
+        <tr class="hover:bg-slate-50 border-b border-slate-50">
             <td class="py-2 text-center">${fHtml}</td>
             <td class="py-2 text-slate-800 font-medium">
                 ${item.nome}
@@ -488,46 +708,58 @@ function renderCarrinho() {
             <td class="py-2 text-right hidden sm:table-cell"><input type="number" step="0.01" value="${item.preco}" onchange="pdvMudarPreco(${i}, this.value)" class="w-20 text-right border border-slate-300 rounded-lg p-1.5 font-bold text-slate-600 outline-none focus:border-blue-500"></td>
             <td class="py-2 text-right font-bold text-slate-800">${formatMoney((item.preco || 0) * (item.qtd || 1))}</td>
             <td class="py-2 text-center"><button onclick="cart.splice(${i},1); renderCarrinho()" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash text-lg"></i></button></td>
-        </tr>`
-    }).join('');
+        </tr>`;
+    }).join(''); 
     pdvAtualizarTotais();
 }
 
 function pdvMudarQtd(i, n) { 
-    const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : 'Venda';
-    const isOrcamento = op === 'Orçamento';
-    const novaQtd = Math.max(1, parseInt(n)||1); cart[i].qtd = novaQtd; 
+    const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : 'Venda'; 
+    const isOrcamento = op === 'Orçamento'; 
+    const novaQtd = Math.max(1, parseInt(n)||1); 
+    cart[i].qtd = novaQtd; 
+    
     const p = db.produtos.find(x => String(x.id) === String(cart[i].id)); 
-    if(!isOrcamento && p && novaQtd > (p.estoque || 0)) showToast(`Estoque NEGATIVO! Restam ${p.estoque || 0}.`, 'info'); 
+    if(!isOrcamento && p && novaQtd > (p.estoque || 0)) {
+        showToast(`Estoque NEGATIVO! Restam ${p.estoque || 0}.`, 'info'); 
+    }
     renderCarrinho(); 
 }
 
-function pdvMudarPreco(i, val) {
-    const novoPreco = parseFloat(val);
-    if(!isNaN(novoPreco) && novoPreco >= 0) { cart[i].preco = novoPreco; }
-    pdvAtualizarTotais(); renderCarrinho();
+function pdvMudarPreco(i, val) { 
+    const novoPreco = parseFloat(val); 
+    if(!isNaN(novoPreco) && novoPreco >= 0) { 
+        cart[i].preco = novoPreco; 
+    } 
+    pdvAtualizarTotais(); 
+    renderCarrinho(); 
 }
 
 function pdvLimpar() { 
-    cart = []; document.getElementById('pdv-desconto').value=0; document.getElementById('pdv-frete').value=0; 
-    if(document.getElementById('pdv-obs')) document.getElementById('pdv-obs').value = ''; 
+    cart = []; 
+    document.getElementById('pdv-desconto').value = 0; 
+    document.getElementById('pdv-frete').value = 0; 
     
-    // Limpa OS
-    if(document.getElementById('os-prazo')) {
-        document.getElementById('os-prazo').value = '';
-        document.getElementById('os-garantia').value = '';
-        document.getElementById('os-desc').value = '';
-        osFotosArray = []; 
-        renderizarFotosOS();
+    if(document.getElementById('pdv-obs')) {
+        document.getElementById('pdv-obs').value = ''; 
     }
-
-    pagamentosVendaAtual = []; renderCarrinho(); 
+    if(document.getElementById('os-prazo')) { 
+        document.getElementById('os-prazo').value = ''; 
+        document.getElementById('os-garantia').value = ''; 
+        document.getElementById('os-desc').value = ''; 
+        osFotosArray = []; 
+        renderizarFotosOS(); 
+    } 
+    pagamentosVendaAtual = []; 
+    window.vendaEmEdicao = null; 
+    renderCarrinho(); 
 }
 
 function pdvAtualizarTotais() { 
     const sub = cart.reduce((acc, i) => acc + ((i.preco || 0) * (i.qtd || 1)), 0); 
-    let frete = parseFloat(document.getElementById('pdv-frete').value) || 0;
+    let frete = parseFloat(document.getElementById('pdv-frete').value) || 0; 
     let desc = parseFloat(document.getElementById('pdv-desconto').value) || 0; 
+    
     if(desc > (sub + frete)) desc = sub + frete; 
     const tot = sub + frete - desc; 
     
@@ -541,151 +773,202 @@ function pdvAtualizarTotais() {
 }
 
 // ==========================================
-// 5. MÚLTIPLOS PAGAMENTOS E FINALIZAÇÃO (COM DADOS DA EMPRESA)
+// 10. MÚLTIPLOS PAGAMENTOS E FINALIZAÇÃO
 // ==========================================
-function verificarParcelasPagamento() {
-    const metodo = document.getElementById('pdv-metodo-atual').value;
-    const selParc = document.getElementById('pdv-parcelas-atual');
-    const inpVenc = document.getElementById('pdv-vencimento-atual');
+function verificarParcelasPagamento() { 
+    const metodo = document.getElementById('pdv-metodo-atual').value; 
+    const selParc = document.getElementById('pdv-parcelas-atual'); 
+    const inpVenc = document.getElementById('pdv-vencimento-atual'); 
     
-    if(metodo === 'Cartão Crédito' || metodo === 'Boleto' || metodo === 'Fiado') { selParc.classList.remove('hidden'); } else { selParc.classList.add('hidden'); selParc.value = '1'; }
-    if(metodo === 'Boleto' || metodo === 'Fiado') { inpVenc.classList.remove('hidden'); const hj = new Date(); hj.setDate(hj.getDate() + 30); inpVenc.value = hj.toISOString().split('T')[0]; } else { inpVenc.classList.add('hidden'); inpVenc.value = ''; }
+    if(metodo === 'Cartão Crédito' || metodo === 'Boleto' || metodo === 'Fiado') { 
+        selParc.classList.remove('hidden'); 
+    } else { 
+        selParc.classList.add('hidden'); 
+        selParc.value = '1'; 
+    } 
+    
+    if(metodo === 'Boleto' || metodo === 'Fiado') { 
+        inpVenc.classList.remove('hidden'); 
+        const hj = new Date(); 
+        hj.setDate(hj.getDate() + 30); 
+        inpVenc.value = hj.toISOString().split('T')[0]; 
+    } else { 
+        inpVenc.classList.add('hidden'); 
+        inpVenc.value = ''; 
+    } 
 }
 
 function atualizarResumoPagamentosVenda() {
-    const opSelect = document.getElementById('pdv-operacao');
-    const isOrcamento = opSelect && opSelect.value === 'Orçamento';
-    const isServico = opSelect && opSelect.value === 'Serviço';
+    const opSelect = document.getElementById('pdv-operacao'); 
+    const isOrcamento = opSelect && opSelect.value === 'Orçamento'; 
+    const isServico = opSelect && opSelect.value === 'Serviço'; 
+    const lista = document.getElementById('lista-pagamentos-adicionados'); 
     
-    const lista = document.getElementById('lista-pagamentos-adicionados');
     if(!lista) return;
-
-    let totalVendaFinal = pdvTotalAtual; 
-    lista.innerHTML = '';
-    let totalPago = 0;
-
-    if (pagamentosVendaAtual.length === 0) {
-        lista.innerHTML = `<div class="text-xs text-slate-400 text-center mt-4 italic">${isOrcamento ? 'Orçamentos não exigem pagamentos prévios.' : 'Nenhum pagamento inserido.'}</div>`;
-    } else {
-        pagamentosVendaAtual.forEach((pag, index) => {
-            totalPago += pag.valor;
-            let corMetodo = pag.metodo === 'Dinheiro' ? 'text-emerald-700' : 'text-blue-700';
-            let txtParc = pag.parcelas > 1 ? `(${pag.parcelas}x)` : '';
-            let txtVenc = (pag.metodo === 'Boleto' || pag.metodo === 'Fiado') && pag.vencimentoBase ? `<span class="text-[10px] text-amber-600 block">1º Venc: ${pag.vencimentoBase.split('-').reverse().join('/')}</span>` : '';
-            lista.innerHTML += `<div class="flex justify-between items-center bg-white border border-slate-200 p-2.5 rounded-lg text-xs shadow-sm mb-2"><div><span class="font-bold uppercase ${corMetodo}"><i class="fa-solid fa-check mr-1"></i> ${pag.metodo} ${txtParc}</span>${txtVenc}</div><div class="flex items-center gap-3"><span class="font-black text-slate-700">R$ ${pag.valor.toFixed(2).replace('.', ',')}</span><button onclick="removerPagamentoVenda(${index})" class="text-red-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash"></i></button></div></div>`;
-        });
-    }
-
-    totalVendaFinal = Math.round(totalVendaFinal * 100) / 100;
-    totalPago = Math.round(totalPago * 100) / 100;
-
-    let falta = totalVendaFinal - totalPago; let troco = 0;
-    if (falta <= 0) { troco = Math.abs(falta); falta = 0; }
     
-    document.getElementById('pdv-falta').innerText = formatMoney(falta);
+    let totalVendaFinal = pdvTotalAtual; 
+    lista.innerHTML = ''; 
+    let totalPago = 0;
+    
+    if (pagamentosVendaAtual.length === 0) { 
+        lista.innerHTML = `<div class="text-xs text-slate-400 text-center mt-4 italic">${isOrcamento ? 'Orçamentos não exigem pagamentos prévios.' : 'Nenhum pagamento inserido.'}</div>`; 
+    } else { 
+        pagamentosVendaAtual.forEach((pag, index) => { 
+            totalPago += pag.valor; 
+            let corMetodo = pag.metodo === 'Dinheiro' ? 'text-emerald-700' : 'text-blue-700'; 
+            let txtParc = pag.parcelas > 1 ? `(${pag.parcelas}x)` : ''; 
+            let txtVenc = (pag.metodo === 'Boleto' || pag.metodo === 'Fiado') && pag.vencimentoBase ? `<span class="text-[10px] text-amber-600 block">1º Venc: ${pag.vencimentoBase.split('-').reverse().join('/')}</span>` : ''; 
+            
+            lista.innerHTML += `
+            <div class="flex justify-between items-center bg-white border border-slate-200 p-2.5 rounded-lg text-xs shadow-sm mb-2">
+                <div>
+                    <span class="font-bold uppercase ${corMetodo}"><i class="fa-solid fa-check mr-1"></i> ${pag.metodo} ${txtParc}</span>${txtVenc}
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="font-black text-slate-700">R$ ${pag.valor.toFixed(2).replace('.', ',')}</span>
+                    <button onclick="removerPagamentoVenda(${index})" class="text-red-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            </div>`; 
+        }); 
+    }
+    
+    totalVendaFinal = Math.round(totalVendaFinal * 100) / 100; 
+    totalPago = Math.round(totalPago * 100) / 100; 
+    
+    let falta = totalVendaFinal - totalPago; 
+    let troco = 0; 
+    
+    if (falta <= 0) { 
+        troco = Math.abs(falta); 
+        falta = 0; 
+    }
+    
+    document.getElementById('pdv-falta').innerText = formatMoney(falta); 
     document.getElementById('pdv-troco').innerText = formatMoney(troco);
     
-    const inputAtual = document.getElementById('pdv-valor-atual');
-    if (inputAtual) { inputAtual.value = falta > 0 ? falta.toFixed(2) : ''; }
-
+    const inputAtual = document.getElementById('pdv-valor-atual'); 
+    if (inputAtual) { 
+        inputAtual.value = falta > 0 ? falta.toFixed(2) : ''; 
+    }
+    
     const btnFinalizar = document.getElementById('btn-finalizar-venda');
-    if (btnFinalizar) {
-        if (isOrcamento && totalVendaFinal > 0) {
-            btnFinalizar.disabled = false; btnFinalizar.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-emerald-500', 'hover:bg-emerald-600'); 
-            btnFinalizar.classList.add('active:scale-95', 'bg-blue-500', 'hover:bg-blue-600');
-            btnFinalizar.innerHTML = '<i class="fa-solid fa-file-invoice"></i> SALVAR ORÇAMENTO';
-        } else if (!isOrcamento && totalPago >= totalVendaFinal && totalVendaFinal > 0) {
-            btnFinalizar.disabled = false; btnFinalizar.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-blue-500', 'hover:bg-blue-600'); 
-            btnFinalizar.classList.add('active:scale-95', 'bg-emerald-500', 'hover:bg-emerald-600');
-            btnFinalizar.innerHTML = isServico ? '<i class="fa-solid fa-handshake"></i> FINALIZAR SERVIÇO' : '<i class="fa-solid fa-circle-check"></i> FINALIZAR VENDA';
-        } else {
-            btnFinalizar.disabled = true; btnFinalizar.classList.add('opacity-50', 'cursor-not-allowed'); btnFinalizar.classList.remove('active:scale-95');
-            btnFinalizar.innerHTML = isServico ? '<i class="fa-solid fa-handshake"></i> FINALIZAR SERVIÇO' : '<i class="fa-solid fa-circle-check"></i> FINALIZAR VENDA';
-            if(!isOrcamento) { btnFinalizar.classList.remove('bg-blue-500', 'hover:bg-blue-600'); btnFinalizar.classList.add('bg-emerald-500', 'hover:bg-emerald-600'); }
-        }
+    if (btnFinalizar) { 
+        if (isOrcamento && totalVendaFinal > 0) { 
+            btnFinalizar.disabled = false; 
+            btnFinalizar.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-emerald-500', 'hover:bg-emerald-600'); 
+            btnFinalizar.classList.add('active:scale-95', 'bg-blue-500', 'hover:bg-blue-600'); 
+            btnFinalizar.innerHTML = window.vendaEmEdicao ? '<i class="fa-solid fa-file-invoice"></i> SALVAR ORÇAMENTO EDITADO' : '<i class="fa-solid fa-file-invoice"></i> SALVAR ORÇAMENTO'; 
+        } else if (!isOrcamento && totalPago >= totalVendaFinal && totalVendaFinal > 0) { 
+            btnFinalizar.disabled = false; 
+            btnFinalizar.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-blue-500', 'hover:bg-blue-600'); 
+            btnFinalizar.classList.add('active:scale-95', 'bg-emerald-500', 'hover:bg-emerald-600'); 
+            btnFinalizar.innerHTML = window.vendaEmEdicao ? '<i class="fa-solid fa-circle-check"></i> FINALIZAR VENDA EDITADA' : (isServico ? '<i class="fa-solid fa-handshake"></i> FINALIZAR SERVIÇO' : '<i class="fa-solid fa-circle-check"></i> FINALIZAR VENDA'); 
+        } else { 
+            btnFinalizar.disabled = true; 
+            btnFinalizar.classList.add('opacity-50', 'cursor-not-allowed'); 
+            btnFinalizar.classList.remove('active:scale-95'); 
+            btnFinalizar.innerHTML = isServico ? '<i class="fa-solid fa-handshake"></i> FINALIZAR SERVIÇO' : '<i class="fa-solid fa-circle-check"></i> FINALIZAR VENDA'; 
+            
+            if(!isOrcamento) { 
+                btnFinalizar.classList.remove('bg-blue-500', 'hover:bg-blue-600'); 
+                btnFinalizar.classList.add('bg-emerald-500', 'hover:bg-emerald-600'); 
+            } 
+        } 
     }
 }
 
-function adicionarPagamentoVenda() {
-    const metodo = document.getElementById('pdv-metodo-atual').value || '';
-    const inputValor = document.getElementById('pdv-valor-atual');
-    const parcelas = parseInt(document.getElementById('pdv-parcelas-atual').value) || 1;
+function adicionarPagamentoVenda() { 
+    const metodo = document.getElementById('pdv-metodo-atual').value || ''; 
+    const inputValor = document.getElementById('pdv-valor-atual'); 
+    const parcelas = parseInt(document.getElementById('pdv-parcelas-atual').value) || 1; 
     const vencimentoBase = document.getElementById('pdv-vencimento-atual').value || ''; 
-    const valor = parseFloat(inputValor.value);
+    const valor = parseFloat(inputValor.value); 
     
-    if (!valor || valor <= 0) return showToast("Digite um valor numérico válido para o pagamento.", "error");
+    if (!valor || valor <= 0) return showToast("Digite um valor numérico válido para o pagamento.", "error"); 
     
-    pagamentosVendaAtual.push({ metodo, valor, parcelas, vencimentoBase });
-    atualizarResumoPagamentosVenda();
-    inputValor.focus();
+    pagamentosVendaAtual.push({ metodo, valor, parcelas, vencimentoBase }); 
+    atualizarResumoPagamentosVenda(); 
+    inputValor.focus(); 
 }
 
-function removerPagamentoVenda(index) {
-    pagamentosVendaAtual.splice(index, 1);
-    atualizarResumoPagamentosVenda();
+function removerPagamentoVenda(index) { 
+    pagamentosVendaAtual.splice(index, 1); 
+    atualizarResumoPagamentosVenda(); 
 }
 
 function finalizarVendaMultipla() {
     const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : 'Venda';
-    const isOrcamento = op === 'Orçamento';
+    const isOrcamento = op === 'Orçamento'; 
     const isServico = op === 'Serviço';
     
-    let tipoVenda = 'VENDA';
-    if (isOrcamento) tipoVenda = 'ORÇAMENTO';
+    let tipoVenda = 'VENDA'; 
+    if (isOrcamento) tipoVenda = 'ORÇAMENTO'; 
     if (isServico) tipoVenda = 'SERVIÇO';
-
+    
     if(cart.length === 0) return showToast('Nenhum item na operação!', 'error');
     
-    if (!isOrcamento) {
-        if(pagamentosVendaAtual.length === 0) return showToast('Insira ao menos um pagamento!', 'error');
-        if(!db.caixa || db.caixa.status !== 'ABERTO') return showToast('O Caixa está FECHADO. Abra o caixa antes.', 'error');
+    if (!isOrcamento) { 
+        if(pagamentosVendaAtual.length === 0) return showToast('Insira ao menos um pagamento!', 'error'); 
+        if(!db.caixa || db.caixa.status !== 'ABERTO') return showToast('O Caixa está FECHADO. Abra o caixa antes.', 'error'); 
     }
 
-    const { sub, desc, frete, tot } = pdvAtualizarTotais();
+    const { sub, desc, frete, tot } = pdvAtualizarTotais(); 
     const custoTotal = cart.reduce((acc, i) => acc + ((i.custo || 0) * (i.qtd || 1)), 0);
     
-    let totalPago = pagamentosVendaAtual.reduce((acc, p) => acc + (p.valor || 0), 0);
+    let totalPago = pagamentosVendaAtual.reduce((acc, p) => acc + (p.valor || 0), 0); 
     let valorTroco = totalPago > tot ? (totalPago - tot) : 0;
     
     const pagTexto = isOrcamento && pagamentosVendaAtual.length === 0 ? 'Orçamento (Sem Pagamento Exigido)' : pagamentosVendaAtual.map(p => `${p.metodo || ''} ${(p.parcelas || 1) > 1 ? '('+p.parcelas+'x)' : ''} (${formatMoney(p.valor || 0)})`).join(' + ');
     
     let taxaValorTotal = 0;
-    if (!isOrcamento) {
-        pagamentosVendaAtual.forEach(p => {
-            let tx = 0;
-            if (db.config && db.config.taxas) {
-                if (p.metodo === 'Cartão Crédito') { let pNum = p.parcelas > 12 ? 12 : p.parcelas; tx = db.config.taxas['Cartão Crédito'][pNum] || 0; } else { tx = db.config.taxas[p.metodo] || 0; }
-            }
-            let valorBase = p.valor || 0;
-            if(p.metodo === 'Dinheiro' && valorTroco > 0) { valorBase -= valorTroco; if(valorBase < 0) valorBase = 0; }
-            taxaValorTotal += valorBase * (tx / 100);
-        });
+    if (!isOrcamento) { 
+        pagamentosVendaAtual.forEach(p => { 
+            let tx = 0; 
+            if (db.config && db.config.taxas) { 
+                if (String(p.metodo).includes('Crédito')) { 
+                    let pNum = p.parcelas > 12 ? 12 : p.parcelas; 
+                    tx = db.config.taxas['Cartão Crédito'][pNum] || 0; 
+                } else { 
+                    tx = db.config.taxas[p.metodo] || 0; 
+                } 
+            } 
+            let valorBase = p.valor || 0; 
+            if(p.metodo === 'Dinheiro' && valorTroco > 0) { 
+                valorBase -= valorTroco; 
+                if(valorBase < 0) valorBase = 0; 
+            } 
+            taxaValorTotal += valorBase * (tx / 100); 
+        }); 
     }
 
     const valorLiquido = tot - taxaValorTotal; 
     const lucroReal = isOrcamento ? 0 : valorLiquido - custoTotal;
     
-    const emp = obterDadosEmpresa(); // PUXA DADOS DA EMPRESA
+    const emp = obterDadosEmpresa();
 
     const cId = document.getElementById('pdv-cliente').value || '0'; 
-    const clienteObj = cId !== "0" ? (db.clientes || []).find(x => String(x.id) === String(cId)) : null;
-    const cNome = clienteObj && clienteObj.nome ? clienteObj.nome : 'Consumidor Final';
-    const cliCpf = clienteObj && clienteObj.documento ? clienteObj.documento : 'Não informado';
-    const cliTel = clienteObj && clienteObj.telefone ? clienteObj.telefone : 'Não informado';
-    const cliEnd = clienteObj && clienteObj.endereco ? `${clienteObj.endereco}${clienteObj.numero ? ', '+clienteObj.numero : ''}` : 'Não informado';
+    const cliInfo = obterDadosClientePDV(cId);
     
     const vend = document.getElementById('pdv-vendedor').value || ''; 
-    const obsElement = document.getElementById('pdv-obs');
+    const obsElement = document.getElementById('pdv-obs'); 
     const obsTexto = obsElement && obsElement.value ? obsElement.value.trim() : ''; 
-    const vendaId = Date.now(); 
+    
+    const isEdicao = window.vendaEmEdicao != null;
+    const vendaId = isEdicao ? window.vendaEmEdicao.id : Date.now();
+    const dataIso = isEdicao ? window.vendaEmEdicao.data : new Date().toISOString();
+    
+    let numeroPedido = 1;
+    if (isEdicao && window.vendaEmEdicao.numeroPedido) {
+        numeroPedido = window.vendaEmEdicao.numeroPedido;
+    } else {
+        numeroPedido = (db.vendas || []).length > 0 ? Math.max(...db.vendas.map(v => v.numeroPedido || 0)) + 1 : 1;
+    }
+    const numPedStr = String(numeroPedido).padStart(4, '0');
 
-    const osPrazo = document.getElementById('os-prazo') ? document.getElementById('os-prazo').value : '';
-    const osGarantia = document.getElementById('os-garantia') ? document.getElementById('os-garantia').value : '';
-    const osDesc = document.getElementById('os-desc') ? document.getElementById('os-desc').value.trim() : '';
+    const osPrazo = document.getElementById('os-prazo') ? document.getElementById('os-prazo').value : ''; 
+    const osGarantia = document.getElementById('os-garantia') ? document.getElementById('os-garantia').value : ''; 
+    const osDesc = document.getElementById('os-desc') ? document.getElementById('os-desc').value.trim() : ''; 
     const osFotosParaSalvar = [...osFotosArray]; 
-
-    const numeroPedido = (db.vendas || []).length > 0 ? Math.max(...db.vendas.map(v => v.numeroPedido || 0)) + 1 : 1; 
-    const numPedStr = String(numeroPedido).padStart(4, '0'); const dataIso = new Date().toISOString(); 
     
     const tituloRecibo = isOrcamento ? 'ORÇAMENTO - VÁLIDO POR 7 DIAS' : (isServico ? 'ORDEM DE PRESTAÇÃO DE SERVIÇO' : 'CUPOM NÃO FISCAL - SEM VALOR LEGAL');
     
@@ -694,7 +977,7 @@ function finalizarVendaMultipla() {
         <div style="border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 15px; text-align: center;">
             ${emp.logoHtml}
             <h1 style="margin: 0; font-size: 22px; text-transform: uppercase; font-weight: 900;">${emp.nome}</h1>
-            <p style="margin: 5px 0; font-size: 13px;">CNPJ: ${emp.cnpj} | Vendedor: ${vend}</p>
+            <p style="margin: 5px 0; font-size: 13px;">CNPJ: ${emp.cnpj}<br>${emp.end}<br>Tel: ${emp.tel} | Vend: ${vend}</p>
         </div>
         <div style="text-align: center; margin-bottom: 20px;">
             <h2 style="margin: 0; font-size: 16px; font-weight: 900; border: 2px solid #000; display: inline-block; padding: 6px 15px; border-radius: 4px;">${tituloRecibo}</h2>
@@ -703,15 +986,15 @@ function finalizarVendaMultipla() {
         <div style="display: flex; justify-content: space-between; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-bottom: 20px; font-size: 13px;">
             <div>
                 <strong>DADOS DO CLIENTE</strong><br>
-                Nome: ${cNome}<br>
-                CPF/CNPJ: ${cliCpf}<br>
-                Telefone: ${cliTel}<br>
-                Endereço: ${cliEnd}
+                Nome: ${cliInfo.nome}<br>
+                CPF/CNPJ: ${cliInfo.doc}<br>
+                Telefone: ${cliInfo.tel}<br>
+                Endereço: ${cliInfo.endCompleto}
             </div>
             <div style="text-align: right; border-left: 1px solid #ccc; padding-left: 15px;">
                 <strong>DADOS DA OPERAÇÃO</strong><br>
                 Nº: #${numPedStr}<br>
-                Data: ${new Date().toLocaleString('pt-BR')}<br>
+                Data: ${new Date(dataIso).toLocaleString('pt-BR')}<br>
                 Tipo: ${op.toUpperCase()}
             </div>
         </div>
@@ -766,7 +1049,7 @@ function finalizarVendaMultipla() {
                 <div style="display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 2px solid #000; font-size: 16px; font-weight: bold;"><span>TOTAL GERAL:</span> <span>${formatMoney(tot)}</span></div>
             </div>
         </div>
-
+        
         ${obsTexto ? `
         <div style="border: 1px solid #000; border-radius: 5px; padding: 12px; margin-bottom: 30px; font-size: 13px; background-color: #f8fafc;">
             <strong>Observações Gerais do Pedido:</strong><br>
@@ -787,23 +1070,28 @@ function finalizarVendaMultipla() {
     </div>
     `;
 
-    // Baixa Estoque para VENDAS e SERVIÇOS (se usar produto físico)
-    if (!isOrcamento) {
+    if (!isOrcamento) { 
         cart.forEach(item => { 
             const p = (db.produtos || []).find(x => String(x.id) === String(item.id)); 
-            if(p) { p.estoque -= item.qtd; salvarKardex(`${tipoVenda} #${numPedStr}`, p.id, p.nome, -(item.qtd || 1), tipoVenda); } 
-        });
+            if(p) { 
+                p.estoque -= item.qtd; 
+                salvarKardex(`${tipoVenda} #${numPedStr}`, p.id, p.nome, -(item.qtd || 1), tipoVenda); 
+            } 
+        }); 
     }
 
     if(!db.vendas) db.vendas = [];
     const itensLimpados = cart.map(i => { return { id: i.id || '', nome: i.nome || '', preco: i.preco || 0, custo: i.custo || 0, qtd: i.qtd || 1, obsVenda: i.obsVenda || '' }; });
 
     const novaVendaObj = { 
-        id: vendaId || Date.now(), 
-        numeroPedido: numeroPedido || 1, 
-        data: dataIso || new Date().toISOString(), 
+        id: vendaId, 
+        numeroPedido: numeroPedido, 
+        data: dataIso, 
         clienteId: cId || '', 
-        clienteNome: cNome || '', 
+        clienteNome: cliInfo.nome || '', 
+        clienteDoc: cliInfo.doc,
+        clienteTel: cliInfo.tel,
+        clienteEnd: cliInfo.endCompleto,
         subtotal: sub || 0, 
         frete: frete || 0, 
         desconto: desc || 0, 
@@ -815,95 +1103,101 @@ function finalizarVendaMultipla() {
         pag: pagTexto || '', 
         vendedor: vend || '', 
         obs: obsTexto || '', 
-        tipo: tipoVenda,
-        servicoDetalhes: isServico ? { prazo: osPrazo, garantia: osGarantia, desc: osDesc, fotos: osFotosParaSalvar } : null,
+        tipo: tipoVenda, 
+        servicoDetalhes: isServico ? { prazo: osPrazo, garantia: osGarantia, desc: osDesc, fotos: osFotosParaSalvar } : null, 
         itens: itensLimpados 
     };
-
+    
     db.vendas.unshift(novaVendaObj);
     
     if (!isOrcamento) {
-        if(!db.financeiro) db.financeiro = [];
-        if(!db.caixa) db.caixa = { status: 'ABERTO', saldo: 0, historico: [] };
+        if(!db.financeiro) db.financeiro = []; 
+        if(!db.caixa) db.caixa = { status: 'ABERTO', saldo: 0, historico: [] }; 
         if(!db.caixa.historico) db.caixa.historico = [];
-
+        
         pagamentosVendaAtual.forEach((p, idx) => {
-            let valorParaCaixa = p.valor || 0;
-            if(p.metodo === 'Dinheiro' && valorTroco > 0) { valorParaCaixa -= valorTroco; if(valorParaCaixa < 0) valorParaCaixa = 0; }
+            let valorParaCaixa = p.valor || 0; 
+            if(p.metodo === 'Dinheiro' && valorTroco > 0) { 
+                valorParaCaixa -= valorTroco; 
+                if(valorParaCaixa < 0) valorParaCaixa = 0; 
+            }
             
             if(valorParaCaixa > 0) {
                 let pRef = `${tipoVenda} #${numPedStr} (${p.metodo || ''}${(p.parcelas || 1) > 1 ? ' '+p.parcelas+'x' : ''})`;
                 
-                if(p.metodo === 'Fiado' || p.metodo === 'Boleto') {
-                    const valParc = valorParaCaixa / (p.parcelas || 1);
-                    let dataBase = p.vencimentoBase ? new Date(p.vencimentoBase + 'T12:00:00') : new Date();
+                if(p.metodo === 'Fiado' || p.metodo === 'Boleto') { 
+                    const valParc = valorParaCaixa / (p.parcelas || 1); 
+                    let dataBase = p.vencimentoBase ? new Date(p.vencimentoBase + 'T12:00:00') : new Date(); 
                     if(!p.vencimentoBase) dataBase.setDate(dataBase.getDate() + 30); 
                     for(let i=1; i<=(p.parcelas || 1); i++) { 
-                        let dataVencParc = new Date(dataBase); dataVencParc.setDate(dataVencParc.getDate() + (30 * (i - 1))); 
-                        db.financeiro.unshift({ id: Date.now()+idx+i, ref: `${pRef} [${i}/${p.parcelas}]`, data: dataVencParc.toISOString(), pessoa: cNome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas' }); 
-                    }
-                } 
-                else if (p.metodo && (p.metodo.includes('Crédito') || p.metodo.includes('Débito'))) {
-                    let dataAmanha = new Date(); dataAmanha.setDate(dataAmanha.getDate() + 1); 
-                    const valParc = valorParaCaixa / (p.parcelas || 1);
+                        let dataVencParc = new Date(dataBase); 
+                        dataVencParc.setDate(dataVencParc.getDate() + (30 * (i - 1))); 
+                        db.financeiro.unshift({ id: Date.now()+idx+i, ref: `${pRef} [${i}/${p.parcelas}]`, data: dataVencParc.toISOString(), pessoa: cliInfo.nome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas' }); 
+                    } 
+                } else if (p.metodo && (String(p.metodo).includes('Crédito') || String(p.metodo).includes('Débito'))) { 
+                    let dataAmanha = new Date(); 
+                    dataAmanha.setDate(dataAmanha.getDate() + 1); 
+                    const valParc = valorParaCaixa / (p.parcelas || 1); 
                     for(let i=1; i<=(p.parcelas || 1); i++) { 
-                        db.financeiro.unshift({ id: Date.now()+idx+i, ref: `${pRef} [${i}/${p.parcelas}]`, data: dataAmanha.toISOString(), pessoa: cNome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas', metodoPagamento: p.metodo }); 
-                    }
-                } 
-                else if (p.metodo === 'Dinheiro' || p.metodo === 'PIX') {
-                    db.financeiro.unshift({ id: Date.now()+idx, ref: pRef, data: dataIso, pessoa: cNome, wpp: '', valor: valorParaCaixa, status: 'PAGO', tipo: 'RECEITA', categoria: 'Vendas', metodoPagamento: p.metodo, dataPagamento: dataIso });
-                    if(p.metodo === 'Dinheiro') { db.caixa.saldo += valorParaCaixa; db.caixa.historico.unshift({ data: dataIso, tipo: 'ENTRADA', desc: pRef, valor: valorParaCaixa }); }
+                        db.financeiro.unshift({ id: Date.now()+idx+i, ref: `${pRef} [${i}/${p.parcelas}]`, data: dataAmanha.toISOString(), pessoa: cliInfo.nome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas', metodoPagamento: p.metodo }); 
+                    } 
+                } else if (p.metodo === 'Dinheiro' || p.metodo === 'PIX') { 
+                    db.financeiro.unshift({ id: Date.now()+idx, ref: pRef, data: dataIso, pessoa: cliInfo.nome, wpp: '', valor: valorParaCaixa, status: 'PAGO', tipo: 'RECEITA', categoria: 'Vendas', metodoPagamento: p.metodo, dataPagamento: dataIso }); 
+                    if(p.metodo === 'Dinheiro') { 
+                        db.caixa.saldo += valorParaCaixa; 
+                        db.caixa.historico.unshift({ data: dataIso, tipo: 'ENTRADA', desc: pRef, valor: valorParaCaixa }); 
+                    } 
                 }
             }
         });
     }
 
     saveDB(); 
+    
+    window.vendaEmEdicao = null;
+    window.vendaAtualImpressao = novaVendaObj;
+    
     document.getElementById('print-area').innerHTML = htmlRecibo; 
-    
-    // Liga o botão de imprimir contrato com a venda exata que acabou de ser salva
-    const btnContrato = document.getElementById('btn-imprimir-contrato');
-    if(btnContrato) btnContrato.onclick = () => imprimirContratoObj(novaVendaObj);
-    
     document.getElementById('modal-opcoes-recibo').classList.remove('hidden'); 
+    
     pdvLimpar(); 
-    showToast(isOrcamento ? "Orçamento gerado!" : (isServico ? "Serviço registrado!" : "Venda registrada com sucesso!"), "success");
+    showToast(isOrcamento ? "Orçamento salvo!" : (isServico ? "Serviço registrado!" : "Venda registrada com sucesso!"), "success");
 }
 
-function fecharModalOpcoesRecibo() { document.getElementById('modal-opcoes-recibo').classList.add('hidden'); }
+function fecharModalOpcoesRecibo() { 
+    document.getElementById('modal-opcoes-recibo').classList.add('hidden'); 
+}
 
 // ==========================================
-// 6. HISTÓRICO DE VENDAS E SERVIÇOS
+// 11. HISTÓRICO DE VENDAS E SERVIÇOS
 // ==========================================
 function renderVendas() {
-    const buscaEl = document.getElementById('busca-vendas');
-    const dataIniEl = document.getElementById('filtro-vendas-ini');
-    const dataFimEl = document.getElementById('filtro-vendas-fim');
-    const pgtoEl = document.getElementById('filtro-vendas-pgto');
+    const buscaEl = document.getElementById('busca-vendas'); 
+    const dataIniEl = document.getElementById('filtro-vendas-ini'); 
+    const dataFimEl = document.getElementById('filtro-vendas-fim'); 
+    const pgtoEl = document.getElementById('filtro-vendas-pgto'); 
     const tipoEl = document.getElementById('filtro-vendas-tipo');
     
-    const termo = buscaEl && buscaEl.value ? buscaEl.value.toLowerCase().trim() : ''; 
+    const termo = buscaEl && buscaEl.value ? String(buscaEl.value).toLowerCase().trim() : ''; 
     const dataIni = dataIniEl ? dataIniEl.value : ''; 
     const dataFim = dataFimEl ? dataFimEl.value : ''; 
-    const pgto = pgtoEl ? pgtoEl.value : 'TODOS';
+    const pgto = pgtoEl ? pgtoEl.value : 'TODOS'; 
     const tipoFiltro = tipoEl ? tipoEl.value : 'TODOS';
     
     let filtrados = db.vendas || [];
-    
-    // TIRA OS ORÇAMENTOS DESTA TELA
     filtrados = filtrados.filter(v => v.tipo !== 'ORÇAMENTO');
     
-    // FILTRA ENTRE VENDAS E SERVIÇOS
     if (tipoFiltro === 'VENDAS') filtrados = filtrados.filter(v => v.tipo === 'VENDA' || !v.tipo);
     if (tipoFiltro === 'SERVICOS') filtrados = filtrados.filter(v => v.tipo === 'SERVIÇO');
-    
-    if (termo) filtrados = filtrados.filter(v => (v.clienteNome && v.clienteNome.toLowerCase().includes(termo)) || (v.numeroPedido && String(v.numeroPedido).includes(termo)) || (v.vendedor && v.vendedor.toLowerCase().includes(termo)));
-    if (pgto !== 'TODOS') filtrados = filtrados.filter(v => v.pag && v.pag.includes(pgto));
+    if (termo) filtrados = filtrados.filter(v => (v.clienteNome && String(v.clienteNome).toLowerCase().includes(termo)) || (v.numeroPedido && String(v.numeroPedido).includes(termo)) || (v.vendedor && String(v.vendedor).toLowerCase().includes(termo)));
+    if (pgto !== 'TODOS') filtrados = filtrados.filter(v => v.pag && String(v.pag).includes(pgto));
     if (dataIni) { const dIni = new Date(dataIni + 'T00:00:00').getTime(); filtrados = filtrados.filter(v => v.data && new Date(v.data).getTime() >= dIni); }
     if (dataFim) { const dFim = new Date(dataFim + 'T23:59:59').getTime(); filtrados = filtrados.filter(v => v.data && new Date(v.data).getTime() <= dFim); }
+    
     filtrados.sort((a,b) => new Date(b.data || 0) - new Date(a.data || 0));
 
     let totalLucro = 0;
+    
     document.getElementById('tabela-vendas-body').innerHTML = filtrados.map(v => {
         try {
             const custoTotalDaVenda = (Number(v.custoTotal) || 0) + (Number(v.taxaValor) || 0); 
@@ -911,16 +1205,15 @@ function renderVendas() {
             const numPedStr = String(v.numeroPedido || v.id || '0').padStart(4, '0'); 
             totalLucro += lucroDaVenda;
             
-            const dataRender = v.data && typeof formatData === 'function' ? formatData(v.data) : (v.data || '-');
-            const clienteRender = v.clienteNome || 'Desconhecido';
-            const vendRender = v.vendedor || '-';
+            const dataRender = v.data && typeof formatData === 'function' ? formatData(v.data) : (v.data || '-'); 
+            const clienteRender = v.clienteNome || 'Desconhecido'; 
+            const vendRender = v.vendedor || '-'; 
             const pagRender = v.pag || '-';
             
-            const badgeTipo = v.tipo === 'SERVIÇO' 
-                ? `<span class="bg-purple-100 text-purple-800 border border-purple-200 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1">SERVIÇO</span><br>` 
-                : `<span class="bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1">VENDA</span><br>`;
+            const badgeTipo = v.tipo === 'SERVIÇO' ? `<span class="bg-purple-100 text-purple-800 border border-purple-200 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1">SERVIÇO</span><br>` : `<span class="bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1">VENDA</span><br>`;
             
-            return `<tr class="hover:bg-slate-50 border-b border-slate-100">
+            return `
+            <tr class="hover:bg-slate-50 border-b border-slate-100">
                 <td class="p-3 text-slate-500 text-xs">${dataRender}</td>
                 <td class="p-3 font-mono font-bold text-slate-700">${badgeTipo}#${numPedStr}</td>
                 <td class="p-3 font-bold text-slate-800">${clienteRender} <br> <span class="text-[10px] text-slate-400 font-normal">Vend: ${vendRender}</span></td>
@@ -929,10 +1222,10 @@ function renderVendas() {
                 <td class="p-3 text-right font-bold text-red-500">-${typeof formatMoney === 'function' ? formatMoney(custoTotalDaVenda) : custoTotalDaVenda}</td>
                 <td class="p-3 text-right font-black text-emerald-600">${typeof formatMoney === 'function' ? formatMoney(lucroDaVenda) : lucroDaVenda}</td>
                 <td class="p-3 text-center flex justify-center gap-1 print:hidden">
-                    <button onclick="verDetalhesVenda(${v.id})" class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-1.5 rounded font-bold text-xs" title="Ver Detalhes"><i class="fa-solid fa-eye"></i></button>
-                    <button onclick="reimprimirVenda(${v.id})" class="text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2 py-1.5 rounded font-bold text-xs" title="Reimprimir"><i class="fa-solid fa-print"></i></button>
-                    <button onclick="imprimirContratoById(${v.id})" class="text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-1.5 rounded font-bold text-xs" title="Imprimir Contrato Legal"><i class="fa-solid fa-file-contract"></i></button>
-                    <button onclick="excluirVenda(${v.id})" class="text-red-500 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2 py-1.5 rounded font-bold text-xs ml-1" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                    <button onclick="verDetalhesVenda('${v.id}')" class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-1.5 rounded font-bold text-xs" title="Ver Detalhes"><i class="fa-solid fa-eye"></i></button>
+                    <button onclick="reimprimirVenda('${v.id}')" class="text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2 py-1.5 rounded font-bold text-xs" title="Reimprimir"><i class="fa-solid fa-print"></i></button>
+                    <button onclick="editarVenda('${v.id}')" class="text-amber-500 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-1.5 rounded font-bold text-xs ml-1" title="Editar / Reabrir no PDV"><i class="fa-solid fa-pen"></i></button>
+                    <button onclick="excluirVenda('${v.id}')" class="text-red-500 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2 py-1.5 rounded font-bold text-xs ml-1" title="Excluir"><i class="fa-solid fa-trash"></i></button>
                 </td>
             </tr>`;
         } catch (e) { console.error(e); return ''; }
@@ -943,48 +1236,48 @@ function renderVendas() {
     }
 }
 
-// ==========================================
-// 7. HISTÓRICO DE ORÇAMENTOS
-// ==========================================
 function renderOrcamentos() {
-    const buscaEl = document.getElementById('busca-orcamentos');
-    const dataIniEl = document.getElementById('filtro-orcamentos-ini');
+    const buscaEl = document.getElementById('busca-orcamentos'); 
+    const dataIniEl = document.getElementById('filtro-orcamentos-ini'); 
     const dataFimEl = document.getElementById('filtro-orcamentos-fim');
     
-    const termo = buscaEl && buscaEl.value ? buscaEl.value.toLowerCase().trim() : ''; 
+    const termo = buscaEl && buscaEl.value ? String(buscaEl.value).toLowerCase().trim() : ''; 
     const dataIni = dataIniEl ? dataIniEl.value : ''; 
     const dataFim = dataFimEl ? dataFimEl.value : ''; 
     
-    let filtrados = db.vendas || [];
+    let filtrados = db.vendas || []; 
     filtrados = filtrados.filter(v => v.tipo === 'ORÇAMENTO');
     
-    if (termo) filtrados = filtrados.filter(v => (v.clienteNome && v.clienteNome.toLowerCase().includes(termo)) || (v.numeroPedido && String(v.numeroPedido).includes(termo)) || (v.vendedor && v.vendedor.toLowerCase().includes(termo)));
+    if (termo) filtrados = filtrados.filter(v => (v.clienteNome && String(v.clienteNome).toLowerCase().includes(termo)) || (v.numeroPedido && String(v.numeroPedido).includes(termo)) || (v.vendedor && String(v.vendedor).toLowerCase().includes(termo)));
     if (dataIni) { const dIni = new Date(dataIni + 'T00:00:00').getTime(); filtrados = filtrados.filter(v => v.data && new Date(v.data).getTime() >= dIni); }
     if (dataFim) { const dFim = new Date(dataFim + 'T23:59:59').getTime(); filtrados = filtrados.filter(v => v.data && new Date(v.data).getTime() <= dFim); }
+    
     filtrados.sort((a,b) => new Date(b.data || 0) - new Date(a.data || 0));
 
     let totalOrcamentos = 0;
+    
     document.getElementById('tabela-orcamentos-body').innerHTML = filtrados.map(v => {
         try {
             const numPedStr = String(v.numeroPedido || v.id || '0').padStart(4, '0'); 
             totalOrcamentos += (Number(v.tot) || 0);
             
-            const dataRender = v.data && typeof formatData === 'function' ? formatData(v.data) : (v.data || '-');
-            const clienteRender = v.clienteNome || 'Desconhecido';
-            const vendRender = v.vendedor || '-';
+            const dataRender = v.data && typeof formatData === 'function' ? formatData(v.data) : (v.data || '-'); 
+            const clienteRender = v.clienteNome || 'Desconhecido'; 
+            const vendRender = v.vendedor || '-'; 
             const qtdItens = v.itens ? v.itens.reduce((acc, i) => acc + (i.qtd||1), 0) : 0;
             
-            return `<tr class="hover:bg-slate-50 border-b border-slate-100">
+            return `
+            <tr class="hover:bg-slate-50 border-b border-slate-100">
                 <td class="p-3 text-slate-500 text-xs">${dataRender}</td>
                 <td class="p-3 font-mono font-bold text-slate-700">#${numPedStr}</td>
                 <td class="p-3 font-bold text-slate-800">${clienteRender} <br> <span class="text-[10px] text-slate-400 font-normal">Vend: ${vendRender}</span></td>
                 <td class="p-3 text-center font-bold text-slate-600">${qtdItens} un</td>
                 <td class="p-3 text-right font-black text-slate-700">${typeof formatMoney === 'function' ? formatMoney(v.tot || 0) : (v.tot || 0)}</td>
                 <td class="p-3 text-center flex justify-center gap-1 print:hidden">
-                    <button onclick="verDetalhesVenda(${v.id})" class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-1.5 rounded font-bold text-xs" title="Ver Detalhes"><i class="fa-solid fa-eye"></i></button>
-                    <button onclick="reimprimirVenda(${v.id})" class="text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2 py-1.5 rounded font-bold text-xs" title="Imprimir"><i class="fa-solid fa-print"></i></button>
-                    <button onclick="imprimirContratoById(${v.id})" class="text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-1.5 rounded font-bold text-xs" title="Imprimir Contrato Legal"><i class="fa-solid fa-file-contract"></i></button>
-                    <button onclick="excluirVenda(${v.id})" class="text-red-500 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2 py-1.5 rounded font-bold text-xs ml-1" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                    <button onclick="verDetalhesVenda('${v.id}')" class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-1.5 rounded font-bold text-xs" title="Ver Detalhes"><i class="fa-solid fa-eye"></i></button>
+                    <button onclick="reimprimirVenda('${v.id}')" class="text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2 py-1.5 rounded font-bold text-xs" title="Imprimir"><i class="fa-solid fa-print"></i></button>
+                    <button onclick="editarVenda('${v.id}')" class="text-amber-500 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-1.5 rounded font-bold text-xs ml-1" title="Editar / Reabrir no PDV"><i class="fa-solid fa-pen"></i></button>
+                    <button onclick="excluirVenda('${v.id}')" class="text-red-500 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2 py-1.5 rounded font-bold text-xs ml-1" title="Excluir"><i class="fa-solid fa-trash"></i></button>
                 </td>
             </tr>`;
         } catch (e) { console.error(e); return ''; }
@@ -996,50 +1289,73 @@ function renderOrcamentos() {
 }
 
 // ==========================================
-// 8. EXCLUSÃO E REIMPRESSÃO (COMPARTILHADO)
+// 12. EXCLUSÃO E REIMPRESSÃO BLINDADA
 // ==========================================
 function excluirVenda(id) {
-    const v = db.vendas.find(x => x.id === id);
-    if(!v) return;
-    const isOrcamento = v.tipo === 'ORÇAMENTO';
+    const v = db.vendas.find(x => String(x.id) === String(id)); 
+    if(!v) return; 
+    
+    const isOrcamento = v.tipo === 'ORÇAMENTO'; 
     const msg = isOrcamento ? 'Deseja excluir este Orçamento do histórico permanentemente?' : 'Devolver estoque e apagar parcelas/caixa desta operação?';
     
     abrirConfirmacao('Confirmar Exclusão', msg, () => {
         try {
             const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
-            
             if(!isOrcamento) {
-                if(v.itens && v.itens.length > 0) { v.itens.forEach(item => { const p = db.produtos.find(prod => prod.id === item.id); if(p) { p.estoque += item.qtd; salvarKardex(`Estorno ${v.tipo} #${numPedStr}`, p.id, p.nome, item.qtd, 'ESTORNO'); } }); }
-                db.financeiro = db.financeiro.filter(f => f.ref ? !f.ref.includes(`#${numPedStr}`) : true);
-                if(v.pag && v.pag.includes('Dinheiro')) { if(!db.caixa) db.caixa = { status: 'FECHADO', saldo: 0, historico: [] }; if(!db.caixa.historico) db.caixa.historico = []; db.caixa.saldo -= (v.valorLiquido || 0); db.caixa.historico.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno ${v.tipo} #${numPedStr}`, valor: (v.valorLiquido || 0) }); }
+                if(v.itens && v.itens.length > 0) { 
+                    v.itens.forEach(item => { 
+                        const p = (db.produtos || []).find(prod => String(prod.id) === String(item.id)); 
+                        if(p) { 
+                            p.estoque += Number(item.qtd || 1); 
+                            salvarKardex(`Estorno ${v.tipo} #${numPedStr}`, p.id, p.nome, Number(item.qtd || 1), 'ESTORNO'); 
+                        } 
+                    }); 
+                }
+                
+                db.financeiro = (db.financeiro || []).filter(f => f.ref ? !String(f.ref).includes(`#${numPedStr}`) : true);
+                
+                if(v.pag && typeof v.pag === 'string' && v.pag.includes('Dinheiro')) { 
+                    if(!db.caixa) db.caixa = { status: 'FECHADO', saldo: 0, historico: [] }; 
+                    if(!db.caixa.historico) db.caixa.historico = []; 
+                    db.caixa.saldo -= (Number(v.valorLiquido) || 0); 
+                    db.caixa.historico.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno ${v.tipo} #${numPedStr}`, valor: (Number(v.valorLiquido) || 0) }); 
+                }
             }
-            
-            db.vendas = db.vendas.filter(x => x.id !== id); 
+            db.vendas = db.vendas.filter(x => String(x.id) !== String(id)); 
             saveDB(); 
-            
-            if(isOrcamento) renderOrcamentos(); else renderVendas();
-            
+            if(isOrcamento) renderOrcamentos(); else renderVendas(); 
             showToast('Registro excluído com sucesso!', 'success');
-        } catch (err) { console.error(err); showToast('Erro ao excluir registro.', 'error'); }
+        } catch (err) { 
+            console.error(err); 
+            showToast('Erro ao excluir registro.', 'error'); 
+        }
     });
 }
 
 function reimprimirVenda(id) {
-    const v = db.vendas.find(x => x.id === id); if(!v) return; const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
+    const v = db.vendas.find(x => String(x.id) === String(id)); 
+    if(!v) return; 
     
-    let tituloRecibo = 'CUPOM NÃO FISCAL - SEM VALOR LEGAL';
-    if (v.tipo === 'ORÇAMENTO') tituloRecibo = 'ORÇAMENTO - VÁLIDO POR 7 DIAS';
-    else if (v.tipo === 'SERVIÇO') tituloRecibo = 'RECIBO DE PRESTAÇÃO DE SERVIÇO';
+    window.vendaAtualImpressao = v;
     
-    const emp = obterDadosEmpresa(); // PUXA OS DADOS DA EMPRESA CADASTRADA
+    const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
+    const isOrcamento = v.tipo === 'ORÇAMENTO';
+    const isServico = v.tipo === 'SERVIÇO';
 
-    const clienteObj = v.clienteId && v.clienteId !== "0" ? (db.clientes || []).find(c => String(c.id) === String(v.clienteId)) : null;
-    const cliCpf = clienteObj && clienteObj.documento ? clienteObj.documento : 'Não informado';
-    const cliTel = clienteObj && clienteObj.telefone ? clienteObj.telefone : 'Não informado';
-    const cliEnd = clienteObj && clienteObj.endereco ? `${clienteObj.endereco}${clienteObj.numero ? ', '+clienteObj.numero : ''}` : 'Não informado';
+    let tituloRecibo = 'CUPOM NÃO FISCAL - SEM VALOR LEGAL'; 
+    if (isOrcamento) tituloRecibo = 'ORÇAMENTO - VÁLIDO POR 7 DIAS'; 
+    else if (isServico) tituloRecibo = 'RECIBO DE PRESTAÇÃO DE SERVIÇO';
+    
+    const emp = obterDadosEmpresa(); 
+    const cliInfo = obterDadosClientePDV(v.clienteId);
+
+    const cliNome = v.clienteNome || cliInfo.nome || 'Consumidor Final';
+    const cliCpf = v.clienteDoc || cliInfo.doc || 'Não informado';
+    const cliTel = v.clienteTel || cliInfo.tel || 'Não informado';
+    const cliEndCompleto = v.clienteEnd || cliInfo.endCompleto || 'Não informado';
 
     let fotosHtml = '';
-    if (v.tipo === 'SERVIÇO' && v.servicoDetalhes) {
+    if (isServico && v.servicoDetalhes) {
         if (v.servicoDetalhes.fotos && v.servicoDetalhes.fotos.length > 0) {
             fotosHtml = `<div style="margin-top: 10px;"><strong>Fotos de Referência (Estado Inicial):</strong><br><div style="display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px;">${v.servicoDetalhes.fotos.map(f => `<img src="${f}" style="height: 120px; border-radius: 4px; border: 1px solid #d8b4fe;">`).join('')}</div></div>`;
         } else if (v.servicoDetalhes.foto) {
@@ -1052,7 +1368,7 @@ function reimprimirVenda(id) {
         <div style="border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 15px; text-align: center;">
             ${emp.logoHtml}
             <h1 style="margin: 0; font-size: 22px; text-transform: uppercase; font-weight: 900;">${emp.nome}</h1>
-            <p style="margin: 5px 0; font-size: 13px;">CNPJ: ${emp.cnpj} | Vendedor: ${v.vendedor || '-'}</p>
+            <p style="margin: 5px 0; font-size: 13px;">CNPJ: ${emp.cnpj}<br>${emp.end}<br>Tel: ${emp.tel} | Vend: ${v.vendedor || '-'}</p>
         </div>
         <div style="text-align: center; margin-bottom: 20px;">
             <h2 style="margin: 0; font-size: 16px; font-weight: 900; border: 2px solid #000; display: inline-block; padding: 6px 15px; border-radius: 4px;">${tituloRecibo}</h2>
@@ -1061,10 +1377,10 @@ function reimprimirVenda(id) {
         <div style="display: flex; justify-content: space-between; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-bottom: 20px; font-size: 13px;">
             <div>
                 <strong>DADOS DO CLIENTE</strong><br>
-                Nome: ${v.clienteNome || 'Consumidor Final'}<br>
+                Nome: ${cliNome}<br>
                 CPF/CNPJ: ${cliCpf}<br>
                 Telefone: ${cliTel}<br>
-                Endereço: ${cliEnd}
+                Endereço: ${cliEndCompleto}
             </div>
             <div style="text-align: right; border-left: 1px solid #ccc; padding-left: 15px;">
                 <strong>DADOS DA OPERAÇÃO</strong><br>
@@ -1074,7 +1390,7 @@ function reimprimirVenda(id) {
             </div>
         </div>
 
-        ${v.tipo === 'SERVIÇO' && v.servicoDetalhes ? `
+        ${isServico && v.servicoDetalhes ? `
         <div style="border: 1px solid #6b21a8; border-radius: 5px; padding: 12px; margin-bottom: 20px; font-size: 13px; background-color: #faf5ff;">
             <h3 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #d8b4fe; padding-bottom: 5px; color: #6b21a8; text-transform: uppercase;">Dados da Ordem de Serviço</h3>
             <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
@@ -1109,13 +1425,18 @@ function reimprimirVenda(id) {
         </table>
 
         <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; margin-bottom: 20px; font-size: 13px;">
-            <div style="flex: 1; min-width: 280px; border: 1px solid #000; border-radius: 5px; padding: 12px;">
-                <h3 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">RESUMO</h3>
-                <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 16px; font-weight: bold;"><span>TOTAL GERAL:</span> <span>${formatMoney(v.tot || 0)}</span></div>
-                <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #000;">
-                    <p style="margin: 0; font-weight: bold;">PAGAMENTOS REGISTRADOS:</p>
-                    <p style="margin: 5px 0 0 0;">${v.pag || 'Orçamento sem pagamento exigido'}</p>
+            <div style="flex: 1; min-width: 280px; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-right: 5px; margin-bottom: 5px;">
+                <h3 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">${isOrcamento ? 'PREVISÃO DE PAGAMENTO' : 'PAGAMENTOS REGISTRADOS'}</h3>
+                <div style="margin-top: 5px;">
+                    <p style="margin: 5px 0 0 0;">${v.pag || 'Nenhum pagamento exigido'}</p>
                 </div>
+            </div>
+            <div style="flex: 1; min-width: 280px; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-left: 5px; margin-bottom: 5px;">
+                <h3 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">RESUMO DOS VALORES</h3>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Subtotal:</span> <span>${formatMoney(v.subtotal || 0)}</span></div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Taxas / Desloc (+):</span> <span>${formatMoney(v.frete || 0)}</span></div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Descontos (-):</span> <span>-${formatMoney(v.desconto || 0)}</span></div>
+                <div style="display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 2px solid #000; font-size: 16px; font-weight: bold;"><span>TOTAL GERAL:</span> <span>${formatMoney(v.tot || 0)}</span></div>
             </div>
         </div>
         
@@ -1129,7 +1450,7 @@ function reimprimirVenda(id) {
         <div style="display: flex; justify-content: space-around; margin-top: 60px; text-align: center; font-size: 13px;">
             <div style="width: 40%;">
                 <div style="border-top: 1px solid #000; padding-top: 5px;">Assinatura do Cliente</div>
-                <div style="font-size: 11px; margin-top: 3px; color: #475569;">${isOrcamento ? 'Reconheço o orçamento acima' : (v.tipo === 'SERVIÇO' ? 'Aprovo a execução do serviço.' : 'Declaro ter recebido os itens acima.')}</div>
+                <div style="font-size: 11px; margin-top: 3px; color: #475569;">${isOrcamento ? 'Reconheço o orçamento acima' : (isServico ? 'Aprovo a execução do serviço.' : 'Declaro ter recebido os itens acima.')}</div>
             </div>
             <div style="width: 40%;">
                 <div style="border-top: 1px solid #000; padding-top: 5px;">Assinatura da Empresa</div>
@@ -1138,12 +1459,15 @@ function reimprimirVenda(id) {
         </div>
     </div>`;
     
-    document.getElementById('print-area').innerHTML = htmlRecibo; document.getElementById('modal-opcoes-recibo').classList.remove('hidden');
+    document.getElementById('print-area').innerHTML = htmlRecibo; 
+    document.getElementById('modal-opcoes-recibo').classList.remove('hidden');
 }
 
 function verDetalhesVenda(id) {
-    const v = db.vendas.find(x => x.id === id); if(!v) return; const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
+    const v = db.vendas.find(x => String(x.id) === String(id)); 
+    if(!v) return; 
     
+    const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
     let tipoTexto = v.tipo || 'VENDA';
     
     document.getElementById('det-venda-cliente').innerText = v.clienteNome || 'Desconhecido'; 
@@ -1153,12 +1477,11 @@ function verDetalhesVenda(id) {
     let osInfoHtml = '';
     if (tipoTexto === 'SERVIÇO' && v.servicoDetalhes) {
         let galeriaHtml = '';
-        if (v.servicoDetalhes.fotos && v.servicoDetalhes.fotos.length > 0) {
-            galeriaHtml = `<p class="mt-2"><strong>Fotos de Referência:</strong></p><div class="flex gap-2 flex-wrap mt-1">${v.servicoDetalhes.fotos.map(f => `<img src="${f}" onclick="abrirZoom('${f}')" class="h-20 rounded border border-purple-300 cursor-zoom-in shadow-sm hover:opacity-80 transition" title="Clique para ampliar">`).join('')}</div>`;
-        } else if (v.servicoDetalhes.foto) {
-            galeriaHtml = `<p class="mt-2"><strong>Foto de Referência:</strong></p><img src="${v.servicoDetalhes.foto}" onclick="abrirZoom('${v.servicoDetalhes.foto}')" class="mt-1 h-24 rounded border border-purple-300 cursor-zoom-in shadow-sm hover:opacity-80 transition" title="Clique para ampliar">`;
+        if (v.servicoDetalhes.fotos && v.servicoDetalhes.fotos.length > 0) { 
+            galeriaHtml = `<p class="mt-2"><strong>Fotos de Referência:</strong></p><div class="flex gap-2 flex-wrap mt-1">${v.servicoDetalhes.fotos.map(f => `<img src="${f}" onclick="abrirZoom('${f}')" class="h-20 rounded border border-purple-300 cursor-zoom-in shadow-sm hover:opacity-80 transition" title="Clique para ampliar">`).join('')}</div>`; 
+        } else if (v.servicoDetalhes.foto) { 
+            galeriaHtml = `<p class="mt-2"><strong>Foto de Referência:</strong></p><img src="${v.servicoDetalhes.foto}" onclick="abrirZoom('${v.servicoDetalhes.foto}')" class="mt-1 h-24 rounded border border-purple-300 cursor-zoom-in shadow-sm hover:opacity-80 transition" title="Clique para ampliar">`; 
         }
-
         osInfoHtml = `
             <div class="mt-4 bg-purple-50 p-3 md:p-4 rounded-lg border border-purple-200 text-xs md:text-sm text-purple-900">
                 <h4 class="font-bold mb-2 uppercase text-purple-700 border-b border-purple-200 pb-2"><i class="fa-solid fa-clipboard-list"></i> Ficha da Ordem de Serviço</h4>
@@ -1168,66 +1491,129 @@ function verDetalhesVenda(id) {
                 </div>
                 <p class="mb-2"><strong>Escopo / Diagnóstico:</strong><br> ${v.servicoDetalhes.desc || 'Nenhum detalhe adicional.'}</p>
                 ${galeriaHtml}
-            </div>
-        `;
+            </div>`;
     }
-    document.getElementById('det-venda-obs').innerHTML = (v.obs ? v.obs : '<span class="text-slate-400">Nenhuma observação geral.</span>') + osInfoHtml;
     
+    document.getElementById('det-venda-obs').innerHTML = (v.obs ? v.obs : '<span class="text-slate-400">Nenhuma observação geral.</span>') + osInfoHtml;
     document.getElementById('det-venda-total').innerText = formatMoney(v.tot || 0);
-    document.getElementById('det-venda-itens').innerHTML = (v.itens || []).map(i => `<tr class="hover:bg-slate-50 border-b border-slate-50"><td class="p-3 font-medium text-slate-700 text-xs">${i.nome || 'Produto/Serviço'} ${i.obsVenda ? `<br><span class="text-[10px] text-slate-400">Obs: ${i.obsVenda}</span>` : ''}</td><td class="p-3 text-center text-xs font-bold text-slate-600">${i.qtd || 1}</td><td class="p-3 text-right text-xs text-slate-500">${formatMoney(i.preco || 0)}</td><td class="p-3 text-right text-xs font-bold text-slate-800">${formatMoney((i.preco || 0) * (i.qtd || 1))}</td></tr>`).join('');
+    document.getElementById('det-venda-itens').innerHTML = (v.itens || []).map(i => `
+        <tr class="hover:bg-slate-50 border-b border-slate-50">
+            <td class="p-3 font-medium text-slate-700 text-xs">
+                ${i.nome || 'Produto/Serviço'} ${i.obsVenda ? `<br><span class="text-[10px] text-slate-400">Obs: ${i.obsVenda}</span>` : ''}
+            </td>
+            <td class="p-3 text-center text-xs font-bold text-slate-600">${i.qtd || 1}</td>
+            <td class="p-3 text-right text-xs text-slate-500">${formatMoney(i.preco || 0)}</td>
+            <td class="p-3 text-right text-xs font-bold text-slate-800">${formatMoney((i.preco || 0) * (i.qtd || 1))}</td>
+        </tr>`).join('');
+    
     document.getElementById('modal-detalhes-venda').classList.remove('hidden');
 }
-function fecharModalDetalhesVenda() { document.getElementById('modal-detalhes-venda').classList.add('hidden'); }
 
-// ==========================================
-// 9. CADASTRO RÁPIDO DE PRODUTO PELO PDV
-// ==========================================
-function abrirModalProduto() {
-    ['id','nome','ean','marca','custo','preco','margem','estoque','minimo','obs'].forEach(id => { const el = document.getElementById(`prod-${id}`); if(el) el.value = ''; });
-    document.getElementById('prod-estoque').value = 0; document.getElementById('prod-minimo').value = 0;
-    document.getElementById('prod-foto-base64').value = ''; document.getElementById('preview-foto').src = ''; document.getElementById('preview-foto').classList.add('hidden'); document.getElementById('texto-sem-foto').classList.remove('hidden');
-    document.getElementById('modal-produto').classList.remove('hidden');
-}
-function fecharModalProduto() { document.getElementById('modal-produto').classList.add('hidden'); }
-
-function processarFoto(event) {
-    const file = event.target.files[0]; if(!file) return; const reader = new FileReader();
-    reader.onload = function(e) {
-        const img = new Image(); img.onload = function() {
-            const canvas = document.createElement('canvas'); let w = img.width, h = img.height; const MAX = 300;
-            if(w > h) { if(w > MAX) { h *= MAX/w; w = MAX; } } else { if(h > MAX) { w *= MAX/h; h = MAX; } }
-            canvas.width = w; canvas.height = h; canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-            document.getElementById('preview-foto').src = dataUrl; document.getElementById('preview-foto').classList.remove('hidden');
-            document.getElementById('texto-sem-foto').classList.add('hidden'); document.getElementById('prod-foto-base64').value = dataUrl;
-        }; img.src = e.target.result;
-    }; reader.readAsDataURL(file);
+function fecharModalDetalhesVenda() { 
+    document.getElementById('modal-detalhes-venda').classList.add('hidden'); 
 }
 
-function salvarProdutoRapido() {
-    const nome = document.getElementById('prod-nome').value.trim(); const preco = parseFloat(document.getElementById('prod-preco').value);
-    if(!nome || isNaN(preco)) return showToast('Preencha Nome e Preço!', 'error');
+// ==========================================
+// 13. EDITAR / REABRIR VENDA NO PDV
+// ==========================================
+function editarVenda(id) {
+    const v = db.vendas.find(x => String(x.id) === String(id)); 
+    if(!v) return showToast('Venda não encontrada.', 'error'); 
 
-    const p = {
-        id: Date.now(), 
-        nome: nome || '', 
-        preco: preco || 0, 
-        ean: document.getElementById('prod-ean').value || '', 
-        marca: document.getElementById('prod-marca').value || '', 
-        categoria: document.getElementById('prod-categoria').value || 'Geral', 
-        unidade: document.getElementById('prod-unidade').value || 'Un', 
-        custo: parseFloat(document.getElementById('prod-custo').value) || 0, 
-        margem: parseFloat(document.getElementById('prod-margem').value) || 0, 
-        estoque: parseInt(document.getElementById('prod-estoque').value) || 0, 
-        min: parseInt(document.getElementById('prod-minimo').value) || 0, 
-        ativo: true, 
-        obs: document.getElementById('prod-obs').value || '', 
-        foto: document.getElementById('prod-foto-base64').value || ''
-    };
+    const isOrcamento = v.tipo === 'ORÇAMENTO'; 
+    const msg = isOrcamento 
+        ? 'Deseja carregar este orçamento de volta no PDV para editar?' 
+        : 'Atenção! Isso fará o ESTORNO automático desta venda (devolvendo estoque e apagando as parcelas) e carregará todos os itens no PDV para você editar e re-finalizar. Deseja continuar?';
 
-    if(!db.produtos) db.produtos = [];
-    db.produtos.push(p); 
-    if(p.estoque > 0) salvarKardex('Estoque Inicial', p.id, p.nome, p.estoque, 'INICIAL'); 
-    saveDB(); fecharModalProduto(); showToast('Cadastrado com sucesso!', 'success');
-    processarAdicaoProduto(p);
+    abrirConfirmacao('Editar Operação', msg, () => {
+        try {
+            const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
+            
+            if(!isOrcamento) {
+                if(v.itens && v.itens.length > 0) { 
+                    v.itens.forEach(item => { 
+                        const p = (db.produtos || []).find(prod => String(prod.id) === String(item.id)); 
+                        if(p) { 
+                            p.estoque += Number(item.qtd || 1); 
+                            salvarKardex(`Estorno de Edição ${v.tipo} #${numPedStr}`, p.id, p.nome, Number(item.qtd || 1), 'ESTORNO'); 
+                        } 
+                    }); 
+                }
+                
+                db.financeiro = (db.financeiro || []).filter(f => f.ref ? !String(f.ref).includes(`#${numPedStr}`) : true);
+                
+                if(v.pag && typeof v.pag === 'string' && String(v.pag).includes('Dinheiro')) { 
+                    if(!db.caixa) db.caixa = { status: 'FECHADO', saldo: 0, historico: [] }; 
+                    if(!db.caixa.historico) db.caixa.historico = []; 
+                    db.caixa.saldo -= (Number(v.valorLiquido) || 0); 
+                    db.caixa.historico.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno (Edição) ${v.tipo} #${numPedStr}`, valor: (Number(v.valorLiquido) || 0) }); 
+                }
+            }
+
+            db.vendas = db.vendas.filter(x => String(x.id) !== String(id)); 
+            saveDB(); 
+
+            pdvLimpar(); 
+            
+            mudarVisaoLocal('pdv');
+            
+            window.vendaEmEdicao = {
+                id: v.id,
+                data: v.data,
+                numeroPedido: v.numeroPedido
+            };
+            
+            const opSelect = document.getElementById('pdv-operacao');
+            if(opSelect) opSelect.value = v.tipo === 'ORÇAMENTO' ? 'Orçamento' : (v.tipo === 'SERVIÇO' ? 'Serviço' : 'Venda');
+            togglePanelServico();
+            
+            setTimeout(() => {
+                const cliSelect = document.getElementById('pdv-cliente');
+                if(cliSelect) {
+                    const optExiste = Array.from(cliSelect.options).some(opt => opt.value === String(v.clienteId));
+                    cliSelect.value = optExiste ? v.clienteId : '0';
+                }
+                
+                const vendSelect = document.getElementById('pdv-vendedor');
+                if(vendSelect && v.vendedor) vendSelect.value = v.vendedor;
+    
+                document.getElementById('pdv-frete').value = v.frete || 0;
+                document.getElementById('pdv-desconto').value = v.desconto || 0;
+                
+                const obsEl = document.getElementById('pdv-obs');
+                if(obsEl) obsEl.value = v.obs || '';
+    
+                if(v.tipo === 'SERVIÇO' && v.servicoDetalhes) {
+                    if(document.getElementById('os-prazo')) document.getElementById('os-prazo').value = v.servicoDetalhes.prazo || '';
+                    if(document.getElementById('os-garantia')) document.getElementById('os-garantia').value = v.servicoDetalhes.garantia || '';
+                    if(document.getElementById('os-desc')) document.getElementById('os-desc').value = v.servicoDetalhes.desc || '';
+                    osFotosArray = v.servicoDetalhes.fotos ? [...v.servicoDetalhes.fotos] : [];
+                    renderizarFotosOS();
+                }
+    
+                cart = v.itens.map(i => {
+                    const pBD = (db.produtos || []).find(prod => String(prod.id) === String(i.id));
+                    return {
+                        id: i.id,
+                        nome: i.nome,
+                        preco: i.preco,
+                        custo: i.custo,
+                        qtd: i.qtd,
+                        obsVenda: i.obsVenda || '',
+                        foto: pBD ? (pBD.foto || '') : ''
+                    };
+                });
+    
+                pagamentosVendaAtual = [];
+                pdvAtualizarTotais();
+                renderCarrinho();
+    
+                showToast('Dados carregados no PDV. Modifique e finalize!', 'success');
+            }, 100);
+
+        } catch (err) { 
+            console.error(err); 
+            showToast('Erro ao carregar venda para edição.', 'error'); 
+        }
+    });
 }

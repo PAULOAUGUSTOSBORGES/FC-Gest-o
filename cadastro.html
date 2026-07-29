@@ -20,10 +20,14 @@
         <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 w-64 bg-slate-900 text-slate-300 flex flex-col h-full shrink-0 shadow-2xl z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out no-print">
             <div class="p-5 flex items-center justify-between gap-3 border-b border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors" onclick="window.location.href='index.html'">
                 <div class="flex items-center gap-3 pointer-events-none">
-                    <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white text-xl shadow-lg shadow-blue-500/50"><i class="fa-solid fa-droplet"></i></div>
+                    <!-- Motor que puxa a Logo -->
+                    <img id="menu-logo" src="" class="w-10 h-10 rounded-lg object-cover hidden bg-white shadow-lg">
+                    <div id="menu-logo-placeholder" class="w-10 h-10 bg-slate-800 border border-slate-600 rounded-lg flex items-center justify-center text-slate-400 text-xl shadow-lg"><i class="fa-solid fa-store"></i></div>
+                    
                     <div>
-                        <h1 class="font-bold text-white text-lg tracking-wide leading-tight">TintasERP</h1>
-                        <p class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Master Pro</p>
+                        <!-- Motor que puxa o Nome da Empresa -->
+                        <h1 id="menu-empresa-nome" class="font-bold text-white text-lg tracking-wide leading-tight truncate w-32">Carregando...</h1>
+                        <p class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Sistema Ativo</p>
                     </div>
                 </div>
                 <button onclick="event.stopPropagation(); toggleMenu()" class="md:hidden text-slate-400 hover:text-white text-2xl"><i class="fa-solid fa-xmark"></i></button>
@@ -56,7 +60,6 @@
                 <button onclick="fazerLogout()" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-white text-sm font-medium transition-colors"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair do Sistema</button>
             </div>
         </aside>
-
         <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
             <header class="bg-white h-16 border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
