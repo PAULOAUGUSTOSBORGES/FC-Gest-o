@@ -9,13 +9,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <link rel="stylesheet" href="style.css?v=10">
+    <!-- CORRIGIDO: Removido o ?v=10 que estava quebrando o carregamento offline -->
+    <link rel="stylesheet" href="style.css">
 </head>
-<body class="flex h-screen text-slate-800 overflow-hidden bg-slate-50 relative z-0">
+<body class="flex h-screen text-slate-800 overflow-hidden bg-slate-50">
 
     <div id="toast-container"></div>
     
-    <div id="app-container" class="flex w-full h-full relative bg-slate-50 z-10">
+    <div id="app-container" class="flex w-full h-full relative">
         <div id="sidebar-overlay" class="fixed inset-0 bg-slate-900/60 z-30 hidden md:hidden transition-opacity" onclick="toggleMenu()"></div>
 
         <!-- BARRA LATERAL (MENU) -->
@@ -90,15 +91,16 @@
                                 <option value="Paulo">Vend: Paulo Augusto</option>
                             </select>
                         </div>
-                        <div class="flex items-center gap-2 w-full sm:w-auto">
-                            <div class="flex">
-                                <select id="pdv-cliente" class="bg-slate-50 border border-slate-300 text-sm font-bold text-slate-700 px-3 py-2 rounded-l-lg outline-none focus:border-blue-500 w-full sm:w-56">
-                                    <option value="0">Consumidor Final</option>
-                                </select>
-                                <button onclick="abrirModalClienteRapido()" class="bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-200 px-3 py-2 rounded-r-lg font-bold text-sm transition" title="Novo Cliente"><i class="fa-solid fa-user-plus"></i></button>
-                            </div>
-                            <button onclick="pdvLimpar()" class="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-lg font-bold text-sm transition ml-1" title="Limpar Tudo"><i class="fa-solid fa-trash text-lg"></i></button>
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <!-- BUSCA INTELIGENTE DE CLIENTES NO PDV -->
+                        <div class="flex w-full sm:w-64 relative">
+                            <input type="hidden" id="pdv-cliente" value="0">
+                            <input type="text" id="pdv-cliente-busca" placeholder="Cliente: Consumidor Final" class="bg-slate-50 border border-slate-300 text-sm font-bold text-slate-700 px-3 py-2 rounded-l-lg outline-none focus:border-blue-500 w-full" autocomplete="off" onfocus="filtrarClientesPDV(this.value)" oninput="filtrarClientesPDV(this.value)">
+                            <div id="pdv-cliente-resultados" class="absolute z-50 w-full bg-white border border-slate-200 shadow-xl rounded-lg top-[42px] hidden max-h-60 overflow-y-auto custom-scrollbar"></div>
+                            <button onclick="abrirModalClienteRapido()" class="bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-200 border-l-0 px-3 py-2 rounded-r-lg font-bold text-sm transition shrink-0" title="Novo Cliente"><i class="fa-solid fa-user-plus"></i></button>
                         </div>
+                        <button onclick="pdvLimpar()" class="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-lg font-bold text-sm transition ml-1" title="Limpar Tudo"><i class="fa-solid fa-trash text-lg"></i></button>
+                    </div>
                     </div>
 
                     <div class="flex flex-col lg:flex-row gap-4 h-full min-h-[600px]">
@@ -244,6 +246,7 @@
                     <div class="flex flex-col lg:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200 gap-4">
                         <div class="flex flex-col sm:flex-row flex-wrap md:flex-nowrap gap-2 w-full lg:w-auto flex-1">
                             
+                            <!-- NOVO FILTRO DE TIPO (VENDA / SERVIÇO) -->
                             <select id="filtro-vendas-tipo" class="w-full sm:w-auto bg-slate-50 border border-slate-200 text-sm rounded-lg px-3 py-2.5 outline-none focus:border-blue-500" onchange="renderVendas()">
                                 <option value="TODOS" selected>Vendas e Serviços</option>
                                 <option value="VENDAS">Apenas Vendas</option>
@@ -291,7 +294,7 @@
                                         <th class="p-3 text-right">Valor Bruto</th>
                                         <th class="p-3 text-right">Custos</th>
                                         <th class="p-3 text-right">Lucro Líquido</th>
-                                        <th class="p-3 text-center w-36 print:hidden">Ações</th>
+                                        <th class="p-3 text-center w-28 print:hidden">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tabela-vendas-body" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
@@ -439,7 +442,7 @@
         </div>
     </div>
 
-    <!-- CONFIRMAÇÃO DO SISTEMA (CORRIGIDO BUG DO CLICK) -->
+    <!-- CONFIRMAÇÃO DO SISTEMA -->
     <div id="modal-confirmacao" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden text-center p-6">
             <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
@@ -549,7 +552,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     
-    <script src="global.js?v=10"></script>
-    <script src="operacao.js?v=10"></script>
+    <script src="global.js"></script>
+    <script src="operacao.js"></script>
 </body>
 </html>

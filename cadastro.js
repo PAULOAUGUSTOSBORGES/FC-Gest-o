@@ -261,3 +261,119 @@ async function gerarDescricaoIA(event) {
     btn.innerHTML = textoOriginal;
     btn.disabled = false;
 }
+// ==========================================
+// IMPORTAÇÃO E EXPORTAÇÃO DE PLANILHA DE PRODUTOS
+// ==========================================
+
+function baixarPlanilhaModeloProduto() {
+    // Cabeçalho exato que o sistema vai ler
+    const cabecalho = "Nome do Produto;EAN (Codigo de Barras);Categoria;Marca;Custo;Margem de Lucro %;Preco de Venda Final;Estoque Atual;Estoque Minimo\n";
+    // Um exemplo de como o usuário deve preencher
+    const exemplo1 = "Mesa de Jantar Madeira Maciça;78900000000;Mesas;FC Móveis;500,00;50;750,00;10;2\n";
+    const exemplo2 = "Cadeira Estofada;78900000001;Cadeiras;FC Móveis;120,50;100;241,00;40;10\n";
+    
+    // O \uFEFF força o Excel a ler os acentos (ã, ç, é) corretamente no Brasil
+    const csvContent = "\uFEFF" + cabecalho + exemplo1 + exemplo2;
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "FC_Moveis_Modelo_Produtos.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    showToast("Planilha modelo baixada! Preencha e salve como CSV.", "info");
+}
+
+function processarPlanilhaProdutos(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    showToast("Lendo planilha, aguarde...", "info");
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const text = e.target.result;
+            // Separa o texto por linhas e tira linhas em branco
+            const linhas = text.split('\n').filter(linha => linha.trim() !== '');
+            
+            if (linhas.length <= 1) {
+                return showToast("A planilha parece estar vazia ou só tem o cabeçalho.", "error");
+            }
+
+            // Descobre automaticamente se o Excel salvou separando por Ponto e Vírgula (Padrão BR) ou Vírgula
+            const separador = linhas[0].includes(';') ? ';' : ',';
+            let produtosAdicionados = 0;
+
+            if (!db.produtos) db.produtos = [];
+
+            // Pula a primeira linha (i=1) porque é o cabeçalho, e começa a ler os dados
+            for (let i = 1; i < linhas.length; i++) {
+                const colunas = linhas[i].split(separador).map(c => c.trim().replace(/^"|"$/g, ''));
+                
+                // Se não tem nome, pula a linha
+                if (!colunas[0]) continue;
+
+                const nome = colunas[0];
+                const ean = colunas[1] || '';
+                const categoria = colunas[2] || 'Geral';
+                const marca = colunas[3] || '';
+                
+                // Troca a vírgula do Brasil pelo Ponto americano para fazer o cálculo correto
+                const custo = parseFloat(colunas[4] ? colunas[4].replace(',', '.') : 0) || 0;
+                const margem = parseFloat(colunas[5] ? colunas[5].replace(',', '.') : 0) || 0;
+                const preco = parseFloat(colunas[6] ? colunas[6].replace(',', '.') : 0) || 0;
+                
+                const estoque = parseInt(colunas[7]) || 0;
+                const min = parseInt(colunas[8]) || 5;
+
+                // Checagem de segurança: evita cadastrar EAN duplicado
+                let existe = false;
+                if (ean && ean !== '') {
+                    existe = db.produtos.find(p => p.ean === ean);
+                }
+                
+                if (!existe) {
+                    const novoProdId = Date.now() + i; // Cria ID único
+                    db.produtos.push({
+                        id: novoProdId,
+                        nome: nome,
+                        ean: ean,
+                        categoria: categoria,
+                        marca: marca,
+                        custo: custo,
+                        margem: margem,
+                        preco: preco,
+                        estoque: estoque,
+                        min: min,
+                        foto: '', // Planilha não sobe foto, o usuário edita depois se quiser
+                        ativo: true
+                    });
+                    
+                    // Se a planilha já trouxer estoque, grava no Kardex (Histórico)
+                    if (estoque > 0) {
+                        salvarKardex("Importação de Planilha", novoProdId, nome, estoque, "INICIAL");
+                    }
+                    produtosAdicionados++;
+                }
+            }
+
+            if (produtosAdicionados > 0) {
+                saveDB(); // Salva no banco Firebase
+                if (typeof renderProdutos === "function") renderProdutos(); // Atualiza a tabela na tela
+                showToast(`${produtosAdicionados} produtos importados com sucesso!`, "success");
+            } else {
+                showToast("Nenhum produto novo importado (podem ser EANs duplicados).", "info");
+            }
+
+        } catch (err) {
+            console.error(err);
+            showToast("Erro ao ler a planilha. Verifique o formato CSV.", "error");
+        }
+    };
+    reader.readAsText(file, "UTF-8");
+    event.target.value = ''; // Limpa o "cachê" do arquivo para poder subir a mesma planilha de novo depois
+}

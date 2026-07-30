@@ -109,7 +109,6 @@ function mudarVisaoLocal(viewId) {
 
 function inicializarOperacao() {
     aplicarIdentidadeVisualNoMenu(); 
-    
     const urlParams = new URLSearchParams(window.location.search);
     const view = urlParams.get('view') || 'pdv'; 
     mudarVisaoLocal(view);
@@ -118,15 +117,13 @@ function inicializarOperacao() {
 window.onload = () => { initGlobalData(inicializarOperacao); };
 
 // ==========================================
-// 3. FUNÇÕES GENÉRICAS E MODAIS
+// 3. FUNÇÕES GENÉRICAS E KARDEX
 // ==========================================
 function abrirConfirmacao(titulo, mensagem, acao) { 
     document.getElementById('modal-confirm-title').innerText = titulo; 
     document.getElementById('modal-confirm-msg').innerText = mensagem; 
     acaoConfirmacaoPendente = acao; 
     document.getElementById('modal-confirmacao').classList.remove('hidden'); 
-    
-    // CORREÇÃO: Passar a função anonimamente para o clique (Sem Loop!)
     document.getElementById('modal-confirm-btn').onclick = function() { 
         if (acaoConfirmacaoPendente) acaoConfirmacaoPendente(); 
         fecharModalConfirmacao(); 
@@ -168,13 +165,67 @@ function salvarKardex(ref, prodId, prodNome, qtd, tipo) {
 }
 
 // ==========================================
-// 4. CADASTRO DE CLIENTE RÁPIDO
+// 4. CADASTRO E BUSCA DE CLIENTE RÁPIDO NO PDV
 // ==========================================
 function atualizarListaClientesPDV(selecionarId = null) {
-    const sCli = document.getElementById('pdv-cliente'); 
-    if(!sCli) return;
-    sCli.innerHTML = '<option value="0">Consumidor Final</option>' + (db.clientes || []).map(c => `<option value="${c.id}">${c.nome}</option>`).join(''); 
-    if(selecionarId) sCli.value = selecionarId;
+    const hiddenId = document.getElementById('pdv-cliente');
+    const inputBusca = document.getElementById('pdv-cliente-busca');
+    
+    if (!hiddenId || !inputBusca) return;
+
+    if(selecionarId && selecionarId !== '0') {
+        const c = (db.clientes || []).find(x => String(x.id) === String(selecionarId));
+        if(c) {
+            hiddenId.value = c.id;
+            inputBusca.value = c.nome;
+        }
+    } else {
+        hiddenId.value = '0';
+        inputBusca.value = '';
+    }
+}
+
+function filtrarClientesPDV(termo) {
+    const dropdown = document.getElementById('pdv-cliente-resultados');
+    if (!dropdown) return;
+    
+    dropdown.innerHTML = '';
+    const lista = db.clientes || [];
+    const busca = termo ? String(termo).trim().toLowerCase() : '';
+    
+    let filtrados = lista;
+    if (busca) {
+        filtrados = lista.filter(c => 
+            (c.nome && c.nome.toLowerCase().includes(busca)) || 
+            (c.wpp && c.wpp.includes(busca)) || 
+            (c.documento && c.documento.includes(busca)) ||
+            (c.cpfCnpj && c.cpfCnpj.includes(busca))
+        );
+    }
+
+    const divConsumidor = document.createElement('div');
+    divConsumidor.className = 'p-3 hover:bg-slate-100 cursor-pointer border-b border-slate-100 text-sm font-bold text-slate-700 bg-slate-50';
+    divConsumidor.innerHTML = `<i class="fa-solid fa-user text-slate-400 mr-2"></i>Consumidor Final (Padrão)`;
+    divConsumidor.onclick = () => {
+        document.getElementById('pdv-cliente').value = '0';
+        document.getElementById('pdv-cliente-busca').value = '';
+        dropdown.classList.add('hidden');
+    };
+    dropdown.appendChild(divConsumidor);
+
+    filtrados.forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'p-3 hover:bg-slate-100 cursor-pointer border-b border-slate-100 text-sm flex flex-col transition-colors';
+        div.innerHTML = `<span class="font-bold text-slate-800">${c.nome}</span><span class="text-[10px] text-slate-500">${c.wpp || c.documento || c.cpfCnpj || 'Sem docs'}</span>`;
+        div.onclick = () => {
+            document.getElementById('pdv-cliente').value = c.id;
+            document.getElementById('pdv-cliente-busca').value = c.nome;
+            dropdown.classList.add('hidden');
+        };
+        dropdown.appendChild(div);
+    });
+
+    dropdown.classList.remove('hidden');
 }
 
 function abrirModalClienteRapido() {
@@ -210,31 +261,85 @@ function salvarClienteRapido() {
 }
 
 // ==========================================
-// 5. FOTOS DA ORDEM DE SERVIÇO
+// 5. CADASTRO RÁPIDO DE PRODUTO NO PDV
+// ==========================================
+function abrirModalProduto() {
+    const ids = ['prod-nome', 'prod-ean', 'prod-marca', 'prod-preco', 'prod-foto-base64'];
+    ids.forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+    const custoEl = document.getElementById('prod-custo'); if (custoEl) custoEl.value = '0';
+    const estoqueEl = document.getElementById('prod-estoque'); if (estoqueEl) estoqueEl.value = '0';
+    const preview = document.getElementById('preview-foto'); if (preview) { preview.src = ''; preview.classList.add('hidden'); }
+    const textoSemFoto = document.getElementById('texto-sem-foto'); if (textoSemFoto) textoSemFoto.classList.remove('hidden');
+    document.getElementById('modal-produto').classList.remove('hidden');
+}
+
+function fecharModalProduto() { document.getElementById('modal-produto').classList.add('hidden'); }
+
+function processarFoto(event) {
+    const file = event.target.files[0]; if (!file) return; 
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = new Image(); 
+        img.onload = function() {
+            const canvas = document.createElement('canvas'); 
+            let w = img.width, h = img.height; 
+            const MAX = 300;
+            if (w > h) { if (w > MAX) { h *= MAX/w; w = MAX; } } else { if (h > MAX) { w *= MAX/h; h = MAX; } }
+            canvas.width = w; canvas.height = h; canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            const preview = document.getElementById('preview-foto');
+            if (preview) { preview.src = dataUrl; preview.classList.remove('hidden'); }
+            const textoSemFoto = document.getElementById('texto-sem-foto');
+            if (textoSemFoto) textoSemFoto.classList.add('hidden');
+            const inputBase64 = document.getElementById('prod-foto-base64');
+            if(inputBase64) inputBase64.value = dataUrl;
+        }; 
+        img.src = e.target.result;
+    }; 
+    reader.readAsDataURL(file);
+}
+
+function salvarProdutoRapido() {
+    const nomeEl = document.getElementById('prod-nome');
+    const precoEl = document.getElementById('prod-preco');
+    if(!nomeEl || !precoEl) return showToast('Erro no formulário.', 'error');
+    const nome = nomeEl.value.trim(); const preco = parseFloat(precoEl.value);
+    if(!nome || isNaN(preco)) return showToast('Preencha Nome e Preço de Venda!', 'error');
+
+    const ean = document.getElementById('prod-ean') ? document.getElementById('prod-ean').value : '';
+    const marca = document.getElementById('prod-marca') ? document.getElementById('prod-marca').value : '';
+    const custo = document.getElementById('prod-custo') ? parseFloat(document.getElementById('prod-custo').value) : 0;
+    const estoque = document.getElementById('prod-estoque') ? parseInt(document.getElementById('prod-estoque').value) : 0;
+    const foto = document.getElementById('prod-foto-base64') ? document.getElementById('prod-foto-base64').value : '';
+
+    const p = {
+        id: Date.now(), nome: nome, preco: preco, ean: ean, marca: marca, categoria: 'Geral', unidade: 'Un', custo: custo || 0, margem: 0, estoque: estoque || 0, min: 1, ativo: true, obs: '', foto: foto
+    };
+
+    if(!db.produtos) db.produtos = [];
+    db.produtos.push(p); 
+    if(p.estoque > 0) salvarKardex('Estoque Inicial PDV', p.id, p.nome, p.estoque, 'INICIAL'); 
+    
+    saveDB(); 
+    fecharModalProduto(); 
+    processarAdicaoProduto(p); 
+    showToast('Produto cadastrado e adicionado!', 'success');
+}
+
+// ==========================================
+// 6. FOTOS DA ORDEM DE SERVIÇO
 // ==========================================
 function processarMultiplasFotosOS(event) {
-    const files = event.target.files; 
-    if (!files || files.length === 0) return;
-    
+    const files = event.target.files; if (!files || files.length === 0) return;
     Array.from(files).forEach(file => { 
         const reader = new FileReader(); 
         reader.onload = function(e) { 
             const img = new Image(); 
             img.onload = function() { 
-                const canvas = document.createElement('canvas'); 
-                let w = img.width, h = img.height; 
-                const MAX = 600; 
-                if (w > h) { 
-                    if (w > MAX) { h *= MAX/w; w = MAX; } 
-                } else { 
-                    if (h > MAX) { w *= MAX/h; h = MAX; } 
-                } 
-                canvas.width = w; 
-                canvas.height = h; 
-                canvas.getContext('2d').drawImage(img, 0, 0, w, h); 
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.8); 
-                osFotosArray.push(dataUrl); 
-                renderizarFotosOS(); 
+                const canvas = document.createElement('canvas'); let w = img.width, h = img.height; const MAX = 600; 
+                if (w > h) { if (w > MAX) { h *= MAX/w; w = MAX; } } else { if (h > MAX) { w *= MAX/h; h = MAX; } } 
+                canvas.width = w; canvas.height = h; canvas.getContext('2d').drawImage(img, 0, 0, w, h); 
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.8); osFotosArray.push(dataUrl); renderizarFotosOS(); 
             }; 
             img.src = e.target.result; 
         }; 
@@ -244,200 +349,301 @@ function processarMultiplasFotosOS(event) {
 }
 
 function renderizarFotosOS() { 
-    const grid = document.getElementById('os-fotos-preview-grid'); 
-    if (!grid) return; 
-    
-    if (osFotosArray.length === 0) { 
-        grid.classList.add('hidden'); 
-        grid.innerHTML = ''; 
-        return; 
-    } 
-    
+    const grid = document.getElementById('os-fotos-preview-grid'); if (!grid) return; 
+    if (osFotosArray.length === 0) { grid.classList.add('hidden'); grid.innerHTML = ''; return; } 
     grid.classList.remove('hidden'); 
     grid.innerHTML = osFotosArray.map((foto, idx) => `
         <div class="relative w-14 h-14 border border-purple-300 rounded overflow-hidden shadow-sm group">
             <div class="w-full h-full bg-cover bg-center cursor-zoom-in" style="background-image: url('${foto}')" onclick="abrirZoom('${foto}')"></div>
-            <button onclick="removerFotoOS(${idx})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
+            <button onclick="removerFotoOS(${idx})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"><i class="fa-solid fa-xmark"></i></button>
         </div>
     `).join(''); 
 }
-
-function removerFotoOS(index) { 
-    osFotosArray.splice(index, 1); 
-    renderizarFotosOS(); 
-}
+function removerFotoOS(index) { osFotosArray.splice(index, 1); renderizarFotosOS(); }
 
 // ==========================================
-// 6. IMPRESSÃO E PDF (CORRIGIDOS PARA USO LOCAL)
+// 7. MOTORES DE IMPRESSÃO E PDF (BLINDADOS)
 // ==========================================
 function printHtmlSeguro(htmlCompleto) {
     showToast("Preparando documento para impressão...", "info");
-    
-    let oldContainer = document.getElementById('print-temp-container');
-    if (oldContainer) oldContainer.remove();
-    let oldStyle = document.getElementById('print-style-temp');
-    if (oldStyle) oldStyle.remove();
+    let oldIframe = document.getElementById('iframe-impressao');
+    if (oldIframe) oldIframe.remove();
 
-    const printContainer = document.createElement('div');
-    printContainer.id = 'print-temp-container';
-    printContainer.innerHTML = htmlCompleto;
-    document.body.appendChild(printContainer);
+    const iframe = document.createElement('iframe');
+    iframe.id = 'iframe-impressao';
+    iframe.style.position = 'fixed'; iframe.style.right = '0'; iframe.style.bottom = '0'; iframe.style.width = '0'; iframe.style.height = '0'; iframe.style.border = '0';
+    document.body.appendChild(iframe);
 
-    const style = document.createElement('style');
-    style.id = 'print-style-temp';
-    style.innerHTML = `
-        @media screen {
-            #print-temp-container { display: none !important; }
-        }
-        @media print {
-            body > :not(#print-temp-container) { display: none !important; }
-            #print-temp-container { 
-                display: block !important; 
-                position: absolute !important; 
-                left: 0 !important; 
-                top: 0 !important; 
-                width: 100% !important; 
-                background: white !important; 
-            }
-            @page { margin: 0.5cm; }
-        }
-    `;
-    document.head.appendChild(style);
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Impressão</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+            <style>
+                @page { margin: 10mm; }
+                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                .print\\:hidden { display: none !important; }
+                table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
+                tr { page-break-inside: avoid; page-break-after: auto; }
+                thead { display: table-header-group; }
+                tfoot { display: table-footer-group; }
+            </style>
+        </head>
+        <body class="bg-white p-4">${htmlCompleto}</body>
+        </html>
+    `);
+    doc.close();
 
-    setTimeout(() => {
-        window.print();
-        setTimeout(() => {
-            printContainer.remove();
-            style.remove();
-        }, 1000);
-    }, 500);
+    setTimeout(() => { iframe.contentWindow.focus(); iframe.contentWindow.print(); }, 1500);
 }
 
-function imprimirArea(areaId) { 
-    const emp = obterDadosEmpresa();
-    const printContent = document.getElementById(areaId).innerHTML; 
-    
-    const htmlCompleto = `
-        <div style="padding: 20px; font-family: Arial, sans-serif; background: #fff; color: #000;">
-            <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
-                ${emp.logoHtml}
-                <h2 style="font-size: 20px; font-weight: bold; margin: 5px 0; text-transform: uppercase;">${emp.nome}</h2>
-                <p style="margin: 0; font-size: 12px; color: #555;">CNPJ: ${emp.cnpj} | Relatório Oficial</p>
-            </div>
-            ${printContent}
-        </div>
-    `; 
-    
+function imprimirArea(areaId) {
+    let empNome = "Relatório Oficial do Sistema";
+    if (db && db.config && db.config.empresa && db.config.empresa.nome) empNome = db.config.empresa.nome;
+    let logoHtml = "";
+    if (db && db.config && db.config.empresa && db.config.empresa.logo) logoHtml = `<img src="${db.config.empresa.logo}" style="max-height: 60px; margin-bottom: 10px; border-radius: 8px;">`;
+    const element = document.getElementById(areaId);
+    if(!element) return showToast("Área de impressão não encontrada.", "error");
+    const printContent = element.innerHTML; 
+    const htmlCompleto = `<div style="padding: 20px; font-family: Arial, sans-serif; background: #fff; color: #000;"><div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">${logoHtml}<h2 style="font-size: 20px; font-weight: bold; margin: 5px 0; text-transform: uppercase;">${empNome}</h2><p style="margin: 0; font-size: 12px; color: #555;">Documento Gerencial Oficial</p></div>${printContent}</div>`; 
     printHtmlSeguro(htmlCompleto);
 }
 
 function printAction(type) { 
-    const printContent = document.getElementById('print-area').innerHTML; 
+    const area = document.getElementById('print-area'); if(!area) return;
+    const printContent = area.innerHTML; 
     const widthStyle = type === 'thermal' ? 'width: 80mm; font-size: 12px; font-family: monospace; padding: 2mm; margin: 0 auto;' : 'width: 210mm; font-size: 14px; font-family: Arial, sans-serif; padding: 15mm; margin: 0 auto;'; 
-    
-    const htmlCompleto = `
-        <div style="${widthStyle} background: #fff; color: #000;">
-            ${printContent}
-        </div>
-    `; 
-    
+    const htmlCompleto = `<div style="${widthStyle} background: #fff; color: #000;">${printContent}</div>`; 
     printHtmlSeguro(htmlCompleto);
 }
 
-// === MOTOR DE PDF ===
-function baixarPDF(areaId, filename) { 
-    if (typeof window.html2pdf === 'undefined') { 
-        showToast('Biblioteca PDF carregando...', 'error'); 
-        return; 
-    } 
-    showToast("Gerando PDF, aguarde...", "info");
-    
+function baixarPDF(areaId, filename) {
+    if (typeof window.html2pdf === 'undefined') { showToast('Biblioteca PDF carregando...', 'error'); return; }
     const element = document.getElementById(areaId); 
+    if(!element) return showToast("Erro: Área do PDF não encontrada.", "error");
     const clone = element.cloneNode(true); 
     clone.querySelectorAll('.print\\:hidden').forEach(el => el.style.display = 'none'); 
     
-    // Método Blindado: Cria uma div em um nível profundo para a máquina ler, sem sumir com a cor.
+    clone.classList.remove('hidden');
+    clone.style.display = 'block';
+    clone.style.opacity = '1';
+    clone.style.visibility = 'visible';
+
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.id = 'pdf-loading-overlay';
+    loadingOverlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.95); z-index: 9999999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center;';
+    loadingOverlay.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="font-size: 3rem; margin-bottom: 1rem;"></i><h2 style="font-size: 1.5rem; font-weight: bold;">Gerando PDF Oficial...</h2><p style="color: #cbd5e1; margin-top: 0.5rem;">Processando documento, aguarde.</p>';
+    document.body.appendChild(loadingOverlay);
+
     const wrapper = document.createElement('div');
-    wrapper.style.position = 'absolute';
-    wrapper.style.top = '0';
-    wrapper.style.left = '0';
-    wrapper.style.width = '800px'; 
-    wrapper.style.background = '#ffffff';
-    wrapper.style.zIndex = '-100'; // Atrás do sistema, mas 100% visível para o html2canvas
-    wrapper.style.pointerEvents = 'none';
-
-    wrapper.appendChild(clone);
-    document.body.appendChild(wrapper);
-
+    wrapper.style.position = 'absolute'; wrapper.style.top = '0'; wrapper.style.left = '0'; wrapper.style.width = '850px'; 
+    wrapper.style.background = '#ffffff'; wrapper.style.zIndex = '999998'; wrapper.style.padding = '20px';
+    wrapper.appendChild(clone); document.body.appendChild(wrapper);
+    
+    document.body.classList.remove('h-screen', 'overflow-hidden');
     window.scrollTo(0, 0);
 
-    const opt = { 
-        margin: 10, 
-        filename: `${filename}_${Date.now()}.pdf`, 
-        image: { type: 'jpeg', quality: 0.98 }, 
-        html2canvas: { scale: 2, useCORS: true, scrollY: 0 }, 
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
-    }; 
+    const opt = { margin: 10, filename: `${filename}_${Date.now()}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, scrollY: 0, windowWidth: 850 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }; 
     
-    try {
-        html2pdf().set(opt).from(clone).save().then(() => { 
-            wrapper.remove(); 
-            showToast('PDF gerado com sucesso!', 'success'); 
-        }).catch(err => { 
-            console.error(err); 
-            wrapper.remove(); 
-            showToast('Erro ao processar imagem do PDF.', 'error'); 
-        }); 
-    } catch(e) {
-        wrapper.remove(); 
-        showToast('Falha na biblioteca de PDF.', 'error'); 
-    }
+    setTimeout(() => {
+        try {
+            html2pdf().set(opt).from(wrapper).save().then(() => { 
+                document.body.classList.add('h-screen', 'overflow-hidden');
+                wrapper.remove(); loadingOverlay.remove(); showToast('PDF gerado com sucesso!', 'success'); 
+            }).catch(err => { 
+                console.error(err); document.body.classList.add('h-screen', 'overflow-hidden');
+                wrapper.remove(); loadingOverlay.remove(); showToast('Erro ao processar imagem do PDF.', 'error'); 
+            }); 
+        } catch(e) { document.body.classList.add('h-screen', 'overflow-hidden'); wrapper.remove(); loadingOverlay.remove(); showToast('Falha na biblioteca de PDF.', 'error'); }
+    }, 500); 
 }
 
-function downloadPDF(areaId, filename) { 
-    baixarPDF(areaId, filename); 
-}
+function downloadPDF(areaId, filename) { baixarPDF(areaId, filename); }
 
-function exportarExcel(tabelaId, filename) { 
-    let table = document.getElementById(tabelaId); 
-    if(!table) return showToast('Tabela não encontrada.', 'error'); 
-    
-    let rows = table.querySelectorAll('tr'); 
-    let csv = []; 
-    
-    for (let i = 0; i < rows.length; i++) { 
-        let row = [], cols = rows[i].querySelectorAll('td:not(.print\\:hidden), th:not(.print\\:hidden)'); 
-        for (let j = 0; j < cols.length; j++) { 
-            row.push('"' + cols[j].innerText.replace(/"/g, '""').trim() + '"'); 
-        } 
-        csv.push(row.join(';')); 
-    } 
-    
-    let csvFile = new Blob(["\uFEFF"+csv.join('\n')], {type: 'text/csv;charset=utf-8;'}); 
-    let link = document.createElement("a"); 
-    link.href = window.URL.createObjectURL(csvFile); 
-    link.setAttribute("download", filename + "_" + Date.now() + ".csv"); 
-    document.body.appendChild(link); 
-    link.click(); 
-    showToast('Excel exportado!', 'success'); 
+function exportarExcel(tabelaId, filename) {
+    let table = document.getElementById(tabelaId); if(!table) return showToast('Tabela não encontrada.', 'error');
+    let rows = table.querySelectorAll('tr'); let csv = [];
+    for (let i = 0; i < rows.length; i++) { let row = [], cols = rows[i].querySelectorAll('td:not(.print\\:hidden), th:not(.print\\:hidden)'); for (let j = 0; j < cols.length; j++) { row.push('"' + cols[j].innerText.replace(/"/g, '""').trim() + '"'); } csv.push(row.join(';')); }
+    let csvFile = new Blob(["\uFEFF"+csv.join('\n')], {type: 'text/csv;charset=utf-8;'});
+    let link = document.createElement("a"); link.href = window.URL.createObjectURL(csvFile); link.setAttribute("download", filename + "_" + Date.now() + ".csv");
+    document.body.appendChild(link); link.click(); showToast('Excel exportado!', 'success');
 }
 
 // ==========================================
-// 7. GERADOR DE CONTRATO PROFISSIONAL
+// 8. GERADOR DE CONTRATO E WHATSAPP 
 // ==========================================
 function imprimirContratoAtual() {
-    if (window.vendaAtualImpressao) {
-        imprimirContratoObj(window.vendaAtualImpressao);
-    } else {
-        showToast("Nenhuma venda selecionada para imprimir.", "error");
-    }
+    if (window.vendaAtualImpressao) { imprimirContratoObj(window.vendaAtualImpressao); } else { showToast("Nenhuma venda selecionada para imprimir.", "error"); }
 }
 
 function imprimirContratoById(id) { 
     const v = db.vendas.find(x => String(x.id) === String(id)); 
     if(v) imprimirContratoObj(v); 
+}
+
+// CORREÇÃO: Variável cliTel e Telefone do Whatsapp blindados!
+function enviarPDFWhatsApp(id) {
+    const v = db.vendas.find(x => String(x.id) === String(id)); 
+    if(!v) return showToast('Venda não encontrada.', 'error');
+
+    const cliInfo = obterDadosClientePDV(v.clienteId);
+    
+    // Garantindo que a variável existe
+    const cliNome = v.clienteNome || cliInfo.nome || 'Consumidor Final';
+    const cliCpf = v.clienteDoc || cliInfo.doc || 'Não informado';
+    const cliTel = v.clienteTel || cliInfo.tel || ''; 
+    const cliEndCompleto = v.clienteEnd || cliInfo.endCompleto || 'Não informado';
+    const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
+    
+    let numLimpo = cliTel.replace(/\D/g, '');
+
+    if (!numLimpo || numLimpo.length < 10) {
+        return showToast('O cliente não possui um número de WhatsApp válido cadastrado na ficha.', 'error');
+    }
+    if (!numLimpo.startsWith('55')) numLimpo = '55' + numLimpo; 
+
+    const emp = obterDadosEmpresa(); 
+    
+    const isOrcamento = v.tipo === 'ORÇAMENTO';
+    const isServico = v.tipo === 'SERVIÇO';
+    let tituloRecibo = 'CUPOM NÃO FISCAL - SEM VALOR LEGAL'; 
+    if (isOrcamento) tituloRecibo = 'ORÇAMENTO - VÁLIDO POR 7 DIAS'; 
+    else if (isServico) tituloRecibo = 'RECIBO DE PRESTAÇÃO DE SERVIÇO';
+
+    let fotosHtml = '';
+    if (isServico && v.servicoDetalhes) {
+        if (v.servicoDetalhes.fotos && v.servicoDetalhes.fotos.length > 0) {
+            fotosHtml = `<div style="margin-top: 10px;"><strong>Fotos de Referência (Estado Inicial):</strong><br><div style="display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px;">${v.servicoDetalhes.fotos.map(f => `<img src="${f}" style="height: 120px; border-radius: 4px; border: 1px solid #d8b4fe;">`).join('')}</div></div>`;
+        } else if (v.servicoDetalhes.foto) {
+            fotosHtml = `<div style="margin-top: 10px;"><strong>Foto de Referência (Estado Inicial):</strong><br><img src="${v.servicoDetalhes.foto}" style="max-height: 150px; border-radius: 4px; border: 1px solid #d8b4fe; margin-top: 5px;"></div>`;
+        }
+    }
+
+    const htmlRecibo = `
+    <div id="print-area-whatsapp" style="font-family: Arial, sans-serif; color: #000; width: 100%; max-width: 800px; margin: 0 auto; padding: 10px; background-color: #fff;">
+        <div style="border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 15px; text-align: center;">
+            ${emp.logoHtml}
+            <h1 style="margin: 0; font-size: 22px; text-transform: uppercase; font-weight: 900;">${emp.nome}</h1>
+            <p style="margin: 5px 0; font-size: 13px;">CNPJ: ${emp.cnpj}<br>${emp.end}<br>Tel: ${emp.tel} | Vend: ${v.vendedor || '-'}</p>
+        </div>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="margin: 0; font-size: 16px; font-weight: 900; border: 2px solid #000; display: inline-block; padding: 6px 15px; border-radius: 4px;">${tituloRecibo}</h2>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-bottom: 20px; font-size: 13px;">
+            <div>
+                <strong>DADOS DO CLIENTE</strong><br>
+                Nome: ${cliNome}<br>
+                CPF/CNPJ: ${cliCpf}<br>
+                Telefone: ${cliTel || 'Não Informado'}<br>
+                Endereço: ${cliEndCompleto}
+            </div>
+            <div style="text-align: right; border-left: 1px solid #ccc; padding-left: 15px;">
+                <strong>DADOS DA OPERAÇÃO</strong><br>
+                Nº: #${numPedStr}<br>
+                Data Orig: ${v.data ? new Date(v.data).toLocaleString('pt-BR') : '-'}<br>
+                Op: VIA WHATSAPP
+            </div>
+        </div>
+
+        ${isServico && v.servicoDetalhes ? `
+        <div style="border: 1px solid #6b21a8; border-radius: 5px; padding: 12px; margin-bottom: 20px; font-size: 13px; background-color: #faf5ff;">
+            <h3 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #d8b4fe; padding-bottom: 5px; color: #6b21a8; text-transform: uppercase;">Dados da Ordem de Serviço</h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+                <div style="flex: 1; min-width: 150px;"><strong>Previsão de Entrega:</strong> ${v.servicoDetalhes.prazo ? v.servicoDetalhes.prazo.split('-').reverse().join('/') : 'Não informada'}</div>
+                <div style="flex: 1; min-width: 150px;"><strong>Garantia do Serviço:</strong> ${v.servicoDetalhes.garantia || 'Não informada'}</div>
+            </div>
+            ${v.servicoDetalhes.desc ? `<div><strong>Escopo / Defeito:</strong><br>${v.servicoDetalhes.desc}</div>` : ''}
+            ${fotosHtml}
+        </div>
+        ` : ''}
+
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px;">
+            <thead>
+                <tr style="background-color: #f1f5f9; border-bottom: 2px solid #000;">
+                    <th style="padding: 8px; text-align: left;">Descrição do Item</th>
+                    <th style="padding: 8px; text-align: center;">Qtd</th>
+                    <th style="padding: 8px; text-align: right;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${(v.itens || []).map(i => `
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 8px;">
+                            <strong>${i.nome || 'Produto/Serviço'}</strong>
+                            ${i.obsVenda ? `<br><span style="font-size: 11px; color: #475569; font-style: italic;">Obs: ${i.obsVenda}</span>` : ''}
+                        </td>
+                        <td style="padding: 8px; text-align: center;">${i.qtd || 1}</td>
+                        <td style="padding: 8px; text-align: right; font-weight: bold;">${formatMoney((i.preco || 0) * (i.qtd || 1))}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+
+        <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; margin-bottom: 20px; font-size: 13px;">
+            <div style="flex: 1; min-width: 280px; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-right: 5px; margin-bottom: 5px;">
+                <h3 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">${isOrcamento ? 'PREVISÃO DE PAGAMENTO' : 'PAGAMENTOS REGISTRADOS'}</h3>
+                ${v.pag !== '' ? `<p style="margin: 5px 0 0 0;">${v.pag}</p>` : '<p style="font-style: italic; color: #555;">Nenhum pagamento registrado no orçamento.</p>'}
+            </div>
+            <div style="flex: 1; min-width: 280px; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-left: 5px; margin-bottom: 5px;">
+                <h3 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">RESUMO DOS VALORES</h3>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Subtotal:</span> <span>${formatMoney(v.subtotal || 0)}</span></div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Taxas / Desloc (+):</span> <span>${formatMoney(v.frete || 0)}</span></div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Descontos (-):</span> <span>-${formatMoney(v.desconto || 0)}</span></div>
+                <div style="display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 2px solid #000; font-size: 16px; font-weight: bold;"><span>TOTAL GERAL:</span> <span>${formatMoney(v.tot || 0)}</span></div>
+            </div>
+        </div>
+        
+        ${v.obs ? `
+        <div style="border: 1px solid #000; border-radius: 5px; padding: 12px; margin-bottom: 30px; font-size: 13px; background-color: #f8fafc;">
+            <strong>Observações Gerais do Pedido:</strong><br>
+            ${v.obs}
+        </div>
+        ` : ''}
+
+        <div style="display: flex; justify-content: space-around; margin-top: 60px; text-align: center; font-size: 13px;">
+            <div style="width: 40%;">
+                <div style="border-top: 1px solid #000; padding-top: 5px;">Assinatura do Cliente</div>
+                <div style="font-size: 11px; margin-top: 3px; color: #475569;">${isOrcamento ? 'Reconheço o orçamento acima' : (isServico ? 'Aprovo a execução do serviço.' : 'Declaro ter recebido os itens acima.')}</div>
+            </div>
+            <div style="width: 40%;">
+                <div style="border-top: 1px solid #000; padding-top: 5px;">Assinatura da Empresa</div>
+                <div style="font-size: 11px; margin-top: 3px; color: #475569; font-weight: bold;">${emp.nome}</div>
+            </div>
+        </div>
+    </div>
+    `;
+    
+    let divWhatsApp = document.getElementById('wpp-pdf-container');
+    if (!divWhatsApp) {
+        divWhatsApp = document.createElement('div');
+        divWhatsApp.id = 'wpp-pdf-container';
+        divWhatsApp.style.position = 'absolute';
+        divWhatsApp.style.left = '-9999px'; 
+        divWhatsApp.style.top = '0';
+        document.body.appendChild(divWhatsApp);
+    }
+    divWhatsApp.innerHTML = htmlRecibo;
+
+    const nomeEmpresa = emp.nome || 'nossa loja';
+    const primeiroNomeCli = cliNome.split(' ')[0];
+    let mensagem = isOrcamento
+        ? `Olá, ${primeiroNomeCli}! Tudo bem? Segue em anexo o seu *Orçamento (Pedido #${numPedStr})* gerado pela *${nomeEmpresa}*. Qualquer dúvida, estou à disposição!`
+        : `Olá, ${primeiroNomeCli}! Tudo bem? Segue em anexo o recibo da sua operação *(Pedido #${numPedStr})* na *${nomeEmpresa}*. Agradecemos a preferência!`;
+
+    const filename = isOrcamento ? `Orcamento_${numPedStr}` : `Recibo_Pedido_${numPedStr}`;
+    
+    baixarPDF('wpp-pdf-container', filename);
+
+    setTimeout(() => {
+        window.open(`https://wa.me/${numLimpo}?text=${encodeURIComponent(mensagem)}`, '_blank');
+        showToast('PDF salvo! Arraste-o para a conversa no WhatsApp.', 'success');
+        divWhatsApp.remove(); 
+    }, 2500); 
 }
 
 function imprimirContratoObj(v) {
@@ -546,7 +752,7 @@ function imprimirContratoObj(v) {
 }
 
 // ==========================================
-// 8. LEITOR DE CÓDIGO DE BARRAS
+// 9. LEITOR DE CÓDIGO DE BARRAS
 // ==========================================
 function abrirLeitorCamera() { 
     document.getElementById('modal-leitor-codigo').classList.remove('hidden'); 
@@ -582,7 +788,7 @@ function onScanSuccess(decodedText) {
 }
 
 // ==========================================
-// 9. PDV E CARRINHO DE COMPRAS
+// 10. PDV E CARRINHO DE COMPRAS
 // ==========================================
 function prepararPDV() {
     if(!db.caixa) db.caixa = { status: 'FECHADO', saldo: 0, historico: [] };
@@ -672,6 +878,10 @@ document.addEventListener('click', function(event) {
     if (dropdown && !event.target.closest('#pdv-produto-busca') && !event.target.closest('#pdv-busca-resultados')) {
         dropdown.classList.add('hidden'); 
     }
+    const dropdownCli = document.getElementById('pdv-cliente-resultados'); 
+    if (dropdownCli && !event.target.closest('#pdv-cliente-busca') && !event.target.closest('#pdv-cliente-resultados')) {
+        dropdownCli.classList.add('hidden'); 
+    }
 });
 
 function processarAdicaoProduto(p) { 
@@ -755,6 +965,7 @@ function pdvLimpar() {
     } 
     pagamentosVendaAtual = []; 
     window.vendaEmEdicao = null; 
+    atualizarListaClientesPDV(null);
     renderCarrinho(); 
 }
 
@@ -776,7 +987,7 @@ function pdvAtualizarTotais() {
 }
 
 // ==========================================
-// 10. MÚLTIPLOS PAGAMENTOS E FINALIZAÇÃO
+// 11. MÚLTIPLOS PAGAMENTOS E FINALIZAÇÃO
 // ==========================================
 function verificarParcelasPagamento() { 
     const metodo = document.getElementById('pdv-metodo-atual').value; 
@@ -930,7 +1141,7 @@ function finalizarVendaMultipla() {
             if (db.config && db.config.taxas) { 
                 if (String(p.metodo).includes('Crédito')) { 
                     let pNum = p.parcelas > 12 ? 12 : p.parcelas; 
-                    tx = db.config.taxas['Cartão Crédito'][pNum] || 0; 
+                    tx = (db.config.taxas['Cartão Crédito'] && db.config.taxas['Cartão Crédito'][pNum]) ? db.config.taxas['Cartão Crédito'][pNum] : 0; 
                 } else { 
                     tx = db.config.taxas[p.metodo] || 0; 
                 } 
@@ -997,8 +1208,8 @@ function finalizarVendaMultipla() {
             <div style="text-align: right; border-left: 1px solid #ccc; padding-left: 15px;">
                 <strong>DADOS DA OPERAÇÃO</strong><br>
                 Nº: #${numPedStr}<br>
-                Data: ${new Date(dataIso).toLocaleString('pt-BR')}<br>
-                Tipo: ${op.toUpperCase()}
+                Data Orig: ${dataIso ? new Date(dataIso).toLocaleString('pt-BR') : '-'}<br>
+                Op: VENDA PDV
             </div>
         </div>
 
@@ -1009,7 +1220,7 @@ function finalizarVendaMultipla() {
                 <div style="flex: 1; min-width: 150px;"><strong>Previsão de Entrega:</strong> ${osPrazo ? osPrazo.split('-').reverse().join('/') : 'Não informada'}</div>
                 <div style="flex: 1; min-width: 150px;"><strong>Garantia do Serviço:</strong> ${osGarantia || 'Não informada'}</div>
             </div>
-            ${osDesc ? `<div style="margin-bottom: 10px;"><strong>Escopo / Defeito:</strong><br>${osDesc}</div>` : ''}
+            ${osDesc ? `<div><strong>Escopo / Defeito:</strong><br>${osDesc}</div>` : ''}
             ${osFotosParaSalvar.length > 0 ? `<div style="margin-top: 10px;"><strong>Fotos de Referência (Estado Inicial):</strong><br><div style="display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px;">${osFotosParaSalvar.map(f => `<img src="${f}" style="height: 120px; border-radius: 4px; border: 1px solid #d8b4fe;">`).join('')}</div></div>` : ''}
         </div>
         ` : ''}
@@ -1019,7 +1230,6 @@ function finalizarVendaMultipla() {
                 <tr style="background-color: #f1f5f9; border-bottom: 2px solid #000;">
                     <th style="padding: 8px; text-align: left;">Descrição do Item</th>
                     <th style="padding: 8px; text-align: center;">Qtd</th>
-                    <th style="padding: 8px; text-align: right;">V. Unit</th>
                     <th style="padding: 8px; text-align: right;">Total</th>
                 </tr>
             </thead>
@@ -1031,16 +1241,15 @@ function finalizarVendaMultipla() {
                             ${i.obsVenda ? `<br><span style="font-size: 11px; color: #475569; font-style: italic;">Obs: ${i.obsVenda}</span>` : ''}
                         </td>
                         <td style="padding: 8px; text-align: center;">${i.qtd || 1}</td>
-                        <td style="padding: 8px; text-align: right;">${formatMoney(i.preco || 0)}</td>
                         <td style="padding: 8px; text-align: right; font-weight: bold;">${formatMoney((i.preco || 0) * (i.qtd || 1))}</td>
                     </tr>
                 `).join('')}
             </tbody>
         </table>
 
-        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; margin-bottom: 20px; font-size: 13px;">
+        <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; margin-bottom: 20px; font-size: 13px;">
             <div style="flex: 1; min-width: 280px; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-right: 5px; margin-bottom: 5px;">
-                <h3 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">${isOrcamento ? 'PREVISÃO DE PAGAMENTO' : 'PAGAMENTOS RECEBIDOS / COMBINADOS'}</h3>
+                <h3 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">${isOrcamento ? 'PREVISÃO DE PAGAMENTO' : 'PAGAMENTOS REGISTRADOS'}</h3>
                 ${pagTexto !== 'Orçamento (Sem Pagamento Exigido)' ? pagamentosVendaAtual.map(p => `<div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>✓ ${p.metodo} ${p.parcelas > 1 ? `(${p.parcelas}x)` : ''}</span> <strong>${formatMoney(p.valor)}</strong></div>`).join('') : '<p style="font-style: italic; color: #555;">Nenhum pagamento registrado no orçamento.</p>'}
                 ${valorTroco > 0 && !isOrcamento ? `<div style="display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #000;"><span>Troco Devolvido:</span> <strong style="color: red;">${formatMoney(valorTroco)}</strong></div>` : ''}
             </div>
@@ -1172,7 +1381,7 @@ function fecharModalOpcoesRecibo() {
 }
 
 // ==========================================
-// 11. HISTÓRICO DE VENDAS E SERVIÇOS
+// 12. HISTÓRICO DE VENDAS E SERVIÇOS
 // ==========================================
 function renderVendas() {
     const buscaEl = document.getElementById('busca-vendas'); 
@@ -1224,11 +1433,12 @@ function renderVendas() {
                 <td class="p-3 text-right font-black text-slate-700">${typeof formatMoney === 'function' ? formatMoney(v.tot || 0) : (v.tot || 0)}</td>
                 <td class="p-3 text-right font-bold text-red-500">-${typeof formatMoney === 'function' ? formatMoney(custoTotalDaVenda) : custoTotalDaVenda}</td>
                 <td class="p-3 text-right font-black text-emerald-600">${typeof formatMoney === 'function' ? formatMoney(lucroDaVenda) : lucroDaVenda}</td>
-                <td class="p-3 text-center flex justify-center gap-1 print:hidden">
+                <td class="p-3 text-center flex flex-wrap justify-center gap-1 print:hidden">
                     <button onclick="verDetalhesVenda('${v.id}')" class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-1.5 rounded font-bold text-xs" title="Ver Detalhes"><i class="fa-solid fa-eye"></i></button>
-                    <button onclick="reimprimirVenda('${v.id}')" class="text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2 py-1.5 rounded font-bold text-xs" title="Imprimir"><i class="fa-solid fa-print"></i></button>
-                    <button onclick="editarVenda('${v.id}')" class="text-amber-500 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-1.5 rounded font-bold text-xs ml-1" title="Editar / Reabrir no PDV"><i class="fa-solid fa-pen"></i></button>
-                    <button onclick="excluirVenda('${v.id}')" class="text-red-500 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2 py-1.5 rounded font-bold text-xs ml-1" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                    <button onclick="reimprimirVenda('${v.id}')" class="text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2 py-1.5 rounded font-bold text-xs" title="Imprimir/PDF"><i class="fa-solid fa-print"></i></button>
+                    <button onclick="enviarPDFWhatsApp('${v.id}')" class="text-emerald-500 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-1.5 rounded font-bold text-xs" title="Enviar PDF no WhatsApp"><i class="fa-brands fa-whatsapp text-sm"></i></button>
+                    <button onclick="editarVenda('${v.id}')" class="text-amber-500 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-1.5 rounded font-bold text-xs" title="Editar / Reabrir no PDV"><i class="fa-solid fa-pen"></i></button>
+                    <button onclick="excluirVenda('${v.id}')" class="text-red-500 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2 py-1.5 rounded font-bold text-xs" title="Excluir"><i class="fa-solid fa-trash"></i></button>
                 </td>
             </tr>`;
         } catch (e) { console.error(e); return ''; }
@@ -1276,11 +1486,12 @@ function renderOrcamentos() {
                 <td class="p-3 font-bold text-slate-800">${clienteRender} <br> <span class="text-[10px] text-slate-400 font-normal">Vend: ${vendRender}</span></td>
                 <td class="p-3 text-center font-bold text-slate-600">${qtdItens} un</td>
                 <td class="p-3 text-right font-black text-slate-700">${typeof formatMoney === 'function' ? formatMoney(v.tot || 0) : (v.tot || 0)}</td>
-                <td class="p-3 text-center flex justify-center gap-1 print:hidden">
+                <td class="p-3 text-center flex flex-wrap justify-center gap-1 print:hidden">
                     <button onclick="verDetalhesVenda('${v.id}')" class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-1.5 rounded font-bold text-xs" title="Ver Detalhes"><i class="fa-solid fa-eye"></i></button>
-                    <button onclick="reimprimirVenda('${v.id}')" class="text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2 py-1.5 rounded font-bold text-xs" title="Imprimir"><i class="fa-solid fa-print"></i></button>
-                    <button onclick="editarVenda('${v.id}')" class="text-amber-500 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-1.5 rounded font-bold text-xs ml-1" title="Editar / Reabrir no PDV"><i class="fa-solid fa-pen"></i></button>
-                    <button onclick="excluirVenda('${v.id}')" class="text-red-500 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2 py-1.5 rounded font-bold text-xs ml-1" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                    <button onclick="reimprimirVenda('${v.id}')" class="text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2 py-1.5 rounded font-bold text-xs" title="Imprimir/PDF"><i class="fa-solid fa-print"></i></button>
+                    <button onclick="enviarPDFWhatsApp('${v.id}')" class="text-emerald-500 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-1.5 rounded font-bold text-xs" title="Enviar PDF no WhatsApp"><i class="fa-brands fa-whatsapp text-sm"></i></button>
+                    <button onclick="editarVenda('${v.id}')" class="text-amber-500 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-1.5 rounded font-bold text-xs" title="Editar / Reabrir no PDV"><i class="fa-solid fa-pen"></i></button>
+                    <button onclick="excluirVenda('${v.id}')" class="text-red-500 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2 py-1.5 rounded font-bold text-xs" title="Excluir"><i class="fa-solid fa-trash"></i></button>
                 </td>
             </tr>`;
         } catch (e) { console.error(e); return ''; }
@@ -1292,7 +1503,7 @@ function renderOrcamentos() {
 }
 
 // ==========================================
-// 12. EXCLUSÃO E REIMPRESSÃO BLINDADA
+// 13. EXCLUSÃO E REIMPRESSÃO BLINDADA
 // ==========================================
 function excluirVenda(id) {
     const v = db.vendas.find(x => String(x.id) === String(id)); 
@@ -1571,10 +1782,16 @@ function editarVenda(id) {
             togglePanelServico();
             
             setTimeout(() => {
-                const cliSelect = document.getElementById('pdv-cliente');
-                if(cliSelect) {
-                    const optExiste = Array.from(cliSelect.options).some(opt => opt.value === String(v.clienteId));
-                    cliSelect.value = optExiste ? v.clienteId : '0';
+                const hiddenCli = document.getElementById('pdv-cliente');
+                const buscaCli = document.getElementById('pdv-cliente-busca');
+                if(hiddenCli && buscaCli) {
+                    hiddenCli.value = v.clienteId || '0';
+                    if (v.clienteId && v.clienteId !== '0') {
+                        const cEncontrado = db.clientes.find(cli => String(cli.id) === String(v.clienteId));
+                        buscaCli.value = cEncontrado ? cEncontrado.nome : (v.clienteNome || '');
+                    } else {
+                        buscaCli.value = '';
+                    }
                 }
                 
                 const vendSelect = document.getElementById('pdv-vendedor');

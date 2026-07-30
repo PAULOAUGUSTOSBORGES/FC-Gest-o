@@ -47,9 +47,9 @@
                 <a href="cadastro.html?view=fornecedores" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="fornecedores"><i class="fa-solid fa-truck w-5 text-center"></i> Fornecedores</a>
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 uppercase mt-4 mb-1">Gestão</p>
-                <a href="gestao.html?view=financeiro" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Financeiro & Caixa</a>
-                <a href="gestao.html?view=compras" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & NF-e XML</a>
-                <a href="gestao.html?view=relatorios" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
+                <a href="gestao.html?view=financeiro" id="nav-financeiro" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Financeiro & Caixa</a>
+                <a href="gestao.html?view=compras" id="nav-compras" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & Estoque</a>
+                <a href="gestao.html?view=relatorios" id="nav-relatorios" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 uppercase mt-4 mb-1">Sistema</p>
                 <a href="sistema.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="config"><i class="fa-solid fa-gear w-5 text-center"></i> Configurações</a>
@@ -76,7 +76,6 @@
 
                 <!-- MÓDULO FINANCEIRO -->
                 <div id="view-financeiro" class="view-section active max-w-7xl mx-auto space-y-4 md:space-y-6">
-                    
                     <!-- Fluxo de Caixa Projetado -->
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                         <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-center">
@@ -107,7 +106,7 @@
                     </div>
 
                     <!-- SUB-ABA CAIXA -->
-                    <div id="fin-area-caixa" class="fin-area block space-y-6">
+                    <div id="fin-area-caixa" class="fin-area hidden space-y-6">
                         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
                             <div class="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-center items-center text-center">
                                 <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Status do Caixa</p>
@@ -225,27 +224,68 @@
                     </div>
                 </div>
 
-                <!-- COMPRAS (NF-e E FRETE CT-e) -->
+                <!-- COMPRAS E ESTOQUE (XML E MANUAL) -->
                 <div id="view-compras" class="view-section hidden max-w-7xl mx-auto space-y-6">
-                    <div class="bg-indigo-600 rounded-xl shadow-lg p-6 md:p-8 text-white flex flex-col items-center justify-center text-center relative overflow-hidden">
-                        <div class="absolute -right-10 -bottom-10 opacity-10 pointer-events-none"><i class="fa-solid fa-file-invoice-dollar text-[150px]"></i></div>
-                        <i class="fa-solid fa-file-invoice text-4xl md:text-5xl mb-4 text-indigo-200 relative z-10"></i>
-                        <h2 class="text-xl md:text-2xl font-bold mb-2 relative z-10">Importar XML da Nota Fiscal</h2>
-                        <p class="text-indigo-200 text-xs md:text-sm mb-6 max-w-lg relative z-10">Ao importar a NF-e, você poderá lançar o CT-e (frete) na próxima tela para rateio automático nos custos.</p>
-                        <label class="bg-white text-indigo-700 px-6 py-3 rounded-lg font-bold shadow-md cursor-pointer hover:bg-indigo-50 transition flex items-center gap-2 text-sm md:text-base relative z-10">
-                            <i class="fa-solid fa-upload"></i> Selecionar Arquivo XML
-                            <input type="file" id="xml-upload" accept=".xml" class="hidden" onchange="processarXMLReal(event)">
-                        </label>
+                    
+                    <!-- Banners de Entrada de Compra -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-indigo-600 rounded-xl shadow-lg p-6 text-white flex flex-col items-center justify-center text-center relative overflow-hidden transition-transform hover:-translate-y-1">
+                            <div class="absolute -right-4 -bottom-4 opacity-10 pointer-events-none"><i class="fa-solid fa-file-invoice text-9xl"></i></div>
+                            <i class="fa-solid fa-upload text-3xl md:text-4xl mb-3 text-indigo-200 relative z-10"></i>
+                            <h2 class="text-lg md:text-xl font-bold mb-1 relative z-10">Importar XML (NF-e)</h2>
+                            <p class="text-indigo-200 text-[10px] md:text-xs mb-4 max-w-sm relative z-10">Cadastra produtos, atualiza custos e lança as contas a pagar automaticamente.</p>
+                            <label class="bg-white text-indigo-700 px-5 py-2.5 rounded-lg font-bold shadow-md cursor-pointer hover:bg-indigo-50 transition text-sm relative z-10">
+                                <i class="fa-solid fa-file-code mr-1"></i> Selecionar Arquivo
+                                <input type="file" id="xml-upload" accept=".xml" class="hidden" onchange="processarXMLReal(event)">
+                            </label>
+                        </div>
+
+                        <div class="bg-emerald-600 rounded-xl shadow-lg p-6 text-white flex flex-col items-center justify-center text-center relative overflow-hidden transition-transform hover:-translate-y-1">
+                            <div class="absolute -right-4 -bottom-4 opacity-10 pointer-events-none"><i class="fa-solid fa-keyboard text-9xl"></i></div>
+                            <i class="fa-solid fa-pen-to-square text-3xl md:text-4xl mb-3 text-emerald-200 relative z-10"></i>
+                            <h2 class="text-lg md:text-xl font-bold mb-1 relative z-10">Lançamento Manual (Sem NF)</h2>
+                            <p class="text-emerald-200 text-[10px] md:text-xs mb-4 max-w-sm relative z-10">Lance compras de recibos ou fornecedores informais direto no estoque.</p>
+                            <button onclick="abrirModalCompraManual()" class="bg-white text-emerald-700 px-5 py-2.5 rounded-lg font-bold shadow-md cursor-pointer hover:bg-emerald-50 transition text-sm relative z-10">
+                                <i class="fa-solid fa-plus mr-1"></i> Nova Compra Manual
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div class="p-4 border-b border-slate-100 bg-slate-50">
-                            <h3 class="font-bold text-slate-700">Histórico de Entradas (NF-e)</h3>
+                    <!-- Filtros de Compra -->
+                    <div class="flex flex-col lg:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200 gap-4">
+                        <div class="flex flex-col sm:flex-row flex-wrap md:flex-nowrap gap-2 w-full lg:w-auto flex-1">
+                            <div class="relative w-full sm:w-64">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-sm"></i>
+                                <input type="text" id="busca-compras" placeholder="Buscar Fornecedor ou NF..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500" oninput="renderComprasHist()">
+                            </div>
+                            <div class="flex gap-2 w-full sm:w-auto">
+                                <input type="date" id="filtro-compras-ini" class="bg-slate-50 border border-slate-200 text-sm rounded-lg px-3 py-2.5 outline-none focus:border-indigo-500 w-full sm:w-auto" onchange="renderComprasHist()" title="Data Inicial">
+                                <input type="date" id="filtro-compras-fim" class="bg-slate-50 border border-slate-200 text-sm rounded-lg px-3 py-2.5 outline-none focus:border-indigo-500 w-full sm:w-auto" onchange="renderComprasHist()" title="Data Final">
+                            </div>
+                        </div>
+                        <div class="flex gap-2 w-full lg:w-auto justify-end">
+                            <button onclick="imprimirArea('print-area-compras')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2.5 rounded-lg text-sm transition-colors flex-1 sm:flex-none text-center" title="Imprimir"><i class="fa-solid fa-print"></i></button>
+                            <button onclick="baixarPDF('print-area-compras', 'Historico_Compras')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2.5 rounded-lg text-sm transition-colors flex-1 sm:flex-none text-center" title="Salvar PDF"><i class="fa-solid fa-file-pdf"></i></button>
+                            <button onclick="exportarExcel('tabela-compras-export', 'Historico_Compras')" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold px-4 py-2.5 rounded-lg text-sm transition-colors flex-1 sm:flex-none text-center" title="Exportar Excel"><i class="fa-solid fa-file-excel mr-1"></i> Excel</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden" id="print-area-compras">
+                        <div class="p-4 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 print:hidden">
+                            <h3 class="font-bold text-slate-700">Histórico de Compras e Entradas</h3>
+                            <span class="text-xs text-indigo-700 font-bold bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-lg w-full sm:w-auto text-center" id="compras-total-filtros">Total Gasto: R$ 0,00</span>
                         </div>
                         <div class="overflow-x-auto custom-scrollbar">
-                            <table class="w-full text-left min-w-[500px]">
+                            <table class="w-full text-left min-w-[700px]" id="tabela-compras-export">
                                 <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold border-b border-slate-200">
-                                    <tr><th class="p-4">Data Entrada</th><th class="p-4">Fornecedor</th><th class="p-4 text-right">Valor Total NF</th><th class="p-4 text-center">Ações</th></tr>
+                                    <tr>
+                                        <th class="p-4">Data Entrada</th>
+                                        <th class="p-4">Fornecedor</th>
+                                        <th class="p-4 text-center">NF/Ref</th>
+                                        <th class="p-4 text-center">Tipo</th>
+                                        <th class="p-4 text-right">Valor Total</th>
+                                        <th class="p-4 text-center print:hidden">Ações</th>
+                                    </tr>
                                 </thead>
                                 <tbody id="tabela-compras-hist" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
                             </table>
@@ -253,7 +293,7 @@
                     </div>
                 </div>
 
-                <!-- RELATÓRIOS GERENCIAIS -->
+                <!-- RELATÓRIOS GERENCIAIS E BI -->
                 <div id="view-relatorios" class="view-section hidden max-w-7xl mx-auto space-y-6">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <h2 class="text-xl font-bold text-slate-800">Relatórios & BI Comercial</h2>
@@ -262,12 +302,13 @@
                                 <i class="fa-solid fa-file-arrow-down"></i> Baixar Relatório para IA
                             </button>
                             <button onclick="imprimirArea('print-area-relatorios')" class="bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 px-4 py-2 rounded-lg text-sm font-bold transition-colors" title="Imprimir"><i class="fa-solid fa-print"></i> <span class="hidden sm:inline">Imprimir Tudo</span></button>
-                            <button onclick="baixarPDF('print-area-relatorios', 'Relatorio_Gerencial')" class="bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 px-4 py-2 rounded-lg text-sm font-bold transition-colors" title="Salvar PDF"><i class="fa-solid fa-file-pdf"></i> <span class="hidden sm:inline">Salvar PDF</span></button>
                         </div>
                     </div>
                     
                     <div id="print-area-relatorios" class="space-y-6">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            
+                            <!-- DRE -->
                             <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                                 <h3 class="font-bold text-slate-800 border-b pb-2 mb-4">DRE - Lucratividade (Vendas)</h3>
                                 <div class="flex justify-between text-sm mb-2"><span class="text-slate-600">Receita Bruta</span><span class="font-bold text-blue-600" id="bi-receita">R$ 0,00</span></div>
@@ -276,20 +317,63 @@
                                 <div class="flex justify-between text-lg border-t pt-2"><span class="font-bold text-slate-800">Lucro Bruto Real</span><span class="font-black text-emerald-500" id="bi-lucro">R$ 0,00</span></div>
                             </div>
 
+                            <!-- Curva ABC de Compras e Fornecedores -->
                             <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                                <h3 class="font-bold text-slate-800 border-b pb-2 mb-4">Curva ABC (Top 5 Produtos)</h3>
-                                <div id="bi-abc-produtos" class="space-y-3"></div>
+                                <h3 class="font-bold text-indigo-800 border-b pb-2 mb-4"><i class="fa-solid fa-cart-arrow-down mr-1"></i> Top Compras (Dinheiro Gasto)</h3>
+                                <div id="bi-top-compras" class="space-y-3"></div>
                             </div>
 
+                            <!-- Curva ABC Vendas -->
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                                <h3 class="font-bold text-slate-800 border-b pb-2 mb-4">Curva ABC de Vendas (Top 5 Produtos)</h3>
+                                <div id="bi-abc-produtos" class="space-y-3"></div>
+                            </div>
+                            
+                            <!-- Estatísticas de Compras -->
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                                <h3 class="font-bold text-slate-800 border-b pb-2 mb-4"><i class="fa-solid fa-chart-bar mr-1"></i> Estatísticas de Compras</h3>
+                                <div class="flex justify-between text-sm mb-2"><span class="text-slate-600">Total de Pedidos/Notas</span><span class="font-bold text-indigo-600" id="bi-compras-qtd">0</span></div>
+                                <div class="flex justify-between text-sm mb-2"><span class="text-slate-600">Ticket Médio por Compra</span><span class="font-bold text-indigo-600" id="bi-compras-ticket">R$ 0,00</span></div>
+                                <div class="flex justify-between text-sm mb-2"><span class="text-slate-600">Total Itens Comprados</span><span class="font-bold text-indigo-600" id="bi-compras-itens">0 un</span></div>
+                            </div>
+
+                            <!-- Top Clientes e Fornecedores -->
                             <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                                 <h3 class="font-bold text-slate-800 border-b pb-2 mb-4">Top Clientes</h3>
                                 <div id="bi-top-clientes" class="space-y-3"></div>
                             </div>
-
+                            
                             <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                                <h3 class="font-bold text-slate-800 border-b pb-2 mb-4">Comissões (5%)</h3>
-                                <div id="bi-comissoes" class="space-y-3"></div>
+                                <h3 class="font-bold text-slate-800 border-b pb-2 mb-4"><i class="fa-solid fa-truck"></i> Top Fornecedores (Gastos)</h3>
+                                <div id="bi-top-fornecedores" class="space-y-3"></div>
                             </div>
+
+                            <!-- Evolução de Custos por Produto (NOVO) -->
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 md:col-span-2">
+                                <h3 class="font-bold text-indigo-800 border-b pb-2 mb-4"><i class="fa-solid fa-arrow-trend-up mr-1"></i> Evolução e Histórico de Custo por Produto</h3>
+                                <div class="flex gap-2 mb-4 print:hidden">
+                                    <select id="relatorio-custo-produto" class="w-full md:w-1/2 bg-slate-50 border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-indigo-500 font-bold text-slate-800" onchange="renderEvolucaoCustos()">
+                                        <option value="">Selecione um Produto para carregar o histórico...</option>
+                                    </select>
+                                </div>
+                                <div class="overflow-x-auto custom-scrollbar">
+                                    <table class="w-full text-left min-w-[600px]">
+                                        <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold border-b border-slate-200">
+                                            <tr>
+                                                <th class="p-3">Data da Compra</th>
+                                                <th class="p-3">Fornecedor / Ref</th>
+                                                <th class="p-3 text-center">Qtd Comprada</th>
+                                                <th class="p-3 text-right">Custo Un. Registrado</th>
+                                                <th class="p-3 text-right">Variação (R$ / %)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tabela-evolucao-custos" class="divide-y divide-slate-100 text-xs md:text-sm">
+                                            <tr><td colspan="5" class="p-4 text-center text-slate-500">Selecione um produto acima para ver o histórico.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -658,22 +742,114 @@
         </div>
     </div>
 
-    <!-- MODAL DETALHES DA NF -->
+    <!-- MODAL LANÇAMENTO DE COMPRA MANUAL (SEM NF E EDIÇÃO) -->
+    <div id="modal-compra-manual" class="fixed inset-0 bg-slate-900/80 z-[160] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col overflow-hidden max-h-[95vh]">
+            <div class="bg-emerald-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-base md:text-lg flex items-center gap-2"><i class="fa-solid fa-cart-flatbed"></i> <span id="compra-manual-titulo-modal">Lançar Compra (Sem NF)</span></h3>
+                <button onclick="fecharModalCompraManual()" class="text-emerald-200 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl md:text-2xl"></i></button>
+            </div>
+            
+            <div class="p-4 md:p-6 bg-slate-50 flex-1 overflow-y-auto custom-scrollbar space-y-4">
+                <input type="hidden" id="compra-manual-id" value="">
+                
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Fornecedor / Loja *</label>
+                        <div class="flex gap-2">
+                            <select id="compra-manual-fornecedor" class="w-full bg-slate-50 border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 font-bold text-slate-800">
+                                <option value="">Selecione ou digite ao lado -> </option>
+                            </select>
+                            <input type="text" id="compra-manual-forn-avulso" placeholder="Fornecedor Avulso..." class="w-full bg-white border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Data da Compra *</label>
+                        <input type="date" id="compra-manual-data" class="w-full bg-slate-50 border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Nº Pedido / Ref / Recibo</label>
+                        <input type="text" id="compra-manual-ref" class="w-full bg-slate-50 border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Frete / Custo Extra (R$) - Será rateado nos itens</label>
+                        <input type="number" id="compra-manual-frete" step="0.01" value="0" oninput="calcularTotaisCompraManual()" class="w-48 bg-white border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 font-bold text-slate-700">
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                    <div class="p-3 bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase flex justify-between items-center">
+                        <span>Produtos Comprados</span>
+                        <button onclick="addLinhaCompraManual()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded shadow-sm transition"><i class="fa-solid fa-plus mr-1"></i> Adicionar Item</button>
+                    </div>
+                    <div class="overflow-x-auto min-h-[150px] custom-scrollbar">
+                        <table class="w-full text-left min-w-[700px]">
+                            <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold border-b border-slate-200">
+                                <tr>
+                                    <th class="p-2 md:p-3 w-1/2">Produto Existente (Busca) *</th>
+                                    <th class="p-2 md:p-3 text-center w-24">Qtd *</th>
+                                    <th class="p-2 md:p-3 text-right w-32">Custo Unit (R$) *</th>
+                                    <th class="p-2 md:p-3 text-right w-32">Subtotal</th>
+                                    <th class="p-2 md:p-3 text-center w-12">Excluir</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-compra-manual-body" class="divide-y divide-slate-100 text-xs md:text-sm">
+                                <!-- Linhas injetadas via JS -->
+                            </tbody>
+                            <tfoot class="bg-slate-50 border-t border-slate-200">
+                                <tr>
+                                    <td colspan="3" class="p-3 text-right font-bold text-slate-600 uppercase text-xs">Total dos Produtos + Frete</td>
+                                    <td class="p-3 text-right font-black text-emerald-600 text-lg" id="compra-manual-total-display">R$ 0,00</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 shadow-sm flex items-center justify-between" id="div-compra-manual-financeiro">
+                    <div>
+                        <h4 class="font-bold text-amber-900 text-sm"><i class="fa-solid fa-money-bill-transfer mr-1"></i> Lançamento Financeiro</h4>
+                        <p class="text-[10px] md:text-xs text-amber-700 mt-1">Deseja criar uma Conta a Pagar (Pendente) automaticamente no valor total desta compra?</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="compra-manual-gerar-financeiro" class="sr-only peer" checked>
+                        <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                        <span class="ml-3 text-sm font-bold text-amber-900">SIM</span>
+                    </label>
+                </div>
+
+            </div>
+            <div class="bg-white p-4 md:p-5 border-t border-slate-200 flex justify-end gap-3 shrink-0 rounded-b-2xl">
+                <button onclick="fecharModalCompraManual()" class="px-6 py-2.5 bg-white border border-slate-300 rounded-xl font-bold text-slate-700 text-sm hover:bg-slate-50 transition-colors shadow-sm">Cancelar</button>
+                <button onclick="salvarCompraManual()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-2.5 rounded-xl text-sm shadow-md transition-transform active:scale-95" id="compra-manual-btn-salvar"><i class="fa-solid fa-save mr-1"></i> Confirmar Lançamento</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DETALHES DA NF / COMPRA -->
     <div id="modal-detalhes-nf" class="fixed inset-0 bg-slate-900/80 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col overflow-hidden max-h-[90vh]">
             <div class="bg-indigo-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
-                <h3 class="font-bold text-base md:text-lg flex items-center gap-2"><i class="fa-solid fa-file-lines"></i> Detalhes da Nota</h3>
+                <h3 class="font-bold text-base md:text-lg flex items-center gap-2"><i class="fa-solid fa-file-lines"></i> Detalhes da Compra / Nota</h3>
                 <button onclick="fecharModalDetalhesNF()" class="text-indigo-200 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl md:text-2xl"></i></button>
             </div>
             <div class="p-4 md:p-6 bg-slate-50 flex-1 overflow-y-auto custom-scrollbar">
                 <div class="flex justify-between items-start mb-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                    <div><p class="text-[10px] md:text-xs font-bold text-slate-500 uppercase">Fornecedor</p><p class="font-bold text-slate-800 text-sm md:text-lg" id="det-nf-fornecedor">-</p><p class="text-[10px] md:text-sm text-slate-500 mt-1"><i class="fa-regular fa-calendar"></i> Data: <span id="det-nf-data">-</span></p></div>
-                    <div class="text-right"><p class="text-[10px] md:text-xs font-bold text-slate-500 uppercase">Total da Nota</p><p class="text-xl md:text-2xl font-black text-indigo-600" id="det-nf-total">R$ 0,00</p></div>
+                    <div>
+                        <p class="text-[10px] md:text-xs font-bold text-slate-500 uppercase">Fornecedor</p>
+                        <p class="font-bold text-slate-800 text-sm md:text-lg" id="det-nf-fornecedor">-</p>
+                        <p class="text-[10px] md:text-sm text-slate-500 mt-1"><i class="fa-regular fa-calendar"></i> Data: <span id="det-nf-data">-</span> | Ref: <span id="det-nf-num">-</span></p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] md:text-xs font-bold text-slate-500 uppercase">Total Geral</p>
+                        <p class="text-xl md:text-2xl font-black text-indigo-600" id="det-nf-total">R$ 0,00</p>
+                    </div>
                 </div>
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="overflow-x-auto custom-scrollbar">
                         <table class="w-full text-left min-w-[400px]">
-                            <thead class="bg-slate-100 text-slate-600 text-[10px] uppercase border-b border-slate-200"><tr><th class="p-2 md:p-3">Produto</th><th class="p-2 md:p-3 text-center w-20 md:w-24">Qtd Entrada</th><th class="p-2 md:p-3 text-right w-24 md:w-32">Custo Final</th></tr></thead>
+                            <thead class="bg-slate-100 text-slate-600 text-[10px] uppercase border-b border-slate-200"><tr><th class="p-2 md:p-3">Produto</th><th class="p-2 md:p-3 text-center w-20 md:w-24">Qtd Entrada</th><th class="p-2 md:p-3 text-right w-24 md:w-32">Custo Rateado</th></tr></thead>
                             <tbody id="det-nf-itens" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
                         </table>
                     </div>
@@ -682,7 +858,7 @@
         </div>
     </div>
 
-    <!-- CONFIRMAÇÃO -->
+    <!-- CONFIRMAÇÃO DO SISTEMA -->
     <div id="modal-confirmacao" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden text-center p-6">
             <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
@@ -690,7 +866,7 @@
             <p class="text-slate-500 text-sm mb-6 font-medium" id="modal-confirm-msg">Deseja continuar?</p>
             <div class="flex gap-3">
                 <button onclick="fecharModalConfirmacao()" class="flex-1 px-4 py-3 border border-slate-300 rounded-lg text-slate-700 font-bold hover:bg-slate-50 transition-colors">Cancelar</button>
-                <button onclick="document.getElementById('modal-confirm-btn').click()" id="modal-confirm-btn" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold px-4 py-3 rounded-lg transition-colors shadow-md">Sim</button>
+                <button id="modal-confirm-btn" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold px-4 py-3 rounded-lg transition-colors shadow-md">Sim</button>
             </div>
         </div>
     </div>
