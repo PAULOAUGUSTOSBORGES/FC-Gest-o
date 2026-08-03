@@ -1,11 +1,12 @@
 // ==========================================
-// 1. TRAVA DE SEGURANÇA E CONFIGURAÇÕES GERAIS
+// 1. CONFIGURAÇÕES DO FIREBASE E SEGURANÇA
 // ==========================================
-if (sessionStorage.getItem('erp_auth_master') !== 'true') {
-    window.location.href = 'login.html'; 
-}
 
-// Configuração do Firebase
+// Motor de Tema Instantâneo (Sempre escuro)
+(function () {
+    document.documentElement.classList.add('dark');
+})();
+
 const firebaseConfig = {
     apiKey: "AIzaSyDIlmd3zUTof-lwxyT7j3UxmenPKs_sMJg",
     authDomain: "lojafc-a31f9.firebaseapp.com",
@@ -19,11 +20,12 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 const firestore = firebase.firestore();
+const auth = firebase.auth();
 
-// Variáveis Globais do Banco de Dados
-let db = { 
-    produtos: [], clientes: [], fornecedores: [], vendas: [], movimentacoes: [], 
-    financeiro: [], compras: [], caixa: { status: 'FECHADO', saldo: 0, historico: [] }, 
+// Stub Global do DB (para não quebrar as outras telas enquanto são migradas)
+let db = {
+    produtos: [], clientes: [], fornecedores: [], vendas: [], movimentacoes: [],
+    financeiro: [], compras: [], caixa: { status: 'FECHADO', saldo: 0, historico: [] },
     config: { taxas: { 'Dinheiro': 0, 'PIX': 0, 'Cartão Débito': 1.99, 'Boleto': 0, 'Fiado': 0, 'Cartão Crédito': { 1: 4.99, 2: 5.49, 3: 5.99, 4: 6.49, 5: 6.99, 6: 7.49, 7: 7.99, 8: 8.49, 9: 8.99, 10: 9.49, 11: 9.99, 12: 10.49 } } }
 };
 
@@ -40,54 +42,52 @@ function showToast(msg, type = 'info') {
 }
 
 // ==========================================
-// INICIALIZAÇÃO UNIVERSAL E INJETOR WHITE LABEL
+// INICIALIZAÇÃO E CONTROLE DE SESSÃO
 // ==========================================
-async function initGlobalData(funcaoDeRenderizacaoDaPagina) {
-    try {
-        const docRef = firestore.collection("fc_moveis").doc("banco_principal");
-        const docSnap = await docRef.get();
-        
-        if (docSnap.exists) {
-            db = docSnap.data();
-            if(!db.movimentacoes) db.movimentacoes = [];
-            if(!db.financeiro) db.financeiro = [];
-            if(!db.fornecedores) db.fornecedores = [];
-            if(!db.compras) db.compras = [];
-            if(!db.vendas) db.vendas = [];
-            if(!db.caixa) db.caixa = { status: 'FECHADO', saldo: 0, historico: [] };
-            if(!db.config || !db.config.taxas) { 
-                db.config = { taxas: { 'Dinheiro': 0, 'PIX': 0, 'Cartão Débito': 1.99, 'Boleto': 0, 'Fiado': 0, 'Cartão Crédito': { 1: 4.99, 2: 5.49, 3: 5.99, 4: 6.49, 5: 6.99, 6: 7.49, 7: 7.99, 8: 8.49, 9: 8.99, 10: 9.49, 11: 9.99, 12: 10.49 } } }; 
+function initGlobalData(funcaoDeRenderizacaoDaPagina) {
+    auth.onAuthStateChanged(async (user) => {
+        const isLoginPage = window.location.pathname.includes('login.html');
+
+        if (!user) {
+            if (!isLoginPage) window.location.href = 'login.html';
+        } else {
+            if (isLoginPage) {
+                window.location.href = 'index.html';
+                return;
             }
-        } else { 
-            await docRef.set(db); 
+
+            try {
+                const confSnap = await firestore.collection("fc_moveis").doc("config").get();
+                if (confSnap.exists) {
+                    db.config = confSnap.data();
+                } else {
+                    await firestore.collection("fc_moveis").doc("config").set(db.config);
+                }
+            } catch (error) {
+                console.error("Erro ao carregar config:", error);
+                showToast("Aviso: Erro ao carregar configurações. Usando padrão. (" + error.code + ")", "error");
+            }
+
+            // SEMPRE aplica o tema e inicializa a página
+            aplicarIdentidadeVisualGlobal();
+
+            if (funcaoDeRenderizacaoDaPagina) {
+                funcaoDeRenderizacaoDaPagina();
+            }
         }
-        
-        // APLICA IDENTIDADE VISUAL E TEMA ASSIM QUE O BANCO CARREGA
-        aplicarIdentidadeVisualGlobal();
-
-        // Executa a função específica da página (ex: renderizar produtos, gráficos)
-        if(funcaoDeRenderizacaoDaPagina) {
-            funcaoDeRenderizacaoDaPagina();
-        }
-
-    } catch (error) { 
-        showToast("Erro ao conectar com a nuvem.", "error"); 
-        console.error(error);
-    }
+    });
 }
 
-function salvarKardex(ref, prodId, prodNome, qtd, tipo) { 
-    if(!db.movimentacoes) db.movimentacoes = [];
-    db.movimentacoes.unshift({ id: Date.now() + Math.random(), data: new Date().toISOString(), ref: ref || '', prodId: prodId || '', prodNome: prodNome || 'Produto', qtd: qtd || 0, tipo: tipo || 'AJUSTE' }); 
+function salvarKardex(ref, prodId, prodNome, qtd, tipo) {
+    console.warn("salvarKardex obsoleto");
 }
 
-function saveDB() { 
-    firestore.collection("fc_moveis").doc("banco_principal").set(db).catch(e => showToast("Falha ao salvar dados.", "error")); 
+function saveDB() {
+    console.warn("saveDB obsoleto: Use salvamento direto nas coleções do Firestore");
 }
 
-function fazerLogout() { 
-    sessionStorage.removeItem('erp_auth_master'); 
-    window.location.href = 'login.html'; 
+async function fazerLogout() {
+    await auth.signOut();
 }
 
 function toggleMenu() {
@@ -108,57 +108,29 @@ function toggleMenu() {
 function aplicarIdentidadeVisualGlobal() {
     if (!db || !db.config) return;
 
-    // 1. Injeta Nome e Logo no Menu Lateral
     if (db.config.empresa) {
         const elNome = document.getElementById('menu-empresa-nome');
         const elLogo = document.getElementById('menu-logo');
         const elPlaceholder = document.getElementById('menu-logo-placeholder');
 
         if (elNome && db.config.empresa.nome) {
-            elNome.innerText = db.config.empresa.nome; 
+            elNome.innerText = db.config.empresa.nome;
         }
-        
+
         if (elLogo && elPlaceholder && db.config.empresa.logo) {
-            elLogo.src = db.config.empresa.logo; 
-            elLogo.classList.remove('hidden'); 
-            elPlaceholder.classList.add('hidden'); 
+            elLogo.src = db.config.empresa.logo;
+            elLogo.classList.remove('hidden');
+            elPlaceholder.classList.add('hidden');
         }
     }
 
-    // 2. Decide Qual Tema Usar (Claro, Escuro ou Automático)
-    let temaFinal = db.config.tema || 'claro';
-    if (temaFinal === 'auto') {
-        // Puxa do Windows, Mac, Android ou iOS a cor do sistema atual
-        temaFinal = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro';
-    }
-
-    // 3. Aplica o Tema Escuro com a Trava do Menu Cinza
-    let styleEl = document.getElementById('estilo-tema-escuro');
-    
-    if (temaFinal === 'escuro') {
-        document.documentElement.classList.add('tema-escuro');
-        if (!styleEl) {
-            const style = document.createElement('style');
-            style.id = 'estilo-tema-escuro';
-            style.innerHTML = `
-                .tema-escuro { filter: invert(0.92) hue-rotate(180deg); background-color: #111; } 
-                .tema-escuro img, .tema-escuro video, .tema-escuro iframe { filter: invert(1) hue-rotate(180deg); }
-                
-                /* TRAVA MÁGICA: Reverte a cor do menu lateral para manter o Cinza Escuro e os botões corretos */
-                .tema-escuro aside { filter: invert(1) hue-rotate(180deg); }
-                .tema-escuro aside img { filter: none !important; }
-            `;
-            document.head.appendChild(style);
-        }
-    } else {
-        document.documentElement.classList.remove('tema-escuro');
-        if (styleEl) styleEl.remove();
-    }
+    // O tema agora é fixo e sempre escuro
+    aplicarTema();
 }
 
-// Fica escutando se o usuário mudar o celular/PC de claro para escuro (para o modo Automático)
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-    if (db.config && db.config.tema === 'auto') {
-        aplicarIdentidadeVisualGlobal();
-    }
-});
+function aplicarTema() {
+    document.documentElement.classList.add('dark');
+    document.documentElement.classList.remove('tema-escuro');
+}
+
+// Removido o listener de preferência de cores do sistema, pois o tema é fixo.

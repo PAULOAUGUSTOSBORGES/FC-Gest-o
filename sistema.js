@@ -70,8 +70,7 @@ function carregarConfiguracoesNaTela() {
         };
     }
 
-    // Carrega Tema
-    if(document.getElementById('sys-tema')) document.getElementById('sys-tema').value = db.config.tema || 'claro';
+    // Tema é sempre escuro, não carrega mais da tela
 
     // Carrega Dados da Empresa
     if(db.config.empresa) {
@@ -118,10 +117,10 @@ function processarLogoEmpresa(event) {
     }; reader.readAsDataURL(file);
 }
 
-function salvarConfiguracoes() {
+async function salvarConfiguracoes() {
     if(!db.config) db.config = {};
     
-    db.config.tema = document.getElementById('sys-tema').value;
+    db.config.tema = 'escuro';
 
     db.config.empresa = {
         nome: document.getElementById('emp-nome').value.trim(),
@@ -143,9 +142,14 @@ function salvarConfiguracoes() {
         'Cartão Crédito': taxasCredito
     };
 
-    saveDB();
-    showToast('Configurações salvas com sucesso!', 'success');
-    
-    // Atualiza a página para aplicar os visuais instantaneamente
-    setTimeout(() => { window.location.reload(); }, 800);
+    try {
+        await firestore.collection('fc_moveis').doc('config').set(db.config, { merge: true });
+        // Tema forçado, não é necessário salvar no localStorage
+        localStorage.setItem('sistema_tema', 'escuro');
+        showToast('Configurações salvas com sucesso!', 'success');
+        setTimeout(() => { window.location.reload(); }, 800);
+    } catch(err) {
+        console.error(err);
+        showToast('Erro ao salvar configurações.', 'error');
+    }
 }

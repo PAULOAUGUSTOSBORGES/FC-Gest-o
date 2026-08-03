@@ -51,12 +51,109 @@ function mudarVisaoLocal(viewId) {
     if (viewId === 'compras') renderComprasHist();
 }
 
-function inicializarGestao() {
+function refreshCurrentView() {
     const urlParams = new URLSearchParams(window.location.search);
     let view = urlParams.get('view');
     if (!view) view = 'financeiro';
     mudarVisaoLocal(view);
 }
+
+// ==========================================
+// MIGRAÇÃO AUTOMÁTICA DO BANCO ANTIGO
+// ==========================================
+async function migrarDadosSeNecessario() {
+    try {
+        // Verifica se já existem dados nas coleções novas
+        const comprasSnap = await firestore.collection('compras').limit(1).get();
+        const finSnap = await firestore.collection('financeiro').limit(1).get();
+        
+        // Se já há dados em compras OU financeiro, não precisa migrar
+        if (!comprasSnap.empty || !finSnap.empty) return;
+
+        // Coleções novas estão vazias — tenta ler do banco antigo
+        const bancoPrincipalSnap = await firestore.collection('fc_moveis').doc('banco_principal').get();
+        if (!bancoPrincipalSnap.exists) return;
+
+        const dados = bancoPrincipalSnap.data();
+        if (!dados) return;
+
+        // Checa se há algum dado útil no banco antigo
+        const temDados = (dados.compras && dados.compras.length > 0) || (dados.financeiro && dados.financeiro.length > 0);
+        if (!temDados) return;
+
+        showToast('Importando dados do sistema anterior... Aguarde!', 'info');
+
+        const promessas = [];
+        const colecoes = ['produtos', 'clientes', 'fornecedores', 'vendas', 'movimentacoes', 'financeiro', 'compras'];
+
+        for (let col of colecoes) {
+            if (dados[col] && Array.isArray(dados[col])) {
+                for (let item of dados[col]) {
+                    const id = item.id ? String(item.id) : firestore.collection(col).doc().id;
+                    promessas.push(firestore.collection(col).doc(id).set(item, { merge: true }));
+                }
+            }
+        }
+
+        if (dados.caixa) promessas.push(firestore.collection('fc_moveis').doc('caixa').set(dados.caixa, { merge: true }));
+        if (dados.config) promessas.push(firestore.collection('fc_moveis').doc('config').set(dados.config, { merge: true }));
+
+        await Promise.all(promessas);
+        // Marca como migrado
+        try { await firestore.collection('fc_moveis').doc('banco_principal').update({ migrado: true }); } catch(e2){}
+
+        showToast('Dados importados com sucesso! Recarregando...', 'success');
+        setTimeout(() => window.location.reload(), 2000);
+
+    } catch (e) {
+        console.error('Erro na migração:', e);
+        showToast('Aviso: Erro ao importar dados anteriores.', 'error');
+    }
+}
+
+function inicializarGestao() {
+    // Primeiro tenta migrar dados do banco antigo se necessário
+    migrarDadosSeNecessario();
+
+    // Controla quantas coleções já carregaram o primeiro snapshot
+    let colecoesProntas = 0;
+    const totalColecoes = 6;
+    function tentarRefresh() {
+        colecoesProntas++;
+        if (colecoesProntas >= totalColecoes) refreshCurrentView();
+    }
+
+    firestore.collection('vendas').onSnapshot(snap => {
+        db.vendas = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        tentarRefresh();
+    });
+    firestore.collection('financeiro').onSnapshot(snap => {
+        db.financeiro = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        tentarRefresh();
+    });
+    firestore.collection('compras').onSnapshot(snap => {
+        db.compras = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        tentarRefresh();
+    });
+    firestore.collection('produtos').onSnapshot(snap => {
+        db.produtos = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        tentarRefresh();
+    });
+    firestore.collection('clientes').onSnapshot(snap => {
+        db.clientes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        tentarRefresh();
+    });
+    firestore.collection('fornecedores').onSnapshot(snap => {
+        db.fornecedores = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        tentarRefresh();
+    });
+    firestore.collection('fc_moveis').doc('caixa').onSnapshot(doc => {
+        if(doc.exists) db.caixa = doc.data();
+        else db.caixa = { status: 'FECHADO', saldo: 0, historico: [] };
+        if (colecoesProntas >= totalColecoes) refreshCurrentView();
+    });
+}
+
 
 window.onload = () => { initGlobalData(inicializarGestao); };
 
@@ -161,7 +258,7 @@ function printHtmlSeguro(htmlCompleto) {
                 tfoot { display: table-footer-group; }
             </style>
         </head>
-        <body class="bg-white p-4">
+        <body class="bg-white dark:bg-slate-800 p-4">
             ${htmlCompleto}
         </body>
         </html>
@@ -198,51 +295,52 @@ function imprimirArea(areaId) {
 }
 
 function baixarPDF(areaId, filename) {
-    if (typeof window.html2pdf === 'undefined') { showToast('Biblioteca PDF carregando...', 'error'); return; }
-    
     const element = document.getElementById(areaId); 
     if(!element) return showToast("Erro: Área do PDF não encontrada.", "error");
-    
-    const clone = element.cloneNode(true); 
-    clone.querySelectorAll('.print\\:hidden').forEach(el => el.style.display = 'none'); 
-    
-    const loadingOverlay = document.createElement('div');
-    loadingOverlay.id = 'pdf-loading-overlay';
-    loadingOverlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.95); z-index: 9999999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center;';
-    loadingOverlay.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="font-size: 3rem; margin-bottom: 1rem;"></i><h2 style="font-size: 1.5rem; font-weight: bold;">Gerando PDF Oficial...</h2><p style="color: #cbd5e1; margin-top: 0.5rem;">Processando documento, aguarde.</p>';
-    document.body.appendChild(loadingOverlay);
 
-    const wrapper = document.createElement('div');
-    wrapper.style.position = 'absolute'; wrapper.style.top = '0'; wrapper.style.left = '0'; wrapper.style.width = '1200px'; 
-    wrapper.style.background = '#ffffff'; wrapper.style.zIndex = '999998'; wrapper.style.padding = '20px';
-    wrapper.appendChild(clone); document.body.appendChild(wrapper);
+    const printContent = element.innerHTML; 
     
-    document.body.classList.remove('h-screen', 'overflow-hidden');
-    window.scrollTo(0, 0);
+    const win = window.open('', '_blank');
+    if (!win) {
+        return showToast("O bloqueador de pop-ups bloqueou o PDF. Permita pop-ups neste site.", "error");
+    }
 
-    const opt = { 
-        margin: 10, 
-        filename: `${filename}_${Date.now()}.pdf`, 
-        image: { type: 'jpeg', quality: 0.98 }, 
-        html2canvas: { scale: 2, useCORS: true, scrollY: 0, windowWidth: 1200 }, 
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
-    }; 
-    
-    setTimeout(() => {
-        try {
-            html2pdf().set(opt).from(wrapper).save().then(() => { 
-                document.body.classList.add('h-screen', 'overflow-hidden');
-                wrapper.remove(); loadingOverlay.remove(); showToast('PDF gerado com sucesso!', 'success'); 
-            }).catch(err => { 
-                console.error(err); 
-                document.body.classList.add('h-screen', 'overflow-hidden');
-                wrapper.remove(); loadingOverlay.remove(); showToast('Erro ao processar imagem do PDF.', 'error'); 
-            }); 
-        } catch(e) { 
-            document.body.classList.add('h-screen', 'overflow-hidden');
-            wrapper.remove(); loadingOverlay.remove(); showToast('Falha na biblioteca de PDF.', 'error'); 
-        }
-    }, 500); 
+    win.document.open();
+    win.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>${filename || 'Documento'}</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+            <style>
+                @page { margin: 15mm; size: A4; }
+                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 20px; max-width: 1000px; margin: 0 auto; }
+                .print\\:hidden { display: none !important; }
+                table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
+                tr { page-break-inside: avoid; page-break-after: auto; }
+                thead { display: table-header-group; }
+                tfoot { display: table-footer-group; }
+                
+                @media print {
+                    body { padding: 0; max-width: none; }
+                }
+            </style>
+        </head>
+        <body class="bg-white text-black">
+            ${printContent}
+            
+            <script>
+                // Executa a impressão quando tudo carregar
+                setTimeout(() => {
+                    window.focus();
+                    window.print();
+                }, 1000);
+            </script>
+        </body>
+        </html>
+    `);
+    win.document.close();
 }
 
 function downloadPDF(areaId, filename) { baixarPDF(areaId, filename); }
@@ -260,9 +358,17 @@ function exportarExcel(tabelaId, filename) {
 // 3. FINANCEIRO E CAIXA FÍSICO
 // ==========================================
 function renderFinAbas(aba) {
-    document.querySelectorAll('.fin-area').forEach(el => el.classList.add('hidden')); document.querySelectorAll('[id^="fin-tab-"]').forEach(el => { el.classList.remove('bg-blue-600', 'text-white'); el.classList.add('text-slate-600'); });
-    document.getElementById(`fin-area-${aba}`).classList.remove('hidden'); document.getElementById(`fin-tab-${aba}`).classList.remove('text-slate-600'); document.getElementById(`fin-tab-${aba}`).classList.add('bg-blue-600', 'text-white');
-    if(aba === 'caixa') renderCaixaDiario(); if(aba === 'receber') renderTitulos('RECEITA'); if(aba === 'pagar') renderTitulos('DESPESA');
+    document.querySelectorAll('.fin-area').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('[id^="fin-tab-"]').forEach(el => {
+        el.classList.remove('bg-blue-600', 'text-white');
+        el.classList.add('text-slate-600', 'dark:text-slate-300');
+    });
+    document.getElementById(`fin-area-${aba}`).classList.remove('hidden');
+    document.getElementById(`fin-tab-${aba}`).classList.remove('text-slate-600', 'dark:text-slate-300');
+    document.getElementById(`fin-tab-${aba}`).classList.add('bg-blue-600', 'text-white');
+    if(aba === 'caixa') renderCaixaDiario();
+    if(aba === 'receber') renderTitulos('RECEITA');
+    if(aba === 'pagar') renderTitulos('DESPESA');
     atualizarCardsFluxoDeCaixa();
 }
 
@@ -270,7 +376,7 @@ function renderCaixaDiario() {
     document.getElementById('caixa-saldo-display').innerText = formatMoney(db.caixa.saldo); const b = document.getElementById('caixa-status-badge');
     if(db.caixa.status === 'ABERTO') { b.innerText = 'ABERTO'; b.className = 'px-4 py-2 rounded-lg font-black text-lg mb-4 bg-emerald-100 text-emerald-700 border border-emerald-300'; } else { b.innerText = 'FECHADO'; b.className = 'px-4 py-2 rounded-lg font-black text-lg mb-4 bg-red-100 text-red-700 border border-red-300'; }
     const hoje = new Date().toISOString().split('T')[0]; const movs = db.caixa.historico.filter(m => m.data.startsWith(hoje));
-    document.getElementById('tabela-caixa-historico').innerHTML = movs.map(m => `<tr class="hover:bg-slate-50 border-b border-slate-100"><td class="p-3 text-slate-500 font-mono text-[10px]">${formatData(m.data).split(' ')[1]}</td><td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${m.tipo==='ENTRADA' || m.tipo==='ABERTURA' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">${m.tipo}</span></td><td class="p-3 text-slate-700 text-xs font-bold">${m.desc}</td><td class="p-3 text-right font-black ${m.tipo==='ENTRADA' || m.tipo==='ABERTURA' ? 'text-emerald-500' : 'text-red-500'}">${m.tipo==='ENTRADA' || m.tipo==='ABERTURA' ? '+ ' : '- '}${formatMoney(m.valor)}</td></tr>`).join('') || '<tr><td colspan="4" class="p-6 text-center text-slate-500">Sem movimentos hoje no caixa físico.</td></tr>';
+    document.getElementById('tabela-caixa-historico').innerHTML = movs.map(m => `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-3 text-slate-500 dark:text-slate-400 font-mono text-[10px]">${formatData(m.data).split(' ')[1]}</td><td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${m.tipo==='ENTRADA' || m.tipo==='ABERTURA' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">${m.tipo}</span></td><td class="p-3 text-slate-700 dark:text-slate-200 text-xs font-bold">${m.desc}</td><td class="p-3 text-right font-black ${m.tipo==='ENTRADA' || m.tipo==='ABERTURA' ? 'text-emerald-500' : 'text-red-500'}">${m.tipo==='ENTRADA' || m.tipo==='ABERTURA' ? '+ ' : '- '}${formatMoney(m.valor)}</td></tr>`).join('') || '<tr><td colspan="4" class="p-6 text-center text-slate-500 dark:text-slate-400">Sem movimentos hoje no caixa físico.</td></tr>';
 }
 
 function abrirModalCaixa(op) {
@@ -282,13 +388,21 @@ function abrirModalCaixa(op) {
 }
 function fecharModalCaixa() { document.getElementById('modal-mov-caixa').classList.add('hidden'); }
 
-function confirmarMovCaixa() {
+async function confirmarMovCaixa() {
     const op = document.getElementById('caixa-operacao-tipo').value; const val = parseFloat(document.getElementById('caixa-op-valor').value) || 0; const desc = document.getElementById('caixa-op-desc').value || op;
-    if(op === 'ABRIR') { db.caixa.status = 'ABERTO'; db.caixa.saldo = val; db.caixa.historico.unshift({ data: new Date().toISOString(), tipo: 'ABERTURA', desc, valor: val }); }
-    else if(op === 'FECHAR') { db.caixa.status = 'FECHADO'; db.caixa.historico.unshift({ data: new Date().toISOString(), tipo: 'FECHAMENTO', desc: `Fechamento (Retirado: ${formatMoney(val)})`, valor: val }); db.caixa.saldo -= val; }
-    else if(op === 'SANGRIA') { if(val > db.caixa.saldo) return showToast('Saldo insuficiente para sangria!', 'error'); db.caixa.saldo -= val; db.caixa.historico.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `SANGRIA: ${desc}`, valor: val }); }
-    else if(op === 'SUPRIMENTO') { db.caixa.saldo += val; db.caixa.historico.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `SUPRIMENTO: ${desc}`, valor: val }); }
-    saveDB(); fecharModalCaixa(); renderCaixaDiario(); showToast('Operação realizada com sucesso!', 'success');
+    let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
+    let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
+    let novoStatus = cxAtual.status; let novoSaldo = cxAtual.saldo || 0;
+
+    if(op === 'ABRIR') { novoStatus = 'ABERTO'; novoSaldo = val; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ABERTURA', desc, valor: val }); }
+    else if(op === 'FECHAR') { novoStatus = 'FECHADO'; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'FECHAMENTO', desc: `Fechamento (Retirado: ${formatMoney(val)})`, valor: val }); novoSaldo -= val; }
+    else if(op === 'SANGRIA') { if(val > novoSaldo) return showToast('Saldo insuficiente para sangria!', 'error'); novoSaldo -= val; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `SANGRIA: ${desc}`, valor: val }); }
+    else if(op === 'SUPRIMENTO') { novoSaldo += val; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `SUPRIMENTO: ${desc}`, valor: val }); }
+    
+    try {
+        await firestore.collection('fc_moveis').doc('caixa').set({ ...cxAtual, status: novoStatus, saldo: novoSaldo, historico: cxHistoricoNovo }, { merge: true });
+        fecharModalCaixa(); renderCaixaDiario(); showToast('Operação realizada com sucesso!', 'success');
+    } catch(err) { console.error(err); showToast('Erro ao registrar caixa.', 'error'); }
 }
 
 // ==========================================
@@ -328,7 +442,7 @@ function renderTitulos(tipo) {
         let badgeStatus = 'PENDENTE';
         
         if (f.status === 'PAGO') { corStatus = 'bg-emerald-100 text-emerald-700'; badgeStatus = 'PAGO'; }
-        else if (f.status === 'CANCELADO') { corStatus = 'bg-slate-200 text-slate-600'; badgeStatus = 'CANCELADO'; }
+        else if (f.status === 'CANCELADO') { corStatus = 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'; badgeStatus = 'CANCELADO'; }
         else if (f.status === 'RENEGOCIADO') { corStatus = 'bg-purple-100 text-purple-700'; badgeStatus = 'RENEGOCIADO'; }
         else if (isAtrasado) { corStatus = 'bg-red-100 text-red-700'; badgeStatus = 'ATRASADO'; }
         
@@ -361,10 +475,10 @@ function renderTitulos(tipo) {
         }
 
         return `
-        <tr class="hover:bg-slate-50 border-b border-slate-100">
-            <td class="p-3 text-slate-500 font-mono text-xs">${formatData(f.data).split(' ')[0]}</td>
-            <td class="p-3 font-bold text-slate-800 truncate max-w-[200px]">${f.pessoa}</td>
-            <td class="p-3 text-slate-600 text-[11px]">${f.categoria || '-'} <br><span class="font-bold">${f.ref}</span></td>
+        <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
+            <td class="p-3 text-slate-500 dark:text-slate-400 font-mono text-xs">${formatData(f.data).split(' ')[0]}</td>
+            <td class="p-3 font-bold text-slate-800 dark:text-slate-100 truncate max-w-[200px]">${f.pessoa}</td>
+            <td class="p-3 text-slate-600 dark:text-slate-300 text-[11px]">${f.categoria || '-'} <br><span class="font-bold">${f.ref}</span></td>
             <td class="p-3 text-right font-black ${tipo === 'RECEITA' ? 'text-blue-600' : 'text-red-500'}">${formatMoney(valorAExibir)}</td>
             <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${corStatus}">${badgeStatus}</span></td>
             <td class="p-3 text-center flex items-center justify-center gap-1 print:hidden">
@@ -375,7 +489,7 @@ function renderTitulos(tipo) {
                 <button onclick="excluirTitulo(${f.id})" class="text-slate-400 hover:text-red-500 p-1.5 ml-1" title="Excluir"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
-    }).join('') || `<tr><td colspan="6" class="p-6 text-center text-slate-500">Nenhum título encontrado.</td></tr>`;
+    }).join('') || `<tr><td colspan="6" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum título encontrado.</td></tr>`;
 }
 
 // ==========================================
@@ -506,6 +620,7 @@ function salvarConta() {
     const refBase = document.getElementById('conta-ref').value || 'Avulso';
 
     let contasGeradas = 0;
+    const batch = firestore.batch();
 
     for(let i = 0; i < qtdLançamentos; i++) {
         let dataVenc = new Date(vencBase + 'T12:00:00');
@@ -519,7 +634,6 @@ function salvarConta() {
         if (qtdLançamentos > 1) refFinal += ` (${i+1}/${qtdLançamentos})`;
 
         const contaObj = {
-            id: isEdicao ? parseInt(idExistente) : Date.now() + i,
             tipo: tipo, 
             pessoa: pessoa, 
             ref: refFinal, 
@@ -544,52 +658,69 @@ function salvarConta() {
         };
 
         if (isEdicao) {
-            const index = db.financeiro.findIndex(f => f.id === parseInt(idExistente));
-            if (index > -1) db.financeiro[index] = contaObj;
+            const ref = firestore.collection('financeiro').doc(String(idExistente));
+            batch.set(ref, contaObj, { merge: true });
         } else {
-            db.financeiro.unshift(contaObj);
+            const ref = firestore.collection('financeiro').doc();
+            batch.set(ref, contaObj);
             contasGeradas++;
         }
     }
 
-    saveDB(); 
-    fecharModalConta(); 
-    renderFinAbas(tipo === 'RECEITA' ? 'receber' : 'pagar'); 
-    
-    if (isEdicao) {
-        showToast('Título Atualizado!', 'success');
-    } else {
-        if (qtdLançamentos > 1) showToast(`${contasGeradas} Títulos gerados!`, 'success');
-        else showToast('Título Salvo!', 'success');
-    }
+    batch.commit().then(() => {
+        fecharModalConta(); 
+        renderFinAbas(tipo === 'RECEITA' ? 'receber' : 'pagar'); 
+        
+        if (isEdicao) {
+            showToast('Título Atualizado!', 'success');
+        } else {
+            if (qtdLançamentos > 1) showToast(`${contasGeradas} Títulos gerados!`, 'success');
+            else showToast('Título Salvo!', 'success');
+        }
+    }).catch(e => {
+        console.error(e);
+        showToast('Erro ao salvar conta.', 'error');
+    });
 }
 
 function excluirTitulo(id) { 
     abrirConfirmacao('Excluir Título', 'Deseja apagar permanentemente?', () => { 
-        const tit = db.financeiro.find(f => f.id === id); 
-        db.financeiro = db.financeiro.filter(f => f.id !== id); 
-        saveDB(); 
-        if(tit) renderFinAbas(tit.tipo === 'RECEITA' ? 'receber' : 'pagar'); 
-        showToast('Excluído!'); 
+        const tit = db.financeiro.find(f => String(f.id) === String(id)); 
+        firestore.collection('financeiro').doc(String(id)).delete().then(() => {
+            if(tit) renderFinAbas(tit.tipo === 'RECEITA' ? 'receber' : 'pagar'); 
+            showToast('Excluído!'); 
+        }).catch(e => { console.error(e); showToast('Erro', 'error'); });
     }); 
 }
 
-function estornarTitulo(id) {
-    const f = db.financeiro.find(x => x.id === id);
+async function estornarTitulo(id) {
+    const f = db.financeiro.find(x => String(x.id) === String(id));
     if (!f || f.status !== 'PAGO') return;
 
-    abrirConfirmacao('Estornar Pagamento', 'Voltará para PENDENTE e reverterá o caixa.', () => {
+    abrirConfirmacao('Estornar Pagamento', 'Voltará para PENDENTE e reverterá o caixa.', async () => {
+        const batch = firestore.batch();
         if (f.metodoPagamento === 'Dinheiro') {
+            let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
+            let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
+            let cxSaldoNovo = cxAtual.saldo || 0;
+            
             if (f.tipo === 'RECEITA') {
-                db.caixa.saldo -= f.valorPago;
-                db.caixa.historico.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno: ${f.pessoa}`, valor: f.valorPago });
+                cxSaldoNovo -= f.valorPago;
+                cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno: ${f.pessoa}`, valor: f.valorPago });
             } else {
-                db.caixa.saldo += f.valorPago;
-                db.caixa.historico.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Estorno: ${f.pessoa}`, valor: f.valorPago });
+                cxSaldoNovo += f.valorPago;
+                cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Estorno: ${f.pessoa}`, valor: f.valorPago });
             }
+            batch.set(firestore.collection('fc_moveis').doc('caixa'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
         }
-        f.status = 'PENDENTE'; f.dataPagamento = ''; f.metodoPagamento = ''; f.ultimaAlteracao = Date.now();
-        saveDB(); renderFinAbas(f.tipo === 'RECEITA' ? 'receber' : 'pagar'); showToast('Estornado!', 'success');
+        
+        const finRef = firestore.collection('financeiro').doc(String(id));
+        batch.update(finRef, { status: 'PENDENTE', dataPagamento: '', metodoPagamento: '', ultimaAlteracao: Date.now() });
+        
+        try {
+            await batch.commit();
+            renderFinAbas(f.tipo === 'RECEITA' ? 'receber' : 'pagar'); showToast('Estornado!', 'success');
+        } catch(e) { console.error(e); showToast('Erro', 'error'); }
     });
 }
 
@@ -604,9 +735,9 @@ function abrirModalRenegociacao(id) {
 }
 function fecharModalRenegociacao() { document.getElementById('modal-renegociacao').classList.add('hidden'); }
 
-function confirmarRenegociacao() {
+async function confirmarRenegociacao() {
     const id = parseInt(document.getElementById('reneg-id').value);
-    const fOriginal = db.financeiro.find(x => x.id === id);
+    const fOriginal = db.financeiro.find(x => String(x.id) === String(id));
     if (!fOriginal) return;
 
     const qtdParcelas = parseInt(document.getElementById('reneg-qtd').value);
@@ -616,14 +747,24 @@ function confirmarRenegociacao() {
     const valorPorParcela = fOriginal.valor / qtdParcelas;
     const dataInicial = new Date(dataInicialStr + 'T12:00:00');
 
-    fOriginal.status = 'RENEGOCIADO';
-    fOriginal.observacao = (fOriginal.observacao || '') + `\nRenegociado em ${qtdParcelas}x.`;
+    const batch = firestore.batch();
+    
+    const finRef = firestore.collection('financeiro').doc(String(id));
+    batch.update(finRef, {
+        status: 'RENEGOCIADO',
+        observacao: (fOriginal.observacao || '') + `\nRenegociado em ${qtdParcelas}x.`
+    });
 
     for (let i = 0; i < qtdParcelas; i++) {
         let novaData = new Date(dataInicial); novaData.setMonth(novaData.getMonth() + i);
-        db.financeiro.unshift({ id: Date.now() + i, tipo: fOriginal.tipo, pessoa: fOriginal.pessoa, ref: `${fOriginal.ref} (Reneg. ${i+1}/${qtdParcelas})`, categoria: fOriginal.categoria, data: novaData.toISOString(), valor: valorPorParcela, status: 'PENDENTE' });
+        const refNova = firestore.collection('financeiro').doc();
+        batch.set(refNova, { tipo: fOriginal.tipo, pessoa: fOriginal.pessoa, ref: `${fOriginal.ref} (Reneg. ${i+1}/${qtdParcelas})`, categoria: fOriginal.categoria, data: novaData.toISOString(), valor: valorPorParcela, status: 'PENDENTE' });
     }
-    saveDB(); fecharModalRenegociacao(); renderFinAbas(fOriginal.tipo === 'RECEITA' ? 'receber' : 'pagar'); showToast('Renegociado!', 'success');
+    
+    try {
+        await batch.commit();
+        fecharModalRenegociacao(); renderFinAbas(fOriginal.tipo === 'RECEITA' ? 'receber' : 'pagar'); showToast('Renegociado!', 'success');
+    } catch(e) { console.error(e); showToast('Erro', 'error'); }
 }
 
 function verDetalhesTitulo(id) {
@@ -641,16 +782,30 @@ function abrirModalBaixa(id) { const f = db.financeiro.find(x => x.id === id); i
 function fecharModalBaixa() { document.getElementById('modal-baixa-conta').classList.add('hidden'); }
 function calcularAcrescimos() { const id = parseInt(document.getElementById('baixa-id').value); const f = db.financeiro.find(x => x.id === id); if(!f) return; const ac = parseFloat(document.getElementById('baixa-acrescimo').value) || 0; const de = parseFloat(document.getElementById('baixa-desconto').value) || 0; const vf = f.valor + ac - de; document.getElementById('baixa-valor-final').innerText = formatMoney(vf); return vf; }
 
-function confirmarBaixa() {
-    const id = parseInt(document.getElementById('baixa-id').value); const f = db.financeiro.find(x => x.id === id); if(!f) return;
+async function confirmarBaixa() {
+    const id = parseInt(document.getElementById('baixa-id').value); const f = db.financeiro.find(x => String(x.id) === String(id)); if(!f) return;
     const vf = calcularAcrescimos(); const metodo = document.getElementById('baixa-metodo').value;
+    const batch = firestore.batch();
+    
     if(metodo === 'Dinheiro') {
-        if(db.caixa.status !== 'ABERTO') return showToast('Abra o Caixa Físico primeiro!', 'error');
-        if(f.tipo === 'RECEITA') { db.caixa.saldo += vf; db.caixa.historico.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Recbto. Título: ${f.pessoa}`, valor: vf }); } 
-        else { if(vf > db.caixa.saldo) return showToast('Saldo do Caixa insuficiente!', 'error'); db.caixa.saldo -= vf; db.caixa.historico.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Pgto. Título: ${f.pessoa}`, valor: vf }); }
+        let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
+        let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
+        let cxSaldoNovo = cxAtual.saldo || 0;
+        
+        if(cxAtual.status !== 'ABERTO') return showToast('Abra o Caixa Físico primeiro!', 'error');
+        if(f.tipo === 'RECEITA') { cxSaldoNovo += vf; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Recbto. Título: ${f.pessoa}`, valor: vf }); } 
+        else { if(vf > cxSaldoNovo) return showToast('Saldo do Caixa insuficiente!', 'error'); cxSaldoNovo -= vf; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Pgto. Título: ${f.pessoa}`, valor: vf }); }
+        
+        batch.set(firestore.collection('fc_moveis').doc('caixa'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
     }
-    f.status = 'PAGO'; f.valorPago = vf; f.metodoPagamento = metodo; f.dataPagamento = new Date().toISOString(); f.ultimaAlteracao = Date.now();
-    saveDB(); fecharModalBaixa(); renderFinAbas(f.tipo === 'RECEITA' ? 'receber' : 'pagar'); showToast('Baixado com sucesso!', 'success');
+    
+    const finRef = firestore.collection('financeiro').doc(String(id));
+    batch.update(finRef, { status: 'PAGO', valorPago: vf, metodoPagamento: metodo, dataPagamento: new Date().toISOString(), ultimaAlteracao: Date.now() });
+    
+    try {
+        await batch.commit();
+        fecharModalBaixa(); renderFinAbas(f.tipo === 'RECEITA' ? 'receber' : 'pagar'); showToast('Baixado com sucesso!', 'success');
+    } catch(e) { console.error(e); showToast('Erro', 'error'); }
 }
 
 // ==========================================
@@ -778,10 +933,10 @@ function renderXMLFinanceiro() {
     container.innerHTML = d.financeiroXML.map((f, i) => {
         totalLancado += f.valor;
         return `
-        <div class="flex flex-col sm:flex-row gap-2 items-center bg-white p-2 rounded-lg border border-amber-200 shadow-sm">
-            <input type="text" class="w-full sm:w-1/2 bg-transparent text-xs font-bold text-amber-900 outline-none p-1" value="${f.desc}" onchange="atualizarParcelaXML(${i}, 'desc', this.value)">
-            <input type="date" class="w-full sm:w-auto bg-transparent text-xs text-amber-800 font-bold outline-none p-1" value="${f.venc}" onchange="atualizarParcelaXML(${i}, 'venc', this.value)">
-            <input type="number" step="0.01" class="w-full sm:w-24 text-right bg-transparent text-sm font-black text-red-600 outline-none p-1" value="${f.valor.toFixed(2)}" onchange="atualizarParcelaXML(${i}, 'valor', this.value)">
+        <div class="flex flex-col sm:flex-row gap-2 items-center bg-white dark:bg-slate-800 p-2 rounded-lg border border-amber-200 shadow-sm">
+            <input type="text" class="w-full sm:w-1/2 bg-transparent text-xs font-bold text-amber-900 outline-none p-1 dark:text-white" value="${f.desc}" onchange="atualizarParcelaXML(${i}, 'desc', this.value)">
+            <input type="date" class="w-full sm:w-auto bg-transparent text-xs text-amber-800 font-bold outline-none p-1 dark:text-white" value="${f.venc}" onchange="atualizarParcelaXML(${i}, 'venc', this.value)">
+            <input type="number" step="0.01" class="w-full sm:w-24 text-right bg-transparent text-sm font-black text-red-600 outline-none p-1 dark:text-white" value="${f.valor.toFixed(2)}" onchange="atualizarParcelaXML(${i}, 'valor', this.value)">
             <button onclick="removeParcelaXML(${i})" class="text-red-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash"></i></button>
         </div>
         `;
@@ -813,13 +968,13 @@ function xmlAtualizarValores(i, campo, val) {
     if(campo === 'preco') { p.precoVendaSug = val; if(p.custoFinal>0) p.margemAtual = ((p.precoVendaSug-p.custoFinal)/p.custoFinal)*100; }
     
     document.getElementById('xml-produtos-body').innerHTML = window.tempXMLData.produtosXML.map((p, idx) => `
-        <tr class="border-b border-slate-100 hover:bg-indigo-50">
-            <td class="p-2 text-xs"><input type="text" class="w-full bg-transparent font-bold text-slate-800 outline-none" value="${p.nome}" onchange="tempXMLData.produtosXML[${idx}].nome = this.value"><span class="text-[10px] text-slate-500">EAN: ${p.cEAN || 'S/N'}</span></td>
+        <tr class="border-b border-slate-100 dark:border-slate-700 hover:bg-indigo-50">
+            <td class="p-2 text-xs"><input type="text" class="w-full bg-transparent font-bold text-slate-800 dark:text-slate-100 outline-none dark:text-white" value="${p.nome}" onchange="tempXMLData.produtosXML[${idx}].nome = this.value"><span class="text-[10px] text-slate-500 dark:text-slate-400">EAN: ${p.cEAN || 'S/N'}</span></td>
             <td class="p-2 text-xs text-center"><span class="${p.statusDB.includes('NOVO') ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'} px-2 py-0.5 rounded font-bold">${p.statusDB}</span></td>
             <td class="p-2 text-xs text-center font-bold">${p.qCom}</td>
-            <td class="p-2 text-xs text-right"><input type="number" step="0.01" class="w-20 bg-white border border-slate-300 rounded p-1 text-right font-bold text-red-600 outline-none" value="${p.custoFinal.toFixed(2)}" onchange="xmlAtualizarValores(${idx}, 'custo', this.value)"></td>
-            <td class="p-2 text-xs text-center"><input type="number" step="0.1" class="w-16 bg-white border border-slate-300 rounded p-1 text-center font-bold text-blue-600 outline-none" value="${p.margemAtual.toFixed(2)}" onchange="xmlAtualizarValores(${idx}, 'margem', this.value)"> %</td>
-            <td class="p-2 text-xs text-right"><input type="number" step="0.01" class="w-24 bg-white border border-slate-300 rounded p-1 text-right font-bold text-emerald-600 outline-none" value="${p.precoVendaSug.toFixed(2)}" onchange="xmlAtualizarValores(${idx}, 'preco', this.value)"></td>
+            <td class="p-2 text-xs text-right"><input type="number" step="0.01" class="w-20 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-right font-bold text-red-600 outline-none dark:text-white" value="${p.custoFinal.toFixed(2)}" onchange="xmlAtualizarValores(${idx}, 'custo', this.value)"></td>
+            <td class="p-2 text-xs text-center"><input type="number" step="0.1" class="w-16 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-center font-bold text-blue-600 outline-none dark:text-white" value="${p.margemAtual.toFixed(2)}" onchange="xmlAtualizarValores(${idx}, 'margem', this.value)"> %</td>
+            <td class="p-2 text-xs text-right"><input type="number" step="0.01" class="w-24 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-right font-bold text-emerald-600 outline-none dark:text-white" value="${p.precoVendaSug.toFixed(2)}" onchange="xmlAtualizarValores(${idx}, 'preco', this.value)"></td>
             <td class="p-2 text-xs text-center"><button onclick="abrirModalProdutoDoXML(${idx})" class="text-indigo-500 bg-indigo-100 p-1.5 rounded"><i class="fa-solid fa-pen-to-square"></i></button></td>
         </tr>`).join('');
 }
@@ -846,13 +1001,13 @@ function renderTelaConferenciaXML() {
     const d = window.tempXMLData; 
     document.getElementById('xml-forn-nome').innerText = d.fornNome; document.getElementById('xml-forn-cnpj').innerText = d.fornCNPJ; document.getElementById('xml-total-nota').innerText = formatMoney(d.totalNF); document.getElementById('rev-nfe').innerText = d.numNF; document.getElementById('rev-data').innerText = d.dataEmissao.split('-').reverse().join('/'); document.getElementById('rev-vprod').innerText = formatMoney(d.produtosXML.reduce((a,b)=>a+b.vTotalItemNaNota,0));
     document.getElementById('xml-produtos-body').innerHTML = d.produtosXML.map((p, i) => `
-        <tr class="border-b border-slate-100 hover:bg-indigo-50">
-            <td class="p-2 text-xs"><input type="text" class="w-full bg-transparent font-bold text-slate-800 outline-none" value="${p.nome}" onchange="tempXMLData.produtosXML[${i}].nome = this.value"><span class="text-[10px] text-slate-500">EAN: ${p.cEAN || 'S/N'}</span></td>
+        <tr class="border-b border-slate-100 dark:border-slate-700 hover:bg-indigo-50">
+            <td class="p-2 text-xs"><input type="text" class="w-full bg-transparent font-bold text-slate-800 dark:text-slate-100 outline-none dark:text-white" value="${p.nome}" onchange="tempXMLData.produtosXML[${i}].nome = this.value"><span class="text-[10px] text-slate-500 dark:text-slate-400">EAN: ${p.cEAN || 'S/N'}</span></td>
             <td class="p-2 text-xs text-center"><span class="${p.statusDB.includes('NOVO') ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'} px-2 py-0.5 rounded font-bold">${p.statusDB}</span></td>
             <td class="p-2 text-xs text-center font-bold">${p.qCom}</td>
-            <td class="p-2 text-xs text-right"><input type="number" step="0.01" class="w-20 bg-white border border-slate-300 rounded p-1 text-right font-bold text-red-600 outline-none" value="${p.custoFinal.toFixed(2)}" onchange="xmlAtualizarValores(${i}, 'custo', this.value)"></td>
-            <td class="p-2 text-xs text-center"><input type="number" step="0.1" class="w-16 bg-white border border-slate-300 rounded p-1 text-center font-bold text-blue-600 outline-none" value="${p.margemAtual.toFixed(2)}" onchange="xmlAtualizarValores(${i}, 'margem', this.value)"> %</td>
-            <td class="p-2 text-xs text-right"><input type="number" step="0.01" class="w-24 bg-white border border-slate-300 rounded p-1 text-right font-bold text-emerald-600 outline-none" value="${p.precoVendaSug.toFixed(2)}" onchange="xmlAtualizarValores(${i}, 'preco', this.value)"></td>
+            <td class="p-2 text-xs text-right"><input type="number" step="0.01" class="w-20 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-right font-bold text-red-600 outline-none dark:text-white" value="${p.custoFinal.toFixed(2)}" onchange="xmlAtualizarValores(${i}, 'custo', this.value)"></td>
+            <td class="p-2 text-xs text-center"><input type="number" step="0.1" class="w-16 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-center font-bold text-blue-600 outline-none dark:text-white" value="${p.margemAtual.toFixed(2)}" onchange="xmlAtualizarValores(${i}, 'margem', this.value)"> %</td>
+            <td class="p-2 text-xs text-right"><input type="number" step="0.01" class="w-24 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-right font-bold text-emerald-600 outline-none dark:text-white" value="${p.precoVendaSug.toFixed(2)}" onchange="xmlAtualizarValores(${i}, 'preco', this.value)"></td>
             <td class="p-2 text-xs text-center"><button onclick="abrirModalProdutoDoXML(${i})" class="text-indigo-500 bg-indigo-100 p-1.5 rounded"><i class="fa-solid fa-pen-to-square"></i></button></td>
         </tr>`).join('');
     renderXMLFinanceiro(); 
@@ -860,27 +1015,42 @@ function renderTelaConferenciaXML() {
 
 function fecharModalXML() { document.getElementById('modal-conferencia-xml').classList.add('hidden'); window.tempXMLData = null; }
 
-function salvarXMLConferido() {
+async function salvarXMLConferido() {
     const data = window.tempXMLData; let totalQtd = 0;
+    const batch = firestore.batch();
+
     let forn = db.fornecedores.find(f => f.doc === data.fornCNPJ || f.cnpj === data.fornCNPJ);
-    if(!forn) { db.fornecedores.push({ id: Date.now(), nome: data.fornNome, doc: data.fornCNPJ, cnpj: data.fornCNPJ, ie: '', wpp: '', email: '', contato: '', cep: '', rua: '', numero: '', bairro: '', cidade: '', condicoes: '', produtos: '' }); }
+    if(!forn) { 
+        const fornRef = firestore.collection('fornecedores').doc();
+        batch.set(fornRef, { nome: data.fornNome, doc: data.fornCNPJ, cnpj: data.fornCNPJ, ie: '', wpp: '', email: '', contato: '', cep: '', rua: '', numero: '', bairro: '', cidade: '', condicoes: '', produtos: '' });
+    }
     
     data.produtosXML.forEach(p => {
         let idProd = p.idMatch;
+        let pDB = null;
         if ((p.statusDB === 'NOVO' || p.statusDB.includes('CADASTRADO')) && !idProd) {
-            idProd = Date.now() + Math.floor(Math.random() * 1000);
-            db.produtos.push({ id: idProd, ean: p.cEAN, nome: p.nome, categoria: 'Geral', marca: data.fornNome, custo: p.custoFinal, margem: p.margemAtual, preco: p.precoVendaSug, estoque: p.qCom, min: 5, foto: '', ativo: true });
+            idProd = String(Date.now() + Math.floor(Math.random() * 1000));
+            pDB = { id: idProd, ean: p.cEAN, nome: p.nome, categoria: 'Geral', marca: data.fornNome, custo: p.custoFinal, margem: p.margemAtual, preco: p.precoVendaSug, estoque: p.qCom, min: 5, foto: '', ativo: true };
+            const prodRef = firestore.collection('produtos').doc(idProd);
+            batch.set(prodRef, pDB);
         } else { 
-            let pDB = db.produtos.find(x => x.id === idProd); 
-            if (pDB) { pDB.estoque += p.qCom; pDB.custo = p.custoFinal; pDB.margem = p.margemAtual; pDB.preco = p.precoVendaSug; pDB.nome = p.nome; pDB.ativo = true; } 
+            pDB = db.produtos.find(x => String(x.id) === String(idProd)); 
+            if (pDB) { 
+                pDB.estoque += p.qCom; pDB.custo = p.custoFinal; pDB.margem = p.margemAtual; pDB.preco = p.precoVendaSug; pDB.nome = p.nome; pDB.ativo = true;
+                const prodRef = firestore.collection('produtos').doc(String(idProd));
+                batch.update(prodRef, { estoque: pDB.estoque, custo: pDB.custo, margem: pDB.margem, preco: pDB.preco, nome: pDB.nome, ativo: true });
+            } 
         }
         p.idMatch = idProd; // Garante a rastreabilidade pro Relatório de Evolução
-        totalQtd += p.qCom; salvarKardex(`NF-e ${data.numNF} ${data.fornNome}`, idProd, p.nome, p.qCom, 'ENTRADA XML');
+        totalQtd += p.qCom; 
+        const kRef = firestore.collection('movimentacoes').doc();
+        batch.set(kRef, { data: new Date().toISOString(), ref: `NF-e ${data.numNF} ${data.fornNome}`, produtoId: idProd, produtoNome: p.nome, qtd: p.qCom, tipo: 'ENTRADA XML' });
+        
         p.custoUnitOriginal = p.qCom > 0 ? (p.vTotalItemNaNota / p.qCom) : 0;
     });
 
-    db.compras.unshift({ 
-        id: Date.now(), 
+    const compraRef = firestore.collection('compras').doc();
+    batch.set(compraRef, { 
         numeroNF: data.numNF, 
         data: new Date().toISOString(), 
         fornecedor: data.fornNome, 
@@ -893,11 +1063,15 @@ function salvarXMLConferido() {
     
     data.financeiroXML.forEach((f, idx) => {
         if(f.valor > 0) {
-            db.financeiro.unshift({ id: Date.now() + 1 + idx, ref: f.desc, data: new Date(f.venc + 'T12:00:00').toISOString(), pessoa: data.fornNome, wpp: '', valor: f.valor, status: 'PENDENTE', tipo: 'DESPESA', categoria: 'Fornecedores / Compras' });
+            const finRef = firestore.collection('financeiro').doc();
+            batch.set(finRef, { ref: f.desc, data: new Date(f.venc + 'T12:00:00').toISOString(), pessoa: data.fornNome, wpp: '', valor: f.valor, status: 'PENDENTE', tipo: 'DESPESA', categoria: 'Fornecedores / Compras' });
         }
     });
 
-    saveDB(); fecharModalXML(); renderComprasHist(); renderFinAbas('pagar'); showToast('Entrada de XML Concluída!', 'success');
+    try {
+        await batch.commit();
+        fecharModalXML(); renderComprasHist(); renderFinAbas('pagar'); showToast('Entrada de XML Concluída!', 'success');
+    } catch(err) { console.error(err); showToast('Erro ao importar XML.', 'error'); }
 }
 
 // ==========================================
@@ -1005,13 +1179,13 @@ function renderTabelaCompraManual() {
     tbody.innerHTML = compraManualItens.map((item, i) => `
         <tr>
             <td class="p-2 md:p-3">
-                <select class="w-full bg-white border border-slate-300 p-2 rounded outline-none focus:border-emerald-500 text-xs font-bold text-slate-700" onchange="atualizarLinhaCompraManual(${i}, 'prodId', this.value)">
+                <select class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded outline-none focus:border-emerald-500 text-xs font-bold text-slate-700 dark:text-slate-200 dark:text-white" onchange="atualizarLinhaCompraManual(${i}, 'prodId', this.value)">
                     ${prodsOptions.replace(`value="${item.prodId}"`, `value="${item.prodId}" selected`)}
                 </select>
             </td>
-            <td class="p-2 md:p-3"><input type="number" min="0.01" step="0.01" class="w-full text-center bg-white border border-slate-300 p-2 rounded outline-none focus:border-emerald-500 text-xs font-bold" value="${item.qtd}" onchange="atualizarLinhaCompraManual(${i}, 'qtd', this.value)"></td>
-            <td class="p-2 md:p-3"><input type="number" min="0" step="0.01" class="w-full text-right bg-white border border-slate-300 p-2 rounded outline-none focus:border-emerald-500 text-xs font-bold" value="${item.custoUnit.toFixed(2)}" onchange="atualizarLinhaCompraManual(${i}, 'custoUnit', this.value)"></td>
-            <td class="p-2 md:p-3 text-right font-bold text-slate-700">R$ ${(item.qtd * item.custoUnit).toFixed(2).replace('.',',')}</td>
+            <td class="p-2 md:p-3"><input type="number" min="0.01" step="0.01" class="w-full text-center bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded outline-none focus:border-emerald-500 text-xs font-bold dark:text-white" value="${item.qtd}" onchange="atualizarLinhaCompraManual(${i}, 'qtd', this.value)"></td>
+            <td class="p-2 md:p-3"><input type="number" min="0" step="0.01" class="w-full text-right bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded outline-none focus:border-emerald-500 text-xs font-bold dark:text-white" value="${item.custoUnit.toFixed(2)}" onchange="atualizarLinhaCompraManual(${i}, 'custoUnit', this.value)"></td>
+            <td class="p-2 md:p-3 text-right font-bold text-slate-700 dark:text-slate-200">R$ ${(item.qtd * item.custoUnit).toFixed(2).replace('.',',')}</td>
             <td class="p-2 md:p-3 text-center"><button onclick="removerLinhaCompraManual(${i})" class="text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button></td>
         </tr>
     `).join('');
@@ -1028,7 +1202,7 @@ function calcularTotaisCompraManual() {
     return { totalProdutos, frete, totalGeral };
 }
 
-function salvarCompraManual() {
+async function salvarCompraManual() {
     const idEdit = document.getElementById('compra-manual-id').value;
     const isEdicao = !!idEdit;
 
@@ -1048,6 +1222,8 @@ function salvarCompraManual() {
         if(!compraManualItens[i].prodId) return showToast("Selecione os produtos em todas as linhas!", "error");
     }
 
+    const batch = firestore.batch();
+
     if (isEdicao) {
         const cAntiga = db.compras.find(x => String(x.id) === String(idEdit));
         if (cAntiga) {
@@ -1057,13 +1233,22 @@ function salvarCompraManual() {
                         const pDB = db.produtos.find(x => String(x.id) === String(item.idMatch));
                         if (pDB) {
                             pDB.estoque -= item.qCom;
-                            salvarKardex(`Estorno Edição Compra ${cAntiga.numeroNF}`, pDB.id, pDB.nome, -item.qCom, 'ESTORNO COMPRA');
+                            batch.update(firestore.collection('produtos').doc(String(pDB.id)), { estoque: pDB.estoque });
+                            const kRef = firestore.collection('movimentacoes').doc();
+                            batch.set(kRef, { data: new Date().toISOString(), ref: `Estorno Edição Compra ${cAntiga.numeroNF}`, produtoId: pDB.id, produtoNome: pDB.nome, qtd: -item.qCom, tipo: 'ESTORNO COMPRA' });
                         }
                     }
                 });
             }
-            db.financeiro = db.financeiro.filter(f => !(f.tipo === 'DESPESA' && f.ref && String(f.ref).includes(cAntiga.numeroNF) && cAntiga.numeroNF !== 'S/N'));
-            db.compras = db.compras.filter(x => String(x.id) !== String(idEdit));
+            try {
+                const snapFin = await firestore.collection('financeiro').where('tipo', '==', 'DESPESA').get();
+                snapFin.docs.forEach(doc => {
+                    const finData = doc.data();
+                    if (finData.ref && String(finData.ref).includes(cAntiga.numeroNF) && cAntiga.numeroNF !== 'S/N') {
+                        batch.delete(doc.ref);
+                    }
+                });
+            } catch(e) { console.error('Erro ao buscar financeiro atrelado:', e); }
         }
     }
 
@@ -1083,53 +1268,41 @@ function salvarCompraManual() {
         pDB.preco = custoRateadoFinal * (1 + ((pDB.margem || 0) / 100));
         
         totalQtd += item.qtd;
-        salvarKardex(`Compra Man. ${refPed} (${fornecedorFinal})`, pDB.id, pDB.nome, item.qtd, 'ENTRADA COMPRA');
+        
+        batch.update(firestore.collection('produtos').doc(String(pDB.id)), {
+            estoque: pDB.estoque, custo: pDB.custo, preco: pDB.preco
+        });
+        
+        const kRef = firestore.collection('movimentacoes').doc();
+        batch.set(kRef, { data: new Date().toISOString(), ref: `Compra Man. ${refPed} (${fornecedorFinal})`, produtoId: pDB.id, produtoNome: pDB.nome, qtd: item.qtd, tipo: 'ENTRADA COMPRA' });
         
         itensRateadosParaSalvar.push({
-            idMatch: pDB.id,
-            nome: pDB.nome,
-            qCom: item.qtd,
-            custoFinal: custoRateadoFinal,
-            vTotalItemNaNota: (item.qtd * item.custoUnit) + freteRateado,
-            custoUnitOriginal: item.custoUnit 
+            idMatch: pDB.id, nome: pDB.nome, qCom: item.qtd, custoFinal: custoRateadoFinal, vTotalItemNaNota: (item.qtd * item.custoUnit) + freteRateado, custoUnitOriginal: item.custoUnit 
         });
     });
 
     const idCompra = isEdicao ? idEdit : Date.now();
-    db.compras.unshift({ 
-        id: idCompra, 
-        numeroNF: refPed, 
-        data: new Date(dataCompra + 'T12:00:00').toISOString(), 
-        fornecedor: fornecedorFinal, 
-        cnpj: '', 
-        totalNF: totais.totalGeral, 
-        freteExtra: totais.frete,
-        qtdTotal: totalQtd, 
-        itens: itensRateadosParaSalvar 
-    });
+    const compraRef = firestore.collection('compras').doc(String(idCompra));
+    batch.set(compraRef, { 
+        id: idCompra, numeroNF: refPed, data: new Date(dataCompra + 'T12:00:00').toISOString(), fornecedor: fornecedorFinal, cnpj: '', 
+        totalNF: totais.totalGeral, freteExtra: totais.frete, qtdTotal: totalQtd, itens: itensRateadosParaSalvar 
+    }, { merge: true });
 
     if(document.getElementById('compra-manual-gerar-financeiro').checked && !isEdicao) {
-        db.financeiro.unshift({ 
-            id: Date.now() + 10, 
-            ref: `Compra: ${refPed}`, 
-            data: new Date(dataCompra + 'T12:00:00').toISOString(), 
-            pessoa: fornecedorFinal, 
-            valor: totais.totalGeral, 
-            status: 'PENDENTE', 
-            tipo: 'DESPESA', 
-            categoria: 'Fornecedores / Compras' 
-        });
+        const finRef = firestore.collection('financeiro').doc();
+        batch.set(finRef, { ref: `Compra: ${refPed}`, data: new Date(dataCompra + 'T12:00:00').toISOString(), pessoa: fornecedorFinal, valor: totais.totalGeral, status: 'PENDENTE', tipo: 'DESPESA', categoria: 'Fornecedores / Compras' });
     }
 
     if(fornAvulso && !db.fornecedores.find(f => f.nome.toLowerCase() === fornAvulso.toLowerCase())) {
-        db.fornecedores.push({ id: Date.now(), nome: fornAvulso, doc: '', cnpj: '', telefone: '' });
+        const fornRef = firestore.collection('fornecedores').doc();
+        batch.set(fornRef, { nome: fornAvulso, doc: '', cnpj: '', telefone: '' });
     }
 
-    saveDB();
-    fecharModalCompraManual();
-    renderComprasHist();
-    renderFinAbas('pagar');
-    showToast(isEdicao ? "Compra atualizada com sucesso!" : "Compra Manual lançada com sucesso!", "success");
+    try {
+        await batch.commit();
+        fecharModalCompraManual(); renderComprasHist(); renderFinAbas('pagar');
+        showToast(isEdicao ? "Compra atualizada com sucesso!" : "Compra Manual lançada com sucesso!", "success");
+    } catch(err) { console.error(err); showToast('Erro', 'error'); }
 }
 
 function renderComprasHist() {
@@ -1163,10 +1336,10 @@ function renderComprasHist() {
         const badge = isManual === 'MANUAL' ? '<span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold">MANUAL</span>' : '<span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-[10px] font-bold">XML NF-e</span>';
         
         return `
-        <tr class="hover:bg-slate-50 border-b border-slate-100">
+        <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
             <td class="p-4 text-xs">${formatData(c.data).split(' ')[0]}</td>
-            <td class="p-4 font-bold text-slate-800">${c.fornecedor}</td>
-            <td class="p-4 text-center font-mono text-xs text-slate-500">${c.numeroNF || '-'}</td>
+            <td class="p-4 font-bold text-slate-800 dark:text-slate-100">${c.fornecedor}</td>
+            <td class="p-4 text-center font-mono text-xs text-slate-500 dark:text-slate-400">${c.numeroNF || '-'}</td>
             <td class="p-4 text-center">${badge}</td>
             <td class="p-4 text-right font-bold text-indigo-600">${formatMoney(c.totalNF)}</td>
             <td class="p-4 text-center flex items-center justify-center gap-2 print:hidden">
@@ -1175,7 +1348,7 @@ function renderComprasHist() {
                 <button onclick="excluirNF('${c.id}')" class="text-red-500 hover:text-red-700 p-2" title="Excluir"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
-    }).join('') || '<tr><td colspan="6" class="p-6 text-center text-slate-500">Nenhuma compra encontrada no período.</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhuma compra encontrada no período.</td></tr>';
 
     const totalEl = document.getElementById('compras-total-filtros');
     if (totalEl) totalEl.innerText = `Total Gasto: ${formatMoney(totalCompras)}`;
@@ -1183,8 +1356,9 @@ function renderComprasHist() {
 
 function excluirNF(id) { 
     abrirConfirmacao('Excluir Nota / Compra', 'Atenção: Não reverte o estoque nem o financeiro.', () => { 
-        db.compras = db.compras.filter(c => String(c.id) !== String(id)); 
-        saveDB(); renderComprasHist(); showToast('Compra excluída!'); 
+        firestore.collection('compras').doc(String(id)).delete().then(() => {
+            renderComprasHist(); showToast('Compra excluída!'); 
+        }).catch(e => { console.error(e); showToast('Erro ao excluir NF.', 'error'); });
     }); 
 }
 
@@ -1196,7 +1370,7 @@ function verDetalhesNF(id) {
     const nfNumEl = document.getElementById('det-nf-num');
     if(nfNumEl) nfNumEl.innerText = c.numeroNF || 'S/N';
     document.getElementById('det-nf-total').innerText = formatMoney(c.totalNF); 
-    document.getElementById('det-nf-itens').innerHTML = c.itens.map(i => `<tr class="border-b border-slate-100"><td class="p-3 text-xs">${i.nome}</td><td class="p-3 text-xs text-center font-bold">${i.qCom}</td><td class="p-3 text-xs text-right font-bold text-emerald-600">${formatMoney(i.custoFinal)}</td></tr>`).join(''); 
+    document.getElementById('det-nf-itens').innerHTML = c.itens.map(i => `<tr class="border-b border-slate-100 dark:border-slate-700"><td class="p-3 text-xs">${i.nome}</td><td class="p-3 text-xs text-center font-bold">${i.qCom}</td><td class="p-3 text-xs text-right font-bold text-emerald-600">${formatMoney(i.custoFinal)}</td></tr>`).join(''); 
     document.getElementById('modal-detalhes-nf').classList.remove('hidden'); 
 }
 function fecharModalDetalhesNF() { document.getElementById('modal-detalhes-nf').classList.add('hidden'); }
@@ -1277,7 +1451,7 @@ function renderEvolucaoCustos() {
     const tbody = document.getElementById('tabela-evolucao-custos');
     
     if(!prodId) {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500">Selecione um produto acima para ver o histórico.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500 dark:text-slate-400">Selecione um produto acima para ver o histórico.</td></tr>';
         return;
     }
 
@@ -1313,7 +1487,7 @@ function renderEvolucaoCustos() {
     historico.reverse();
 
     if (historico.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500">Nenhuma compra registrada para este produto.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500 dark:text-slate-400">Nenhuma compra registrada para este produto.</td></tr>';
         return;
     }
 
@@ -1330,10 +1504,10 @@ function renderEvolucaoCustos() {
         }
 
         return `
-        <tr class="hover:bg-slate-50 border-b border-slate-100">
-            <td class="p-3 text-xs text-slate-500">${formatData(h.data).split(' ')[0]}</td>
-            <td class="p-3 font-bold text-slate-700">${h.fornecedor} <br><span class="font-normal text-[10px] text-slate-400">NF/Ref: ${h.ref === 'S/N' ? 'Sem NF' : h.ref}</span></td>
-            <td class="p-3 text-center font-bold text-slate-600">${h.qtd} un</td>
+        <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
+            <td class="p-3 text-xs text-slate-500 dark:text-slate-400">${formatData(h.data).split(' ')[0]}</td>
+            <td class="p-3 font-bold text-slate-700 dark:text-slate-200">${h.fornecedor} <br><span class="font-normal text-[10px] text-slate-400">NF/Ref: ${h.ref === 'S/N' ? 'Sem NF' : h.ref}</span></td>
+            <td class="p-3 text-center font-bold text-slate-600 dark:text-slate-300">${h.qtd} un</td>
             <td class="p-3 text-right font-black text-indigo-600">${formatMoney(h.custo)}</td>
             <td class="p-3 text-right">${variacaoHtml}</td>
         </tr>`;

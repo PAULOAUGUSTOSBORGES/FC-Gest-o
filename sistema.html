@@ -4,33 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configurações do Sistema</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind = tailwind || {};
+        tailwind.config = { darkMode: 'class' };
+        (function(){
+            document.documentElement.classList.add('dark');
+        })();
+    </script>
+<script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    
-    <!-- Lógica imediata para evitar tela branca antes do Modo Escuro carregar -->
-    <script>
-        try {
-            const tempDb = JSON.parse(localStorage.getItem('fc_moveis_db')) || {};
-            let temaInit = (tempDb.config && tempDb.config.tema) ? tempDb.config.tema : 'claro';
-            if (temaInit === 'auto') {
-                temaInit = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro';
-            }
-            if(temaInit === 'escuro') {
-                document.documentElement.classList.add('tema-escuro');
-            }
-        } catch(e) {}
-    </script>
-    <style>
-        .tema-escuro { filter: invert(0.92) hue-rotate(180deg); background-color: #111; }
-        .tema-escuro img, .tema-escuro video, .tema-escuro iframe { filter: invert(1) hue-rotate(180deg); }
-        /* Trava que mantém o Menu Lateral Cinza Escuro */
-        .tema-escuro aside { filter: invert(1) hue-rotate(180deg); }
-        .tema-escuro aside img { filter: none !important; }
-    </style>
 </head>
-<body class="flex h-screen text-slate-800 overflow-hidden bg-slate-50">
+<body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
     <div id="toast-container"></div>
     
@@ -42,7 +28,7 @@
             <div class="p-5 flex items-center justify-between gap-3 border-b border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors" onclick="window.location.href='index.html'">
                 <div class="flex items-center gap-3 pointer-events-none">
                     <!-- Motor que puxa a Logo -->
-                    <img id="menu-logo" src="" class="w-10 h-10 rounded-lg object-cover hidden bg-white shadow-lg">
+                    <img id="menu-logo" src="" class="w-10 h-10 rounded-lg object-cover hidden bg-white dark:bg-slate-800 shadow-lg">
                     <div id="menu-logo-placeholder" class="w-10 h-10 bg-slate-800 border border-slate-600 rounded-lg flex items-center justify-center text-slate-400 text-xl shadow-lg"><i class="fa-solid fa-store"></i></div>
                     
                     <div>
@@ -55,26 +41,26 @@
             </div>
             
             <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1 custom-scrollbar">
-                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase mt-2 mb-1">Visão Geral</p>
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-2 mb-1">Visão Geral</p>
                 <a href="index.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-chart-pie w-5 text-center"></i> Dashboard</a>
                 
-                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase mt-4 mb-1">Operação</p>
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Operação</p>
                 <a href="operacao.html?view=pdv" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-cash-register w-5 text-center"></i> Frente de Caixa (PDV)</a>
                 <a href="operacao.html?view=vendas" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-receipt w-5 text-center"></i> Histórico Vendas/Serviços</a>
                 <a href="operacao.html?view=orcamentos" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-file-invoice w-5 text-center"></i> Meus Orçamentos</a>
                 
-                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase mt-4 mb-1">Cadastros</p>
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Cadastros</p>
                 <a href="cadastro.html?view=produtos" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-boxes-stacked w-5 text-center"></i> Produtos & Serviços</a>
                 <a href="cadastro.html?view=estoque" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-pallet w-5 text-center"></i> Estoque & Kardex</a>
                 <a href="cadastro.html?view=clientes" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-users w-5 text-center"></i> Clientes</a>
                 <a href="cadastro.html?view=fornecedores" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-truck w-5 text-center"></i> Fornecedores</a>
                 
-                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase mt-4 mb-1">Gestão</p>
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
                 <a href="gestao.html?view=financeiro" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Financeiro & Caixa</a>
                 <a href="gestao.html?view=compras" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & NF-e XML</a>
                 <a href="gestao.html?view=relatorios" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
                 
-                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase mt-4 mb-1">Sistema</p>
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Sistema</p>
                 <a href="sistema.html" class="nav-btn bg-blue-600 text-white w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"><i class="fa-solid fa-gear w-5 text-center"></i> Configurações</a>
             </nav>
             <div class="p-4 border-t border-slate-800">
@@ -84,67 +70,54 @@
 
         <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
-            <header class="bg-white h-16 border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
+            <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
                 <div class="flex items-center gap-3">
-                    <button onclick="toggleMenu()" class="md:hidden text-slate-600 hover:text-blue-600 p-2"><i class="fa-solid fa-bars text-xl"></i></button>
-                    <h2 class="text-lg md:text-xl font-bold text-slate-800 truncate" id="header-title">Configurações Gerais</h2>
+                    <button onclick="toggleMenu()" class="md:hidden text-slate-600 dark:text-slate-300 hover:text-blue-600 p-2"><i class="fa-solid fa-bars text-xl"></i></button>
+                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate" id="header-title">Configurações Gerais</h2>
                 </div>
             </header>
 
             <div class="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth custom-scrollbar w-full relative">
                 <div class="max-w-4xl mx-auto space-y-6">
 
-                    <!-- APARÊNCIA DO SISTEMA -->
-                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 border-b border-slate-100 pb-3"><i class="fa-solid fa-palette text-blue-600"></i> Aparência do Sistema</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="text-xs font-bold text-slate-500 mb-1.5 block uppercase tracking-wider">Tema do Sistema</label>
-                                <select id="sys-tema" class="w-full bg-slate-50 border border-slate-300 p-2.5 rounded-lg text-sm font-bold text-slate-700 outline-none focus:border-blue-500">
-                                    <option value="claro">Modo Claro (Fixo)</option>
-                                    <option value="escuro">Modo Escuro (Fixo)</option>
-                                    <option value="auto">Automático (Puxar do Sistema/Celular)</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- APARÊNCIA DO SISTEMA REMOVIDA - MODO ESCURO FORÇADO -->
 
                     <!-- DADOS DA EMPRESA COM BUSCA DE CNPJ -->
-                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 border-b border-slate-100 pb-3"><i class="fa-solid fa-building text-blue-600"></i> Identidade da sua Empresa (Sai nos Recibos e Contratos)</h3>
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3"><i class="fa-solid fa-building text-blue-600"></i> Identidade da sua Empresa (Sai nos Recibos e Contratos)</h3>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label class="text-xs font-bold text-slate-500 mb-1.5 block">CNPJ (Busca Automática na Receita)</label>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">CNPJ (Busca Automática na Receita)</label>
                                 <div class="relative">
-                                    <input type="text" id="emp-cnpj" oninput="formatarEBuscarCNPJ(this)" maxlength="18" class="w-full bg-slate-50 border border-slate-300 p-2.5 rounded-lg text-sm font-bold text-blue-700 outline-none focus:border-blue-500" placeholder="Ex: 00.000.000/0000-00">
+                                    <input type="text" id="emp-cnpj" oninput="formatarEBuscarCNPJ(this)" maxlength="18" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm font-bold text-blue-700 outline-none focus:border-blue-500 dark:text-white" placeholder="Ex: 00.000.000/0000-00">
                                     <i class="fa-solid fa-magnifying-glass absolute right-3 top-3.5 text-slate-400"></i>
                                 </div>
                             </div>
                             <div>
-                                <label class="text-xs font-bold text-slate-500 mb-1.5 block">Nome da Empresa / Razão Social</label>
-                                <input type="text" id="emp-nome" class="w-full bg-slate-50 border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500" placeholder="Ex: FC Móveis e Interiores">
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Nome da Empresa / Razão Social</label>
+                                <input type="text" id="emp-nome" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" placeholder="Ex: FC Móveis e Interiores">
                             </div>
                             <div>
-                                <label class="text-xs font-bold text-slate-500 mb-1.5 block">Telefone / WhatsApp</label>
-                                <input type="text" id="emp-telefone" class="w-full bg-slate-50 border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500" placeholder="Ex: (62) 9 9999-9999">
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Telefone / WhatsApp</label>
+                                <input type="text" id="emp-telefone" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" placeholder="Ex: (62) 9 9999-9999">
                             </div>
                             <div>
-                                <label class="text-xs font-bold text-slate-500 mb-1.5 block">Endereço Físico (Logradouro, Bairro, CEP, Cidade)</label>
-                                <input type="text" id="emp-endereco" class="w-full bg-slate-50 border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500" placeholder="Ex: Rua X, Jardim Y, Goiânia - GO">
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Endereço Físico (Logradouro, Bairro, CEP, Cidade)</label>
+                                <input type="text" id="emp-endereco" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" placeholder="Ex: Rua X, Jardim Y, Goiânia - GO">
                             </div>
                         </div>
 
                         <div>
-                            <label class="text-xs font-bold text-slate-500 mb-1.5 block">Logo da Empresa</label>
-                            <div class="flex items-center gap-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
-                                <div class="w-20 h-20 bg-white border border-slate-300 rounded-lg flex items-center justify-center overflow-hidden shrink-0">
+                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Logo da Empresa</label>
+                            <div class="flex items-center gap-4 bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                                <div class="w-20 h-20 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg flex items-center justify-center overflow-hidden shrink-0">
                                     <img id="emp-logo-preview" src="" class="w-full h-full object-cover hidden">
                                     <span id="emp-logo-text" class="text-[10px] text-slate-400 font-bold text-center">Sem Logo</span>
                                 </div>
                                 <div class="flex-1">
-                                    <input type="file" id="emp-foto-file" accept="image/*" onchange="processarLogoEmpresa(event)" class="text-xs text-blue-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-100 file:text-blue-700 outline-none w-full">
-                                    <p class="text-[10px] text-slate-500 mt-2">Esta logo sairá no cabeçalho do sistema, orçamentos, recibos e contratos.</p>
+                                    <input type="file" id="emp-foto-file" accept="image/*" onchange="processarLogoEmpresa(event)" class="text-xs text-blue-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-100 file:text-blue-700 outline-none w-full dark:text-white">
+                                    <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-2">Esta logo sairá no cabeçalho do sistema, orçamentos, recibos e contratos.</p>
                                     <input type="hidden" id="emp-logo-base64">
                                 </div>
                             </div>
@@ -152,26 +125,26 @@
                     </div>
 
                     <!-- TAXAS DE CARTÃO -->
-                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 border-b border-slate-100 pb-3"><i class="fa-solid fa-credit-card text-blue-600"></i> Taxas da Maquininha (%)</h3>
-                        <p class="text-xs text-slate-500 mb-4">Insira o percentual exato cobrado pela sua maquininha. O sistema abaterá isso para mostrar seu Lucro Real no histórico.</p>
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3"><i class="fa-solid fa-credit-card text-blue-600"></i> Taxas da Maquininha (%)</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Insira o percentual exato cobrado pela sua maquininha. O sistema abaterá isso para mostrar seu Lucro Real no histórico.</p>
                         
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                            <div class="col-span-2 md:col-span-4"><label class="text-[10px] font-bold text-slate-500 block">Cartão de Débito (%)</label><input type="number" step="0.01" id="tx-deb" class="w-full bg-slate-50 border border-slate-300 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm font-bold text-slate-700"></div>
+                            <div class="col-span-2 md:col-span-4"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Cartão de Débito (%)</label><input type="number" step="0.01" id="tx-deb" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm font-bold text-slate-700 dark:text-slate-200 dark:text-white"></div>
                             
                             <!-- 1x a 12x -->
-                            <div><label class="text-[10px] font-bold text-slate-500 block">Crédito 1x (%)</label><input type="number" step="0.01" id="tx-c1" class="w-full bg-slate-50 border border-slate-300 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 block">Crédito 2x (%)</label><input type="number" step="0.01" id="tx-c2" class="w-full bg-slate-50 border border-slate-300 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 block">Crédito 3x (%)</label><input type="number" step="0.01" id="tx-c3" class="w-full bg-slate-50 border border-slate-300 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 block">Crédito 4x (%)</label><input type="number" step="0.01" id="tx-c4" class="w-full bg-slate-50 border border-slate-300 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 block">Crédito 5x (%)</label><input type="number" step="0.01" id="tx-c5" class="w-full bg-slate-50 border border-slate-300 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 block">Crédito 6x (%)</label><input type="number" step="0.01" id="tx-c6" class="w-full bg-slate-50 border border-slate-300 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 block">Crédito 7x (%)</label><input type="number" step="0.01" id="tx-c7" class="w-full bg-slate-50 border border-slate-300 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 block">Crédito 8x (%)</label><input type="number" step="0.01" id="tx-c8" class="w-full bg-slate-50 border border-slate-300 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 block">Crédito 9x (%)</label><input type="number" step="0.01" id="tx-c9" class="w-full bg-slate-50 border border-slate-300 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 block">Crédito 10x (%)</label><input type="number" step="0.01" id="tx-c10" class="w-full bg-slate-50 border border-slate-300 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 block">Crédito 11x (%)</label><input type="number" step="0.01" id="tx-c11" class="w-full bg-slate-50 border border-slate-300 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 block">Crédito 12x (%)</label><input type="number" step="0.01" id="tx-c12" class="w-full bg-slate-50 border border-slate-300 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 1x (%)</label><input type="number" step="0.01" id="tx-c1" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 2x (%)</label><input type="number" step="0.01" id="tx-c2" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 3x (%)</label><input type="number" step="0.01" id="tx-c3" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 4x (%)</label><input type="number" step="0.01" id="tx-c4" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 5x (%)</label><input type="number" step="0.01" id="tx-c5" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 6x (%)</label><input type="number" step="0.01" id="tx-c6" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 7x (%)</label><input type="number" step="0.01" id="tx-c7" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 8x (%)</label><input type="number" step="0.01" id="tx-c8" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 9x (%)</label><input type="number" step="0.01" id="tx-c9" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 10x (%)</label><input type="number" step="0.01" id="tx-c10" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 11x (%)</label><input type="number" step="0.01" id="tx-c11" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 12x (%)</label><input type="number" step="0.01" id="tx-c12" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
                         </div>
                     </div>
 
@@ -185,9 +158,13 @@
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     
     <script src="global.js"></script>
     <script src="sistema.js"></script>
 </body>
 </html>
+
+
+

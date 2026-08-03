@@ -8,28 +8,36 @@ function showToast(msg, type = 'info') {
     setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 3000);
 }
 
-// Verifica se já está logado e pula a tela de login
-window.onload = () => {
-    if (sessionStorage.getItem('erp_auth_master') === 'true') {
-        window.location.href = 'index.html';
-    }
-}
-
-// Faz a validação e envia para o index
-function fazerLogin() {
+// Faz a validação usando Firebase Auth
+async function fazerLogin() {
     const u = document.getElementById('login-user').value;
     const p = document.getElementById('login-pass').value;
     
-    if(u === 'admin' && p === '123') {
-        // Salva o "crachá" na sessão do navegador
-        sessionStorage.setItem('erp_auth_master', 'true');
+    if(!u || !p) {
+        showToast('Preencha os campos de e-mail e senha!', 'error');
+        return;
+    }
+    
+    try {
+        await firebase.auth().signInWithEmailAndPassword(u, p);
         showToast('Acesso liberado! Redirecionando...', 'success');
-        
-        // Redireciona para o sistema
-        setTimeout(() => {
-            window.location.href = 'index.html';
-        }, 800);
-    } else { 
-        showToast('Credenciais incorretas!', 'error'); 
+        // O redirecionamento será automático via listener no global.js
+    } catch (e) { 
+        if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential' || e.code === 'auth/invalid-login-credentials') {
+            try {
+                // Tenta criar a conta automaticamente se não existir
+                await firebase.auth().createUserWithEmailAndPassword(u, p);
+                showToast('Nova conta criada e acesso liberado!', 'success');
+            } catch (err) {
+                showToast('Erro ao criar conta ou credenciais inválidas!', 'error'); 
+                console.error(err);
+            }
+        } else {
+            showToast('Erro de login: ' + e.message, 'error'); 
+            console.error(e);
+        }
     }
 }
+
+// Inicializa a escuta de sessão para redirecionar automaticamente quando logar
+window.onload = () => { initGlobalData(); };

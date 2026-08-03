@@ -109,6 +109,31 @@ function mudarVisaoLocal(viewId) {
 
 function inicializarOperacao() {
     aplicarIdentidadeVisualNoMenu(); 
+    
+    firestore.collection('produtos').onSnapshot(snap => {
+        db.produtos = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    });
+    firestore.collection('clientes').onSnapshot(snap => {
+        db.clientes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        atualizarListaClientesPDV();
+    });
+    firestore.collection('vendas').onSnapshot(snap => {
+        db.vendas = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const v = document.getElementById('view-vendas');
+        const o = document.getElementById('view-orcamentos');
+        if(v && v.classList.contains('active')) renderVendas();
+        if(o && o.classList.contains('active')) renderOrcamentos();
+    });
+    firestore.collection('fc_moveis').doc('caixa').onSnapshot(doc => {
+        if(doc.exists) db.caixa = doc.data();
+        else db.caixa = { status: 'FECHADO', saldo: 0, historico: [] };
+        const badgeCaixa = document.getElementById('pdv-status-caixa');
+        if (badgeCaixa) prepararPDV();
+    });
+    firestore.collection('financeiro').onSnapshot(snap => {
+        db.financeiro = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    });
+
     const urlParams = new URLSearchParams(window.location.search);
     const view = urlParams.get('view') || 'pdv'; 
     mudarVisaoLocal(view);
@@ -152,16 +177,14 @@ function abrirZoomCart(index) {
 }
 
 function salvarKardex(ref, prodId, prodNome, qtd, tipo) { 
-    if(!db.movimentacoes) db.movimentacoes = []; 
-    db.movimentacoes.unshift({ 
-        id: Date.now() + Math.random(), 
+    firestore.collection('movimentacoes').add({ 
         data: new Date().toISOString(), 
         ref: ref || '', 
         prodId: prodId || '', 
         prodNome: prodNome || 'Produto', 
         qtd: qtd || 0, 
         tipo: tipo || 'AJUSTE' 
-    }); 
+    }).catch(e => console.error("Erro ao salvar kardex:", e));
 }
 
 // ==========================================
@@ -204,7 +227,7 @@ function filtrarClientesPDV(termo) {
     }
 
     const divConsumidor = document.createElement('div');
-    divConsumidor.className = 'p-3 hover:bg-slate-100 cursor-pointer border-b border-slate-100 text-sm font-bold text-slate-700 bg-slate-50';
+    divConsumidor.className = 'p-3 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-900';
     divConsumidor.innerHTML = `<i class="fa-solid fa-user text-slate-400 mr-2"></i>Consumidor Final (Padrão)`;
     divConsumidor.onclick = () => {
         document.getElementById('pdv-cliente').value = '0';
@@ -215,8 +238,8 @@ function filtrarClientesPDV(termo) {
 
     filtrados.forEach(c => {
         const div = document.createElement('div');
-        div.className = 'p-3 hover:bg-slate-100 cursor-pointer border-b border-slate-100 text-sm flex flex-col transition-colors';
-        div.innerHTML = `<span class="font-bold text-slate-800">${c.nome}</span><span class="text-[10px] text-slate-500">${c.wpp || c.documento || c.cpfCnpj || 'Sem docs'}</span>`;
+        div.className = 'p-3 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-700 text-sm flex flex-col transition-colors';
+        div.innerHTML = `<span class="font-bold text-slate-800 dark:text-slate-100">${c.nome}</span><span class="text-[10px] text-slate-500 dark:text-slate-400">${c.wpp || c.documento || c.cpfCnpj || 'Sem docs'}</span>`;
         div.onclick = () => {
             document.getElementById('pdv-cliente').value = c.id;
             document.getElementById('pdv-cliente-busca').value = c.nome;
@@ -239,25 +262,26 @@ function fecharModalClienteRapido() {
     document.getElementById('modal-cliente-rapido').classList.add('hidden');
 }
 
-function salvarClienteRapido() {
+async function salvarClienteRapido() {
     const nome = document.getElementById('cli-rapido-nome').value.trim();
     if(!nome) return showToast('Nome do cliente é obrigatório!', 'error');
 
     const novoCliente = {
-        id: Date.now(),
         nome: nome,
         wpp: document.getElementById('cli-rapido-wpp').value.trim(),
         documento: document.getElementById('cli-rapido-doc').value.trim(),
         dataCadastro: new Date().toISOString()
     };
 
-    if(!db.clientes) db.clientes = [];
-    db.clientes.push(novoCliente);
-    saveDB();
-    
-    fecharModalClienteRapido();
-    atualizarListaClientesPDV(novoCliente.id);
-    showToast('Cliente cadastrado e selecionado!', 'success');
+    try {
+        const docRef = await firestore.collection('clientes').add(novoCliente);
+        fecharModalClienteRapido();
+        atualizarListaClientesPDV(docRef.id);
+        showToast('Cliente cadastrado e selecionado!', 'success');
+    } catch(err) {
+        console.error(err);
+        showToast('Erro ao cadastrar cliente.', 'error');
+    }
 }
 
 // ==========================================
@@ -299,7 +323,7 @@ function processarFoto(event) {
     reader.readAsDataURL(file);
 }
 
-function salvarProdutoRapido() {
+async function salvarProdutoRapido() {
     const nomeEl = document.getElementById('prod-nome');
     const precoEl = document.getElementById('prod-preco');
     if(!nomeEl || !precoEl) return showToast('Erro no formulário.', 'error');
@@ -313,17 +337,20 @@ function salvarProdutoRapido() {
     const foto = document.getElementById('prod-foto-base64') ? document.getElementById('prod-foto-base64').value : '';
 
     const p = {
-        id: Date.now(), nome: nome, preco: preco, ean: ean, marca: marca, categoria: 'Geral', unidade: 'Un', custo: custo || 0, margem: 0, estoque: estoque || 0, min: 1, ativo: true, obs: '', foto: foto
+        nome: nome, preco: preco, ean: ean, marca: marca, categoria: 'Geral', unidade: 'Un', custo: custo || 0, margem: 0, estoque: estoque || 0, min: 1, ativo: true, obs: '', foto: foto
     };
 
-    if(!db.produtos) db.produtos = [];
-    db.produtos.push(p); 
-    if(p.estoque > 0) salvarKardex('Estoque Inicial PDV', p.id, p.nome, p.estoque, 'INICIAL'); 
-    
-    saveDB(); 
-    fecharModalProduto(); 
-    processarAdicaoProduto(p); 
-    showToast('Produto cadastrado e adicionado!', 'success');
+    try {
+        const docRef = await firestore.collection('produtos').add(p);
+        p.id = docRef.id;
+        if(p.estoque > 0) salvarKardex('Estoque Inicial PDV', p.id, p.nome, p.estoque, 'INICIAL'); 
+        fecharModalProduto(); 
+        processarAdicaoProduto(p); 
+        showToast('Produto cadastrado e adicionado!', 'success');
+    } catch(err) {
+        console.error(err);
+        showToast('Erro ao cadastrar produto.', 'error');
+    }
 }
 
 // ==========================================
@@ -393,7 +420,7 @@ function printHtmlSeguro(htmlCompleto) {
                 tfoot { display: table-footer-group; }
             </style>
         </head>
-        <body class="bg-white p-4">${htmlCompleto}</body>
+        <body class="bg-white dark:bg-slate-800 p-4">${htmlCompleto}</body>
         </html>
     `);
     doc.close();
@@ -422,44 +449,52 @@ function printAction(type) {
 }
 
 function baixarPDF(areaId, filename) {
-    if (typeof window.html2pdf === 'undefined') { showToast('Biblioteca PDF carregando...', 'error'); return; }
     const element = document.getElementById(areaId); 
     if(!element) return showToast("Erro: Área do PDF não encontrada.", "error");
-    const clone = element.cloneNode(true); 
-    clone.querySelectorAll('.print\\:hidden').forEach(el => el.style.display = 'none'); 
-    
-    clone.classList.remove('hidden');
-    clone.style.display = 'block';
-    clone.style.opacity = '1';
-    clone.style.visibility = 'visible';
 
-    const loadingOverlay = document.createElement('div');
-    loadingOverlay.id = 'pdf-loading-overlay';
-    loadingOverlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.95); z-index: 9999999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center;';
-    loadingOverlay.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="font-size: 3rem; margin-bottom: 1rem;"></i><h2 style="font-size: 1.5rem; font-weight: bold;">Gerando PDF Oficial...</h2><p style="color: #cbd5e1; margin-top: 0.5rem;">Processando documento, aguarde.</p>';
-    document.body.appendChild(loadingOverlay);
-
-    const wrapper = document.createElement('div');
-    wrapper.style.position = 'absolute'; wrapper.style.top = '0'; wrapper.style.left = '0'; wrapper.style.width = '850px'; 
-    wrapper.style.background = '#ffffff'; wrapper.style.zIndex = '999998'; wrapper.style.padding = '20px';
-    wrapper.appendChild(clone); document.body.appendChild(wrapper);
+    const printContent = element.innerHTML; 
     
-    document.body.classList.remove('h-screen', 'overflow-hidden');
-    window.scrollTo(0, 0);
+    const win = window.open('', '_blank');
+    if (!win) {
+        return showToast("O bloqueador de pop-ups bloqueou o PDF. Permita pop-ups neste site.", "error");
+    }
 
-    const opt = { margin: 10, filename: `${filename}_${Date.now()}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, scrollY: 0, windowWidth: 850 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }; 
-    
-    setTimeout(() => {
-        try {
-            html2pdf().set(opt).from(wrapper).save().then(() => { 
-                document.body.classList.add('h-screen', 'overflow-hidden');
-                wrapper.remove(); loadingOverlay.remove(); showToast('PDF gerado com sucesso!', 'success'); 
-            }).catch(err => { 
-                console.error(err); document.body.classList.add('h-screen', 'overflow-hidden');
-                wrapper.remove(); loadingOverlay.remove(); showToast('Erro ao processar imagem do PDF.', 'error'); 
-            }); 
-        } catch(e) { document.body.classList.add('h-screen', 'overflow-hidden'); wrapper.remove(); loadingOverlay.remove(); showToast('Falha na biblioteca de PDF.', 'error'); }
-    }, 500); 
+    win.document.open();
+    win.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>${filename || 'Documento'}</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+            <style>
+                @page { margin: 15mm; size: A4; }
+                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 20px; max-width: 1000px; margin: 0 auto; }
+                .print\\:hidden { display: none !important; }
+                table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
+                tr { page-break-inside: avoid; page-break-after: auto; }
+                thead { display: table-header-group; }
+                tfoot { display: table-footer-group; }
+                
+                @media print {
+                    body { padding: 0; max-width: none; }
+                }
+            </style>
+        </head>
+        <body class="bg-white text-black">
+            ${printContent}
+            
+            <script>
+                // Executa a impressão quando tudo carregar
+                setTimeout(() => {
+                    window.focus();
+                    window.print();
+                }, 1000);
+            </script>
+        </body>
+        </html>
+    `);
+    win.document.close();
 }
 
 function downloadPDF(areaId, filename) { baixarPDF(areaId, filename); }
@@ -636,14 +671,63 @@ function enviarPDFWhatsApp(id) {
         : `Olá, ${primeiroNomeCli}! Tudo bem? Segue em anexo o recibo da sua operação *(Pedido #${numPedStr})* na *${nomeEmpresa}*. Agradecemos a preferência!`;
 
     const filename = isOrcamento ? `Orcamento_${numPedStr}` : `Recibo_Pedido_${numPedStr}`;
+    const wppLink = `https://wa.me/${numLimpo}?text=${encodeURIComponent(mensagem)}`;
     
-    baixarPDF('wpp-pdf-container', filename);
-
-    setTimeout(() => {
-        window.open(`https://wa.me/${numLimpo}?text=${encodeURIComponent(mensagem)}`, '_blank');
-        showToast('PDF salvo! Arraste-o para a conversa no WhatsApp.', 'success');
-        divWhatsApp.remove(); 
-    }, 2500); 
+    // Abre UMA aba com o PDF + botão de WhatsApp (navegador só permite 1 pop-up por clique)
+    const winPDF = window.open('', '_blank');
+    if (!winPDF) {
+        return showToast('Bloqueador de pop-ups! Permita pop-ups neste site.', 'error');
+    }
+    
+    winPDF.document.open();
+    winPDF.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>${filename}</title>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+            <style>
+                @page { margin: 15mm; size: A4; }
+                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 20px; max-width: 900px; margin: 0 auto; }
+                .barra-acoes { 
+                    position: sticky; top: 0; z-index: 100; background: #1e293b; padding: 12px 20px; 
+                    display: flex; gap: 10px; justify-content: center; align-items: center;
+                    margin: -20px -20px 20px -20px; border-radius: 0;
+                }
+                .btn-wpp { 
+                    background: #25D366; color: #fff; border: none; padding: 12px 24px; 
+                    border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; 
+                    display: flex; align-items: center; gap: 8px; text-decoration: none;
+                }
+                .btn-wpp:hover { background: #1ebd5a; }
+                .btn-pdf { 
+                    background: #dc2626; color: #fff; border: none; padding: 12px 24px; 
+                    border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;
+                    display: flex; align-items: center; gap: 8px;
+                }
+                .btn-pdf:hover { background: #b91c1c; }
+                @media print { 
+                    body { padding: 0; max-width: none; }
+                    .barra-acoes { display: none !important; } 
+                }
+            </style>
+        </head>
+        <body>
+            <div class="barra-acoes">
+                <a href="${wppLink}" target="_blank" class="btn-wpp">
+                    <i class="fa-brands fa-whatsapp" style="font-size: 20px;"></i> Abrir WhatsApp
+                </a>
+                <button onclick="window.print()" class="btn-pdf">
+                    <i class="fa-solid fa-file-pdf" style="font-size: 20px;"></i> Salvar PDF
+                </button>
+            </div>
+            ${htmlRecibo}
+        </body>
+        </html>
+    `);
+    winPDF.document.close();
+    
+    showToast('Aba aberta! Use os botões para enviar no WhatsApp e salvar o PDF.', 'success');
 }
 
 function imprimirContratoObj(v) {
@@ -856,11 +940,11 @@ function filtrarProdutosPDV(termo) {
         if(prod.ativo === false) return; 
         
         const div = document.createElement('div'); 
-        div.className = 'p-3 hover:bg-slate-100 cursor-pointer border-b border-slate-100 text-sm flex justify-between items-center transition-colors';
+        div.className = 'p-3 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-700 text-sm flex justify-between items-center transition-colors';
         const precoFormatado = Number(prod.preco || 0).toFixed(2).replace('.', ','); 
         const nomeProd = prod.nome || 'Produto Sem Nome';
         
-        div.innerHTML = `<span class="font-medium text-slate-700">${nomeProd}</span> <span class="font-bold text-emerald-600">R$ ${precoFormatado}</span>`;
+        div.innerHTML = `<span class="font-medium text-slate-700 dark:text-slate-200">${nomeProd}</span> <span class="font-bold text-emerald-600">R$ ${precoFormatado}</span>`;
         div.onclick = () => { 
             processarAdicaoProduto(prod); 
             document.getElementById('pdv-produto-busca').value = ''; 
@@ -909,17 +993,17 @@ function pdvMudarObsItem(i, val) {
 
 function renderCarrinho() {
     document.getElementById('pdv-carrinho-body').innerHTML = cart.map((item, i) => { 
-        const fHtml = item.foto ? `<img src="${item.foto}" onclick="abrirZoomCart(${i})" class="w-10 h-10 rounded object-cover border border-slate-200 mx-auto cursor-zoom-in hover:opacity-80 transition" title="Ver foto em tela cheia">` : `<div class="w-10 h-10 mx-auto rounded bg-slate-100 flex items-center justify-center text-slate-400 text-xs border border-slate-200"><i class="fa-regular fa-image"></i></div>`; 
+        const fHtml = item.foto ? `<img src="${item.foto}" onclick="abrirZoomCart(${i})" class="w-10 h-10 rounded object-cover border border-slate-200 dark:border-slate-700 mx-auto cursor-zoom-in hover:opacity-80 transition" title="Ver foto em tela cheia">` : `<div class="w-10 h-10 mx-auto rounded bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-400 text-xs border border-slate-200 dark:border-slate-700"><i class="fa-regular fa-image"></i></div>`; 
         return `
-        <tr class="hover:bg-slate-50 border-b border-slate-50">
+        <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-50">
             <td class="py-2 text-center">${fHtml}</td>
-            <td class="py-2 text-slate-800 font-medium">
+            <td class="py-2 text-slate-800 dark:text-slate-100 font-medium">
                 ${item.nome}
-                <input type="text" placeholder="Obs do item (cor, lado, etc...)" value="${item.obsVenda || ''}" onchange="pdvMudarObsItem(${i}, this.value)" class="w-full mt-1 bg-white border border-slate-200 rounded px-2 py-1 text-[10px] outline-none focus:border-blue-400 placeholder:text-slate-300">
+                <input type="text" placeholder="Obs do item (cor, lado, etc...)" value="${item.obsVenda || ''}" onchange="pdvMudarObsItem(${i}, this.value)" class="w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-[10px] outline-none focus:border-blue-400 placeholder:text-slate-300 dark:text-white">
             </td>
-            <td class="py-2 text-center"><input type="number" min="1" value="${item.qtd}" onchange="pdvMudarQtd(${i}, this.value)" class="w-14 text-center border border-slate-300 rounded-lg p-1.5 font-bold outline-none"></td>
-            <td class="py-2 text-right hidden sm:table-cell"><input type="number" step="0.01" value="${item.preco}" onchange="pdvMudarPreco(${i}, this.value)" class="w-20 text-right border border-slate-300 rounded-lg p-1.5 font-bold text-slate-600 outline-none focus:border-blue-500"></td>
-            <td class="py-2 text-right font-bold text-slate-800">${formatMoney((item.preco || 0) * (item.qtd || 1))}</td>
+            <td class="py-2 text-center"><input type="number" min="1" value="${item.qtd}" onchange="pdvMudarQtd(${i}, this.value)" class="w-14 text-center border border-slate-300 dark:border-slate-600 rounded-lg p-1.5 font-bold outline-none dark:text-white"></td>
+            <td class="py-2 text-right hidden sm:table-cell"><input type="number" step="0.01" value="${item.preco}" onchange="pdvMudarPreco(${i}, this.value)" class="w-20 text-right border border-slate-300 dark:border-slate-600 rounded-lg p-1.5 font-bold text-slate-600 dark:text-slate-300 outline-none focus:border-blue-500 dark:text-white"></td>
+            <td class="py-2 text-right font-bold text-slate-800 dark:text-slate-100">${formatMoney((item.preco || 0) * (item.qtd || 1))}</td>
             <td class="py-2 text-center"><button onclick="cart.splice(${i},1); renderCarrinho()" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash text-lg"></i></button></td>
         </tr>`;
     }).join(''); 
@@ -1034,12 +1118,12 @@ function atualizarResumoPagamentosVenda() {
             let txtVenc = (pag.metodo === 'Boleto' || pag.metodo === 'Fiado') && pag.vencimentoBase ? `<span class="text-[10px] text-amber-600 block">1º Venc: ${pag.vencimentoBase.split('-').reverse().join('/')}</span>` : ''; 
             
             lista.innerHTML += `
-            <div class="flex justify-between items-center bg-white border border-slate-200 p-2.5 rounded-lg text-xs shadow-sm mb-2">
+            <div class="flex justify-between items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2.5 rounded-lg text-xs shadow-sm mb-2">
                 <div>
                     <span class="font-bold uppercase ${corMetodo}"><i class="fa-solid fa-check mr-1"></i> ${pag.metodo} ${txtParc}</span>${txtVenc}
                 </div>
                 <div class="flex items-center gap-3">
-                    <span class="font-black text-slate-700">R$ ${pag.valor.toFixed(2).replace('.', ',')}</span>
+                    <span class="font-black text-slate-700 dark:text-slate-200">R$ ${pag.valor.toFixed(2).replace('.', ',')}</span>
                     <button onclick="removerPagamentoVenda(${index})" class="text-red-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash"></i></button>
                 </div>
             </div>`; 
@@ -1110,7 +1194,7 @@ function removerPagamentoVenda(index) {
     atualizarResumoPagamentosVenda(); 
 }
 
-function finalizarVendaMultipla() {
+async function finalizarVendaMultipla() {
     const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : 'Venda';
     const isOrcamento = op === 'Orçamento'; 
     const isServico = op === 'Serviço';
@@ -1282,21 +1366,35 @@ function finalizarVendaMultipla() {
     </div>
     `;
 
+    const batch = firestore.batch();
+    
+    // Preparar Venda
+    const vendaRef = isEdicao ? firestore.collection('vendas').doc(String(vendaId)) : firestore.collection('vendas').doc();
+    const idFinalVenda = vendaRef.id;
+
     if (!isOrcamento) { 
         cart.forEach(item => { 
             const p = (db.produtos || []).find(x => String(x.id) === String(item.id)); 
             if(p) { 
-                p.estoque -= item.qtd; 
-                salvarKardex(`${tipoVenda} #${numPedStr}`, p.id, p.nome, -(item.qtd || 1), tipoVenda); 
+                const pRef = firestore.collection('produtos').doc(String(p.id));
+                batch.update(pRef, { estoque: (p.estoque || 0) - item.qtd });
+                
+                const kardexRef = firestore.collection('movimentacoes').doc();
+                batch.set(kardexRef, {
+                    data: new Date().toISOString(),
+                    ref: `${tipoVenda} #${numPedStr}`,
+                    prodId: p.id,
+                    prodNome: p.nome,
+                    qtd: -(item.qtd || 1),
+                    tipo: tipoVenda
+                });
             } 
         }); 
     }
 
-    if(!db.vendas) db.vendas = [];
     const itensLimpados = cart.map(i => { return { id: i.id || '', nome: i.nome || '', preco: i.preco || 0, custo: i.custo || 0, qtd: i.qtd || 1, obsVenda: i.obsVenda || '' }; });
 
     const novaVendaObj = { 
-        id: vendaId, 
         numeroPedido: numeroPedido, 
         data: dataIso, 
         clienteId: cId || '', 
@@ -1320,12 +1418,12 @@ function finalizarVendaMultipla() {
         itens: itensLimpados 
     };
     
-    db.vendas.unshift(novaVendaObj);
+    batch.set(vendaRef, novaVendaObj, { merge: true });
     
     if (!isOrcamento) {
-        if(!db.financeiro) db.financeiro = []; 
-        if(!db.caixa) db.caixa = { status: 'ABERTO', saldo: 0, historico: [] }; 
-        if(!db.caixa.historico) db.caixa.historico = [];
+        let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
+        let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
+        let cxSaldoNovo = cxAtual.saldo || 0;
         
         pagamentosVendaAtual.forEach((p, idx) => {
             let valorParaCaixa = p.valor || 0; 
@@ -1344,27 +1442,40 @@ function finalizarVendaMultipla() {
                     for(let i=1; i<=(p.parcelas || 1); i++) { 
                         let dataVencParc = new Date(dataBase); 
                         dataVencParc.setDate(dataVencParc.getDate() + (30 * (i - 1))); 
-                        db.financeiro.unshift({ id: Date.now()+idx+i, ref: `${pRef} [${i}/${p.parcelas}]`, data: dataVencParc.toISOString(), pessoa: cliInfo.nome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas' }); 
+                        
+                        const finRef = firestore.collection('financeiro').doc();
+                        batch.set(finRef, { ref: `${pRef} [${i}/${p.parcelas}]`, data: dataVencParc.toISOString(), pessoa: cliInfo.nome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas', origemVendaId: idFinalVenda }); 
                     } 
                 } else if (p.metodo && (String(p.metodo).includes('Crédito') || String(p.metodo).includes('Débito'))) { 
                     let dataAmanha = new Date(); 
                     dataAmanha.setDate(dataAmanha.getDate() + 1); 
                     const valParc = valorParaCaixa / (p.parcelas || 1); 
                     for(let i=1; i<=(p.parcelas || 1); i++) { 
-                        db.financeiro.unshift({ id: Date.now()+idx+i, ref: `${pRef} [${i}/${p.parcelas}]`, data: dataAmanha.toISOString(), pessoa: cliInfo.nome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas', metodoPagamento: p.metodo }); 
+                        const finRef = firestore.collection('financeiro').doc();
+                        batch.set(finRef, { ref: `${pRef} [${i}/${p.parcelas}]`, data: dataAmanha.toISOString(), pessoa: cliInfo.nome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas', metodoPagamento: p.metodo, origemVendaId: idFinalVenda }); 
                     } 
                 } else if (p.metodo === 'Dinheiro' || p.metodo === 'PIX') { 
-                    db.financeiro.unshift({ id: Date.now()+idx, ref: pRef, data: dataIso, pessoa: cliInfo.nome, wpp: '', valor: valorParaCaixa, status: 'PAGO', tipo: 'RECEITA', categoria: 'Vendas', metodoPagamento: p.metodo, dataPagamento: dataIso }); 
+                    const finRef = firestore.collection('financeiro').doc();
+                    batch.set(finRef, { ref: pRef, data: dataIso, pessoa: cliInfo.nome, wpp: '', valor: valorParaCaixa, status: 'PAGO', tipo: 'RECEITA', categoria: 'Vendas', metodoPagamento: p.metodo, dataPagamento: dataIso, origemVendaId: idFinalVenda }); 
+                    
                     if(p.metodo === 'Dinheiro') { 
-                        db.caixa.saldo += valorParaCaixa; 
-                        db.caixa.historico.unshift({ data: dataIso, tipo: 'ENTRADA', desc: pRef, valor: valorParaCaixa }); 
+                        cxSaldoNovo += valorParaCaixa; 
+                        cxHistoricoNovo.unshift({ data: dataIso, tipo: 'ENTRADA', desc: pRef, valor: valorParaCaixa }); 
                     } 
                 }
             }
         });
+        
+        const caixaRef = firestore.collection('fc_moveis').doc('caixa');
+        batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
     }
 
-    saveDB(); 
+    try {
+        await batch.commit();
+    } catch(err) {
+        console.error("Erro ao salvar no firestore: ", err);
+        return showToast("Erro ao salvar operação no banco de dados.", "error");
+    } 
     
     window.vendaEmEdicao = null;
     window.vendaAtualImpressao = novaVendaObj;
@@ -1425,24 +1536,24 @@ function renderVendas() {
             const badgeTipo = v.tipo === 'SERVIÇO' ? `<span class="bg-purple-100 text-purple-800 border border-purple-200 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1">SERVIÇO</span><br>` : `<span class="bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1">VENDA</span><br>`;
             
             return `
-            <tr class="hover:bg-slate-50 border-b border-slate-100">
-                <td class="p-3 text-slate-500 text-xs">${dataRender}</td>
-                <td class="p-3 font-mono font-bold text-slate-700">${badgeTipo}#${numPedStr}</td>
-                <td class="p-3 font-bold text-slate-800">${clienteRender} <br> <span class="text-[10px] text-slate-400 font-normal">Vend: ${vendRender}</span></td>
+            <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
+                <td class="p-3 text-slate-500 dark:text-slate-400 text-xs">${dataRender}</td>
+                <td class="p-3 font-mono font-bold text-slate-700 dark:text-slate-200">${badgeTipo}#${numPedStr}</td>
+                <td class="p-3 font-bold text-slate-800 dark:text-slate-100">${clienteRender} <br> <span class="text-[10px] text-slate-400 font-normal">Vend: ${vendRender}</span></td>
                 <td class="p-3"><span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold">${pagRender}</span></td>
-                <td class="p-3 text-right font-black text-slate-700">${typeof formatMoney === 'function' ? formatMoney(v.tot || 0) : (v.tot || 0)}</td>
+                <td class="p-3 text-right font-black text-slate-700 dark:text-slate-200">${typeof formatMoney === 'function' ? formatMoney(v.tot || 0) : (v.tot || 0)}</td>
                 <td class="p-3 text-right font-bold text-red-500">-${typeof formatMoney === 'function' ? formatMoney(custoTotalDaVenda) : custoTotalDaVenda}</td>
                 <td class="p-3 text-right font-black text-emerald-600">${typeof formatMoney === 'function' ? formatMoney(lucroDaVenda) : lucroDaVenda}</td>
                 <td class="p-3 text-center flex flex-wrap justify-center gap-1 print:hidden">
                     <button onclick="verDetalhesVenda('${v.id}')" class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-1.5 rounded font-bold text-xs" title="Ver Detalhes"><i class="fa-solid fa-eye"></i></button>
-                    <button onclick="reimprimirVenda('${v.id}')" class="text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2 py-1.5 rounded font-bold text-xs" title="Imprimir/PDF"><i class="fa-solid fa-print"></i></button>
+                    <button onclick="reimprimirVenda('${v.id}')" class="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:text-slate-100 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:bg-slate-700 px-2 py-1.5 rounded font-bold text-xs" title="Imprimir/PDF"><i class="fa-solid fa-print"></i></button>
                     <button onclick="enviarPDFWhatsApp('${v.id}')" class="text-emerald-500 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-1.5 rounded font-bold text-xs" title="Enviar PDF no WhatsApp"><i class="fa-brands fa-whatsapp text-sm"></i></button>
                     <button onclick="editarVenda('${v.id}')" class="text-amber-500 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-1.5 rounded font-bold text-xs" title="Editar / Reabrir no PDV"><i class="fa-solid fa-pen"></i></button>
                     <button onclick="excluirVenda('${v.id}')" class="text-red-500 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2 py-1.5 rounded font-bold text-xs" title="Excluir"><i class="fa-solid fa-trash"></i></button>
                 </td>
             </tr>`;
         } catch (e) { console.error(e); return ''; }
-    }).join('') || '<tr><td colspan="8" class="p-6 text-center text-slate-500">Nenhum registro encontrado com os filtros atuais.</td></tr>';
+    }).join('') || '<tr><td colspan="8" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum registro encontrado com os filtros atuais.</td></tr>';
     
     if (document.getElementById('vendas-total-filtros')) {
         document.getElementById('vendas-total-filtros').innerText = `Lucro Real Acumulado: ${typeof formatMoney === 'function' ? formatMoney(totalLucro) : totalLucro}`;
@@ -1480,22 +1591,22 @@ function renderOrcamentos() {
             const qtdItens = v.itens ? v.itens.reduce((acc, i) => acc + (i.qtd||1), 0) : 0;
             
             return `
-            <tr class="hover:bg-slate-50 border-b border-slate-100">
-                <td class="p-3 text-slate-500 text-xs">${dataRender}</td>
-                <td class="p-3 font-mono font-bold text-slate-700">#${numPedStr}</td>
-                <td class="p-3 font-bold text-slate-800">${clienteRender} <br> <span class="text-[10px] text-slate-400 font-normal">Vend: ${vendRender}</span></td>
-                <td class="p-3 text-center font-bold text-slate-600">${qtdItens} un</td>
-                <td class="p-3 text-right font-black text-slate-700">${typeof formatMoney === 'function' ? formatMoney(v.tot || 0) : (v.tot || 0)}</td>
+            <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
+                <td class="p-3 text-slate-500 dark:text-slate-400 text-xs">${dataRender}</td>
+                <td class="p-3 font-mono font-bold text-slate-700 dark:text-slate-200">#${numPedStr}</td>
+                <td class="p-3 font-bold text-slate-800 dark:text-slate-100">${clienteRender} <br> <span class="text-[10px] text-slate-400 font-normal">Vend: ${vendRender}</span></td>
+                <td class="p-3 text-center font-bold text-slate-600 dark:text-slate-300">${qtdItens} un</td>
+                <td class="p-3 text-right font-black text-slate-700 dark:text-slate-200">${typeof formatMoney === 'function' ? formatMoney(v.tot || 0) : (v.tot || 0)}</td>
                 <td class="p-3 text-center flex flex-wrap justify-center gap-1 print:hidden">
                     <button onclick="verDetalhesVenda('${v.id}')" class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-1.5 rounded font-bold text-xs" title="Ver Detalhes"><i class="fa-solid fa-eye"></i></button>
-                    <button onclick="reimprimirVenda('${v.id}')" class="text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2 py-1.5 rounded font-bold text-xs" title="Imprimir/PDF"><i class="fa-solid fa-print"></i></button>
+                    <button onclick="reimprimirVenda('${v.id}')" class="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:text-slate-100 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:bg-slate-700 px-2 py-1.5 rounded font-bold text-xs" title="Imprimir/PDF"><i class="fa-solid fa-print"></i></button>
                     <button onclick="enviarPDFWhatsApp('${v.id}')" class="text-emerald-500 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-1.5 rounded font-bold text-xs" title="Enviar PDF no WhatsApp"><i class="fa-brands fa-whatsapp text-sm"></i></button>
                     <button onclick="editarVenda('${v.id}')" class="text-amber-500 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-1.5 rounded font-bold text-xs" title="Editar / Reabrir no PDV"><i class="fa-solid fa-pen"></i></button>
                     <button onclick="excluirVenda('${v.id}')" class="text-red-500 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2 py-1.5 rounded font-bold text-xs" title="Excluir"><i class="fa-solid fa-trash"></i></button>
                 </td>
             </tr>`;
         } catch (e) { console.error(e); return ''; }
-    }).join('') || '<tr><td colspan="6" class="p-6 text-center text-slate-500">Nenhum orçamento encontrado.</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum orçamento encontrado.</td></tr>';
     
     if (document.getElementById('orcamentos-total-filtros')) {
         document.getElementById('orcamentos-total-filtros').innerText = `Valor Total em Orçamentos: ${typeof formatMoney === 'function' ? formatMoney(totalOrcamentos) : totalOrcamentos}`;
@@ -1512,31 +1623,53 @@ function excluirVenda(id) {
     const isOrcamento = v.tipo === 'ORÇAMENTO'; 
     const msg = isOrcamento ? 'Deseja excluir este Orçamento do histórico permanentemente?' : 'Devolver estoque e apagar parcelas/caixa desta operação?';
     
-    abrirConfirmacao('Confirmar Exclusão', msg, () => {
+    abrirConfirmacao('Confirmar Exclusão', msg, async () => {
         try {
+            const batch = firestore.batch();
             const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
+            
             if(!isOrcamento) {
                 if(v.itens && v.itens.length > 0) { 
                     v.itens.forEach(item => { 
                         const p = (db.produtos || []).find(prod => String(prod.id) === String(item.id)); 
                         if(p) { 
-                            p.estoque += Number(item.qtd || 1); 
-                            salvarKardex(`Estorno ${v.tipo} #${numPedStr}`, p.id, p.nome, Number(item.qtd || 1), 'ESTORNO'); 
+                            const pRef = firestore.collection('produtos').doc(String(p.id));
+                            batch.update(pRef, { estoque: (p.estoque || 0) + Number(item.qtd || 1) });
+                            
+                            const kardexRef = firestore.collection('movimentacoes').doc();
+                            batch.set(kardexRef, {
+                                data: new Date().toISOString(),
+                                ref: `Estorno ${v.tipo} #${numPedStr}`,
+                                prodId: p.id,
+                                prodNome: p.nome,
+                                qtd: Number(item.qtd || 1),
+                                tipo: 'ESTORNO'
+                            });
                         } 
                     }); 
                 }
                 
-                db.financeiro = (db.financeiro || []).filter(f => f.ref ? !String(f.ref).includes(`#${numPedStr}`) : true);
+                const finQuery = await firestore.collection('financeiro').where('origemVendaId', '==', String(id)).get();
+                finQuery.docs.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
                 
                 if(v.pag && typeof v.pag === 'string' && v.pag.includes('Dinheiro')) { 
-                    if(!db.caixa) db.caixa = { status: 'FECHADO', saldo: 0, historico: [] }; 
-                    if(!db.caixa.historico) db.caixa.historico = []; 
-                    db.caixa.saldo -= (Number(v.valorLiquido) || 0); 
-                    db.caixa.historico.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno ${v.tipo} #${numPedStr}`, valor: (Number(v.valorLiquido) || 0) }); 
+                    let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
+                    let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
+                    let cxSaldoNovo = (cxAtual.saldo || 0) - (Number(v.valorLiquido) || 0);
+                    cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno ${v.tipo} #${numPedStr}`, valor: (Number(v.valorLiquido) || 0) });
+                    
+                    const caixaRef = firestore.collection('fc_moveis').doc('caixa');
+                    batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
                 }
             }
-            db.vendas = db.vendas.filter(x => String(x.id) !== String(id)); 
-            saveDB(); 
+            
+            const vendaRef = firestore.collection('vendas').doc(String(id));
+            batch.delete(vendaRef);
+            
+            await batch.commit();
+            
             if(isOrcamento) renderOrcamentos(); else renderVendas(); 
             showToast('Registro excluído com sucesso!', 'success');
         } catch (err) { 
@@ -1711,13 +1844,13 @@ function verDetalhesVenda(id) {
     document.getElementById('det-venda-obs').innerHTML = (v.obs ? v.obs : '<span class="text-slate-400">Nenhuma observação geral.</span>') + osInfoHtml;
     document.getElementById('det-venda-total').innerText = formatMoney(v.tot || 0);
     document.getElementById('det-venda-itens').innerHTML = (v.itens || []).map(i => `
-        <tr class="hover:bg-slate-50 border-b border-slate-50">
-            <td class="p-3 font-medium text-slate-700 text-xs">
+        <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-50">
+            <td class="p-3 font-medium text-slate-700 dark:text-slate-200 text-xs">
                 ${i.nome || 'Produto/Serviço'} ${i.obsVenda ? `<br><span class="text-[10px] text-slate-400">Obs: ${i.obsVenda}</span>` : ''}
             </td>
-            <td class="p-3 text-center text-xs font-bold text-slate-600">${i.qtd || 1}</td>
-            <td class="p-3 text-right text-xs text-slate-500">${formatMoney(i.preco || 0)}</td>
-            <td class="p-3 text-right text-xs font-bold text-slate-800">${formatMoney((i.preco || 0) * (i.qtd || 1))}</td>
+            <td class="p-3 text-center text-xs font-bold text-slate-600 dark:text-slate-300">${i.qtd || 1}</td>
+            <td class="p-3 text-right text-xs text-slate-500 dark:text-slate-400">${formatMoney(i.preco || 0)}</td>
+            <td class="p-3 text-right text-xs font-bold text-slate-800 dark:text-slate-100">${formatMoney((i.preco || 0) * (i.qtd || 1))}</td>
         </tr>`).join('');
     
     document.getElementById('modal-detalhes-venda').classList.remove('hidden');
@@ -1739,8 +1872,9 @@ function editarVenda(id) {
         ? 'Deseja carregar este orçamento de volta no PDV para editar?' 
         : 'Atenção! Isso fará o ESTORNO automático desta venda (devolvendo estoque e apagando as parcelas) e carregará todos os itens no PDV para você editar e re-finalizar. Deseja continuar?';
 
-    abrirConfirmacao('Editar Operação', msg, () => {
+    abrirConfirmacao('Editar Operação', msg, async () => {
         try {
+            const batch = firestore.batch();
             const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
             
             if(!isOrcamento) {
@@ -1748,24 +1882,42 @@ function editarVenda(id) {
                     v.itens.forEach(item => { 
                         const p = (db.produtos || []).find(prod => String(prod.id) === String(item.id)); 
                         if(p) { 
-                            p.estoque += Number(item.qtd || 1); 
-                            salvarKardex(`Estorno de Edição ${v.tipo} #${numPedStr}`, p.id, p.nome, Number(item.qtd || 1), 'ESTORNO'); 
+                            const pRef = firestore.collection('produtos').doc(String(p.id));
+                            batch.update(pRef, { estoque: (p.estoque || 0) + Number(item.qtd || 1) });
+                            
+                            const kardexRef = firestore.collection('movimentacoes').doc();
+                            batch.set(kardexRef, {
+                                data: new Date().toISOString(),
+                                ref: `Estorno de Edição ${v.tipo} #${numPedStr}`,
+                                prodId: p.id,
+                                prodNome: p.nome,
+                                qtd: Number(item.qtd || 1),
+                                tipo: 'ESTORNO'
+                            });
                         } 
                     }); 
                 }
                 
-                db.financeiro = (db.financeiro || []).filter(f => f.ref ? !String(f.ref).includes(`#${numPedStr}`) : true);
+                const finQuery = await firestore.collection('financeiro').where('origemVendaId', '==', String(id)).get();
+                finQuery.docs.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
                 
                 if(v.pag && typeof v.pag === 'string' && String(v.pag).includes('Dinheiro')) { 
-                    if(!db.caixa) db.caixa = { status: 'FECHADO', saldo: 0, historico: [] }; 
-                    if(!db.caixa.historico) db.caixa.historico = []; 
-                    db.caixa.saldo -= (Number(v.valorLiquido) || 0); 
-                    db.caixa.historico.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno (Edição) ${v.tipo} #${numPedStr}`, valor: (Number(v.valorLiquido) || 0) }); 
+                    let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
+                    let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
+                    let cxSaldoNovo = (cxAtual.saldo || 0) - (Number(v.valorLiquido) || 0);
+                    cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno (Edição) ${v.tipo} #${numPedStr}`, valor: (Number(v.valorLiquido) || 0) });
+                    
+                    const caixaRef = firestore.collection('fc_moveis').doc('caixa');
+                    batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
                 }
             }
 
-            db.vendas = db.vendas.filter(x => String(x.id) !== String(id)); 
-            saveDB(); 
+            const vendaRef = firestore.collection('vendas').doc(String(id));
+            batch.delete(vendaRef);
+            
+            await batch.commit(); 
 
             pdvLimpar(); 
             
