@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
         // 1. TRAVA DE SEGURANÇA E CONFIGURAÇÕES GERAIS
         // ==========================================
         if (sessionStorage.getItem('erp_auth_master') !== 'true') {
@@ -494,7 +494,7 @@
         function renderCarrinho() {
             document.getElementById('pdv-carrinho-body').innerHTML = cart.map((item, i) => { 
                 const fHtml = item.foto ? `<img src="${item.foto}" onclick="abrirZoom('${item.foto}')" class="w-10 h-10 rounded object-cover border border-slate-200 dark:border-slate-700 mx-auto cursor-zoom-in hover:opacity-80 transition" title="Ver foto em tela cheia">` : `<div class="w-10 h-10 mx-auto rounded bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-400 text-xs border border-slate-200 dark:border-slate-700"><i class="fa-regular fa-image"></i></div>`; 
-                return `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-50"><td class="py-2 text-center">${fHtml}</td><td class="py-2 text-slate-800 dark:text-slate-100 font-medium">${item.nome}</td><td class="py-2 text-center"><input type="number" min="1" value="${item.qtd}" onchange="pdvMudarQtd(${i}, this.value)" class="w-16 text-center border border-slate-300 dark:border-slate-600 rounded-lg p-1.5 font-bold outline-none dark:text-white"></td><td class="py-2 text-right text-slate-600 dark:text-slate-300">${formatMoney(item.preco)}</td><td class="py-2 text-right font-bold text-slate-800 dark:text-slate-100">${formatMoney(item.preco * item.qtd)}</td><td class="py-2 text-center"><button onclick="cart.splice(${i},1); renderCarrinho()" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash text-lg"></i></button></td></tr>`
+                return `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-50"><td class="py-2 text-center">${fHtml}</td><td class="py-2 text-slate-800 dark:text-slate-100 font-medium">${item.nome}</td><td class="py-2 text-center"><input type="number" min="1" value="${item.qtd}" onchange="pdvMudarQtd(${i}, this.value)" class="w-16 text-center border border-slate-300 dark:border-slate-600 rounded-lg p-1.5 font-bold outline-none bg-white dark:bg-slate-800 dark:text-white"></td><td class="py-2 text-right text-slate-600 dark:text-slate-300">${formatMoney(item.preco)}</td><td class="py-2 text-right font-bold text-slate-800 dark:text-slate-100">${formatMoney(item.preco * item.qtd)}</td><td class="py-2 text-center"><button onclick="cart.splice(${i},1); renderCarrinho()" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash text-lg"></i></button></td></tr>`
             }).join('');
             pdvAtualizarTotais();
         }

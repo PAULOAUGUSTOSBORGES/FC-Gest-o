@@ -23,15 +23,8 @@ async function fazerLogin() {
         showToast('Acesso liberado! Redirecionando...', 'success');
         // O redirecionamento será automático via listener no global.js
     } catch (e) { 
-        if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential' || e.code === 'auth/invalid-login-credentials') {
-            try {
-                // Tenta criar a conta automaticamente se não existir
-                await firebase.auth().createUserWithEmailAndPassword(u, p);
-                showToast('Nova conta criada e acesso liberado!', 'success');
-            } catch (err) {
-                showToast('Erro ao criar conta ou credenciais inválidas!', 'error'); 
-                console.error(err);
-            }
+        if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential' || e.code === 'auth/invalid-login-credentials' || e.code === 'auth/wrong-password') {
+            showToast('E-mail não encontrado ou senha incorreta!', 'error');
         } else {
             showToast('Erro de login: ' + e.message, 'error'); 
             console.error(e);

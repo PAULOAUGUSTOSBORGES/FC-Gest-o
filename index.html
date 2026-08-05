@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -47,19 +47,22 @@
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Operação</p>
                 <a href="operacao.html?view=pdv" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="pdv"><i class="fa-solid fa-cash-register w-5 text-center"></i> Frente de Caixa (PDV)</a>
-                <a href="operacao.html?view=vendas" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas"><i class="fa-solid fa-receipt w-5 text-center"></i> Histórico Vendas/Serviços</a>
+                <a href="vendas_operacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_operacao"><i class="fa-solid fa-receipt w-5 text-center"></i> Histórico Vendas/Serviços</a>
                 <a href="operacao.html?view=orcamentos" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="orcamentos"><i class="fa-solid fa-file-invoice w-5 text-center"></i> Meus Orçamentos</a>
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Cadastros</p>
                 <a href="cadastro.html?view=produtos" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="produtos"><i class="fa-solid fa-boxes-stacked w-5 text-center"></i> Produtos & Serviços</a>
-                <a href="cadastro.html?view=estoque" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="estoque"><i class="fa-solid fa-pallet w-5 text-center"></i> Estoque & Kardex</a>
+
                 <a href="cadastro.html?view=clientes" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="clientes"><i class="fa-solid fa-users w-5 text-center"></i> Clientes</a>
                 <a href="cadastro.html?view=fornecedores" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="fornecedores"><i class="fa-solid fa-truck w-5 text-center"></i> Fornecedores</a>
+                <a href="cadastro.html?view=funcionarios" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="funcionarios"><i class="fa-solid fa-user-tie w-5 text-center"></i> Funcionários / Vendedores</a>
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
+                <a href="vendas_gestao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_gestao"><i class="fa-solid fa-chart-line w-5 text-center"></i> Histórico Vendas (Gestão)</a>
                 <a href="gestao.html?view=financeiro" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Financeiro & Caixa</a>
                 <a href="gestao.html?view=compras" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & NF-e XML</a>
                 <a href="gestao.html?view=relatorios" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
+                <a href="cadastro.html?view=estoque" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="estoque"><i class="fa-solid fa-pallet w-5 text-center"></i> Estoque & Kardex</a>
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Sistema</p>
                 <a href="sistema.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="config"><i class="fa-solid fa-gear w-5 text-center"></i> Configurações</a>
@@ -82,24 +85,205 @@
             </header>
 
             <div class="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth custom-scrollbar w-full">
-                <!-- CONTEÚDO DASHBOARD -->
-                <div class="max-w-7xl mx-auto space-y-4 md:space-y-6">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                        <div class="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                            <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Faturamento Hoje</p>
-                            <h3 class="text-2xl md:text-3xl font-black text-blue-600" id="dash-faturamento">R$ 0,00</h3>
+                <!-- CONTEÚDO DASHBOARD (MEGA BI - FASE 1) -->
+                <div class="max-w-7xl mx-auto space-y-4 md:space-y-6 pb-20">
+                    
+                    <!-- FILTROS GLOBAIS E ATALHOS -->
+                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <div class="flex items-center gap-2 w-full lg:w-auto">
+                            <i class="fa-solid fa-calendar-day text-slate-400"></i>
+                            <select id="dash-filtro-periodo" class="w-full lg:w-auto bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 font-medium" onchange="atualizarDashboard()">
+                                <option value="hoje">Hoje</option>
+                                <option value="ontem">Ontem</option>
+                                <option value="7d">Últimos 7 dias</option>
+                                <option value="15d">Últimos 15 dias</option>
+                                <option value="30d">Últimos 30 dias</option>
+                                <option value="mes" selected>Este Mês</option>
+                                <option value="3m">Últimos 3 meses</option>
+                                <option value="ano">Este Ano</option>
+                                <option value="tudo">Todo o Período</option>
+                            </select>
                         </div>
-                        <div class="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                            <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Lucro Bruto (Mês)</p>
-                            <h3 class="text-2xl md:text-3xl font-black text-emerald-500" id="dash-lucro">R$ 0,00</h3>
+                        
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button onclick="window.location.href='operacao.html?view=pdv'" class="bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-blue-200 dark:border-blue-800/50"><i class="fa-solid fa-cart-plus mr-1"></i> Nova Venda</button>
+                            <button onclick="window.location.href='cadastro.html?view=clientes'" class="bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-emerald-200 dark:border-emerald-800/50"><i class="fa-solid fa-user-plus mr-1"></i> Cliente</button>
+                            <button onclick="window.location.href='cadastro.html?view=produtos'" class="bg-purple-50 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/60 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-purple-200 dark:border-purple-800/50"><i class="fa-solid fa-box-open mr-1"></i> Produto</button>
+                            <button onclick="window.location.href='gestao.html?view=financeiro'" class="bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/60 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-amber-200 dark:border-amber-800/50"><i class="fa-solid fa-money-bill-wave mr-1"></i> Lançar Conta</button>
                         </div>
-                        <div class="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                            <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Contas a Receber</p>
-                            <h3 class="text-2xl md:text-3xl font-black text-amber-500" id="dash-receber">R$ 0,00</h3>
+                    </div>
+
+                    <!-- GRID DE KPIS (RESUMO EXECUTIVO) -->
+                    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                        <!-- Bloco Financeiro Principal -->
+                        <div onclick="window.location.href='operacao.html?view=historico'" class="cursor-pointer hover:border-blue-500/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5"><i class="fa-solid fa-calendar-day text-blue-500"></i> Faturamento Hoje</p>
+                            <h3 class="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100" id="dash-faturamento-hoje"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
                         </div>
-                        <div class="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                            <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Produtos Cadastrados</p>
-                            <h3 class="text-2xl md:text-3xl font-black text-slate-800 dark:text-slate-100" id="dash-produtos">0</h3>
+                        
+                        <div onclick="window.location.href='operacao.html?view=historico'" class="cursor-pointer hover:border-blue-500/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5"><i class="fa-solid fa-sack-dollar text-blue-600"></i> Faturamento (<span class="periodo-label">Mês</span>)</p>
+                            <h3 class="text-xl md:text-2xl font-black text-blue-600" id="dash-faturamento"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
+                        </div>
+                        
+                        <div onclick="window.location.href='gestao.html?view=financeiro'" class="cursor-pointer hover:border-emerald-500/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between relative overflow-hidden">
+                            <div class="absolute -right-4 -top-4 text-emerald-500/10 text-6xl"><i class="fa-solid fa-chart-line"></i></div>
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5"><i class="fa-solid fa-piggy-bank text-emerald-500"></i> Lucro Líquido (<span class="periodo-label">Mês</span>)</p>
+                            <h3 class="text-xl md:text-2xl font-black text-emerald-500 relative z-10" id="dash-lucro"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
+                        </div>
+
+                        <div onclick="window.location.href='gestao.html?view=financeiro'" class="cursor-pointer hover:border-red-500/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5"><i class="fa-solid fa-money-bill-transfer text-red-500"></i> Despesas (<span class="periodo-label">Mês</span>)</p>
+                            <h3 class="text-xl md:text-2xl font-black text-red-500" id="dash-despesas"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
+                        </div>
+
+                        <!-- Bloco Fluxo de Caixa / Pendências -->
+                        <div onclick="window.location.href='gestao.html?view=financeiro'" class="cursor-pointer hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between relative overflow-hidden">
+                            <div class="absolute -right-4 -top-4 text-indigo-500/10 text-6xl"><i class="fa-solid fa-vault"></i></div>
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5"><i class="fa-solid fa-building-columns text-indigo-500"></i> Saldo em Caixa</p>
+                            <h3 class="text-xl md:text-2xl font-black text-indigo-500 relative z-10" id="dash-caixa"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
+                        </div>
+
+                        <div onclick="window.location.href='gestao.html?view=financeiro'" class="cursor-pointer hover:border-emerald-500/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5"><i class="fa-solid fa-hand-holding-dollar text-emerald-400"></i> Contas a Receber</p>
+                            <h3 class="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100" id="dash-receber"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
+                            <p class="text-[10px] text-slate-400 mt-1" id="dash-receber-vencido">...</p>
+                        </div>
+
+                        <div onclick="window.location.href='gestao.html?view=financeiro'" class="cursor-pointer hover:border-red-500/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5"><i class="fa-solid fa-file-invoice-dollar text-red-400"></i> Contas a Pagar</p>
+                            <h3 class="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100" id="dash-pagar"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
+                            <p class="text-[10px] text-slate-400 mt-1" id="dash-pagar-vencido">...</p>
+                        </div>
+
+                        <div onclick="window.location.href='cadastro.html?view=produtos'" class="cursor-pointer hover:border-purple-500/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between relative overflow-hidden">
+                            <div class="absolute -right-4 -top-4 text-purple-500/10 text-6xl"><i class="fa-solid fa-boxes-stacked"></i></div>
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5"><i class="fa-solid fa-box-open text-purple-500"></i> Valor em Estoque</p>
+                            <h3 class="text-xl md:text-2xl font-black text-purple-500 relative z-10" id="dash-valor-estoque"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
+                        </div>
+
+                        <!-- Bloco Quantitativo -->
+                        <div onclick="window.location.href='operacao.html?view=historico'" class="cursor-pointer hover:border-slate-400/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Qtd. Vendas (<span class="periodo-label">Mês</span>)</p>
+                            <h3 class="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100" id="dash-qtd-vendas"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
+                        </div>
+                        
+                        <div onclick="window.location.href='operacao.html?view=orcamentos'" class="cursor-pointer hover:border-slate-400/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Orçamentos Pendentes</p>
+                            <h3 class="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100" id="dash-orcamentos"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
+                        </div>
+
+                        <div onclick="window.location.href='cadastro.html?view=clientes'" class="cursor-pointer hover:border-slate-400/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Clientes Base</p>
+                            <h3 class="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100" id="dash-clientes"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
+                        </div>
+
+                        <div onclick="window.location.href='cadastro.html?view=fornecedores'" class="cursor-pointer hover:border-slate-400/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Fornecedores Base</p>
+                            <h3 class="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100" id="dash-fornecedores"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
+                        </div>
+                    </div>
+
+                    <!-- GRÁFICOS (FASE 2) E NOTIFICAÇÕES -->
+                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 md:gap-6 mt-6">
+                        <!-- Gráfico Principal (Vendas e Finanças) -->
+                        <div class="xl:col-span-2 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><i class="fa-solid fa-chart-area text-blue-500"></i> Desempenho no Período</h3>
+                                <div class="flex gap-2">
+                                    <button onclick="mudarTipoGraficoPrincipal('vendas')" id="btn-chart-vendas" class="text-xs px-3 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400 font-bold transition-colors">Vendas</button>
+                                    <button onclick="mudarTipoGraficoPrincipal('financeiro')" id="btn-chart-financeiro" class="text-xs px-3 py-1 rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 dark:text-slate-400 font-bold transition-colors">Receita x Despesa</button>
+                                </div>
+                            </div>
+                            <div id="chart-principal" class="w-full min-h-[300px]"></div>
+                        </div>
+                        
+                        <!-- Notificações -->
+                        <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2"><i class="fa-solid fa-bell text-amber-500"></i> Alertas do Sistema</h3>
+                            <div id="dash-notificacoes" class="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2 max-h-[300px]">
+                                <div class="text-center text-slate-400 text-sm mt-10"><i class="fa-solid fa-spinner fa-spin"></i> Analisando dados...</div>
+                            </div>
+                        </div>
+
+                        <!-- Gráfico de Estoque -->
+                        <div class="xl:col-span-1 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2"><i class="fa-solid fa-chart-pie text-purple-500"></i> Estoque por Categoria</h3>
+                            <div id="chart-estoque" class="w-full flex justify-center items-center min-h-[250px]"></div>
+                        </div>
+
+                        <!-- Fluxo de Caixa Futuro -->
+                        <div class="xl:col-span-2 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2"><i class="fa-solid fa-money-bill-trend-up text-emerald-500"></i> Inadimplência vs Pagamentos em Dia</h3>
+                            <div id="chart-inadimplencia" class="w-full min-h-[250px]"></div>
+                        </div>
+                    </div>
+
+                    <!-- RANKINGS E CURVA ABC (FASE 3) -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
+                        
+                        <!-- Top 5 Produtos -->
+                        <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2"><i class="fa-solid fa-trophy text-yellow-500"></i> Top 5 Produtos (Mais Vendidos)</h3>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-sm text-slate-500 dark:text-slate-400">
+                                    <thead class="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-700/50 dark:text-slate-300">
+                                        <tr>
+                                            <th class="px-4 py-2 rounded-l-lg">Produto</th>
+                                            <th class="px-4 py-2">Qtd</th>
+                                            <th class="px-4 py-2 rounded-r-lg">Receita</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dash-top-produtos">
+                                        <tr><td colspan="3" class="text-center py-4"><i class="fa-solid fa-spinner fa-spin"></i></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Top 5 Clientes -->
+                        <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2"><i class="fa-solid fa-medal text-blue-500"></i> Top 5 Clientes (Maior Faturamento)</h3>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-sm text-slate-500 dark:text-slate-400">
+                                    <thead class="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-700/50 dark:text-slate-300">
+                                        <tr>
+                                            <th class="px-4 py-2 rounded-l-lg">Cliente</th>
+                                            <th class="px-4 py-2">Compras</th>
+                                            <th class="px-4 py-2 rounded-r-lg">Faturamento</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dash-top-clientes">
+                                        <tr><td colspan="3" class="text-center py-4"><i class="fa-solid fa-spinner fa-spin"></i></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CURVA ABC -->
+                    <div class="mt-6 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-10">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-2">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><i class="fa-solid fa-layer-group text-purple-500"></i> Curva ABC de Vendas (Neste Período)</h3>
+                            <div class="text-xs text-slate-500 bg-slate-100 dark:bg-slate-700/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600">
+                                <span class="font-bold text-emerald-600 dark:text-emerald-400">A: 80%</span> | <span class="font-bold text-amber-600 dark:text-amber-400">B: 15%</span> | <span class="font-bold text-red-600 dark:text-red-400">C: 5%</span>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm text-slate-500 dark:text-slate-400">
+                                <thead class="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-700/50 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
+                                    <tr>
+                                        <th class="px-4 py-3">Produto</th>
+                                        <th class="px-4 py-3">Faturamento</th>
+                                        <th class="px-4 py-3">% Total</th>
+                                        <th class="px-4 py-3">% Acumulada</th>
+                                        <th class="px-4 py-3">Curva</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dash-curva-abc">
+                                    <tr><td colspan="5" class="text-center py-8"><i class="fa-solid fa-spinner fa-spin text-2xl text-slate-300 dark:text-slate-600"></i></td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -107,16 +291,21 @@
         </main>
     </div>
 
-    <!-- Bibliotecas do Firebase -->
+    <!-- Bibliotecas do Firebase e Gráficos -->
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     
     <!-- Scripts -->
     <script src="global.js"></script>
     <script src="index.js"></script>
 </body>
 </html>
+
+
+
+
 
 
 

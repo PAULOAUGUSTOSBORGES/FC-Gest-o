@@ -4,6 +4,7 @@
 
 function inicializarSistema() {
     carregarConfiguracoesNaTela();
+    carregarCategorias();
 }
 
 window.onload = () => {
@@ -40,12 +41,14 @@ async function formatarEBuscarCNPJ(input) {
                 // Preenche Telefone com DDD
                 if(data.ddd_telefone_1) document.getElementById('emp-telefone').value = data.ddd_telefone_1;
                 
-                // Preenche Endereço formatado
-                let enderecoCompleto = `${data.logradouro || ''}, ${data.numero || 'S/N'}`;
-                if(data.complemento) enderecoCompleto += ` - ${data.complemento}`;
-                enderecoCompleto += ` - ${data.bairro || ''}, ${data.municipio || ''} - ${data.uf || ''}. CEP: ${data.cep || ''}`;
-                
-                document.getElementById('emp-endereco').value = enderecoCompleto;
+                // Preenche Endereço formatado e outros campos
+                if(data.cep) document.getElementById('emp-cep').value = data.cep;
+                if(data.logradouro) document.getElementById('emp-rua').value = data.logradouro;
+                if(data.numero) document.getElementById('emp-numero').value = data.numero;
+                if(data.bairro) document.getElementById('emp-bairro').value = data.bairro;
+                if(data.municipio) document.getElementById('emp-cidade').value = data.municipio;
+                if(data.uf) document.getElementById('emp-uf').value = data.uf;
+                if(data.codigo_municipio_ibge) document.getElementById('emp-ibge').value = data.codigo_municipio_ibge;
                 
                 showToast('Dados da empresa puxados com sucesso!', 'success');
             } else {
@@ -74,10 +77,16 @@ function carregarConfiguracoesNaTela() {
 
     // Carrega Dados da Empresa
     if(db.config.empresa) {
-        if(document.getElementById('emp-nome')) document.getElementById('emp-nome').value = db.config.empresa.nome || '';
-        if(document.getElementById('emp-cnpj')) document.getElementById('emp-cnpj').value = db.config.empresa.cnpj || '';
-        if(document.getElementById('emp-telefone')) document.getElementById('emp-telefone').value = db.config.empresa.telefone || '';
-        if(document.getElementById('emp-endereco')) document.getElementById('emp-endereco').value = db.config.empresa.endereco || '';
+        ['nome', 'fantasia', 'cnpj', 'telefone', 'cep', 'rua', 'numero', 'bairro', 'cidade', 'uf', 'ibge', 'ie', 'im', 'crt', 'cscToken', 'cscId'].forEach(campo => {
+            const el = document.getElementById('emp-' + campo);
+            if(el) {
+                if(campo === 'cscToken' || campo === 'cscId') {
+                    el.value = db.config.empresa[campo] || '';
+                } else {
+                    el.value = db.config.empresa[campo] || '';
+                }
+            }
+        });
         if(document.getElementById('emp-logo-base64')) document.getElementById('emp-logo-base64').value = db.config.empresa.logo || '';
         
         if(db.config.empresa.logo && document.getElementById('emp-logo-preview')) {
@@ -123,11 +132,23 @@ async function salvarConfiguracoes() {
     db.config.tema = 'escuro';
 
     db.config.empresa = {
-        nome: document.getElementById('emp-nome').value.trim(),
-        cnpj: document.getElementById('emp-cnpj').value.trim(),
-        telefone: document.getElementById('emp-telefone').value.trim(),
-        endereco: document.getElementById('emp-endereco').value.trim(),
-        logo: document.getElementById('emp-logo-base64').value
+        nome: document.getElementById('emp-nome') ? document.getElementById('emp-nome').value.trim() : '',
+        fantasia: document.getElementById('emp-fantasia') ? document.getElementById('emp-fantasia').value.trim() : '',
+        cnpj: document.getElementById('emp-cnpj') ? document.getElementById('emp-cnpj').value.trim() : '',
+        telefone: document.getElementById('emp-telefone') ? document.getElementById('emp-telefone').value.trim() : '',
+        cep: document.getElementById('emp-cep') ? document.getElementById('emp-cep').value.trim() : '',
+        rua: document.getElementById('emp-rua') ? document.getElementById('emp-rua').value.trim() : '',
+        numero: document.getElementById('emp-numero') ? document.getElementById('emp-numero').value.trim() : '',
+        bairro: document.getElementById('emp-bairro') ? document.getElementById('emp-bairro').value.trim() : '',
+        cidade: document.getElementById('emp-cidade') ? document.getElementById('emp-cidade').value.trim() : '',
+        uf: document.getElementById('emp-uf') ? document.getElementById('emp-uf').value.trim() : '',
+        ibge: document.getElementById('emp-ibge') ? document.getElementById('emp-ibge').value.trim() : '',
+        ie: document.getElementById('emp-ie') ? document.getElementById('emp-ie').value.trim() : '',
+        im: document.getElementById('emp-im') ? document.getElementById('emp-im').value.trim() : '',
+        crt: document.getElementById('emp-crt') ? document.getElementById('emp-crt').value.trim() : '',
+        cscToken: document.getElementById('emp-csc-token') ? document.getElementById('emp-csc-token').value.trim() : '',
+        cscId: document.getElementById('emp-csc-id') ? document.getElementById('emp-csc-id').value.trim() : '',
+        logo: document.getElementById('emp-logo-base64') ? document.getElementById('emp-logo-base64').value : ''
     };
 
     // Salva as 12 Taxas Separadas
@@ -151,5 +172,141 @@ async function salvarConfiguracoes() {
     } catch(err) {
         console.error(err);
         showToast('Erro ao salvar configurações.', 'error');
+}
+
+// ==========================================
+// GESTÃO DE CATEGORIAS E SUBCATEGORIAS
+// ==========================================
+
+async function carregarCategorias() {
+    try {
+        const snap = await firestore.collection("categorias").get();
+        db.categorias = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderCategorias();
+    } catch (err) {
+        console.error("Erro ao carregar categorias:", err);
+        showToast("Erro ao carregar categorias", "error");
+    }
+}
+
+function renderCategorias() {
+    const container = document.getElementById('lista-categorias-container');
+    if (!container) return;
+    
+    if (!db.categorias || db.categorias.length === 0) {
+        container.innerHTML = '<div class="text-center p-6 text-slate-400 text-sm">Nenhuma categoria cadastrada.</div>';
+        return;
+    }
+    
+    container.innerHTML = db.categorias.map(cat => `
+        <div class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+            <div class="flex justify-between items-center mb-3">
+                <h4 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-folder text-yellow-500"></i> ${cat.nome}
+                </h4>
+                <button onclick="excluirCategoria('${cat.id}')" class="text-red-500 hover:text-red-700 text-sm" title="Excluir Categoria">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </div>
+            
+            <div class="pl-6 space-y-2 mb-3">
+                ${(cat.subcategorias || []).map((sub, idx) => `
+                    <div class="flex justify-between items-center text-sm text-slate-600 dark:text-slate-400 border-l-2 border-slate-300 dark:border-slate-600 pl-3 py-1">
+                        <span><i class="fa-solid fa-folder-tree mr-1 text-slate-400"></i> ${sub}</span>
+                        <button onclick="excluirSubcategoria('${cat.id}', ${idx})" class="text-red-400 hover:text-red-600">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <div class="pl-6 flex gap-2">
+                <input type="text" id="nova-sub-${cat.id}" class="flex-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-1.5 rounded text-xs outline-none focus:border-blue-500 dark:text-white" placeholder="Nova Subcategoria">
+                <button onclick="adicionarSubcategoria('${cat.id}')" class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded text-xs font-bold transition-colors">
+                    Adicionar
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function adicionarCategoria() {
+    const input = document.getElementById('nova-categoria-nome');
+    const nome = input.value.trim();
+    if (!nome) return showToast("Digite o nome da categoria", "error");
+    
+    // Verifica se já existe
+    if (db.categorias.find(c => c.nome.toLowerCase() === nome.toLowerCase())) {
+        return showToast("Esta categoria já existe", "error");
+    }
+    
+    try {
+        const nova = { nome: nome, subcategorias: [] };
+        const docRef = await firestore.collection("categorias").add(nova);
+        db.categorias.push({ id: docRef.id, ...nova });
+        input.value = '';
+        renderCategorias();
+        showToast("Categoria adicionada com sucesso", "success");
+    } catch (err) {
+        console.error(err);
+        showToast("Erro ao adicionar categoria", "error");
+    }
+}
+
+async function excluirCategoria(id) {
+    if (!confirm("Tem certeza que deseja excluir esta categoria inteira? Todos os produtos nela ficarão 'Sem Categoria'.")) return;
+    
+    try {
+        await firestore.collection("categorias").doc(id).delete();
+        db.categorias = db.categorias.filter(c => c.id !== id);
+        renderCategorias();
+        showToast("Categoria excluída", "success");
+    } catch (err) {
+        console.error(err);
+        showToast("Erro ao excluir", "error");
+    }
+}
+
+async function adicionarSubcategoria(catId) {
+    const input = document.getElementById(`nova-sub-${catId}`);
+    const nome = input.value.trim();
+    if (!nome) return showToast("Digite o nome da subcategoria", "error");
+    
+    const cat = db.categorias.find(c => c.id === catId);
+    if (!cat) return;
+    
+    if ((cat.subcategorias || []).map(s => s.toLowerCase()).includes(nome.toLowerCase())) {
+        return showToast("Subcategoria já existe nesta categoria", "error");
+    }
+    
+    cat.subcategorias = cat.subcategorias || [];
+    cat.subcategorias.push(nome);
+    
+    try {
+        await firestore.collection("categorias").doc(catId).update({ subcategorias: cat.subcategorias });
+        input.value = '';
+        renderCategorias();
+        showToast("Subcategoria adicionada", "success");
+    } catch (err) {
+        console.error(err);
+        showToast("Erro ao adicionar subcategoria", "error");
+    }
+}
+
+async function excluirSubcategoria(catId, index) {
+    const cat = db.categorias.find(c => c.id === catId);
+    if (!cat) return;
+    
+    if (!confirm(`Excluir a subcategoria '${cat.subcategorias[index]}'?`)) return;
+    
+    cat.subcategorias.splice(index, 1);
+    
+    try {
+        await firestore.collection("categorias").doc(catId).update({ subcategorias: cat.subcategorias });
+        renderCategorias();
+        showToast("Subcategoria excluída", "success");
+    } catch (err) {
+        console.error(err);
+        showToast("Erro ao excluir subcategoria", "error");
     }
 }

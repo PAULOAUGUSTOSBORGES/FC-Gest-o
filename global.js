@@ -24,10 +24,11 @@ const auth = firebase.auth();
 
 // Stub Global do DB (para não quebrar as outras telas enquanto são migradas)
 let db = {
-    produtos: [], clientes: [], fornecedores: [], vendas: [], movimentacoes: [],
-    financeiro: [], compras: [], caixa: { status: 'FECHADO', saldo: 0, historico: [] },
+    produtos: [], categorias: [], clientes: [], fornecedores: [], vendas: [], movimentacoes: [],
+    financeiro: [], compras: [], funcionarios: [], caixa: { status: 'FECHADO', saldo: 0, historico: [] },
     config: { taxas: { 'Dinheiro': 0, 'PIX': 0, 'Cartão Débito': 1.99, 'Boleto': 0, 'Fiado': 0, 'Cartão Crédito': { 1: 4.99, 2: 5.49, 3: 5.99, 4: 6.49, 5: 6.99, 6: 7.49, 7: 7.99, 8: 8.49, 9: 8.99, 10: 9.49, 11: 9.99, 12: 10.49 } } }
 };
+window.currentUserInfo = null;
 
 const formatMoney = (val) => Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const formatData = (isoStr) => new Date(isoStr).toLocaleString('pt-BR');
@@ -68,6 +69,22 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                 showToast("Aviso: Erro ao carregar configurações. Usando padrão. (" + error.code + ")", "error");
             }
 
+            // RBAC - CONTROLE DE ACESSO
+            try {
+                const userSnap = await firestore.collection("funcionarios").doc(user.uid).get();
+                if (userSnap.exists) {
+                    window.currentUserInfo = userSnap.data();
+                } else {
+                    // Usuário não está na tabela de funcionários = Admin Master
+                    window.currentUserInfo = { isAdmin: true, perm_dashboard: true, perm_pdv: true, perm_cadastros: true, perm_gestao: true, perm_config: true };
+                }
+                aplicarControleDeAcesso();
+                mostrarNomeUsuarioNoHeader(window.currentUserInfo.isAdmin ? 'Admin Master' : `Func.: ${window.currentUserInfo.nome || 'Usuário'}`);
+
+            } catch (err) {
+                console.error("Erro de permissões:", err);
+            }
+
             // SEMPRE aplica o tema e inicializa a página
             aplicarIdentidadeVisualGlobal();
 
@@ -77,6 +94,137 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
         }
     });
 }
+
+function aplicarControleDeAcesso() {
+    if (!window.currentUserInfo) return;
+    const p = window.currentUserInfo;
+    const path = window.location.pathname;
+    
+    // Se for admin, não bloqueia nada
+    if (p.isAdmin) return;
+
+    // 1. Bloqueio de Acesso com Alerta Visual
+    let bloqueado = false;
+    let mensagemBloqueio = '';
+
+    const isIndex = path.includes('index.html') || path.endsWith('/') || path === '';
+    
+    if (isIndex && !p.perm_dashboard) {
+        bloqueado = true;
+        mensagemBloqueio = 'Acesso Negado ao Dashboard (Visão Geral).';
+    } else if (path.includes('cadastro.html') && !p.perm_cadastros) {
+        bloqueado = true;
+        mensagemBloqueio = 'Acesso Negado aos Cadastros.';
+    } else if (path.includes('cadastro.html') && window.location.search.includes('view=funcionarios')) {
+        // A aba de funcionários é bloqueada para todos que não são Admin Master
+        bloqueado = true;
+        mensagemBloqueio = 'Acesso Negado: Apenas o Administrador pode gerenciar Funcionários.';
+    } else if (path.includes('gestao.html') && !p.perm_gestao) {
+        bloqueado = true;
+        mensagemBloqueio = 'Acesso Negado à Gestão Financeira.';
+    } else if (path.includes('operacao.html') && !p.perm_pdv) {
+        bloqueado = true;
+        mensagemBloqueio = 'Acesso Negado ao PDV e Vendas.';
+    } else if (path.includes('sistema.html') && !p.perm_config) {
+        bloqueado = true;
+        mensagemBloqueio = 'Acesso Negado às Configurações do Sistema.';
+    }
+
+    if (bloqueado) {
+        const main = document.querySelector('main');
+        if (main) {
+            main.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full text-center p-6 animate-[pop_0.3s_ease-out]">
+                    <div class="w-24 h-24 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-red-500/20">
+                        <i class="fa-solid fa-lock text-5xl"></i>
+                    </div>
+                    <h2 class="text-3xl font-black text-slate-800 dark:text-white mb-2">Acesso Restrito</h2>
+                    <p class="text-slate-500 dark:text-slate-400 max-w-md mx-auto">${mensagemBloqueio}</p>
+                    <button onclick="window.history.back()" class="mt-8 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 text-white px-6 py-3 rounded-lg font-bold transition-colors shadow-md">
+                        <i class="fa-solid fa-arrow-left mr-2"></i> Voltar
+                    </button>
+                </div>
+            `;
+        }
+        showToast(mensagemBloqueio, 'error');
+        // Impede que os botões do dashboard funcionem se ele for clicado (ex: index.html)
+        document.querySelectorAll('.view-section').forEach(el => el.remove());
+    }
+
+    // 2. Se for admin master, mostra aba de funcionários. Senão, esconde SÓ a aba de funcionários do menu lateral
+    if (!p.isAdmin) {
+        document.querySelectorAll('a[href*="view=funcionarios"], [data-target="funcionarios"]').forEach(el => el.classList.add('hidden'));
+    }
+}
+
+function mostrarNomeUsuarioNoHeader(nome) {
+    const header = document.querySelector('header');
+    if (!header) return;
+    
+    const rightDiv = header.lastElementChild;
+    if (rightDiv && rightDiv.classList.contains('flex')) {
+        if (!document.getElementById('header-user-name-display')) {
+            const nameEl = document.createElement('div');
+            nameEl.id = 'header-user-name-display';
+            nameEl.className = 'hidden sm:block text-sm font-bold text-slate-700 dark:text-slate-200 mr-2';
+            rightDiv.insertBefore(nameEl, rightDiv.lastElementChild);
+        }
+        document.getElementById('header-user-name-display').innerText = nome;
+        
+        const avatarEl = rightDiv.lastElementChild;
+        if (avatarEl && avatarEl.classList.contains('rounded-full')) {
+            const partes = nome.split(' ');
+            let sigla = partes[0].substring(0, 1).toUpperCase();
+            if (partes.length > 1) sigla += partes[1].substring(0, 1).toUpperCase();
+            else if (partes[0].length > 1) sigla += partes[0].substring(1, 2).toUpperCase();
+            avatarEl.innerText = sigla;
+        }
+    }
+}
+
+// Intercepta cliques nos links para não deixar a tela piscar (navegar) se não tiver permissão
+document.addEventListener('click', (e) => {
+    const link = e.target.closest('a');
+    if (!link || !link.href) return;
+    
+    // Ignora links externos ou vazios
+    if (link.hostname !== window.location.hostname) return;
+    
+    const p = window.currentUserInfo;
+    if (!p || p.isAdmin) return; // Se for admin, passa direto
+    
+    let bloqueado = false;
+    let mensagemBloqueio = '';
+    
+    // Checa as regras do link de destino
+    if (link.href.includes('cadastro.html') && link.href.includes('view=funcionarios')) {
+        bloqueado = true;
+        mensagemBloqueio = 'Acesso Negado: Apenas o Administrador pode gerenciar Funcionários.';
+    } else if (link.href.includes('cadastro.html') && !p.perm_cadastros) {
+        bloqueado = true;
+        mensagemBloqueio = 'Acesso Negado aos Cadastros.';
+    } else if (link.href.includes('gestao.html') && !p.perm_gestao) {
+        bloqueado = true;
+        mensagemBloqueio = 'Acesso Negado à Gestão Financeira.';
+    } else if (link.href.includes('operacao.html') && !p.perm_pdv) {
+        bloqueado = true;
+        mensagemBloqueio = 'Acesso Negado ao PDV e Vendas.';
+    } else if (link.href.includes('sistema.html') && !p.perm_config) {
+        bloqueado = true;
+        mensagemBloqueio = 'Acesso Negado às Configurações do Sistema.';
+    } else if ((link.href.endsWith('index.html') || link.pathname === '/') && !p.perm_dashboard) {
+        bloqueado = true;
+        mensagemBloqueio = 'Acesso Negado ao Dashboard (Visão Geral).';
+    }
+    
+    if (bloqueado) {
+        e.preventDefault(); // Impede o navegador de ir pra página!
+        showToast(mensagemBloqueio, 'error');
+    }
+});
+
+// Fim da função
+
 
 function salvarKardex(ref, prodId, prodNome, qtd, tipo) {
     console.warn("salvarKardex obsoleto");

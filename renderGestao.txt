@@ -1,0 +1,58 @@
+﻿function renderVendas() {
+    const buscaEl = document.getElementById('busca-vendas'); 
+    const dataIniEl = document.getElementById('filtro-vendas-ini'); 
+    const dataFimEl = document.getElementById('filtro-vendas-fim'); 
+    const pgtoEl = document.getElementById('filtro-vendas-pgto'); 
+    const tipoEl = document.getElementById('filtro-vendas-tipo');
+    
+    const termo = buscaEl && buscaEl.value ? String(buscaEl.value).toLowerCase().trim() : ''; 
+    const dataIni = dataIniEl ? dataIniEl.value : ''; 
+    const dataFim = dataFimEl ? dataFimEl.value : ''; 
+    const pgto = pgtoEl ? pgtoEl.value : 'TODOS'; 
+    const tipoFiltro = tipoEl ? tipoEl.value : 'TODOS';
+    
+    let filtrados = db.vendas || [];
+    filtrados = filtrados.filter(v => v.tipo !== 'ORÇAMENTO');
+    
+    if (tipoFiltro === 'VENDAS') filtrados = filtrados.filter(v => v.tipo === 'VENDA' || !v.tipo);
+    if (tipoFiltro === 'SERVICOS') filtrados = filtrados.filter(v => v.tipo === 'SERVIÇO');
+    if (termo) filtrados = filtrados.filter(v => (v.clienteNome && String(v.clienteNome).toLowerCase().includes(termo)) || (v.numeroPedido && String(v.numeroPedido).includes(termo)) || (v.vendedor && String(v.vendedor).toLowerCase().includes(termo)));
+    if (pgto !== 'TODOS') filtrados = filtrados.filter(v => v.pag && String(v.pag).includes(pgto));
+    if (dataIni) { const dIni = new Date(dataIni + 'T00:00:00').getTime(); filtrados = filtrados.filter(v => v.data && new Date(v.data).getTime() >= dIni); }
+    if (dataFim) { const dFim = new Date(dataFim + 'T23:59:59').getTime(); filtrados = filtrados.filter(v => v.data && new Date(v.data).getTime() <= dFim); }
+    
+    filtrados.sort((a,b) => new Date(b.data || 0) - new Date(a.data || 0));
+
+    let totalLucro = 0;
+    
+    document.getElementById('tabela-vendas-body').innerHTML = filtrados.map(v => {
+        try {
+            const custoTotalDaVenda = (Number(v.custoTotal) || 0) + (Number(v.taxaValor) || 0); 
+            const lucroDaVenda = (Number(v.tot) || 0) - custoTotalDaVenda; 
+            const numPedStr = String(v.numeroPedido || v.id || '0').padStart(4, '0'); 
+            totalLucro += lucroDaVenda;
+            
+            const dataRender = v.data && typeof formatData === 'function' ? formatData(v.data).replace(',', '') : (v.data || '-'); 
+            const clienteRender = v.clienteNome || 'Desconhecido'; 
+            const vendRender = v.vendedor || '-'; 
+            const pagRender = v.pag || '-';
+            
+            const badgeTipo = v.tipo === 'SERVIÇO' ? <span class="bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">SERVIÇO</span><br> : <span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">VENDA</span><br>;
+            
+            return `
+            <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
+                <td class="p-3 text-slate-500 dark:text-slate-400 text-xs">${dataRender}</td>
+                <td class="p-3 font-mono font-bold text-slate-700 dark:text-slate-200">${badgeTipo}#${numPedStr}</td>
+                <td class="p-3 font-bold text-slate-800 dark:text-slate-100">${clienteRender} <br> <span class="text-[10px] text-slate-400 font-normal">Vend: ${vendRender}</span></td>
+                <td class="p-3"><span class="bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap">${pagRender}</span></td>
+                <td class="p-3 text-right font-black text-slate-700 dark:text-slate-200">${typeof formatMoney === 'function' ? formatMoney(v.tot || 0) : (v.tot || 0)}</td>
+                <td class="p-3 text-right font-bold text-red-500">-</td>
+                <td class="p-3 text-right font-black text-emerald-600">${typeof formatMoney === 'function' ? formatMoney(lucroDaVenda) : lucroDaVenda}</td>
+            </tr>`;
+        } catch (e) { console.error(e); return ''; }
+    }).join('') || '<tr><td colspan="7" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum registro encontrado com os filtros atuais.</td></tr>';
+    
+    if (document.getElementById('vendas-total-filtros')) {
+        document.getElementById('vendas-total-filtros').innerText = Lucro Real Acumulado: ;
+    }
+}

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -46,19 +46,22 @@
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Operação</p>
                 <a href="operacao.html?view=pdv" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-cash-register w-5 text-center"></i> Frente de Caixa (PDV)</a>
-                <a href="operacao.html?view=vendas" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-receipt w-5 text-center"></i> Histórico Vendas/Serviços</a>
+                <a href="vendas_operacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-receipt w-5 text-center"></i> Histórico Vendas/Serviços</a>
                 <a href="operacao.html?view=orcamentos" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-file-invoice w-5 text-center"></i> Meus Orçamentos</a>
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Cadastros</p>
                 <a href="cadastro.html?view=produtos" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-boxes-stacked w-5 text-center"></i> Produtos & Serviços</a>
-                <a href="cadastro.html?view=estoque" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-pallet w-5 text-center"></i> Estoque & Kardex</a>
+
                 <a href="cadastro.html?view=clientes" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-users w-5 text-center"></i> Clientes</a>
                 <a href="cadastro.html?view=fornecedores" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-truck w-5 text-center"></i> Fornecedores</a>
+                <a href="cadastro.html?view=funcionarios" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="funcionarios"><i class="fa-solid fa-user-tie w-5 text-center"></i> Funcionários / Vendedores</a>
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
+                <a href="vendas_gestao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_gestao"><i class="fa-solid fa-chart-line w-5 text-center"></i> Histórico Vendas (Gestão)</a>
                 <a href="gestao.html?view=financeiro" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Financeiro & Caixa</a>
                 <a href="gestao.html?view=compras" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & NF-e XML</a>
                 <a href="gestao.html?view=relatorios" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
+                <a href="cadastro.html?view=estoque" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-pallet w-5 text-center"></i> Estoque & Kardex</a>
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Sistema</p>
                 <a href="sistema.html" class="nav-btn bg-blue-600 text-white w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"><i class="fa-solid fa-gear w-5 text-center"></i> Configurações</a>
@@ -95,16 +98,30 @@
                                 </div>
                             </div>
                             <div>
-                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Nome da Empresa / Razão Social</label>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Nome da Empresa / Razão Social *</label>
                                 <input type="text" id="emp-nome" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" placeholder="Ex: FC Móveis e Interiores">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Nome Fantasia</label>
+                                <input type="text" id="emp-fantasia" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" placeholder="Nome Fantasia">
                             </div>
                             <div>
                                 <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Telefone / WhatsApp</label>
                                 <input type="text" id="emp-telefone" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" placeholder="Ex: (62) 9 9999-9999">
                             </div>
-                            <div>
-                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Endereço Físico (Logradouro, Bairro, CEP, Cidade)</label>
-                                <input type="text" id="emp-endereco" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" placeholder="Ex: Rua X, Jardim Y, Goiânia - GO">
+                        </div>
+                        
+                        <div class="border-t border-slate-100 dark:border-slate-700 pt-4 mt-2 mb-4">
+                            <h4 class="font-bold text-slate-700 dark:text-slate-200 text-sm mb-3 flex items-center gap-2"><i class="fa-solid fa-location-dot text-blue-500"></i> Endereço da Empresa</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">CEP</label><input type="text" id="emp-cep" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
+                                <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Logradouro</label><input type="text" id="emp-rua" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
+                                <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Número</label><input type="text" id="emp-numero" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
+                                <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Bairro</label><input type="text" id="emp-bairro" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
+                                <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Cidade</label><input type="text" id="emp-cidade" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
+                                <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">UF</label><input type="text" id="emp-uf" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
+                                <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Cód. IBGE</label><input type="text" id="emp-ibge" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                             </div>
                         </div>
 
@@ -116,10 +133,41 @@
                                     <span id="emp-logo-text" class="text-[10px] text-slate-400 font-bold text-center">Sem Logo</span>
                                 </div>
                                 <div class="flex-1">
-                                    <input type="file" id="emp-foto-file" accept="image/*" onchange="processarLogoEmpresa(event)" class="text-xs text-blue-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-100 file:text-blue-700 outline-none w-full dark:text-white">
+                                    <input type="file" id="emp-foto-file" accept="image/*" onchange="processarLogoEmpresa(event)" class="text-xs text-blue-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-100 file:text-blue-700 dark:file:bg-slate-700 dark:file:text-blue-400 outline-none w-full dark:text-white">
                                     <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-2">Esta logo sairá no cabeçalho do sistema, orçamentos, recibos e contratos.</p>
                                     <input type="hidden" id="emp-logo-base64">
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CONFIGURAÇÕES FISCAIS -->
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3"><i class="fa-solid fa-file-invoice text-blue-600"></i> Configurações Fiscais (NFe / NFCe)</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Inscrição Estadual (IE)</label>
+                                <input type="text" id="emp-ie" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" placeholder="Apenas números">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Inscrição Municipal (IM)</label>
+                                <input type="text" id="emp-im" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" placeholder="Apenas números">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Regime Tributário (CRT)</label>
+                                <select id="emp-crt" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
+                                    <option value="1">Simples Nacional</option>
+                                    <option value="2">Simples Nacional - Excesso de Receita</option>
+                                    <option value="3">Regime Normal (Lucro Presumido/Real)</option>
+                                </select>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Token CSC (Para NFCe)</label>
+                                <input type="text" id="emp-csc-token" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" placeholder="Código Alfanumérico do CSC">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">ID do Token CSC</label>
+                                <input type="text" id="emp-csc-id" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" placeholder="Ex: 000001">
                             </div>
                         </div>
                     </div>
@@ -148,6 +196,22 @@
                         </div>
                     </div>
 
+                    <!-- GESTÃO DE CATEGORIAS E SUBCATEGORIAS -->
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mt-6">
+                        <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3"><i class="fa-solid fa-tags text-blue-600"></i> Gestão de Categorias e Subcategorias</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Gerencie as categorias dos seus produtos. Você poderá usar isso para organizar o estoque e filtrar relatórios.</p>
+                        
+                        <div class="flex flex-col md:flex-row gap-3 mb-6">
+                            <input type="text" id="nova-categoria-nome" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" placeholder="Nome da Nova Categoria (Ex: Ferramentas)">
+                            <button onclick="adicionarCategoria()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2.5 rounded-lg shadow-sm transition-colors whitespace-nowrap"><i class="fa-solid fa-plus"></i> Adicionar Categoria</button>
+                        </div>
+
+                        <div id="lista-categorias-container" class="space-y-4">
+                            <!-- Categorias serão injetadas aqui via JS -->
+                            <div class="text-center p-6 text-slate-400 text-sm">Carregando categorias...</div>
+                        </div>
+                    </div>
+
                     <div class="flex justify-end pt-4 pb-10">
                         <button onclick="salvarConfiguracoes()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg transition-transform active:scale-95 flex items-center gap-2"><i class="fa-solid fa-save"></i> Salvar Todas as Configurações</button>
                     </div>
@@ -165,6 +229,10 @@
     <script src="sistema.js"></script>
 </body>
 </html>
+
+
+
+
 
 
 

@@ -57,6 +57,13 @@ function inicializarCadastro() {
         if (typeof renderFuncionarios === 'function') renderFuncionarios();
     });
 
+    unsubCategorias = firestore.collection('categorias').onSnapshot(snap => {
+        db.categorias = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        preencherSelectsDeCategorias();
+        const v = document.getElementById('view-produtos');
+        if (v && v.classList.contains('active')) renderProdutos();
+    });
+
     unsubKardex = firestore.collection('movimentacoes').orderBy('data', 'desc').limit(50).onSnapshot(snap => {
         db.movimentacoes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         const v = document.getElementById('view-estoque');
@@ -137,12 +144,62 @@ async function salvarKardex(ref, prodId, prodNome, qtd, tipo) {
 // ==========================================
 // PRODUTOS
 // ==========================================
+function preencherSelectsDeCategorias() {
+    const selects = ['prod-categoria', 'filtro-prod-categoria'];
+    
+    selects.forEach(id => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        
+        const valorAtual = select.value;
+        const textoPadrao = id.includes('filtro') ? 'Categoria: Todas' : 'Sem Categoria';
+        const valorPadrao = id.includes('filtro') ? 'todos' : '';
+        
+        select.innerHTML = `<option value="${valorPadrao}">${textoPadrao}</option>` + 
+            (db.categorias || []).map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+            
+        if (valorAtual) select.value = valorAtual;
+    });
+}
+
+window.atualizarOpcoesSubcategoria = function(categoriaSelecionada = null, targetId = 'prod-subcategoria') {
+    if (categoriaSelecionada === null) {
+        categoriaSelecionada = document.getElementById('prod-categoria')?.value || '';
+    }
+    
+    const select = document.getElementById(targetId);
+    if (!select) return;
+    
+    const valorAtual = select.value;
+    const textoPadrao = targetId.includes('filtro') ? 'Subcategoria: Todas' : 'Sem Subcategoria';
+    const valorPadrao = targetId.includes('filtro') ? 'todos' : '';
+    
+    select.innerHTML = `<option value="${valorPadrao}">${textoPadrao}</option>`;
+    
+    if (categoriaSelecionada && categoriaSelecionada !== 'todos') {
+        const cat = (db.categorias || []).find(c => c.nome === categoriaSelecionada);
+        if (cat && cat.subcategorias) {
+            select.innerHTML += cat.subcategorias.map(s => `<option value="${s}">${s}</option>`).join('');
+        }
+    }
+    
+    if (valorAtual) select.value = valorAtual;
+};
+
 function renderProdutos() {
-    const termo = document.getElementById('busca-produto-lista')?.value.toLowerCase() || ''; const statusFiltro = document.getElementById('filtro-prod-status')?.value || 'todos';
+    const termo = document.getElementById('busca-produto-lista')?.value.toLowerCase() || ''; 
+    const statusFiltro = document.getElementById('filtro-prod-status')?.value || 'todos';
+    const catFiltro = document.getElementById('filtro-prod-categoria')?.value || 'todos';
+    const subFiltro = document.getElementById('filtro-prod-subcategoria')?.value || 'todos';
+    
     let filtrados = db.produtos.filter(p => p.nome.toLowerCase().includes(termo) || (p.ean && p.ean.includes(termo)) || (p.marca && p.marca.toLowerCase().includes(termo)));
+    
     if (statusFiltro === 'alerta') filtrados = filtrados.filter(p => p.estoque > 0 && p.estoque <= p.min);
     if (statusFiltro === 'zerado') filtrados = filtrados.filter(p => p.estoque <= 0);
     if (statusFiltro === 'ok') filtrados = filtrados.filter(p => p.estoque > p.min);
+    
+    if (catFiltro !== 'todos') filtrados = filtrados.filter(p => p.categoria === catFiltro);
+    if (subFiltro !== 'todos') filtrados = filtrados.filter(p => p.subcategoria === subFiltro);
 
     document.getElementById('tabela-produtos').innerHTML = filtrados.map(p => {
         const isBaixo = p.estoque <= p.min; const isZerado = p.estoque <= 0;
@@ -152,7 +209,7 @@ function renderProdutos() {
         return `
         <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700 ${p.ativo === false ? 'opacity-60' : ''}">
             <td class="p-3 text-center">${fHtml}</td>
-            <td class="p-3"><p class="font-bold text-slate-800 dark:text-slate-100">${p.nome} ${badgeInativo}</p><p class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">EAN: ${p.ean || 'S/N'} | ${p.categoria} | Marca: ${p.marca || '-'}</p></td>
+            <td class="p-3"><p class="font-bold text-slate-800 dark:text-slate-100">${p.nome} ${badgeInativo}</p><p class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">EAN: ${p.ean || 'S/N'} | Cat: ${p.categoria || 'Sem'} &gt; ${p.subcategoria || 'Sem'} | Marca: ${p.marca || '-'}</p></td>
             <td class="p-3 text-right"><p class="text-slate-600 dark:text-slate-300 font-medium">${formatMoney(p.custo)}</p><p class="text-[10px] text-blue-500 font-bold">${p.margem}% MKP</p></td>
             <td class="p-3 text-right font-bold text-emerald-600">${formatMoney(p.preco)}</td>
             <td class="p-3 text-center font-bold"><span class="px-2 py-1 rounded ${corEstoque}">${p.estoque} un</span></td>
@@ -213,6 +270,7 @@ async function salvarProduto() {
         ean: document.getElementById('prod-ean').value,
         marca: document.getElementById('prod-marca').value,
         categoria: document.getElementById('prod-categoria').value,
+        subcategoria: document.getElementById('prod-subcategoria').value,
         unidade: document.getElementById('prod-unidade').value,
         custo: parseFloat(document.getElementById('prod-custo').value) || 0,
         margem: parseFloat(document.getElementById('prod-margem').value) || 0,
@@ -273,6 +331,14 @@ async function editarProduto(id) {
         if (key === 'id') continue;
         const el = document.getElementById(`prod-${key === 'min' ? 'minimo' : key}`);
         if (el && key !== 'foto' && key !== 'ativo') el.value = p[key];
+    }
+    
+    // Atualiza opções de subcategoria e seta o valor correto se existir
+    if (p.categoria) {
+        atualizarOpcoesSubcategoria(p.categoria, 'prod-subcategoria');
+        if (p.subcategoria) {
+            document.getElementById('prod-subcategoria').value = p.subcategoria;
+        }
     }
 
     document.getElementById('prod-ativo').value = p.ativo !== false ? 'true' : 'false';
@@ -398,7 +464,12 @@ async function editarCliente(id) {
 
     const hist = db.vendas ? db.vendas.filter(v => String(v.clienteId) === idStr) : [];
     document.getElementById('cli-historico-body').innerHTML = hist.length > 0
-        ? hist.map(v => `<tr data-venda-id="${v.id}" class="linha-historico hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700 cursor-pointer"><td class="p-3">${formatData(v.data).split(' ')[0]}</td><td class="p-3 font-mono text-slate-500 dark:text-slate-400">#${String(v.numeroPedido || v.id).padStart(4, '0')}</td><td class="p-3"><span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold">${v.pag}</span></td><td class="p-3 text-right font-bold text-emerald-600">${formatMoney(v.tot)}</td></tr>`).join('')
+        ? hist.map(v => `<tr data-venda-id="${v.id}" class="linha-historico hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700 cursor-pointer">
+            <td class="p-3">${formatData(v.data).split(' ')[0]}</td>
+            <td class="p-3 font-mono text-slate-500 dark:text-slate-400">#${String(v.numeroPedido || v.id).padStart(4, '0')}</td>
+            <td class="p-3"><span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold">${v.pag}</span></td>
+            <td class="p-3 text-right font-bold text-emerald-600">${formatMoney(v.tot)}</td>
+        </tr>`).join('')
         : '<tr><td colspan="4" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhuma compra.</td></tr>';
 }
 
@@ -828,19 +899,16 @@ window.verDetalhesVenda = function(id) {
         
         document.getElementById('det-venda-obs').innerHTML = (v.obs ? v.obs : '<span class="text-slate-400">Nenhuma observação geral.</span>') + osInfoHtml;
         document.getElementById('det-venda-total').innerText = formatMoney(v.tot || 0);
-        document.getElementById('det-venda-itens').innerHTML = (v.itens || []).map(i => `
-            <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-50">
-                <td class="p-3 font-medium text-slate-700 dark:text-slate-200 text-xs">
-                    ${i.nome || 'Produto/Serviço'} ${i.obsVenda ? `<br><span class="text-[10px] text-slate-400">Obs: ${i.obsVenda}</span>` : ''}
-                </td>
-                <td class="p-3 text-center text-xs font-bold text-slate-600 dark:text-slate-300">${i.qtd || 1}</td>
-                <td class="p-3 text-right text-xs text-slate-500 dark:text-slate-400">${formatMoney(i.preco || 0)}</td>
-                <td class="p-3 text-right text-xs font-bold text-slate-800 dark:text-slate-100">${formatMoney((i.preco || 0) * (i.qtd || 1))}</td>
-            </tr>`).join('');
+        document.getElementById('det-venda-itens').innerHTML = (v.itens || []).map(i => `<tr class="border-b border-slate-100 dark:border-slate-700 last:border-0"><td class="py-2 text-slate-800 dark:text-slate-200">${i.nome}</td><td class="py-2 text-center text-slate-600 dark:text-slate-400">${i.qtd}x</td><td class="py-2 text-right text-slate-800 dark:text-slate-200 font-medium">${formatMoney(i.preco * i.qtd)}</td></tr>`).join('');
         
         const modal = document.getElementById('modal-detalhes-venda');
-        modal.classList.remove('hidden');
-        modal.style.display = 'flex';
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            modal.style.zIndex = '9999';
+        } else {
+            alert("ERRO GRAVE: A janela de resumo não existe no código HTML. Por favor, feche TODAS as abas do sistema e abra novamente para forçar a atualização.");
+        }
         modal.style.zIndex = '9999';
     } catch(err) {
         alert("Erro JS no resumo: " + err.message);

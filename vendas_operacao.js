@@ -14,7 +14,7 @@ window.vendaAtualImpressao = null;
 // Evita o "piscar" da tela carregando as abas instantaneamente antes do Firebase
 document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
-    const view = urlParams.get('view') || 'pdv';
+    const view = urlParams.get('view') || 'vendas_operacao';
     if (typeof mudarVisaoLocal === 'function') mudarVisaoLocal(view);
 });
 
@@ -110,7 +110,7 @@ function mudarVisaoLocal(viewId) {
     }
     
     if (viewId === 'pdv') prepararPDV();
-    if (viewId === 'vendas') renderVendas();
+    if (viewId === 'vendas_operacao' || viewId === 'vendas') renderVendas();
     if (viewId === 'orcamentos') renderOrcamentos();
 }
 
@@ -126,7 +126,7 @@ function inicializarOperacao() {
     });
     firestore.collection('vendas').onSnapshot(snap => {
         db.vendas = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        const v = document.getElementById('view-vendas');
+        const v = document.getElementById('view-vendas_operacao');
         const o = document.getElementById('view-orcamentos');
         if(v && v.classList.contains('active')) renderVendas();
         if(o && o.classList.contains('active')) renderOrcamentos();
@@ -146,7 +146,7 @@ function inicializarOperacao() {
     });
 
     const urlParams = new URLSearchParams(window.location.search);
-    const view = urlParams.get('view') || 'pdv'; 
+    const view = urlParams.get('view') || 'vendas_operacao'; 
     mudarVisaoLocal(view);
 }
 
@@ -2330,5 +2330,12 @@ function atualizarVendedoresPDV() {
         }
     }
 }
+
+
+
+
+
+
+
 
 

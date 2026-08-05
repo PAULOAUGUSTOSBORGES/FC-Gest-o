@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -44,19 +44,22 @@
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Operação</p>
                 <a href="operacao.html?view=pdv" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="pdv"><i class="fa-solid fa-cash-register w-5 text-center"></i> Frente de Caixa (PDV)</a>
-                <a href="operacao.html?view=vendas" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas"><i class="fa-solid fa-receipt w-5 text-center"></i> Histórico Vendas/Serviços</a>
+                <a href="vendas_operacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_operacao"><i class="fa-solid fa-receipt w-5 text-center"></i> Histórico Vendas/Serviços</a>
                 <a href="operacao.html?view=orcamentos" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="orcamentos"><i class="fa-solid fa-file-invoice w-5 text-center"></i> Meus Orçamentos</a>
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Cadastros</p>
                 <a href="cadastro.html?view=produtos" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="produtos"><i class="fa-solid fa-boxes-stacked w-5 text-center"></i> Produtos & Serviços</a>
-                <a href="cadastro.html?view=estoque" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="estoque"><i class="fa-solid fa-pallet w-5 text-center"></i> Estoque & Kardex</a>
+
                 <a href="cadastro.html?view=clientes" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="clientes"><i class="fa-solid fa-users w-5 text-center"></i> Clientes</a>
                 <a href="cadastro.html?view=fornecedores" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="fornecedores"><i class="fa-solid fa-truck w-5 text-center"></i> Fornecedores</a>
+                <a href="cadastro.html?view=funcionarios" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="funcionarios"><i class="fa-solid fa-user-tie w-5 text-center"></i> Funcionários / Vendedores</a>
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
+                <a href="vendas_gestao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_gestao"><i class="fa-solid fa-chart-line w-5 text-center"></i> Histórico Vendas (Gestão)</a>
                 <a href="gestao.html?view=financeiro" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Financeiro & Caixa</a>
                 <a href="gestao.html?view=compras" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & NF-e XML</a>
                 <a href="gestao.html?view=relatorios" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
+                <a href="cadastro.html?view=estoque" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="estoque"><i class="fa-solid fa-pallet w-5 text-center"></i> Estoque & Kardex</a>
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Sistema</p>
                 <a href="sistema.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="config"><i class="fa-solid fa-gear w-5 text-center"></i> Configurações</a>
@@ -109,28 +112,12 @@
                                 </button>
                                 <label class="bg-white dark:bg-slate-800 text-indigo-700 px-4 py-2.5 rounded-lg font-bold shadow-md cursor-pointer hover:bg-indigo-50 transition text-xs sm:text-sm">
                                     <i class="fa-solid fa-upload mr-1"></i> Enviar Planilha
-                                    <input type="file" id="upload-planilha-produtos" accept=".csv" class="hidden dark:text-white" onchange="processarPlanilhaProdutos(event)">
+                                    <input type="file" accept=".csv" onchange="processarPlanilhaProdutos(event)" class="hidden">
                                 </label>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- BARRA DE PESQUISA E FILTROS (LIMPADA E SEM BOTÃO DUPLICADO) -->
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-4 gap-4">
-                        <div class="flex flex-col sm:flex-row gap-3 w-full">
-                            <div class="relative w-full sm:w-96">
-                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-sm"></i>
-                                <input type="text" id="busca-produto-lista" placeholder="Buscar Produto, EAN ou Marca..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderProdutos()">
-                            </div>
-                            <select id="filtro-prod-status" class="w-full sm:w-auto bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm rounded-lg px-3 py-2.5 outline-none focus:border-blue-500 dark:text-white" onchange="renderProdutos()">
-                                <option value="todos">Estoque: Todos</option>
-                                <option value="ok">Estoque OK</option>
-                                <option value="alerta">Alerta / Baixo</option>
-                                <option value="zerado">Zerado / Negativo</option>
-                            </select>
-                        </div>
-                    </div>
-                    
+
                     <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                         <div class="overflow-x-auto custom-scrollbar">
                             <table class="w-full text-left border-collapse min-w-[700px]">
@@ -221,6 +208,33 @@
                     </div>
                 </div>
 
+                <!-- FUNCIONÁRIOS -->
+                <div id="view-funcionarios" class="view-section max-w-7xl mx-auto space-y-4 md:space-y-6 hidden">
+                    <div class="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 gap-3">
+                        <div class="relative w-full md:w-96">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-sm"></i>
+                            <input type="text" id="busca-funcionario-lista" placeholder="Buscar Funcionário..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderFuncionarios()">
+                        </div>
+                        <button onclick="abrirModalFuncionario()" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"><i class="fa-solid fa-user-plus text-lg"></i> Novo Funcionário</button>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                        <div class="overflow-x-auto custom-scrollbar">
+                            <table class="w-full text-left min-w-[600px]">
+                                <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold border-b border-slate-200 dark:border-slate-700">
+                                    <tr>
+                                        <th class="p-3">Nome do Colaborador</th>
+                                        <th class="p-3">Login / E-mail</th>
+                                        <th class="p-3">Cargo / Vendedor</th>
+                                        <th class="p-3">Comissão</th>
+                                        <th class="p-3 text-center w-24">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabela-funcionarios" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </main>
     </div>
@@ -238,7 +252,9 @@
             <div class="flex overflow-x-auto border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 md:px-6 pt-4 shrink-0 custom-scrollbar">
                 <button onclick="abaModal('prod', 'dados')" id="prod-btn-dados" class="px-4 md:px-5 py-2 border-b-2 border-blue-600 font-bold text-blue-600 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Dados & Precificação</button>
                 <button onclick="abaModal('prod', 'crm')" id="prod-btn-crm" class="px-4 md:px-5 py-2 border-b-2 border-transparent font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-200 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">CRM & Histórico</button>
+                <button onclick="abaModal('prod', 'fiscal')" id="prod-btn-fiscal" class="px-4 md:px-5 py-2 border-b-2 border-transparent font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-200 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Fiscal & Impostos</button>
             </div>
+
 
             <div class="p-4 md:p-6 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900 custom-scrollbar">
                 <input type="hidden" id="prod-id">
@@ -262,11 +278,19 @@
                             </div>
                             <div>
                                 <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Categoria</label>
-                                <select id="prod-categoria" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"><option>Móveis</option><option>Decoração</option></select>
+                                <select id="prod-categoria" onchange="atualizarOpcoesSubcategoria()" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
+                                    <option value="">Sem Categoria</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Subcategoria</label>
+                                <select id="prod-subcategoria" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
+                                    <option value="">Sem Subcategoria</option>
+                                </select>
                             </div>
                             <div>
                                 <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Unid. Medida</label>
-                                <select id="prod-unidade" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"><option>Un</option><option>Cx</option></select>
+                                <select id="prod-unidade" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"><option>Un</option><option>Cx</option><option>Kg</option><option>Mt</option><option>L</option></select>
                             </div>
                             
                             <div class="md:col-span-4 bg-slate-50 dark:bg-slate-900/50 p-4 md:p-5 rounded-xl border border-slate-200 dark:border-slate-700 mt-2 flex flex-col sm:flex-row gap-4 md:gap-5 items-start sm:items-center">
@@ -276,13 +300,13 @@
                                 </div>
                                 <div class="flex-1 w-full">
                                     <label class="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2 block text-center sm:text-left">Foto do Produto (PC ou Celular)</label>
-                                    <input type="file" id="prod-foto-file" accept="image/*" capture="environment" onchange="processarFoto(event)" class="w-full text-xs md:text-sm text-blue-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs md:file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer dark:text-white">
+                                    <input type="file" id="prod-foto-file" accept="image/*" capture="environment" onchange="processarFoto(event)" class="w-full text-xs md:text-sm text-blue-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs md:file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 dark:file:bg-slate-700 dark:file:text-blue-400 hover:file:bg-blue-100 dark:hover:file:bg-slate-600 cursor-pointer dark:text-white">
                                     <input type="hidden" id="prod-foto-base64">
                                 </div>
                             </div>
                         </div>
                     </div>
-
+                    
                     <div class="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
                         <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm border-b border-slate-100 dark:border-slate-700 pb-3 mb-4 md:mb-5 flex items-center gap-2"><i class="fa-solid fa-money-bill text-emerald-500 text-lg"></i> Precificação Inteligente e Estoque</h4>
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
@@ -292,11 +316,11 @@
                             </div>
                             <div>
                                 <label class="text-[10px] md:text-xs font-bold text-blue-700 mb-1.5 block">Margem (%)</label>
-                                <input type="number" id="prod-margem" step="0.1" class="w-full bg-blue-50 border border-blue-200 text-blue-800 p-2 md:p-2.5 rounded-lg text-sm font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all dark:text-white" oninput="calcularPrecoMargin('margem')">
+                                <input type="number" id="prod-margem" step="0.1" class="w-full bg-blue-50 border border-blue-200 text-blue-800 p-2 md:p-2.5 rounded-lg text-sm font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all dark:bg-slate-800 dark:border-slate-600 dark:text-white" oninput="calcularPrecoMargin('margem')">
                             </div>
                             <div>
                                 <label class="text-[10px] md:text-xs font-bold text-emerald-700 mb-1.5 block">Preço Venda (R$)</label>
-                                <input type="number" id="prod-preco" step="0.01" class="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 p-2 md:p-2.5 rounded-lg text-sm font-bold outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all dark:text-white" oninput="calcularPrecoMargin('preco')">
+                                <input type="number" id="prod-preco" step="0.01" class="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 p-2 md:p-2.5 rounded-lg text-sm font-bold outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all dark:bg-slate-800 dark:border-slate-600 dark:text-white" oninput="calcularPrecoMargin('preco')">
                             </div>
                             <div>
                                 <label class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Status no Sistema</label>
@@ -313,6 +337,38 @@
                             <div class="mt-2 md:mt-4">
                                 <label class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Estoque Mínimo</label>
                                 <input type="number" id="prod-minimo" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white" value="5">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="prod-aba-fiscal" class="aba-conteudo hidden space-y-4">
+                    <div class="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm border-b border-slate-100 dark:border-slate-700 pb-3 mb-4 md:mb-5 flex items-center gap-2"><i class="fa-solid fa-file-invoice text-blue-500 text-lg"></i> Dados Fiscais (NFe / NFCe)</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">NCM (8 dígitos)</label>
+                                <input type="text" id="prod-ncm" placeholder="Ex: 85444200" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">CFOP (Padrão Saída)</label>
+                                <input type="text" id="prod-cfop" placeholder="Ex: 5102" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">CSOSN / CST</label>
+                                <input type="text" id="prod-csosn" placeholder="Ex: 102 (Simples) ou 00 (Normal)" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Origem da Mercadoria</label>
+                                <select id="prod-origem" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
+                                    <option value="0">0 - Nacional</option>
+                                    <option value="1">1 - Estrangeira (Importação direta)</option>
+                                    <option value="2">2 - Estrangeira (Mercado interno)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">CEST (Opcional)</label>
+                                <input type="text" id="prod-cest" placeholder="" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
                             </div>
                         </div>
                     </div>
@@ -337,7 +393,7 @@
                 </div>
             </div>
             
-            <div class="bg-white dark:bg-slate-800 p-4 md:p-5 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 shrink-0 rounded-b-2xl">
+            <div class="bg-white dark:bg-slate-800 p-4 md:p-5 flex justify-end gap-3 shrink-0 rounded-b-2xl">
                 <button onclick="fecharModalProduto()" class="px-4 md:px-6 py-2 md:py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 shadow-sm text-sm">Cancelar</button>
                 <button onclick="salvarProduto()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 md:px-8 py-2 md:py-2.5 rounded-lg shadow-md text-sm"><i class="fa-solid fa-check-circle"></i> Salvar</button>
             </div>
@@ -377,8 +433,10 @@
                                 <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">CEP</label><input type="text" id="cli-cep" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" onblur="buscarCEP('cli')"></div>
                                 <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Rua / Logradouro</label><input type="text" id="cli-rua" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                                 <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Número</label><input type="text" id="cli-numero" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
+                                <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Complemento</label><input type="text" id="cli-complemento" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                                 <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Bairro</label><input type="text" id="cli-bairro" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                                 <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Cidade / UF</label><input type="text" id="cli-cidade" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
+                                <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Cód. IBGE</label><input type="text" id="cli-ibge" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                             </div>
                         </div>
                     </div>
@@ -399,7 +457,7 @@
                     </div>
                 </div>
             </div>
-            <div class="bg-white dark:bg-slate-800 p-4 md:p-5 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 shrink-0 rounded-b-2xl">
+            <div class="bg-white dark:bg-slate-800 p-4 md:p-5 flex justify-end gap-3 shrink-0 rounded-b-2xl">
                 <button onclick="fecharModalCliente()" class="px-4 md:px-6 py-2 md:py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 shadow-sm text-sm">Cancelar</button>
                 <button onclick="salvarCliente()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 md:px-8 py-2 md:py-2.5 rounded-lg shadow-md text-sm">Salvar Cliente</button>
             </div>
@@ -481,9 +539,156 @@
                     </div>
                 </div>
             </div>
-            <div class="bg-white dark:bg-slate-800 p-4 md:p-5 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 shrink-0 rounded-b-2xl">
+            <div class="bg-white dark:bg-slate-800 p-4 md:p-5 flex justify-end gap-3 shrink-0 rounded-b-2xl">
                 <button onclick="fecharModalFornecedor()" class="px-4 md:px-6 py-2 md:py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 shadow-sm text-sm">Cancelar</button>
                 <button onclick="salvarFornecedor()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 md:px-8 py-2 md:py-2.5 rounded-lg shadow-md text-sm">Salvar Fornecedor</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIRMAÇÃO GENÉRICA -->
+    <div id="modal-confirmacao" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl scale-95 transition-transform animate-[pop_0.2s_ease-out_forwards]">
+            <div class="p-5 text-center">
+                <div class="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-triangle-exclamation text-3xl"></i></div>
+                <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2" id="modal-confirm-title">Confirmar Ação</h3>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mb-6" id="modal-confirm-msg">Tem certeza que deseja continuar?</p>
+                <div class="flex gap-3">
+                    <button onclick="fecharModalConfirmacao()" class="flex-1 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 py-2.5 rounded-lg font-bold transition-colors">Cancelar</button>
+                    <button id="modal-confirm-btn" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-bold shadow-md transition-colors">Sim, Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL FUNCIONÁRIOS -->
+    <div id="modal-funcionario" class="fixed inset-0 z-[60] hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl my-auto animate-[slideIn_0.3s_ease-out]">
+            <div class="p-4 md:p-5 text-white flex justify-between items-center shrink-0 bg-blue-600">
+                <h3 class="text-lg md:text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-user-tie"></i> <span id="modal-funcionario-title">Novo Funcionário</span></h3>
+                <button onclick="fecharModalFuncionario()" class="text-white/80 hover:text-white transition-colors p-1"><i class="fa-solid fa-xmark text-xl md:text-2xl"></i></button>
+            </div>
+            
+            <div class="p-4 md:p-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                <input type="hidden" id="func-id">
+                
+                <h4 class="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-100 dark:border-slate-700 pb-2 uppercase tracking-wide">Dados de Acesso (Login)</h4>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">E-mail de Login *</label>
+                        <input type="email" id="func-email" placeholder="nome@empresa.com" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-medium">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Senha Provisória *</label>
+                        <input type="text" id="func-senha" placeholder="No mínimo 6 caracteres" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-medium">
+                        <p class="text-[10px] text-red-500 mt-1 hidden" id="func-senha-aviso">Preencha caso deseje criar um novo usuário ou alterar a senha atual.</p>
+                    </div>
+                </div>
+
+                <h4 class="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-100 dark:border-slate-700 pb-2 uppercase tracking-wide">Informações e Vendas</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                      <div class="sm:col-span-2">
+                        <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Nome Completo *</label>
+                        <input type="text" id="func-nome" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-medium uppercase">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">É Vendedor? (Aparece no PDV)</label>
+                        <select id="func-vendedor" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-medium">
+                            <option value="SIM">Sim</option>
+                            <option value="NAO">Não</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Comissão Padrão (%)</label>
+                        <input type="number" id="func-comissao" value="0" step="0.01" min="0" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-bold text-blue-600 text-right">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Telefone / WhatsApp</label>
+                        <input type="text" id="func-telefone" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <h4 class="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-100 dark:border-slate-700 pb-2 uppercase tracking-wide">Controle de Acesso (Permissões)</h4>
+                <div class="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-2">
+                    <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
+                        <input type="checkbox" id="func-perm-dashboard" class="w-5 h-5 accent-blue-600 rounded">
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Acesso ao Dashboard</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
+                        <input type="checkbox" id="func-perm-pdv" class="w-5 h-5 accent-blue-600 rounded">
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Acesso ao PDV / Caixa</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
+                        <input type="checkbox" id="func-perm-cadastros" class="w-5 h-5 accent-blue-600 rounded">
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Acesso a Cadastros</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
+                        <input type="checkbox" id="func-perm-gestao" class="w-5 h-5 accent-blue-600 rounded">
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Acesso Financeiro / Gestão</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
+                        <input type="checkbox" id="func-perm-config" class="w-5 h-5 accent-blue-600 rounded">
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Acesso a Configurações</span>
+                    </label>
+                </div>
+                <p class="text-[10px] text-slate-400 mb-4">* Se todas desmarcadas, o usuário não conseguirá usar as abas do sistema.</p>
+            </div>
+            
+            <div class="p-4 md:p-5 bg-slate-50 dark:bg-slate-900/50 flex justify-end gap-3 shrink-0">
+                <button onclick="fecharModalFuncionario()" class="px-5 py-2.5 rounded-lg font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm">Cancelar</button>
+                <button onclick="salvarFuncionario()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-bold shadow-md transition-colors flex items-center gap-2 text-sm"><i class="fa-solid fa-save"></i> Salvar Funcionário</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DETALHES DA VENDA/ORÇAMENTO -->
+    <div id="modal-detalhes-venda" class="fixed inset-0 bg-slate-900/80 z-[450] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden max-h-[90vh]">
+            <div class="bg-slate-800 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-base md:text-lg flex items-center gap-2"><i class="fa-solid fa-file-lines"></i> Detalhes do Documento</h3>
+                <button onclick="fecharModalDetalhesVenda()" class="text-slate-300 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl md:text-2xl"></i></button>
+            </div>
+            <div class="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 flex-1 overflow-y-auto custom-scrollbar">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6 bg-white dark:bg-slate-800 p-3 md:p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <div class="col-span-2">
+                        <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Cliente</p>
+                        <p class="font-bold text-slate-800 dark:text-slate-100 text-xs md:text-sm truncate" id="det-venda-cliente">-</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Data / Ref</p>
+                        <p class="font-bold text-slate-800 dark:text-slate-100 text-xs md:text-sm" id="det-venda-data">-</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Tipo</p>
+                        <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold" id="det-venda-pag">-</span>
+                    </div>
+                </div>
+                
+                <div class="mb-4 md:mb-6">
+                    <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">Observações / Detalhes OS</p>
+                    <div class="bg-yellow-50 p-3 md:p-4 rounded-lg border border-yellow-200 text-xs md:text-sm text-slate-700 dark:text-slate-200 italic min-h-[50px]" id="det-venda-obs"></div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left min-w-[500px]">
+                            <thead class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 text-[10px] uppercase border-b border-slate-200 dark:border-slate-700">
+                                <tr><th class="p-2 md:p-3">Produto/Serviço</th><th class="p-2 md:p-3 text-center w-12 md:w-16">Qtd</th><th class="p-2 md:p-3 text-right w-20 md:w-24">V. Unit</th><th class="p-2 md:p-3 text-right w-20 md:w-24">Total</th></tr>
+                            </thead>
+                            <tbody id="det-venda-itens" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
+                            <tfoot class="bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700">
+                                <tr>
+                                    <td colspan="3" class="p-2 md:p-3 text-right font-bold text-slate-500 dark:text-slate-400 text-[10px] md:text-xs uppercase">Total Geral</td>
+                                    <td class="p-2 md:p-3 text-right font-black text-emerald-600 text-base md:text-lg" id="det-venda-total">R$ 0,00</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white dark:bg-slate-800 p-4 md:p-5 border-t border-slate-200 dark:border-slate-700 flex justify-end shrink-0 rounded-b-2xl">
+                <button onclick="fecharModalDetalhesVenda()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-6 md:px-8 py-2 md:py-2.5 rounded-lg text-sm">Fechar Janela</button>
             </div>
         </div>
     </div>
@@ -496,26 +701,14 @@
         </div>
     </div>
 
-    <!-- CONFIRMAÇÃO -->
-    <div id="modal-confirmacao" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden text-center p-6">
-            <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
-            <h3 class="font-bold text-xl text-slate-800 dark:text-slate-100 mb-2" id="modal-confirm-title">Atenção!</h3>
-            <p class="text-slate-500 dark:text-slate-400 text-sm mb-6 font-medium" id="modal-confirm-msg">Deseja continuar?</p>
-            <div class="flex gap-3">
-                <button onclick="fecharModalConfirmacao()" class="flex-1 px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 transition-colors">Cancelar</button>
-                <button onclick="document.getElementById('modal-confirm-btn').click()" id="modal-confirm-btn" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold px-4 py-3 rounded-lg transition-colors shadow-md">Sim</button>
-            </div>
-        </div>
-    </div>
-
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="global.js"></script>
-    <script src="cadastro.js"></script>
+    <script src="global.js?v=2"></script>
+    <script src="cadastro_v3.js"></script>
 </body>
 </html>
+
 
 
 

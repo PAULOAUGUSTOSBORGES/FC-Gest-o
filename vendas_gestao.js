@@ -13,7 +13,7 @@ const categoriasReceber = ['Vendas', 'Serviços', 'Outras Receitas'];
 // Evita o "piscar" da tela carregando as abas instantaneamente antes do Firebase
 document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
-    const view = urlParams.get('view') || 'financeiro';
+    const view = urlParams.get('view') || 'vendas_gestao';
     if (typeof mudarVisaoLocal === 'function') mudarVisaoLocal(view);
 });
 
@@ -56,13 +56,13 @@ function mudarVisaoLocal(viewId) {
     }
     if (viewId === 'relatorios') renderDashboard();
     if (viewId === 'compras') renderComprasHist();
-    if (viewId === 'vendas') renderVendas();
+    if (viewId === 'vendas_gestao' || viewId === 'vendas') renderVendas();
 }
 
 function refreshCurrentView() {
     const urlParams = new URLSearchParams(window.location.search);
     let view = urlParams.get('view');
-    if (!view) view = 'financeiro';
+    if (!view) view = 'vendas_gestao';
     mudarVisaoLocal(view);
 }
 
@@ -1946,4 +1946,10 @@ function renderVendas() {
         document.getElementById('vendas-total-filtros').innerText = `Lucro Real Acumulado: ${typeof formatMoney === 'function' ? formatMoney(totalLucro) : totalLucro}`;
     }
 }
+
+
+
+
+
+
 
