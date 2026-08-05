@@ -1,4 +1,4 @@
-// cadastro.js - Lógica de Produtos, Clientes, Fornecedores e Estoque
+﻿// cadastro.js - Lógica de Produtos, Clientes, Fornecedores e Estoque
 
 let acaoConfirmacaoPendente = null;
 
@@ -531,7 +531,7 @@ function baixarPlanilhaModeloProduto() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = "FC_Moveis_Modelo_Produtos.csv";
+    a.download = "FC_Móveis_Modelo_Produtos.csv";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

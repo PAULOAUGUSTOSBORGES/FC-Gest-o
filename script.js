@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
         // 1. TRAVA DE SEGURANÇA E CONFIGURAÇÕES GERAIS
         // ==========================================
         if (sessionStorage.getItem('erp_auth_master') !== 'true') {
@@ -52,7 +52,7 @@
         async function initData() {
             try {
                 showToast("Sincronizando com a nuvem...", "info");
-                const docRef = firestore.collection("fc_moveis").doc("banco_principal");
+                const docRef = firestore.collection("fc_móveis").doc("banco_principal");
                 const docSnap = await docRef.get();
                 if (docSnap.exists) {
                     db = docSnap.data();
@@ -78,7 +78,7 @@
             } catch (error) { showToast("Erro ao conectar com a nuvem.", "error"); }
         }
 
-        function saveDB() { firestore.collection("fc_moveis").doc("banco_principal").set(db).catch(e => showToast("Falha ao salvar dados.", "error")); }
+        function saveDB() { firestore.collection("fc_móveis").doc("banco_principal").set(db).catch(e => showToast("Falha ao salvar dados.", "error")); }
 
         // ==========================================
         // 3. EXPORTAÇÕES E IMPRESSÕES ANTI-BLOQUEIO
@@ -554,7 +554,7 @@
 
             const cId = document.getElementById('pdv-cliente').value; 
             const cNome = cId === "0" ? 'Consumidor Final' : (db.clientes.find(x => String(x.id) === String(cId))?.nome || 'Consumidor Final');
-            const op = document.getElementById('pdv-operacao').value; 
+            const op = document.getElementById('pdv-operação').value; 
             const vend = document.getElementById('pdv-vendedor').value; 
             const obsTexto = document.getElementById('pdv-obs') ? document.getElementById('pdv-obs').value.trim() : ''; 
             const vendaId = Date.now(); 
@@ -745,7 +745,7 @@
             if(op === 'abrir' && db.caixa.status === 'ABERTO') return showToast('O caixa já está aberto!', 'error');
             if(op !== 'abrir' && db.caixa.status === 'FECHADO') return showToast('Abra o caixa primeiro!', 'error');
             
-            document.getElementById('caixa-operacao-tipo').value = op.toUpperCase();
+            document.getElementById('caixa-operação-tipo').value = op.toUpperCase();
             document.getElementById('modal-caixa-title').innerText = op === 'abrir' ? 'Abertura de Caixa' : (op === 'fechar' ? 'Fechamento de Caixa' : (op === 'sangria' ? 'Sangria (Retirada)' : 'Suprimento (Entrada)'));
             document.getElementById('caixa-op-valor').value = ''; document.getElementById('caixa-op-desc').value = '';
             
@@ -758,7 +758,7 @@
         function fecharModalCaixa() { document.getElementById('modal-mov-caixa').classList.add('hidden'); }
 
         function confirmarMovCaixa() {
-            const op = document.getElementById('caixa-operacao-tipo').value;
+            const op = document.getElementById('caixa-operação-tipo').value;
             const val = parseFloat(document.getElementById('caixa-op-valor').value) || 0;
             const desc = document.getElementById('caixa-op-desc').value || op;
 

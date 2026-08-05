@@ -1,0 +1,180 @@
+$ErrorActionPreference = "Stop"
+
+$replacements = @(
+    @("Histrico", "Histórico"),
+    @("histrico", "histórico"),
+    @("Servios", "Serviços"),
+    @("servios", "serviços"),
+    @("Servio", "Serviço"),
+    @("servio", "serviço"),
+    @("Lanamentos", "Lançamentos"),
+    @("lanamentos", "lançamentos"),
+    @("Lanamento", "Lançamento"),
+    @("lanamento", "lançamento"),
+    @("Aes", "Ações"),
+    @("aes", "ações"),
+    @("Ao", "Ação"),
+    @("ao", "ação"),
+    @("Viso", "Visão"),
+    @("viso", "visão"),
+    @("Gesto", "Gestão"),
+    @("gesto", "gestão"),
+    @("Configuraes", "Configurações"),
+    @("configuraes", "configurações"),
+    @("Configurao", "Configuração"),
+    @("configurao", "configuração"),
+    @("Oramentos", "Orçamentos"),
+    @("oramentos", "orçamentos"),
+    @("Oramento", "Orçamento"),
+    @("oramento", "orçamento"),
+    @("Operao", "Operação"),
+    @("operao", "operação"),
+    @("Relatrios", "Relatórios"),
+    @("relatrios", "relatórios"),
+    @("Relatrio", "Relatório"),
+    @("relatrio", "relatório"),
+    @("Informaes", "Informações"),
+    @("informaes", "informações"),
+    @("Informao", "Informação"),
+    @("informao", "informação"),
+    @("Sada", "Saída"),
+    @("sada", "saída"),
+    @("Mnimo", "Mínimo"),
+    @("mnimo", "mínimo"),
+    @("Mximo", "Máximo"),
+    @("mximo", "máximo"),
+    @("Rpido", "Rápido"),
+    @("rpido", "rápido"),
+    @("Mdulo", "Módulo"),
+    @("mdulo", "módulo"),
+    @("Automtico", "Automático"),
+    @("automtico", "automático"),
+    @("Voc", "Você"),
+    @("voc", "você"),
+    @("Jurdica", "Jurídica"),
+    @("jurdica", "jurídica"),
+    @("Fsica", "Física"),
+    @("fsica", "física"),
+    @("Nmero", "Número"),
+    @("nmero", "número"),
+    @("Endereo", "Endereço"),
+    @("endereo", "endereço"),
+    @("Usurio", "Usuário"),
+    @("usurio", "usuário"),
+    @("Ps-venda", "Pós-venda"),
+    @("ps-venda", "pós-venda"),
+    @("Pr-venda", "Pré-venda"),
+    @("pr-venda", "pré-venda"),
+    @("Condio", "Condição"),
+    @("condio", "condição"),
+    @("Condies", "Condições"),
+    @("condies", "condições"),
+    @("Atravs", "Através"),
+    @("atravs", "através"),
+    @("Descrio", "Descrição"),
+    @("descrio", "descrição"),
+    @("Preo", "Preço"),
+    @("preo", "preço"),
+    @("Carto", "Cartão"),
+    @("carto", "cartão"),
+    @("Dbito", "Débito"),
+    @("dbito", "débito"),
+    @("Crdito", "Crédito"),
+    @("crdito", "crédito"),
+    @("Observao", "Observação"),
+    @("observao", "observação"),
+    @("Observaes", "Observações"),
+    @("observaes", "observações"),
+    @("Pgina", "Página"),
+    @("pgina", "página"),
+    @("Concludo", "Concluído"),
+    @("concludo", "concluído"),
+    @("Ms", "Mês"),
+    @("ms", "mês"),
+    @("Trs", "Três"),
+    @("trs", "três"),
+    @("Cdigo", "Código"),
+    @("cdigo", "código"),
+    @(" N ", " Nº "),
+    @(" j ", " já "),
+    @(" s ", " só "),
+    @(" No ", " Não "),
+    @(" no ", " não "),
+    @(" At ", " Até "),
+    @(" at ", " até "),
+    @(" Ol ", " Olá "),
+    @(" H ", " Há "),
+    @(" padro ", " padrão "),
+    @(" Padro ", " Padrão "),
+    @(" padres ", " padrões "),
+    @(" Padres ", " Padrões "),
+    @(" excludo ", " excluído "),
+    @(" Excludo ", " Excluído "),
+    @(" Excluso ", " Exclusão "),
+    @(" excluso ", " exclusão "),
+    @(" opes ", " opções "),
+    @(" Opes ", " Opções "),
+    @(" opo ", " opção "),
+    @(" Opo ", " Opção "),
+    @(" vlido ", " válido "),
+    @(" Vlido ", " Válido "),
+    @(" invlido ", " inválido "),
+    @(" Invlido ", " Inválido "),
+    @(" clculo ", " cálculo "),
+    @(" Clculo ", " Cálculo "),
+    @(">No<", ">Não<"),
+    @(">no<", ">não<"),
+    @(" Cd ", " Cód "),
+    @(" cd ", " cód "),
+    @(" dgitos ", " dígitos "),
+    @(" Dgitos ", " Dígitos "),
+    @(" no ", " não "),
+    @(" No ", " Não "),
+    @(">Aes<", ">Ações<"),
+    @(">Histrico", ">Histórico"),
+    @("Funcionrios", "Funcionários"),
+    @("funcionrios", "funcionários"),
+    @("Funcionrio", "Funcionário"),
+    @("funcionrio", "funcionário"),
+    @("Devoluo", "Devolução"),
+    @("devoluo", "devolução"),
+    @("Bsico", "Básico"),
+    @("bsico", "básico"),
+    @("Prximo", "Próximo"),
+    @("prximo", "próximo"),
+    @("ltimo", "Último"),
+    @("ltima", "Última"),
+    @("ltimos", "Últimos"),
+    @("ltimas", "Últimas"),
+    @("C-", "C/"), # sometimes C/ is corrupted if it's C, wait no
+    @("cpf/cnpj", "cpf/cnpj")
+)
+
+$directory = "g:\site sistema"
+$files = Get-ChildItem -Path $directory -Include *.html, *.js -Recurse
+
+foreach ($file in $files) {
+    try {
+        $content = Get-Content $file.FullName -Raw -Encoding UTF8
+        $original = $content
+        
+        foreach ($pair in $replacements) {
+            # In .NET, String.Replace is case-sensitive! This is perfect.
+            $content = $content.Replace($pair[0], $pair[1])
+        }
+
+        # Fix isolated '' that represent 'é'
+        $content = $content.Replace("  ", " é ")
+        $content = $content.Replace("><", ">é<")
+        $content = $content.Replace(" ", " é")
+
+        # Fix '' that represent 'á' in some contexts if any left (a bit risky, skipping generic replace for 'á')
+
+        if ($content -cne $original) {
+            [IO.File]::WriteAllText($file.FullName, $content, [System.Text.Encoding]::UTF8)
+            Write-Host "Fixed encoding in $($file.Name)"
+        }
+    } catch {
+        Write-Warning "Failed $($file.FullName): $_"
+    }
+}

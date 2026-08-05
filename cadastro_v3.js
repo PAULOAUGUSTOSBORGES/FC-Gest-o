@@ -1,4 +1,4 @@
-// cadastro.js - Lógica de Produtos, Clientes, Fornecedores e Estoque
+﻿// cadastro.js - Lógica de Produtos, Clientes, Fornecedores e Estoque
 
 let acaoConfirmacaoPendente = null;
 
@@ -152,10 +152,10 @@ function preencherSelectsDeCategorias() {
         if (!select) return;
         
         const valorAtual = select.value;
-        const textoPadrao = id.includes('filtro') ? 'Categoria: Todas' : 'Sem Categoria';
-        const valorPadrao = id.includes('filtro') ? 'todos' : '';
+        const textoPadrão = id.includes('filtro') ? 'Categoria: Todas' : 'Sem Categoria';
+        const valorPadrão = id.includes('filtro') ? 'todos' : '';
         
-        select.innerHTML = `<option value="${valorPadrao}">${textoPadrao}</option>` + 
+        select.innerHTML = `<option value="${valorPadrão}">${textoPadrão}</option>` + 
             (db.categorias || []).map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
             
         if (valorAtual) select.value = valorAtual;
@@ -171,10 +171,10 @@ window.atualizarOpcoesSubcategoria = function(categoriaSelecionada = null, targe
     if (!select) return;
     
     const valorAtual = select.value;
-    const textoPadrao = targetId.includes('filtro') ? 'Subcategoria: Todas' : 'Sem Subcategoria';
-    const valorPadrao = targetId.includes('filtro') ? 'todos' : '';
+    const textoPadrão = targetId.includes('filtro') ? 'Subcategoria: Todas' : 'Sem Subcategoria';
+    const valorPadrão = targetId.includes('filtro') ? 'todos' : '';
     
-    select.innerHTML = `<option value="${valorPadrao}">${textoPadrao}</option>`;
+    select.innerHTML = `<option value="${valorPadrão}">${textoPadrão}</option>`;
     
     if (categoriaSelecionada && categoriaSelecionada !== 'todos') {
         const cat = (db.categorias || []).find(c => c.nome === categoriaSelecionada);
@@ -602,7 +602,7 @@ function baixarPlanilhaModeloProduto() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = "FC_Moveis_Modelo_Produtos.csv";
+    a.download = "FC_Móveis_Modelo_Produtos.csv";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

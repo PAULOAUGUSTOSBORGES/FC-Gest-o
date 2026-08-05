@@ -114,7 +114,7 @@ function mudarVisaoLocal(viewId) {
     if (viewId === 'orcamentos') renderOrcamentos();
 }
 
-function inicializarOperacao() {
+function inicializarOperação() {
     aplicarIdentidadeVisualNoMenu(); 
     
     firestore.collection('produtos').onSnapshot(snap => {
@@ -131,7 +131,7 @@ function inicializarOperacao() {
         if(v && v.classList.contains('active')) renderVendas();
         if(o && o.classList.contains('active')) renderOrcamentos();
     });
-    firestore.collection('fc_moveis').doc('caixa').onSnapshot(doc => {
+    firestore.collection('fc_móveis').doc('caixa').onSnapshot(doc => {
         if(doc.exists) db.caixa = doc.data();
         else db.caixa = { status: 'FECHADO', saldo: 0, historico: [] };
         const badgeCaixa = document.getElementById('pdv-status-caixa');
@@ -150,7 +150,7 @@ function inicializarOperacao() {
     mudarVisaoLocal(view);
 }
 
-window.onload = () => { initGlobalData(inicializarOperacao); };
+window.onload = () => { initGlobalData(inicializarOperação); };
 
 // ==========================================
 // 3. FUNÇÕES GENÉRICAS E KARDEX
@@ -909,7 +909,7 @@ function imprimirContratoObj(v) {
     }).join('');
 
     const prazoOs = v.servicoDetalhes && v.servicoDetalhes.prazo ? v.servicoDetalhes.prazo.split('-').reverse().join('/') : '___/___/20__';
-    const dataEmissaoOperacao = v.data ? new Date(v.data).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
+    const dataEmissaoOperação = v.data ? new Date(v.data).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
 
     const html = `
     <div style="font-family: Arial, sans-serif; color: #000; width: 100%; max-width: 800px; margin: 0 auto; line-height: 1.5; font-size: 14px;">
@@ -938,7 +938,7 @@ function imprimirContratoObj(v) {
         <p style="margin-top: 0;">
             <strong>Valor total:</strong> ${formatMoney(v.tot)}<br>
             <strong>Forma de pagamento registrada:</strong> ${v.pag || '_________________________________'}<br>
-            <strong>Data da Operação:</strong> ${dataEmissaoOperacao}
+            <strong>Data da Operação:</strong> ${dataEmissaoOperação}
         </p>
 
         <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">PRAZO DE ENTREGA E GARANTIA</h3>
@@ -987,18 +987,18 @@ function imprimirContratoObj(v) {
 // ==========================================
 // 9. LEITOR DE CÓDIGO DE BARRAS
 // ==========================================
-function abrirLeitorCamera() { 
+function abrirLeitorCâmera() { 
     document.getElementById('modal-leitor-codigo').classList.remove('hidden'); 
     if (!html5QrCode) html5QrCode = new Html5Qrcode("reader"); 
     
     html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 150 } }, onScanSuccess)
     .catch(err => { 
         showToast("Erro ao acessar a câmera.", "error"); 
-        fecharLeitorCamera(); 
+        fecharLeitorCâmera(); 
     }); 
 }
 
-function fecharLeitorCamera() { 
+function fecharLeitorCâmera() { 
     document.getElementById('modal-leitor-codigo').classList.add('hidden'); 
     if (html5QrCode && html5QrCode.isScanning) {
         html5QrCode.stop().catch(err => console.log(err)); 
@@ -1006,7 +1006,7 @@ function fecharLeitorCamera() {
 }
 
 function onScanSuccess(decodedText) { 
-    fecharLeitorCamera(); 
+    fecharLeitorCâmera(); 
     const buscaInput = document.getElementById('pdv-produto-busca'); 
     buscaInput.value = decodedText; 
     const prod = db.produtos.find(x => String(x.ean) === decodedText || String(x.id) === decodedText); 
@@ -1026,7 +1026,7 @@ function onScanSuccess(decodedText) {
 function prepararPDV() {
     if(!db.caixa) db.caixa = { status: 'FECHADO', saldo: 0, historico: [] };
     
-    const opSelect = document.getElementById('pdv-operacao'); 
+    const opSelect = document.getElementById('pdv-operação'); 
     if(opSelect) { 
         opSelect.addEventListener('change', () => { 
             atualizarResumoPagamentosVenda(); 
@@ -1052,7 +1052,7 @@ function prepararPDV() {
 }
 
 function togglePanelServico() {
-    const op = document.getElementById('pdv-operacao'); 
+    const op = document.getElementById('pdv-operação'); 
     const panel = document.getElementById('panel-servico');
     
     if (op && panel) { 
@@ -1119,7 +1119,7 @@ document.addEventListener('click', function(event) {
 });
 
 function processarAdicaoProduto(p) { 
-    const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : 'Venda'; 
+    const op = document.getElementById('pdv-operação') ? document.getElementById('pdv-operação').value : 'Venda'; 
     const isOrcamento = op === 'Orçamento';
     const idx = cart.findIndex(i => String(i.id) === String(p.id)); 
     
@@ -1162,7 +1162,7 @@ function renderCarrinho() {
 }
 
 function pdvMudarQtd(i, n) { 
-    const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : 'Venda'; 
+    const op = document.getElementById('pdv-operação') ? document.getElementById('pdv-operação').value : 'Venda'; 
     const isOrcamento = op === 'Orçamento'; 
     const novaQtd = Math.max(1, parseInt(n)||1); 
     cart[i].qtd = novaQtd; 
@@ -1309,7 +1309,7 @@ function recalcularDatasParcelas(qtd) {
 }
 
 function atualizarResumoPagamentosVenda() {
-    const opSelect = document.getElementById('pdv-operacao'); 
+    const opSelect = document.getElementById('pdv-operação'); 
     const isOrcamento = opSelect && opSelect.value === 'Orçamento'; 
     const isServico = opSelect && opSelect.value === 'Serviço'; 
     const lista = document.getElementById('lista-pagamentos-adicionados'); 
@@ -1418,7 +1418,7 @@ function removerPagamentoVenda(index) {
 }
 
 async function finalizarVendaMultipla() {
-    const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : 'Venda';
+    const op = document.getElementById('pdv-operação') ? document.getElementById('pdv-operação').value : 'Venda';
     const isOrcamento = op === 'Orçamento'; 
     const isServico = op === 'Serviço';
     
@@ -1693,7 +1693,7 @@ async function finalizarVendaMultipla() {
             }
         });
         
-        const caixaRef = firestore.collection('fc_moveis').doc('caixa');
+        const caixaRef = firestore.collection('fc_móveis').doc('caixa');
         batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
     }
 
@@ -1796,7 +1796,7 @@ function renderVendas() {
     filtrados = filtrados.filter(v => v.tipo !== 'ORÇAMENTO');
     
     if (tipoFiltro === 'VENDAS') filtrados = filtrados.filter(v => v.tipo === 'VENDA' || !v.tipo);
-    if (tipoFiltro === 'SERVICOS') filtrados = filtrados.filter(v => v.tipo === 'SERVIÇO');
+    if (tipoFiltro === 'SERVIÇOS') filtrados = filtrados.filter(v => v.tipo === 'SERVIÇO');
     if (termo) filtrados = filtrados.filter(v => (v.clienteNome && String(v.clienteNome).toLowerCase().includes(termo)) || (v.numeroPedido && String(v.numeroPedido).includes(termo)) || (v.vendedor && String(v.vendedor).toLowerCase().includes(termo)));
     if (pgto !== 'TODOS') filtrados = filtrados.filter(v => v.pag && String(v.pag).includes(pgto));
     if (dataIni) { const dIni = new Date(dataIni + 'T00:00:00').getTime(); filtrados = filtrados.filter(v => v.data && new Date(v.data).getTime() >= dIni); }
@@ -1972,7 +1972,7 @@ function excluirVenda(id) {
                     let cxSaldoNovo = (cxAtual.saldo || 0) - (Number(v.valorLiquido) || 0);
                     cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno ${v.tipo} #${numPedStr}`, valor: (Number(v.valorLiquido) || 0) });
                     
-                    const caixaRef = firestore.collection('fc_moveis').doc('caixa');
+                    const caixaRef = firestore.collection('fc_móveis').doc('caixa');
                     batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
                 }
             }
@@ -2221,7 +2221,7 @@ function editarVenda(id) {
                     let cxSaldoNovo = (cxAtual.saldo || 0) - (Number(v.valorLiquido) || 0);
                     cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno (Edição) ${v.tipo} #${numPedStr}`, valor: (Number(v.valorLiquido) || 0) });
                     
-                    const caixaRef = firestore.collection('fc_moveis').doc('caixa');
+                    const caixaRef = firestore.collection('fc_móveis').doc('caixa');
                     batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
                 }
             }
@@ -2241,7 +2241,7 @@ function editarVenda(id) {
                 numeroPedido: v.numeroPedido
             };
             
-            const opSelect = document.getElementById('pdv-operacao');
+            const opSelect = document.getElementById('pdv-operação');
             if(opSelect) opSelect.value = v.tipo === 'ORÇAMENTO' ? 'Orçamento' : (v.tipo === 'SERVIÇO' ? 'Serviço' : 'Venda');
             togglePanelServico();
             

@@ -79,7 +79,7 @@ async function migrarDadosSeNecessario() {
         if (!comprasSnap.empty || !finSnap.empty) return;
 
         // Coleções novas estão vazias — tenta ler do banco antigo
-        const bancoPrincipalSnap = await firestore.collection('fc_moveis').doc('banco_principal').get();
+        const bancoPrincipalSnap = await firestore.collection('fc_móveis').doc('banco_principal').get();
         if (!bancoPrincipalSnap.exists) return;
 
         const dados = bancoPrincipalSnap.data();
@@ -103,12 +103,12 @@ async function migrarDadosSeNecessario() {
             }
         }
 
-        if (dados.caixa) promessas.push(firestore.collection('fc_moveis').doc('caixa').set(dados.caixa, { merge: true }));
-        if (dados.config) promessas.push(firestore.collection('fc_moveis').doc('config').set(dados.config, { merge: true }));
+        if (dados.caixa) promessas.push(firestore.collection('fc_móveis').doc('caixa').set(dados.caixa, { merge: true }));
+        if (dados.config) promessas.push(firestore.collection('fc_móveis').doc('config').set(dados.config, { merge: true }));
 
         await Promise.all(promessas);
         // Marca como migrado
-        try { await firestore.collection('fc_moveis').doc('banco_principal').update({ migrado: true }); } catch(e2){}
+        try { await firestore.collection('fc_móveis').doc('banco_principal').update({ migrado: true }); } catch(e2){}
 
         showToast('Dados importados com sucesso! Recarregando...', 'success');
         setTimeout(() => window.location.reload(), 2000);
@@ -155,7 +155,7 @@ function inicializarGestao() {
         db.fornecedores = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         tentarRefresh();
     });
-    firestore.collection('fc_moveis').doc('caixa').onSnapshot(doc => {
+    firestore.collection('fc_móveis').doc('caixa').onSnapshot(doc => {
         if(doc.exists) db.caixa = doc.data();
         else db.caixa = { status: 'FECHADO', saldo: 0, historico: [] };
         if (colecoesProntas >= totalColecoes) refreshCurrentView();
@@ -397,7 +397,7 @@ function renderCaixaDiario() {
 
 function abrirModalCaixa(op) {
     if(op === 'abrir' && db.caixa.status === 'ABERTO') return showToast('O caixa já está aberto!', 'error'); if(op !== 'abrir' && db.caixa.status === 'FECHADO') return showToast('Abra o caixa primeiro!', 'error');
-    document.getElementById('caixa-operacao-tipo').value = op.toUpperCase(); document.getElementById('modal-caixa-title').innerText = op === 'abrir' ? 'Abertura de Caixa' : (op === 'fechar' ? 'Fechamento de Caixa' : (op === 'sangria' ? 'Sangria (Retirada)' : 'Suprimento (Entrada)'));
+    document.getElementById('caixa-operação-tipo').value = op.toUpperCase(); document.getElementById('modal-caixa-title').innerText = op === 'abrir' ? 'Abertura de Caixa' : (op === 'fechar' ? 'Fechamento de Caixa' : (op === 'sangria' ? 'Sangria (Retirada)' : 'Suprimento (Entrada)'));
     document.getElementById('caixa-op-valor').value = ''; document.getElementById('caixa-op-desc').value = '';
     if(op === 'fechar') { document.getElementById('caixa-op-valor').value = db.caixa.saldo; document.getElementById('caixa-op-desc').value = 'Fechamento do dia'; } if(op === 'abrir') { document.getElementById('caixa-op-valor').value = 0; document.getElementById('caixa-op-desc').value = 'Troco Inicial'; }
     document.getElementById('modal-mov-caixa').classList.remove('hidden');
@@ -405,7 +405,7 @@ function abrirModalCaixa(op) {
 function fecharModalCaixa() { document.getElementById('modal-mov-caixa').classList.add('hidden'); }
 
 async function confirmarMovCaixa() {
-    const op = document.getElementById('caixa-operacao-tipo').value; const val = parseFloat(document.getElementById('caixa-op-valor').value) || 0; const desc = document.getElementById('caixa-op-desc').value || op;
+    const op = document.getElementById('caixa-operação-tipo').value; const val = parseFloat(document.getElementById('caixa-op-valor').value) || 0; const desc = document.getElementById('caixa-op-desc').value || op;
     let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
     let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
     let novoStatus = cxAtual.status; let novoSaldo = cxAtual.saldo || 0;
@@ -416,7 +416,7 @@ async function confirmarMovCaixa() {
     else if(op === 'SUPRIMENTO') { novoSaldo += val; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `SUPRIMENTO: ${desc}`, valor: val }); }
     
     try {
-        await firestore.collection('fc_moveis').doc('caixa').set({ ...cxAtual, status: novoStatus, saldo: novoSaldo, historico: cxHistoricoNovo }, { merge: true });
+        await firestore.collection('fc_móveis').doc('caixa').set({ ...cxAtual, status: novoStatus, saldo: novoSaldo, historico: cxHistoricoNovo }, { merge: true });
         fecharModalCaixa(); renderCaixaDiario(); showToast('Operação realizada com sucesso!', 'success');
     } catch(err) { console.error(err); showToast('Erro ao registrar caixa.', 'error'); }
 }
@@ -743,7 +743,7 @@ async function estornarTitulo(id) {
                 cxSaldoNovo += f.valorPago;
                 cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Estorno: ${f.pessoa}`, valor: f.valorPago });
             }
-            batch.set(firestore.collection('fc_moveis').doc('caixa'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+            batch.set(firestore.collection('fc_móveis').doc('caixa'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
         }
         
         const finRef = firestore.collection('financeiro').doc(String(id));
@@ -828,7 +828,7 @@ async function confirmarBaixa() {
         if(f.tipo === 'RECEITA') { cxSaldoNovo += vf; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Recbto. Título: ${f.pessoa}`, valor: vf }); } 
         else { if(vf > cxSaldoNovo) return showToast('Saldo do Caixa insuficiente!', 'error'); cxSaldoNovo -= vf; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Pgto. Título: ${f.pessoa}`, valor: vf }); }
         
-        batch.set(firestore.collection('fc_moveis').doc('caixa'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+        batch.set(firestore.collection('fc_móveis').doc('caixa'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
     }
     
     const finRef = firestore.collection('financeiro').doc(String(id));
@@ -1905,7 +1905,7 @@ function renderVendas() {
     filtrados = filtrados.filter(v => v.tipo !== 'ORÇAMENTO');
     
     if (tipoFiltro === 'VENDAS') filtrados = filtrados.filter(v => v.tipo === 'VENDA' || !v.tipo);
-    if (tipoFiltro === 'SERVICOS') filtrados = filtrados.filter(v => v.tipo === 'SERVIÇO');
+    if (tipoFiltro === 'SERVIÇOS') filtrados = filtrados.filter(v => v.tipo === 'SERVIÇO');
     if (termo) filtrados = filtrados.filter(v => (v.clienteNome && String(v.clienteNome).toLowerCase().includes(termo)) || (v.numeroPedido && String(v.numeroPedido).includes(termo)) || (v.vendedor && String(v.vendedor).toLowerCase().includes(termo)));
     if (pgto !== 'TODOS') filtrados = filtrados.filter(v => v.pag && String(v.pag).includes(pgto));
     if (dataIni) { const dIni = new Date(dataIni + 'T00:00:00').getTime(); filtrados = filtrados.filter(v => v.data && new Date(v.data).getTime() >= dIni); }

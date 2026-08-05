@@ -1,4 +1,4 @@
-// index.js - Lógica exclusiva do Dashboard (MEGA BI)
+﻿// index.js - Lógica exclusiva do Dashboard (MEGA BI)
 
 let renderTimeout = null;
 
@@ -307,7 +307,7 @@ function renderizarNotificacoes(prodVazios, prodBaixo, recVencidas, pagVencidas,
 
 async function migrarBancoAntigo() {
     try {
-        const docRef = firestore.collection("fc_moveis").doc("banco_principal");
+        const docRef = firestore.collection("fc_móveis").doc("banco_principal");
         const docSnap = await docRef.get();
         if (docSnap.exists) {
             const dados = docSnap.data();
@@ -329,8 +329,8 @@ async function migrarBancoAntigo() {
                 }
             }
             
-            if (dados.caixa) promessas.push(firestore.collection("fc_moveis").doc("caixa").set(dados.caixa));
-            if (dados.config) promessas.push(firestore.collection("fc_moveis").doc("config").set(dados.config, {merge: true}));
+            if (dados.caixa) promessas.push(firestore.collection("fc_móveis").doc("caixa").set(dados.caixa));
+            if (dados.config) promessas.push(firestore.collection("fc_móveis").doc("config").set(dados.config, {merge: true}));
             
             await Promise.all(promessas);
             await docRef.update({ migrado: true });
@@ -367,7 +367,7 @@ function inicializarDashboard() {
         db.financeiro = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderDashboard();
     });
-    firestore.collection('fc_moveis').doc('caixa').onSnapshot(doc => {
+    firestore.collection('fc_móveis').doc('caixa').onSnapshot(doc => {
         db.caixa = doc.data() || { saldo: 0 };
         renderDashboard();
     });

@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // 1. CONFIGURAÇÕES DO FIREBASE E SEGURANÇA
 // ==========================================
 
@@ -58,11 +58,11 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
             }
 
             try {
-                const confSnap = await firestore.collection("fc_moveis").doc("config").get();
+                const confSnap = await firestore.collection("fc_móveis").doc("config").get();
                 if (confSnap.exists) {
                     db.config = confSnap.data();
                 } else {
-                    await firestore.collection("fc_moveis").doc("config").set(db.config);
+                    await firestore.collection("fc_móveis").doc("config").set(db.config);
                 }
             } catch (error) {
                 console.error("Erro ao carregar config:", error);
