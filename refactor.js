@@ -1,4 +1,4 @@
-﻿const fs = require('fs');
+const fs = require('fs');
 const path = require('path');
 
 const dir = __dirname;
@@ -160,3 +160,4 @@ for (let file of allHtmlFiles) {
         console.log(`Updated links in ${file}`);
     }
 }
+

@@ -1,4 +1,4 @@
-﻿// cadastro.js - Lógica de Produtos, Clientes, Fornecedores e Estoque
+// cadastro.js - Lógica de Produtos, Clientes, Fornecedores e Estoque
 
 let acaoConfirmacaoPendente = null;
 
@@ -68,7 +68,9 @@ function inicializarCadastro() {
         db.vendas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     });
 
-    mudarVisaoLocal('fornecedores');
+    const urlParams = new URLSearchParams(window.location.search);
+    const view = urlParams.get('view');
+    mudarVisaoLocal(view || 'fornecedores');
 }
 
 window.onload = () => { initGlobalData(inicializarCadastro); };
@@ -861,4 +863,5 @@ document.addEventListener('click', function(e) {
         }
     }
 });
+
 

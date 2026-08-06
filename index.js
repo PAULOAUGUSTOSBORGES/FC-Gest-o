@@ -1,4 +1,4 @@
-// index.js - Lógica exclusiva do Dashboard (MEGA BI)
+// index.js - LÃ³gica exclusiva do Dashboard (MEGA BI)
 
 let renderTimeout = null;
 
@@ -7,7 +7,7 @@ function atualizarDashboard() {
 }
 
 function renderDashboard() {
-    // Evitar renderizações excessivas se várias coleções atualizarem ao mesmo tempo
+    // Evitar renderizaÃ§Ãµes excessivas se vÃ¡rias coleÃ§Ãµes atualizarem ao mesmo tempo
     if (renderTimeout) clearTimeout(renderTimeout);
     renderTimeout = setTimeout(() => {
         executarCalculosDashboard();
@@ -15,7 +15,7 @@ function renderDashboard() {
 }
 
 function executarCalculosDashboard() {
-    // Pegar o filtro de período
+    // Pegar o filtro de perÃ­odo
     const filtroEl = document.getElementById('dash-filtro-periodo');
     const periodo = filtroEl ? filtroEl.value : 'mes';
 
@@ -59,11 +59,11 @@ function executarCalculosDashboard() {
             dataIni = new Date(agora.getFullYear(), 0, 1);
             break;
         case 'tudo':
-            // dataIni já é epoch
+            // dataIni jÃ¡ Ã© epoch
             break;
     }
 
-    const labelPeriodo = (periodo === 'hoje' || periodo === 'ontem') ? 'Dia' : (periodo === 'mes' ? 'Mês' : 'Período');
+    const labelPeriodo = (periodo === 'hoje' || periodo === 'ontem') ? 'Dia' : (periodo === 'mes' ? 'MÃªs' : 'PerÃ­odo');
     document.querySelectorAll('.periodo-label').forEach(el => el.innerText = labelPeriodo);
 
     const dentroDoPeriodo = (dataString) => {
@@ -73,8 +73,8 @@ function executarCalculosDashboard() {
     };
 
     // 1. FATURAMENTO E VENDAS
-    const vendasTotais = (db.vendas || []).filter(v => v.tipo !== 'ORÇAMENTO');
-    const orcamentosTotais = (db.vendas || []).filter(v => v.tipo === 'ORÇAMENTO');
+    const vendasTotais = (db.vendas || []).filter(v => v.tipo !== 'ORÃ‡AMENTO');
+    const orcamentosTotais = (db.vendas || []).filter(v => v.tipo === 'ORÃ‡AMENTO');
     
     const vendasPeriodo = vendasTotais.filter(v => dentroDoPeriodo(v.data));
     const vendasHoje = vendasTotais.filter(v => {
@@ -89,13 +89,13 @@ function executarCalculosDashboard() {
     const lucroPeriodo = fatPeriodo - cmvPeriodo;
     const qtdVendasPeriodo = vendasPeriodo.length;
 
-    // 2. ORÇAMENTOS PENDENTES
+    // 2. ORÃ‡AMENTOS PENDENTES
     const orcamentosPendentes = orcamentosTotais.filter(v => dentroDoPeriodo(v.data)).length;
 
     // 3. FINANCEIRO
     const contas = db.financeiro || [];
     
-    // Despesas = Pago no período
+    // Despesas = Pago no perÃ­odo
     const despesasPeriodo = contas.filter(c => c.tipo === 'DESPESA' && c.status === 'PAGO' && dentroDoPeriodo(c.dataPagamento || c.data)).reduce((a,b) => a + (Number(b.valor) || 0), 0);
     
     const aReceberTodas = contas.filter(c => (!c.tipo || c.tipo === 'RECEITA') && c.status === 'PENDENTE');
@@ -156,7 +156,7 @@ function executarCalculosDashboard() {
 
     vendasPeriodo.forEach(v => {
         // Agrupar Clientes
-        const cNome = v.clienteNome || 'Cliente Não Identificado';
+        const cNome = v.clienteNome || 'Cliente NÃ£o Identificado';
         const cId = v.clienteId || cNome;
         if(!clienteVendas[cId]) {
             clienteVendas[cId] = { nome: cNome, compras: 0, receita: 0 };
@@ -167,7 +167,7 @@ function executarCalculosDashboard() {
         // Agrupar Produtos
         if(v.itens && Array.isArray(v.itens)) {
             v.itens.forEach(item => {
-                const pNome = item.nome || 'Produto Não Identificado';
+                const pNome = item.nome || 'Produto NÃ£o Identificado';
                 const pId = item.id || pNome;
                 if(!produtoVendas[pId]) {
                     produtoVendas[pId] = { nome: pNome, qtd: 0, receita: 0 };
@@ -191,7 +191,7 @@ function executarCalculosDashboard() {
                 </tr>
             `).join('');
         } else {
-            tbodyProd.innerHTML = `<tr><td colspan="3" class="text-center py-4">Nenhuma venda no período</td></tr>`;
+            tbodyProd.innerHTML = `<tr><td colspan="3" class="text-center py-4">Nenhuma venda no perÃ­odo</td></tr>`;
         }
     }
 
@@ -208,7 +208,7 @@ function executarCalculosDashboard() {
                 </tr>
             `).join('');
         } else {
-            tbodyCli.innerHTML = `<tr><td colspan="3" class="text-center py-4">Nenhuma venda no período</td></tr>`;
+            tbodyCli.innerHTML = `<tr><td colspan="3" class="text-center py-4">Nenhuma venda no perÃ­odo</td></tr>`;
         }
     }
 
@@ -250,7 +250,7 @@ function executarCalculosDashboard() {
                 </tr>
             `).join('');
         } else {
-            tbodyABC.innerHTML = `<tr><td colspan="5" class="text-center py-8">Nenhuma venda para análise ABC</td></tr>`;
+            tbodyABC.innerHTML = `<tr><td colspan="5" class="text-center py-8">Nenhuma venda para anÃ¡lise ABC</td></tr>`;
         }
     }
 
@@ -266,7 +266,7 @@ function renderizarNotificacoes(prodVazios, prodBaixo, recVencidas, pagVencidas,
     if (caixa < 0) {
         alertas.push(`<div class="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800/50 rounded-lg flex gap-3 items-center cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors" onclick="window.location.href='gestao.html?view=financeiro'">
             <div class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0"><i class="fa-solid fa-triangle-exclamation"></i></div>
-            <div><p class="text-sm font-bold text-slate-800 dark:text-slate-100">Caixa Negativo</p><p class="text-xs text-slate-500 dark:text-slate-400">O saldo em caixa está negativo.</p></div>
+            <div><p class="text-sm font-bold text-slate-800 dark:text-slate-100">Caixa Negativo</p><p class="text-xs text-slate-500 dark:text-slate-400">O saldo em caixa estÃ¡ negativo.</p></div>
         </div>`);
     }
 
@@ -280,7 +280,7 @@ function renderizarNotificacoes(prodVazios, prodBaixo, recVencidas, pagVencidas,
     if (prodBaixo > 0) {
         alertas.push(`<div class="p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800/50 rounded-lg flex gap-3 items-center cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors" onclick="window.location.href='cadastro.html?view=produtos'">
             <div class="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0"><i class="fa-solid fa-battery-quarter"></i></div>
-            <div><p class="text-sm font-bold text-slate-800 dark:text-slate-100">${prodBaixo} Produto(s) acabando</p><p class="text-xs text-slate-500 dark:text-slate-400">Estoque atingiu o nível mínimo.</p></div>
+            <div><p class="text-sm font-bold text-slate-800 dark:text-slate-100">${prodBaixo} Produto(s) acabando</p><p class="text-xs text-slate-500 dark:text-slate-400">Estoque atingiu o nÃ­vel mÃ­nimo.</p></div>
         </div>`);
     }
 
@@ -294,12 +294,12 @@ function renderizarNotificacoes(prodVazios, prodBaixo, recVencidas, pagVencidas,
     if (recVencidas > 0) {
         alertas.push(`<div class="p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800/50 rounded-lg flex gap-3 items-center cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors" onclick="window.location.href='gestao.html?view=financeiro'">
             <div class="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0"><i class="fa-solid fa-hand-holding-dollar"></i></div>
-            <div><p class="text-sm font-bold text-slate-800 dark:text-slate-100">${recVencidas} Recebimento(s) em atraso</p><p class="text-xs text-slate-500 dark:text-slate-400">Faça cobranças ativas.</p></div>
+            <div><p class="text-sm font-bold text-slate-800 dark:text-slate-100">${recVencidas} Recebimento(s) em atraso</p><p class="text-xs text-slate-500 dark:text-slate-400">FaÃ§a cobranÃ§as ativas.</p></div>
         </div>`);
     }
 
     if (alertas.length === 0) {
-        painel.innerHTML = `<div class="text-center text-slate-400 dark:text-slate-500 mt-10"><i class="fa-solid fa-circle-check text-4xl mb-3 text-emerald-400/50"></i><p class="text-sm">Tudo tranquilo! Nenhum alerta crítico.</p></div>`;
+        painel.innerHTML = `<div class="text-center text-slate-400 dark:text-slate-500 mt-10"><i class="fa-solid fa-circle-check text-4xl mb-3 text-emerald-400/50"></i><p class="text-sm">Tudo tranquilo! Nenhum alerta crÃ­tico.</p></div>`;
     } else {
         painel.innerHTML = alertas.join('');
     }
@@ -313,7 +313,7 @@ async function migrarBancoAntigo() {
             const dados = docSnap.data();
             if (dados.migrado) return;
             
-            showToast("Sincronizando banco de dados para a nova versão...", "info");
+            showToast("Sincronizando banco de dados para a nova versÃ£o...", "info");
             
             const colecoes = ['produtos', 'clientes', 'fornecedores', 'vendas', 'movimentacoes', 'financeiro', 'compras'];
             let count = 0;
@@ -335,7 +335,7 @@ async function migrarBancoAntigo() {
             await Promise.all(promessas);
             await docRef.update({ migrado: true });
             
-            showToast(`Migração concluída! ${count} registros importados.`, "success");
+            showToast(`MigraÃ§Ã£o concluÃ­da! ${count} registros importados.`, "success");
             setTimeout(() => window.location.reload(), 1500);
         }
     } catch (e) {
@@ -346,7 +346,7 @@ async function migrarBancoAntigo() {
 function inicializarDashboard() {
     migrarBancoAntigo();
 
-    // Listeners para todas as coleções que afetam os KPIs
+    // Listeners para todas as coleÃ§Ãµes que afetam os KPIs
     firestore.collection('produtos').onSnapshot(snap => {
         db.produtos = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderDashboard();
@@ -376,7 +376,7 @@ function inicializarDashboard() {
 }
 
 // ==========================================
-// GRÁFICOS (FASE 2)
+// GRÃFICOS (FASE 2)
 // ==========================================
 
 let chartPrincipal = null;
@@ -406,7 +406,7 @@ function inicializarGraficos() {
     const textColor = isDark ? '#94a3b8' : '#64748b';
     const gridColor = isDark ? '#334155' : '#e2e8f0';
 
-    // Gráfico Principal
+    // GrÃ¡fico Principal
     const optionsPrincipal = {
         series: [],
         chart: { type: 'area', height: 300, toolbar: { show: false }, background: 'transparent' },
@@ -423,7 +423,7 @@ function inicializarGraficos() {
     chartPrincipal = new ApexCharts(document.querySelector("#chart-principal"), optionsPrincipal);
     chartPrincipal.render();
 
-    // Gráfico de Estoque
+    // GrÃ¡fico de Estoque
     const optionsEstoque = {
         series: [],
         chart: { type: 'donut', height: 250, background: 'transparent' },
@@ -437,7 +437,7 @@ function inicializarGraficos() {
     chartEstoque = new ApexCharts(document.querySelector("#chart-estoque"), optionsEstoque);
     chartEstoque.render();
 
-    // Fluxo de Inadimplência
+    // Fluxo de InadimplÃªncia
     const optionsInad = {
         series: [],
         chart: { type: 'bar', height: 150, stacked: true, toolbar: { show: false }, background: 'transparent' },
@@ -458,7 +458,7 @@ function renderizarGraficos() {
     if (!chartPrincipal || !chartEstoque || !chartInadimplencia) return;
 
     // ----------------------------------------------------
-    // 1. GRÁFICO PRINCIPAL (Últimos 7 dias ou por mês se for ano)
+    // 1. GRÃFICO PRINCIPAL (Ãšltimos 7 dias ou por mÃªs se for ano)
     // ----------------------------------------------------
     const vendas = db.vendas || [];
     const contas = db.financeiro || [];
@@ -477,7 +477,7 @@ function renderizarGraficos() {
         categorias.push(diaMes);
 
         // Vendas no dia
-        let vDia = vendas.filter(v => v.data && v.data.startsWith(dateStr) && v.status !== 'Cancelada' && v.tipo !== 'ORÇAMENTO');
+        let vDia = vendas.filter(v => v.data && v.data.startsWith(dateStr) && v.status !== 'Cancelada' && v.tipo !== 'ORÃ‡AMENTO');
         let totalVenda = vDia.reduce((a, b) => a + (Number(b.tot) || 0), 0);
         dadosVendas.push(totalVenda);
 
@@ -503,7 +503,7 @@ function renderizarGraficos() {
     chartPrincipal.updateOptions({ xaxis: { categories: categorias } });
 
     // ----------------------------------------------------
-    // 2. GRÁFICO DE ESTOQUE (Top 5 Categorias)
+    // 2. GRÃFICO DE ESTOQUE (Top 5 Categorias)
     // ----------------------------------------------------
     const produtos = db.produtos || [];
     let categoriasMap = {};
@@ -533,7 +533,7 @@ function renderizarGraficos() {
     chartEstoque.updateOptions({ labels: labelsEstoque });
 
     // ----------------------------------------------------
-    // 3. GRÁFICO DE INADIMPLÊNCIA VS PAGOS (Geral PENDENTES x ATRASADOS x PAGOS)
+    // 3. GRÃFICO DE INADIMPLÃŠNCIA VS PAGOS (Geral PENDENTES x ATRASADOS x PAGOS)
     // ----------------------------------------------------
     const hoje = new Date().getTime();
     const receber = contas.filter(c => (!c.tipo || c.tipo === 'RECEITA'));
@@ -552,3 +552,4 @@ function renderizarGraficos() {
 window.onload = () => { 
     initGlobalData(inicializarDashboard); 
 };
+

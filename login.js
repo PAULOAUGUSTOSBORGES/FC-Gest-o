@@ -1,4 +1,4 @@
-﻿// Função para os avisos na tela
+// Função para os avisos na tela
 function showToast(msg, type = 'info') {
     const container = document.getElementById('toast-container');
     const t = document.createElement('div');

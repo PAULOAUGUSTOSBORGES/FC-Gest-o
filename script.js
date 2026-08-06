@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
         // 1. TRAVA DE SEGURANÇA E CONFIGURAÇÕES GERAIS
         // ==========================================
         if (sessionStorage.getItem('erp_auth_master') !== 'true') {
@@ -1040,4 +1040,5 @@
         }
 
         window.onload = () => { initData(); };
+
 

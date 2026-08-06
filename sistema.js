@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // SISTEMA.JS - Lógica de Configurações, Tema, Empresa e Taxas 1 a 12x
 // ==========================================
 
@@ -311,3 +311,4 @@ async function excluirSubcategoria(catId, index) {
         showToast("Erro ao excluir subcategoria", "error");
     }
 }
+

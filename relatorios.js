@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÇÕES
 // ==========================================
 
@@ -61,8 +61,7 @@ function mudarVisaoLocal(viewId) {
 
 function refreshCurrentView() {
     const urlParams = new URLSearchParams(window.location.search);
-    let view = urlParams.get('view');
-    if (!view) view = 'relatorios';
+    let view = urlParams.get('view'); if (!view) view = 'relatorios';
     mudarVisaoLocal(view);
 }
 
@@ -232,7 +231,7 @@ function salvarKardex(ref, prodId, prodNome, qtd, tipo) {
 }
 
 function printHtmlSeguro(htmlCompleto) {
-    showToast("Preparando documento para impressÃ£o...", "info");
+    showToast("Preparando documento para Impressão...", "info");
     
     const printWin = window.open('', '', 'width=800,height=600');
     if (!printWin) {
@@ -246,7 +245,7 @@ function printHtmlSeguro(htmlCompleto) {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>ImpressÃ£o</title>
+            <title>Impressão</title>
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
@@ -1940,5 +1939,6 @@ function renderVendas() {
         document.getElementById('vendas-total-filtros').innerText = `Lucro Real Acumulado: ${typeof formatMoney === 'function' ? formatMoney(totalLucro) : totalLucro}`;
     }
 }
+
 
 

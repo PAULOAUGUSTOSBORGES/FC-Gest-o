@@ -1,0 +1,74 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Função para pegar os dados do usuário atual (lê o próprio documento do usuário)
+    function getFuncionario() {
+      return get(/databases/$(database)/documents/funcionarios/$(request.auth.uid)).data;
+    }
+    
+    // Função para checar se é Admin Master
+    // O usuário é Admin se o documento dele existir e a flag isAdmin for verdadeira.
+    function isAdmin() {
+      return request.auth != null && getFuncionario().isAdmin == true;
+    }
+
+    // ==========================================
+    // 1. Financeiro, Caixa e Configurações (Apenas Gestão ou Admin)
+    // ==========================================
+    match /financeiro/{document=**} {
+      allow read, write: if isAdmin() || (request.auth != null && getFuncionario().perm_gestao == true);
+    }
+    match /fc_moveis/{document=**} {
+      allow read, write: if isAdmin() || (request.auth != null && getFuncionario().perm_gestao == true);
+    }
+    match /compras/{document=**} {
+      allow read, write: if isAdmin() || (request.auth != null && getFuncionario().perm_gestao == true);
+    }
+    
+    // ==========================================
+    // 2. Vendas e Orçamentos (Apenas PDV ou Admin)
+    // ==========================================
+    match /vendas/{document=**} {
+      allow read, write: if isAdmin() || (request.auth != null && getFuncionario().perm_pdv == true);
+    }
+    match /orcamentos/{document=**} {
+      allow read, write: if isAdmin() || (request.auth != null && getFuncionario().perm_pdv == true);
+    }
+    
+    // ==========================================
+    // 3. Cadastros Básicos (Apenas Cadastros ou Admin)
+    // ==========================================
+    match /produtos/{document=**} {
+      allow read, write: if isAdmin() || (request.auth != null && getFuncionario().perm_cadastros == true);
+    }
+    match /clientes/{document=**} {
+      allow read, write: if isAdmin() || (request.auth != null && getFuncionario().perm_cadastros == true);
+    }
+    match /fornecedores/{document=**} {
+      allow read, write: if isAdmin() || (request.auth != null && getFuncionario().perm_cadastros == true);
+    }
+    
+    // ==========================================
+    // 4. Movimentações de Estoque (PDV ou Cadastros)
+    // ==========================================
+    match /movimentacoes/{document=**} {
+      allow read, write: if isAdmin() || (request.auth != null && (getFuncionario().perm_pdv == true || getFuncionario().perm_cadastros == true));
+    }
+    
+    // ==========================================
+    // 5. Funcionários
+    // ==========================================
+    match /funcionarios/{userId} {
+      // O admin pode ler e escrever. Um funcionário normal pode ler apenas o próprio perfil.
+      allow read: if isAdmin() || request.auth.uid == userId;
+      allow write: if isAdmin();
+    }
+    
+    // Default fallback (Segurança bloqueia tudo que não foi explicitamente listado acima)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

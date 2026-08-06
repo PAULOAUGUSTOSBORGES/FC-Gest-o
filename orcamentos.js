@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // OPERACAO.JS - SISTEMA 100% WHITE LABEL E BLINDADO
 // ==========================================
 
@@ -540,7 +540,7 @@ function removerFotoOS(index) { osFotosArray.splice(index, 1); renderizarFotosOS
 // 7. MOTORES DE IMPRESSÃO E PDF (BLINDADOS)
 // ==========================================
 function printHtmlSeguro(htmlCompleto) {
-    showToast("Preparando documento para impressÃ£o...", "info");
+    showToast("Preparando documento para Impressão...", "info");
     
     const printWin = window.open('', '', 'width=800,height=600');
     if (!printWin) {
@@ -554,7 +554,7 @@ function printHtmlSeguro(htmlCompleto) {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>ImpressÃ£o</title>
+            <title>Impressão</title>
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
@@ -1561,7 +1561,7 @@ async function finalizarVendaMultipla() {
         <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; margin-bottom: 20px; font-size: 13px;">
             <div style="flex: 1; min-width: 280px; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-right: 5px; margin-bottom: 5px;">
                 <h3 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">${isOrcamento ? 'PREVISÃO DE PAGAMENTO' : 'PAGAMENTOS REGISTRADOS'}</h3>
-                ${pagTexto !== 'Orçamento (Sem Pagamento Exigido)' ? pagamentosVendaAtual.map(p => `<div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>✓ ${p.metodo} ${p.parcelas > 1 ? `(${p.parcelas}x)` : ''}</span> <strong>${formatMoney(p.valor)}</strong></div>`).join('') : '<p style="font-style: italic; color: #555;">Nenhum pagamento registrado no orçamento.</p>'}
+                ${pagTexto !== 'Orçamento (Sem Pagamento Exigido)' ? pagamentosVendaAtual.map(p => `<div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>? ${p.metodo} ${p.parcelas > 1 ? `(${p.parcelas}x)` : ''}</span> <strong>${formatMoney(p.valor)}</strong></div>`).join('') : '<p style="font-style: italic; color: #555;">Nenhum pagamento registrado no orçamento.</p>'}
                 ${valorTroco > 0 && !isOrcamento ? `<div style="display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #000;"><span>Troco Devolvido:</span> <strong style="color: red;">${formatMoney(valorTroco)}</strong></div>` : ''}
             </div>
             <div style="flex: 1; min-width: 280px; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-left: 5px; margin-bottom: 5px;">
@@ -2237,7 +2237,7 @@ function editarVenda(id) {
 
             pdvLimpar(); 
             
-            mudarVisaoLocal('pdv');
+            mudarVisaoLocal('orcamentos');
             
             window.vendaEmEdicao = {
                 id: v.id,
@@ -2334,6 +2334,7 @@ function atualizarVendedoresPDV() {
         }
     }
 }
+
 
 
 

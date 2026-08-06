@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // 1. CONFIGURAÇÕES DO FIREBASE E SEGURANÇA
 // ==========================================
 
@@ -75,8 +75,29 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                 if (userSnap.exists) {
                     window.currentUserInfo = userSnap.data();
                 } else {
-                    // Usuário não está na tabela de funcionários = Admin Master
-                    window.currentUserInfo = { isAdmin: true, perm_dashboard: true, perm_pdv: true, perm_cadastros: true, perm_gestao: true, perm_config: true };
+                    // Usuário não está na tabela, oferecer botão para se tornar Admin Master (Migração)
+                    console.warn("Usuário não cadastrado na base de funcionários.");
+                    window.currentUserInfo = { isAdmin: false, perm_dashboard: false, perm_pdv: false, perm_cadastros: false, perm_gestao: false, perm_config: false };
+                    
+                    // Injetar botão temporário
+                    const btnAdmin = document.createElement('button');
+                    btnAdmin.innerHTML = "⚠️ CLIQUE AQUI PARA SE TORNAR O ADMIN MASTER OFICIAL DO SISTEMA";
+                    btnAdmin.style.cssText = "position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:999999; background:red; color:white; padding:15px 30px; font-size:18px; font-weight:bold; border-radius:10px; cursor:pointer;";
+                    btnAdmin.onclick = async () => {
+                        try {
+                            btnAdmin.innerHTML = "Carregando...";
+                            await firestore.collection('funcionarios').doc(user.uid).set({
+                                nome: "Admin Master", email: user.email || '', isAdmin: true,
+                                perm_dashboard: true, perm_pdv: true, perm_cadastros: true,
+                                perm_gestao: true, perm_config: true, dataCadastro: new Date().toISOString()
+                            });
+                            alert("SUCESSO! Você agora é o Admin Master Oficial no banco de dados. A página vai recarregar.");
+                            window.location.reload();
+                        } catch (err) {
+                            alert("Erro ao criar Admin: " + err.message);
+                        }
+                    };
+                    document.body.appendChild(btnAdmin);
                 }
                 aplicarControleDeAcesso();
                 mostrarNomeUsuarioNoHeader(window.currentUserInfo.isAdmin ? 'Admin Master' : `Func.: ${window.currentUserInfo.nome || 'Usuário'}`);
@@ -282,3 +303,4 @@ function aplicarTema() {
 }
 
 // Removido o listener de preferência de cores do sistema, pois o tema é fixo.
+
