@@ -6,7 +6,7 @@
     <title>FC Móveis - FINANCEIRO</title>
     <script>
         // Aplica tema antes do Tailwind carregar (evita flash)
-        tailwind = tailwind || {};
+        window.tailwind = window.tailwind || {};
         tailwind.config = { darkMode: 'class' };
         (function(){
             document.documentElement.classList.add('dark');

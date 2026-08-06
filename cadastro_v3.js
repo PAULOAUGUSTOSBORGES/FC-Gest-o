@@ -602,7 +602,7 @@ function baixarPlanilhaModeloProduto() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = "FC_Móveis_Modelo_Produtos.csv";
+    a.download = "fc_moveis_Modelo_Produtos.csv";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -931,3 +931,4 @@ document.addEventListener('click', function(e) {
         }
     }
 });
+

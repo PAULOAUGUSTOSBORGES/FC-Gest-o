@@ -131,7 +131,7 @@ function inicializarOperação() {
         if(v && v.classList.contains('active')) renderVendas();
         if(o && o.classList.contains('active')) renderOrcamentos();
     });
-    firestore.collection('fc_móveis').doc('caixa').onSnapshot(doc => {
+    firestore.collection('fc_moveis').doc('caixa').onSnapshot(doc => {
         if(doc.exists) db.caixa = doc.data();
         else db.caixa = { status: 'FECHADO', saldo: 0, historico: [] };
         const badgeCaixa = document.getElementById('pdv-status-caixa');
@@ -540,40 +540,45 @@ function removerFotoOS(index) { osFotosArray.splice(index, 1); renderizarFotosOS
 // 7. MOTORES DE IMPRESSÃO E PDF (BLINDADOS)
 // ==========================================
 function printHtmlSeguro(htmlCompleto) {
-    showToast("Preparando documento para impressão...", "info");
-    let oldIframe = document.getElementById('iframe-impressao');
-    if (oldIframe) oldIframe.remove();
-
-    const iframe = document.createElement('iframe');
-    iframe.id = 'iframe-impressao';
-    iframe.style.position = 'fixed'; iframe.style.right = '0'; iframe.style.bottom = '0'; iframe.style.width = '0'; iframe.style.height = '0'; iframe.style.border = '0';
-    document.body.appendChild(iframe);
-
-    const doc = iframe.contentWindow.document;
+    showToast("Preparando documento para impressÃ£o...", "info");
+    
+    const printWin = window.open('', '', 'width=800,height=600');
+    if (!printWin) {
+        showToast("Por favor, permita popups para imprimir.", "warning");
+        return;
+    }
+    
+    const doc = printWin.document;
     doc.open();
     doc.write(`
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Impressão</title>
+            <title>ImpressÃ£o</title>
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
                 @page { margin: 10mm; }
                 body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                .print\\:hidden { display: none !important; }
+                .print\\\\:hidden { display: none !important; }
                 table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
                 tr { page-break-inside: avoid; page-break-after: auto; }
                 thead { display: table-header-group; }
                 tfoot { display: table-footer-group; }
             </style>
         </head>
-        <body class="bg-white dark:bg-slate-800 p-4">${htmlCompleto}</body>
+        <body class="bg-white dark:bg-slate-800 p-4">
+            ${htmlCompleto}
+        </body>
         </html>
     `);
     doc.close();
 
-    setTimeout(() => { iframe.contentWindow.focus(); iframe.contentWindow.print(); }, 1500);
+    setTimeout(() => { 
+        printWin.focus(); 
+        printWin.print(); 
+        printWin.close(); 
+    }, 1500);
 }
 
 function imprimirArea(areaId) {
@@ -1692,7 +1697,7 @@ async function finalizarVendaMultipla() {
             }
         });
         
-        const caixaRef = firestore.collection('fc_móveis').doc('caixa');
+        const caixaRef = firestore.collection('fc_moveis').doc('caixa');
         batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
     }
 
@@ -1971,7 +1976,7 @@ function excluirVenda(id) {
                     let cxSaldoNovo = (cxAtual.saldo || 0) - (Number(v.valorLiquido) || 0);
                     cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno ${v.tipo} #${numPedStr}`, valor: (Number(v.valorLiquido) || 0) });
                     
-                    const caixaRef = firestore.collection('fc_móveis').doc('caixa');
+                    const caixaRef = firestore.collection('fc_moveis').doc('caixa');
                     batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
                 }
             }
@@ -2220,7 +2225,7 @@ function editarVenda(id) {
                     let cxSaldoNovo = (cxAtual.saldo || 0) - (Number(v.valorLiquido) || 0);
                     cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno (Edição) ${v.tipo} #${numPedStr}`, valor: (Number(v.valorLiquido) || 0) });
                     
-                    const caixaRef = firestore.collection('fc_móveis').doc('caixa');
+                    const caixaRef = firestore.collection('fc_moveis').doc('caixa');
                     batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
                 }
             }
@@ -2329,5 +2334,6 @@ function atualizarVendedoresPDV() {
         }
     }
 }
+
 
 

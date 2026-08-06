@@ -1,4 +1,4 @@
-﻿// index.js - Lógica exclusiva do Dashboard (MEGA BI)
+// index.js - Lógica exclusiva do Dashboard (MEGA BI)
 
 let renderTimeout = null;
 
@@ -96,7 +96,7 @@ function executarCalculosDashboard() {
     const contas = db.financeiro || [];
     
     // Despesas = Pago no período
-    const despesasPeriodo = contas.filter(c => c.tipo === 'DESPESA' && c.status === 'PAGO' && dentroDoPeriodo(c.dataPgto || c.data)).reduce((a,b) => a + (Number(b.valor) || 0), 0);
+    const despesasPeriodo = contas.filter(c => c.tipo === 'DESPESA' && c.status === 'PAGO' && dentroDoPeriodo(c.dataPagamento || c.data)).reduce((a,b) => a + (Number(b.valor) || 0), 0);
     
     const aReceberTodas = contas.filter(c => (!c.tipo || c.tipo === 'RECEITA') && c.status === 'PENDENTE');
     const valorReceber = aReceberTodas.reduce((a,b) => a + (Number(b.valor) || 0), 0);
@@ -307,7 +307,7 @@ function renderizarNotificacoes(prodVazios, prodBaixo, recVencidas, pagVencidas,
 
 async function migrarBancoAntigo() {
     try {
-        const docRef = firestore.collection("fc_móveis").doc("banco_principal");
+        const docRef = firestore.collection("fc_moveis").doc("banco_principal");
         const docSnap = await docRef.get();
         if (docSnap.exists) {
             const dados = docSnap.data();
@@ -329,8 +329,8 @@ async function migrarBancoAntigo() {
                 }
             }
             
-            if (dados.caixa) promessas.push(firestore.collection("fc_móveis").doc("caixa").set(dados.caixa));
-            if (dados.config) promessas.push(firestore.collection("fc_móveis").doc("config").set(dados.config, {merge: true}));
+            if (dados.caixa) promessas.push(firestore.collection("fc_moveis").doc("caixa").set(dados.caixa));
+            if (dados.config) promessas.push(firestore.collection("fc_moveis").doc("config").set(dados.config, {merge: true}));
             
             await Promise.all(promessas);
             await docRef.update({ migrado: true });
@@ -367,7 +367,7 @@ function inicializarDashboard() {
         db.financeiro = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderDashboard();
     });
-    firestore.collection('fc_móveis').doc('caixa').onSnapshot(doc => {
+    firestore.collection('fc_moveis').doc('caixa').onSnapshot(doc => {
         db.caixa = doc.data() || { saldo: 0 };
         renderDashboard();
     });
@@ -477,16 +477,16 @@ function renderizarGraficos() {
         categorias.push(diaMes);
 
         // Vendas no dia
-        let vDia = vendas.filter(v => v.data && v.data.startsWith(dateStr) && v.status !== 'Cancelada' && v.status !== 'Orçamento');
-        let totalVenda = vDia.reduce((a, b) => a + (Number(b.totalFinal) || 0), 0);
+        let vDia = vendas.filter(v => v.data && v.data.startsWith(dateStr) && v.status !== 'Cancelada' && v.tipo !== 'ORÇAMENTO');
+        let totalVenda = vDia.reduce((a, b) => a + (Number(b.tot) || 0), 0);
         dadosVendas.push(totalVenda);
 
         // Receitas no dia (PAGAS)
-        let rDia = contas.filter(c => (!c.tipo || c.tipo === 'RECEITA') && c.status === 'PAGO' && c.dataPgto && c.dataPgto.startsWith(dateStr));
+        let rDia = contas.filter(c => (!c.tipo || c.tipo === 'RECEITA') && c.status === 'PAGO' && c.dataPagamento && c.dataPagamento.startsWith(dateStr));
         dadosReceitas.push(rDia.reduce((a, b) => a + (Number(b.valor) || 0), 0));
 
         // Despesas no dia (PAGAS)
-        let dDia = contas.filter(c => c.tipo === 'DESPESA' && c.status === 'PAGO' && c.dataPgto && c.dataPgto.startsWith(dateStr));
+        let dDia = contas.filter(c => c.tipo === 'DESPESA' && c.status === 'PAGO' && c.dataPagamento && c.dataPagamento.startsWith(dateStr));
         dadosDespesas.push(dDia.reduce((a, b) => a + (Number(b.valor) || 0), 0));
     }
 
@@ -509,7 +509,7 @@ function renderizarGraficos() {
     let categoriasMap = {};
     produtos.forEach(p => {
         const cat = p.categoria || 'Sem Categoria';
-        const qtd = Number(p.quantidade) || 0;
+        const qtd = Number(p.estoque) || 0;
         if (qtd > 0) {
             categoriasMap[cat] = (categoriasMap[cat] || 0) + qtd;
         }

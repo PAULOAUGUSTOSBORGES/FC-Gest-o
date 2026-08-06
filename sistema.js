@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // SISTEMA.JS - Lógica de Configurações, Tema, Empresa e Taxas 1 a 12x
 // ==========================================
 
@@ -164,7 +164,7 @@ async function salvarConfiguracoes() {
     };
 
     try {
-        await firestore.collection('fc_móveis').doc('config').set(db.config, { merge: true });
+        await firestore.collection('fc_moveis').doc('config').set(db.config, { merge: true });
         // Tema forçado, não é necessário salvar no localStorage
         localStorage.setItem('sistema_tema', 'escuro');
         showToast('Configurações salvas com sucesso!', 'success');

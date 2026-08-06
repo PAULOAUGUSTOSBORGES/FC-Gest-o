@@ -79,7 +79,7 @@ async function migrarDadosSeNecessario() {
         if (!comprasSnap.empty || !finSnap.empty) return;
 
         // Coleções novas estão vazias — tenta ler do banco antigo
-        const bancoPrincipalSnap = await firestore.collection('fc_móveis').doc('banco_principal').get();
+        const bancoPrincipalSnap = await firestore.collection('fc_moveis').doc('banco_principal').get();
         if (!bancoPrincipalSnap.exists) return;
 
         const dados = bancoPrincipalSnap.data();
@@ -103,12 +103,12 @@ async function migrarDadosSeNecessario() {
             }
         }
 
-        if (dados.caixa) promessas.push(firestore.collection('fc_móveis').doc('caixa').set(dados.caixa, { merge: true }));
-        if (dados.config) promessas.push(firestore.collection('fc_móveis').doc('config').set(dados.config, { merge: true }));
+        if (dados.caixa) promessas.push(firestore.collection('fc_moveis').doc('caixa').set(dados.caixa, { merge: true }));
+        if (dados.config) promessas.push(firestore.collection('fc_moveis').doc('config').set(dados.config, { merge: true }));
 
         await Promise.all(promessas);
         // Marca como migrado
-        try { await firestore.collection('fc_móveis').doc('banco_principal').update({ migrado: true }); } catch(e2){}
+        try { await firestore.collection('fc_moveis').doc('banco_principal').update({ migrado: true }); } catch(e2){}
 
         showToast('Dados importados com sucesso! Recarregando...', 'success');
         setTimeout(() => window.location.reload(), 2000);
@@ -155,7 +155,7 @@ function inicializarGestao() {
         db.fornecedores = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         tentarRefresh();
     });
-    firestore.collection('fc_móveis').doc('caixa').onSnapshot(doc => {
+    firestore.collection('fc_moveis').doc('caixa').onSnapshot(doc => {
         if(doc.exists) db.caixa = doc.data();
         else db.caixa = { status: 'FECHADO', saldo: 0, historico: [] };
         if (colecoesProntas >= totalColecoes) refreshCurrentView();
@@ -232,34 +232,27 @@ function salvarKardex(ref, prodId, prodNome, qtd, tipo) {
 }
 
 function printHtmlSeguro(htmlCompleto) {
-    showToast("Preparando documento para impressão...", "info");
+    showToast("Preparando documento para impressÃ£o...", "info");
     
-    let oldIframe = document.getElementById('iframe-impressao');
-    if (oldIframe) oldIframe.remove();
-
-    const iframe = document.createElement('iframe');
-    iframe.id = 'iframe-impressao';
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    document.body.appendChild(iframe);
-
-    const doc = iframe.contentWindow.document;
+    const printWin = window.open('', '', 'width=800,height=600');
+    if (!printWin) {
+        showToast("Por favor, permita popups para imprimir.", "warning");
+        return;
+    }
+    
+    const doc = printWin.document;
     doc.open();
     doc.write(`
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Impressão de Relatório</title>
+            <title>ImpressÃ£o</title>
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
                 @page { margin: 10mm; }
                 body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                .print\\:hidden { display: none !important; }
+                .print\\\\:hidden { display: none !important; }
                 table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
                 tr { page-break-inside: avoid; page-break-after: auto; }
                 thead { display: table-header-group; }
@@ -273,9 +266,10 @@ function printHtmlSeguro(htmlCompleto) {
     `);
     doc.close();
 
-    setTimeout(() => {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
+    setTimeout(() => { 
+        printWin.focus(); 
+        printWin.print(); 
+        printWin.close(); 
     }, 1500);
 }
 
@@ -416,7 +410,7 @@ async function confirmarMovCaixa() {
     else if(op === 'SUPRIMENTO') { novoSaldo += val; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `SUPRIMENTO: ${desc}`, valor: val }); }
     
     try {
-        await firestore.collection('fc_móveis').doc('caixa').set({ ...cxAtual, status: novoStatus, saldo: novoSaldo, historico: cxHistoricoNovo }, { merge: true });
+        await firestore.collection('fc_moveis').doc('caixa').set({ ...cxAtual, status: novoStatus, saldo: novoSaldo, historico: cxHistoricoNovo }, { merge: true });
         fecharModalCaixa(); renderCaixaDiario(); showToast('Operação realizada com sucesso!', 'success');
     } catch(err) { console.error(err); showToast('Erro ao registrar caixa.', 'error'); }
 }
@@ -743,7 +737,7 @@ async function estornarTitulo(id) {
                 cxSaldoNovo += f.valorPago;
                 cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Estorno: ${f.pessoa}`, valor: f.valorPago });
             }
-            batch.set(firestore.collection('fc_móveis').doc('caixa'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+            batch.set(firestore.collection('fc_moveis').doc('caixa'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
         }
         
         const finRef = firestore.collection('financeiro').doc(String(id));
@@ -828,7 +822,7 @@ async function confirmarBaixa() {
         if(f.tipo === 'RECEITA') { cxSaldoNovo += vf; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Recbto. Título: ${f.pessoa}`, valor: vf }); } 
         else { if(vf > cxSaldoNovo) return showToast('Saldo do Caixa insuficiente!', 'error'); cxSaldoNovo -= vf; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Pgto. Título: ${f.pessoa}`, valor: vf }); }
         
-        batch.set(firestore.collection('fc_móveis').doc('caixa'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+        batch.set(firestore.collection('fc_moveis').doc('caixa'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
     }
     
     const finRef = firestore.collection('financeiro').doc(String(id));
@@ -1946,4 +1940,5 @@ function renderVendas() {
         document.getElementById('vendas-total-filtros').innerText = `Lucro Real Acumulado: ${typeof formatMoney === 'function' ? formatMoney(totalLucro) : totalLucro}`;
     }
 }
+
 

@@ -52,7 +52,7 @@
         async function initData() {
             try {
                 showToast("Sincronizando com a nuvem...", "info");
-                const docRef = firestore.collection("fc_móveis").doc("banco_principal");
+                const docRef = firestore.collection("fc_moveis").doc("banco_principal");
                 const docSnap = await docRef.get();
                 if (docSnap.exists) {
                     db = docSnap.data();
@@ -78,7 +78,7 @@
             } catch (error) { showToast("Erro ao conectar com a nuvem.", "error"); }
         }
 
-        function saveDB() { firestore.collection("fc_móveis").doc("banco_principal").set(db).catch(e => showToast("Falha ao salvar dados.", "error")); }
+        function saveDB() { firestore.collection("fc_moveis").doc("banco_principal").set(db).catch(e => showToast("Falha ao salvar dados.", "error")); }
 
         // ==========================================
         // 3. EXPORTAÇÕES E IMPRESSÕES ANTI-BLOQUEIO
@@ -1040,3 +1040,4 @@
         }
 
         window.onload = () => { initData(); };
+
