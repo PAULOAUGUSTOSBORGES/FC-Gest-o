@@ -1,4 +1,4 @@
-﻿// cadastro.js - Lógica de Produtos, Clientes, Fornecedores e Estoque
+// cadastro.js - Lógica de Produtos, Clientes, Fornecedores e Estoque
 
 let acaoConfirmacaoPendente = null;
 
@@ -68,6 +68,12 @@ function inicializarCadastro() {
         db.vendas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     });
 
+    // Carrega categorias para o cadastro de produtos
+    firestore.collection('categorias').orderBy('nome').onSnapshot(snap => {
+        db.categorias = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (typeof renderSelectCategorias === 'function') renderSelectCategorias();
+    });
+
     const urlParams = new URLSearchParams(window.location.search);
     const view = urlParams.get('view');
     mudarVisaoLocal(view || 'funcionarios');
@@ -126,6 +132,38 @@ async function buscarCNPJ(prefix) {
 // ==========================================
 
 
+// ==========================================
+// CATEGORIAS (PRODUTOS)
+// ==========================================
+function renderSelectCategorias() {
+    const selectCat = document.getElementById('prod-categoria');
+    if (!selectCat) return;
+    const valAtual = selectCat.value;
+    let html = '<option value="">Sem Categoria</option>';
+    if (db.categorias && db.categorias.length > 0) {
+        db.categorias.forEach(cat => { html += `<option value=""></option>`; });
+    }
+    selectCat.innerHTML = html;
+    if (valAtual && selectCat.querySelector(`option[value=""]`)) selectCat.value = valAtual;
+    atualizarOpcoesSubcategoria();
+}
+
+function atualizarOpcoesSubcategoria() {
+    const selectCat = document.getElementById('prod-categoria');
+    const selectSub = document.getElementById('prod-subcategoria');
+    if (!selectCat || !selectSub) return;
+    const catSelecionada = selectCat.value;
+    const valAtualSub = selectSub.value;
+    let html = '<option value="">Sem Subcategoria</option>';
+    if (catSelecionada && db.categorias) {
+        const categoria = db.categorias.find(c => c.nome === catSelecionada);
+        if (categoria && categoria.subcategorias && Array.isArray(categoria.subcategorias)) {
+            categoria.subcategorias.forEach(sub => { html += `<option value=""></option>`; });
+        }
+    }
+    selectSub.innerHTML = html;
+    if (valAtualSub && selectSub.querySelector(`option[value=""]`)) selectSub.value = valAtualSub;
+}
 // ==========================================
 // PRODUTOS
 // ==========================================

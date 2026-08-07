@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -72,7 +72,7 @@
                 <button onclick="fazerLogout()" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-white text-sm font-medium transition-colors"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair do Sistema</button>
             </div>
         </aside>
-        <!-- ÃREA DE CONTEÚDO PRINCIPAL -->
+        <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
             <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
                 <div class="flex items-center gap-3">
@@ -185,12 +185,12 @@
                         </div>
                     </div>
 
-                    <!-- GRÃFICOS (FASE 2) E NOTIFICAÇÕES -->
+                    <!-- GRÁFICOS (FASE 2) E NOTIFICAÇÕES -->
                     <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 md:gap-6 mt-6">
                         <!-- Gráfico Principal (Vendas e Finanças) -->
                         <div class="xl:col-span-2 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                             <div class="flex justify-between items-center mb-4">
-                                <h3 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><i class="fa-solid fa-chart-area text-blue-500"></i> Desempenho no Período</h3>
+                                <h3 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><i class="fa-solid fa-chart-area text-blue-500"></i> Desempenho no Período <button onclick="abrirInfoDashboard('desempenho')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer ml-1" title="Entenda este gráfico"><i class="fa-solid fa-circle-question"></i></button></h3>
                                 <div class="flex gap-2">
                                     <button onclick="mudarTipoGraficoPrincipal('vendas')" id="btn-chart-vendas" class="text-xs px-3 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400 font-bold transition-colors">Vendas</button>
                                     <button onclick="mudarTipoGraficoPrincipal('financeiro')" id="btn-chart-financeiro" class="text-xs px-3 py-1 rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 dark:text-slate-400 font-bold transition-colors">Receita x Despesa</button>
@@ -209,13 +209,13 @@
 
                         <!-- Gráfico de Estoque -->
                         <div class="xl:col-span-1 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                            <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2"><i class="fa-solid fa-chart-pie text-purple-500"></i> Estoque por Categoria</h3>
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2"><i class="fa-solid fa-chart-pie text-purple-500"></i> Estoque por Categoria <button onclick="abrirInfoDashboard('estoque')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer ml-1" title="Entenda este gráfico"><i class="fa-solid fa-circle-question"></i></button></h3>
                             <div id="chart-estoque" class="w-full flex justify-center items-center min-h-[250px]"></div>
                         </div>
 
                         <!-- Fluxo de Caixa Futuro -->
                         <div class="xl:col-span-2 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                            <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2"><i class="fa-solid fa-money-bill-trend-up text-emerald-500"></i> Inadimplência vs Pagamentos em Dia</h3>
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2"><i class="fa-solid fa-money-bill-trend-up text-emerald-500"></i> Inadimplência vs Pagamentos em Dia <button onclick="abrirInfoDashboard('inadimplencia')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer ml-1" title="Entenda este gráfico"><i class="fa-solid fa-circle-question"></i></button></h3>
                             <div id="chart-inadimplencia" class="w-full min-h-[250px]"></div>
                         </div>
                     </div>
@@ -225,7 +225,7 @@
                         
                         <!-- Top 5 Produtos -->
                         <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                            <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2"><i class="fa-solid fa-trophy text-yellow-500"></i> Top 5 Produtos (Mais Vendidos)</h3>
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2"><i class="fa-solid fa-trophy text-yellow-500"></i> Top 5 Produtos (Mais Vendidos) <button onclick="abrirInfoDashboard('top_produtos')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer ml-1" title="Entenda este relatório"><i class="fa-solid fa-circle-question"></i></button></h3>
                             <div class="overflow-x-auto">
                                 <table class="w-full text-left text-sm text-slate-500 dark:text-slate-400">
                                     <thead class="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-700/50 dark:text-slate-300">
@@ -244,7 +244,7 @@
 
                         <!-- Top 5 Clientes -->
                         <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                            <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2"><i class="fa-solid fa-medal text-blue-500"></i> Top 5 Clientes (Maior Faturamento)</h3>
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2"><i class="fa-solid fa-medal text-blue-500"></i> Top 5 Clientes (Maior Faturamento) <button onclick="abrirInfoDashboard('top_clientes')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer ml-1" title="Entenda este relatório"><i class="fa-solid fa-circle-question"></i></button></h3>
                             <div class="overflow-x-auto">
                                 <table class="w-full text-left text-sm text-slate-500 dark:text-slate-400">
                                     <thead class="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-700/50 dark:text-slate-300">
@@ -265,7 +265,7 @@
                     <!-- CURVA ABC -->
                     <div class="mt-6 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-10">
                         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-2">
-                            <h3 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><i class="fa-solid fa-layer-group text-purple-500"></i> Curva ABC de Vendas (Neste Período)</h3>
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><i class="fa-solid fa-layer-group text-purple-500"></i> Curva ABC de Vendas (Neste Período) <button onclick="abrirInfoDashboard('curva_abc')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer ml-1" title="Entenda este relatório"><i class="fa-solid fa-circle-question"></i></button></h3>
                             <div class="text-xs text-slate-500 bg-slate-100 dark:bg-slate-700/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600">
                                 <span class="font-bold text-emerald-600 dark:text-emerald-400">A: 80%</span> | <span class="font-bold text-amber-600 dark:text-amber-400">B: 15%</span> | <span class="font-bold text-red-600 dark:text-red-400">C: 5%</span>
                             </div>
@@ -292,6 +292,22 @@
         </main>
     </div>
 
+    <!-- Modal de Informação (Dashboard) -->
+    <div id="modal-info-dashboard" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-slide-up border border-slate-200 dark:border-slate-700">
+            <div class="p-4 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+                <h3 class="font-bold text-lg flex items-center gap-2"><i class="fa-solid fa-circle-info text-blue-500"></i> <span id="modal-info-dash-title" class="text-slate-800 dark:text-slate-100">Sobre o Relatório</span></h3>
+                <button onclick="document.getElementById('modal-info-dashboard').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto custom-scrollbar text-slate-600 dark:text-slate-300 text-sm leading-relaxed" id="modal-info-dash-content">
+                <!-- Conteúdo injetado via JS -->
+            </div>
+            <div class="p-4 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 flex justify-end">
+                <button onclick="document.getElementById('modal-info-dashboard').classList.add('hidden')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 rounded-lg transition-colors shadow-sm shadow-blue-500/30">Entendi</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Bibliotecas do Firebase e Gráficos -->
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js?v=4"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js?v=4"></script>
@@ -299,8 +315,8 @@
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     
     <!-- Scripts -->
-    <script src="global.js?v=4"></script>
-    <script src="index.js?v=4"></script>
+    <script src="global.js?v=5"></script>
+    <script src="index.js?v=5"></script>
 </body>
 </html>
 

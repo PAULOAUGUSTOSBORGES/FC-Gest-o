@@ -407,7 +407,7 @@ async function confirmarMovCaixa() {
     else if(op === 'SANGRIA') { if(val > novoSaldo) return showToast('Saldo insuficiente para sangria!', 'error'); novoSaldo -= val; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `SANGRIA: ${desc}`, valor: val }); }
     else if(op === 'SUPRIMENTO') { novoSaldo += val; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `SUPRIMENTO: ${desc}`, valor: val }); }    try {
         await firestore.collection('fc_moveis').doc('caixa').set({ ...cxAtual, status: novoStatus, saldo: novoSaldo, historico: cxHistoricoNovo }, { merge: true });
-        fecharModalCaixa(); renderCaixaDiario(); showToast('OperaÃ§Ã£o realizada com sucesso!', 'success');
+        fecharModalCaixa(); renderCaixaDiario(); showToast('Operação realizada com sucesso!', 'success');
     } catch(err) { console.error(err); showToast('Erro ao registrar caixa.', 'error'); }
 }
 

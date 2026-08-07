@@ -21,7 +21,7 @@ window.onload = () => {
 };
 
 // ==========================================
-// BUSCA AUTOMÃTICA DE CNPJ NA RECEITA
+// BUSCA AUTOMÁTICA DE CNPJ NA RECEITA
 // ==========================================
 async function formatarEBuscarCNPJ(input) {
     // Aplica máscara visual
@@ -107,6 +107,7 @@ function carregarConfiguracoesNaTela() {
 
     // Carrega as 12 Taxas Separadas
     if(db.config.taxas) {
+        if(document.getElementById('tx-boleto-custo')) document.getElementById('tx-boleto-custo').value = db.config.custoBoleto || 0;
         if(document.getElementById('tx-deb')) document.getElementById('tx-deb').value = db.config.taxas['Cartão Débito'] || 0;
         if(db.config.taxas['Cartão Crédito']) {
             for(let i=1; i<=12; i++) {
@@ -161,6 +162,7 @@ async function salvarConfiguracoes() {
     };
 
     // Salva as 12 Taxas Separadas
+    db.config.custoBoleto = parseFloat(document.getElementById('tx-boleto-custo').value) || 0;
     const tDeb = parseFloat(document.getElementById('tx-deb').value) || 0;
     const taxasCredito = {};
     for(let i=1; i<=12; i++) {

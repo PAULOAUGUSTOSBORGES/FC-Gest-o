@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // OPERACAO.JS - SISTEMA 100% WHITE LABEL E BLINDADO
 // ==========================================
 
@@ -1884,280 +1884,119 @@ function renderOrcamentos() {
 }
 
 function verDetalhesVenda(id) {
-    const v = db.vendas.find(x => String(x.id) === String(id));
-    if(!v) return showToast('Venda não encontrada.', 'error');
+    const v = db.vendas.find(x => String(x.id) === String(id)); 
+    if(!v) return; 
     
-    document.getElementById('detalhe-venda-num').innerText = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
-    document.getElementById('detalhe-venda-cliente').innerText = v.clienteNome || 'Não informado';
-    document.getElementById('detalhe-venda-vend').innerText = v.vendedor || 'Não informado';
-    document.getElementById('detalhe-venda-data').innerText = typeof formatData === 'function' && v.data ? formatData(v.data).replace(',', '') : (v.data || 'Não informada');
-    document.getElementById('detalhe-venda-tipo').innerText = v.tipo || 'VENDA';
+    const isGestao = window.location.href.includes('gestao');
     
-    const divServ = document.getElementById('detalhe-venda-serv-info');
-    if (v.tipo === 'SERVIÇO' && v.servicoDetalhes) {
-        divServ.classList.remove('hidden');
-        document.getElementById('detalhe-venda-prazo').innerText = v.servicoDetalhes.prazo || '-';
-        document.getElementById('detalhe-venda-garantia').innerText = v.servicoDetalhes.garantia || '-';
-        document.getElementById('detalhe-venda-desc').innerText = v.servicoDetalhes.desc || '-';
-    } else {
-        divServ.classList.add('hidden');
+    const subtitleEl = document.querySelector('#modal-detalhes-venda p.text-slate-400.uppercase');
+    if (subtitleEl) {
+        subtitleEl.innerText = isGestao ? 'Vis\u00e3o Gerencial de Custos e Lucros' : 'Vis\u00e3o Detalhada';
     }
-    
-    document.getElementById('detalhe-venda-obs').innerText = v.obs || '-';
-    
-    const pag = typeof v.pag === 'string' ? v.pag : JSON.stringify(v.pag);
-    document.getElementById('detalhe-venda-pag').innerText = pag || '-';
-    document.getElementById('detalhe-venda-frete').innerText = typeof formatMoney === 'function' ? formatMoney(v.frete || 0) : (v.frete || 0);
-    document.getElementById('detalhe-venda-desc-val').innerText = typeof formatMoney === 'function' ? formatMoney(v.desconto || 0) : (v.desconto || 0);
-    document.getElementById('detalhe-venda-total').innerText = typeof formatMoney === 'function' ? formatMoney(v.tot || 0) : (v.tot || 0);
-    
-    document.getElementById('tabela-detalhe-itens-body').innerHTML = (v.itens || []).map(i => `
-        <tr class="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-            <td class="p-3 text-sm font-medium text-slate-800 dark:text-slate-100">${i.nome || 'Item sem nome'}</td>
-            <td class="p-3 text-center text-sm font-bold text-slate-700 dark:text-slate-200">${i.qtd || 1}</td>
-            <td class="p-3 text-right text-xs text-slate-500 dark:text-slate-400">${typeof formatMoney === 'function' ? formatMoney(i.preco || 0) : (i.preco || 0)}</td>
-            <td class="p-3 text-right text-xs font-bold text-slate-800 dark:text-slate-100">${typeof formatMoney === 'function' ? formatMoney((i.preco || 0) * (i.qtd || 1)) : ((i.preco || 0) * (i.qtd || 1))}</td>
-        </tr>`).join('');
-    
-    document.getElementById('modal-detalhes-venda').classList.remove('hidden');
-}
-// ==========================================
-function excluirVenda(id) {
-    const v = db.vendas.find(x => String(x.id) === String(id)); 
-    if(!v) return; 
-    
-    const isOrcamento = v.tipo === 'ORÇAMENTO'; 
-    const msg = isOrcamento ? 'Deseja excluir este Orçamento do histórico permanentemente?' : 'Devolver estoque e apagar parcelas/caixa desta operação?';
-    
-    abrirConfirmacao('Confirmar Exclusão', msg, async () => {
-        try {
-            const batch = firestore.batch();
-            const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
-            
-            if(!isOrcamento) {
-                if(v.itens && v.itens.length > 0) { 
-                    v.itens.forEach(item => { 
-                        const p = (db.produtos || []).find(prod => String(prod.id) === String(item.id)); 
-                        if(p) { 
-                            const pRef = firestore.collection('produtos').doc(String(p.id));
-                            batch.update(pRef, { estoque: (p.estoque || 0) + Number(item.qtd || 1) });
-                            
-                            const kardexRef = firestore.collection('movimentacoes').doc();
-                            batch.set(kardexRef, {
-                                data: new Date().toISOString(),
-                                ref: `Estorno ${v.tipo} #${numPedStr}`,
-                                prodId: p.id,
-                                prodNome: p.nome,
-                                qtd: Number(item.qtd || 1),
-                                tipo: 'ESTORNO'
-                            });
-                        } 
-                    }); 
-                }
-                
-                const finQuery = await firestore.collection('financeiro').where('origemVendaId', '==', String(id)).get();
-                finQuery.docs.forEach(doc => {
-                    batch.delete(doc.ref);
-                });
-                
-                if(v.pag && typeof v.pag === 'string' && v.pag.includes('Dinheiro')) { 
-                    let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
-                    let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
-                    let cxSaldoNovo = (cxAtual.saldo || 0) - (Number(v.valorLiquido) || 0);
-                    cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno ${v.tipo} #${numPedStr}`, valor: (Number(v.valorLiquido) || 0) });
-                    
-                    const caixaRef = firestore.collection('fc_moveis').doc('caixa');
-                    batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
-                }
-            }
-            
-            const vendaRef = firestore.collection('vendas').doc(String(id));
-            batch.delete(vendaRef);
-            
-            await batch.commit();
-            
-            if(isOrcamento) renderOrcamentos(); else renderVendas(); 
-            showToast('Registro excluído com sucesso!', 'success');
-        } catch (err) { 
-            console.error(err); 
-            showToast('Erro ao excluir registro.', 'error'); 
-        }
-    });
-}
-
-function reimprimirVenda(id) {
-    const v = db.vendas.find(x => String(x.id) === String(id)); 
-    if(!v) return; 
-    
-    window.vendaAtualImpressao = v;
-    
-    const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
-    const isOrcamento = v.tipo === 'ORÇAMENTO';
-    const isServico = v.tipo === 'SERVIÇO';
-
-    let tituloRecibo = 'CUPOM NÃO FISCAL - SEM VALOR LEGAL'; 
-    if (isOrcamento) tituloRecibo = 'ORÇAMENTO - VÁLIDO POR 7 DIAS'; 
-    else if (isServico) tituloRecibo = 'RECIBO DE PRESTAÇÃO DE SERVIÇO';
-    
-    const emp = obterDadosEmpresa(); 
-    const cliInfo = obterDadosClientePDV(v.clienteId);
-
-    const cliNome = v.clienteNome || cliInfo.nome || 'Consumidor Final';
-    const cliCpf = v.clienteDoc || cliInfo.doc || 'Não informado';
-    const cliTel = v.clienteTel || cliInfo.tel || 'Não informado';
-    const cliEndCompleto = v.clienteEnd || cliInfo.endCompleto || 'Não informado';
-
-    let fotosHtml = '';
-    if (isServico && v.servicoDetalhes) {
-        if (v.servicoDetalhes.fotos && v.servicoDetalhes.fotos.length > 0) {
-            fotosHtml = `<div style="margin-top: 10px;"><strong>Fotos de Referência (Estado Inicial):</strong><br><div style="display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px;">${v.servicoDetalhes.fotos.map(f => `<img src="${f}" style="height: 120px; border-radius: 4px; border: 1px solid #d8b4fe;">`).join('')}</div></div>`;
-        } else if (v.servicoDetalhes.foto) {
-            fotosHtml = `<div style="margin-top: 10px;"><strong>Foto de Referência (Estado Inicial):</strong><br><img src="${v.servicoDetalhes.foto}" style="max-height: 150px; border-radius: 4px; border: 1px solid #d8b4fe; margin-top: 5px;"></div>`;
-        }
-    }
-
-    const htmlRecibo = `
-    <div style="font-family: Arial, sans-serif; color: #000; max-width: 800px; margin: 0 auto; padding: 10px;">
-        <div style="border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 15px; text-align: center;">
-            ${emp.logoHtml}
-            <h1 style="margin: 0; font-size: 22px; text-transform: uppercase; font-weight: 900;">${emp.nome}</h1>
-            <p style="margin: 5px 0; font-size: 13px;">CNPJ: ${emp.cnpj}<br>${emp.end}<br>Tel: ${emp.tel} | Vend: ${v.vendedor || '-'}</p>
-        </div>
-        <div style="text-align: center; margin-bottom: 20px;">
-            <h2 style="margin: 0; font-size: 16px; font-weight: 900; border: 2px solid #000; display: inline-block; padding: 6px 15px; border-radius: 4px;">${tituloRecibo}</h2>
-        </div>
-        
-        <div style="display: flex; justify-content: space-between; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-bottom: 20px; font-size: 13px;">
-            <div>
-                <strong>DADOS DO CLIENTE</strong><br>
-                Nome: ${cliNome}<br>
-                CPF/CNPJ: ${cliCpf}<br>
-                Telefone: ${cliTel}<br>
-                Endereço: ${cliEndCompleto}
-            </div>
-            <div style="text-align: right; border-left: 1px solid #ccc; padding-left: 15px;">
-                <strong>DADOS DA OPERAÇÃO</strong><br>
-                Nº: #${numPedStr}<br>
-                Data Orig: ${v.data ? new Date(v.data).toLocaleString('pt-BR') : '-'}<br>
-                Op: REIMPRESSÃO
-            </div>
-        </div>
-
-        ${isServico && v.servicoDetalhes ? `
-        <div style="border: 1px solid #6b21a8; border-radius: 5px; padding: 12px; margin-bottom: 20px; font-size: 13px; background-color: #faf5ff;">
-            <h3 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #d8b4fe; padding-bottom: 5px; color: #6b21a8; text-transform: uppercase;">Dados da Ordem de Serviço</h3>
-            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
-                <div style="flex: 1; min-width: 150px;"><strong>Previsão de Entrega:</strong> ${v.servicoDetalhes.prazo ? v.servicoDetalhes.prazo.split('-').reverse().join('/') : 'Não informada'}</div>
-                <div style="flex: 1; min-width: 150px;"><strong>Garantia do Serviço:</strong> ${v.servicoDetalhes.garantia || 'Não informada'}</div>
-            </div>
-            ${v.servicoDetalhes.desc ? `<div><strong>Escopo / Defeito:</strong><br>${v.servicoDetalhes.desc}</div>` : ''}
-            ${fotosHtml}
-        </div>
-        ` : ''}
-
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px;">
-            <thead>
-                <tr style="background-color: #f1f5f9; border-bottom: 2px solid #000;">
-                    <th style="padding: 8px; text-align: left;">Descrição do Item</th>
-                    <th style="padding: 8px; text-align: center;">Qtd</th>
-                    <th style="padding: 8px; text-align: right;">Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${(v.itens || []).map(i => `
-                    <tr style="border-bottom: 1px solid #e2e8f0;">
-                        <td style="padding: 8px;">
-                            <strong>${i.nome || 'Produto/Serviço'}</strong>
-                            ${i.obsVenda ? `<br><span style="font-size: 11px; color: #475569; font-style: italic;">Obs: ${i.obsVenda}</span>` : ''}
-                        </td>
-                        <td style="padding: 8px; text-align: center;">${i.qtd || 1}</td>
-                        <td style="padding: 8px; text-align: right; font-weight: bold;">${formatMoney((i.preco || 0) * (i.qtd || 1))}</td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
-
-        <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; margin-bottom: 20px; font-size: 13px;">
-            <div style="flex: 1; min-width: 280px; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-right: 5px; margin-bottom: 5px;">
-                <h3 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">${isOrcamento ? 'PREVISÃO DE PAGAMENTO' : 'PAGAMENTOS REGISTRADOS'}</h3>
-                <div style="margin-top: 5px;">
-                    <p style="margin: 5px 0 0 0;">${v.pag || 'Nenhum pagamento exigido'}</p>
-                </div>
-            </div>
-            <div style="flex: 1; min-width: 280px; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-left: 5px; margin-bottom: 5px;">
-                <h3 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">RESUMO DOS VALORES</h3>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Subtotal:</span> <span>${formatMoney(v.subtotal || 0)}</span></div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Taxas / Desloc (+):</span> <span>${formatMoney(v.frete || 0)}</span></div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Descontos (-):</span> <span>-${formatMoney(v.desconto || 0)}</span></div>
-                <div style="display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 2px solid #000; font-size: 16px; font-weight: bold;"><span>TOTAL GERAL:</span> <span>${formatMoney(v.tot || 0)}</span></div>
-            </div>
-        </div>
-        
-        ${v.obs ? `
-        <div style="border: 1px solid #000; border-radius: 5px; padding: 12px; margin-bottom: 30px; font-size: 13px; background-color: #f8fafc;">
-            <strong>Observações Gerais:</strong><br>
-            ${v.obs}
-        </div>
-        ` : ''}
-
-        <div style="display: flex; justify-content: space-around; margin-top: 60px; text-align: center; font-size: 13px;">
-            <div style="width: 40%;">
-                <div style="border-top: 1px solid #000; padding-top: 5px;">Assinatura do Cliente</div>
-                <div style="font-size: 11px; margin-top: 3px; color: #475569;">${isOrcamento ? 'Reconheço o orçamento acima' : (v.tipo === 'SERVIÇO' ? 'Aprovo a execução do serviço.' : 'Declaro ter recebido os itens acima.')}</div>
-            </div>
-            <div style="width: 40%;">
-                <div style="border-top: 1px solid #000; padding-top: 5px;">Assinatura da Empresa</div>
-                <div style="font-size: 11px; margin-top: 3px; color: #475569; font-weight: bold;">${emp.nome}</div>
-            </div>
-        </div>
-    </div>`;
-    
-    document.getElementById('print-area').innerHTML = htmlRecibo; 
-    document.getElementById('modal-opcoes-recibo').classList.remove('hidden');
-}
-
-function verDetalhesVenda(id) {
-    const v = db.vendas.find(x => String(x.id) === String(id)); 
-    if(!v) return; 
     
     const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
     let tipoTexto = v.tipo || 'VENDA';
     
     document.getElementById('det-venda-cliente').innerText = v.clienteNome || 'Desconhecido'; 
     document.getElementById('det-venda-data').innerText = `${v.data ? formatData(v.data).split(' ')[0] : '-'} | #${numPedStr}`; 
-    document.getElementById('det-venda-pag').innerText = tipoTexto === 'ORÇAMENTO' ? 'Orçamento' : (v.pag || '-'); 
+    document.getElementById('det-venda-pag').innerText = tipoTexto === 'OR\u00c7AMENTO' ? 'Or\u00e7amento' : (v.pag || '-'); 
     
     let osInfoHtml = '';
-    if (tipoTexto === 'SERVIÇO' && v.servicoDetalhes) {
+    if (tipoTexto === 'SERVI\u00c7O' && v.servicoDetalhes) {
         let galeriaHtml = '';
         if (v.servicoDetalhes.fotos && v.servicoDetalhes.fotos.length > 0) { 
-            galeriaHtml = `<p class="mt-2"><strong>Fotos de Referência:</strong></p><div class="flex gap-2 flex-wrap mt-1">${v.servicoDetalhes.fotos.map(f => `<img src="${f}" onclick="abrirZoom('${f}')" class="h-20 rounded border border-purple-300 cursor-zoom-in shadow-sm hover:opacity-80 transition" title="Clique para ampliar">`).join('')}</div>`; 
+            galeriaHtml = `<p class="mt-2"><strong>Fotos de Refer\u00eancia:</strong></p><div class="flex gap-2 flex-wrap mt-1">${v.servicoDetalhes.fotos.map(f => `<img src="${f}" onclick="abrirZoom('${f}')" class="h-20 rounded border border-purple-300 cursor-zoom-in shadow-sm hover:opacity-80 transition" title="Clique para ampliar">`).join('')}</div>`; 
         } else if (v.servicoDetalhes.foto) { 
-            galeriaHtml = `<p class="mt-2"><strong>Foto de Referência:</strong></p><img src="${v.servicoDetalhes.foto}" onclick="abrirZoom('${v.servicoDetalhes.foto}')" class="mt-1 h-24 rounded border border-purple-300 cursor-zoom-in shadow-sm hover:opacity-80 transition" title="Clique para ampliar">`; 
+            galeriaHtml = `<p class="mt-2"><strong>Foto de Refer\u00eancia:</strong></p><img src="${v.servicoDetalhes.foto}" onclick="abrirZoom('${v.servicoDetalhes.foto}')" class="mt-1 h-24 rounded border border-purple-300 cursor-zoom-in shadow-sm hover:opacity-80 transition" title="Clique para ampliar">`; 
         }
         osInfoHtml = `
-            <div class="mt-4 bg-purple-50 p-3 md:p-4 rounded-lg border border-purple-200 text-xs md:text-sm text-purple-900">
-                <h4 class="font-bold mb-2 uppercase text-purple-700 border-b border-purple-200 pb-2"><i class="fa-solid fa-clipboard-list"></i> Ficha da Ordem de Serviço</h4>
+            <div class="mt-4 bg-purple-50 dark:bg-purple-900/20 p-3 md:p-4 rounded-lg border border-purple-200 dark:border-purple-800/50 text-xs md:text-sm text-purple-900 dark:text-purple-200">
+                <h4 class="font-bold mb-2 uppercase text-purple-700 dark:text-purple-300 border-b border-purple-200 dark:border-purple-800/50 pb-2"><i class="fa-solid fa-clipboard-list"></i> Ficha da Ordem de Servi\u00e7o</h4>
                 <div class="grid grid-cols-2 gap-2 mb-2">
-                    <p><strong>Prazo de Entrega:</strong> ${v.servicoDetalhes.prazo ? v.servicoDetalhes.prazo.split('-').reverse().join('/') : 'Não informado'}</p>
+                    <p><strong>Prazo de Entrega:</strong> ${v.servicoDetalhes.prazo ? v.servicoDetalhes.prazo.split('-').reverse().join('/') : 'N\u00e3o informado'}</p>
                     <p><strong>Garantia:</strong> ${v.servicoDetalhes.garantia || 'Nenhuma'}</p>
                 </div>
-                <p class="mb-2"><strong>Escopo / Diagnóstico:</strong><br> ${v.servicoDetalhes.desc || 'Nenhum detalhe adicional.'}</p>
+                <p class="mb-2"><strong>Escopo / Diagn\u00f3stico:</strong><br> ${v.servicoDetalhes.desc || 'Nenhum detalhe adicional.'}</p>
                 ${galeriaHtml}
             </div>`;
     }
     
-    document.getElementById('det-venda-obs').innerHTML = (v.obs ? v.obs : '<span class="text-slate-400">Nenhuma observação geral.</span>') + osInfoHtml;
-    document.getElementById('det-venda-total').innerText = formatMoney(v.tot || 0);
-    document.getElementById('det-venda-itens').innerHTML = (v.itens || []).map(i => `
-        <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-50">
-            <td class="p-3 font-medium text-slate-700 dark:text-slate-200 text-xs">
-                ${i.nome || 'Produto/Serviço'} ${i.obsVenda ? `<br><span class="text-[10px] text-slate-400">Obs: ${i.obsVenda}</span>` : ''}
+    document.getElementById('det-venda-obs').innerHTML = (v.obs ? v.obs : '<span class="text-slate-400 italic">Nenhuma observa\u00e7\u00e3o geral vinculada a esta venda.</span>') + osInfoHtml;
+    
+    let totalCusto = 0;
+    document.getElementById('det-venda-itens').innerHTML = (v.itens || []).map(i => {
+        const preco = Number(i.preco) || 0;
+        const qtd = Number(i.qtd) || 1;
+        const custo = Number(i.custo) || 0;
+        
+        const subTot = preco * qtd;
+        const subCusto = custo * qtd;
+        const lucroSub = subTot - subCusto;
+        
+        totalCusto += subCusto;
+        
+        return `
+        <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800/50 transition-colors group">
+            <td class="p-4 border-b border-slate-100 dark:border-slate-800/50">
+                <div class="font-bold text-slate-800 dark:text-slate-200 text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">${i.nome || 'Produto/Servi\u00e7o'}</div>
+                ${i.obsVenda ? `<div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 bg-slate-100 dark:bg-slate-800 inline-block px-2 py-0.5 rounded-md"><i class="fa-solid fa-note-sticky mr-1"></i>${i.obsVenda}</div>` : ''}
             </td>
-            <td class="p-3 text-center text-xs font-bold text-slate-600 dark:text-slate-300">${i.qtd || 1}</td>
-            <td class="p-3 text-right text-xs text-slate-500 dark:text-slate-400">${formatMoney(i.preco || 0)}</td>
-            <td class="p-3 text-right text-xs font-bold text-slate-800 dark:text-slate-100">${formatMoney((i.preco || 0) * (i.qtd || 1))}</td>
-        </tr>`).join('');
+            <td class="p-4 text-center border-b border-slate-100 dark:border-slate-800/50">
+                <span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-black px-2.5 py-1 rounded-lg text-xs border border-slate-200 dark:border-slate-700">${qtd}</span>
+            </td>
+            <td class="p-4 text-right border-b border-slate-100 dark:border-slate-800/50">
+                <div class="font-black text-slate-700 dark:text-slate-300 text-sm">${typeof formatMoney === 'function' ? formatMoney(preco) : preco}</div>
+                ${isGestao ? `<div class="text-[10px] text-red-500/80 dark:text-red-400/80 font-bold mt-0.5 bg-red-50 dark:bg-red-900/20 inline-block px-1.5 py-0.5 rounded border border-red-100 dark:border-red-800/30">Custo: ${typeof formatMoney === 'function' ? formatMoney(custo) : custo}</div>` : ''}
+            </td>
+            <td class="p-4 text-right border-b border-slate-100 dark:border-slate-800/50">
+                <div class="font-black text-slate-800 dark:text-white text-sm">${typeof formatMoney === 'function' ? formatMoney(subTot) : subTot}</div>
+                ${isGestao ? `<div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5 bg-emerald-50 dark:bg-emerald-900/20 inline-block px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-800/30">Lucro: ${typeof formatMoney === 'function' ? formatMoney(lucroSub) : lucroSub}</div>` : ''}
+            </td>
+        </tr>`;
+    }).join('');
+    
+    const tot = Number(v.tot) || 0;
+    const taxaCartao = Number(v.taxaValor) || 0;
+    const taxaBoleto = Number(v.taxaBoleto) || 0;
+    const lucroLiquido = tot - totalCusto - taxaCartao - taxaBoleto;
+    
+    const tfootEl = document.querySelector('#det-venda-tfoot');
+    if (tfootEl) {
+        let tfootHtml = '';
+        if (isGestao) {
+            tfootHtml += `
+                <tr>
+                    <td colspan="3" class="p-4 text-right font-bold text-slate-500 dark:text-slate-400 text-[11px] uppercase tracking-wider">Custo Total (Produtos)</td>
+                    <td class="p-4 text-right font-black text-red-500 dark:text-red-400 text-sm bg-red-50/50 dark:bg-red-900/10">- ${typeof formatMoney === 'function' ? formatMoney(totalCusto) : totalCusto}</td>
+                </tr>
+            `;
+            if (taxaCartao > 0) {
+                tfootHtml += `
+                <tr>
+                    <td colspan="3" class="p-4 text-right font-bold text-slate-500 dark:text-slate-400 text-[11px] uppercase tracking-wider">Taxa de Cart\u00e3o / Despesa</td>
+                    <td class="p-4 text-right font-black text-red-500 dark:text-red-400 text-sm bg-red-50/50 dark:bg-red-900/10">- ${typeof formatMoney === 'function' ? formatMoney(taxaCartao) : taxaCartao}</td>
+                </tr>`;
+            }
+            tfootHtml += `
+                <tr class="border-t border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-800/50">
+                    <td colspan="3" class="p-4 text-right font-black text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wide">Valor Bruto Total</td>
+                    <td class="p-4 text-right font-black text-slate-900 dark:text-white text-lg">${typeof formatMoney === 'function' ? formatMoney(tot) : tot}</td>
+                </tr>
+                <tr class="bg-gradient-to-r from-emerald-50 to-emerald-100/50 dark:from-emerald-900/30 dark:to-emerald-900/10 border-t border-emerald-200 dark:border-emerald-800/50">
+                    <td colspan="3" class="p-4 text-right font-black text-emerald-800 dark:text-emerald-400 text-sm uppercase tracking-wide">Lucro L\u00edquido Real</td>
+                    <td class="p-4 text-right font-black text-emerald-600 dark:text-emerald-400 text-xl shadow-sm">${typeof formatMoney === 'function' ? formatMoney(lucroLiquido) : lucroLiquido}</td>
+                </tr>
+            `;
+        } else {
+            tfootHtml += `
+                <tr class="border-t border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-800/50">
+                    <td colspan="3" class="p-4 text-right font-black text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wide">Total Geral</td>
+                    <td class="p-4 text-right font-black text-slate-900 dark:text-white text-lg">${typeof formatMoney === 'function' ? formatMoney(tot) : tot}</td>
+                </tr>
+            `;
+        }
+        tfootEl.innerHTML = tfootHtml;
+    }
     
     document.getElementById('modal-detalhes-venda').classList.remove('hidden');
 }
@@ -2166,9 +2005,6 @@ function fecharModalDetalhesVenda() {
     document.getElementById('modal-detalhes-venda').classList.add('hidden'); 
 }
 
-// ==========================================
-// 13. EDITAR / REABRIR VENDA (BLINDADO COM STRING E SEM LOOP)
-// ==========================================
 function editarVenda(id) {
     const v = db.vendas.find(x => String(x.id) === String(id)); 
     if(!v) return showToast('Venda não encontrada.', 'error'); 

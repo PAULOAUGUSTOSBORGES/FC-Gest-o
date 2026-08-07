@@ -762,7 +762,7 @@ async function estornarTitulo(id) {
     const f = db.financeiro.find(x => String(x.id) === String(id));
     if (!f || f.status !== 'PAGO') return;
 
-    abrirConfirmacao('Estornar Pagamento', 'Voltar� para PENDENTE e reverter� o caixa.', async () => {
+    abrirConfirmacao('Estornar Pagamento', 'Voltará para PENDENTE e reverterá o caixa.', async () => {
         const batch = firestore.batch();
         if (f.metodoPagamento === 'Dinheiro') {
             let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };

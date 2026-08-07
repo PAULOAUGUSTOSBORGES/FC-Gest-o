@@ -1,4 +1,4 @@
-﻿// index.js - Lógica exclusiva do Dashboard (MEGA BI)
+// index.js - Lógica exclusiva do Dashboard (MEGA BI)
 
 let renderTimeout = null;
 
@@ -173,7 +173,7 @@ function executarCalculosDashboard() {
                     produtoVendas[pId] = { nome: pNome, qtd: 0, receita: 0 };
                 }
                 produtoVendas[pId].qtd += Number(item.qtd) || 0;
-                produtoVendas[pId].receita += (Number(item.qtd) || 0) * (Number(item.precoUnitario) || 0);
+                produtoVendas[pId].receita += (Number(item.qtd) || 0) * (Number(item.preco) || 0);
             });
         }
     });
@@ -255,6 +255,9 @@ function executarCalculosDashboard() {
     }
 
     renderizarNotificacoes(produtosVazios, produtosBaixo, qtdReceberVencidas, qtdPagarVencidas, saldoCaixa);
+    
+    // Atualiza os gráficos se já estiverem inicializados
+    renderizarGraficos();
 }
 
 function renderizarNotificacoes(prodVazios, prodBaixo, recVencidas, pagVencidas, caixa) {
@@ -375,8 +378,50 @@ function inicializarDashboard() {
     inicializarGraficos();
 }
 
+function abrirInfoDashboard(tipo) {
+    const titleEl = document.getElementById('modal-info-dash-title');
+    const contentEl = document.getElementById('modal-info-dash-content');
+    const modal = document.getElementById('modal-info-dashboard');
+    
+    if(!titleEl || !contentEl || !modal) return;
+
+    let titulo = '';
+    let conteudo = '';
+
+    switch(tipo) {
+        case 'desempenho':
+            titulo = 'Desempenho no Período';
+            conteudo = '<p class="mb-3">Mostra a evolução das suas Vendas ao longo do período selecionado.</p><ul class="list-disc pl-5 space-y-2"><li><b>Botão Vendas:</b> Exibe o volume total de vendas brutas dia a dia.</li><li><b>Botão Receita x Despesa:</b> Exibe o que efetivamente entrou no caixa (Receitas Pagas) cruzado com o que efetivamente saiu (Despesas Pagas). Ideal para entender se a operação está gerando caixa ou queimando caixa.</li></ul>';
+            break;
+        case 'estoque':
+            titulo = 'Estoque por Categoria';
+            conteudo = '<p>Analisa como está a distribuição do seu estoque físico atual. Quanto maior o pedaço do gráfico, mais dinheiro você tem imobilizado naquela categoria específica de produto.</p>';
+            break;
+        case 'inadimplencia':
+            titulo = 'Inadimplência vs Pagamentos em Dia';
+            conteudo = '<p>Este gráfico mostra o fluxo futuro e atrasado de caixa.</p><ul class="list-disc pl-5 space-y-2"><li><b>Atrasados (Vermelho):</b> Contas que você já deveria ter recebido, mas o cliente não pagou.</li><li><b>Hoje (Amarelo):</b> O que vence exatamente hoje.</li><li><b>No Prazo (Verde):</b> Valores que vão vencer no futuro e estão dentro do prazo normal.</li></ul>';
+            break;
+        case 'top_produtos':
+            titulo = 'Top 5 Produtos (Mais Vendidos)';
+            conteudo = '<p>Mostra os produtos que <b>mais geraram faturamento bruto</b> para a empresa dentro do período selecionado. É ótimo para descobrir quais itens impulsionam sua receita.</p>';
+            break;
+        case 'top_clientes':
+            titulo = 'Top 5 Clientes (Maior Faturamento)';
+            conteudo = '<p>Ranking dos clientes que <b>mais trouxeram dinheiro</b> para a loja. Identifique seus clientes VIPs para fidelização, pós-venda ou para oferecer ofertas exclusivas.</p>';
+            break;
+        case 'curva_abc':
+            titulo = 'Curva ABC de Vendas';
+            conteudo = '<p class="mb-3">A Curva ABC divide seus produtos pela importância no faturamento (Regra de Pareto 80/20):</p><ul class="list-disc pl-5 space-y-2"><li><b>Classe A (Verde):</b> Produtos que somados trazem <b>80% do faturamento</b>. São o motor da sua loja!</li><li><b>Classe B (Amarelo):</b> Produtos intermediários, trazem os próximos <b>15%</b>.</li><li><b>Classe C (Vermelho):</b> A maioria dos itens, mas que juntos trazem só os <b>5%</b> finais.</li></ul><p class="mt-2 text-xs italic text-slate-400">Nota: Diferente do relatório geral que analisa o estoque inteiro, a curva do Dashboard foca apenas no que foi efetivamente <b>vendido</b> no período.</p>';
+            break;
+    }
+
+    titleEl.innerHTML = titulo;
+    contentEl.innerHTML = conteudo;
+    modal.classList.remove('hidden');
+}
+
 // ==========================================
-// GRÃFICOS (FASE 2)
+// GRÁFICOS (FASE 2)
 // ==========================================
 
 let chartPrincipal = null;
@@ -452,13 +497,16 @@ function inicializarGraficos() {
     };
     chartInadimplencia = new ApexCharts(document.querySelector("#chart-inadimplencia"), optionsInad);
     chartInadimplencia.render();
+    
+    // Popula os gráficos assim que terminam de inicializar
+    renderizarGraficos();
 }
 
 function renderizarGraficos() {
     if (!chartPrincipal || !chartEstoque || !chartInadimplencia) return;
 
     // ----------------------------------------------------
-    // 1. GRÃFICO PRINCIPAL (Últimos 7 dias ou por mês se for ano)
+    // 1. GRÁFICO PRINCIPAL (Últimos 7 dias ou por mês se for ano)
     // ----------------------------------------------------
     const vendas = db.vendas || [];
     const contas = db.financeiro || [];
@@ -503,7 +551,7 @@ function renderizarGraficos() {
     chartPrincipal.updateOptions({ xaxis: { categories: categorias } });
 
     // ----------------------------------------------------
-    // 2. GRÃFICO DE ESTOQUE (Top 5 Categorias)
+    // 2. GRÁFICO DE ESTOQUE (Top 5 Categorias)
     // ----------------------------------------------------
     const produtos = db.produtos || [];
     let categoriasMap = {};
@@ -533,7 +581,7 @@ function renderizarGraficos() {
     chartEstoque.updateOptions({ labels: labelsEstoque });
 
     // ----------------------------------------------------
-    // 3. GRÃFICO DE INADIMPLÃŠNCIA VS PAGOS (Geral PENDENTES x ATRASADOS x PAGOS)
+    // 3. GRÁFICO DE INADIMPLÃŠNCIA VS PAGOS (Geral PENDENTES x ATRASADOS x PAGOS)
     // ----------------------------------------------------
     const hoje = new Date().getTime();
     const receber = contas.filter(c => (!c.tipo || c.tipo === 'RECEITA'));
