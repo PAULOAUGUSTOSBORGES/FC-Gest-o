@@ -1,63 +1,64 @@
-$ErrorActionPreference = "Stop"
+$base = "g:\site sistema"
+$files = Get-ChildItem -Path $base -Filter "*.js" -File
 
-$jsFixes = @(
-    @{ File = 'produtos.js'; View = 'produtos' },
-    @{ File = 'clientes.js'; View = 'clientes' },
-    @{ File = 'fornecedores.js'; View = 'fornecedores' },
-    @{ File = 'funcionarios.js'; View = 'funcionarios' },
-    @{ File = 'estoque.js'; View = 'estoque' },
-    @{ File = 'financeiro.js'; View = 'financeiro' },
-    @{ File = 'relatorios.js'; View = 'relatorios' },
-    @{ File = 'pdv.js'; View = 'pdv' },
-    @{ File = 'orcamentos.js'; View = 'orcamentos' }
-)
+$CORRECT_HEADER = @"
+function renderTitulos(tipo) {
+    const prefix = tipo === 'RECEITA' ? 'receber' : 'pagar';
+    if (!document.getElementById('tabela-fin-' + prefix)) return;
+    if (!db.financeiro) return;
+    
+    const statusFilterEl = document.getElementById('filtro-' + prefix + '-status');
+    const statusFilter = statusFilterEl ? statusFilterEl.value : 'TODOS';
+    
+    const periodoFilterEl = document.getElementById('filtro-' + prefix + '-periodo');
+    const periodoFilter = periodoFilterEl ? periodoFilterEl.value : 'TUDO';
+    
+    const buscaEl = document.getElementById('busca-fin-' + prefix);
+    const termoBusca = buscaEl ? buscaEl.value.toLowerCase() : '';
+    
+    const dataIniEl = document.getElementById('filtro-' + prefix + '-ini');
+    const dataIni = dataIniEl ? dataIniEl.value : '';
+    
+    const dataFimEl = document.getElementById('filtro-' + prefix + '-fim');
+    const dataFim = dataFimEl ? dataFimEl.value : '';
+    
+    let lista = db.financeiro.filter(f => (f.tipo === tipo || (!f.tipo && tipo === 'RECEITA')));
+    
+    if (termoBusca) {
+"@
 
-foreach ($item in $jsFixes) {
-    if (Test-Path $item.File) {
-        $content = Get-Content -Path $item.File -Raw -Encoding UTF8
-        
-        # Fix DOMContentLoaded view
-        $content = $content -replace "const view = urlParams\.get\('view'\) \|\| '.*?';", "const view = urlParams.get('view') || '$($item.View)';"
-        
-        # Fix inicializarCadastro and inicializarOperacao calls to mudarVisaoLocal
-        $content = $content -replace "(?s)(function inicializarCadastro\(\)\s*\{.*?mudarVisaoLocal\(').*?('\);\s*\})", "`$1$($item.View)`$2"
-        $content = $content -replace "(?s)(function inicializarOperacao\(\)\s*\{.*?mudarVisaoLocal\(').*?('\);\s*\})", "`$1$($item.View)`$2"
-        $content = $content -replace "(?s)(function inicializarOperacao\(\)\s*\{.*?mudarVisaoLocal\().*?(\);\s*\})", "`$1'$($item.View)'`$2"
+$CORRECT_TRY = @"
+    try {
+        await firestore.collection('fc_moveis').doc('caixa').set({ ...cxAtual, status: novoStatus, saldo: novoSaldo, historico: cxHistoricoNovo }, { merge: true });
+        fecharModalCaixa(); renderCaixaDiario(); showToast('Operação realizada com sucesso!', 'success');
+    } catch(err) { console.error(err); showToast('Erro ao registrar caixa.', 'error'); }
+}
+"@
 
-        [IO.File]::WriteAllText("$PWD\$($item.File)", $content, [System.Text.Encoding]::UTF8)
-        Write-Host "Fixed JS: $($item.File)"
+foreach ($f in $files) {
+    $content = [System.IO.File]::ReadAllText($f.FullName)
+    $changed = $false
+
+    # Fix renderTitulos
+    $regexRT = '(?s)function renderTitulos\(tipo\)\s*\{.*?if\s*\(\s*termoBusca\s*\)\s*\{'
+    if ($content -match $regexRT) {
+        # check if it actually has the unprintable chars by checking if it's missing 'tabela-fin-'
+        if ($content -notmatch "'tabela-fin-'") {
+            $content = $content -replace $regexRT, $CORRECT_HEADER
+            $changed = $true
+            Write-Host "Fixed renderTitulos in $($f.Name)"
+        }
+    }
+
+    # Fix duplicate injection in caixa logic
+    $regexDup = '(?s)(\s*try \{)\r?\n\s*if \(!document\.getElementById\(''caixa-saldo-display''\)\) return;.*?async function confirmarMovCaixa\(\).*?catch\(err\) \{ console\.error\(err\); showToast\(''Erro ao registrar caixa\.'', ''error''\); \}\r?\n\}'
+    if ($content -match $regexDup) {
+        $content = $content -replace $regexDup, $CORRECT_TRY
+        $changed = $true
+        Write-Host "Fixed confirmarMovCaixa duplicate in $($f.Name)"
+    }
+
+    if ($changed) {
+        [System.IO.File]::WriteAllText($f.FullName, $content, (New-Object System.Text.UTF8Encoding $false))
     }
 }
-
-$htmlFixes = @(
-    @{ File = 'produtos.html'; Js = 'produtos.js' },
-    @{ File = 'clientes.html'; Js = 'clientes.js' },
-    @{ File = 'fornecedores.html'; Js = 'fornecedores.js' },
-    @{ File = 'funcionarios.html'; Js = 'funcionarios.js' },
-    @{ File = 'estoque.html'; Js = 'estoque.js' },
-    @{ File = 'financeiro.html'; Js = 'financeiro.js' },
-    @{ File = 'relatorios.html'; Js = 'relatorios.js' },
-    @{ File = 'pdv.html'; Js = 'pdv.js' },
-    @{ File = 'orcamentos.html'; Js = 'orcamentos.js' }
-)
-
-foreach ($item in $htmlFixes) {
-    if (Test-Path $item.File) {
-        $content = Get-Content -Path $item.File -Raw -Encoding UTF8
-        
-        # Replace the script tag for the main logic
-        $content = $content -replace '<script src="cadastro(_v3)?\.js.*?"></script>', "<script src=""$($item.Js)""></script>"
-        $content = $content -replace '<script src="gestao\.js.*?"></script>', "<script src=""$($item.Js)""></script>"
-        $content = $content -replace '<script src="operacao\.js.*?"></script>', "<script src=""$($item.Js)""></script>"
-        
-        # Ensure only the target view is active initially
-        $content = $content -replace 'class="([^"]*)view-section([^"]*)"', 'class="$1view-section hidden$2"'
-        $content = $content -replace 'class="([^"]*)hidden hidden([^"]*)"', 'class="$1hidden$2"'
-        $content = $content -replace "(id=""view-$($item.View)"".*?class=""[^""]*)hidden([^""]*"")", '$1active$2'
-        
-        [IO.File]::WriteAllText("$PWD\$($item.File)", $content, [System.Text.Encoding]::UTF8)
-        Write-Host "Fixed HTML: $($item.File)"
-    }
-}
-
-Write-Host "Fixes applied."

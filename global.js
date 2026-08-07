@@ -247,8 +247,14 @@ document.addEventListener('click', (e) => {
 // Fim da função
 
 
-function salvarKardex(ref, prodId, prodNome, qtd, tipo) {
-    console.warn("salvarKardex obsoleto");
+async function salvarKardex(ref, prodId, prodNome, qtd, tipo) {
+    try {
+        await firestore.collection('movimentacoes').add({
+            data: new Date().toISOString(), ref, prodId, prodNome, qtd, tipo
+        });
+    } catch (e) {
+        console.error("Erro ao salvar Kardex", e);
+    }
 }
 
 function saveDB() {

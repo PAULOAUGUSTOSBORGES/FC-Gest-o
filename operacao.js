@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // OPERACAO.JS - SISTEMA 100% WHITE LABEL E BLINDADO
 // ==========================================
 
@@ -186,16 +186,6 @@ function abrirZoomCart(index) {
     if(cart[index] && cart[index].foto) abrirZoom(cart[index].foto); 
 }
 
-function salvarKardex(ref, prodId, prodNome, qtd, tipo) { 
-    firestore.collection('movimentacoes').add({ 
-        data: new Date().toISOString(), 
-        ref: ref || '', 
-        prodId: prodId || '', 
-        prodNome: prodNome || 'Produto', 
-        qtd: qtd || 0, 
-        tipo: tipo || 'AJUSTE' 
-    }).catch(e => console.error("Erro ao salvar kardex:", e));
-}
 
 // ==========================================
 // 4. CADASTRO E BUSCA DE CLIENTE RÁPIDO NO PDV
@@ -454,7 +444,7 @@ async function salvarProdutoRapido() {
     const ean = document.getElementById('prod-ean') ? document.getElementById('prod-ean').value : '';
     const marca = document.getElementById('prod-marca') ? document.getElementById('prod-marca').value : '';
     const custo = document.getElementById('prod-custo') ? parseFloat(document.getElementById('prod-custo').value) : 0;
-    const estoque = document.getElementById('prod-estoque') ? parseInt(document.getElementById('prod-estoque').value) : 0;
+    const estoque = document.getElementById('prod-estoque') ? parseFloat(document.getElementById('prod-estoque').value) : 0;
     const foto = document.getElementById('prod-foto-base64') ? document.getElementById('prod-foto-base64').value : '';
 
     const ncm = document.getElementById('prod-ncm') ? document.getElementById('prod-ncm').value : '';
@@ -1168,7 +1158,7 @@ function renderCarrinho() {
 function pdvMudarQtd(i, n) { 
     const op = document.getElementById('pdv-operação') ? document.getElementById('pdv-operação').value : 'Venda'; 
     const isOrcamento = op === 'Orçamento'; 
-    const novaQtd = Math.max(1, parseInt(n)||1); 
+    const novaQtd = Math.max(0.001, parseFloat(n)||0.001); 
     cart[i].qtd = novaQtd; 
     
     const p = db.produtos.find(x => String(x.id) === String(cart[i].id)); 

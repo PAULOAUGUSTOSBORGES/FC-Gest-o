@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // OPERACAO.JS - SISTEMA 100% WHITE LABEL E BLINDADO
 // ==========================================
 
@@ -186,16 +186,6 @@ function abrirZoomCart(index) {
     if(cart[index] && cart[index].foto) abrirZoom(cart[index].foto); 
 }
 
-function salvarKardex(ref, prodId, prodNome, qtd, tipo) { 
-    firestore.collection('movimentacoes').add({ 
-        data: new Date().toISOString(), 
-        ref: ref || '', 
-        prodId: prodId || '', 
-        prodNome: prodNome || 'Produto', 
-        qtd: qtd || 0, 
-        tipo: tipo || 'AJUSTE' 
-    }).catch(e => console.error("Erro ao salvar kardex:", e));
-}
 
 // ==========================================
 // 4. CADASTRO E BUSCA DE CLIENTE RÁPIDO NO PDV
@@ -454,7 +444,7 @@ async function salvarProdutoRapido() {
     const ean = document.getElementById('prod-ean') ? document.getElementById('prod-ean').value : '';
     const marca = document.getElementById('prod-marca') ? document.getElementById('prod-marca').value : '';
     const custo = document.getElementById('prod-custo') ? parseFloat(document.getElementById('prod-custo').value) : 0;
-    const estoque = document.getElementById('prod-estoque') ? parseInt(document.getElementById('prod-estoque').value) : 0;
+    const estoque = document.getElementById('prod-estoque') ? parseFloat(document.getElementById('prod-estoque').value) : 0;
     const foto = document.getElementById('prod-foto-base64') ? document.getElementById('prod-foto-base64').value : '';
 
     const ncm = document.getElementById('prod-ncm') ? document.getElementById('prod-ncm').value : '';
@@ -1156,7 +1146,7 @@ function renderCarrinho() {
                 ${item.id ? `<button onclick="abrirModalProduto('${item.id}')" class="ml-1 text-slate-400 hover:text-blue-500 transition-colors" title="Editar Cadastro do Produto"><i class="fa-solid fa-pencil text-xs"></i></button>` : ''}
                 <input type="text" placeholder="Obs do item (cor, lado, etc...)" value="${item.obsVenda || ''}" onchange="pdvMudarObsItem(${i}, this.value)" class="w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-[10px] outline-none focus:border-blue-400 placeholder:text-slate-300 dark:text-white">
             </td>
-            <td class="py-2 text-center"><input type="number" min="1" value="${item.qtd}" onchange="pdvMudarQtd(${i}, this.value)" class="w-14 text-center border border-slate-300 dark:border-slate-600 rounded-lg p-1.5 font-bold outline-none bg-white dark:bg-slate-800 dark:text-white"></td>
+            <td class="py-2 text-center"><input type="number" step="0.001" min="0.001" value="${item.qtd}" onchange="pdvMudarQtd(${i}, this.value)" class="w-14 text-center border border-slate-300 dark:border-slate-600 rounded-lg p-1.5 font-bold outline-none bg-white dark:bg-slate-800 dark:text-white"></td>
             <td class="py-2 text-right hidden sm:table-cell"><input type="number" step="0.01" value="${Number(item.preco).toFixed(2)}" onchange="pdvMudarPreco(${i}, this.value)" class="w-20 text-right border border-slate-300 dark:border-slate-600 rounded-lg p-1.5 font-bold text-slate-600 dark:text-slate-300 outline-none focus:border-blue-500 bg-white dark:bg-slate-800 dark:text-white"></td>
             <td class="py-2 text-right font-bold text-slate-800 dark:text-slate-100">${formatMoney((item.preco || 0) * (item.qtd || 1))}</td>
             <td class="py-2 text-center"><button onclick="cart.splice(${i},1); renderCarrinho()" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash text-lg"></i></button></td>
@@ -1168,7 +1158,7 @@ function renderCarrinho() {
 function pdvMudarQtd(i, n) { 
     const op = document.getElementById('pdv-operação') ? document.getElementById('pdv-operação').value : 'Venda'; 
     const isOrcamento = op === 'Orçamento'; 
-    const novaQtd = Math.max(1, parseInt(n)||1); 
+    const novaQtd = Math.max(0.001, parseFloat(n)||0.001); 
     cart[i].qtd = novaQtd; 
     
     const p = db.produtos.find(x => String(x.id) === String(cart[i].id)); 
@@ -2338,3 +2328,66 @@ function atualizarVendedoresPDV() {
 
 
 
+
+// ==========================================
+// PERSISTÃŠNCIA DE ESTADO DE ORÇAMENTOS (LOCALSTORAGE)
+// ==========================================
+window.salvarEstadoOrcamento = function() {
+    try {
+        const estado = {
+            cart: typeof cart !== 'undefined' ? cart : [],
+            pagamentos: typeof pagamentosVendaAtual !== 'undefined' ? pagamentosVendaAtual : [],
+            clienteId: document.getElementById('pdv-cliente') ? document.getElementById('pdv-cliente').value : '0',
+            clienteBusca: document.getElementById('pdv-cliente-busca') ? document.getElementById('pdv-cliente-busca').value : '',
+            vendedorId: document.getElementById('pdv-vendedor') ? document.getElementById('pdv-vendedor').value : '',
+            observacao: document.getElementById('pdv-obs') ? document.getElementById('pdv-obs').value : '',
+            dataVenda: document.getElementById('pdv-data') ? document.getElementById('pdv-data').value : '',
+            desconto: document.getElementById('pdv-desconto') ? document.getElementById('pdv-desconto').value : '0',
+            frete: document.getElementById('pdv-frete') ? document.getElementById('pdv-frete').value : '0',
+            vendaEmEdicao: window.vendaEmEdicao || null
+        };
+        localStorage.setItem('orcamentoState', JSON.stringify(estado));
+    } catch(e) {}
+};
+
+window.carregarEstadoOrcamento = function() {
+    const saved = localStorage.getItem('orcamentoState');
+    if (saved) {
+        try {
+            const estado = JSON.parse(saved);
+            if (typeof cart !== 'undefined') cart = estado.cart || [];
+            if (typeof pagamentosVendaAtual !== 'undefined') pagamentosVendaAtual = estado.pagamentos || [];
+            window.vendaEmEdicao = estado.vendaEmEdicao || null;
+
+            if (document.getElementById('pdv-cliente')) document.getElementById('pdv-cliente').value = estado.clienteId || '0';
+            if (document.getElementById('pdv-cliente-busca')) document.getElementById('pdv-cliente-busca').value = estado.clienteBusca || '';
+            if (document.getElementById('pdv-vendedor')) document.getElementById('pdv-vendedor').value = estado.vendedorId || '';
+            if (document.getElementById('pdv-obs')) document.getElementById('pdv-obs').value = estado.observacao || '';
+            if (document.getElementById('pdv-data') && estado.dataVenda) document.getElementById('pdv-data').value = estado.dataVenda;
+            if (document.getElementById('pdv-desconto')) document.getElementById('pdv-desconto').value = estado.desconto || '0';
+            if (document.getElementById('pdv-frete')) document.getElementById('pdv-frete').value = estado.frete || '0';
+
+            if (typeof renderCarrinho === 'function') renderCarrinho();
+            if (typeof atualizarResumoPagamentosVenda === 'function') atualizarResumoPagamentosVenda();
+            
+            const btnFinalizar = document.getElementById('btn-finalizar-venda');
+            if(btnFinalizar && window.vendaEmEdicao) {
+                btnFinalizar.innerHTML = '<i class="fa-solid fa-file-invoice"></i> SALVAR ORÇAMENTO EDITADO';
+            }
+        } catch(e) {
+            console.error('Erro ao restaurar estado do Orçamento:', e);
+        }
+    }
+};
+
+setInterval(() => {
+    if (document.getElementById('view-orcamentos') && document.getElementById('view-orcamentos').classList.contains('active')) {
+        if (typeof window.salvarEstadoOrcamento === 'function') window.salvarEstadoOrcamento();
+    }
+}, 1000);
+
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        if (typeof window.carregarEstadoOrcamento === 'function') window.carregarEstadoOrcamento();
+    }, 800); 
+});

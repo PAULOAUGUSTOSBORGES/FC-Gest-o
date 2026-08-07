@@ -5,6 +5,15 @@
 function inicializarSistema() {
     carregarConfiguracoesNaTela();
     carregarCategorias();
+    
+    // Auto-fix for string booleans in the database that break Firestore rules
+    if (window.currentUserInfo && typeof window.currentUserInfo.isAdmin === 'string') {
+        const uid = firebase.auth().currentUser.uid;
+        firestore.collection("funcionarios").doc(uid).update({
+            isAdmin: window.currentUserInfo.isAdmin === 'true',
+            perm_cadastros: window.currentUserInfo.perm_cadastros === 'true' || window.currentUserInfo.perm_cadastros === true
+        }).catch(console.error);
+    }
 }
 
 window.onload = () => {
@@ -12,7 +21,7 @@ window.onload = () => {
 };
 
 // ==========================================
-// BUSCA AUTOMÁTICA DE CNPJ NA RECEITA
+// BUSCA AUTOMÃTICA DE CNPJ NA RECEITA
 // ==========================================
 async function formatarEBuscarCNPJ(input) {
     // Aplica máscara visual
@@ -186,7 +195,7 @@ async function carregarCategorias() {
         renderCategorias();
     } catch (err) {
         console.error("Erro ao carregar categorias:", err);
-        showToast("Erro ao carregar categorias", "error");
+        showToast("Erro ao carregar: " + (err.message || err.code || err), "error");
     }
 }
 
@@ -211,7 +220,7 @@ function renderCategorias() {
             </div>
             
             <div class="pl-6 space-y-2 mb-3">
-                ${(cat.subcategorias || []).map((sub, idx) => `
+                ${(Array.isArray(cat.subcategorias) ? cat.subcategorias : []).map((sub, idx) => `
                     <div class="flex justify-between items-center text-sm text-slate-600 dark:text-slate-400 border-l-2 border-slate-300 dark:border-slate-600 pl-3 py-1">
                         <span><i class="fa-solid fa-folder-tree mr-1 text-slate-400"></i> ${sub}</span>
                         <button onclick="excluirSubcategoria('${cat.id}', ${idx})" class="text-red-400 hover:text-red-600">
@@ -311,4 +320,5 @@ async function excluirSubcategoria(catId, index) {
         showToast("Erro ao excluir subcategoria", "error");
     }
 }
+
 

@@ -376,7 +376,7 @@
                 id: id ? parseInt(id) : Date.now(), nome, preco, ean: document.getElementById('prod-ean').value,
                 marca: document.getElementById('prod-marca').value, categoria: document.getElementById('prod-categoria').value,
                 unidade: document.getElementById('prod-unidade').value, custo: parseFloat(document.getElementById('prod-custo').value) || 0,
-                margem: parseFloat(document.getElementById('prod-margem').value) || 0, estoque: parseInt(document.getElementById('prod-estoque').value) || 0,
+                margem: parseFloat(document.getElementById('prod-margem').value) || 0, estoque: parseFloat(document.getElementById('prod-estoque').value) || 0,
                 min: parseInt(document.getElementById('prod-minimo').value) || 0, ativo: document.getElementById('prod-ativo').value === 'true',
                 obs: document.getElementById('prod-obs').value, foto: document.getElementById('prod-foto-base64').value
             };
@@ -499,7 +499,7 @@
             pdvAtualizarTotais();
         }
 
-        function pdvMudarQtd(i, n) { const novaQtd = Math.max(1, parseInt(n)||1); cart[i].qtd = novaQtd; const p = db.produtos.find(x => x.id === cart[i].id); if(p && novaQtd > p.estoque) showToast(`Estoque NEGATIVO! Restam ${p.estoque}.`, 'info'); renderCarrinho(); }
+        function pdvMudarQtd(i, n) { const novaQtd = Math.max(0.001, parseFloat(n)||0.001); cart[i].qtd = novaQtd; const p = db.produtos.find(x => x.id === cart[i].id); if(p && novaQtd > p.estoque) showToast(`Estoque NEGATIVO! Restam ${p.estoque}.`, 'info'); renderCarrinho(); }
         
         function pdvLimpar() { cart = []; document.getElementById('pdv-desconto').value=0; document.getElementById('pdv-frete').value=0; document.getElementById('pdv-pagamento-selecionado').value=''; if(document.getElementById('pdv-obs')) document.getElementById('pdv-obs').value = ''; document.querySelectorAll('.btn-pag').forEach(b => b.classList.remove('bg-blue-50','border-blue-500','text-blue-700','ring-2')); document.getElementById('area-parcelamento').classList.add('hidden'); renderCarrinho(); }
 
@@ -771,14 +771,28 @@
         }
 
         function renderTitulos(tipo) {
-            const prefix = tipo === 'RECEITA' ? 'receber' : 'pagar';
-            const statusFilter = document.getElementById(`filtro-${prefix}-status`).value;
-            const sortOrder = document.getElementById(`sort-${prefix}`).value;
-            const termoBusca = document.getElementById(`busca-fin-${prefix}`).value.toLowerCase();
-
-            let lista = db.financeiro.filter(f => (f.tipo === tipo || (!f.tipo && tipo === 'RECEITA')));
-
-            if(termoBusca) { lista = lista.filter(f => (f.pessoa && f.pessoa.toLowerCase().includes(termoBusca)) || (f.ref && f.ref.toLowerCase().includes(termoBusca)) || (f.categoria && f.categoria.toLowerCase().includes(termoBusca))); }
+    const prefix = tipo === 'RECEITA' ? 'receber' : 'pagar';
+    if (!document.getElementById('tabela-fin-' + prefix)) return;
+    if (!db.financeiro) return;
+    
+    const statusFilterEl = document.getElementById('filtro-' + prefix + '-status');
+    const statusFilter = statusFilterEl ? statusFilterEl.value : 'TODOS';
+    
+    const periodoFilterEl = document.getElementById('filtro-' + prefix + '-periodo');
+    const periodoFilter = periodoFilterEl ? periodoFilterEl.value : 'TUDO';
+    
+    const buscaEl = document.getElementById('busca-fin-' + prefix);
+    const termoBusca = buscaEl ? buscaEl.value.toLowerCase() : '';
+    
+    const dataIniEl = document.getElementById('filtro-' + prefix + '-ini');
+    const dataIni = dataIniEl ? dataIniEl.value : '';
+    
+    const dataFimEl = document.getElementById('filtro-' + prefix + '-fim');
+    const dataFim = dataFimEl ? dataFimEl.value : '';
+    
+    let lista = db.financeiro.filter(f => (f.tipo === tipo || (!f.tipo && tipo === 'RECEITA')));
+    
+    if (termoBusca) { lista = lista.filter(f => (f.pessoa && f.pessoa.toLowerCase().includes(termoBusca)) || (f.ref && f.ref.toLowerCase().includes(termoBusca)) || (f.categoria && f.categoria.toLowerCase().includes(termoBusca))); }
             if(statusFilter !== 'TODOS') { lista = lista.filter(f => f.status === statusFilter); }
 
             lista.sort((a, b) => {
@@ -991,7 +1005,7 @@
         // ==========================================
         // 12. ESTOQUE KARDEX
         // ==========================================
-        function salvarKardex(ref, prodId, prodNome, qtd, tipo) { db.movimentacoes.unshift({ id: Date.now() + Math.random(), data: new Date().toISOString(), ref, prodId, prodNome, qtd, tipo }); }
+        ); }
         function renderKardex() {
             let linhas = '';
             db.movimentacoes.slice(0, 50).forEach(m => {

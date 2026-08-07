@@ -1,6 +1,7 @@
 body {
     font-family: 'Inter', sans-serif;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 /* Permitir que o Tailwind controle as cores */
@@ -105,26 +106,35 @@ body {
 }
 
 @media print {
-    body * {
-        visibility: hidden;
-    }
-
-    #print-area,
-    #print-area * {
-        visibility: visible;
-    }
-
-    #print-area {
-        position: absolute;
-        left: 0;
-        top: 0;
-        background: white;
-        margin: 0;
-        padding: 0;
-        width: 100%;
-    }
-
-    .no-print {
+    .no-print,
+    #sidebar,
+    header,
+    nav,
+    button:not(.print-btn),
+    .fin-aba-btn,
+    .modal {
         display: none !important;
     }
+
+    body {
+        background-color: white !important;
+        color: black !important;
+        margin: 0;
+        padding: 0;
+    }
+    
+    #print-area, .print-area {
+        visibility: visible !important;
+        position: relative !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
 }
+
+
+
+
+

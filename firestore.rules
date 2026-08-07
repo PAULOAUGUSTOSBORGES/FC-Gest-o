@@ -9,52 +9,55 @@ service cloud.firestore {
     }
     
     // Função para checar se é Admin Master
-    // O usuário é Admin se o documento dele existir e a flag isAdmin for verdadeira.
     function isAdmin() {
-      return request.auth != null && getFuncionario().isAdmin == true;
+      let f = getFuncionario();
+      return request.auth != null && (f.isAdmin == true || f.isAdmin == 'true');
     }
 
     // ==========================================
     // 1. Financeiro, Caixa e Configurações (Apenas Gestão ou Admin)
     // ==========================================
     match /financeiro/{document=**} {
-      allow read, write: if isAdmin() || (request.auth != null && getFuncionario().perm_gestao == true);
+      allow read, write: if isAdmin() || (request.auth != null && (getFuncionario().perm_gestao == true || getFuncionario().perm_gestao == 'true'));
     }
     match /fc_moveis/{document=**} {
-      allow read, write: if isAdmin() || (request.auth != null && getFuncionario().perm_gestao == true);
+      allow read, write: if isAdmin() || (request.auth != null && (getFuncionario().perm_gestao == true || getFuncionario().perm_gestao == 'true'));
     }
     match /compras/{document=**} {
-      allow read, write: if isAdmin() || (request.auth != null && getFuncionario().perm_gestao == true);
+      allow read, write: if isAdmin() || (request.auth != null && (getFuncionario().perm_gestao == true || getFuncionario().perm_gestao == 'true'));
     }
     
     // ==========================================
     // 2. Vendas e Orçamentos (Apenas PDV ou Admin)
     // ==========================================
     match /vendas/{document=**} {
-      allow read, write: if isAdmin() || (request.auth != null && getFuncionario().perm_pdv == true);
+      allow read, write: if isAdmin() || (request.auth != null && (getFuncionario().perm_pdv == true || getFuncionario().perm_pdv == 'true'));
     }
     match /orcamentos/{document=**} {
-      allow read, write: if isAdmin() || (request.auth != null && getFuncionario().perm_pdv == true);
+      allow read, write: if isAdmin() || (request.auth != null && (getFuncionario().perm_pdv == true || getFuncionario().perm_pdv == 'true'));
     }
     
     // ==========================================
     // 3. Cadastros Básicos (Apenas Cadastros ou Admin)
     // ==========================================
     match /produtos/{document=**} {
-      allow read, write: if isAdmin() || (request.auth != null && getFuncionario().perm_cadastros == true);
+      allow read, write: if isAdmin() || (request.auth != null && (getFuncionario().perm_cadastros == true || getFuncionario().perm_cadastros == 'true'));
     }
     match /clientes/{document=**} {
-      allow read, write: if isAdmin() || (request.auth != null && getFuncionario().perm_cadastros == true);
+      allow read, write: if isAdmin() || (request.auth != null && (getFuncionario().perm_cadastros == true || getFuncionario().perm_cadastros == 'true'));
     }
     match /fornecedores/{document=**} {
-      allow read, write: if isAdmin() || (request.auth != null && getFuncionario().perm_cadastros == true);
+      allow read, write: if isAdmin() || (request.auth != null && (getFuncionario().perm_cadastros == true || getFuncionario().perm_cadastros == 'true'));
+    }
+    match /categorias/{document=**} {
+      allow read, write: if isAdmin() || (request.auth != null && (getFuncionario().perm_cadastros == true || getFuncionario().perm_cadastros == 'true'));
     }
     
     // ==========================================
     // 4. Movimentações de Estoque (PDV ou Cadastros)
     // ==========================================
     match /movimentacoes/{document=**} {
-      allow read, write: if isAdmin() || (request.auth != null && (getFuncionario().perm_pdv == true || getFuncionario().perm_cadastros == true));
+      allow read, write: if isAdmin() || (request.auth != null && (getFuncionario().perm_pdv == true || getFuncionario().perm_pdv == 'true' || getFuncionario().perm_cadastros == true || getFuncionario().perm_cadastros == 'true'));
     }
     
     // ==========================================

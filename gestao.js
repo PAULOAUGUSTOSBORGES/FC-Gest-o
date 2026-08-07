@@ -225,10 +225,6 @@ function fecharModalConfirmacao() {
     document.getElementById('modal-confirm-btn').onclick = null; 
 }
 
-function salvarKardex(ref, prodId, prodNome, qtd, tipo) { 
-    if(!db.movimentacoes) db.movimentacoes = [];
-    db.movimentacoes.unshift({ id: Date.now() + Math.random(), data: new Date().toISOString(), ref, prodId, prodNome, qtd, tipo }); 
-}
 
 function printHtmlSeguro(htmlCompleto) {
     showToast("Preparando documento para Impressão...", "info");
@@ -418,13 +414,24 @@ async function confirmarMovCaixa() {
 // 4. CONTAS A PAGAR E RECEBER
 // ==========================================
 function renderTitulos(tipo) {
-    const prefix = tipo === 'RECEITA' ? 'receber' : 'pagar'; 
-    const statusFilter = document.getElementById(`filtro-${prefix}-status`).value; 
-    const periodoFilter = document.getElementById(`filtro-${prefix}-periodo`) ? document.getElementById(`filtro-${prefix}-periodo`).value : 'TUDO';
-    const termoBusca = document.getElementById(`busca-fin-${prefix}`).value.toLowerCase();
+    const prefix = tipo === 'RECEITA' ? 'receber' : 'pagar';
+    if (!document.getElementById('tabela-fin-' + prefix)) return;
+    if (!db.financeiro) return;
     
-    const dataIni = document.getElementById(`filtro-${prefix}-ini`) ? document.getElementById(`filtro-${prefix}-ini`).value : '';
-    const dataFim = document.getElementById(`filtro-${prefix}-fim`) ? document.getElementById(`filtro-${prefix}-fim`).value : '';
+    const statusFilterEl = document.getElementById('filtro-' + prefix + '-status');
+    const statusFilter = statusFilterEl ? statusFilterEl.value : 'TODOS';
+    
+    const periodoFilterEl = document.getElementById('filtro-' + prefix + '-periodo');
+    const periodoFilter = periodoFilterEl ? periodoFilterEl.value : 'TUDO';
+    
+    const buscaEl = document.getElementById('busca-fin-' + prefix);
+    const termoBusca = buscaEl ? buscaEl.value.toLowerCase() : '';
+    
+    const dataIniEl = document.getElementById('filtro-' + prefix + '-ini');
+    const dataIni = dataIniEl ? dataIniEl.value : '';
+    
+    const dataFimEl = document.getElementById('filtro-' + prefix + '-fim');
+    const dataFim = dataFimEl ? dataFimEl.value : '';
     
     let lista = db.financeiro.filter(f => (f.tipo === tipo || (!f.tipo && tipo === 'RECEITA')));
     

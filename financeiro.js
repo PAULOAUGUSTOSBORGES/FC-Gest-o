@@ -7,7 +7,7 @@ window.tempXMLData = null;
 window.xmlItemEditIndex = null;
 let compraManualItens = []; 
 
-const categoriasPagar = ['Fornecedores / Compras', 'Impostos (DAS, ICMS, etc)', 'Salários / Folha', 'Aluguel', 'Água', 'Energia', 'Internet / Telefonia', 'Contabilidade', 'Sistema / Software', 'IPTU', 'Outras Despesas'];
+const categoriasPagar = ['Fornecedores / Compras', 'Impostos (DAS, ICMS, etc)', 'Salários / Folha', 'Aluguel', 'ÃÂgua', 'Energia', 'Internet / Telefonia', 'Contabilidade', 'Sistema / Software', 'IPTU', 'Outras Despesas'];
 const categoriasReceber = ['Vendas', 'Serviços', 'Outras Receitas'];
 
 // Evita o "piscar" da tela carregando as abas instantaneamente antes do Firebase
@@ -51,7 +51,7 @@ function mudarVisaoLocal(viewId) {
     }
     
     if (viewId === 'financeiro') {
-        renderFinAbas('caixa');
+        renderFinAbas('pagar');
         atualizarCardsFluxoDeCaixa(); 
     }
     if (viewId === 'relatorios') renderDashboard();
@@ -66,7 +66,7 @@ function refreshCurrentView() {
 }
 
 // ==========================================
-// MIGRAÇÃO AUTOMÁTICA DO BANCO ANTIGO
+// MIGRAÇÃO AUTOMÃÂTICA DO BANCO ANTIGO
 // ==========================================
 async function migrarDadosSeNecessario() {
     try {
@@ -77,7 +77,7 @@ async function migrarDadosSeNecessario() {
         // Se já há dados em compras OU financeiro, não precisa migrar
         if (!comprasSnap.empty || !finSnap.empty) return;
 
-        // Coleções novas estão vazias — tenta ler do banco antigo
+        // Coleções novas estão vazias ââ‚¬â€ tenta ler do banco antigo
         const bancoPrincipalSnap = await firestore.collection('fc_moveis').doc('banco_principal').get();
         if (!bancoPrincipalSnap.exists) return;
 
@@ -165,6 +165,7 @@ function inicializarGestao() {
 window.onload = () => { initGlobalData(inicializarGestao); };
 
 function atualizarCardsFluxoDeCaixa() {
+    if (!document.getElementById('dash-fluxo-30')) return;
     if (!db.financeiro) return;
     
     const hoje = new Date();
@@ -225,10 +226,6 @@ function fecharModalConfirmacao() {
     document.getElementById('modal-confirm-btn').onclick = null; 
 }
 
-function salvarKardex(ref, prodId, prodNome, qtd, tipo) { 
-    if(!db.movimentacoes) db.movimentacoes = [];
-    db.movimentacoes.unshift({ id: Date.now() + Math.random(), data: new Date().toISOString(), ref, prodId, prodNome, qtd, tipo }); 
-}
 
 function printHtmlSeguro(htmlCompleto) {
     showToast("Preparando documento para Impressão...", "info");
@@ -279,7 +276,7 @@ function imprimirArea(areaId) {
     if (db && db.config && db.config.empresa && db.config.empresa.logo) logoHtml = `<img src="${db.config.empresa.logo}" style="max-height: 60px; margin-bottom: 10px; border-radius: 8px;">`;
     
     const element = document.getElementById(areaId);
-    if(!element) return showToast("Área de impressão não encontrada.", "error");
+    if(!element) return showToast("ÃÂrea de impressão não encontrada.", "error");
     
     const printContent = element.innerHTML; 
     const htmlCompleto = `
@@ -297,7 +294,7 @@ function imprimirArea(areaId) {
 
 function baixarPDF(areaId, filename) {
     const element = document.getElementById(areaId); 
-    if(!element) return showToast("Erro: Área do PDF não encontrada.", "error");
+    if(!element) return showToast("Erro: ÃÂrea do PDF não encontrada.", "error");
 
     const printContent = element.innerHTML; 
     
@@ -356,9 +353,10 @@ function exportarExcel(tabelaId, filename) {
 }
 
 // ==========================================
-// 3. FINANCEIRO E CAIXA FÍSICO
+// 3. FINANCEIRO E CAIXA FÃÂSICO
 // ==========================================
 function renderFinAbas(aba) {
+    if (!document.getElementById(`fin-area-${aba}`)) return;
     document.querySelectorAll('.fin-area').forEach(el => el.classList.add('hidden'));
     document.querySelectorAll('[id^="fin-tab-"]').forEach(el => {
         el.classList.remove('bg-blue-600', 'text-white');
@@ -374,6 +372,7 @@ function renderFinAbas(aba) {
 }
 
 function renderCaixaDiario() {
+    if (!document.getElementById('caixa-saldo-display')) return;
     document.getElementById('caixa-saldo-display').innerText = formatMoney(db.caixa.saldo); const b = document.getElementById('caixa-status-badge');
     if(db.caixa.status === 'ABERTO') { b.innerText = 'ABERTO'; b.className = 'px-4 py-2 rounded-lg font-black text-lg mb-4 bg-emerald-100 text-emerald-700 border border-emerald-300'; } else { b.innerText = 'FECHADO'; b.className = 'px-4 py-2 rounded-lg font-black text-lg mb-4 bg-red-100 text-red-700 border border-red-300'; }
     
@@ -418,13 +417,24 @@ async function confirmarMovCaixa() {
 // 4. CONTAS A PAGAR E RECEBER
 // ==========================================
 function renderTitulos(tipo) {
-    const prefix = tipo === 'RECEITA' ? 'receber' : 'pagar'; 
-    const statusFilter = document.getElementById(`filtro-${prefix}-status`).value; 
-    const periodoFilter = document.getElementById(`filtro-${prefix}-periodo`) ? document.getElementById(`filtro-${prefix}-periodo`).value : 'TUDO';
-    const termoBusca = document.getElementById(`busca-fin-${prefix}`).value.toLowerCase();
+    const prefix = tipo === 'RECEITA' ? 'receber' : 'pagar';
+    if (!document.getElementById('tabela-fin-' + prefix)) return;
+    if (!db.financeiro) return;
     
-    const dataIni = document.getElementById(`filtro-${prefix}-ini`) ? document.getElementById(`filtro-${prefix}-ini`).value : '';
-    const dataFim = document.getElementById(`filtro-${prefix}-fim`) ? document.getElementById(`filtro-${prefix}-fim`).value : '';
+    const statusFilterEl = document.getElementById('filtro-' + prefix + '-status');
+    const statusFilter = statusFilterEl ? statusFilterEl.value : 'TODOS';
+    
+    const periodoFilterEl = document.getElementById('filtro-' + prefix + '-periodo');
+    const periodoFilter = periodoFilterEl ? periodoFilterEl.value : 'TUDO';
+    
+    const buscaEl = document.getElementById('busca-fin-' + prefix);
+    const termoBusca = buscaEl ? buscaEl.value.toLowerCase() : '';
+    
+    const dataIniEl = document.getElementById('filtro-' + prefix + '-ini');
+    const dataIni = dataIniEl ? dataIniEl.value : '';
+    
+    const dataFimEl = document.getElementById('filtro-' + prefix + '-fim');
+    const dataFim = dataFimEl ? dataFimEl.value : '';
     
     let lista = db.financeiro.filter(f => (f.tipo === tipo || (!f.tipo && tipo === 'RECEITA')));
     
@@ -487,7 +497,20 @@ function renderTitulos(tipo) {
             }
         }
 
-        const valorAExibir = f.status === 'PAGO' ? (f.valorPago || f.valor) : f.valor;
+        let valorAExibir = f.status === 'PAGO' ? (f.valorPago || f.valor) : f.valor;
+          let subtextoValor = '';
+          if (f.status === 'PENDENTE' && isAtrasado) {
+              const diasAtraso = Math.floor((new Date().getTime() - new Date(f.data).getTime()) / (1000 * 60 * 60 * 24));
+              if (diasAtraso > 0 && (f.multa || f.juros)) {
+                  let multa = parseFloat(f.multa) || 0;
+                  let jurosM = parseFloat(f.juros) || 0;
+                  let jurosD = jurosM / 30;
+                  let calcMulta = f.valor * (multa / 100);
+                  let calcJuros = f.valor * (jurosD / 100) * diasAtraso;
+                  valorAExibir = f.valor + calcMulta + calcJuros;
+                  subtextoValor = '<br><span class="text-[9.5px] text-red-500 font-bold leading-none inline-block mt-1" title="Original: ' + formatMoney(f.valor) + ' + Multa e Juros">Atualizado</span>';
+              }
+          }
 
         let acoesExtras = '';
         if (f.status === 'PENDENTE') {
@@ -501,10 +524,21 @@ function renderTitulos(tipo) {
 
         return `
         <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
-            <td class="p-3 text-slate-500 dark:text-slate-400 font-mono text-xs">${formatData(f.data).split(' ')[0]}</td>
+            <td class="p-3 text-slate-500 dark:text-slate-400 font-mono text-xs">
+                  ${formatData(f.data).split(' ')[0]}
+                  ${f.dataCartorio ? `<br><span class="text-[9.5px] font-bold text-red-600 dark:text-red-400 mt-1 inline-block" title="Ir para Cartório"><i class="fa-solid fa-gavel"></i> ${formatData(f.dataCartorio + "T12:00:00").split(" ")[0]}</span>` : ""}
+              </td>
             <td class="p-3 font-bold text-slate-800 dark:text-slate-100 truncate max-w-[200px]">${f.pessoa}</td>
             <td class="p-3 text-slate-600 dark:text-slate-300 text-[11px]">${f.categoria || '-'} <br><span class="font-bold">${f.ref}</span></td>
-            <td class="p-3 text-right font-black ${tipo === 'RECEITA' ? 'text-blue-600' : 'text-red-500'}">${formatMoney(valorAExibir)}</td>
+            <td class="p-3 text-right ${tipo === 'RECEITA' ? 'text-emerald-600' : 'text-red-600'}">
+                  ${(() => {
+                      const c = calcularJurosMulta(f);
+                      if(c.diasAtraso > 0 && (c.multa > 0 || c.juros > 0)) {
+                          return `<div class="flex flex-col items-end"><span class="line-through text-slate-400 text-[10px]">${formatMoney(f.valor)}</span><span class="font-black text-red-600 dark:text-red-400" title="Multa: ${formatMoney(c.multa)} | Juros: ${formatMoney(c.juros)}">${formatMoney(c.valorAtualizado)}</span></div>`;
+                      }
+                      return `<span class="font-black">${formatMoney(f.valor)}</span>`;
+                  })()}
+              </td>
             <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${corStatus}">${badgeStatus}</span></td>
             <td class="p-3 text-center flex items-center justify-center gap-1 print:hidden">
                 <button onclick="verDetalhesTitulo(${f.id})" class="text-blue-500 hover:text-blue-700 p-1.5" title="Detalhes do Título"><i class="fa-solid fa-eye"></i></button>
@@ -518,7 +552,7 @@ function renderTitulos(tipo) {
 }
 
 // ==========================================
-// 5. MODAL DE CADASTRO/EDIÇÃO DE CONTA (COM RECORRÊNCIA)
+// 5. MODAL DE CADASTRO/EDIÇÃO DE CONTA (COM RECORRÃÅ NCIA)
 // ==========================================
 function toggleRecorrencia() {
     const rec = document.getElementById('conta-recorrencia').value;
@@ -536,7 +570,7 @@ function abrirModalConta(tipo) {
     document.getElementById('modal-conta-header').className = `p-4 md:p-5 text-white flex justify-between items-center shrink-0 ${tipo === 'RECEBER' ? 'bg-emerald-500' : 'bg-red-500'}`; 
     document.getElementById('modal-conta-title').innerText = tipo === 'RECEBER' ? 'Nova Conta a Receber' : 'Nova Conta a Pagar';
     
-    ['pessoa','ref','emissao','vencimento','competencia','num-nf','num-boleto','valor','acrescimo','desconto','data-pgto','obs','anexo-base64'].forEach(id => {
+    ['pessoa','ref','emissao','vencimento','competencia','num-nf','num-boleto','valor','acrescimo','desconto','multa','juros','data-pgto','obs','anexo-base64','cartorio','juros','multa'].forEach(id => {
         const el = document.getElementById(`conta-${id}`);
         if(el) el.value = '';
     });
@@ -567,7 +601,7 @@ function abrirModalContaEdicao(id) {
     document.getElementById('lbl-conta-pessoa').innerText = tipo === 'RECEBER' ? 'Cliente / Pagador *' : 'Fornecedor / Favorecido *';
     
     document.getElementById('conta-categoria').innerHTML = (tipo === 'RECEBER' ? categoriasReceber : categoriasPagar).map(c => `<option value="${c}">${c}</option>`).join('');
-    document.getElementById('modal-conta-header').className = `p-4 md:p-5 text-white flex justify-between items-center shrink-0 bg-indigo-600`; 
+    document.getElementById('modal-conta-header').className = 'p-4 md:p-5 text-white flex justify-between items-center shrink-0 bg-indigo-600'; 
     document.getElementById('modal-conta-title').innerText = 'Editar Lançamento Financeiro';
     
     document.getElementById('conta-recorrencia').value = 'UNICA';
@@ -582,6 +616,9 @@ function abrirModalContaEdicao(id) {
     
     document.getElementById('conta-emissao').value = f.dataEmissao || '';
     document.getElementById('conta-vencimento').value = f.data ? f.data.split('T')[0] : '';
+    const elCart = document.getElementById('conta-cartorio'); if(elCart) elCart.value = f.dataCartorio || '';
+    const elJuros = document.getElementById('conta-juros'); if(elJuros) elJuros.value = f.juros || f.jurosMesPerc || '';
+    const elMulta = document.getElementById('conta-multa'); if(elMulta) elMulta.value = f.multa || f.multaPerc || '';
     document.getElementById('conta-competencia').value = f.competencia || '';
     
     document.getElementById('conta-num-nf').value = f.numNF || '';
@@ -667,6 +704,9 @@ function salvarConta() {
             contaBancaria: document.getElementById('conta-banco').value,
             dataEmissao: document.getElementById('conta-emissao').value,
             data: dataVenc.toISOString(), 
+            dataCartorio: document.getElementById('conta-cartorio').value,
+              multaPerc: parseFloat(document.getElementById('conta-multa').value) || 0,
+              jurosMesPerc: parseFloat(document.getElementById('conta-juros').value) || 0, 
             competencia: document.getElementById('conta-competencia').value,
             numNF: document.getElementById('conta-num-nf').value,
             numBoleto: document.getElementById('conta-num-boleto').value,
@@ -722,7 +762,7 @@ async function estornarTitulo(id) {
     const f = db.financeiro.find(x => String(x.id) === String(id));
     if (!f || f.status !== 'PAGO') return;
 
-    abrirConfirmacao('Estornar Pagamento', 'Voltará para PENDENTE e reverterá o caixa.', async () => {
+    abrirConfirmacao('Estornar Pagamento', 'Voltar� para PENDENTE e reverter� o caixa.', async () => {
         const batch = firestore.batch();
         if (f.metodoPagamento === 'Dinheiro') {
             let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
@@ -731,10 +771,10 @@ async function estornarTitulo(id) {
             
             if (f.tipo === 'RECEITA') {
                 cxSaldoNovo -= f.valorPago;
-                cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno: ${f.pessoa}`, valor: f.valorPago });
+                cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: "Estorno: " + f.pessoa, valor: f.valorPago });
             } else {
                 cxSaldoNovo += f.valorPago;
-                cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Estorno: ${f.pessoa}`, valor: f.valorPago });
+                cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: "Estorno: " + f.pessoa, valor: f.valorPago });
             }
             batch.set(firestore.collection('fc_moveis').doc('caixa'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
         }
@@ -751,8 +791,7 @@ async function estornarTitulo(id) {
 
 function abrirModalRenegociacao(id) {
     const f = db.financeiro.find(x => x.id === id);
-    if (!f) return;
-    document.getElementById('reneg-id').value = f.id;
+    if (!f) return;    document.getElementById('reneg-id').value = f.id;
     document.getElementById('reneg-valor').innerText = formatMoney(f.valor);
     const hoje = new Date(); hoje.setDate(hoje.getDate() + 30);
     document.getElementById('reneg-data').value = hoje.toISOString().split('T')[0];
@@ -803,7 +842,13 @@ function verDetalhesTitulo(id) {
 }
 function fecharModalDetalhesTitulo() { document.getElementById('modal-detalhes-titulo').classList.add('hidden'); }
 
-function abrirModalBaixa(id) { const f = db.financeiro.find(x => x.id === id); if(!f) return; document.getElementById('baixa-id').value = f.id; document.getElementById('baixa-valor-original').innerText = formatMoney(f.valor); document.getElementById('baixa-vencimento').innerText = formatData(f.data).split(' ')[0]; document.getElementById('baixa-acrescimo').value = 0; document.getElementById('baixa-desconto').value = 0; calcularAcrescimos(); document.getElementById('modal-baixa-conta').classList.remove('hidden'); }
+function abrirModalBaixa(id) { const f = db.financeiro.find(x => x.id === id); if(!f) return; document.getElementById('baixa-id').value = f.id; document.getElementById('baixa-valor-original').innerText = formatMoney(f.valor); document.getElementById('baixa-vencimento').innerText = formatData(f.data).split(' ')[0]; document.getElementById('baixa-desconto').value = 0;
+      const calc = calcularJurosMulta(f);
+      if(calc.diasAtraso > 0 && (calc.multa > 0 || calc.juros > 0)) {
+          document.getElementById('baixa-acrescimo').value = (calc.multa + calc.juros).toFixed(2);
+      } else {
+          document.getElementById('baixa-acrescimo').value = 0;
+      } calcularAcrescimos(); document.getElementById('modal-baixa-conta').classList.remove('hidden'); }
 function fecharModalBaixa() { document.getElementById('modal-baixa-conta').classList.add('hidden'); }
 function calcularAcrescimos() { const id = parseInt(document.getElementById('baixa-id').value); const f = db.financeiro.find(x => x.id === id); if(!f) return; const ac = parseFloat(document.getElementById('baixa-acrescimo').value) || 0; const de = parseFloat(document.getElementById('baixa-desconto').value) || 0; const vf = f.valor + ac - de; document.getElementById('baixa-valor-final').innerText = formatMoney(vf); return vf; }
 
@@ -1332,6 +1377,7 @@ async function salvarCompraManual() {
 }
 
 function renderComprasHist() {
+    if (!document.getElementById('tabela-compras-hist')) return;
     if(!db.compras) db.compras = [];
     let filtrados = [...db.compras];
 
@@ -1471,6 +1517,7 @@ function obterIntervaloDatasBI() {
 }
 
 function renderDashboard() {
+    if (!document.getElementById('filtro-dash-mes')) return;
     let vendas = db.vendas || [];
     let compras = db.compras || [];
 
@@ -1615,6 +1662,7 @@ function renderCurvaABC(vendasFiltradas, fatTotal) {
 }
 
 function renderSugestorCompras(vendasFiltradas, periodoObj) {
+    if (!document.getElementById('tabela-sugestor-compras')) return;
     const tbody = document.getElementById('tabela-sugestor-compras');
     if(!tbody) return;
 
@@ -1786,7 +1834,7 @@ async function analisarFinanceiroIA() {
     const resposta = await chamarGemini(prompt);
     
     if(resposta) {
-        divRes.innerHTML = resposta.replace(/\*\*/g, '').replace(/\*/g, '•');
+        divRes.innerHTML = resposta.replace(/\*\*/g, '').replace(/\*/g, 'ââ‚¬Â¢');
         showToast('Análise concluída com sucesso!', 'success');
     } else {
         divRes.innerHTML = 'Erro ao gerar análise. Verifique se você salvou sua chave API na aba Sistema.';
@@ -1882,6 +1930,7 @@ function abrirInfoRelatorio(tipo) {
 
 
 function renderVendas() {
+    if (!document.getElementById('tabela-vendas')) return;
     const buscaEl = document.getElementById('busca-vendas'); 
     const dataIniEl = document.getElementById('filtro-vendas-ini'); 
     const dataFimEl = document.getElementById('filtro-vendas-fim'); 
@@ -1939,6 +1988,31 @@ function renderVendas() {
         document.getElementById('vendas-total-filtros').innerText = `Lucro Real Acumulado: ${typeof formatMoney === 'function' ? formatMoney(totalLucro) : totalLucro}`;
     }
 }
+
+
+
+
+
+function calcularJurosMulta(f) {
+    if (f.status === 'PAGO' || f.status === 'CANCELADO') return { diasAtraso: 0, multa: 0, juros: 0, valorAtualizado: f.valor };
+    const hoje = new Date();
+    const vdata = new Date(f.data);
+    vdata.setHours(23, 59, 59, 999);
+    if (hoje <= vdata) return { diasAtraso: 0, multa: 0, juros: 0, valorAtualizado: f.valor };
+    
+    const diasAtraso = Math.floor((hoje - vdata) / (1000 * 60 * 60 * 24));
+    if (diasAtraso <= 0) return { diasAtraso: 0, multa: 0, juros: 0, valorAtualizado: f.valor };
+    
+    const multaPerc = f.multaPerc || 0;
+    const jurosMesPerc = f.jurosMesPerc || 0;
+    const multa = f.valor * (multaPerc / 100);
+    const juros = f.valor * (jurosMesPerc / 100 / 30) * diasAtraso;
+    const valorAtualizado = f.valor + multa + juros;
+    return { diasAtraso, multa, juros, valorAtualizado };
+}
+
+
+
 
 
 

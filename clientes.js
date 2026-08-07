@@ -1,4 +1,4 @@
-// cadastro.js - Lógica de Produtos, Clientes, Fornecedores e Estoque
+﻿// cadastro.js - Lógica de Produtos, Clientes, Fornecedores e Estoque
 
 let acaoConfirmacaoPendente = null;
 
@@ -124,15 +124,7 @@ async function buscarCNPJ(prefix) {
 // ==========================================
 // ESTOQUE KARDEX (Backend)
 // ==========================================
-async function salvarKardex(ref, prodId, prodNome, qtd, tipo) {
-    try {
-        await firestore.collection('movimentacoes').add({
-            data: new Date().toISOString(), ref, prodId, prodNome, qtd, tipo
-        });
-    } catch (e) {
-        console.error("Erro ao salvar Kardex", e);
-    }
-}
+
 
 // ==========================================
 // PRODUTOS
@@ -216,7 +208,7 @@ async function salvarProduto() {
         unidade: document.getElementById('prod-unidade').value,
         custo: parseFloat(document.getElementById('prod-custo').value) || 0,
         margem: parseFloat(document.getElementById('prod-margem').value) || 0,
-        estoque: parseInt(document.getElementById('prod-estoque').value) || 0,
+        estoque: parseFloat(document.getElementById('prod-estoque').value) || 0,
         min: parseInt(document.getElementById('prod-minimo').value) || 0,
         ativo: document.getElementById('prod-ativo').value === 'true',
         obs: document.getElementById('prod-obs').value,

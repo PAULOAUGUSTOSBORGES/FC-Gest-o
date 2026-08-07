@@ -1,6 +1,28 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<script>
+window.onerror = function(msg, url, line, col, error) {
+    var errDiv = document.getElementById('debug-errors');
+    if(!errDiv) {
+        errDiv = document.createElement('div');
+        errDiv.id = 'debug-errors';
+        errDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:red;color:white;z-index:999999;padding:10px;font-size:12px;overflow-y:auto;max-height:50vh;';
+        document.body.appendChild(errDiv);
+    }
+    errDiv.innerHTML += '<p><strong>Error:</strong> ' + msg + ' at ' + url + ':' + line + ':' + col + '</p>';
+};
+window.addEventListener('unhandledrejection', function(event) {
+    var errDiv = document.getElementById('debug-errors');
+    if(!errDiv) {
+        errDiv = document.createElement('div');
+        errDiv.id = 'debug-errors';
+        errDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:orange;color:black;z-index:999999;padding:10px;font-size:12px;overflow-y:auto;max-height:50vh;';
+        document.body.appendChild(errDiv);
+    }
+    errDiv.innerHTML += '<p><strong>Promise Rejection:</strong> ' + (event.reason ? event.reason.toString() : 'Unknown') + '</p>';
+});
+</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FC Móveis - FINANCEIRO</title>
@@ -15,7 +37,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js?v=4"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
@@ -57,7 +79,8 @@
 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
                 <a href="vendas_gestao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_gestao"><i class="fa-solid fa-chart-line w-5 text-center"></i> Histórico Vendas (Gestão)</a>
-                <a href="financeiro.html" id="nav-financeiro" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Financeiro & Caixa</a>
+                <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
+                <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
                 <a href="compras.html" id="nav-compras" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & Estoque</a>
                 <a href="relatorios.html" id="nav-relatorios" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
                 <a href="estoque.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="estoque"><i class="fa-solid fa-pallet w-5 text-center"></i> Estoque & Kardex</a>
@@ -86,7 +109,7 @@
             <div class="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth custom-scrollbar w-full relative">
 
                 <!-- MÓDULO FINANCEIRO -->
-                <div id="view-financeiro" class="view-section hidden active max-w-7xl mx-auto space-y-4 md:space-y-6">
+                <div id="view-financeiro" class="view-section max-w-7xl mx-auto space-y-4 md:space-y-6 active">
                     <!-- Fluxo de Caixa Projetado -->
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                         <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-center">
@@ -110,46 +133,9 @@
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 hidden md:block">Gestão de Contas</h2>
                         <div class="flex bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-1 shadow-sm w-full md:w-auto overflow-x-auto custom-scrollbar">
-                            <button onclick="renderFinAbas('caixa')" id="fin-tab-caixa" class="px-4 py-1.5 rounded-md text-sm font-bold bg-blue-600 text-white transition-colors whitespace-nowrap">Caixa Diário</button>
+                            
                             <button onclick="renderFinAbas('receber')" id="fin-tab-receber" class="px-4 py-1.5 rounded-md text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:text-slate-100 transition-colors whitespace-nowrap">Contas a Receber</button>
                             <button onclick="renderFinAbas('pagar')" id="fin-tab-pagar" class="px-4 py-1.5 rounded-md text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:text-slate-100 transition-colors whitespace-nowrap">Contas a Pagar</button>
-                        </div>
-                    </div>
-
-                    <!-- SUB-ABA CAIXA -->
-                    <div id="fin-area-caixa" class="fin-area hidden space-y-6">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                            <div class="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-center items-center text-center">
-                                <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Status do Caixa</p>
-                                <div id="caixa-status-badge" class="px-4 py-2 rounded-lg font-black text-lg mb-4 bg-slate-100 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400">FECHADO</div>
-                                <div class="flex gap-2 w-full">
-                                    <button onclick="abrirModalCaixa('abrir')" class="flex-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 py-2 rounded-lg font-bold text-xs md:text-sm transition-colors"><i class="fa-solid fa-lock-open"></i> Abrir</button>
-                                    <button onclick="abrirModalCaixa('fechar')" class="flex-1 bg-red-100 text-red-700 hover:bg-red-200 py-2 rounded-lg font-bold text-xs md:text-sm transition-colors"><i class="fa-solid fa-lock"></i> Fechar</button>
-                                </div>
-                            </div>
-                            <div class="bg-slate-900 p-4 md:p-6 rounded-xl shadow-lg text-white flex flex-col justify-center relative overflow-hidden">
-                                <i class="fa-solid fa-vault absolute -right-4 -bottom-4 text-6xl md:text-8xl opacity-10"></i>
-                                <p class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 relative z-10">Saldo Dinheiro (Gaveta)</p>
-                                <h3 class="text-3xl md:text-4xl font-black text-emerald-400 relative z-10" id="caixa-saldo-display">R$ 0,00</h3>
-                            </div>
-                            <div class="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-center gap-2 md:gap-3 sm:col-span-2 md:col-span-1">
-                                <button onclick="abrirModalCaixa('suprimento')" class="w-full bg-blue-50 text-blue-700 hover:bg-blue-100 py-2 md:py-3 rounded-lg font-bold text-xs md:text-sm transition-colors border border-blue-200 flex items-center justify-center gap-2"><i class="fa-solid fa-arrow-down"></i> Suprimento</button>
-                                <button onclick="abrirModalCaixa('sangria')" class="w-full bg-amber-50 text-amber-700 hover:bg-amber-100 py-2 md:py-3 rounded-lg font-bold text-xs md:text-sm transition-colors border border-amber-200 flex items-center justify-center gap-2"><i class="fa-solid fa-arrow-up"></i> Sangria</button>
-                            </div>
-                        </div>
-                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden" id="print-area-caixa">
-                            <div class="p-3 md:p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex justify-between items-center">
-                                <h3 class="font-bold text-slate-700 dark:text-slate-200 text-sm md:text-base">Fluxo de Caixa</h3>
-                                <input type="date" id="filtro-data-caixa" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-1 text-xs md:text-sm text-slate-700 dark:text-slate-200 outline-none" onchange="renderCaixaDiario()">
-                            </div>
-                            <div class="overflow-x-auto max-h-80 custom-scrollbar">
-                                <table class="w-full text-left text-sm min-w-[500px]" id="tabela-export-caixa">
-                                    <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold sticky top-0 border-b border-slate-200 dark:border-slate-700">
-                                        <tr><th class="p-3">Data/Hora</th><th class="p-3">Operação</th><th class="p-3">Descrição / Origem</th><th class="p-3 text-right">Valor</th></tr>
-                                    </thead>
-                                    <tbody id="tabela-caixa-historico" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
-                                </table>
-                            </div>
                         </div>
                     </div>
 
@@ -176,6 +162,11 @@
                                     </select>
                                     <input type="date" id="filtro-receber-ini" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('receber')" title="Data Inicial">
                                     <input type="date" id="filtro-receber-fim" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('receber')" title="Data Final">
+                                  </div>
+                                  <div class="flex gap-2 w-full sm:w-auto flex-wrap mt-2 sm:mt-0">
+                                      <span class="text-xs font-bold text-slate-500 flex items-center">Cartrio:</span>
+                                      <input type="date" id="filtro-receber-cartorio-ini" class="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-red-500 flex-1 dark:text-white" onchange="renderFinAbas('receber')" title="Data Cartrio Inicial">
+                                      <input type="date" id="filtro-receber-cartorio-fim" class="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-red-500 flex-1 dark:text-white" onchange="renderFinAbas('receber')" title="Data Cartrio Final">
                                 </div>
                             </div>
                             <div class="flex gap-2 w-full lg:w-auto">
@@ -219,6 +210,11 @@
                                     </select>
                                     <input type="date" id="filtro-pagar-ini" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('pagar')" title="Data Inicial">
                                     <input type="date" id="filtro-pagar-fim" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('pagar')" title="Data Final">
+                                  </div>
+                                  <div class="flex gap-2 w-full sm:w-auto flex-wrap mt-2 sm:mt-0">
+                                      <span class="text-xs font-bold text-slate-500 flex items-center">Cartrio:</span>
+                                      <input type="date" id="filtro-pagar-cartorio-ini" class="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-red-500 flex-1 dark:text-white" onchange="renderFinAbas('pagar')" title="Data Cartrio Inicial">
+                                      <input type="date" id="filtro-pagar-cartorio-fim" class="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-red-500 flex-1 dark:text-white" onchange="renderFinAbas('pagar')" title="Data Cartrio Final">
                                 </div>
                             </div>
                             <div class="flex gap-2 w-full lg:w-auto">
@@ -439,25 +435,6 @@
     <!-- M O D A I S   D E   G E S T Ã O -->
 
     <!-- MODAL MOVIMENTAÇÃO CAIXA -->
-    <div id="modal-mov-caixa" class="fixed inset-0 bg-slate-900/60 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
-            <div id="modal-caixa-header" class="bg-blue-600 p-4 md:p-5 text-white flex justify-between items-center">
-                <h3 class="font-bold text-base md:text-lg"><i class="fa-solid fa-cash-register"></i> <span id="modal-caixa-title">Movimentação</span></h3>
-                <button onclick="fecharModalCaixa()" class="text-white/70 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
-            </div>
-            <div class="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 space-y-4">
-                <input type="hidden" id="caixa-operação-tipo">
-                <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Valor (R$)</label><input type="number" step="0.01" id="caixa-op-valor" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-3 rounded-lg text-base md:text-lg font-black outline-none dark:text-white"></div>
-                <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Justificativa / Descrição</label><input type="text" id="caixa-op-desc" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none dark:text-white"></div>
-            </div>
-            <div class="bg-white dark:bg-slate-800 p-4 md:p-5 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
-                <button onclick="fecharModalCaixa()" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg font-bold text-slate-700 dark:text-slate-200 text-sm">Cancelar</button>
-                <button onclick="confirmarMovCaixa()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 rounded-lg text-sm" id="modal-caixa-btn">Confirmar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- NOVO MODAL: CADASTRO DE CONTA (COM RECORRÊNCIA) -->
     <div id="modal-nova-conta" class="fixed inset-0 bg-slate-900/80 z-[200] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col overflow-hidden max-h-[95vh]">
             <div id="modal-conta-header" class="p-4 md:p-5 text-white flex justify-between items-center shrink-0">
@@ -509,6 +486,22 @@
                             <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Vencimento Base *</label>
                             <input type="date" id="conta-vencimento" class="w-full bg-amber-50 border border-amber-300 p-2 rounded-lg text-xs font-bold text-amber-800 outline-none focus:border-amber-500 dark:text-white"></div>
                         </div>
+
+                                                  <!-- Data Cartório -->
+                          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-lg">
+                              <div class="col-span-2">
+                                  <label class="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase mb-1 block">Data para Protesto / Cartório</label>
+                                  <input type="date" id="conta-cartorio" class="w-full bg-white dark:bg-slate-800 border border-red-300 dark:border-red-700 p-2 rounded-lg text-xs font-bold outline-none focus:border-red-500 dark:text-white">
+                              </div>
+                              <div class="col-span-1">
+                                  <label class="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase mb-1 block" title="Multa Fixa em %">Multa (%)</label>
+                                  <input type="number" step="0.01" id="conta-multa" class="w-full bg-white dark:bg-slate-800 border border-red-300 dark:border-red-700 p-2 rounded-lg text-xs font-bold outline-none focus:border-red-500 dark:text-white" placeholder="Ex: 2.00">
+                              </div>
+                              <div class="col-span-1">
+                                  <label class="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase mb-1 block" title="Juros ao Mês em %">Juros (% a.m.)</label>
+                                  <input type="number" step="0.01" id="conta-juros" class="w-full bg-white dark:bg-slate-800 border border-red-300 dark:border-red-700 p-2 rounded-lg text-xs font-bold outline-none focus:border-red-500 dark:text-white" placeholder="Ex: 1.00">
+                              </div>
+                          </div>
 
                         <!-- RECORRÊNCIA -->
                         <div class="grid grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg">
@@ -564,6 +557,10 @@
 
                             <div><label class="text-[10px] font-bold text-red-500 uppercase mb-1 block">Juros / Multa (+)</label><input type="number" step="0.01" id="conta-acrescimo" oninput="calcularValorFinalFormulario()" class="w-full bg-red-50 border border-red-200 text-red-700 p-2 rounded-lg text-xs font-bold outline-none text-right dark:text-white" value="0"></div>
                             <div><label class="text-[10px] font-bold text-emerald-600 uppercase mb-1 block">Desconto (-)</label><input type="number" step="0.01" id="conta-desconto" oninput="calcularValorFinalFormulario()" class="w-full bg-emerald-50 border border-emerald-200 text-emerald-700 p-2 rounded-lg text-xs font-bold outline-none text-right dark:bg-slate-800 dark:border-slate-600 dark:text-white" value="0"></div>
+
+                              <!-- Novas Configuraes de Juros e Multa Automticos -->
+                              <div><label class="text-[10px] font-bold text-orange-600 uppercase mb-1 block">Multa Atraso (%)</label><input type="number" step="0.01" id="conta-multa" class="w-full bg-orange-50 border border-orange-200 text-orange-700 p-2 rounded-lg text-xs font-bold outline-none text-right dark:bg-slate-800 dark:border-slate-600 dark:text-white" value="0" placeholder="Ex: 2"></div>
+                              <div><label class="text-[10px] font-bold text-orange-600 uppercase mb-1 block">Juros ao Ms (%)</label><input type="number" step="0.01" id="conta-juros" class="w-full bg-orange-50 border border-orange-200 text-orange-700 p-2 rounded-lg text-xs font-bold outline-none text-right dark:bg-slate-800 dark:border-slate-600 dark:text-white" value="0" placeholder="Ex: 1"></div>
 
                             <div class="bg-slate-900 rounded-lg p-2 text-white flex flex-col justify-center items-end">
                                 <span class="text-[10px] font-bold text-slate-400 uppercase">Valor Final / Parcela</span>
@@ -939,10 +936,13 @@
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="global.js"></script>
-    <script src="financeiro.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js?v=4"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js?v=4"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js?v=4"></script>
+    <script src="global.js?v=4"></script>
+    <script src="financeiro.js?v=4"></script>
 </body>
 </html>
+
+
+

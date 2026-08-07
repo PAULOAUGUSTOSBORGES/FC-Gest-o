@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -14,7 +14,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js?v=4"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- CORRIGIDO: Removido o ?v=10 que estava quebrando o carregamento offline -->
     <link rel="stylesheet" href="style.css">
@@ -59,7 +59,8 @@
 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
                 <a href="vendas_gestao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_gestao"><i class="fa-solid fa-chart-line w-5 text-center"></i> Histórico Vendas (Gestão)</a>
-                <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Financeiro & Caixa</a>
+                <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
+                <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
                 <a href="compras.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & NF-e XML</a>
                 <a href="relatorios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
                 <a href="estoque.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="estoque"><i class="fa-solid fa-pallet w-5 text-center"></i> Estoque & Kardex</a>
@@ -72,7 +73,7 @@
             </div>
         </aside>
 
-        <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
+        <!-- ÃREA DE CONTEÚDO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
             <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
                 <div class="flex items-center gap-3">
@@ -87,7 +88,7 @@
             <div class="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth custom-scrollbar w-full relative">
 
                 <!-- ================== TELA DO PDV ================== -->
-                <div id="view-pdv" class="view-section hidden h-full flex flex-col gap-4">
+                <div id="view-pdv" class="view-section h-full flex flex-col gap-4 active">
                     <div class="bg-white dark:bg-slate-800 p-3 md:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row flex-wrap gap-3 items-start sm:items-center justify-between shrink-0">
                         <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                             <span id="pdv-status-caixa" class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-bold px-3 py-1.5 rounded-lg text-[10px] md:text-xs uppercase tracking-wider whitespace-nowrap"><i class="fa-solid fa-lock mr-1"></i> Verificando Caixa...</span>
@@ -204,7 +205,7 @@
                                 </div>
                             </div>
 
-                            <!-- ÁREA DE MÚLTIPLOS PAGAMENTOS E TROCO -->
+                            <!-- ÃREA DE MÚLTIPLOS PAGAMENTOS E TROCO -->
                             <div class="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex-1 flex flex-col overflow-y-auto custom-scrollbar min-h-[350px]">
                                 <label class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 block tracking-wider">Múltiplos Pagamentos</label>
 
@@ -220,7 +221,7 @@
                                     <select id="pdv-parcelas-atual" onchange="verificarParcelasPagamento()" class="hidden w-16 bg-blue-50 border border-blue-300 p-2.5 rounded-lg text-xs font-bold text-blue-800 outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white">
                                         <option value="1">1x</option><option value="2">2x</option><option value="3">3x</option><option value="4">4x</option><option value="5">5x</option><option value="6">6x</option><option value="7">7x</option><option value="8">8x</option><option value="9">9x</option><option value="10">10x</option><option value="11">11x</option><option value="12">12x</option>
                                     </select>
-                                    <input type="date" id="pdv-vencimento-atual" class="hidden w-32 bg-amber-50 border border-amber-300 p-2.5 rounded-lg text-xs font-bold text-amber-800 outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" title="Vencimento da 1ª Parcela">
+                                    <input type="date" id="pdv-vencimento-atual" class="hidden w-32 bg-amber-50 border border-amber-300 p-2.5 rounded-lg text-xs font-bold text-amber-800 outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" title="Vencimento da 1Âª Parcela">
                                     <input type="number" id="pdv-valor-atual" step="0.01" class="w-24 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm font-black text-slate-800 dark:text-slate-100 outline-none focus:border-blue-500 dark:text-white" placeholder="R$ 0,00" onkeypress="if(event.key === 'Enter') adicionarPagamentoVenda()">
                                     <button onclick="adicionarPagamentoVenda()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2.5 rounded-lg font-bold transition text-xs shadow-sm"><i class="fa-solid fa-plus"></i></button>
                                 </div>
@@ -485,7 +486,7 @@
         </div>
     </div>
 
-    <!-- CADASTRO RÁPIDO DE PRODUTO/SERVIÇO PELO PDV -->
+    <!-- CADASTRO RÃPIDO DE PRODUTO/SERVIÇO PELO PDV -->
     <div id="modal-produto" class="fixed inset-0 bg-slate-900/60 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col overflow-hidden max-h-[95vh]">
             <div class="bg-blue-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
@@ -589,12 +590,13 @@
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js?v=4"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js?v=4"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js?v=4"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js?v=4"></script>
 
-    <script src="global.js"></script>
-    <script src="pdv.js"></script>
+    <script src="global.js?v=4"></script>
+    <script src="pdv.js?v=4"></script>
 </body>
 </html>
+

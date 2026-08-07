@@ -68,6 +68,12 @@ function inicializarCadastro() {
         db.vendas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     });
 
+    // Carrega categorias para o cadastro de produtos
+    firestore.collection('categorias').orderBy('nome').onSnapshot(snap => {
+        db.categorias = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (typeof renderSelectCategorias === 'function') renderSelectCategorias();
+    });
+
     const urlParams = new URLSearchParams(window.location.search);
     const view = urlParams.get('view');
     mudarVisaoLocal(view || 'produtos');
@@ -124,13 +130,58 @@ async function buscarCNPJ(prefix) {
 // ==========================================
 // ESTOQUE KARDEX (Backend)
 // ==========================================
-async function salvarKardex(ref, prodId, prodNome, qtd, tipo) {
-    try {
-        await firestore.collection('movimentacoes').add({
-            data: new Date().toISOString(), ref, prodId, prodNome, qtd, tipo
+
+
+// ==========================================
+// CATEGORIAS (PRODUTOS)
+// ==========================================
+function renderSelectCategorias() {
+    const selectCat = document.getElementById('prod-categoria');
+    if (!selectCat) return;
+    
+    // Guarda o valor selecionado atualmente para não perder ao atualizar
+    const valAtual = selectCat.value;
+    
+    let html = '<option value="">Sem Categoria</option>';
+    if (db.categorias && db.categorias.length > 0) {
+        db.categorias.forEach(cat => {
+            html += `<option value="${cat.nome}">${cat.nome}</option>`;
         });
-    } catch (e) {
-        console.error("Erro ao salvar Kardex", e);
+    }
+    
+    selectCat.innerHTML = html;
+    
+    // Tenta restaurar
+    if (valAtual && selectCat.querySelector(`option[value="${valAtual}"]`)) {
+        selectCat.value = valAtual;
+    }
+    
+    atualizarOpcoesSubcategoria();
+}
+
+function atualizarOpcoesSubcategoria() {
+    const selectCat = document.getElementById('prod-categoria');
+    const selectSub = document.getElementById('prod-subcategoria');
+    if (!selectCat || !selectSub) return;
+    
+    const catSelecionada = selectCat.value;
+    const valAtualSub = selectSub.value;
+    
+    let html = '<option value="">Sem Subcategoria</option>';
+    
+    if (catSelecionada && db.categorias) {
+        const categoria = db.categorias.find(c => c.nome === catSelecionada);
+        if (categoria && categoria.subcategorias && Array.isArray(categoria.subcategorias)) {
+            categoria.subcategorias.forEach(sub => {
+                html += `<option value="${sub}">${sub}</option>`;
+            });
+        }
+    }
+    
+    selectSub.innerHTML = html;
+    
+    if (valAtualSub && selectSub.querySelector(`option[value="${valAtualSub}"]`)) {
+        selectSub.value = valAtualSub;
     }
 }
 
@@ -213,11 +264,12 @@ async function salvarProduto() {
         ean: document.getElementById('prod-ean').value,
         marca: document.getElementById('prod-marca').value,
         categoria: document.getElementById('prod-categoria').value,
+        subcategoria: document.getElementById('prod-subcategoria') ? document.getElementById('prod-subcategoria').value : '',
         unidade: document.getElementById('prod-unidade').value,
         custo: parseFloat(document.getElementById('prod-custo').value) || 0,
         margem: parseFloat(document.getElementById('prod-margem').value) || 0,
-        estoque: parseInt(document.getElementById('prod-estoque').value) || 0,
-        min: parseInt(document.getElementById('prod-minimo').value) || 0,
+        estoque: parseFloat(document.getElementById('prod-estoque').value) || 0,
+        min: parseFloat(document.getElementById('prod-minimo').value) || 0,
         ativo: document.getElementById('prod-ativo').value === 'true',
         obs: document.getElementById('prod-obs').value,
         foto: document.getElementById('prod-foto-base64').value,
@@ -273,6 +325,13 @@ async function editarProduto(id) {
         if (key === 'id') continue;
         const el = document.getElementById(`prod-${key === 'min' ? 'minimo' : key}`);
         if (el && key !== 'foto' && key !== 'ativo') el.value = p[key];
+    }
+    
+    // Atualiza opções de subcategoria e seta o valor correto novamente
+    if (typeof atualizarOpcoesSubcategoria === 'function') {
+        atualizarOpcoesSubcategoria();
+        const elSub = document.getElementById('prod-subcategoria');
+        if (elSub && p.subcategoria) elSub.value = p.subcategoria;
     }
 
     document.getElementById('prod-ativo').value = p.ativo !== false ? 'true' : 'false';
@@ -567,8 +626,8 @@ async function processarPlanilhaProdutos(event) {
                 const custo = parseFloat(colunas[4] ? colunas[4].replace(',', '.') : 0) || 0;
                 const margem = parseFloat(colunas[5] ? colunas[5].replace(',', '.') : 0) || 0;
                 const preco = parseFloat(colunas[6] ? colunas[6].replace(',', '.') : 0) || 0;
-                const estoque = parseInt(colunas[7]) || 0;
-                const min = parseInt(colunas[8]) || 5;
+                const estoque = parseFloat((colunas[7]||'0').replace(',','.')) || 0;
+                const min = parseFloat((colunas[8]||'5').replace(',','.')) || 5;
 
                 let existe = false;
                 if (ean && ean !== '') {
