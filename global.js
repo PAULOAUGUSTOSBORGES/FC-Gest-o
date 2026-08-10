@@ -89,7 +89,7 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                       
                       const avisoAprovacao = document.createElement('div');
                       avisoAprovacao.style.cssText = "position:absolute; top:20px; left:50%; transform:translateX(-50%); z-index:999999; background:#eab308; color:black; padding:15px 30px; font-size:16px; font-weight:bold; border-radius:10px; text-align:center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);";
-                      avisoAprovacao.innerHTML = "<i class='fa-solid fa-clock'></i> Conta Registrada!<br><span style='font-size:13px; font-weight:normal;'>Aguarde o Administrador liberar suas permissÃµes de acesso.</span>";
+                      avisoAprovacao.innerHTML = "<i class='fa-solid fa-clock'></i> Conta Registrada!<br><span style='font-size:13px; font-weight:normal;'>Aguarde o Administrador liberar suas permiss&otilde;es de acesso.</span>";
                       document.body.appendChild(avisoAprovacao);
                 }
                 aplicarControleDeAcesso();
@@ -154,9 +154,12 @@ function aplicarControleDeAcesso() {
                     </div>
                     <h2 class="text-3xl font-black text-slate-800 dark:text-white mb-2">Acesso Restrito</h2>
                     <p class="text-slate-500 dark:text-slate-400 max-w-md mx-auto">${mensagemBloqueio}</p>
-                    <button onclick="window.history.back()" class="mt-8 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 text-white px-6 py-3 rounded-lg font-bold transition-colors shadow-md">
-                        <i class="fa-solid fa-arrow-left mr-2"></i> Voltar
-                    </button>
+                                          <button onclick="window.history.back()" class="mt-8 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 text-white px-6 py-3 rounded-lg font-bold transition-colors shadow-md">
+                          <i class="fa-solid fa-arrow-left mr-2"></i> Voltar
+                      </button>
+                      <button onclick="firebase.auth().signOut().then(() => window.location.href='login.html')" class="mt-8 ml-2 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-bold transition-colors shadow-md">
+                          <i class="fa-solid fa-right-from-bracket mr-2"></i> Sair / Trocar Conta
+                      </button>
                 </div>
             `;
         }
@@ -302,6 +305,7 @@ function aplicarTema() {
 }
 
 // Removido o listener de preferência de cores do sistema, pois o tema é fixo.
+
 
 
 
