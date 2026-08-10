@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // OPERACAO.JS - SISTEMA 100% WHITE LABEL E BLINDADO
 // ==========================================
 
@@ -358,6 +358,7 @@ function abaModal(prefix, nomeAba) {
 }
 
 function abrirModalProduto(id = null) {
+    const divAcao = document.getElementById('div-acao-vinculo-xml'); if(divAcao) divAcao.classList.add('hidden');
     const titleEl = document.getElementById('modal-produto-title');
     abaModal('prod', 'dados');
     if (id) {
@@ -2236,3 +2237,62 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof window.carregarEstadoPDV === 'function') window.carregarEstadoPDV();
     }, 800); 
 });
+
+// NOVO: FunÃ§Ãµes auxiliares para VÃ­nculo de XML
+function alternarAcaoVinculoXML() {
+    const acao = document.getElementById('prod-acao-vinculo').value;
+    if(acao === 'VINCULAR') {
+        document.getElementById('div-vinculo-busca').classList.remove('hidden');
+    } else {
+        document.getElementById('div-vinculo-busca').classList.add('hidden');
+        document.getElementById('prod-id').value = '';
+    }
+}
+
+function preencherVinculoXML() {
+    const id = document.getElementById('prod-vinculo-select').value;
+    if(id) {
+        const prod = db.produtos.find(p => String(p.id) === String(id));
+        if(prod) {
+            document.getElementById('prod-id').value = prod.id;
+            document.getElementById('prod-nome').value = prod.nome;
+            document.getElementById('prod-ean').value = prod.ean || '';
+            document.getElementById('prod-margem').value = (prod.margem || 50).toFixed(2);
+            if(typeof calcularPrecoMargin === 'function') {
+                calcularPrecoMargin('margem');
+            }
+        }
+    }
+}
+
+
+
+function selecionarProdutoVinculoXML(id, nome) {
+    document.getElementById('prod-vinculo-select').value = id;
+    document.getElementById('prod-vinculo-search').value = nome;
+    ocultarListaProdutosXMLBusca();
+    preencherVinculoXML(); 
+}
+
+function filtrarProdutosXMLBusca() {
+    const termo = document.getElementById('prod-vinculo-search').value.toLowerCase();
+    const lista = document.getElementById('prod-vinculo-lista');
+    lista.classList.remove('hidden');
+    let html = '';
+    const sorted = [...db.produtos].sort((a,b) => a.nome.localeCompare(b.nome));
+    let count = 0;
+    sorted.forEach(p => {
+        if(p.nome.toLowerCase().includes(termo) || (p.ean && p.ean.includes(termo))) {
+            count++;
+            if(count <= 50) {
+                html += '<li onclick="selecionarProdutoVinculoXML(\'' + p.id + '\', \'' + p.nome.replace(/'/g, "\\'") + '\')" class="p-2 border-b border-slate-100 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-slate-700 cursor-pointer"><div class="font-bold text-xs">' + p.nome + '</div><div class="text-[10px] text-slate-500">Estoque: ' + p.estoque + ' | EAN: ' + (p.ean || 'S/N') + '</div></li>';
+            }
+        }
+    });
+    if(count === 0) html = '<li class="p-2 text-xs text-slate-500">Nenhum produto encontrado.</li>';
+    lista.innerHTML = html;
+}
+
+function mostrarListaProdutosXMLBusca() { filtrarProdutosXMLBusca(); }
+function ocultarListaProdutosXMLBusca() { document.getElementById('prod-vinculo-lista').classList.add('hidden'); }
+

@@ -1,4 +1,8 @@
-﻿<!DOCTYPE html>
+$loginHtmlPath = ".\login.html"
+$content = Get-Content $loginHtmlPath -Raw -Encoding UTF8
+
+$newLoginHtml = @"
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -33,7 +37,7 @@
         <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-1" id="titulo-form">TintasERP</h1>
         <p class="text-slate-500 dark:text-slate-400 text-sm mb-6" id="subtitulo-form">Acesso ao sistema integrado</p>
         
-        <!-- FormulÃ¡rio (Usado para Login e Cadastro) -->
+        <!-- Formulário (Usado para Login e Cadastro) -->
         <input type="email" id="login-user" placeholder="E-mail" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 px-4 py-3 rounded-lg mb-4 focus:outline-none focus:border-blue-500 font-medium dark:text-white">
         <input type="password" id="login-pass" placeholder="Senha" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 px-4 py-3 rounded-lg mb-6 focus:outline-none focus:border-blue-500 font-medium dark:text-white" onkeypress="if(event.key === 'Enter') acaoPrincipal()">
         
@@ -48,3 +52,7 @@
     <script src="login.js?v=5"></script>
 </body>
 </html>
+"@
+
+Set-Content -Path $loginHtmlPath -Value $newLoginHtml -Encoding UTF8
+Write-Host "Updated login.html"

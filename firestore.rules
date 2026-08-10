@@ -1,4 +1,4 @@
-rules_version = '2';
+﻿rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -63,10 +63,16 @@ service cloud.firestore {
     // ==========================================
     // 5. Funcionários
     // ==========================================
-    match /funcionarios/{userId} {
-      // O admin pode ler e escrever. Um funcionário normal pode ler apenas o próprio perfil.
+        match /funcionarios/{userId} {
       allow read: if isAdmin() || request.auth.uid == userId;
-      allow write: if isAdmin();
+      allow create: if request.auth.uid == userId 
+                    && (request.resource.data.isAdmin == false || request.resource.data.isAdmin == 'false')
+                    && (request.resource.data.perm_dashboard == false || request.resource.data.perm_dashboard == 'false')
+                    && (request.resource.data.perm_pdv == false || request.resource.data.perm_pdv == 'false')
+                    && (request.resource.data.perm_cadastros == false || request.resource.data.perm_cadastros == 'false')
+                    && (request.resource.data.perm_gestao == false || request.resource.data.perm_gestao == 'false')
+                    && (request.resource.data.perm_config == false || request.resource.data.perm_config == 'false');
+      allow update, delete: if isAdmin();
     }
     
     // Default fallback (Segurança bloqueia tudo que não foi explicitamente listado acima)
@@ -75,3 +81,4 @@ service cloud.firestore {
     }
   }
 }
+

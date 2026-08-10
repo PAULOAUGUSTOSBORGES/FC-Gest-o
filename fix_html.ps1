@@ -1,34 +1,9 @@
-$base = 'g:\site sistema'
-$htmlFiles = Get-ChildItem -Path $base -Filter '*.html' -File
-
-foreach ($f in $htmlFiles) {
-    $content = [System.IO.File]::ReadAllText($f.FullName)
-    $viewName = $f.BaseName
-    
-    if ($content -match 'id="view-') {
-        # Para todos os class="view-section ...", garantir que tenham "hidden" e não tenham "active"
-        $content = [regex]::Replace($content, 'class="view-section([^"]*)"', {
-            param($m)
-            $c = $m.Groups[1].Value
-            $c = $c -replace '\bactive\b', ''
-            if ($c -notmatch '\bhidden\b') { $c += ' hidden' }
-            $c = $c -replace '\s+', ' '
-            return 'class="view-section ' + $c.Trim() + '"'
-        })
-        
-        # Agora para a section específica do arquivo atual, remover "hidden" e colocar "active"
-        $pattern = 'id="view-' + $viewName + '" class="view-section([^"]*)"'
-        $content = [regex]::Replace($content, $pattern, {
-            param($m)
-            $c = $m.Groups[1].Value
-            $c = $c -replace '\bhidden\b', ''
-            if ($c -notmatch '\bactive\b') { $c += ' active' }
-            $c = $c -replace '\s+', ' '
-            return 'id="view-' + $viewName + '" class="view-section ' + $c.Trim() + '"'
-        })
-        
-        [System.IO.File]::WriteAllText($f.FullName, $content, (New-Object System.Text.UTF8Encoding $false))
-        Write-Host "Processado HTML: $($f.Name)" -ForegroundColor Green
-    }
+$htmlFiles = Get-ChildItem -Path . -Filter *.html -File
+foreach ($file in $htmlFiles) {
+    $content = Get-Content $file.FullName -Raw -Encoding UTF8
+    $content = $content -replace 'OP.*?O DE V.*?NCULO MANUAL', 'OPÇÃO DE VÍNCULO MANUAL'
+    $content = $content -replace 'A.*?o: Vincular ou Cadastrar\?', 'Ação: Vincular ou Cadastrar?'
+    $content = $content -replace 'C.*?d Barras \(EAN\)', 'Cód Barras (EAN)'
+    $content = $content -replace 'Pre.*?o R\$', 'Preço R$'
+    Set-Content -Path $file.FullName -Value $content -Encoding UTF8
 }
-Write-Host "Concluído"

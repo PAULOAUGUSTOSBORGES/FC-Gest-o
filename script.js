@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
         // 1. TRAVA DE SEGURANÇA E CONFIGURAÇÕES GERAIS
         // ==========================================
         if (sessionStorage.getItem('erp_auth_master') !== 'true') {
@@ -1061,8 +1061,42 @@ function fecharModalDetalhesVenda() {
         }
 
         function abrirModalProdutoDoXML(index) {
-            const p = window.tempXMLData.produtosXML[index]; window.xmlItemEditIndex = index; const modalProd = document.getElementById('modal-produto'); modalProd.classList.replace('z-[150]', 'z-[250]');
-            if(p.statusDB === 'ATUALIZAR' && p.idMatch) { editarProduto(p.idMatch); document.getElementById('prod-custo').value = p.custoFinal.toFixed(2); document.getElementById('prod-margem').value = p.margemAtual.toFixed(2); document.getElementById('prod-preco').value = p.precoVendaSug.toFixed(2); } 
+    const p = window.tempXMLData.produtosXML[index]; window.xmlItemEditIndex = index; document.getElementById('modal-produto').classList.remove('hidden');
+    
+    const divAcao = document.getElementById('div-acao-vinculo-xml');
+    if(divAcao) divAcao.classList.remove('hidden'); 
+    
+    const selectAcao = document.getElementById('prod-acao-vinculo');
+    const divBusca = document.getElementById('div-vinculo-busca');
+    const selProd = document.getElementById('prod-vinculo-select');
+    
+    if(selectAcao) {
+        selectAcao.value = (p.statusDB === 'ATUALIZAR' && p.idMatch) ? 'VINCULAR' : 'NOVO';
+        if(selectAcao.value === 'VINCULAR') {
+            divBusca.classList.remove('hidden');
+            if(selProd && selProd.options.length <= 1) {
+                let html = '<option value="">Selecione um produto...</option>';
+                const sorted = [...db.produtos].sort((a,b) => a.nome.localeCompare(b.nome));
+                sorted.forEach(prod => {
+                    html += "<option value=\"" + prod.id + "\">" + prod.nome + " (Estoque: " + prod.estoque + ")</option>";
+                });
+                selProd.innerHTML = html;
+            }
+            if(selProd) selProd.value = p.idMatch || '';
+        } else {
+            divBusca.classList.add('hidden');
+        }
+    }
+
+    if(p.statusDB === 'ATUALIZAR' && p.idMatch) { 
+        document.getElementById('prod-id').value = p.idMatch; document.getElementById('modal-produto-title').innerText = 'Atualizar Produto Vinculado'; 
+        document.getElementById('prod-nome').value = p.nome; document.getElementById('prod-custo').value = p.custoFinal.toFixed(2); document.getElementById('prod-margem').value = p.margemAtual.toFixed(2); document.getElementById('prod-preco').value = p.precoVendaSug.toFixed(2); 
+    } 
+    else { 
+        document.getElementById('prod-id').value = ''; document.getElementById('modal-produto-title').innerText = 'Completar Novo Produto'; 
+        document.getElementById('prod-nome').value = p.nome; document.getElementById('prod-ean').value = p.cEAN || ''; document.getElementById('prod-custo').value = p.custoFinal.toFixed(2); document.getElementById('prod-margem').value = p.margemAtual.toFixed(2); document.getElementById('prod-preco').value = p.precoVendaSug.toFixed(2); 
+    }
+} 
             else { abrirModalProduto(); document.getElementById('modal-produto-title').innerText = 'Completar Novo Produto'; document.getElementById('prod-nome').value = p.nome; document.getElementById('prod-ean').value = p.cEAN || ''; document.getElementById('prod-custo').value = p.custoFinal.toFixed(2); document.getElementById('prod-margem').value = p.margemAtual.toFixed(2); document.getElementById('prod-preco').value = p.precoVendaSug.toFixed(2); }
         }
 
@@ -1167,4 +1201,72 @@ function fecharModalDetalhesVenda() {
 
         window.onload = () => { initData(); };
 
+
+
+
+// NOVO: FunÃ§Ãµes auxiliares para VÃ­nculo de XML
+function alternarAcaoVinculoXML() {
+    const acao = document.getElementById('prod-acao-vinculo').value;
+    if(acao === 'VINCULAR') {
+        document.getElementById('div-vinculo-busca').classList.remove('hidden');
+    } else {
+        document.getElementById('div-vinculo-busca').classList.add('hidden');
+        document.getElementById('prod-id').value = '';
+    }
+}
+
+function preencherVinculoXML() {
+    const id = document.getElementById('prod-vinculo-select').value;
+    if(id) {
+        const prod = db.produtos.find(p => String(p.id) === String(id));
+        if(prod) {
+            document.getElementById('prod-id').value = prod.id;
+            document.getElementById('prod-nome').value = prod.nome;
+            document.getElementById('prod-ean').value = prod.ean || '';
+            document.getElementById('prod-margem').value = (prod.margem || 50).toFixed(2);
+            if(typeof calcularPrecoMargin === 'function') {
+                calcularPrecoMargin('margem');
+            }
+        }
+    }
+}
+
+
+function abrirModalXML() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xml';
+    input.onchange = processarXMLReal;
+    input.click();
+}
+
+
+function selecionarProdutoVinculoXML(id, nome) {
+    document.getElementById('prod-vinculo-select').value = id;
+    document.getElementById('prod-vinculo-search').value = nome;
+    ocultarListaProdutosXMLBusca();
+    preencherVinculoXML(); 
+}
+
+function filtrarProdutosXMLBusca() {
+    const termo = document.getElementById('prod-vinculo-search').value.toLowerCase();
+    const lista = document.getElementById('prod-vinculo-lista');
+    lista.classList.remove('hidden');
+    let html = '';
+    const sorted = [...db.produtos].sort((a,b) => a.nome.localeCompare(b.nome));
+    let count = 0;
+    sorted.forEach(p => {
+        if(p.nome.toLowerCase().includes(termo) || (p.ean && p.ean.includes(termo))) {
+            count++;
+            if(count <= 50) {
+                html += '<li onclick="selecionarProdutoVinculoXML(\'' + p.id + '\', \'' + p.nome.replace(/'/g, "\\'") + '\')" class="p-2 border-b border-slate-100 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-slate-700 cursor-pointer"><div class="font-bold text-xs">' + p.nome + '</div><div class="text-[10px] text-slate-500">Estoque: ' + p.estoque + ' | EAN: ' + (p.ean || 'S/N') + '</div></li>';
+            }
+        }
+    });
+    if(count === 0) html = '<li class="p-2 text-xs text-slate-500">Nenhum produto encontrado.</li>';
+    lista.innerHTML = html;
+}
+
+function mostrarListaProdutosXMLBusca() { filtrarProdutosXMLBusca(); }
+function ocultarListaProdutosXMLBusca() { document.getElementById('prod-vinculo-lista').classList.add('hidden'); }
 

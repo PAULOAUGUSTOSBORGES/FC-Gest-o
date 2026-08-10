@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <script>
@@ -714,7 +714,7 @@ window.addEventListener('unhandledrejection', function(event) {
                     <div><p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Total do XML</p><p class="font-bold text-emerald-600 text-lg" id="xml-total-nota">R$ 0,00</p></div>
                 </div>
 
-                <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 shadow-sm mb-4">
+                <div class="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 rounded-xl p-4 shadow-sm mb-4">
                     <div class="flex items-center gap-2 mb-2 border-b border-indigo-200 pb-2">
                         <i class="fa-solid fa-truck-fast text-indigo-600 text-lg"></i>
                         <h4 class="font-bold text-indigo-900 text-sm uppercase">Composição de Frete Extra</h4>
@@ -736,7 +736,7 @@ window.addEventListener('unhandledrejection', function(event) {
                     </div>
                 </div>
 
-                <div class="bg-amber-50 rounded-xl shadow-sm border border-amber-200 mb-4 p-4">
+                <div class="bg-amber-50 dark:bg-amber-900/20 rounded-xl shadow-sm border border-amber-200 dark:border-amber-800 mb-4 p-4">
                     <div class="flex justify-between items-center mb-3">
                         <h4 class="text-xs font-bold text-amber-800 uppercase"><i class="fa-solid fa-money-bill-transfer"></i> Lançamentos Financeiros (Boletos)</h4>
                         <button onclick="addParcelaXML()" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded text-[10px] font-bold transition-colors shadow-sm"><i class="fa-solid fa-plus"></i> Add Parcela</button>
@@ -750,10 +750,10 @@ window.addEventListener('unhandledrejection', function(event) {
 
                 <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div class="p-3 bg-slate-100 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">Produtos Identificados e Custo Final (Rateado)</div>
-                    <div class="overflow-x-auto max-h-64 custom-scrollbar">
+                    <div class="overflow-auto max-h-[400px] custom-scrollbar">
                         <table class="w-full text-left min-w-[700px]">
                             <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold border-b border-slate-200 dark:border-slate-700 sticky top-0">
-                                <tr><th class="p-2 md:p-3">Nome / Descrição</th><th class="p-2 md:p-3 text-center w-24">Status</th><th class="p-2 md:p-3 text-center w-16">Qtd</th><th class="p-2 md:p-3 text-right w-24 text-indigo-700" title="Custo Unitário + Rateio">Custo Final <i class="fa-solid fa-circle-info"></i></th><th class="p-2 md:p-3 text-center w-24">Margem %</th><th class="p-2 md:p-3 text-right w-24">Preço Venda</th><th class="p-2 md:p-3 text-center w-16">Editar</th></tr>
+                                <tr><th class="p-2 md:p-3">Nome / Descrição</th><th class="p-2 md:p-3 text-center w-24">Status</th><th class="p-2 md:p-3 text-center w-16">Qtd</th><th class="p-2 md:p-3 text-right w-24 text-indigo-700 dark:text-indigo-400" title="Custo Unitário + Rateio">Custo Final <i class="fa-solid fa-circle-info"></i></th><th class="p-2 md:p-3 text-center w-24">Margem %</th><th class="p-2 md:p-3 text-right w-24">Preço Venda</th><th class="p-2 md:p-3 text-center w-16">Editar</th></tr>
                             </thead>
                             <tbody id="xml-produtos-body" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
                         </table>
@@ -775,15 +775,33 @@ window.addEventListener('unhandledrejection', function(event) {
                 <button onclick="fecharModalProduto()" class="text-blue-200 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             <div class="p-4 bg-slate-50 dark:bg-slate-900 overflow-y-auto space-y-4">
+                <!-- NOVO: OPÃ‡ÃƒO DE VÃNCULO MANUAL (MOSTRADA APENAS NO XML) -->
+                <div id="div-acao-vinculo-xml" class="hidden mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-lg">
+                    <lAÃ§Ã£o: Vincular ou Cadastrar?</label>
+                    <select id="prod-acao-vinculo" onchange="alternarAcaoVinculoXML()" class="w-full bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 p-2 rounded text-sm outline-none mb-2 font-bold text-slate-700 dark:text-slate-200">
+                        <option value="NOVO">Cadastrar como Novo Produto</option>
+                        <option value="VINCULAR">Vincular a Produto Existente</option>
+                    </select>
+                    
+                    <div id="div-vinculo-busca" class="hidden">
+                        <label class="text-xs font-bold text-slate-500 mb-1 block">Pesquisar Produto Existente</label>
+                        <div class="relative">
+                            <input type="text" id="prod-vinculo-search" autocomplete="off" oninput="filtrarProdutosXMLBusca()" onfocus="mostrarListaProdutosXMLBusca()" onblur="setTimeout(()=>ocultarListaProdutosXMLBusca(), 200)" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded text-sm outline-none dark:text-white" placeholder="Digite para pesquisar...">
+                            <input type="hidden" id="prod-vinculo-select" onchange="preencherVinculoXML()">
+                            <ul id="prod-vinculo-lista" class="hidden absolute z-[200] w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded mt-1 max-h-48 overflow-y-auto shadow-xl dark:text-white text-sm">
+                            </ul>
+                        </div>
+                    </div>
+                </div>
                 <input type="hidden" id="prod-id"><input type="hidden" id="prod-ativo" value="true">
                 <input type="hidden" id="prod-marca" value=""><input type="hidden" id="prod-categoria" value="Geral"><input type="hidden" id="prod-unidade" value="Un"><input type="hidden" id="prod-estoque" value="0"><input type="hidden" id="prod-minimo" value="5"><input type="hidden" id="prod-obs" value=""><input type="hidden" id="prod-foto-base64" value="">
 
                 <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Nome do Produto</label><input type="text" id="prod-nome" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white"></div>
-                <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Cód Barras (EAN)</label><input type="text" id="prod-ean" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white"></div>
+                <div><label CÃ³d Barras (EAN)</label><input type="text" id="prod-ean" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white"></div>
                 <div class="grid grid-cols-3 gap-3">
                     <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Custo R$</label><input type="number" id="prod-custo" step="0.01" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white" oninput="calcularPrecoMargin('custo')"></div>
                     <div><label class="text-xs font-bold text-blue-700 mb-1 block">Margem %</label><input type="number" id="prod-margem" step="0.1" class="w-full bg-blue-50 border border-blue-200 text-blue-800 p-2.5 rounded-lg text-sm font-bold outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" oninput="calcularPrecoMargin('margem')"></div>
-                    <div><label class="text-xs font-bold text-emerald-700 mb-1 block">Preço R$</label><input type="number" id="prod-preco" step="0.01" class="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 p-2.5 rounded-lg text-sm font-bold outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" oninput="calcularPrecoMargin('preco')"></div>
+                    <div><label class="text-xs font-bold text-emerald-700 mb-1 block">PreÃ§o R$</label><input type="number" id="prod-preco" step="0.01" class="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 p-2.5 rounded-lg text-sm font-bold outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" oninput="calcularPrecoMargin('preco')"></div>
                 </div>
             </div>
             <div class="bg-white dark:bg-slate-800 p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
@@ -943,6 +961,11 @@ window.addEventListener('unhandledrejection', function(event) {
     <script src="financeiro.js?v=4"></script>
 </body>
 </html>
+
+
+
+
+
 
 
 

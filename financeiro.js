@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÇÕES
 // ==========================================
 
@@ -1003,11 +1003,11 @@ function renderXMLFinanceiro() {
     container.innerHTML = d.financeiroXML.map((f, i) => {
         totalLancado += f.valor;
         return `
-        <div class="flex flex-col sm:flex-row gap-2 items-center bg-white dark:bg-slate-800 p-2 rounded-lg border border-amber-200 shadow-sm">
-            <input type="text" class="w-full sm:w-1/2 bg-transparent text-xs font-bold text-amber-900 outline-none p-1 dark:text-white" value="${f.desc}" onchange="atualizarParcelaXML(${i}, 'desc', this.value)">
-            <input type="date" class="w-full sm:w-auto bg-transparent text-xs text-amber-800 font-bold outline-none p-1 dark:text-white" value="${f.venc}" onchange="atualizarParcelaXML(${i}, 'venc', this.value)">
-            <input type="number" step="0.01" class="w-full sm:w-24 text-right bg-transparent text-sm font-black text-red-600 outline-none p-1 dark:text-white" value="${f.valor.toFixed(2)}" onchange="atualizarParcelaXML(${i}, 'valor', this.value)">
-            <button onclick="removeParcelaXML(${i})" class="text-red-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash"></i></button>
+        <div class="flex flex-col sm:flex-row gap-2 items-center bg-slate-50 dark:bg-slate-900/50 p-2 md:p-3 rounded-lg border border-amber-200 dark:border-amber-700/50 shadow-sm">
+            <input type="text" class="w-full sm:flex-1 bg-transparent text-xs font-bold text-amber-900 dark:text-amber-100 outline-none p-1" value="${f.desc}" onchange="atualizarParcelaXML(${i}, 'desc', this.value)">
+            <input type="date" class="w-full sm:w-36 bg-transparent text-xs font-bold text-amber-800 dark:text-amber-200 outline-none p-1" value="${f.venc}" onchange="atualizarParcelaXML(${i}, 'venc', this.value)">
+            <input type="number" step="0.01" class="w-full sm:w-28 text-right bg-transparent text-sm font-black text-red-600 dark:text-red-400 outline-none p-1" value="${f.valor.toFixed(2)}" onchange="atualizarParcelaXML(${i}, 'valor', this.value)">
+            <button onclick="removeParcelaXML(${i})" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-2"><i class="fa-solid fa-trash"></i></button>
         </div>
         `;
     }).join('');
@@ -1051,8 +1051,40 @@ function xmlAtualizarValores(i, campo, val) {
 
 function abrirModalProdutoDoXML(index) {
     const p = window.tempXMLData.produtosXML[index]; window.xmlItemEditIndex = index; document.getElementById('modal-produto').classList.remove('hidden');
-    if(p.statusDB === 'ATUALIZAR' && p.idMatch) { document.getElementById('prod-id').value = p.idMatch; document.getElementById('modal-produto-title').innerText = 'Atualizar Custo Produto'; document.getElementById('prod-nome').value = p.nome; document.getElementById('prod-custo').value = p.custoFinal.toFixed(2); document.getElementById('prod-margem').value = p.margemAtual.toFixed(2); document.getElementById('prod-preco').value = p.precoVendaSug.toFixed(2); } 
-    else { document.getElementById('prod-id').value = ''; document.getElementById('modal-produto-title').innerText = 'Completar Novo Produto'; document.getElementById('prod-nome').value = p.nome; document.getElementById('prod-ean').value = p.cEAN || ''; document.getElementById('prod-custo').value = p.custoFinal.toFixed(2); document.getElementById('prod-margem').value = p.margemAtual.toFixed(2); document.getElementById('prod-preco').value = p.precoVendaSug.toFixed(2); }
+    
+    const divAcao = document.getElementById('div-acao-vinculo-xml');
+    if(divAcao) divAcao.classList.remove('hidden'); 
+    
+    const selectAcao = document.getElementById('prod-acao-vinculo');
+    const divBusca = document.getElementById('div-vinculo-busca');
+    const selProd = document.getElementById('prod-vinculo-select');
+    
+    if(selectAcao) {
+        selectAcao.value = (p.statusDB === 'ATUALIZAR' && p.idMatch) ? 'VINCULAR' : 'NOVO';
+        if(selectAcao.value === 'VINCULAR') {
+            divBusca.classList.remove('hidden');
+            if(selProd && selProd.options.length <= 1) {
+                let html = '<option value="">Selecione um produto...</option>';
+                const sorted = [...db.produtos].sort((a,b) => a.nome.localeCompare(b.nome));
+                sorted.forEach(prod => {
+                    html += "<option value=\"" + prod.id + "\">" + prod.nome + " (Estoque: " + prod.estoque + ")</option>";
+                });
+                selProd.innerHTML = html;
+            }
+            if(selProd) selProd.value = p.idMatch || '';
+        } else {
+            divBusca.classList.add('hidden');
+        }
+    }
+
+    if(p.statusDB === 'ATUALIZAR' && p.idMatch) { 
+        document.getElementById('prod-id').value = p.idMatch; document.getElementById('modal-produto-title').innerText = 'Atualizar Produto Vinculado'; 
+        document.getElementById('prod-nome').value = p.nome; document.getElementById('prod-custo').value = p.custoFinal.toFixed(2); document.getElementById('prod-margem').value = p.margemAtual.toFixed(2); document.getElementById('prod-preco').value = p.precoVendaSug.toFixed(2); 
+    } 
+    else { 
+        document.getElementById('prod-id').value = ''; document.getElementById('modal-produto-title').innerText = 'Completar Novo Produto'; 
+        document.getElementById('prod-nome').value = p.nome; document.getElementById('prod-ean').value = p.cEAN || ''; document.getElementById('prod-custo').value = p.custoFinal.toFixed(2); document.getElementById('prod-margem').value = p.margemAtual.toFixed(2); document.getElementById('prod-preco').value = p.precoVendaSug.toFixed(2); 
+    }
 }
 
 function fecharModalProduto() { document.getElementById('modal-produto').classList.add('hidden'); }
@@ -1060,10 +1092,23 @@ function fecharModalProduto() { document.getElementById('modal-produto').classLi
 function salvarProdutoXmlModal() {
     const nome = document.getElementById('prod-nome').value; const id = document.getElementById('prod-id').value;
     const pXML = window.tempXMLData.produtosXML[window.xmlItemEditIndex];
-    if(!nome) return showToast('Nome obrigatório', 'error');
+    if(!nome) return showToast('Nome obrigatÃ³rio', 'error');
+    
+    const selectAcao = document.getElementById('prod-acao-vinculo');
+    if(selectAcao && selectAcao.value === 'VINCULAR' && !id) {
+        return showToast('Selecione um produto para vincular', 'error');
+    }
+
     pXML.nome = nome; pXML.cEAN = document.getElementById('prod-ean').value;
     pXML.custoFinal = parseFloat(document.getElementById('prod-custo').value)||0; pXML.margemAtual = parseFloat(document.getElementById('prod-margem').value)||0; pXML.precoVendaSug = parseFloat(document.getElementById('prod-preco').value)||0;
-    if(!id) { pXML.statusDB = 'NOVO CADASTRADO'; }
+    
+    if(selectAcao && selectAcao.value === 'VINCULAR' && id) {
+        pXML.statusDB = 'ATUALIZAR';
+        pXML.idMatch = id;
+    } else {
+        pXML.statusDB = 'NOVO CADASTRADO';
+        pXML.idMatch = null;
+    }
     fecharModalProduto(); renderTelaConferenciaXML(); showToast('Ficha salva para a importação!');
 }
 
@@ -2013,6 +2058,78 @@ function calcularJurosMulta(f) {
 
 
 
+
+
+
+
+
+// NOVO: FunÃ§Ãµes auxiliares para VÃ­nculo de XML
+function alternarAcaoVinculoXML() {
+    const acao = document.getElementById('prod-acao-vinculo').value;
+    if(acao === 'VINCULAR') {
+        document.getElementById('div-vinculo-busca').classList.remove('hidden');
+    } else {
+        document.getElementById('div-vinculo-busca').classList.add('hidden');
+        document.getElementById('prod-id').value = '';
+    }
+}
+
+function preencherVinculoXML() {
+    const id = document.getElementById('prod-vinculo-select').value;
+    if(id) {
+        const prod = db.produtos.find(p => String(p.id) === String(id));
+        if(prod) {
+            document.getElementById('prod-id').value = prod.id;
+            document.getElementById('prod-nome').value = prod.nome;
+            document.getElementById('prod-ean').value = prod.ean || '';
+            document.getElementById('prod-margem').value = (prod.margem || 50).toFixed(2);
+            if(typeof calcularPrecoMargin === 'function') {
+                calcularPrecoMargin('margem');
+            }
+        }
+    }
+}
+
+
+
+
+function abrirModalXML() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xml';
+    input.onchange = processarXMLReal;
+    input.click();
+}
+
+
+function selecionarProdutoVinculoXML(id, nome) {
+    document.getElementById('prod-vinculo-select').value = id;
+    document.getElementById('prod-vinculo-search').value = nome;
+    ocultarListaProdutosXMLBusca();
+    preencherVinculoXML(); 
+}
+
+function filtrarProdutosXMLBusca() {
+    const termo = document.getElementById('prod-vinculo-search').value.toLowerCase();
+    const lista = document.getElementById('prod-vinculo-lista');
+    lista.classList.remove('hidden');
+    let html = '';
+    const sorted = [...db.produtos].sort((a,b) => a.nome.localeCompare(b.nome));
+    let count = 0;
+    sorted.forEach(p => {
+        if(p.nome.toLowerCase().includes(termo) || (p.ean && p.ean.includes(termo))) {
+            count++;
+            if(count <= 50) {
+                html += '<li onclick="selecionarProdutoVinculoXML(\'' + p.id + '\', \'' + p.nome.replace(/'/g, "\\'") + '\')" class="p-2 border-b border-slate-100 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-slate-700 cursor-pointer"><div class="font-bold text-xs">' + p.nome + '</div><div class="text-[10px] text-slate-500">Estoque: ' + p.estoque + ' | EAN: ' + (p.ean || 'S/N') + '</div></li>';
+            }
+        }
+    });
+    if(count === 0) html = '<li class="p-2 text-xs text-slate-500">Nenhum produto encontrado.</li>';
+    lista.innerHTML = html;
+}
+
+function mostrarListaProdutosXMLBusca() { filtrarProdutosXMLBusca(); }
+function ocultarListaProdutosXMLBusca() { document.getElementById('prod-vinculo-lista').classList.add('hidden'); }
 
 
 

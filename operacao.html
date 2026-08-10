@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -514,6 +514,24 @@
             </div>
 
             <div class="p-4 md:p-6 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900 custom-scrollbar">
+                <!-- NOVO: OPÃ‡ÃƒO DE VÃNCULO MANUAL (MOSTRADA APENAS NO XML) -->
+                <div id="div-acao-vinculo-xml" class="hidden mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-lg">
+                    <lAÃ§Ã£o: Vincular ou Cadastrar?</label>
+                    <select id="prod-acao-vinculo" onchange="alternarAcaoVinculoXML()" class="w-full bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 p-2 rounded text-sm outline-none mb-2 font-bold text-slate-700 dark:text-slate-200">
+                        <option value="NOVO">Cadastrar como Novo Produto</option>
+                        <option value="VINCULAR">Vincular a Produto Existente</option>
+                    </select>
+                    
+                    <div id="div-vinculo-busca" class="hidden">
+                        <label class="text-xs font-bold text-slate-500 mb-1 block">Pesquisar Produto Existente</label>
+                        <div class="relative">
+                            <input type="text" id="prod-vinculo-search" autocomplete="off" oninput="filtrarProdutosXMLBusca()" onfocus="mostrarListaProdutosXMLBusca()" onblur="setTimeout(()=>ocultarListaProdutosXMLBusca(), 200)" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded text-sm outline-none dark:text-white" placeholder="Digite para pesquisar...">
+                            <input type="hidden" id="prod-vinculo-select" onchange="preencherVinculoXML()">
+                            <ul id="prod-vinculo-lista" class="hidden absolute z-[200] w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded mt-1 max-h-48 overflow-y-auto shadow-xl dark:text-white text-sm">
+                            </ul>
+                        </div>
+                    </div>
+                </div>
                 <input type="hidden" id="prod-id">
                 <input type="hidden" id="prod-ativo" value="true">
                 <input type="hidden" id="prod-categoria" value="Geral">
@@ -613,6 +631,9 @@
     <script src="operacao.js?v=4"></script>
 </body>
 </html>
+
+
+
 
 
 
