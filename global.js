@@ -75,8 +75,9 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                 if (userSnap.exists) {
                     window.currentUserInfo = userSnap.data();
                 } else {
-                                                                // UsuÃ¡rio nÃ£o estÃ¡ na tabela (nova conta criada)
+                                                                                      // UsuÃ¡rio nÃ£o estÃ¡ na tabela (nova conta criada)
                       console.warn("UsuÃ¡rio nÃ£o cadastrado na base de funcionÃ¡rios.");
+                      window.currentUserInfo = { isAdmin: false, perm_dashboard: false, perm_pdv: false, perm_cadastros: false, perm_gestao: false, perm_config: false };
                       
                       try {
                           await firestore.collection('funcionarios').doc(user.uid).set({
@@ -301,6 +302,7 @@ function aplicarTema() {
 }
 
 // Removido o listener de preferência de cores do sistema, pois o tema é fixo.
+
 
 
 
