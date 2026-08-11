@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 
 // 1. Modificar vendas_gestao.html para adicionar a coluna de Ações e o Modal
 let htmlGestao = fs.readFileSync('g:\\site sistema\\vendas_gestao.html', 'utf8');

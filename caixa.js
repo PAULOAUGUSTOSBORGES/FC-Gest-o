@@ -534,6 +534,44 @@ function renderTitulos(tipo) {
 // ==========================================
 // 5. MODAL DE CADASTRO/EDIÇÃO DE CONTA (COM RECORRÊNCIA)
 // ==========================================
+
+// ===== HELPER: PESSOA SELECT DROPDOWN =====
+function preencherContaPessoaSelect(tipo) {
+    const sel = document.getElementById('conta-pessoa-select');
+    if (!sel) return;
+    const lista = tipo === 'RECEBER'
+        ? (db.clientes || []).map(c => c.nome || c.razaoSocial || '')
+        : (db.fornecedores || []).map(f => f.nome || f.razaoSocial || '');
+    const unique = [...new Set(lista.filter(n => n.trim()))].sort();
+    sel.innerHTML = '<option value="">-- Selecione um cadastrado --</option>'
+        + unique.map(n => `<option value="${n}">${n}</option>`).join('')
+        + '<option value="__novo__">+ Cadastrar novo...</option>';
+    sel.value = '';
+}
+
+function toggleContaPessoaInput(val) {
+    const wrap = document.getElementById('conta-pessoa-novo-wrap');
+    const input = document.getElementById('conta-pessoa');
+    if (!wrap || !input) return;
+    if (val === '__novo__' || val === '' || val === '__avulso__') {
+        wrap.classList.remove('hidden');
+        input.value = '';
+        input.focus();
+    } else {
+        wrap.classList.add('hidden');
+        input.value = '';
+    }
+}
+
+function getPessoaFinalConta() {
+    const sel = document.getElementById('conta-pessoa-select');
+    const input = document.getElementById('conta-pessoa');
+    const selVal = sel ? sel.value : '';
+    const inputVal = input ? input.value.trim() : '';
+    if (selVal && selVal !== '__novo__' && selVal !== '__avulso__' && selVal !== '') return selVal;
+    return inputVal;
+}
+// ==========================================
 function toggleRecorrencia() {
     const rec = document.getElementById('conta-recorrencia').value;
     const div = document.getElementById('div-qtd-recorrencia');
@@ -648,7 +686,7 @@ function fecharModalConta() { document.getElementById('modal-nova-conta').classL
 function salvarConta() {
     const idExistente = document.getElementById('conta-id').value;
     const tipo = document.getElementById('conta-tipo').value; 
-    const pessoa = document.getElementById('conta-pessoa').value.trim(); 
+    const pessoa = getPessoaFinalConta(); 
     const valorOriginal = parseFloat(document.getElementById('conta-valor').value); 
     const vencBase = document.getElementById('conta-vencimento').value;
     
@@ -658,13 +696,13 @@ function salvarConta() {
     
     const recorrencia = document.getElementById('conta-recorrencia').value;
     const isEdicao = !!idExistente;
-    const qtdLançamentos = (recorrencia === 'UNICA' || isEdicao) ? 1 : (parseInt(document.getElementById('conta-qtd-recorrencia').value) || 1);
+    const qtdLancamentos = (recorrencia === 'UNICA' || isEdicao) ? 1 : (parseInt(document.getElementById('conta-qtd-recorrencia').value) || 1);
     const refBase = document.getElementById('conta-ref').value || 'Avulso';
 
     let contasGeradas = 0;
     const batch = firestore.batch();
 
-    for(let i = 0; i < qtdLançamentos; i++) {
+    for(let i = 0; i < qtdLancamentos; i++) {
         let dataVenc = new Date(vencBase + 'T12:00:00');
         
         if (recorrencia === 'MENSAL') dataVenc.setMonth(dataVenc.getMonth() + i);
@@ -673,7 +711,7 @@ function salvarConta() {
         if (recorrencia === 'QUINZENAL') dataVenc.setDate(dataVenc.getDate() + (i * 15));
 
         let refFinal = refBase;
-        if (qtdLançamentos > 1) refFinal += ` (${i+1}/${qtdLançamentos})`;
+        if (qtdLancamentos > 1) refFinal += ` (${i+1}/${qtdLancamentos})`;
 
         const contaObj = {
             tipo: tipo, 
@@ -719,7 +757,7 @@ function salvarConta() {
         if (isEdicao) {
             showToast('Título Atualizado!', 'success');
         } else {
-            if (qtdLançamentos > 1) showToast(`${contasGeradas} Títulos gerados!`, 'success');
+            if (qtdLancamentos > 1) showToast(`${contasGeradas} Títulos gerados!`, 'success');
             else showToast('Título Salvo!', 'success');
         }
     }).catch(e => {

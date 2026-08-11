@@ -683,6 +683,11 @@ function renderFuncionarios() {
 }
 
 function abrirModalFuncionario(id = null) {
+    if (window.currentUserInfo && window.currentUserInfo.isAdmin) {
+        document.getElementById('admin-checkbox-container').classList.remove('hidden');
+    } else {
+        document.getElementById('admin-checkbox-container').classList.add('hidden');
+    }
     document.getElementById('func-id').value = id || '';
     
     if (id) {
@@ -721,7 +726,8 @@ function abrirModalFuncionario(id = null) {
         document.getElementById('func-perm-pdv').checked = true;
         document.getElementById('func-perm-cadastros').checked = false;
         document.getElementById('func-perm-gestao').checked = false;
-        document.getElementById('func-perm-config').checked = false;
+                  document.getElementById('func-perm-config').checked = false;
+          document.getElementById('func-perm-admin').checked = false;
     }
     
     document.getElementById('modal-funcionario').classList.remove('hidden');
@@ -757,7 +763,8 @@ async function salvarFuncionario() {
         perm_pdv: document.getElementById('func-perm-pdv').checked,
         perm_cadastros: document.getElementById('func-perm-cadastros').checked,
         perm_gestao: document.getElementById('func-perm-gestao').checked,
-        perm_config: document.getElementById('func-perm-config').checked,
+                perm_config: document.getElementById('func-perm-config').checked,
+        isAdmin: document.getElementById('func-perm-admin').checked,
         ultimaAtualizacao: new Date().toISOString()
     };
     
@@ -955,4 +962,6 @@ function filtrarProdutosXMLBusca() {
 
 function mostrarListaProdutosXMLBusca() { filtrarProdutosXMLBusca(); }
 function ocultarListaProdutosXMLBusca() { document.getElementById('prod-vinculo-lista').classList.add('hidden'); }
+
+
 

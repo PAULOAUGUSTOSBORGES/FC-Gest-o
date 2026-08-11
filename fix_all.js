@@ -1,4 +1,4 @@
-
+﻿
 # This script uses Node.js to fix the corrupted JS files
 # since Python is not available
 

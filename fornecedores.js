@@ -1,4 +1,4 @@
-// fornecedores.js - Lógica Exclusiva de Fornecedores
+﻿// fornecedores.js - Lógica Exclusiva de Fornecedores
 
 let acaoConfirmacaoPendente = null;
 

@@ -1,31 +1,9 @@
 ﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<script>
-window.onerror = function(msg, url, line, col, error) {
-    var errDiv = document.getElementById('debug-errors');
-    if(!errDiv) {
-        errDiv = document.createElement('div');
-        errDiv.id = 'debug-errors';
-        errDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:red;color:white;z-index:999999;padding:10px;font-size:12px;overflow-y:auto;max-height:50vh;';
-        document.body.appendChild(errDiv);
-    }
-    errDiv.innerHTML += '<p><strong>Error:</strong> ' + msg + ' at ' + url + ':' + line + ':' + col + '</p>';
-};
-window.addEventListener('unhandledrejection', function(event) {
-    var errDiv = document.getElementById('debug-errors');
-    if(!errDiv) {
-        errDiv = document.createElement('div');
-        errDiv.id = 'debug-errors';
-        errDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:orange;color:black;z-index:999999;padding:10px;font-size:12px;overflow-y:auto;max-height:50vh;';
-        document.body.appendChild(errDiv);
-    }
-    errDiv.innerHTML += '<p><strong>Promise Rejection:</strong> ' + (event.reason ? event.reason.toString() : 'Unknown') + '</p>';
-});
-</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FC Móveis - FINANCEIRO</title>
+    <title>FC Móveis - Gestão e Financeiro</title>
     <script>
         // Aplica tema antes do Tailwind carregar (evita flash)
         window.tailwind = window.tailwind || {};
@@ -37,13 +15,13 @@ window.addEventListener('unhandledrejection', function(event) {
 <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js?v=4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js?v=9"></script>
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
+<body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
     <div id="toast-container"></div>
-
+    
     <div id="app-container" class="flex w-full h-full relative">
         <div id="sidebar-overlay" class="fixed inset-0 bg-slate-900/60 z-30 hidden md:hidden transition-opacity" onclick="toggleMenu()"></div>
 
@@ -60,31 +38,31 @@ window.addEventListener('unhandledrejection', function(event) {
                 </div>
                 <button onclick="event.stopPropagation(); toggleMenu()" class="md:hidden text-slate-400 hover:text-white text-2xl"><i class="fa-solid fa-xmark"></i></button>
             </div>
-
+            
             <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1 custom-scrollbar">
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-2 mb-1">Visão Geral</p>
                 <a href="index.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="dashboard"><i class="fa-solid fa-chart-pie w-5 text-center"></i> Dashboard</a>
-
+                
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Operação</p>
                 <a href="pdv.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="pdv"><i class="fa-solid fa-cash-register w-5 text-center"></i> Frente de Caixa (PDV)</a>
                 <a href="vendas_operacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_operacao"><i class="fa-solid fa-receipt w-5 text-center"></i> Histórico Vendas/Serviços</a>
-                <a href="orcamentos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="orcamentos"><i class="fa-solid fa-file-invoice w-5 text-center"></i> Meus Orçamentos</a>
-
+                <a href="Orçamentos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="Orçamentos"><i class="fa-solid fa-file-invoice w-5 text-center"></i> Meus Orçamentos</a>
+                
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Cadastros</p>
                 <a href="produtos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="produtos"><i class="fa-solid fa-boxes-stacked w-5 text-center"></i> Produtos & Serviços</a>
 
                 <a href="clientes.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="clientes"><i class="fa-solid fa-users w-5 text-center"></i> Clientes</a>
                 <a href="fornecedores.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="fornecedores"><i class="fa-solid fa-truck w-5 text-center"></i> Fornecedores</a>
-                <a href="funcionarios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="funcionarios"><i class="fa-solid fa-user-tie w-5 text-center"></i> Funcionários / Vendedores</a>
-
+                <a href="Funcionários.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="Funcionários"><i class="fa-solid fa-user-tie w-5 text-center"></i> Funcionários / Vendedores</a>
+                
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
                 <a href="vendas_gestao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_gestao"><i class="fa-solid fa-chart-line w-5 text-center"></i> Histórico Vendas (Gestão)</a>
                 <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
                 <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
                 <a href="compras.html" id="nav-compras" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & Estoque</a>
-                <a href="relatorios.html" id="nav-relatorios" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
+                <a href="Relatórios.html" id="nav-Relatórios" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="Relatórios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
                 <a href="estoque.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="estoque"><i class="fa-solid fa-pallet w-5 text-center"></i> Estoque & Kardex</a>
-
+                
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Sistema</p>
                 <a href="sistema.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="config"><i class="fa-solid fa-gear w-5 text-center"></i> Configurações</a>
             </nav>
@@ -93,7 +71,7 @@ window.addEventListener('unhandledrejection', function(event) {
             </div>
         </aside>
 
-        <!-- ÁREA DE CONTEÃšDO PRINCIPAL -->
+        <!-- ÃÂREA DE CONTEÃšDO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
             <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
                 <div class="flex items-center gap-3">
@@ -109,7 +87,7 @@ window.addEventListener('unhandledrejection', function(event) {
             <div class="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth custom-scrollbar w-full relative">
 
                 <!-- MÃ“DULO FINANCEIRO -->
-                <div id="view-financeiro" class="view-section max-w-7xl mx-auto space-y-4 md:space-y-6 active">
+                <div id="view-financeiro" class="view-section max-w-7xl mx-auto space-y-4 md:space-y-6 hidden">
                     <!-- Fluxo de Caixa Projetado -->
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                         <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-center">
@@ -133,9 +111,46 @@ window.addEventListener('unhandledrejection', function(event) {
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 hidden md:block">Gestão de Contas</h2>
                         <div class="flex bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-1 shadow-sm w-full md:w-auto overflow-x-auto custom-scrollbar">
-                            
+                            <button onclick="renderFinAbas('caixa')" id="fin-tab-caixa" class="px-4 py-1.5 rounded-md text-sm font-bold bg-blue-600 text-white transition-colors whitespace-nowrap">Caixa Diário</button>
                             <button onclick="renderFinAbas('receber')" id="fin-tab-receber" class="px-4 py-1.5 rounded-md text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:text-slate-100 transition-colors whitespace-nowrap">Contas a Receber</button>
                             <button onclick="renderFinAbas('pagar')" id="fin-tab-pagar" class="px-4 py-1.5 rounded-md text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:text-slate-100 transition-colors whitespace-nowrap">Contas a Pagar</button>
+                        </div>
+                    </div>
+
+                    <!-- SUB-ABA CAIXA -->
+                    <div id="fin-area-caixa" class="fin-area hidden space-y-6">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+                            <div class="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-center items-center text-center">
+                                <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Status do Caixa</p>
+                                <div id="caixa-status-badge" class="px-4 py-2 rounded-lg font-black text-lg mb-4 bg-slate-100 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400">FECHADO</div>
+                                <div class="flex gap-2 w-full">
+                                    <button onclick="abrirModalCaixa('abrir')" class="flex-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 py-2 rounded-lg font-bold text-xs md:text-sm transition-colors"><i class="fa-solid fa-lock-open"></i> Abrir</button>
+                                    <button onclick="abrirModalCaixa('fechar')" class="flex-1 bg-red-100 text-red-700 hover:bg-red-200 py-2 rounded-lg font-bold text-xs md:text-sm transition-colors"><i class="fa-solid fa-lock"></i> Fechar</button>
+                                </div>
+                            </div>
+                            <div class="bg-slate-900 p-4 md:p-6 rounded-xl shadow-lg text-white flex flex-col justify-center relative overflow-hidden">
+                                <i class="fa-solid fa-vault absolute -right-4 -bottom-4 text-6xl md:text-8xl opacity-10"></i>
+                                <p class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 relative z-10">Saldo Dinheiro (Gaveta)</p>
+                                <h3 class="text-3xl md:text-4xl font-black text-emerald-400 relative z-10" id="caixa-saldo-display">R$ 0,00</h3>
+                            </div>
+                            <div class="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-center gap-2 md:gap-3 sm:col-span-2 md:col-span-1">
+                                <button onclick="abrirModalCaixa('suprimento')" class="w-full bg-blue-50 text-blue-700 hover:bg-blue-100 py-2 md:py-3 rounded-lg font-bold text-xs md:text-sm transition-colors border border-blue-200 flex items-center justify-center gap-2"><i class="fa-solid fa-arrow-down"></i> Suprimento</button>
+                                <button onclick="abrirModalCaixa('sangria')" class="w-full bg-amber-50 text-amber-700 hover:bg-amber-100 py-2 md:py-3 rounded-lg font-bold text-xs md:text-sm transition-colors border border-amber-200 flex items-center justify-center gap-2"><i class="fa-solid fa-arrow-up"></i> Sangria</button>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden" id="print-area-caixa">
+                            <div class="p-3 md:p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex justify-between items-center">
+                                <h3 class="font-bold text-slate-700 dark:text-slate-200 text-sm md:text-base">Fluxo de Caixa</h3>
+                                <input type="date" id="filtro-data-caixa" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-1 text-xs md:text-sm text-slate-700 dark:text-slate-200 outline-none" onchange="renderCaixaDiario()">
+                            </div>
+                            <div class="overflow-x-auto max-h-80 custom-scrollbar">
+                                <table class="w-full text-left text-sm min-w-[500px]" id="tabela-export-caixa">
+                                    <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold sticky top-0 border-b border-slate-200 dark:border-slate-700">
+                                        <tr><th class="p-3">Data/Hora</th><th class="p-3">Operação</th><th class="p-3">Descrição / Origem</th><th class="p-3 text-right">Valor</th></tr>
+                                    </thead>
+                                    <tbody id="tabela-caixa-Histórico" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 
@@ -162,11 +177,6 @@ window.addEventListener('unhandledrejection', function(event) {
                                     </select>
                                     <input type="date" id="filtro-receber-ini" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('receber')" title="Data Inicial">
                                     <input type="date" id="filtro-receber-fim" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('receber')" title="Data Final">
-                                  </div>
-                                  <div class="flex gap-2 w-full sm:w-auto flex-wrap mt-2 sm:mt-0">
-                                      <span class="text-xs font-bold text-slate-500 flex items-center">Cartrio:</span>
-                                      <input type="date" id="filtro-receber-cartorio-ini" class="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-red-500 flex-1 dark:text-white" onchange="renderFinAbas('receber')" title="Data Cartrio Inicial">
-                                      <input type="date" id="filtro-receber-cartorio-fim" class="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-red-500 flex-1 dark:text-white" onchange="renderFinAbas('receber')" title="Data Cartrio Final">
                                 </div>
                             </div>
                             <div class="flex gap-2 w-full lg:w-auto">
@@ -210,11 +220,6 @@ window.addEventListener('unhandledrejection', function(event) {
                                     </select>
                                     <input type="date" id="filtro-pagar-ini" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('pagar')" title="Data Inicial">
                                     <input type="date" id="filtro-pagar-fim" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('pagar')" title="Data Final">
-                                  </div>
-                                  <div class="flex gap-2 w-full sm:w-auto flex-wrap mt-2 sm:mt-0">
-                                      <span class="text-xs font-bold text-slate-500 flex items-center">Cartrio:</span>
-                                      <input type="date" id="filtro-pagar-cartorio-ini" class="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-red-500 flex-1 dark:text-white" onchange="renderFinAbas('pagar')" title="Data Cartrio Inicial">
-                                      <input type="date" id="filtro-pagar-cartorio-fim" class="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-red-500 flex-1 dark:text-white" onchange="renderFinAbas('pagar')" title="Data Cartrio Final">
                                 </div>
                             </div>
                             <div class="flex gap-2 w-full lg:w-auto">
@@ -235,21 +240,18 @@ window.addEventListener('unhandledrejection', function(event) {
                         </div>
                     </div>
                 </div>
-
-
-
-                <!-- RELATÃ“RIOS GERENCIAIS E BI -->
-                <div id="view-relatorios" class="view-section hidden max-w-7xl mx-auto space-y-6">
+<!-- RELATÃ“RIOS GERENCIAIS E BI -->
+                <div id="view-Relatórios" class="view-section hidden max-w-7xl mx-auto space-y-6">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100">Relatórios & BI Comercial</h2>
                         <div class="flex flex-wrap gap-2 no-print">
                             <button onclick="exportarDadosParaIA()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 shadow-sm">
                                 <i class="fa-solid fa-file-arrow-down"></i> Baixar Relatório para IA
                             </button>
-                            <button onclick="imprimirArea('print-area-relatorios')" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-300 px-4 py-2 rounded-lg text-sm font-bold transition-colors" title="Imprimir"><i class="fa-solid fa-print"></i> <span class="hidden sm:inline">Imprimir Tudo</span></button>
+                            <button onclick="imprimirArea('print-area-Relatórios')" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-300 px-4 py-2 rounded-lg text-sm font-bold transition-colors" title="Imprimir"><i class="fa-solid fa-print"></i> <span class="hidden sm:inline">Imprimir Tudo</span></button>
                         </div>
                     </div>
-
+                    
                     <!-- Filtros de Data BI -->
                     <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 no-print flex flex-col md:flex-row items-end gap-4">
                         <div class="flex-1 w-full md:max-w-xs">
@@ -265,7 +267,7 @@ window.addEventListener('unhandledrejection', function(event) {
                         <div id="bi-datas-custom" class="hidden flex-1 w-full flex flex-col md:flex-row items-end gap-4">
                             <div class="w-full md:max-w-xs">
                                 <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Data Inicial</label>
-                                <input type="date" id="bi-data-inicio" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <input type="date" id="bi-data-Início" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                             </div>
                             <div class="w-full md:max-w-xs">
                                 <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Data Final</label>
@@ -279,14 +281,14 @@ window.addEventListener('unhandledrejection', function(event) {
                         </div>
                     </div>
 
-                    <div id="print-area-relatorios" class="space-y-6">
+                    <div id="print-area-Relatórios" class="space-y-6">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
+                            
                             <!-- DRE -->
                             <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4 flex justify-between items-center">
                                     <span>DRE - Lucratividade (Vendas)</span>
-                                    <button onclick="abrirInfoRelatorio('dre')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer print:hidden" title="Entenda este relatório"><i class="fa-solid fa-circle-question"></i></button>
+                                    <button onclick="abrirInfoRelatorio('dre')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer print:hidden" title="EntendAçõeste relatório"><i class="fa-solid fa-circle-question"></i></button>
                                 </h3>
                                 <div class="flex justify-between text-sm mb-2"><span class="text-slate-600 dark:text-slate-300">Receita Bruta</span><span class="font-bold text-blue-600" id="bi-receita">R$ 0,00</span></div>
                                 <div class="flex justify-between text-sm mb-2"><span class="text-slate-600 dark:text-slate-300">Custo da Mercadoria (CMV)</span><span class="font-bold text-red-500" id="bi-cmv">- R$ 0,00</span></div>
@@ -298,7 +300,7 @@ window.addEventListener('unhandledrejection', function(event) {
                             <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4 flex justify-between items-center">
                                     <span><i class="fa-solid fa-cart-arrow-down mr-1"></i> Top Compras (Dinheiro Gasto)</span>
-                                    <button onclick="abrirInfoRelatorio('top_compras')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer print:hidden" title="Entenda este relatório"><i class="fa-solid fa-circle-question"></i></button>
+                                    <button onclick="abrirInfoRelatorio('top_compras')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer print:hidden" title="EntendAçõeste relatório"><i class="fa-solid fa-circle-question"></i></button>
                                 </h3>
                                 <div id="bi-top-compras" class="space-y-3"></div>
                             </div>
@@ -308,12 +310,12 @@ window.addEventListener('unhandledrejection', function(event) {
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4">Curva ABC de Vendas (Top 5 Produtos)</h3>
                                 <div id="bi-abc-produtos" class="space-y-3"></div>
                             </div>
-
+                            
                             <!-- Estatísticas de Compras -->
                             <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4 flex justify-between items-center">
                                     <span><i class="fa-solid fa-chart-bar mr-1"></i> Estatísticas de Compras</span>
-                                    <button onclick="abrirInfoRelatorio('estatisticas_compras')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer print:hidden" title="Entenda este relatório"><i class="fa-solid fa-circle-question"></i></button>
+                                    <button onclick="abrirInfoRelatorio('estatisticas_compras')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer print:hidden" title="EntendAçõeste relatório"><i class="fa-solid fa-circle-question"></i></button>
                                 </h3>
                                 <div class="flex justify-between text-sm mb-2"><span class="text-slate-600 dark:text-slate-300">Total de Pedidos/Notas</span><span class="font-bold text-indigo-600" id="bi-compras-qtd">0</span></div>
                                 <div class="flex justify-between text-sm mb-2"><span class="text-slate-600 dark:text-slate-300">Ticket Médio por Compra</span><span class="font-bold text-indigo-600" id="bi-compras-ticket">R$ 0,00</span></div>
@@ -324,15 +326,15 @@ window.addEventListener('unhandledrejection', function(event) {
                             <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4 flex justify-between items-center">
                                     <span>Top Clientes</span>
-                                    <button onclick="abrirInfoRelatorio('top_clientes')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer print:hidden" title="Entenda este relatório"><i class="fa-solid fa-circle-question"></i></button>
+                                    <button onclick="abrirInfoRelatorio('top_clientes')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer print:hidden" title="EntendAçõeste relatório"><i class="fa-solid fa-circle-question"></i></button>
                                 </h3>
                                 <div id="bi-top-clientes" class="space-y-3"></div>
                             </div>
-
+                            
                             <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4 flex justify-between items-center">
                                     <span><i class="fa-solid fa-truck"></i> Top Fornecedores (Gastos)</span>
-                                    <button onclick="abrirInfoRelatorio('top_fornecedores')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer print:hidden" title="Entenda este relatório"><i class="fa-solid fa-circle-question"></i></button>
+                                    <button onclick="abrirInfoRelatorio('top_fornecedores')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer print:hidden" title="EntendAçõeste relatório"><i class="fa-solid fa-circle-question"></i></button>
                                 </h3>
                                 <div id="bi-top-fornecedores" class="space-y-3"></div>
                             </div>
@@ -341,11 +343,11 @@ window.addEventListener('unhandledrejection', function(event) {
                             <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 md:col-span-2">
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4 flex justify-between items-center">
                                     <span><i class="fa-solid fa-arrow-trend-up mr-1"></i> Evolução e Histórico de Custo por Produto</span>
-                                    <button onclick="abrirInfoRelatorio('evolucao_custos')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer print:hidden" title="Entenda este relatório"><i class="fa-solid fa-circle-question"></i></button>
+                                    <button onclick="abrirInfoRelatorio('evolucao_custos')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer print:hidden" title="EntendAçõeste relatório"><i class="fa-solid fa-circle-question"></i></button>
                                 </h3>
                                 <div class="flex gap-2 mb-4 print:hidden">
                                     <select id="relatorio-custo-produto" class="w-full md:w-1/2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-indigo-500 font-bold text-slate-800 dark:text-slate-100 dark:text-white" onchange="renderEvolucaoCustos()">
-                                        <option value="">Selecione um Produto para carregar o histórico...</option>
+                                        <option value="">Selecione um Produto para carregar o Histórico...</option>
                                     </select>
                                 </div>
                                 <div class="overflow-x-auto custom-scrollbar">
@@ -360,22 +362,22 @@ window.addEventListener('unhandledrejection', function(event) {
                                             </tr>
                                         </thead>
                                         <tbody id="tabela-evolucao-custos" class="divide-y divide-slate-100 text-xs md:text-sm">
-                                            <tr><td colspan="5" class="p-4 text-center text-slate-500 dark:text-slate-400">Selecione um produto acima para ver o histórico.</td></tr>
+                                            <tr><td colspan="5" class="p-4 text-center text-slate-500 dark:text-slate-400">Selecione um produto acima para ver o Histórico.</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
 
                         </div>
-
+                        
                         <!-- NOVO: Relatórios Avançados (BI) -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-
+                            
                             <!-- Curva ABC de Produtos -->
                             <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 md:col-span-2">
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4 flex justify-between items-center">
                                     <span><i class="fa-solid fa-chart-pie mr-1"></i> Análise Curva ABC de Produtos</span>
-                                    <button onclick="abrirInfoRelatorio('curva_abc')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer print:hidden" title="Entenda este relatório"><i class="fa-solid fa-circle-question"></i></button>
+                                    <button onclick="abrirInfoRelatorio('curva_abc')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer print:hidden" title="EntendAçõeste relatório"><i class="fa-solid fa-circle-question"></i></button>
                                 </h3>
                                 <div class="flex flex-wrap gap-4 mb-4 text-sm bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
                                     <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> <span class="font-bold">Classe A:</span> 80% do Faturamento</div>
@@ -404,7 +406,7 @@ window.addEventListener('unhandledrejection', function(event) {
                             <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 md:col-span-2">
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4 flex justify-between items-center">
                                     <span><i class="fa-solid fa-boxes-packing mr-1"></i> Sugestão de Reposição</span>
-                                    <button onclick="abrirInfoRelatorio('sugestao_compras')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer print:hidden" title="Entenda este relatório"><i class="fa-solid fa-circle-question"></i></button>
+                                    <button onclick="abrirInfoRelatorio('sugestao_compras')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer print:hidden" title="EntendAçõeste relatório"><i class="fa-solid fa-circle-question"></i></button>
                                 </h3>
                                 <div class="overflow-x-auto custom-scrollbar max-h-80">
                                     <table class="w-full text-left min-w-[600px]">
@@ -418,7 +420,7 @@ window.addEventListener('unhandledrejection', function(event) {
                                                 <th class="p-3 text-right">Sugestão de Compra</th>
                                             </tr>
                                         </thead>
-                                        <tbody id="tabela-sugestor-compras" class="divide-y divide-slate-100 dark:divide-slate-700 text-xs md:text-sm">
+                                        <tbody id="tabela-sugestãor-compras" class="divide-y divide-slate-100 dark:divide-slate-700 text-xs md:text-sm">
                                             <tr><td colspan="6" class="p-4 text-center text-slate-500 dark:text-slate-400">Nenhuma ruptura identificada ou carregando...</td></tr>
                                         </tbody>
                                     </table>
@@ -432,83 +434,95 @@ window.addEventListener('unhandledrejection', function(event) {
         </main>
     </div>
 
-    <!-- M O D A I S   D E   G E S T Ãƒ O -->
+    <!-- M O D A I S   D E   G E S T Ã O -->
 
-    <!-- MODAL MOVIMENTAÃ‡ÃƒO CAIXA -->
+    <!-- MODAL MOVIMENTAÃ‡ÃO CAIXA -->
+    <div id="modal-mov-caixa" class="fixed inset-0 bg-slate-900/60 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
+            <div id="modal-caixa-header" class="bg-blue-600 p-4 md:p-5 text-white flex justify-between items-center">
+                <h3 class="font-bold text-base md:text-lg"><i class="fa-solid fa-cash-register"></i> <span id="modal-caixa-title">Movimentação</span></h3>
+                <button onclick="fecharModalCaixa()" class="text-white/70 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 space-y-4">
+                <input type="hidden" id="caixa-operação-tipo">
+                <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Valor (R$)</label><input type="number" step="0.01" id="caixa-op-valor" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 md:p-3 rounded-lg text-base md:text-lg font-black outline-none dark:text-white"></div>
+                <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Justificativa / Descrição</label><input type="text" id="caixa-op-desc" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none dark:text-white"></div>
+            </div>
+            <div class="bg-white dark:bg-slate-800 p-4 md:p-5 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
+                <button onclick="fecharModalCaixa()" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg font-bold text-slate-700 dark:text-slate-200 text-sm">Cancelar</button>
+                <button onclick="confirmarMovCaixa()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 rounded-lg text-sm" id="modal-caixa-btn">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOVO MODAL: CADASTRO DE CONTA (COM RECORRÃÅ NCIA) -->
     <div id="modal-nova-conta" class="fixed inset-0 bg-slate-900/80 z-[200] hidden flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col overflow-hidden max-h-[95vh]">
+        <div class="bg-slate-800 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col overflow-hidden max-h-[95vh]">
             <div id="modal-conta-header" class="p-4 md:p-5 text-white flex justify-between items-center shrink-0">
                 <h3 class="font-bold text-base md:text-lg flex items-center gap-2"><i class="fa-solid fa-money-bill-wave"></i> <span id="modal-conta-title">Novo Título</span></h3>
                 <button onclick="fecharModalConta()" class="text-white/70 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl md:text-2xl"></i></button>
             </div>
-            <div class="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 flex-1 overflow-y-auto custom-scrollbar">
+            <div class="p-4 md:p-6 bg-slate-800 flex-1 overflow-y-auto custom-scrollbar">
                 <input type="hidden" id="conta-id">
                 <input type="hidden" id="conta-tipo">
-
+                
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-
+                    
                     <!-- BLOCO 1: DADOS GERAIS -->
-                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 md:col-span-2">
+                    <div class="bg-slate-700 p-4 rounded-xl border border-slate-600 shadow-sm space-y-4 md:col-span-2">
                         <h4 class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase border-b border-slate-100 dark:border-slate-700 pb-2"><i class="fa-solid fa-user-tag text-slate-400 mr-1"></i> Dados Gerais</h4>
-
-                        <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block" id="lbl-conta-pessoa">Favorecido / Pagador *</label>
-                        <input type="text" id="conta-pessoa" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 font-bold text-slate-800 dark:text-slate-100 dark:text-white" placeholder="Nome do Cliente ou Fornecedor"></div>
-
+                        
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase mb-1 block" id="lbl-conta-pessoa">Fornecedor / Favorecido *</label>
+                            <select id="conta-pessoa-select" class="w-full bg-slate-800 border border-slate-600 text-slate-100 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-400 mb-2" onchange="toggleContaPessoaInput(this.value)">
+                                <option value="">-- Selecione um cadastrado --</option>
+                                <option value="__avulso__">-- Digitar nome avulso (sem cadastrar) --</option>
+                            </select>
+                            <div id="conta-pessoa-novo-wrap" class="hidden">
+                                <input type="text" id="conta-pessoa" class="w-full bg-slate-800 border border-slate-600 text-slate-100 placeholder-slate-400 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-400 font-bold" placeholder="Digite o nome do novo Fornecedor/Cliente...">
+                                <p class="text-[10px] text-slate-400 mt-1"><i class="fa-solid fa-circle-info mr-1"></i>Sera cadastrado automaticamente ao salvar.</p>
+                            </div>
+                        </div>
+                        
                         <div class="grid grid-cols-2 gap-3">
                             <div class="col-span-2 sm:col-span-1"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Descrição da Despesa/Receita</label>
-                            <input type="text" id="conta-ref" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" placeholder="Ex: Referente à NF 1234..."></div>
-
+                            <input type="text" id="conta-ref" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" placeholder="Ex: Referente à NF 1234..."></div>
+                            
                             <div class="col-span-2 sm:col-span-1"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Categoria *</label>
-                            <select id="conta-categoria" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></select></div>
+                            <select id="conta-categoria" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></select></div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-3">
                             <div class="col-span-2 sm:col-span-1"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Centro de Custo</label>
-                            <select id="conta-centro-custo" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
+                            <select id="conta-centro-custo" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
                                 <option value="Geral">Geral / Não Especificado</option><option value="Operaçãonal">Operaçãonal</option><option value="Administrativo">Administrativo</option><option value="Vendas">Vendas / Comercial</option><option value="Logística">Logística / Frete</option>
                             </select></div>
-
+                            
                             <div class="col-span-2 sm:col-span-1"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Conta Bancária / Destino</label>
-                            <select id="conta-banco" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
+                            <select id="conta-banco" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
                                 <option value="Caixa Físico">Gaveta / Caixa Físico</option><option value="Banco Itaú">Banco Itaú</option><option value="Banco do Brasil">Banco do Brasil</option><option value="Nubank">Nubank</option><option value="Sicredi">Sicredi</option><option value="Sicoob">Sicoob</option>
                             </select></div>
                         </div>
                     </div>
 
-                    <!-- BLOCO 2: DATAS, VALORES E RECORRÃŠNCIA -->
-                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                    <!-- BLOCO 2: DATAS, VALORES E RECORRÃÅ NCIA -->
+                    <div class="bg-slate-700 p-4 rounded-xl border border-slate-600 shadow-sm space-y-4">
                         <h4 class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase border-b border-slate-100 dark:border-slate-700 pb-2"><i class="fa-solid fa-calendar-days text-slate-400 mr-1"></i> Datas e Valores</h4>
-
+                        
                         <div class="grid grid-cols-2 gap-3">
                             <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Data de Emissão</label>
-                            <input type="date" id="conta-emissao" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
-
+                            <input type="date" id="conta-emissao" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
+                            
                             <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Vencimento Base *</label>
-                            <input type="date" id="conta-vencimento" class="w-full bg-amber-50 border border-amber-300 p-2 rounded-lg text-xs font-bold text-amber-800 outline-none focus:border-amber-500 dark:text-white"></div>
+                            <input type="date" id="conta-vencimento" class="w-full bg-amber-50 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-600 p-2 rounded-lg text-xs font-bold text-amber-800 dark:text-amber-300 outline-none focus:border-amber-500"></div>
                         </div>
 
-                                                  <!-- Data Cartório -->
-                          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-lg">
-                              <div class="col-span-2">
-                                  <label class="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase mb-1 block">Data para Protesto / Cartório</label>
-                                  <input type="date" id="conta-cartorio" class="w-full bg-white dark:bg-slate-800 border border-red-300 dark:border-red-700 p-2 rounded-lg text-xs font-bold outline-none focus:border-red-500 dark:text-white">
-                              </div>
-                              <div class="col-span-1">
-                                  <label class="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase mb-1 block" title="Multa Fixa em %">Multa (%)</label>
-                                  <input type="number" step="0.01" id="conta-multa" class="w-full bg-white dark:bg-slate-800 border border-red-300 dark:border-red-700 p-2 rounded-lg text-xs font-bold outline-none focus:border-red-500 dark:text-white" placeholder="Ex: 2.00">
-                              </div>
-                              <div class="col-span-1">
-                                  <label class="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase mb-1 block" title="Juros ao Mês em %">Juros (% a.m.)</label>
-                                  <input type="number" step="0.01" id="conta-juros" class="w-full bg-white dark:bg-slate-800 border border-red-300 dark:border-red-700 p-2 rounded-lg text-xs font-bold outline-none focus:border-red-500 dark:text-white" placeholder="Ex: 1.00">
-                              </div>
-                          </div>
-
-                        <!-- RECORRÃŠNCIA -->
+                        <!-- RECORRÃÅ NCIA -->
                         <div class="grid grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg">
                             <div class="col-span-2 sm:col-span-1">
                                 <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Repetir (Assinatura)?</label>
-                                <select id="conta-recorrencia" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs font-bold outline-none focus:border-blue-500 dark:text-white" onchange="toggleRecorrencia()">
-                                    <option value="UNICA">Não (Ãšnica)</option>
+                                <select id="conta-recorrencia" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs font-bold outline-none focus:border-blue-500 dark:text-white" onchange="toggleRecorrencia()">
+                                    <option value="UNICA">Não (Única)</option>
                                     <option value="MENSAL">Mensal</option>
                                     <option value="QUINZENAL">Quinzenal</option>
                                     <option value="SEMANAL">Semanal</option>
@@ -517,51 +531,47 @@ window.addEventListener('unhandledrejection', function(event) {
                             </div>
                             <div id="div-qtd-recorrencia" class="col-span-2 sm:col-span-1 hidden">
                                 <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Quantas Vezes?</label>
-                                <input type="number" id="conta-qtd-recorrencia" value="12" min="2" max="120" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs font-bold outline-none focus:border-blue-500 dark:text-white" title="Ex: 12 para assinar por 1 ano">
+                                <input type="number" id="conta-qtd-recorrencia" value="12" min="2" max="120" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs font-bold outline-none focus:border-blue-500 dark:text-white" title="Ex: 12 para assinar por 1 ano">
                             </div>
                         </div>
 
                         <div>
                             <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Competência (Mês/Ano Ref.)</label>
-                            <input type="month" id="conta-competencia" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white">
+                            <input type="month" id="conta-competencia" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white">
                         </div>
 
                         <div class="pt-2 border-t border-slate-100 dark:border-slate-700">
                             <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Valor Unitário da Parcela *</label>
-                            <input type="number" step="0.01" id="conta-valor" oninput="calcularValorFinalFormulario()" class="w-full bg-blue-50 border border-blue-300 p-2 md:p-3 rounded-lg text-base md:text-lg font-black text-blue-800 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all text-right dark:bg-slate-800 dark:border-slate-600 dark:text-white" placeholder="0,00">
+                            <input type="number" step="0.01" id="conta-valor" oninput="calcularValorFinalFormulario()" class="w-full bg-blue-50 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 p-2 md:p-3 rounded-lg text-base md:text-lg font-black text-blue-800 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all text-right dark:bg-slate-800 dark:border-slate-600 dark:text-white" placeholder="0,00">
                         </div>
                     </div>
 
                     <!-- BLOCO 3: STATUS, MULTAS E DOCUMENTOS -->
-                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 md:col-span-3">
+                    <div class="bg-slate-700 p-4 rounded-xl border border-slate-600 shadow-sm space-y-4 md:col-span-3">
                         <h4 class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase border-b border-slate-100 dark:border-slate-700 pb-2"><i class="fa-solid fa-list-check text-slate-400 mr-1"></i> Situação e Documentos</h4>
-
+                        
                         <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-6 gap-3">
                             <div class="sm:col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Status Atual</label>
-                                <select id="conta-status" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs font-bold outline-none focus:border-blue-500 dark:text-white">
+                                <select id="conta-status" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs font-bold outline-none focus:border-blue-500 dark:text-white">
                                     <option value="PENDENTE">Em Aberto / Pendente</option><option value="PAGO">Liquidado / Pago</option><option value="CANCELADO">Cancelado</option><option value="RENEGOCIADO">Renegociado</option>
                                 </select>
                             </div>
-
+                            
                             <div class="sm:col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Data de Pagamento</label>
                             <input type="date" id="conta-data-pgto" class="w-full bg-emerald-50 border border-emerald-200 p-2 rounded-lg text-xs font-bold text-emerald-800 outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-600 dark:text-white"></div>
 
                             <div class="sm:col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Forma de Pagamento</label>
-                                <select id="conta-metodo" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white">
+                                <select id="conta-metodo" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white">
                                     <option value="">Ainda não pago</option><option value="PIX">PIX</option><option value="Dinheiro">Dinheiro</option><option value="Boleto">Boleto</option><option value="Cartão">Cartão (Débito/Crédito)</option><option value="TED">TED / DOC / Transferência</option>
                                 </select>
                             </div>
 
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Nº da NF</label><input type="text" id="conta-num-nf" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
-                            <div class="sm:col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Nº do Boleto / Cód. Barras</label><input type="text" id="conta-num-boleto" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">NÃ‚º da NF</label><input type="text" id="conta-num-nf" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
+                            <div class="sm:col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">NÃ‚º do Boleto / Cód. Barras</label><input type="text" id="conta-num-boleto" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
 
                             <div><label class="text-[10px] font-bold text-red-500 uppercase mb-1 block">Juros / Multa (+)</label><input type="number" step="0.01" id="conta-acrescimo" oninput="calcularValorFinalFormulario()" class="w-full bg-red-50 border border-red-200 text-red-700 p-2 rounded-lg text-xs font-bold outline-none text-right dark:text-white" value="0"></div>
                             <div><label class="text-[10px] font-bold text-emerald-600 uppercase mb-1 block">Desconto (-)</label><input type="number" step="0.01" id="conta-desconto" oninput="calcularValorFinalFormulario()" class="w-full bg-emerald-50 border border-emerald-200 text-emerald-700 p-2 rounded-lg text-xs font-bold outline-none text-right dark:bg-slate-800 dark:border-slate-600 dark:text-white" value="0"></div>
-
-                              <!-- Novas Configuraes de Juros e Multa Automticos -->
-                              <div><label class="text-[10px] font-bold text-orange-600 uppercase mb-1 block">Multa Atraso (%)</label><input type="number" step="0.01" id="conta-multa" class="w-full bg-orange-50 border border-orange-200 text-orange-700 p-2 rounded-lg text-xs font-bold outline-none text-right dark:bg-slate-800 dark:border-slate-600 dark:text-white" value="0" placeholder="Ex: 2"></div>
-                              <div><label class="text-[10px] font-bold text-orange-600 uppercase mb-1 block">Juros ao Ms (%)</label><input type="number" step="0.01" id="conta-juros" class="w-full bg-orange-50 border border-orange-200 text-orange-700 p-2 rounded-lg text-xs font-bold outline-none text-right dark:bg-slate-800 dark:border-slate-600 dark:text-white" value="0" placeholder="Ex: 1"></div>
-
+                            
                             <div class="bg-slate-900 rounded-lg p-2 text-white flex flex-col justify-center items-end">
                                 <span class="text-[10px] font-bold text-slate-400 uppercase">Valor Final / Parcela</span>
                                 <span class="text-lg font-black text-emerald-400" id="conta-valor-final-display">R$ 0,00</span>
@@ -571,7 +581,7 @@ window.addEventListener('unhandledrejection', function(event) {
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 border-t border-slate-100 dark:border-slate-700 pt-4">
                             <div>
                                 <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Observações Livres</label>
-                                <textarea id="conta-obs" rows="3" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 custom-scrollbar dark:text-white" placeholder="Anotações, dados de renegociação, quem aprovou o pagamento..."></textarea>
+                                <textarea id="conta-obs" rows="3" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 custom-scrollbar dark:text-white" placeholder="Anotações, dados de renegociação, quem aprovou o pagamento..."></textarea>
                             </div>
                             <div>
                                 <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Anexar Comprovante / PDF / Imagem</label>
@@ -585,14 +595,14 @@ window.addEventListener('unhandledrejection', function(event) {
                     </div>
                 </div>
             </div>
-            <div class="bg-white dark:bg-slate-800 p-4 md:p-5 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 shrink-0 rounded-b-2xl">
+            <div class="bg-slate-900 p-4 md:p-5 border-t border-slate-700 flex justify-end gap-3 shrink-0 rounded-b-2xl">
                 <button onclick="fecharModalConta()" class="px-6 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl font-bold text-slate-700 dark:text-slate-200 text-sm hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 transition-colors shadow-sm">Cancelar</button>
                 <button onclick="salvarConta()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-2.5 rounded-xl text-sm shadow-md transition-transform active:scale-95"><i class="fa-solid fa-save mr-1"></i> Salvar Lançamento</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL RENEGOCIAÃ‡ÃƒO (DIVIDIR PARCELAS) -->
+    <!-- MODAL RENEGOCIAÃ‡ÃO (DIVIDIR PARCELAS) -->
     <div id="modal-renegociacao" class="fixed inset-0 bg-slate-900/80 z-[250] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
             <div class="bg-purple-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
@@ -605,29 +615,29 @@ window.addEventListener('unhandledrejection', function(event) {
                     <div><p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Valor do Título</p><p class="text-lg font-bold text-slate-800 dark:text-slate-100" id="reneg-valor">R$ 0,00</p></div>
                     <div class="text-right"><p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Status</p><span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold">EM ATRASO</span></div>
                 </div>
-
+                
                 <div>
                     <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Dividir em quantas parcelas?</label>
                     <select id="reneg-qtd" class="w-full bg-white dark:bg-slate-800 border border-purple-300 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-purple-500 font-bold text-purple-900 dark:text-white">
                         <option value="2">2x</option><option value="3">3x</option><option value="4">4x</option><option value="5">5x</option><option value="6">6x</option><option value="10">10x</option><option value="12">12x</option>
                     </select>
                 </div>
-
+                
                 <div>
-                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Data da 1ª Parcela (Novo Vencimento)</label>
+                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Data da 1Ã‚ª Parcela (Novo Vencimento)</label>
                     <input type="date" id="reneg-data" class="w-full bg-white dark:bg-slate-800 border border-purple-300 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-purple-500 font-bold dark:text-white">
                 </div>
-
+                
                 <p class="text-[10px] text-slate-500 dark:text-slate-400 italic mt-2">* O título original será cancelado e novos títulos serão criados a cada 30 dias a partir da data acima.</p>
             </div>
-            <div class="bg-white dark:bg-slate-800 p-4 md:p-5 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 shrink-0 rounded-b-2xl">
+            <div class="bg-slate-900 p-4 md:p-5 border-t border-slate-700 flex justify-end gap-3 shrink-0 rounded-b-2xl">
                 <button onclick="fecharModalRenegociacao()" class="px-4 md:px-6 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 transition-colors shadow-sm text-sm">Cancelar</button>
                 <button onclick="confirmarRenegociacao()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-2 rounded-lg shadow-md transition-colors text-sm"><i class="fa-solid fa-check"></i> Criar Parcelas</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL BAIXA RÁPIDA -->
+    <!-- MODAL BAIXA RÃÂPIDA -->
     <div id="modal-baixa-conta" class="fixed inset-0 bg-slate-900/60 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden">
             <div class="bg-emerald-600 p-4 md:p-5 text-white flex justify-between items-center">
@@ -650,7 +660,7 @@ window.addEventListener('unhandledrejection', function(event) {
                 </div>
                 <div>
                     <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Forma de Pagamento</label>
-                    <select id="baixa-metodo" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm font-bold outline-none focus:border-emerald-500 dark:text-white">
+                    <select id="baixa-metodo" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm font-bold outline-none focus:border-emerald-500 dark:text-white">
                         <option value="Dinheiro">Dinheiro (Afeta o Caixa Físico)</option><option value="PIX">PIX (Conta Bancária)</option><option value="Cartão">Cartão Crédito/Débito</option><option value="Boleto">Boleto Pago</option><option value="Fiado">Fiado</option><option value="Transferência">Transferência Bancária</option>
                     </select>
                 </div>
@@ -662,7 +672,7 @@ window.addEventListener('unhandledrejection', function(event) {
         </div>
     </div>
 
-    <!-- MODAL DETALHES DO TÍTULO -->
+    <!-- MODAL DETALHES DO TÃÂTULO -->
     <div id="modal-detalhes-titulo" class="fixed inset-0 bg-slate-900/80 z-[200] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
             <div id="det-tit-header" class="p-4 md:p-5 text-white flex justify-between items-center">
@@ -697,18 +707,18 @@ window.addEventListener('unhandledrejection', function(event) {
         </div>
     </div>
 
-    <!-- MODAL CONFERÃŠNCIA XML E RATEIO -->
+    <!-- MODAL CONFERÃÅ NCIA XML E RATEIO -->
     <div id="modal-conferencia-xml" class="fixed inset-0 bg-slate-900/80 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-6xl flex flex-col overflow-hidden max-h-[95vh]">
             <div class="bg-indigo-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
                 <h3 class="font-bold text-base md:text-lg flex items-center gap-2"><i class="fa-solid fa-microchip"></i> Auditoria de Entrada XML</h3>
                 <button onclick="fecharModalXML()" class="text-indigo-200 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl md:text-2xl"></i></button>
             </div>
-            <div class="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 flex-1 overflow-y-auto custom-scrollbar">
-
+            <div class="p-4 md:p-6 bg-slate-800 flex-1 overflow-y-auto custom-scrollbar">
+                
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm mb-4">
                     <div class="col-span-2 md:col-span-4"><p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Fornecedor Emitente</p><p class="font-bold text-blue-700 text-sm uppercase" id="xml-forn-nome">-</p><p class="text-[10px] text-slate-500 dark:text-slate-400 font-mono" id="xml-forn-cnpj">-</p></div>
-                    <div><p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Nº NF-e</p><p class="font-bold text-slate-800 dark:text-slate-100 text-sm" id="rev-nfe">-</p></div>
+                    <div><p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">NÃ‚º NF-e</p><p class="font-bold text-slate-800 dark:text-slate-100 text-sm" id="rev-nfe">-</p></div>
                     <div><p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Data Emissão</p><p class="font-bold text-slate-800 dark:text-slate-100 text-sm" id="rev-data">-</p></div>
                     <div><p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Total Mercadorias</p><p class="font-bold text-slate-800 dark:text-slate-100 text-sm" id="rev-vprod">R$ 0,00</p></div>
                     <div><p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Total do XML</p><p class="font-bold text-emerald-600 text-lg" id="xml-total-nota">R$ 0,00</p></div>
@@ -760,7 +770,7 @@ window.addEventListener('unhandledrejection', function(event) {
                     </div>
                 </div>
             </div>
-            <div class="bg-white dark:bg-slate-800 p-4 md:p-5 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 shrink-0 rounded-b-2xl">
+            <div class="bg-slate-900 p-4 md:p-5 border-t border-slate-700 flex justify-end gap-3 shrink-0 rounded-b-2xl">
                 <button onclick="fecharModalXML()" class="px-4 md:px-6 py-2 md:py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 transition-colors shadow-sm text-sm">Cancelar</button>
                 <button onclick="salvarXMLConferido()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 md:px-8 py-2 md:py-2.5 rounded-lg shadow-md transition-colors text-sm"><i class="fa-solid fa-check-double"></i> Confirmar Entrada e Lançar Financeiro</button>
             </div>
@@ -775,9 +785,9 @@ window.addEventListener('unhandledrejection', function(event) {
                 <button onclick="fecharModalProduto()" class="text-blue-200 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             <div class="p-4 bg-slate-50 dark:bg-slate-900 overflow-y-auto space-y-4">
-                <!-- NOVO: OPÃ‡ÃƒO DE VÃNCULO MANUAL (MOSTRADA APENAS NO XML) -->
+                <!-- NOVO: OPÃ‡ÃO DE VÃNCULO MANUAL (MOSTRADA APENAS NO XML) -->
                 <div id="div-acao-vinculo-xml" class="hidden mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-lg">
-                    <lAÃ§Ã£o: Vincular ou Cadastrar?</label>
+                    <lAção: Vincular ou Cadastrar?</label>
                     <select id="prod-acao-vinculo" onchange="alternarAcaoVinculoXML()" class="w-full bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 p-2 rounded text-sm outline-none mb-2 font-bold text-slate-700 dark:text-slate-200">
                         <option value="NOVO">Cadastrar como Novo Produto</option>
                         <option value="VINCULAR">Vincular a Produto Existente</option>
@@ -786,7 +796,7 @@ window.addEventListener('unhandledrejection', function(event) {
                     <div id="div-vinculo-busca" class="hidden">
                         <label class="text-xs font-bold text-slate-500 mb-1 block">Pesquisar Produto Existente</label>
                         <div class="relative">
-                            <input type="text" id="prod-vinculo-search" autocomplete="off" oninput="filtrarProdutosXMLBusca()" onfocus="mostrarListaProdutosXMLBusca()" onblur="setTimeout(()=>ocultarListaProdutosXMLBusca(), 200)" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded text-sm outline-none dark:text-white" placeholder="Digite para pesquisar...">
+                            <input type="text" id="prod-vinculo-search" autocomplete="off" oninput="filtrarProdutosXMLBusca()" onfocus="mostrarListaProdutosXMLBusca()" onblur="setTimeout(()=>ocultarListaProdutosXMLBusca(), 200)" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 rounded text-sm outline-none dark:text-white" placeholder="Digite para pesquisar...">
                             <input type="hidden" id="prod-vinculo-select" onchange="preencherVinculoXML()">
                             <ul id="prod-vinculo-lista" class="hidden absolute z-[200] w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded mt-1 max-h-48 overflow-y-auto shadow-xl dark:text-white text-sm">
                             </ul>
@@ -795,11 +805,11 @@ window.addEventListener('unhandledrejection', function(event) {
                 </div>
                 <input type="hidden" id="prod-id"><input type="hidden" id="prod-ativo" value="true">
                 <input type="hidden" id="prod-marca" value=""><input type="hidden" id="prod-categoria" value="Geral"><input type="hidden" id="prod-unidade" value="Un"><input type="hidden" id="prod-estoque" value="0"><input type="hidden" id="prod-minimo" value="5"><input type="hidden" id="prod-obs" value=""><input type="hidden" id="prod-foto-base64" value="">
-
-                <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Nome do Produto</label><input type="text" id="prod-nome" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white"></div>
-                <div><label CÃ³d Barras (EAN)</label><input type="text" id="prod-ean" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white"></div>
+                
+                <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Nome do Produto</label><input type="text" id="prod-nome" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white"></div>
+                <div><label CÃ³d Barras (EAN)</label><input type="text" id="prod-ean" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white"></div>
                 <div class="grid grid-cols-3 gap-3">
-                    <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Custo R$</label><input type="number" id="prod-custo" step="0.01" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white" oninput="calcularPrecoMargin('custo')"></div>
+                    <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Custo R$</label><input type="number" id="prod-custo" step="0.01" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white" oninput="calcularPrecoMargin('custo')"></div>
                     <div><label class="text-xs font-bold text-blue-700 mb-1 block">Margem %</label><input type="number" id="prod-margem" step="0.1" class="w-full bg-blue-50 border border-blue-200 text-blue-800 p-2.5 rounded-lg text-sm font-bold outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" oninput="calcularPrecoMargin('margem')"></div>
                     <div><label class="text-xs font-bold text-emerald-700 mb-1 block">PreÃ§o R$</label><input type="number" id="prod-preco" step="0.01" class="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 p-2.5 rounded-lg text-sm font-bold outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" oninput="calcularPrecoMargin('preco')"></div>
                 </div>
@@ -811,34 +821,34 @@ window.addEventListener('unhandledrejection', function(event) {
         </div>
     </div>
 
-    <!-- MODAL LANÃ‡AMENTO DE COMPRA MANUAL (SEM NF E EDIÃ‡ÃƒO) -->
+    <!-- MODAL LANÃ‡AMENTO DE COMPRA MANUAL (SEM NF E EDIÃ‡ÃO) -->
     <div id="modal-compra-manual" class="fixed inset-0 bg-slate-900/80 z-[160] hidden flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col overflow-hidden max-h-[95vh]">
+        <div class="bg-slate-800 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col overflow-hidden max-h-[95vh]">
             <div class="bg-emerald-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
                 <h3 class="font-bold text-base md:text-lg flex items-center gap-2"><i class="fa-solid fa-cart-flatbed"></i> <span id="compra-manual-titulo-modal">Lançar Compra (Sem NF)</span></h3>
                 <button onclick="fecharModalCompraManual()" class="text-emerald-200 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl md:text-2xl"></i></button>
             </div>
-
+            
             <div class="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 flex-1 overflow-y-auto custom-scrollbar space-y-4">
                 <input type="hidden" id="compra-manual-id" value="">
-
+                
                 <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="md:col-span-2">
                         <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Fornecedor / Loja *</label>
                         <div class="flex gap-2">
-                            <select id="compra-manual-fornecedor" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 font-bold text-slate-800 dark:text-slate-100 dark:text-white">
+                            <select id="compra-manual-fornecedor" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 font-bold text-slate-800 dark:text-slate-100 dark:text-white">
                                 <option value="">Selecione ou digite ao lado -> </option>
                             </select>
-                            <input type="text" id="compra-manual-forn-avulso" placeholder="Fornecedor Avulso..." class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 dark:text-white">
+                            <input type="text" id="compra-manual-forn-avulso" placeholder="Fornecedor Avulso..." class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 dark:text-white">
                         </div>
                     </div>
                     <div>
                         <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Data da Compra *</label>
-                        <input type="date" id="compra-manual-data" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 dark:text-white">
+                        <input type="date" id="compra-manual-data" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 dark:text-white">
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Nº Pedido / Ref / Recibo</label>
-                        <input type="text" id="compra-manual-ref" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 dark:text-white">
+                        <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">NÃ‚º Pedido / Ref / Recibo</label>
+                        <input type="text" id="compra-manual-ref" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 dark:text-white">
                     </div>
                     <div class="md:col-span-2">
                         <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Frete / Custo Extra (R$) - Será rateado nos itens</label>
@@ -889,7 +899,7 @@ window.addEventListener('unhandledrejection', function(event) {
                 </div>
 
             </div>
-            <div class="bg-white dark:bg-slate-800 p-4 md:p-5 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 shrink-0 rounded-b-2xl">
+            <div class="bg-slate-900 p-4 md:p-5 border-t border-slate-700 flex justify-end gap-3 shrink-0 rounded-b-2xl">
                 <button onclick="fecharModalCompraManual()" class="px-6 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl font-bold text-slate-700 dark:text-slate-200 text-sm hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 transition-colors shadow-sm">Cancelar</button>
                 <button onclick="salvarCompraManual()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-2.5 rounded-xl text-sm shadow-md transition-transform active:scale-95" id="compra-manual-btn-salvar"><i class="fa-solid fa-save mr-1"></i> Confirmar Lançamento</button>
             </div>
@@ -903,7 +913,7 @@ window.addEventListener('unhandledrejection', function(event) {
                 <h3 class="font-bold text-base md:text-lg flex items-center gap-2"><i class="fa-solid fa-file-lines"></i> Detalhes da Compra / Nota</h3>
                 <button onclick="fecharModalDetalhesNF()" class="text-indigo-200 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl md:text-2xl"></i></button>
             </div>
-            <div class="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 flex-1 overflow-y-auto custom-scrollbar">
+            <div class="p-4 md:p-6 bg-slate-800 flex-1 overflow-y-auto custom-scrollbar">
                 <div class="flex justify-between items-start mb-6 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
                     <div>
                         <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Fornecedor</p>
@@ -927,7 +937,7 @@ window.addEventListener('unhandledrejection', function(event) {
         </div>
     </div>
 
-    <!-- CONFIRMAÃ‡ÃƒO DO SISTEMA -->
+    <!-- CONFIRMAÃ‡ÃO DO SISTEMA -->
     <div id="modal-confirmacao" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden text-center p-6">
             <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
@@ -954,13 +964,22 @@ window.addEventListener('unhandledrejection', function(event) {
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js?v=4"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js?v=4"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js?v=4"></script>
-    <script src="global.js?v=4"></script>
-    <script src="financeiro.js?v=4"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js?v=9"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js?v=9"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js?v=9"></script>
+    <script src="global.js?v=9"></script>
+    <script src="financeiro.js?v=9"></script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
 
 
 

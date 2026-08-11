@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FC Móveis - FUNCIONARIOS</title>
+    <title>FC Móveis - Funcionários</title>
     <script>
         window.tailwind = window.tailwind || {};
         tailwind.config = { darkMode: 'class' };
@@ -16,7 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
+<body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
     <div id="toast-container"></div>
 
@@ -45,21 +45,21 @@
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Operação</p>
                 <a href="pdv.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="pdv"><i class="fa-solid fa-cash-register w-5 text-center"></i> Frente de Caixa (PDV)</a>
                 <a href="vendas_operacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_operacao"><i class="fa-solid fa-receipt w-5 text-center"></i> Histórico Vendas/Serviços</a>
-                <a href="orcamentos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="orcamentos"><i class="fa-solid fa-file-invoice w-5 text-center"></i> Meus Orçamentos</a>
+                <a href="Orçamentos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="Orçamentos"><i class="fa-solid fa-file-invoice w-5 text-center"></i> Meus Orçamentos</a>
 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Cadastros</p>
                 <a href="produtos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="produtos"><i class="fa-solid fa-boxes-stacked w-5 text-center"></i> Produtos & Serviços</a>
 
                 <a href="clientes.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="clientes"><i class="fa-solid fa-users w-5 text-center"></i> Clientes</a>
                 <a href="fornecedores.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="fornecedores"><i class="fa-solid fa-truck w-5 text-center"></i> Fornecedores</a>
-                <a href="funcionarios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="funcionarios"><i class="fa-solid fa-user-tie w-5 text-center"></i> Funcionários / Vendedores</a>
+                <a href="Funcionários.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="Funcionários"><i class="fa-solid fa-user-tie w-5 text-center"></i> Funcionários / Vendedores</a>
 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
                 <a href="vendas_gestao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_gestao"><i class="fa-solid fa-chart-line w-5 text-center"></i> Histórico Vendas (Gestão)</a>
                 <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
                 <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
                 <a href="compras.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & NF-e XML</a>
-                <a href="relatorios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
+                <a href="Relatórios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="Relatórios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
                 <a href="estoque.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="estoque"><i class="fa-solid fa-pallet w-5 text-center"></i> Estoque & Kardex</a>
 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Sistema</p>
@@ -70,7 +70,7 @@
             </div>
         </aside>
 
-        <!-- ÃƒÂREA DE CONTEÃšDO PRINCIPAL -->
+        <!-- ÃÂREA DE CONTEÃšDO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
             <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
                 <div class="flex items-center gap-3">
@@ -209,12 +209,12 @@
                     </div>
                 </div>
 
-                <!-- FUNCIONÃƒÂRIOS -->
-                <div id="view-funcionarios" class="view-section max-w-7xl mx-auto space-y-4 md:space-y-6 active">
+                <!-- FUNCIONÃÂRIOS -->
+                <div id="view-Funcionários" class="view-section max-w-7xl mx-auto space-y-4 md:space-y-6 active">
                     <div class="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 gap-3">
                         <div class="relative w-full md:w-96">
                             <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-sm"></i>
-                            <input type="text" id="busca-funcionario-lista" placeholder="Buscar Funcionário..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderFuncionarios()">
+                            <input type="text" id="busca-funcionario-lista" placeholder="Buscar Funcionário..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderFuncionários()">
                         </div>
                         <button onclick="abrirModalFuncionario()" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"><i class="fa-solid fa-user-plus text-lg"></i> Novo Funcionário</button>
                     </div>
@@ -225,12 +225,12 @@
                                     <tr>
                                         <th class="p-3">Nome do Colaborador</th>
                                         <th class="p-3">Login / E-mail</th>
-                                        <th class="p-3">Cargo / Vendedor</th>
+                                        <th class="p-3">Cargo /Ã‰ Vendedor</th>
                                         <th class="p-3">Comissão</th>
                                         <th class="p-3 text-center w-24">Ações</th>
                                     </tr>
                                 </thead>
-                                <tbody id="tabela-funcionarios" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
+                                <tbody id="tabela-Funcionários" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
                             </table>
                         </div>
                     </div>
@@ -257,9 +257,9 @@
             </div>
 
             <div class="p-4 md:p-6 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900 custom-scrollbar">
-                <!-- NOVO: OPÃ‡ÃƒO DE VÃNCULO MANUAL (MOSTRADA APENAS NO XML) -->
+                <!-- NOVO: OPÃ‡ÃO DE VÃNCULO MANUAL (MOSTRADA APENAS NO XML) -->
                 <div id="div-acao-vinculo-xml" class="hidden mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-lg">
-                    <lAÃ§Ã£o: Vincular ou Cadastrar?</label>
+                    <lAção: Vincular ou Cadastrar?</label>
                     <select id="prod-acao-vinculo" onchange="alternarAcaoVinculoXML()" class="w-full bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 p-2 rounded text-sm outline-none mb-2 font-bold text-slate-700 dark:text-slate-200">
                         <option value="NOVO">Cadastrar como Novo Produto</option>
                         <option value="VINCULAR">Vincular a Produto Existente</option>
@@ -404,7 +404,7 @@
                                 <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase font-bold sticky top-0">
                                     <tr><th class="p-2 md:p-3">Data</th><th class="p-2 md:p-3">Tipo</th><th class="p-2 md:p-3">Ref/Documento</th><th class="p-2 md:p-3 text-right">Qtd</th></tr>
                                 </thead>
-                                <tbody id="prod-historico-body" class="divide-y divide-slate-50"></tbody>
+                                <tbody id="prod-Histórico-body" class="divide-y divide-slate-50"></tbody>
                             </table>
                         </div>
                     </div>
@@ -469,7 +469,7 @@
                         <div class="overflow-y-auto max-h-48 border border-slate-100 dark:border-slate-700 rounded-lg custom-scrollbar">
                             <table class="w-full text-left text-xs">
                                 <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase font-bold sticky top-0"><tr><th class="p-2 md:p-3">Data</th><th class="p-2 md:p-3">Ref</th><th class="p-2 md:p-3">Pagamento</th><th class="p-2 md:p-3 text-right">Total</th></tr></thead>
-                                <tbody id="cli-historico-body" class="divide-y divide-slate-50"></tbody>
+                                <tbody id="cli-Histórico-body" class="divide-y divide-slate-50"></tbody>
                             </table>
                         </div>
                     </div>
@@ -493,7 +493,7 @@
             <div class="flex overflow-x-auto border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 md:px-6 pt-4 shrink-0 custom-scrollbar">
                 <button onclick="abaModal('forn', 'dados')" id="forn-btn-dados" class="px-4 md:px-5 py-2 border-b-2 border-blue-600 font-bold text-blue-600 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Dados & Endereço</button>
                 <button onclick="abaModal('forn', 'condicoes')" id="forn-btn-condicoes" class="px-4 md:px-5 py-2 border-b-2 border-transparent font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-200 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Comercial & Produtos</button>
-                <button onclick="abaModal('forn', 'historico')" id="forn-btn-historico" class="px-4 md:px-5 py-2 border-b-2 border-transparent font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-200 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Histórico NF-e</button>
+                <button onclick="abaModal('forn', 'Histórico')" id="forn-btn-Histórico" class="px-4 md:px-5 py-2 border-b-2 border-transparent font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-200 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Histórico NF-e</button>
             </div>
 
             <div class="p-4 md:p-6 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900 custom-scrollbar">
@@ -545,13 +545,13 @@
                     </div>
                 </div>
 
-                <div id="forn-aba-historico" class="aba-conteudo hidden space-y-4">
+                <div id="forn-aba-Histórico" class="aba-conteudo hidden space-y-4">
                     <div class="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
                         <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm border-b pb-2 mb-4">Notas Fiscais Importadas (Entrada)</h4>
                         <div class="overflow-y-auto max-h-60 border border-slate-100 dark:border-slate-700 rounded-lg custom-scrollbar">
                             <table class="w-full text-left text-xs">
                                 <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase font-bold sticky top-0"><tr><th class="p-2 md:p-3">Data</th><th class="p-2 md:p-3">Qtd Itens</th><th class="p-2 md:p-3 text-right">Valor Total</th></tr></thead>
-                                <tbody id="forn-historico-body" class="divide-y divide-slate-50"></tbody>
+                                <tbody id="forn-Histórico-body" class="divide-y divide-slate-50"></tbody>
                             </table>
                         </div>
                     </div>
@@ -564,7 +564,7 @@
         </div>
     </div>
 
-    <!-- MODAL CONFIRMAÃ‡ÃƒO GENÃ‰RICA -->
+    <!-- MODAL CONFIRMAÃ‡ÃO GENÃ‰RICA -->
     <div id="modal-confirmacao" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl scale-95 transition-transform animate-[pop_0.2s_ease-out_forwards]">
             <div class="p-5 text-center">
@@ -579,7 +579,7 @@
         </div>
     </div>
 
-    <!-- MODAL FUNCIONÃƒÂRIOS -->
+    <!-- MODAL FUNCIONÃÂRIOS -->
     <div id="modal-funcionario" class="fixed inset-0 z-[60] hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl my-auto animate-[slideIn_0.3s_ease-out]">
             <div class="p-4 md:p-5 text-white flex justify-between items-center shrink-0 bg-blue-600">
@@ -590,7 +590,7 @@
             <div class="p-4 md:p-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
                 <input type="hidden" id="func-id">
 
-                <h4 class="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-100 dark:border-slate-700 pb-2 uppercase tracking-wide">Dados de Acesso (Login)</h4>
+                <h4 class="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-100 dark:border-slate-700 pb-2 uppercase tracking-wide">Dados de Açõesso (Login)</h4>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                     <div>
@@ -611,7 +611,7 @@
                         <input type="text" id="func-nome" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-medium uppercase">
                     </div>
                     <div>
-                        <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Ã‰ Vendedor? (Aparece no PDV)</label>
+                        <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Ã‰Ã‰ Vendedor? (Aparece no PDV)</label>
                         <select id="func-vendedor" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-medium">
                             <option value="SIM">Sim</option>
                             <option value="NAO">Não</option>
@@ -627,27 +627,37 @@
                     </div>
                 </div>
 
-                <h4 class="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-100 dark:border-slate-700 pb-2 uppercase tracking-wide">Controle de Acesso (Permissões)</h4>
-                <div class="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-2">
+                <h4 class="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-100 dark:border-slate-700 pb-2 uppercase tracking-wide">Controle de Açõesso (PermissÃµes)</h4>
+                  
+                  <!-- OpÃ§Ã£o exclusiva para tornar Admin -->
+                  <div class="mb-4 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800/50 hidden" id="admin-checkbox-container">
+                      <label class="flex items-center gap-3 cursor-pointer">
+                          <input type="checkbox" id="func-perm-admin" class="w-5 h-5 text-red-600 rounded focus:ring-red-500 bg-white dark:bg-slate-900 border-red-300 dark:border-red-700">
+                          <span class="text-sm font-bold text-red-700 dark:text-red-400 uppercase">Tornar este usuÃ¡rio um Administrador Geral (Açõesso Total)</span>
+                      </label>
+                      <p class="text-[11px] text-red-600 dark:text-red-500 mt-1 ml-8">Cuidado! Isso darÃ¡ Açõesso ilimitado e irrestrito ao sistema parAçõeste e-mail.</p>
+                  </div>
+
+                  <div class="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-2">
                     <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
                         <input type="checkbox" id="func-perm-dashboard" class="w-5 h-5 accent-blue-600 rounded">
-                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Acesso ao Dashboard</span>
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Açõesso ao Dashboard</span>
                     </label>
                     <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
                         <input type="checkbox" id="func-perm-pdv" class="w-5 h-5 accent-blue-600 rounded">
-                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Acesso ao PDV / Caixa</span>
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Açõesso ao PDV / Caixa</span>
                     </label>
                     <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
                         <input type="checkbox" id="func-perm-cadastros" class="w-5 h-5 accent-blue-600 rounded">
-                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Acesso a Cadastros</span>
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Açõesso a Cadastros</span>
                     </label>
                     <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
                         <input type="checkbox" id="func-perm-gestao" class="w-5 h-5 accent-blue-600 rounded">
-                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Acesso Financeiro / Gestão</span>
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Açõesso Financeiro / Gestão</span>
                     </label>
                     <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
                         <input type="checkbox" id="func-perm-config" class="w-5 h-5 accent-blue-600 rounded">
-                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Acesso a Configurações</span>
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Açõesso a Configurações</span>
                     </label>
                 </div>
                 <p class="text-[10px] text-slate-400 mb-4">* Se todas desmarcadas, o usuário não conseguirá usar as abas do sistema.</p>
@@ -719,13 +729,15 @@
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js?v=4"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js?v=4"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js?v=4"></script>
-    <script src="global.js?v=4"></script>
-    <script src="funcionarios.js?v=4"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js?v=9"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js?v=9"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js?v=9"></script>
+    <script src="global.js?v=9"></script>
+    <script src="Funcionários.js?v=9"></script>
 </body>
 </html>
+
+
 
 
 

@@ -525,6 +525,44 @@ function renderTitulos(tipo) {
 }
 
 // ==========================================
+
+// ===== HELPER: PESSOA SELECT DROPDOWN =====
+function preencherContaPessoaSelect(tipo) {
+    const sel = document.getElementById('conta-pessoa-select');
+    if (!sel) return;
+    const lista = tipo === 'RECEBER'
+        ? (db.clientes || []).map(c => c.nome || c.razaoSocial || '')
+        : (db.fornecedores || []).map(f => f.nome || f.razaoSocial || '');
+    const unique = [...new Set(lista.filter(n => n.trim()))].sort();
+    sel.innerHTML = '<option value="">-- Selecione um cadastrado --</option>'
+        + unique.map(n => `<option value="${n}">${n}</option>`).join('')
+        + '<option value="__novo__">+ Cadastrar novo...</option>';
+    sel.value = '';
+}
+
+function toggleContaPessoaInput(val) {
+    const wrap = document.getElementById('conta-pessoa-novo-wrap');
+    const input = document.getElementById('conta-pessoa');
+    if (!wrap || !input) return;
+    if (val === '__novo__' || val === '' || val === '__avulso__') {
+        wrap.classList.remove('hidden');
+        input.value = '';
+        input.focus();
+    } else {
+        wrap.classList.add('hidden');
+        input.value = '';
+    }
+}
+
+function getPessoaFinalConta() {
+    const sel = document.getElementById('conta-pessoa-select');
+    const input = document.getElementById('conta-pessoa');
+    const selVal = sel ? sel.value : '';
+    const inputVal = input ? input.value.trim() : '';
+    if (selVal && selVal !== '__novo__' && selVal !== '__avulso__' && selVal !== '') return selVal;
+    return inputVal;
+}
+// ==========================================
 // 5. MODAL DE CADASTRO/EDIÇÃO DE CONTA (COM RECORRÊNCIA)
 // ==========================================
 function toggleRecorrencia() {
@@ -543,7 +581,12 @@ function abrirModalConta(tipo) {
     document.getElementById('modal-conta-header').className = `p-4 md:p-5 text-white flex justify-between items-center shrink-0 ${tipo === 'RECEBER' ? 'bg-emerald-500' : 'bg-red-500'}`; 
     document.getElementById('modal-conta-title').innerText = tipo === 'RECEBER' ? 'Nova Conta a Receber' : 'Nova Conta a Pagar';
     
-    ['pessoa','ref','emissao','vencimento','competencia','num-nf','num-boleto','valor','acrescimo','desconto','data-pgto','obs','anexo-base64'].forEach(id => {
+    preencherContaPessoaSelect(tipo);
+    const _selEl = document.getElementById('conta-pessoa-select'); if(_selEl) _selEl.value = '';
+    const _wrapEl = document.getElementById('conta-pessoa-novo-wrap'); if(_wrapEl) _wrapEl.classList.add('hidden');
+    const _pessoaEl = document.getElementById('conta-pessoa'); if(_pessoaEl) _pessoaEl.value = '';
+
+    ['ref','emissao','vencimento','competencia','num-nf','num-boleto','valor','acrescimo','desconto','data-pgto','obs','anexo-base64'].forEach(id => {
         const el = document.getElementById(`conta-${id}`);
         if(el) el.value = '';
     });
@@ -581,7 +624,23 @@ function abrirModalContaEdicao(id) {
     document.getElementById('conta-recorrencia').disabled = true;
     toggleRecorrencia();
 
-    document.getElementById('conta-pessoa').value = f.pessoa || '';
+    const tipoPessoa = f.tipo === 'RECEITA' ? 'RECEBER' : 'PAGAR';
+    preencherContaPessoaSelect(tipoPessoa);
+    const pessoaSelEl = document.getElementById('conta-pessoa-select');
+    const pessoaWrapEl = document.getElementById('conta-pessoa-novo-wrap');
+    const pessoaInputEl = document.getElementById('conta-pessoa');
+    if (pessoaSelEl) {
+        const match = [...pessoaSelEl.options].find(o => o.value === f.pessoa);
+        if (match) {
+            pessoaSelEl.value = f.pessoa;
+            if(pessoaWrapEl) pessoaWrapEl.classList.add('hidden');
+            if(pessoaInputEl) pessoaInputEl.value = '';
+        } else {
+            pessoaSelEl.value = '__novo__';
+            if(pessoaWrapEl) pessoaWrapEl.classList.remove('hidden');
+            if(pessoaInputEl) pessoaInputEl.value = f.pessoa || '';
+        }
+    }
     document.getElementById('conta-ref').value = f.ref || '';
     document.getElementById('conta-categoria').value = f.categoria || (tipo === 'RECEBER' ? 'Vendas' : 'Outras Despesas');
     document.getElementById('conta-centro-custo').value = f.centroCusto || 'Geral';
@@ -638,7 +697,7 @@ function fecharModalConta() { document.getElementById('modal-nova-conta').classL
 function salvarConta() {
     const idExistente = document.getElementById('conta-id').value;
     const tipo = document.getElementById('conta-tipo').value; 
-    const pessoa = document.getElementById('conta-pessoa').value.trim(); 
+    const pessoa = getPessoaFinalConta(); 
     const valorOriginal = parseFloat(document.getElementById('conta-valor').value); 
     const vencBase = document.getElementById('conta-vencimento').value;
     
@@ -648,13 +707,13 @@ function salvarConta() {
     
     const recorrencia = document.getElementById('conta-recorrencia').value;
     const isEdicao = !!idExistente;
-    const qtdLançamentos = (recorrencia === 'UNICA' || isEdicao) ? 1 : (parseInt(document.getElementById('conta-qtd-recorrencia').value) || 1);
+    const qtdLancamentos = (recorrencia === 'UNICA' || isEdicao) ? 1 : (parseInt(document.getElementById('conta-qtd-recorrencia').value) || 1);
     const refBase = document.getElementById('conta-ref').value || 'Avulso';
 
     let contasGeradas = 0;
     const batch = firestore.batch();
 
-    for(let i = 0; i < qtdLançamentos; i++) {
+    for(let i = 0; i < qtdLancamentos; i++) {
         let dataVenc = new Date(vencBase + 'T12:00:00');
         
         if (recorrencia === 'MENSAL') dataVenc.setMonth(dataVenc.getMonth() + i);
@@ -663,29 +722,29 @@ function salvarConta() {
         if (recorrencia === 'QUINZENAL') dataVenc.setDate(dataVenc.getDate() + (i * 15));
 
         let refFinal = refBase;
-        if (qtdLançamentos > 1) refFinal += ` (${i+1}/${qtdLançamentos})`;
+        if (qtdLancamentos > 1) refFinal += ` (${i+1}/${qtdLancamentos})`;
 
-        const contaObj = {
+                const contaObj = {
             tipo: tipo, 
             pessoa: pessoa, 
             ref: refFinal, 
-            categoria: document.getElementById('conta-categoria').value,
-            centroCusto: document.getElementById('conta-centro-custo').value,
-            contaBancaria: document.getElementById('conta-banco').value,
-            dataEmissao: document.getElementById('conta-emissao').value,
+            categoria: document.getElementById('conta-categoria') ? document.getElementById('conta-categoria').value : '',
+            centroCusto: document.getElementById('conta-centro-custo') ? document.getElementById('conta-centro-custo').value : '',
+            contaBancaria: document.getElementById('conta-banco') ? document.getElementById('conta-banco').value : '',
+            dataEmissao: document.getElementById('conta-emissao') ? document.getElementById('conta-emissao').value : '',
             data: dataVenc.toISOString(), 
-            competencia: document.getElementById('conta-competencia').value,
-            numNF: document.getElementById('conta-num-nf').value,
-            numBoleto: document.getElementById('conta-num-boleto').value,
+            competencia: document.getElementById('conta-competencia') ? document.getElementById('conta-competencia').value : '',
+            numNF: document.getElementById('conta-num-nf') ? document.getElementById('conta-num-nf').value : '',
+            numBoleto: document.getElementById('conta-num-boleto') ? document.getElementById('conta-num-boleto').value : '',
             valor: valorOriginal, 
-            acrescimo: parseFloat(document.getElementById('conta-acrescimo').value) || 0,
-            desconto: parseFloat(document.getElementById('conta-desconto').value) || 0,
+            acrescimo: parseFloat(document.getElementById('conta-acrescimo') ? document.getElementById('conta-acrescimo').value : 0) || 0,
+            desconto: parseFloat(document.getElementById('conta-desconto') ? document.getElementById('conta-desconto').value : 0) || 0,
             valorPago: valorFin,
-            status: document.getElementById('conta-status').value,
-            dataPagamento: document.getElementById('conta-data-pgto').value ? new Date(document.getElementById('conta-data-pgto').value + 'T12:00:00').toISOString() : '',
-            metodoPagamento: document.getElementById('conta-metodo').value,
-            observacao: document.getElementById('conta-obs').value,
-            anexoBase64: document.getElementById('conta-anexo-base64').value,
+            status: document.getElementById('conta-status') ? document.getElementById('conta-status').value : 'PENDENTE',
+            dataPagamento: (document.getElementById('conta-data-pgto') && document.getElementById('conta-data-pgto').value) ? new Date(document.getElementById('conta-data-pgto').value + 'T12:00:00').toISOString() : '',
+            metodoPagamento: document.getElementById('conta-metodo') ? document.getElementById('conta-metodo').value : '',
+            observacao: document.getElementById('conta-obs') ? document.getElementById('conta-obs').value : '',
+            anexoBase64: document.getElementById('conta-anexo-base64') ? document.getElementById('conta-anexo-base64').value : '',
             ultimaAlteracao: Date.now()
         };
 
@@ -699,6 +758,26 @@ function salvarConta() {
         }
     }
 
+    // Auto-register new fornecedor/cliente if typed manually
+    const _selFinal = document.getElementById('conta-pessoa-select');
+    const _inpFinal = document.getElementById('conta-pessoa');
+    const _selValFinal = _selFinal ? _selFinal.value : '';
+    const _inpValFinal = _inpFinal ? _inpFinal.value.trim() : '';
+    const tipoContaFinal = document.getElementById('conta-tipo').value;
+    if (_selValFinal === '__novo__' && _inpValFinal) {
+        if (tipoContaFinal === 'DESPESA') {
+            if (!(db.fornecedores || []).find(f => f.nome && f.nome.toLowerCase() === _inpValFinal.toLowerCase())) {
+                const _fRef = firestore.collection('fornecedores').doc();
+                batch.set(_fRef, { nome: _inpValFinal, doc: '', cnpj: '', telefone: '' });
+            }
+        } else {
+            if (!(db.clientes || []).find(c => (c.nome||c.razaoSocial||'').toLowerCase() === _inpValFinal.toLowerCase())) {
+                const _cRef = firestore.collection('clientes').doc();
+                batch.set(_cRef, { nome: _inpValFinal, telefone: '', email: '', doc: '' });
+            }
+        }
+    }
+
     batch.commit().then(() => {
         fecharModalConta(); 
         renderFinAbas(tipo === 'RECEITA' ? 'receber' : 'pagar'); 
@@ -706,7 +785,7 @@ function salvarConta() {
         if (isEdicao) {
             showToast('Título Atualizado!', 'success');
         } else {
-            if (qtdLançamentos > 1) showToast(`${contasGeradas} Títulos gerados!`, 'success');
+            if (qtdLancamentos > 1) showToast(`${contasGeradas} Títulos gerados!`, 'success');
             else showToast('Título Salvo!', 'success');
         }
     }).catch(e => {
