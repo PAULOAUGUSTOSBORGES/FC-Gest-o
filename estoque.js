@@ -54,7 +54,7 @@ function inicializarCadastro() {
 
     firestore.collection('funcionarios').onSnapshot(snap => {
         db.funcionarios = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        if (typeof renderFuncionarios === 'function') renderFuncionarios();
+        
     });
 
     unsubKardex = firestore.collection('movimentacoes').orderBy('data', 'desc').limit(50).onSnapshot(snap => {

@@ -1602,7 +1602,7 @@ function verDetalhesNF(id) {
     if(nfNumEl) nfNumEl.innerText = c.numeroNF || 'S/N';
     document.getElementById('det-nf-total').innerText = formatMoney(c.totalNF); 
     document.getElementById('det-nf-itens').innerHTML = c.itens.map(i => `<tr class="border-b border-slate-100 dark:border-slate-700"><td class="p-3 text-xs">${i.nome}</td><td class="p-3 text-xs text-center font-bold">${i.qCom}</td><td class="p-3 text-xs text-right font-bold text-emerald-600">${formatMoney(i.custoFinal)}</td></tr>`).join(''); 
-    document.getElementById('modal-detalhes-nf').classList.remove('hidden'); 
+    const m = document.getElementById('modal-detalhes-nf'); if(m) m.classList.remove('hidden'); 
 }
 function fecharModalDetalhesNF() { document.getElementById('modal-detalhes-nf').classList.add('hidden'); }
 
