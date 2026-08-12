@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -756,10 +756,20 @@
     <script src="global.js?v=9"></script>
     <script src="vendas_gestao.js?v=9"></script>
 </body>
-</html>
+    </div>
 
-
-
+    <div id="modal-info-relatorio" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="bg-blue-600 p-4 text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg flex items-center gap-2"><i class="fa-solid fa-circle-info"></i> <span id="modal-info-title">Sobre o Relatório</span></h3>
+                <button onclick="document.getElementById('modal-info-relatorio').classList.add('hidden')" class="text-white/70 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto custom-scrollbar text-slate-600 dark:text-slate-300 text-sm leading-relaxed" id="modal-info-content">
+            </div>
+            <div class="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex justify-end">
+                <button onclick="document.getElementById('modal-info-relatorio').classList.add('hidden')" class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold px-6 py-2 rounded-lg transition-colors">Entendi</button>
+            </div>
+        </div>
 
 
 

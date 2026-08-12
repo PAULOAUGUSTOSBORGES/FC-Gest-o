@@ -7,13 +7,13 @@ window.tempXMLData = null;
 window.xmlItemEditIndex = null;
 let compraManualItens = []; 
 
-const categoriasPagar = ['Fornecedores / Compras', 'Impostos (DAS, ICMS, etc)', 'Pró-labore / Sócios', 'Salários / Folha de Pagamento', 'Aluguel', 'Água', 'Energia', 'Internet / Telefonia', 'Contabilidade', 'Sistema / Software', 'IPTU', 'Outras Despesas'];
+const categoriasPagar = ['Fornecedores / Compras', 'Impostos (DAS, ICMS, etc)', 'Salários / Folha', 'Aluguel', 'Água', 'Energia', 'Internet / Telefonia', 'Contabilidade', 'Sistema / Software', 'IPTU', 'Outras Despesas'];
 const categoriasReceber = ['Vendas', 'Serviços', 'Outras Receitas'];
 
 // Evita o "piscar" da tela carregando as abas instantaneamente antes do Firebase
 document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
-    const view = urlParams.get('view') || 'financeiro';
+    const view = urlParams.get('view') || 'relatorios';
     if (typeof mudarVisaoLocal === 'function') mudarVisaoLocal(view);
 });
 
@@ -51,7 +51,7 @@ function mudarVisaoLocal(viewId) {
     }
     
     if (viewId === 'financeiro') {
-        renderFinAbas('pagar');
+        renderFinAbas('receber');
         atualizarCardsFluxoDeCaixa(); 
     }
     if (viewId === 'relatorios') renderDashboard();
@@ -61,7 +61,7 @@ function mudarVisaoLocal(viewId) {
 
 function refreshCurrentView() {
     const urlParams = new URLSearchParams(window.location.search);
-    let view = urlParams.get('view'); if (!view) view = 'financeiro';
+    let view = urlParams.get('view'); if (!view) view = 'relatorios';
     mudarVisaoLocal(view);
 }
 
@@ -77,7 +77,7 @@ async function migrarDadosSeNecessario() {
         // Se já há dados em compras OU financeiro, não precisa migrar
         if (!comprasSnap.empty || !finSnap.empty) return;
 
-        // Coleções novas estão vazias tenta ler do banco antigo
+        // Coleções novas estão vazias — tenta ler do banco antigo
         const bancoPrincipalSnap = await firestore.collection('fc_moveis').doc('banco_principal').get();
         if (!bancoPrincipalSnap.exists) return;
 
@@ -154,10 +154,6 @@ function inicializarGestao() {
         db.fornecedores = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         tentarRefresh();
     });
-    firestore.collection('funcionarios').onSnapshot(snap => {
-        db.funcionarios = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        if (colecoesProntas >= totalColecoes) refreshCurrentView();
-    });
     firestore.collection('fc_moveis').doc('caixa').onSnapshot(doc => {
         if(doc.exists) db.caixa = doc.data();
         else db.caixa = { status: 'FECHADO', saldo: 0, historico: [] };
@@ -169,7 +165,6 @@ function inicializarGestao() {
 window.onload = () => { initGlobalData(inicializarGestao); };
 
 function atualizarCardsFluxoDeCaixa() {
-    if (!document.getElementById('dash-fluxo-30')) return;
     if (!db.financeiro) return;
     
     const hoje = new Date();
@@ -280,7 +275,7 @@ function imprimirArea(areaId) {
     if (db && db.config && db.config.empresa && db.config.empresa.logo) logoHtml = `<img src="${db.config.empresa.logo}" style="max-height: 60px; margin-bottom: 10px; border-radius: 8px;">`;
     
     const element = document.getElementById(areaId);
-    if(!element) return showToast("ÃÁrea de impressão não encontrada.", "error");
+    if(!element) return showToast("Área de impressão não encontrada.", "error");
     
     const printContent = element.innerHTML; 
     const htmlCompleto = `
@@ -298,7 +293,7 @@ function imprimirArea(areaId) {
 
 function baixarPDF(areaId, filename) {
     const element = document.getElementById(areaId); 
-    if(!element) return showToast("Erro: ÃÁrea do PDF não encontrada.", "error");
+    if(!element) return showToast("Erro: Área do PDF não encontrada.", "error");
 
     const printContent = element.innerHTML; 
     
@@ -357,10 +352,9 @@ function exportarExcel(tabelaId, filename) {
 }
 
 // ==========================================
-// 3. FINANCEIRO E CAIXA FÃÍSICO
+// 3. FINANCEIRO E CAIXA FÍSICO
 // ==========================================
 function renderFinAbas(aba) {
-    if (!document.getElementById(`fin-area-${aba}`)) return;
     document.querySelectorAll('.fin-area').forEach(el => el.classList.add('hidden'));
     document.querySelectorAll('[id^="fin-tab-"]').forEach(el => {
         el.classList.remove('bg-blue-600', 'text-white');
@@ -376,7 +370,6 @@ function renderFinAbas(aba) {
 }
 
 function renderCaixaDiario() {
-    if (!document.getElementById('caixa-saldo-display')) return;
     document.getElementById('caixa-saldo-display').innerText = formatMoney(db.caixa.saldo); const b = document.getElementById('caixa-status-badge');
     if(db.caixa.status === 'ABERTO') { b.innerText = 'ABERTO'; b.className = 'px-4 py-2 rounded-lg font-black text-lg mb-4 bg-emerald-100 text-emerald-700 border border-emerald-300'; } else { b.innerText = 'FECHADO'; b.className = 'px-4 py-2 rounded-lg font-black text-lg mb-4 bg-red-100 text-red-700 border border-red-300'; }
     
@@ -393,7 +386,7 @@ function renderCaixaDiario() {
 
 function abrirModalCaixa(op) {
     if(op === 'abrir' && db.caixa.status === 'ABERTO') return showToast('O caixa já está aberto!', 'error'); if(op !== 'abrir' && db.caixa.status === 'FECHADO') return showToast('Abra o caixa primeiro!', 'error');
-    document.getElementById('caixa-operação-tipo').value = op.toUpperCase(); document.getElementById('modal-caixa-title').innerText = op === 'abrir' ? 'Abertura de Caixa' : (op === 'fechar' ? 'Fechamento de Caixa' : (op === 'sangria' ? 'Sangria (Retirada)' : 'Suprimento (Entrada)'));
+    document.getElementById('caixa-operacao-tipo').value = op.toUpperCase(); document.getElementById('modal-caixa-title').innerText = op === 'abrir' ? 'Abertura de Caixa' : (op === 'fechar' ? 'Fechamento de Caixa' : (op === 'sangria' ? 'Sangria (Retirada)' : 'Suprimento (Entrada)'));
     document.getElementById('caixa-op-valor').value = ''; document.getElementById('caixa-op-desc').value = '';
     if(op === 'fechar') { document.getElementById('caixa-op-valor').value = db.caixa.saldo; document.getElementById('caixa-op-desc').value = 'Fechamento do dia'; } if(op === 'abrir') { document.getElementById('caixa-op-valor').value = 0; document.getElementById('caixa-op-desc').value = 'Troco Inicial'; }
     document.getElementById('modal-mov-caixa').classList.remove('hidden');
@@ -401,7 +394,7 @@ function abrirModalCaixa(op) {
 function fecharModalCaixa() { document.getElementById('modal-mov-caixa').classList.add('hidden'); }
 
 async function confirmarMovCaixa() {
-    const op = document.getElementById('caixa-operação-tipo').value; const val = parseFloat(document.getElementById('caixa-op-valor').value) || 0; const desc = document.getElementById('caixa-op-desc').value || op;
+    const op = document.getElementById('caixa-operacao-tipo').value; const val = parseFloat(document.getElementById('caixa-op-valor').value) || 0; const desc = document.getElementById('caixa-op-desc').value || op;
     let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
     let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
     let novoStatus = cxAtual.status; let novoSaldo = cxAtual.saldo || 0;
@@ -455,8 +448,6 @@ function renderTitulos(tipo) {
     if (statusFilter !== 'TODOS') { 
         if (statusFilter === 'ATRASADO') {
             lista = lista.filter(f => f.status === 'PENDENTE' && new Date(f.data).getTime() < new Date().getTime());
-        } else if (statusFilter === 'RENEGOCIADO') {
-            lista = lista.filter(f => f.status === 'RENEGOCIADO');
         } else {
             lista = lista.filter(f => f.status === statusFilter); 
         }
@@ -470,19 +461,9 @@ function renderTitulos(tipo) {
     }
 
     if (periodoFilter !== 'TUDO' && !dataIni && !dataFim) {
-        if (periodoFilter === 'MES_ATUAL') {
-            const dataHoje = new Date();
-            const mesAtual = dataHoje.getMonth();
-            const anoAtual = dataHoje.getFullYear();
-            lista = lista.filter(f => {
-                const dataF = new Date(f.data);
-                return dataF.getMonth() === mesAtual && dataF.getFullYear() === anoAtual;
-            });
-        } else {
-            const hoje = new Date().getTime();
-            const limiteFuturo = hoje + (parseInt(periodoFilter) * 24 * 60 * 60 * 1000);
-            lista = lista.filter(f => new Date(f.data).getTime() <= limiteFuturo);
-        }
+        const hoje = new Date().getTime();
+        const limiteFuturo = hoje + (parseInt(periodoFilter) * 24 * 60 * 60 * 1000);
+        lista = lista.filter(f => new Date(f.data).getTime() <= limiteFuturo);
     }
     
     lista.sort((a, b) => new Date(a.data) - new Date(b.data));
@@ -513,20 +494,7 @@ function renderTitulos(tipo) {
             }
         }
 
-        let valorAExibir = f.status === 'PAGO' ? (f.valorPago || f.valor) : f.valor;
-          let subtextoValor = '';
-          if (f.status === 'PENDENTE' && isAtrasado) {
-              const diasAtraso = Math.floor((new Date().getTime() - new Date(f.data).getTime()) / (1000 * 60 * 60 * 24));
-              if (diasAtraso > 0 && (f.multa || f.juros)) {
-                  let multa = parseFloat(f.multa) || 0;
-                  let jurosM = parseFloat(f.juros) || 0;
-                  let jurosD = jurosM / 30;
-                  let calcMulta = f.valor * (multa / 100);
-                  let calcJuros = f.valor * (jurosD / 100) * diasAtraso;
-                  valorAExibir = f.valor + calcMulta + calcJuros;
-                  subtextoValor = '<br><span class="text-[9.5px] text-red-500 font-bold leading-none inline-block mt-1" title="Original: ' + formatMoney(f.valor) + ' + Multa e Juros">Atualizado</span>';
-              }
-          }
+        const valorAExibir = f.status === 'PAGO' ? (f.valorPago || f.valor) : f.valor;
 
         let acoesExtras = '';
         if (f.status === 'PENDENTE') {
@@ -540,21 +508,10 @@ function renderTitulos(tipo) {
 
         return `
         <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
-            <td class="p-3 text-slate-500 dark:text-slate-400 font-mono text-xs">
-                  ${formatData(f.data).split(' ')[0]}
-                  ${f.dataCartorio ? `<br><span class="text-[9.5px] font-bold text-red-600 dark:text-red-400 mt-1 inline-block" title="Ir para Cartório"><i class="fa-solid fa-gavel"></i> ${formatData(f.dataCartorio + "T12:00:00").split(" ")[0]}</span>` : ""}
-              </td>
+            <td class="p-3 text-slate-500 dark:text-slate-400 font-mono text-xs">${formatData(f.data).split(' ')[0]}</td>
             <td class="p-3 font-bold text-slate-800 dark:text-slate-100 truncate max-w-[200px]">${f.pessoa}</td>
             <td class="p-3 text-slate-600 dark:text-slate-300 text-[11px]">${f.categoria || '-'} <br><span class="font-bold">${f.ref}</span></td>
-            <td class="p-3 text-right ${tipo === 'RECEITA' ? 'text-emerald-600' : 'text-red-600'}">
-                  ${(() => {
-                      const c = calcularJurosMulta(f);
-                      if(c.diasAtraso > 0 && (c.multa > 0 || c.juros > 0)) {
-                          return `<div class="flex flex-col items-end"><span class="line-through text-slate-400 text-[10px]">${formatMoney(f.valor)}</span><span class="font-black text-red-600 dark:text-red-400" title="Multa: ${formatMoney(c.multa)} | Juros: ${formatMoney(c.juros)}">${formatMoney(c.valorAtualizado)}</span></div>`;
-                      }
-                      return `<span class="font-black">${formatMoney(f.valor)}</span>`;
-                  })()}
-              </td>
+            <td class="p-3 text-right font-black ${tipo === 'RECEITA' ? 'text-blue-600' : 'text-red-500'}">${formatMoney(valorAExibir)}</td>
             <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${corStatus}">${badgeStatus}</span></td>
             <td class="p-3 text-center flex items-center justify-center gap-1 print:hidden">
                 <button onclick="verDetalhesTitulo('${f.id}')" class="text-blue-500 hover:text-blue-700 p-1.5" title="Detalhes do Título"><i class="fa-solid fa-eye"></i></button>
@@ -573,18 +530,10 @@ function renderTitulos(tipo) {
 function preencherContaPessoaSelect(tipo) {
     const sel = document.getElementById('conta-pessoa-select');
     if (!sel) return;
-    
-    let opcoes = [];
-    if (tipo === 'RECEBER') {
-        opcoes = (db.clientes || []).map(c => c.nome || c.razaoSocial || '');
-    } else {
-        opcoes = [
-            ...(db.fornecedores || []).map(f => f.nome || f.razaoSocial || ''),
-            ...(db.funcionarios || []).map(f => f.nome || '')
-        ];
-    }
-    const unique = [...new Set(opcoes.filter(n => n.trim()))].sort();
-    
+    const lista = tipo === 'RECEBER'
+        ? (db.clientes || []).map(c => c.nome || c.razaoSocial || '')
+        : (db.fornecedores || []).map(f => f.nome || f.razaoSocial || '');
+    const unique = [...new Set(lista.filter(n => n.trim()))].sort();
     sel.innerHTML = '<option value="">-- Selecione um cadastrado --</option>'
         + unique.map(n => `<option value="${n}">${n}</option>`).join('')
         + '<option value="__novo__">+ Cadastrar novo...</option>';
@@ -596,11 +545,6 @@ function toggleContaPessoaInput(val) {
     const input = document.getElementById('conta-pessoa');
     if (!wrap || !input) return;
     if (val === '__novo__' || val === '' || val === '__avulso__') {
-        const p = wrap.querySelector('p');
-        if (p) {
-            if (val === '__avulso__') p.innerHTML = '<i class="fa-solid fa-circle-info mr-1"></i>Será lançado apenas nesta conta (NÃO será cadastrado).';
-            else p.innerHTML = '<i class="fa-solid fa-circle-info mr-1"></i>Será cadastrado automaticamente ao salvar.';
-        }
         wrap.classList.remove('hidden');
         input.value = '';
         input.focus();
@@ -619,7 +563,7 @@ function getPessoaFinalConta() {
     return inputVal;
 }
 // ==========================================
-// 5. MODAL DE CADASTRO/EDIÇÃO DE CONTA (COM RECORRÃÅ NCIA)
+// 5. MODAL DE CADASTRO/EDIÇÃO DE CONTA (COM RECORRÊNCIA)
 // ==========================================
 function toggleRecorrencia() {
     const rec = document.getElementById('conta-recorrencia').value;
@@ -642,7 +586,7 @@ function abrirModalConta(tipo) {
     const _wrapEl = document.getElementById('conta-pessoa-novo-wrap'); if(_wrapEl) _wrapEl.classList.add('hidden');
     const _pessoaEl = document.getElementById('conta-pessoa'); if(_pessoaEl) _pessoaEl.value = '';
 
-    ['ref','emissao','vencimento','competencia','num-nf','num-boleto','valor','acrescimo','desconto','multa','juros','data-pgto','obs','anexo-base64','cartorio','juros','multa'].forEach(id => {
+    ['ref','emissao','vencimento','competencia','num-nf','num-boleto','valor','acrescimo','desconto','data-pgto','obs','anexo-base64'].forEach(id => {
         const el = document.getElementById(`conta-${id}`);
         if(el) el.value = '';
     });
@@ -663,7 +607,7 @@ function abrirModalConta(tipo) {
 }
 
 function abrirModalContaEdicao(id) {
-    const f = db.financeiro.find(x => String(x.id) === String(id));
+    const f = db.financeiro.find(x => x.id === id);
     if (!f) return;
     
     const tipo = f.tipo === 'RECEITA' ? 'RECEBER' : 'PAGAR';
@@ -673,7 +617,7 @@ function abrirModalContaEdicao(id) {
     document.getElementById('lbl-conta-pessoa').innerText = tipo === 'RECEBER' ? 'Cliente / Pagador *' : 'Fornecedor / Favorecido *';
     
     document.getElementById('conta-categoria').innerHTML = (tipo === 'RECEBER' ? categoriasReceber : categoriasPagar).map(c => `<option value="${c}">${c}</option>`).join('');
-    document.getElementById('modal-conta-header').className = 'p-4 md:p-5 text-white flex justify-between items-center shrink-0 bg-indigo-600'; 
+    document.getElementById('modal-conta-header').className = `p-4 md:p-5 text-white flex justify-between items-center shrink-0 bg-indigo-600`; 
     document.getElementById('modal-conta-title').innerText = 'Editar Lançamento Financeiro';
     
     document.getElementById('conta-recorrencia').value = 'UNICA';
@@ -704,9 +648,6 @@ function abrirModalContaEdicao(id) {
     
     document.getElementById('conta-emissao').value = f.dataEmissao || '';
     document.getElementById('conta-vencimento').value = f.data ? f.data.split('T')[0] : '';
-    const elCart = document.getElementById('conta-cartorio'); if(elCart) elCart.value = f.dataCartorio || '';
-    const elJuros = document.getElementById('conta-juros'); if(elJuros) elJuros.value = f.juros || f.jurosMesPerc || '';
-    const elMulta = document.getElementById('conta-multa'); if(elMulta) elMulta.value = f.multa || f.multaPerc || '';
     document.getElementById('conta-competencia').value = f.competencia || '';
     
     document.getElementById('conta-num-nf').value = f.numNF || '';
@@ -760,9 +701,7 @@ function salvarConta() {
     const valorOriginal = parseFloat(document.getElementById('conta-valor').value); 
     const vencBase = document.getElementById('conta-vencimento').value;
     
-    if (!pessoa) return showToast('Preencha o Favorecido / Fornecedor!', 'error');
-    if (!vencBase) return showToast('Preencha a data de Vencimento Base!', 'error');
-    if (isNaN(valorOriginal) || valorOriginal <= 0) return showToast('Preencha o Valor da Parcela!', 'error');
+    if(!pessoa || isNaN(valorOriginal) || !vencBase) return showToast('Preencha Favorecido, Vencimento e Valor!', 'error'); 
     
     const valorFin = calcularValorFinalFormulario();
     
@@ -783,9 +722,9 @@ function salvarConta() {
         if (recorrencia === 'QUINZENAL') dataVenc.setDate(dataVenc.getDate() + (i * 15));
 
         let refFinal = refBase;
-        if (qtdLancamentos > 1) refFinal += " (" + (i+1) + "/" + qtdLancamentos + ")";
+        if (qtdLancamentos > 1) refFinal += ` (${i+1}/${qtdLancamentos})`;
 
-        const contaObj = {
+                const contaObj = {
             tipo: tipo, 
             pessoa: pessoa, 
             ref: refFinal, 
@@ -794,9 +733,6 @@ function salvarConta() {
             contaBancaria: document.getElementById('conta-banco') ? document.getElementById('conta-banco').value : '',
             dataEmissao: document.getElementById('conta-emissao') ? document.getElementById('conta-emissao').value : '',
             data: dataVenc.toISOString(), 
-            dataCartorio: document.getElementById('conta-cartorio') ? document.getElementById('conta-cartorio').value : '',
-            multaPerc: parseFloat(document.getElementById('conta-multa') ? document.getElementById('conta-multa').value : 0) || 0,
-            jurosMesPerc: parseFloat(document.getElementById('conta-juros') ? document.getElementById('conta-juros').value : 0) || 0, 
             competencia: document.getElementById('conta-competencia') ? document.getElementById('conta-competencia').value : '',
             numNF: document.getElementById('conta-num-nf') ? document.getElementById('conta-num-nf').value : '',
             numBoleto: document.getElementById('conta-num-boleto') ? document.getElementById('conta-num-boleto').value : '',
@@ -830,8 +766,7 @@ function salvarConta() {
     const tipoContaFinal = document.getElementById('conta-tipo').value;
     if (_selValFinal === '__novo__' && _inpValFinal) {
         if (tipoContaFinal === 'DESPESA') {
-            if (!(db.fornecedores || []).find(f => f.nome && f.nome.toLowerCase() === _inpValFinal.toLowerCase()) && 
-                !(db.funcionarios || []).find(f => f.nome && f.nome.toLowerCase() === _inpValFinal.toLowerCase())) {
+            if (!(db.fornecedores || []).find(f => f.nome && f.nome.toLowerCase() === _inpValFinal.toLowerCase())) {
                 const _fRef = firestore.collection('fornecedores').doc();
                 batch.set(_fRef, { nome: _inpValFinal, doc: '', cnpj: '', telefone: '' });
             }
@@ -850,7 +785,7 @@ function salvarConta() {
         if (isEdicao) {
             showToast('Título Atualizado!', 'success');
         } else {
-            if (qtdLancamentos > 1) showToast(contasGeradas + ' Títulos gerados!', 'success');
+            if (qtdLancamentos > 1) showToast(`${contasGeradas} Títulos gerados!`, 'success');
             else showToast('Título Salvo!', 'success');
         }
     }).catch(e => {
@@ -882,10 +817,10 @@ async function estornarTitulo(id) {
             
             if (f.tipo === 'RECEITA') {
                 cxSaldoNovo -= f.valorPago;
-                cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: "Estorno: " + f.pessoa, valor: f.valorPago });
+                cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno: ${f.pessoa}`, valor: f.valorPago });
             } else {
                 cxSaldoNovo += f.valorPago;
-                cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: "Estorno: " + f.pessoa, valor: f.valorPago });
+                cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Estorno: ${f.pessoa}`, valor: f.valorPago });
             }
             batch.set(firestore.collection('fc_moveis').doc('caixa'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
         }
@@ -901,8 +836,9 @@ async function estornarTitulo(id) {
 }
 
 function abrirModalRenegociacao(id) {
-    const f = db.financeiro.find(x => String(x.id) === String(id));
-    if (!f) return;    document.getElementById('reneg-id').value = f.id;
+    const f = db.financeiro.find(x => x.id === id);
+    if (!f) return;
+    document.getElementById('reneg-id').value = f.id;
     document.getElementById('reneg-valor').innerText = formatMoney(f.valor);
     const hoje = new Date(); hoje.setDate(hoje.getDate() + 30);
     document.getElementById('reneg-data').value = hoje.toISOString().split('T')[0];
@@ -943,7 +879,7 @@ async function confirmarRenegociacao() {
 }
 
 function verDetalhesTitulo(id) {
-    const f = db.financeiro.find(x => String(x.id) === String(id)); if(!f) return; const isReceita = f.tipo === 'RECEITA' || !f.tipo;
+    const f = db.financeiro.find(x => x.id === id); if(!f) return; const isReceita = f.tipo === 'RECEITA' || !f.tipo;
     document.getElementById('det-tit-header').className = `p-4 md:p-5 text-white flex justify-between items-center ${isReceita ? 'bg-blue-600' : 'bg-red-600'}`; document.getElementById('det-tit-lbl-pessoa').innerText = isReceita ? 'Cliente / Pagador' : 'Fornecedor / Favorecido'; document.getElementById('det-tit-pessoa').innerText = f.pessoa || 'Não informado';
     const isAtrasado = f.status === 'PENDENTE' && new Date(f.data).getTime() < new Date().getTime(); const badge = document.getElementById('det-tit-status'); badge.innerText = f.status === 'PAGO' ? 'PAGO' : (isAtrasado ? 'ATRASADO' : 'PENDENTE'); badge.className = `mt-2 inline-block px-3 py-1 rounded-full text-[10px] font-black tracking-widest ${f.status === 'PAGO' ? 'bg-emerald-100 text-emerald-700' : (isAtrasado ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700')}`;
     document.getElementById('det-tit-venc').innerText = formatData(f.data).split(' ')[0]; document.getElementById('det-tit-valor-orig').innerText = formatMoney(f.valor); document.getElementById('det-tit-ref').innerText = f.ref || '-'; document.getElementById('det-tit-cat').innerText = f.categoria || '-';
@@ -953,18 +889,12 @@ function verDetalhesTitulo(id) {
 }
 function fecharModalDetalhesTitulo() { document.getElementById('modal-detalhes-titulo').classList.add('hidden'); }
 
-function abrirModalBaixa(id) { const f = db.financeiro.find(x => String(x.id) === String(id)); if(!f) return; document.getElementById('baixa-id').value = f.id; document.getElementById('baixa-valor-original').innerText = formatMoney(f.valor); document.getElementById('baixa-vencimento').innerText = formatData(f.data).split(' ')[0]; document.getElementById('baixa-desconto').value = 0;
-      const calc = calcularJurosMulta(f);
-      if(calc.diasAtraso > 0 && (calc.multa > 0 || calc.juros > 0)) {
-          document.getElementById('baixa-acrescimo').value = (calc.multa + calc.juros).toFixed(2);
-      } else {
-          document.getElementById('baixa-acrescimo').value = 0;
-      } calcularAcrescimos(); document.getElementById('modal-baixa-conta').classList.remove('hidden'); }
+function abrirModalBaixa(id) { const f = db.financeiro.find(x => x.id === id); if(!f) return; document.getElementById('baixa-id').value = f.id; document.getElementById('baixa-valor-original').innerText = formatMoney(f.valor); document.getElementById('baixa-vencimento').innerText = formatData(f.data).split(' ')[0]; document.getElementById('baixa-acrescimo').value = 0; document.getElementById('baixa-desconto').value = 0; calcularAcrescimos(); document.getElementById('modal-baixa-conta').classList.remove('hidden'); }
 function fecharModalBaixa() { document.getElementById('modal-baixa-conta').classList.add('hidden'); }
-function calcularAcrescimos() { const id = document.getElementById('baixa-id').value; const f = db.financeiro.find(x => String(x.id) === String(id)); if(!f) return; const ac = parseFloat(document.getElementById('baixa-acrescimo').value) || 0; const de = parseFloat(document.getElementById('baixa-desconto').value) || 0; const vf = f.valor + ac - de; document.getElementById('baixa-valor-final').innerText = formatMoney(vf); return vf; }
+function calcularAcrescimos() { const id = parseInt(document.getElementById('baixa-id').value); const f = db.financeiro.find(x => x.id === id); if(!f) return; const ac = parseFloat(document.getElementById('baixa-acrescimo').value) || 0; const de = parseFloat(document.getElementById('baixa-desconto').value) || 0; const vf = f.valor + ac - de; document.getElementById('baixa-valor-final').innerText = formatMoney(vf); return vf; }
 
 async function confirmarBaixa() {
-    const id = document.getElementById('baixa-id').value; const f = db.financeiro.find(x => String(x.id) === String(id)); if(!f) return;
+    const id = parseInt(document.getElementById('baixa-id').value); const f = db.financeiro.find(x => String(x.id) === String(id)); if(!f) return;
     const vf = calcularAcrescimos(); const metodo = document.getElementById('baixa-metodo').value;
     const batch = firestore.batch();
     
@@ -1533,7 +1463,6 @@ async function salvarCompraManual() {
 }
 
 function renderComprasHist() {
-    if (!document.getElementById('tabela-compras-hist')) return;
     if(!db.compras) db.compras = [];
     let filtrados = [...db.compras];
 
@@ -1673,7 +1602,6 @@ function obterIntervaloDatasBI() {
 }
 
 function renderDashboard() {
-    if (!document.getElementById('filtro-dash-mes')) return;
     let vendas = db.vendas || [];
     let compras = db.compras || [];
 
@@ -1725,6 +1653,92 @@ function renderDashboard() {
     const fornEl = document.getElementById('bi-top-fornecedores');
     if(fornEl) fornEl.innerHTML = Object.keys(rankingForn).map(k => ({nome: k, val: rankingForn[k]})).sort((a,b) => b.val - a.val).slice(0,5).map((f, i) => `<div class="flex justify-between text-sm border-b border-slate-100 dark:border-slate-700 pb-1"><span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200">${i+1}. ${f.nome}</span><span class="font-bold text-red-500 dark:text-red-400">${formatMoney(f.val)}</span></div>`).join('');
 
+
+    let despesas = db.financeiro ? db.financeiro.filter(f => f.tipo === 'DESPESA' && f.status !== 'CANCELADO') : [];
+    if (periodo) {
+        despesas = despesas.filter(f => {
+            const dataF = new Date(f.data);
+            return dataF >= periodo.inicio && dataF <= periodo.fim;
+        });
+    }
+    
+    const rankingCategorias = {};
+    const rankingCentros = {};
+    const rankingFavorecidos = {};
+    const rankingFuncionarios = {};
+    
+    despesas.forEach(f => {
+        const cat = f.categoria || 'Sem Categoria';
+        const ctc = f.centroCusto || 'Sem Centro de Custo';
+        const val = parseFloat(f.valor || 0);
+        const pessoa = f.pessoa || 'Sem Nome / Não Informado';
+        
+        if (!rankingFavorecidos[pessoa]) rankingFavorecidos[pessoa] = 0;
+        rankingFavorecidos[pessoa] += val;
+        
+        const catLower = cat.toLowerCase();
+        if (catLower.includes('salário') || catLower.includes('salario') || catLower.includes('folha') || catLower.includes('pró-labore') || catLower.includes('pro-labore') || catLower.includes('pro labore')) {
+            if (!rankingFuncionarios[pessoa]) rankingFuncionarios[pessoa] = 0;
+            rankingFuncionarios[pessoa] += val;
+        }
+        
+        if (!rankingCategorias[cat]) rankingCategorias[cat] = 0;
+        rankingCategorias[cat] += val;
+        
+        if (!rankingCentros[ctc]) rankingCentros[ctc] = 0;
+        rankingCentros[ctc] += val;
+    });
+    
+    const catEl = document.getElementById('bi-despesas-categoria');
+    if (catEl) {
+        if (Object.keys(rankingCategorias).length > 0) {
+            catEl.innerHTML = Object.keys(rankingCategorias)
+                .map(k => ({nome: k, val: rankingCategorias[k]}))
+                .sort((a,b) => b.val - a.val)
+                .map((c, i) => `<div class="flex justify-between text-sm border-b border-slate-100 dark:border-slate-700 pb-1"><span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200">${i+1}. ${c.nome}</span><span class="font-bold text-red-500 dark:text-red-400">${formatMoney(c.val)}</span></div>`)
+                .join('');
+        } else {
+            catEl.innerHTML = '<div class="text-slate-500 dark:text-slate-400 text-sm italic text-center py-2">Nenhuma despesa no período</div>';
+        }
+    }
+    
+    const favEl = document.getElementById('bi-despesas-favorecido');
+    if (favEl) {
+        if (Object.keys(rankingFavorecidos).length > 0) {
+            favEl.innerHTML = Object.keys(rankingFavorecidos)
+                .map(k => ({nome: k, val: rankingFavorecidos[k]}))
+                .sort((a,b) => b.val - a.val)
+                .map((c, i) => `<div class="flex justify-between text-sm border-b border-slate-100 dark:border-slate-700 pb-1"><span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200">${i+1}. ${c.nome}</span><span class="font-bold text-indigo-500 dark:text-indigo-400">${formatMoney(c.val)}</span></div>`)
+                .join('');
+        } else {
+            favEl.innerHTML = '<div class="text-slate-500 dark:text-slate-400 text-sm italic text-center py-2">Nenhuma despesa no período</div>';
+        }
+    }
+    
+    const funcEl = document.getElementById('bi-despesas-funcionario');
+    if (funcEl) {
+        if (Object.keys(rankingFuncionarios).length > 0) {
+            funcEl.innerHTML = Object.keys(rankingFuncionarios)
+                .map(k => ({nome: k, val: rankingFuncionarios[k]}))
+                .sort((a,b) => b.val - a.val)
+                .map((c, i) => `<div onclick="abrirDetalhesFuncionario('${c.nome.replace(/'/g, "\\'").replace(/"/g, "&quot;")}')" class="flex justify-between text-sm border-b border-slate-100 dark:border-slate-700 pb-1 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors p-1 rounded"><span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200">${i+1}. ${c.nome}</span><span class="font-bold text-emerald-500 dark:text-emerald-400">${formatMoney(c.val)}</span></div>`)
+                .join('');
+        } else {
+            funcEl.innerHTML = '<div class="text-slate-500 dark:text-slate-400 text-sm italic text-center py-2">Nenhum pagamento de folha/salário no período</div>';
+        }
+    }
+    const ctcEl = document.getElementById('bi-despesas-centro-custo');
+    if (ctcEl) {
+        if (Object.keys(rankingCentros).length > 0) {
+            ctcEl.innerHTML = Object.keys(rankingCentros)
+                .map(k => ({nome: k, val: rankingCentros[k]}))
+                .sort((a,b) => b.val - a.val)
+                .map((c, i) => `<div class="flex justify-between text-sm border-b border-slate-100 dark:border-slate-700 pb-1"><span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200">${i+1}. ${c.nome}</span><span class="font-bold text-amber-600 dark:text-amber-400">${formatMoney(c.val)}</span></div>`)
+                .join('');
+        } else {
+            ctcEl.innerHTML = '<div class="text-slate-500 dark:text-slate-400 text-sm italic text-center py-2">Nenhuma despesa no período</div>';
+        }
+    }
     const qtdCompras = compras.length;
     const totalGastoCompras = compras.reduce((acc, c) => acc + (c.totalNF || 0), 0);
     const ticketMedioCompras = qtdCompras > 0 ? totalGastoCompras / qtdCompras : 0;
@@ -1818,7 +1832,6 @@ function renderCurvaABC(vendasFiltradas, fatTotal) {
 }
 
 function renderSugestorCompras(vendasFiltradas, periodoObj) {
-    if (!document.getElementById('tabela-sugestor-compras')) return;
     const tbody = document.getElementById('tabela-sugestor-compras');
     if(!tbody) return;
 
@@ -1990,7 +2003,7 @@ async function analisarFinanceiroIA() {
     const resposta = await chamarGemini(prompt);
     
     if(resposta) {
-        divRes.innerHTML = resposta.replace(/\*\*/g, '').replace(/\*/g, 'ââ‚¬¢');
+        divRes.innerHTML = resposta.replace(/\*\*/g, '').replace(/\*/g, '•');
         showToast('Análise concluída com sucesso!', 'success');
     } else {
         divRes.innerHTML = 'Erro ao gerar análise. Verifique se você salvou sua chave API na aba Sistema.';
@@ -2086,7 +2099,6 @@ function abrirInfoRelatorio(tipo) {
 
 
 function renderVendas() {
-    if (!document.getElementById('tabela-vendas')) return;
     const buscaEl = document.getElementById('busca-vendas'); 
     const dataIniEl = document.getElementById('filtro-vendas-ini'); 
     const dataFimEl = document.getElementById('filtro-vendas-fim'); 
@@ -2144,31 +2156,6 @@ function renderVendas() {
         document.getElementById('vendas-total-filtros').innerText = `Lucro Real Acumulado: ${typeof formatMoney === 'function' ? formatMoney(totalLucro) : totalLucro}`;
     }
 }
-
-
-
-
-
-function calcularJurosMulta(f) {
-    if (f.status === 'PAGO' || f.status === 'CANCELADO') return { diasAtraso: 0, multa: 0, juros: 0, valorAtualizado: f.valor };
-    const hoje = new Date();
-    const vdata = new Date(f.data);
-    vdata.setHours(23, 59, 59, 999);
-    if (hoje <= vdata) return { diasAtraso: 0, multa: 0, juros: 0, valorAtualizado: f.valor };
-    
-    const diasAtraso = Math.floor((hoje - vdata) / (1000 * 60 * 60 * 24));
-    if (diasAtraso <= 0) return { diasAtraso: 0, multa: 0, juros: 0, valorAtualizado: f.valor };
-    
-    const multaPerc = f.multaPerc || 0;
-    const jurosMesPerc = f.jurosMesPerc || 0;
-    const multa = f.valor * (multaPerc / 100);
-    const juros = f.valor * (jurosMesPerc / 100 / 30) * diasAtraso;
-    const valorAtualizado = f.valor + multa + juros;
-    return { diasAtraso, multa, juros, valorAtualizado };
-}
-
-
-
 
 
 
@@ -2241,6 +2228,98 @@ function filtrarProdutosXMLBusca() {
 
 function mostrarListaProdutosXMLBusca() { filtrarProdutosXMLBusca(); }
 function ocultarListaProdutosXMLBusca() { document.getElementById('prod-vinculo-lista').classList.add('hidden'); }
+
+// --- FUNCOES DO EXTRATO DE FUNCIONARIO ---
+function abrirDetalhesFuncionario(nomeFuncionario) {
+    try {
+        console.log("Abrindo detalhes para:", nomeFuncionario);
+        
+        let periodo = null;
+        if(typeof obterIntervaloDatasBI === 'function') {
+            periodo = obterIntervaloDatasBI();
+        } else {
+            // Fallback for relatorios if it doesn't have it
+            let mesFiltro = document.getElementById('mes-filtro');
+            let anoFiltro = document.getElementById('ano-filtro');
+            let mes = mesFiltro ? mesFiltro.value : new Date().getMonth() + 1;
+            let ano = anoFiltro ? anoFiltro.value : new Date().getFullYear();
+            if(!mesFiltro && document.getElementById('dash-mes')) mes = document.getElementById('dash-mes').value;
+            if(!anoFiltro && document.getElementById('dash-ano')) ano = document.getElementById('dash-ano').value;
+            if (mes === 'todos') mes = null;
+            periodo = {
+                inicio: mes ? new Date(ano, mes - 1, 1) : new Date(ano, 0, 1),
+                fim: mes ? new Date(ano, mes, 0, 23, 59, 59) : new Date(ano, 11, 31, 23, 59, 59)
+            };
+        }
+
+        const tituloModal = document.getElementById('modal-func-title');
+        if (tituloModal) tituloModal.innerText = `Extrato de ${nomeFuncionario}`;
+        
+        const contas = (typeof db !== 'undefined' && db.financeiro) ? db.financeiro : [];
+        let despesasFuncionario = contas.filter(f => (f.tipo === 'despesa' || f.tipo === 'DESPESA') && f.status !== 'CANCELADO');
+        
+        if (periodo) {
+            despesasFuncionario = despesasFuncionario.filter(f => {
+                if(!f.data) return false;
+                const dataF = new Date(f.data);
+                return dataF >= periodo.inicio && dataF <= periodo.fim;
+            });
+        }
+        
+        let totalPago = 0;
+        let tableHtml = '';
+        
+        despesasFuncionario = despesasFuncionario.filter(f => {
+            const pessoa = f.pessoa || 'Sem Nome / Não Informado';
+            if(pessoa === nomeFuncionario) {
+                const catLower = (f.categoria || '').toLowerCase();
+                if (catLower.includes('salário') || catLower.includes('salario') || catLower.includes('folha') || catLower.includes('pró-labore') || catLower.includes('pro-labore') || catLower.includes('pro labore')) {
+                    return true;
+                }
+            }
+            return false;
+        });
+
+        despesasFuncionario.sort((a,b) => new Date(a.data) - new Date(b.data));
+
+        despesasFuncionario.forEach(f => {
+            const val = parseFloat(f.valor || 0);
+            totalPago += val;
+            const dataStr = new Date(f.data).toLocaleDateString('pt-BR');
+            
+            tableHtml += `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                    <td class="p-3 whitespace-nowrap text-slate-700 dark:text-slate-200">${dataStr}</td>
+                    <td class="p-3 text-slate-700 dark:text-slate-200">
+                        <div class="font-medium">${f.descricao || 'Sem Descrição'}</div>
+                        <div class="text-[10px] text-slate-500 uppercase">${f.categoria || 'Sem Categoria'}</div>
+                    </td>
+                    <td class="p-3 font-bold text-emerald-600 dark:text-emerald-400 text-right whitespace-nowrap">${formatMoney(val)}</td>
+                </tr>
+            `;
+        });
+        
+        document.getElementById('modal-func-total').innerText = formatMoney(totalPago);
+        document.getElementById('modal-func-count').innerText = despesasFuncionario.length;
+        document.getElementById('modal-func-tbody').innerHTML = tableHtml || '<tr><td colspan="3" class="text-center p-4 text-slate-500 text-sm">Nenhum detalhe encontrado.</td></tr>';
+        
+        const modalEl = document.getElementById('modal-detalhes-funcionario');
+        if(modalEl) {
+            modalEl.classList.remove('hidden');
+        } else {
+            alert("Erro: O Modal HTML não foi encontrado na página! Avise o suporte.");
+        }
+    } catch(e) {
+        alert("Erro ao abrir detalhes: " + e.message);
+        console.error(e);
+    }
+}
+
+function imprimirExtratoFuncionario() {
+    window.print();
+}
+
+
 
 
 

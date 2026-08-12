@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FC Móveis - Relatórios</title>
+    <title>FC Móveis - Gestão e Financeiro</title>
     <script>
         // Aplica tema antes do Tailwind carregar (evita flash)
         window.tailwind = window.tailwind || {};
@@ -21,7 +21,7 @@
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
     <div id="toast-container"></div>
-
+    
     <div id="app-container" class="flex w-full h-full relative">
         <div id="sidebar-overlay" class="fixed inset-0 bg-slate-900/60 z-30 hidden md:hidden transition-opacity" onclick="toggleMenu()"></div>
 
@@ -38,23 +38,23 @@
                 </div>
                 <button onclick="event.stopPropagation(); toggleMenu()" class="md:hidden text-slate-400 hover:text-white text-2xl"><i class="fa-solid fa-xmark"></i></button>
             </div>
-
+            
             <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1 custom-scrollbar">
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-2 mb-1">Visão Geral</p>
                 <a href="index.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="dashboard"><i class="fa-solid fa-chart-pie w-5 text-center"></i> Dashboard</a>
-
+                
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Operação</p>
                 <a href="pdv.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="pdv"><i class="fa-solid fa-cash-register w-5 text-center"></i> Frente de Caixa (PDV)</a>
                 <a href="vendas_operacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_operacao"><i class="fa-solid fa-receipt w-5 text-center"></i> Histórico Vendas/Serviços</a>
                 <a href="orcamentos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="orcamentos"><i class="fa-solid fa-file-invoice w-5 text-center"></i> Meus Orçamentos</a>
-
+                
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Cadastros</p>
                 <a href="produtos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="produtos"><i class="fa-solid fa-boxes-stacked w-5 text-center"></i> Produtos & Serviços</a>
 
                 <a href="clientes.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="clientes"><i class="fa-solid fa-users w-5 text-center"></i> Clientes</a>
                 <a href="fornecedores.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="fornecedores"><i class="fa-solid fa-truck w-5 text-center"></i> Fornecedores</a>
                 <a href="funcionarios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="funcionarios"><i class="fa-solid fa-user-tie w-5 text-center"></i> Funcionários / Vendedores</a>
-
+                
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
                 <a href="vendas_gestao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_gestao"><i class="fa-solid fa-chart-line w-5 text-center"></i> Histórico Vendas (Gestão)</a>
                 <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
@@ -62,7 +62,7 @@
                 <a href="compras.html" id="nav-compras" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & Estoque</a>
                 <a href="relatorios.html" id="nav-relatorios" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
                 <a href="estoque.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="estoque"><i class="fa-solid fa-pallet w-5 text-center"></i> Estoque & Kardex</a>
-
+                
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Sistema</p>
                 <a href="sistema.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="config"><i class="fa-solid fa-gear w-5 text-center"></i> Configurações</a>
             </nav>
@@ -87,7 +87,7 @@
             <div class="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth custom-scrollbar w-full relative">
 
                 <!-- MÃ“DULO FINANCEIRO -->
-                <div id="view-financeiro" class="view-section hidden max-w-7xl mx-auto space-y-4 md:space-y-6">
+                <div id="view-financeiro" class="view-section max-w-7xl mx-auto space-y-4 md:space-y-6 hidden">
                     <!-- Fluxo de Caixa Projetado -->
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                         <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-center">
@@ -102,9 +102,9 @@
                             <h3 class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Fluxo 90 Dias (Proj)</h3>
                             <p class="text-xl font-black text-purple-600 mt-1" id="dash-fluxo-90">R$ 0,00</p>
                         </div>
-                        <div class="bg-red-50 p-4 rounded-xl border border-red-200 shadow-sm flex flex-col justify-center">
-                            <h3 class="text-[10px] font-bold text-red-700 uppercase">Inadimplência (Atrasos)</h3>
-                            <p class="text-xl font-black text-red-600 mt-1" id="dash-inadimplencia">R$ 0,00</p>
+                        <div class="bg-red-50 dark:bg-red-900/30 p-4 rounded-xl border border-red-200 dark:border-red-800 shadow-sm flex flex-col justify-center">
+                            <h3 class="text-[10px] font-bold text-red-700 dark:text-red-400 uppercase">Inadimplência (Atrasos)</h3>
+                            <p class="text-xl font-black text-red-600 dark:text-red-500 mt-1" id="dash-inadimplencia">R$ 0,00</p>
                         </div>
                     </div>
 
@@ -202,21 +202,18 @@
                         </div>
                     </div>
                 </div>
-
-
-
-                <!-- RELATÃ“RIOS GERENCIAIS E BI -->
-                <div id="view-relatorios" class="view-section max-w-7xl mx-auto space-y-6 active">
+<!-- RELATÃ“RIOS GERENCIAIS E BI -->
+                <div id="view-relatorios" class="view-section hidden max-w-7xl mx-auto space-y-6">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100">Relatórios & BI Comercial</h2>
                         <div class="flex flex-wrap gap-2 no-print">
                             <button onclick="exportarDadosParaIA()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 shadow-sm">
                                 <i class="fa-solid fa-file-arrow-down"></i> Baixar Relatório para IA
                             </button>
-                            <button onclick="imprimirArea('print-area-relatorios')" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-300 px-4 py-2 rounded-lg text-sm font-bold transition-colors" title="Imprimir"><i class="fa-solid fa-print"></i> <span class="hidden sm:inline">Imprimir Tudo</span></button>
+                            <button onclick="imprimirArea('print-area-Relatórios')" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-300 px-4 py-2 rounded-lg text-sm font-bold transition-colors" title="Imprimir"><i class="fa-solid fa-print"></i> <span class="hidden sm:inline">Imprimir Tudo</span></button>
                         </div>
                     </div>
-
+                    
                     <!-- Filtros de Data BI -->
                     <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 no-print flex flex-col md:flex-row items-end gap-4">
                         <div class="flex-1 w-full md:max-w-xs">
@@ -232,7 +229,7 @@
                         <div id="bi-datas-custom" class="hidden flex-1 w-full flex flex-col md:flex-row items-end gap-4">
                             <div class="w-full md:max-w-xs">
                                 <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Data Inicial</label>
-                                <input type="date" id="bi-data-inicio" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <input type="date" id="bi-data-Início" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                             </div>
                             <div class="w-full md:max-w-xs">
                                 <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Data Final</label>
@@ -246,9 +243,9 @@
                         </div>
                     </div>
 
-                    <div id="print-area-relatorios" class="space-y-6">
+                    <div id="print-area-Relatórios" class="space-y-6">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
+                            
                             <!-- DRE -->
                             <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4 flex justify-between items-center">
@@ -275,7 +272,7 @@
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4">Curva ABC de Vendas (Top 5 Produtos)</h3>
                                 <div id="bi-abc-produtos" class="space-y-3"></div>
                             </div>
-
+                            
                             <!-- Estatísticas de Compras -->
                             <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4 flex justify-between items-center">
@@ -295,13 +292,42 @@
                                 </h3>
                                 <div id="bi-top-clientes" class="space-y-3"></div>
                             </div>
-
+                            
                             <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4 flex justify-between items-center">
                                     <span><i class="fa-solid fa-truck"></i> Top Fornecedores (Gastos)</span>
                                     <button onclick="abrirInfoRelatorio('top_fornecedores')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer print:hidden" title="EntendAçõeste relatório"><i class="fa-solid fa-circle-question"></i></button>
                                 </h3>
                                 <div id="bi-top-fornecedores" class="space-y-3"></div>
+                            </div>
+
+                                                        <!-- Despesas por Categoria e Centro de Custo -->
+                            <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                                <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4 flex justify-between items-center">
+                                    <span><i class="fa-solid fa-tags text-slate-400 mr-2"></i> Despesas por Categoria</span>
+                                </h3>
+                                <div id="bi-despesas-categoria" class="space-y-3"></div>
+                            </div>
+                            
+                            <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                                <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4 flex justify-between items-center">
+                                    <span><i class="fa-solid fa-building text-slate-400 mr-2"></i> Despesas por Centro de Custo</span>
+                                </h3>
+                                <div id="bi-despesas-centro-custo" class="space-y-3"></div>
+                            </div>
+
+                                                        <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                                <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4 flex justify-between items-center">
+                                    <span><i class="fa-solid fa-users text-slate-400 mr-2"></i> Despesas por Favorecido</span>
+                                </h3>
+                                <div id="bi-despesas-favorecido" class="space-y-3"></div>
+                            </div>
+                            
+                            <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                                <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4 flex justify-between items-center">
+                                    <span><i class="fa-solid fa-user-tie text-slate-400 mr-2"></i> Despesas por Funcionário (Folha)</span>
+                                </h3>
+                                <div id="bi-despesas-funcionario" class="space-y-3"></div>
                             </div>
 
                             <!-- Evolução de Custos por Produto (NOVO) -->
@@ -334,10 +360,10 @@
                             </div>
 
                         </div>
-
+                        
                         <!-- NOVO: Relatórios Avançados (BI) -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-
+                            
                             <!-- Curva ABC de Produtos -->
                             <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 md:col-span-2">
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4 flex justify-between items-center">
@@ -385,7 +411,7 @@
                                                 <th class="p-3 text-right">Sugestão de Compra</th>
                                             </tr>
                                         </thead>
-                                        <tbody id="tabela-sugestor-compras" class="divide-y divide-slate-100 dark:divide-slate-700 text-xs md:text-sm">
+                                        <tbody id="tabela-sugestãor-compras" class="divide-y divide-slate-100 dark:divide-slate-700 text-xs md:text-sm">
                                             <tr><td colspan="6" class="p-4 text-center text-slate-500 dark:text-slate-400">Nenhuma ruptura identificada ou carregando...</td></tr>
                                         </tbody>
                                     </table>
@@ -409,7 +435,7 @@
                 <button onclick="fecharModalCaixa()" class="text-white/70 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             <div class="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 space-y-4">
-                <input type="hidden" id="caixa-operacao-tipo">
+                <input type="hidden" id="caixa-operação-tipo">
                 <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Valor (R$)</label><input type="number" step="0.01" id="caixa-op-valor" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 md:p-3 rounded-lg text-base md:text-lg font-black outline-none dark:text-white"></div>
                 <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Justificativa / Descrição</label><input type="text" id="caixa-op-desc" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none dark:text-white"></div>
             </div>
@@ -430,13 +456,13 @@
             <div class="p-4 md:p-6 bg-slate-800 flex-1 overflow-y-auto custom-scrollbar">
                 <input type="hidden" id="conta-id">
                 <input type="hidden" id="conta-tipo">
-
+                
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-
+                    
                     <!-- BLOCO 1: DADOS GERAIS -->
                     <div class="bg-slate-700 p-4 rounded-xl border border-slate-600 shadow-sm space-y-4 md:col-span-2">
                         <h4 class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase border-b border-slate-100 dark:border-slate-700 pb-2"><i class="fa-solid fa-user-tag text-slate-400 mr-1"></i> Dados Gerais</h4>
-
+                        
                         <div>
                             <label class="text-[10px] font-bold text-slate-400 uppercase mb-1 block" id="lbl-conta-pessoa">Fornecedor / Favorecido *</label>
                             <select id="conta-pessoa-select" class="w-full bg-slate-800 border border-slate-600 text-slate-100 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-400 mb-2" onchange="toggleContaPessoaInput(this.value)">
@@ -448,11 +474,11 @@
                                 <p class="text-[10px] text-slate-400 mt-1"><i class="fa-solid fa-circle-info mr-1"></i>Sera cadastrado automaticamente ao salvar.</p>
                             </div>
                         </div>
-
+                        
                         <div class="grid grid-cols-2 gap-3">
                             <div class="col-span-2 sm:col-span-1"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Descrição da Despesa/Receita</label>
                             <input type="text" id="conta-ref" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" placeholder="Ex: Referente à NF 1234..."></div>
-
+                            
                             <div class="col-span-2 sm:col-span-1"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Categoria *</label>
                             <select id="conta-categoria" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></select></div>
                         </div>
@@ -462,7 +488,7 @@
                             <select id="conta-centro-custo" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
                                 <option value="Geral">Geral / Não Especificado</option><option value="Operaçãonal">Operaçãonal</option><option value="Administrativo">Administrativo</option><option value="Vendas">Vendas / Comercial</option><option value="Logística">Logística / Frete</option>
                             </select></div>
-
+                            
                             <div class="col-span-2 sm:col-span-1"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Conta Bancária / Destino</label>
                             <select id="conta-banco" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
                                 <option value="Caixa Físico">Gaveta / Caixa Físico</option><option value="Banco Itaú">Banco Itaú</option><option value="Banco do Brasil">Banco do Brasil</option><option value="Nubank">Nubank</option><option value="Sicredi">Sicredi</option><option value="Sicoob">Sicoob</option>
@@ -473,11 +499,11 @@
                     <!-- BLOCO 2: DATAS, VALORES E RECORRÁÅ NCIA -->
                     <div class="bg-slate-700 p-4 rounded-xl border border-slate-600 shadow-sm space-y-4">
                         <h4 class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase border-b border-slate-100 dark:border-slate-700 pb-2"><i class="fa-solid fa-calendar-days text-slate-400 mr-1"></i> Datas e Valores</h4>
-
+                        
                         <div class="grid grid-cols-2 gap-3">
                             <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Data de Emissão</label>
                             <input type="date" id="conta-emissao" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
-
+                            
                             <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Vencimento Base *</label>
                             <input type="date" id="conta-vencimento" class="w-full bg-amber-50 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-600 p-2 rounded-lg text-xs font-bold text-amber-800 dark:text-amber-300 outline-none focus:border-amber-500"></div>
                         </div>
@@ -514,14 +540,14 @@
                     <!-- BLOCO 3: STATUS, MULTAS E DOCUMENTOS -->
                     <div class="bg-slate-700 p-4 rounded-xl border border-slate-600 shadow-sm space-y-4 md:col-span-3">
                         <h4 class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase border-b border-slate-100 dark:border-slate-700 pb-2"><i class="fa-solid fa-list-check text-slate-400 mr-1"></i> Situação e Documentos</h4>
-
+                        
                         <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-6 gap-3">
                             <div class="sm:col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Status Atual</label>
                                 <select id="conta-status" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs font-bold outline-none focus:border-blue-500 dark:text-white">
                                     <option value="PENDENTE">Em Aberto / Pendente</option><option value="PAGO">Liquidado / Pago</option><option value="CANCELADO">Cancelado</option><option value="RENEGOCIADO">Renegociado</option>
                                 </select>
                             </div>
-
+                            
                             <div class="sm:col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Data de Pagamento</label>
                             <input type="date" id="conta-data-pgto" class="w-full bg-emerald-50 border border-emerald-200 p-2 rounded-lg text-xs font-bold text-emerald-800 outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-600 dark:text-white"></div>
 
@@ -536,7 +562,7 @@
 
                             <div><label class="text-[10px] font-bold text-red-500 uppercase mb-1 block">Juros / Multa (+)</label><input type="number" step="0.01" id="conta-acrescimo" oninput="calcularValorFinalFormulario()" class="w-full bg-red-50 border border-red-200 text-red-700 p-2 rounded-lg text-xs font-bold outline-none text-right dark:text-white" value="0"></div>
                             <div><label class="text-[10px] font-bold text-emerald-600 uppercase mb-1 block">Desconto (-)</label><input type="number" step="0.01" id="conta-desconto" oninput="calcularValorFinalFormulario()" class="w-full bg-emerald-50 border border-emerald-200 text-emerald-700 p-2 rounded-lg text-xs font-bold outline-none text-right dark:bg-slate-800 dark:border-slate-600 dark:text-white" value="0"></div>
-
+                            
                             <div class="bg-slate-900 rounded-lg p-2 text-white flex flex-col justify-center items-end">
                                 <span class="text-[10px] font-bold text-slate-400 uppercase">Valor Final / Parcela</span>
                                 <span class="text-lg font-black text-emerald-400" id="conta-valor-final-display">R$ 0,00</span>
@@ -580,19 +606,19 @@
                     <div><p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Valor do Título</p><p class="text-lg font-bold text-slate-800 dark:text-slate-100" id="reneg-valor">R$ 0,00</p></div>
                     <div class="text-right"><p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Status</p><span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold">EM ATRASO</span></div>
                 </div>
-
+                
                 <div>
                     <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Dividir em quantas parcelas?</label>
                     <select id="reneg-qtd" class="w-full bg-white dark:bg-slate-800 border border-purple-300 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-purple-500 font-bold text-purple-900 dark:text-white">
                         <option value="2">2x</option><option value="3">3x</option><option value="4">4x</option><option value="5">5x</option><option value="6">6x</option><option value="10">10x</option><option value="12">12x</option>
                     </select>
                 </div>
-
+                
                 <div>
                     <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Data da 1Ã‚ª Parcela (Novo Vencimento)</label>
                     <input type="date" id="reneg-data" class="w-full bg-white dark:bg-slate-800 border border-purple-300 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-purple-500 font-bold dark:text-white">
                 </div>
-
+                
                 <p class="text-[10px] text-slate-500 dark:text-slate-400 italic mt-2">* O título original será cancelado e novos títulos serão criados a cada 30 dias a partir da data acima.</p>
             </div>
             <div class="bg-slate-900 p-4 md:p-5 border-t border-slate-700 flex justify-end gap-3 shrink-0 rounded-b-2xl">
@@ -680,7 +706,7 @@
                 <button onclick="fecharModalXML()" class="text-indigo-200 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl md:text-2xl"></i></button>
             </div>
             <div class="p-4 md:p-6 bg-slate-800 flex-1 overflow-y-auto custom-scrollbar">
-
+                
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm mb-4">
                     <div class="col-span-2 md:col-span-4"><p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Fornecedor Emitente</p><p class="font-bold text-blue-700 text-sm uppercase" id="xml-forn-nome">-</p><p class="text-[10px] text-slate-500 dark:text-slate-400 font-mono" id="xml-forn-cnpj">-</p></div>
                     <div><p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">NÃ‚º NF-e</p><p class="font-bold text-slate-800 dark:text-slate-100 text-sm" id="rev-nfe">-</p></div>
@@ -770,7 +796,7 @@
                 </div>
                 <input type="hidden" id="prod-id"><input type="hidden" id="prod-ativo" value="true">
                 <input type="hidden" id="prod-marca" value=""><input type="hidden" id="prod-categoria" value="Geral"><input type="hidden" id="prod-unidade" value="Un"><input type="hidden" id="prod-estoque" value="0"><input type="hidden" id="prod-minimo" value="5"><input type="hidden" id="prod-obs" value=""><input type="hidden" id="prod-foto-base64" value="">
-
+                
                 <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Nome do Produto</label><input type="text" id="prod-nome" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white"></div>
                 <div><label Cód Barras (EAN)</label><input type="text" id="prod-ean" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white"></div>
                 <div class="grid grid-cols-3 gap-3">
@@ -793,10 +819,10 @@
                 <h3 class="font-bold text-base md:text-lg flex items-center gap-2"><i class="fa-solid fa-cart-flatbed"></i> <span id="compra-manual-titulo-modal">Lançar Compra (Sem NF)</span></h3>
                 <button onclick="fecharModalCompraManual()" class="text-emerald-200 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl md:text-2xl"></i></button>
             </div>
-
+            
             <div class="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 flex-1 overflow-y-auto custom-scrollbar space-y-4">
                 <input type="hidden" id="compra-manual-id" value="">
-
+                
                 <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="md:col-span-2">
                         <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Fornecedor / Loja *</label>
@@ -915,6 +941,43 @@
         </div>
     </div>
 
+    <div id="modal-detalhes-funcionario" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="bg-emerald-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-base md:text-lg flex items-center gap-2"><i class="fa-solid fa-user-tie"></i> <span id="modal-func-title">Extrato de Funcionário</span></h3>
+                <button onclick="document.getElementById('modal-detalhes-funcionario').classList.add('hidden')" class="text-white/70 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="p-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-4 shrink-0">
+                <div class="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
+                    <p class="text-[10px] uppercase font-bold text-slate-500 mb-1">Total Recebido</p>
+                    <p class="text-lg md:text-xl font-bold text-emerald-600 dark:text-emerald-400" id="modal-func-total">R$ 0,00</p>
+                </div>
+                <div class="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
+                    <p class="text-[10px] uppercase font-bold text-slate-500 mb-1">Lançamentos</p>
+                    <p class="text-lg md:text-xl font-bold text-slate-700 dark:text-slate-300" id="modal-func-count">0</p>
+                </div>
+            </div>
+            <div class="p-0 overflow-x-auto overflow-y-auto custom-scrollbar flex-1 bg-white dark:bg-slate-800">
+                <table class="w-full text-left border-collapse min-w-[500px]">
+                    <thead class="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10">
+                        <tr>
+                            <th class="p-3 text-xs font-bold text-slate-500 uppercase">Data</th>
+                            <th class="p-3 text-xs font-bold text-slate-500 uppercase">Descrição / Categoria</th>
+                            <th class="p-3 text-xs font-bold text-slate-500 uppercase text-right">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-func-tbody" class="text-sm divide-y divide-slate-100 dark:divide-slate-700">
+                        <!-- Linhas dinâmicas -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex justify-end gap-3 shrink-0">
+                <button onclick="imprimirExtratoFuncionario()" class="bg-white hover:bg-slate-100 dark:bg-slate-700 dark:hover:bg-slate-600 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-bold px-4 py-2 rounded-lg transition-colors flex items-center gap-2 shadow-sm"><i class="fa-solid fa-print"></i> Imprimir</button>
+                <button onclick="document.getElementById('modal-detalhes-funcionario').classList.add('hidden')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2 rounded-lg transition-colors shadow-sm">Fechar</button>
+            </div>
+        </div>
+    </div>
+
     <div id="modal-info-relatorio" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div class="bg-blue-600 p-4 text-white flex justify-between items-center">
@@ -933,9 +996,24 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js?v=9"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js?v=9"></script>
     <script src="global.js?v=9"></script>
-    <script src="relatorios.js?v=9"></script>
+    <script src="relatorios_v2.js?v=11"></script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
