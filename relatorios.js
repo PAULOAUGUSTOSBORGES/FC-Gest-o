@@ -386,7 +386,7 @@ function renderCaixaDiario() {
 
 function abrirModalCaixa(op) {
     if(op === 'abrir' && db.caixa.status === 'ABERTO') return showToast('O caixa já está aberto!', 'error'); if(op !== 'abrir' && db.caixa.status === 'FECHADO') return showToast('Abra o caixa primeiro!', 'error');
-    document.getElementById('caixa-operação-tipo').value = op.toUpperCase(); document.getElementById('modal-caixa-title').innerText = op === 'abrir' ? 'Abertura de Caixa' : (op === 'fechar' ? 'Fechamento de Caixa' : (op === 'sangria' ? 'Sangria (Retirada)' : 'Suprimento (Entrada)'));
+    document.getElementById('caixa-operacao-tipo').value = op.toUpperCase(); document.getElementById('modal-caixa-title').innerText = op === 'abrir' ? 'Abertura de Caixa' : (op === 'fechar' ? 'Fechamento de Caixa' : (op === 'sangria' ? 'Sangria (Retirada)' : 'Suprimento (Entrada)'));
     document.getElementById('caixa-op-valor').value = ''; document.getElementById('caixa-op-desc').value = '';
     if(op === 'fechar') { document.getElementById('caixa-op-valor').value = db.caixa.saldo; document.getElementById('caixa-op-desc').value = 'Fechamento do dia'; } if(op === 'abrir') { document.getElementById('caixa-op-valor').value = 0; document.getElementById('caixa-op-desc').value = 'Troco Inicial'; }
     document.getElementById('modal-mov-caixa').classList.remove('hidden');
@@ -394,7 +394,7 @@ function abrirModalCaixa(op) {
 function fecharModalCaixa() { document.getElementById('modal-mov-caixa').classList.add('hidden'); }
 
 async function confirmarMovCaixa() {
-    const op = document.getElementById('caixa-operação-tipo').value; const val = parseFloat(document.getElementById('caixa-op-valor').value) || 0; const desc = document.getElementById('caixa-op-desc').value || op;
+    const op = document.getElementById('caixa-operacao-tipo').value; const val = parseFloat(document.getElementById('caixa-op-valor').value) || 0; const desc = document.getElementById('caixa-op-desc').value || op;
     let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
     let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
     let novoStatus = cxAtual.status; let novoSaldo = cxAtual.saldo || 0;
