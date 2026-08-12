@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÇÕES
 // ==========================================
 
@@ -451,6 +451,8 @@ function renderTitulos(tipo) {
     if (statusFilter !== 'TODOS') { 
         if (statusFilter === 'ATRASADO') {
             lista = lista.filter(f => f.status === 'PENDENTE' && new Date(f.data).getTime() < new Date().getTime());
+        } else if (statusFilter === 'RENEGOCIADO') {
+            lista = lista.filter(f => f.status === 'RENEGOCIADO');
         } else {
             lista = lista.filter(f => f.status === statusFilter); 
         }
@@ -464,9 +466,19 @@ function renderTitulos(tipo) {
     }
 
     if (periodoFilter !== 'TUDO' && !dataIni && !dataFim) {
-        const hoje = new Date().getTime();
-        const limiteFuturo = hoje + (parseInt(periodoFilter) * 24 * 60 * 60 * 1000);
-        lista = lista.filter(f => new Date(f.data).getTime() <= limiteFuturo);
+        if (periodoFilter === 'MES_ATUAL') {
+            const dataHoje = new Date();
+            const mesAtual = dataHoje.getMonth();
+            const anoAtual = dataHoje.getFullYear();
+            lista = lista.filter(f => {
+                const dataF = new Date(f.data);
+                return dataF.getMonth() === mesAtual && dataF.getFullYear() === anoAtual;
+            });
+        } else {
+            const hoje = new Date().getTime();
+            const limiteFuturo = hoje + (parseInt(periodoFilter) * 24 * 60 * 60 * 1000);
+            lista = lista.filter(f => new Date(f.data).getTime() <= limiteFuturo);
+        }
     }
     
     lista.sort((a, b) => new Date(a.data) - new Date(b.data));

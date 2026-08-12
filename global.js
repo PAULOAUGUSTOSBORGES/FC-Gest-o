@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // 1. CONFIGURAÇÕES DO FIREBASE E SEGURANÇA
 // ==========================================
 
@@ -126,17 +126,17 @@ function aplicarControleDeAcesso() {
     if (isIndex && !p.perm_dashboard) {
         bloqueado = true;
         mensagemBloqueio = 'Acesso Negado ao Dashboard (Visão Geral).';
-    } else if (path.includes('cadastro.html') && !p.perm_cadastros) {
+    } else if ((path.includes('cadastro.html') || path.includes('produtos.html') || path.includes('clientes.html') || path.includes('fornecedores.html')) && !p.perm_cadastros) {
         bloqueado = true;
         mensagemBloqueio = 'Acesso Negado aos Cadastros.';
-    } else if (path.includes('cadastro.html') && window.location.search.includes('view=funcionarios')) {
+    } else if (path.includes('funcionarios.html')) {
         // A aba de funcionários é bloqueada para todos que não são Admin Master
         bloqueado = true;
         mensagemBloqueio = 'Acesso Negado: Apenas o Administrador pode gerenciar Funcionários.';
-    } else if (path.includes('gestao.html') && !p.perm_gestao) {
+    } else if ((path.includes('gestao.html') || path.includes('vendas_gestao.html') || path.includes('financeiro.html') || path.includes('relatorios.html') || path.includes('compras.html')) && !p.perm_gestao) {
         bloqueado = true;
         mensagemBloqueio = 'Acesso Negado à Gestão Financeira.';
-    } else if (path.includes('operacao.html') && !p.perm_pdv) {
+    } else if ((path.includes('operacao.html') || path.includes('pdv.html') || path.includes('vendas_operacao.html') || path.includes('orcamentos.html') || path.includes('caixa.html')) && !p.perm_pdv) {
         bloqueado = true;
         mensagemBloqueio = 'Acesso Negado ao PDV e Vendas.';
     } else if (path.includes('sistema.html') && !p.perm_config) {
@@ -154,7 +154,7 @@ function aplicarControleDeAcesso() {
                     </div>
                     <h2 class="text-3xl font-black text-slate-800 dark:text-white mb-2">Acesso Restrito</h2>
                     <p class="text-slate-500 dark:text-slate-400 max-w-md mx-auto">${mensagemBloqueio}</p>
-                                          <button onclick="window.history.back()" class="mt-8 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 text-white px-6 py-3 rounded-lg font-bold transition-colors shadow-md">
+                    <button onclick="window.history.back()" class="mt-8 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 text-white px-6 py-3 rounded-lg font-bold transition-colors shadow-md">
                           <i class="fa-solid fa-arrow-left mr-2"></i> Voltar
                       </button>
                       <button onclick="firebase.auth().signOut().then(() => window.location.href='login.html')" class="mt-8 ml-2 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-bold transition-colors shadow-md">
@@ -310,3 +310,81 @@ function aplicarTema() {
 
 
 
+
+// ===== FUNÇÕES GLOBAIS DE VENDAS (Adicionadas para corrigir erro de botões de Ações) =====
+
+window.reimprimirVenda = function(id) {
+    const v = window.db.vendas.find(x => String(x.id) === String(id)); 
+    if(!v) return showToast('Venda não encontrada.', 'error');
+    
+    const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
+    const htmlRecibo = `<div style="text-align: center; border-bottom: 1px dashed #999; padding-bottom: 10px; margin-bottom: 10px;"><h2 style="font-weight: bold; font-size: 1.2em; margin: 0;">FC MÓVEIS E INTERIORES</h2><p style="font-size: 0.9em; margin: 0;">Operação: REIMPRESSÃO</p></div><div style="border-bottom: 1px dashed #999; padding-bottom: 10px; margin-bottom: 10px; font-size: 0.9em;"><p style="margin: 2px 0;">Pedido: #${numPedStr}</p><p style="margin: 2px 0;">Data Original: ${new Date(v.data).toLocaleString('pt-BR')}</p><p style="margin: 2px 0;">Cliente: ${v.clienteNome}</p><p style="margin: 2px 0;">Vendedor: ${v.vendedor || '-'}</p></div><table style="width: 100%; text-align: left; font-size: 0.9em; border-collapse: collapse; margin-bottom: 10px;"><tr style="border-bottom: 1px solid #ccc;"><th style="padding-bottom: 4px;">Item</th><th style="padding-bottom: 4px; text-align: center;">Qtd</th><th style="padding-bottom: 4px; text-align: right;">Total</th></tr>${(v.itens || []).map(i => `<tr><td style="padding: 4px 0;">${i.nome}</td><td style="padding: 4px 0; text-align: center;">${i.qtd}</td><td style="padding: 4px 0; text-align: right;">${typeof formatMoney === 'function' ? formatMoney(i.preco*i.qtd) : (i.preco*i.qtd)}</td></tr>`).join('')}</table><div style="text-align: right; font-size: 0.9em;"><h3 style="font-weight: bold; font-size: 1.2em; margin: 5px 0 0 0;">Total Final: ${typeof formatMoney === 'function' ? formatMoney(v.tot) : v.tot}</h3></div><div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #999; text-align: center; font-size: 0.9em;"><p style="margin: 0; font-weight: bold; text-transform: uppercase;">PAGAMENTO: ${v.pag}</p></div>`;
+    
+    document.getElementById('print-area').innerHTML = htmlRecibo; 
+    document.getElementById('modal-opcoes-recibo').classList.remove('hidden');
+};
+
+window.excluirVenda = function(id) {
+    const v = window.db.vendas.find(x => String(x.id) === String(id)); 
+    if(!v) return showToast('Venda não encontrada.', 'error'); 
+
+    const isOrcamento = v.tipo === 'ORÇAMENTO'; 
+    const msg = isOrcamento 
+        ? 'Deseja excluir este orçamento?' 
+        : 'Atenção! Isso fará a exclusão completa desta venda (devolvendo estoque e apagando as parcelas do financeiro). Deseja continuar?';
+
+    abrirConfirmacao('Excluir Operação', msg, async () => {
+        try {
+            const batch = firestore.batch();
+            const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
+            
+            if(!isOrcamento) {
+                if(v.itens && v.itens.length > 0) { 
+                    v.itens.forEach(item => { 
+                        const p = (window.db.produtos || []).find(prod => String(prod.id) === String(item.id)); 
+                        if(p) { 
+                            const pRef = firestore.collection('produtos').doc(String(p.id));
+                            batch.update(pRef, { estoque: (p.estoque || 0) + Number(item.qtd || 1) });
+                            
+                            const kardexRef = firestore.collection('movimentacoes').doc();
+                            batch.set(kardexRef, {
+                                data: new Date().toISOString(),
+                                ref: 'Estorno (Exclusão) ' + (v.tipo || 'Venda') + ' #' + numPedStr,
+                                prodId: p.id,
+                                prodNome: p.nome,
+                                qtd: Number(item.qtd || 1),
+                                tipo: 'ESTORNO'
+                            });
+                        } 
+                    }); 
+                }
+                
+                const finQuery = await firestore.collection('financeiro').where('origemVendaId', '==', String(id)).get();
+                finQuery.docs.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                
+                if(v.pag && typeof v.pag === 'string' && String(v.pag).includes('Dinheiro')) { 
+                    let cxAtual = window.db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
+                    let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
+                    let cxSaldoNovo = (cxAtual.saldo || 0) - (Number(v.valorLiquido) || 0);
+                    cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: 'Estorno (Exclusão) ' + (v.tipo || 'Venda') + ' #' + numPedStr, valor: (Number(v.valorLiquido) || 0) });
+                    
+                    const caixaRef = firestore.collection('fc_moveis').doc('caixa');
+                    batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+                }
+            }
+
+            const vendaRef = firestore.collection('vendas').doc(String(id));
+            batch.delete(vendaRef);
+
+            await batch.commit();
+            fecharModalConfirmacao();
+            showToast('Operação excluída com sucesso!', 'success');
+        } catch (err) {
+            console.error(err);
+            fecharModalConfirmacao();
+            showToast('Erro ao excluir a operação.', 'error');
+        }
+    });
+};
