@@ -748,7 +748,9 @@ function salvarConta() {
     const valorOriginal = parseFloat(document.getElementById('conta-valor').value); 
     const vencBase = document.getElementById('conta-vencimento').value;
     
-    if(!pessoa || isNaN(valorOriginal) || !vencBase) return showToast('Preencha Favorecido, Vencimento e Valor!', 'error'); 
+    if (!pessoa) return showToast('Preencha o Favorecido / Fornecedor!', 'error');
+    if (!vencBase) return showToast('Preencha a data de Vencimento Base!', 'error');
+    if (isNaN(valorOriginal) || valorOriginal <= 0) return showToast('Preencha o Valor da Parcela!', 'error');
     
     const valorFin = calcularValorFinalFormulario();
     
@@ -946,10 +948,10 @@ function abrirModalBaixa(id) { const f = db.financeiro.find(x => x.id === id); i
           document.getElementById('baixa-acrescimo').value = 0;
       } calcularAcrescimos(); document.getElementById('modal-baixa-conta').classList.remove('hidden'); }
 function fecharModalBaixa() { document.getElementById('modal-baixa-conta').classList.add('hidden'); }
-function calcularAcrescimos() { const id = parseInt(document.getElementById('baixa-id').value); const f = db.financeiro.find(x => x.id === id); if(!f) return; const ac = parseFloat(document.getElementById('baixa-acrescimo').value) || 0; const de = parseFloat(document.getElementById('baixa-desconto').value) || 0; const vf = f.valor + ac - de; document.getElementById('baixa-valor-final').innerText = formatMoney(vf); return vf; }
+function calcularAcrescimos() { const id = document.getElementById('baixa-id').value; const f = db.financeiro.find(x => String(x.id) === String(id)); if(!f) return; const ac = parseFloat(document.getElementById('baixa-acrescimo').value) || 0; const de = parseFloat(document.getElementById('baixa-desconto').value) || 0; const vf = f.valor + ac - de; document.getElementById('baixa-valor-final').innerText = formatMoney(vf); return vf; }
 
 async function confirmarBaixa() {
-    const id = parseInt(document.getElementById('baixa-id').value); const f = db.financeiro.find(x => String(x.id) === String(id)); if(!f) return;
+    const id = document.getElementById('baixa-id').value; const f = db.financeiro.find(x => String(x.id) === String(id)); if(!f) return;
     const vf = calcularAcrescimos(); const metodo = document.getElementById('baixa-metodo').value;
     const batch = firestore.batch();
     

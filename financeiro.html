@@ -152,7 +152,7 @@
                             <div class="overflow-x-auto custom-scrollbar">
                                 <table class="w-full text-left min-w-[700px]" id="tabela-fin-receber-export">
                                     <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold border-b border-slate-200 dark:border-slate-700">
-                                        <tr><th class="p-3">Vencimento</th><th class="p-3">Cliente / Pagador</th><th class="p-3">Ref/Categoria</th><th class="p-3 text-right">Valor Final</th><th class="p-3 text-center">Status</th><th class="p-3 text-center print:hidden">Ações Avançadas</th></tr>
+                                        <tr><th class="p-3">Vencimento</th><th class="p-3">Cliente / Pagador</th><th class="p-3">Ref/Categoria</th><th class="p-3 text-right">Valor Final</th><th class="p-3 text-center">Status</th><th class="p-3 text-center print:hidden">AÃ§Ãµes AvanÃ§adas</th></tr>
                                     </thead>
                                     <tbody id="tabela-fin-receber" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
                                 </table>
@@ -177,10 +177,10 @@
                                         <option value="RENEGOCIADO">Renegociado</option>
                                     </select>
                                     <select id="filtro-pagar-periodo" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('pagar')">
-                                        <option value="MES_ATUAL" selected>Este MÃªs</option>
-                                        <option value="30">PrÃ³ximos 30 dias</option>
-                                        <option value="90">PrÃ³ximos 90 dias</option>
-                                        <option value="TUDO">HistÃ³rico Completo</option>
+                                        <option value="MES_ATUAL" selected>Este Mês</option>
+                                        <option value="30">Próximos 30 dias</option>
+                                        <option value="90">Próximos 90 dias</option>
+                                        <option value="TUDO">Histórico Completo</option>
                                     </select>
                                     <input type="date" id="filtro-pagar-ini" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('pagar')" title="Data Inicial">
                                     <input type="date" id="filtro-pagar-fim" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('pagar')" title="Data Final">
