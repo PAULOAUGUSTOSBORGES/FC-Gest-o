@@ -927,7 +927,7 @@ document.addEventListener('click', function(e) {
 
 
 
-// NOVO: FunÃ§Ãµes auxiliares para VÃ­nculo de XML
+// NOVO: Funções auxiliares para Vínculo de XML
 function alternarAcaoVinculoXML() {
     const acao = document.getElementById('prod-acao-vinculo').value;
     if(acao === 'VINCULAR') {

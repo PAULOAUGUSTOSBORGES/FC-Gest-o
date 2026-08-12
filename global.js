@@ -75,8 +75,8 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                 if (userSnap.exists) {
                     window.currentUserInfo = userSnap.data();
                 } else {
-                                                                                      // UsuÃ¡rio nÃ£o estÃ¡ na tabela (nova conta criada)
-                      console.warn("UsuÃ¡rio nÃ£o cadastrado na base de funcionÃ¡rios.");
+                                                                                      // Usuário não está na tabela (nova conta criada)
+                      console.warn("Usuário não cadastrado na base de funcionários.");
                       window.currentUserInfo = { isAdmin: false, perm_dashboard: false, perm_pdv: false, perm_cadastros: false, perm_gestao: false, perm_config: false };
                       
                       try {

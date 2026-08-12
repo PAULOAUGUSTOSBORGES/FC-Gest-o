@@ -1,4 +1,4 @@
-﻿// FunÃ§Ã£o para os avisos na tela
+﻿// Função para os avisos na tela
 function showToast(msg, type = 'info') {
     const container = document.getElementById('toast-container');
     if(!container) return;
@@ -50,11 +50,11 @@ async function fazerLogin() {
         btn.innerText = 'Aguarde...'; btn.disabled = true;
         await firebase.auth().signInWithEmailAndPassword(u, p);
         showToast('Acesso liberado! Redirecionando...', 'success');
-        // O redirecionamento serÃ¡ automÃ¡tico via listener no global.js
+        // O redirecionamento será automático via listener no global.js
     } catch (e) { 
         document.getElementById('btn-acao').innerText = 'Entrar'; document.getElementById('btn-acao').disabled = false;
         if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential' || e.code === 'auth/invalid-login-credentials' || e.code === 'auth/wrong-password') {
-            showToast('E-mail nÃ£o encontrado ou senha incorreta!', 'error');
+            showToast('E-mail não encontrado ou senha incorreta!', 'error');
         } else {
             showToast('Erro de login: ' + e.message, 'error'); 
             console.error(e);
@@ -72,7 +72,7 @@ async function fazerCadastro() {
     }
 
     if(p.length < 6) {
-        showToast('A senha deve ter no mÃ­nimo 6 caracteres!', 'error');
+        showToast('A senha deve ter no mínimo 6 caracteres!', 'error');
         return;
     }
     
@@ -81,11 +81,11 @@ async function fazerCadastro() {
         btn.innerText = 'Aguarde...'; btn.disabled = true;
         await firebase.auth().createUserWithEmailAndPassword(u, p);
         showToast('Conta criada com sucesso! Redirecionando...', 'success');
-        // O redirecionamento serÃ¡ automÃ¡tico via listener no global.js
+        // O redirecionamento será automático via listener no global.js
     } catch (e) { 
         document.getElementById('btn-acao').innerText = 'Criar Conta'; document.getElementById('btn-acao').disabled = false;
         if (e.code === 'auth/email-already-in-use') {
-            showToast('Este e-mail jÃ¡ possui uma conta. VÃ¡ para a aba Entrar.', 'error');
+            showToast('Este e-mail já possui uma conta. Vá para a aba Entrar.', 'error');
         } else {
             showToast('Erro ao criar conta: ' + e.message, 'error'); 
             console.error(e);
@@ -93,5 +93,5 @@ async function fazerCadastro() {
     }
 }
 
-// Inicializa a escuta de sessÃ£o para redirecionar automaticamente quando logar
+// Inicializa a escuta de sessão para redirecionar automaticamente quando logar
 window.onload = () => { initGlobalData(); };

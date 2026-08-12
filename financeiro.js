@@ -7,7 +7,7 @@ window.tempXMLData = null;
 window.xmlItemEditIndex = null;
 let compraManualItens = []; 
 
-const categoriasPagar = ['Fornecedores / Compras', 'Impostos (DAS, ICMS, etc)', 'Salários / Folha', 'Aluguel', 'ÃÂgua', 'Energia', 'Internet / Telefonia', 'Contabilidade', 'Sistema / Software', 'IPTU', 'Outras Despesas'];
+const categoriasPagar = ['Fornecedores / Compras', 'Impostos (DAS, ICMS, etc)', 'Salários / Folha', 'Aluguel', 'ÃÁgua', 'Energia', 'Internet / Telefonia', 'Contabilidade', 'Sistema / Software', 'IPTU', 'Outras Despesas'];
 const categoriasReceber = ['Vendas', 'Serviços', 'Outras Receitas'];
 
 // Evita o "piscar" da tela carregando as abas instantaneamente antes do Firebase
@@ -66,7 +66,7 @@ function refreshCurrentView() {
 }
 
 // ==========================================
-// MIGRAÇÃO AUTOMÃÂTICA DO BANCO ANTIGO
+// MIGRAÇÃO AUTOMÃÁTICA DO BANCO ANTIGO
 // ==========================================
 async function migrarDadosSeNecessario() {
     try {
@@ -276,7 +276,7 @@ function imprimirArea(areaId) {
     if (db && db.config && db.config.empresa && db.config.empresa.logo) logoHtml = `<img src="${db.config.empresa.logo}" style="max-height: 60px; margin-bottom: 10px; border-radius: 8px;">`;
     
     const element = document.getElementById(areaId);
-    if(!element) return showToast("ÃÂrea de impressão não encontrada.", "error");
+    if(!element) return showToast("ÃÁrea de impressão não encontrada.", "error");
     
     const printContent = element.innerHTML; 
     const htmlCompleto = `
@@ -294,7 +294,7 @@ function imprimirArea(areaId) {
 
 function baixarPDF(areaId, filename) {
     const element = document.getElementById(areaId); 
-    if(!element) return showToast("Erro: ÃÂrea do PDF não encontrada.", "error");
+    if(!element) return showToast("Erro: ÃÁrea do PDF não encontrada.", "error");
 
     const printContent = element.innerHTML; 
     
@@ -353,7 +353,7 @@ function exportarExcel(tabelaId, filename) {
 }
 
 // ==========================================
-// 3. FINANCEIRO E CAIXA FÃÂSICO
+// 3. FINANCEIRO E CAIXA FÃÍSICO
 // ==========================================
 function renderFinAbas(aba) {
     if (!document.getElementById(`fin-area-${aba}`)) return;
@@ -515,11 +515,11 @@ function renderTitulos(tipo) {
         let acoesExtras = '';
         if (f.status === 'PENDENTE') {
             acoesExtras = `
-                <button onclick="abrirModalBaixa(${f.id})" class="text-blue-600 bg-blue-50 px-2 py-1 rounded text-[10px] font-bold hover:bg-blue-100 ml-1">Baixar</button>
-                <button onclick="abrirModalRenegociacao(${f.id})" class="text-purple-600 hover:text-purple-800 p-1.5 ml-1 print:hidden" title="Renegociar / Parcelar"><i class="fa-solid fa-handshake"></i></button>
+                <button onclick="abrirModalBaixa('${f.id}')" class="text-blue-600 bg-blue-50 px-2 py-1 rounded text-[10px] font-bold hover:bg-blue-100 ml-1">Baixar</button>
+                <button onclick="abrirModalRenegociacao('${f.id}')" class="text-purple-600 hover:text-purple-800 p-1.5 ml-1 print:hidden" title="Renegociar / Parcelar"><i class="fa-solid fa-handshake"></i></button>
             `;
         } else if (f.status === 'PAGO') {
-            acoesExtras = `<button onclick="estornarTitulo(${f.id})" class="text-amber-500 hover:text-amber-700 p-1.5 ml-1 print:hidden" title="Estornar Pagamento"><i class="fa-solid fa-rotate-left"></i></button>`;
+            acoesExtras = `<button onclick="estornarTitulo('${f.id}')" class="text-amber-500 hover:text-amber-700 p-1.5 ml-1 print:hidden" title="Estornar Pagamento"><i class="fa-solid fa-rotate-left"></i></button>`;
         }
 
         return `
@@ -541,11 +541,11 @@ function renderTitulos(tipo) {
               </td>
             <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${corStatus}">${badgeStatus}</span></td>
             <td class="p-3 text-center flex items-center justify-center gap-1 print:hidden">
-                <button onclick="verDetalhesTitulo(${f.id})" class="text-blue-500 hover:text-blue-700 p-1.5" title="Detalhes do Título"><i class="fa-solid fa-eye"></i></button>
-                <button onclick="abrirModalContaEdicao(${f.id})" class="text-indigo-500 hover:text-indigo-700 p-1.5" title="Editar Lançamento"><i class="fa-solid fa-pen"></i></button>
+                <button onclick="verDetalhesTitulo('${f.id}')" class="text-blue-500 hover:text-blue-700 p-1.5" title="Detalhes do Título"><i class="fa-solid fa-eye"></i></button>
+                <button onclick="abrirModalContaEdicao('${f.id}')" class="text-indigo-500 hover:text-indigo-700 p-1.5" title="Editar Lançamento"><i class="fa-solid fa-pen"></i></button>
                 ${btnWhats}
                 ${acoesExtras}
-                <button onclick="excluirTitulo(${f.id})" class="text-slate-400 hover:text-red-500 p-1.5 ml-1" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                <button onclick="excluirTitulo('${f.id}')" class="text-slate-400 hover:text-red-500 p-1.5 ml-1" title="Excluir"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     }).join('') || `<tr><td colspan="6" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum título encontrado.</td></tr>`;
@@ -574,8 +574,8 @@ function toggleContaPessoaInput(val) {
     if (val === '__novo__' || val === '' || val === '__avulso__') {
         const p = wrap.querySelector('p');
         if (p) {
-            if (val === '__avulso__') p.innerHTML = '<i class="fa-solid fa-circle-info mr-1"></i>SerÃ¡ lanÃ§ado apenas nesta conta (NÃƒO serÃ¡ cadastrado).';
-            else p.innerHTML = '<i class="fa-solid fa-circle-info mr-1"></i>SerÃ¡ cadastrado automaticamente ao salvar.';
+            if (val === '__avulso__') p.innerHTML = '<i class="fa-solid fa-circle-info mr-1"></i>Será lançado apenas nesta conta (NÃO será cadastrado).';
+            else p.innerHTML = '<i class="fa-solid fa-circle-info mr-1"></i>Será cadastrado automaticamente ao salvar.';
         }
         wrap.classList.remove('hidden');
         input.value = '';
@@ -821,10 +821,10 @@ function salvarConta() {
         renderFinAbas(tipo === 'RECEITA' ? 'receber' : 'pagar'); 
         
         if (isEdicao) {
-            showToast('TÃ­tulo Atualizado!', 'success');
+            showToast('Título Atualizado!', 'success');
         } else {
-            if (qtdLancamentos > 1) showToast(contasGeradas + ' TÃ­tulos gerados!', 'success');
-            else showToast('TÃ­tulo Salvo!', 'success');
+            if (qtdLancamentos > 1) showToast(contasGeradas + ' Títulos gerados!', 'success');
+            else showToast('Título Salvo!', 'success');
         }
     }).catch(e => {
         console.error(e);
@@ -1091,7 +1091,7 @@ function renderXMLFinanceiro() {
             <input type="text" class="w-full sm:flex-1 bg-transparent text-xs font-bold text-amber-900 dark:text-amber-100 outline-none p-1" value="${f.desc}" onchange="atualizarParcelaXML(${i}, 'desc', this.value)">
             <input type="date" class="w-full sm:w-36 bg-transparent text-xs font-bold text-amber-800 dark:text-amber-200 outline-none p-1" value="${f.venc}" onchange="atualizarParcelaXML(${i}, 'venc', this.value)">
             <input type="number" step="0.01" class="w-full sm:w-28 text-right bg-transparent text-sm font-black text-red-600 dark:text-red-400 outline-none p-1" value="${f.valor.toFixed(2)}" onchange="atualizarParcelaXML(${i}, 'valor', this.value)">
-            <button onclick="removeParcelaXML(${i})" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-2"><i class="fa-solid fa-trash"></i></button>
+            <button onclick="removeParcelaXML('${i}')" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-2"><i class="fa-solid fa-trash"></i></button>
         </div>
         `;
     }).join('');
@@ -1129,7 +1129,7 @@ function xmlAtualizarValores(i, campo, val) {
             <td class="p-2 text-xs text-right"><input type="number" step="0.01" class="w-20 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-right font-bold text-red-600 outline-none dark:text-white" value="${p.custoFinal.toFixed(2)}" onchange="xmlAtualizarValores(${idx}, 'custo', this.value)"></td>
             <td class="p-2 text-xs text-center"><input type="number" step="0.1" class="w-16 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-center font-bold text-blue-600 outline-none dark:text-white" value="${p.margemAtual.toFixed(2)}" onchange="xmlAtualizarValores(${idx}, 'margem', this.value)"> %</td>
             <td class="p-2 text-xs text-right"><input type="number" step="0.01" class="w-24 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-right font-bold text-emerald-600 outline-none dark:text-white" value="${p.precoVendaSug.toFixed(2)}" onchange="xmlAtualizarValores(${idx}, 'preco', this.value)"></td>
-            <td class="p-2 text-xs text-center"><button onclick="abrirModalProdutoDoXML(${idx})" class="text-indigo-500 bg-indigo-100 p-1.5 rounded"><i class="fa-solid fa-pen-to-square"></i></button></td>
+            <td class="p-2 text-xs text-center"><button onclick="abrirModalProdutoDoXML('${idx}')" class="text-indigo-500 bg-indigo-100 p-1.5 rounded"><i class="fa-solid fa-pen-to-square"></i></button></td>
         </tr>`).join('');
 }
 
@@ -1176,7 +1176,7 @@ function fecharModalProduto() { document.getElementById('modal-produto').classLi
 function salvarProdutoXmlModal() {
     const nome = document.getElementById('prod-nome').value; const id = document.getElementById('prod-id').value;
     const pXML = window.tempXMLData.produtosXML[window.xmlItemEditIndex];
-    if(!nome) return showToast('Nome obrigatÃ³rio', 'error');
+    if(!nome) return showToast('Nome obrigatório', 'error');
     
     const selectAcao = document.getElementById('prod-acao-vinculo');
     if(selectAcao && selectAcao.value === 'VINCULAR' && !id) {
@@ -1207,7 +1207,7 @@ function renderTelaConferenciaXML() {
             <td class="p-2 text-xs text-right"><input type="number" step="0.01" class="w-20 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-right font-bold text-red-600 outline-none dark:text-white" value="${p.custoFinal.toFixed(2)}" onchange="xmlAtualizarValores(${i}, 'custo', this.value)"></td>
             <td class="p-2 text-xs text-center"><input type="number" step="0.1" class="w-16 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-center font-bold text-blue-600 outline-none dark:text-white" value="${p.margemAtual.toFixed(2)}" onchange="xmlAtualizarValores(${i}, 'margem', this.value)"> %</td>
             <td class="p-2 text-xs text-right"><input type="number" step="0.01" class="w-24 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-right font-bold text-emerald-600 outline-none dark:text-white" value="${p.precoVendaSug.toFixed(2)}" onchange="xmlAtualizarValores(${i}, 'preco', this.value)"></td>
-            <td class="p-2 text-xs text-center"><button onclick="abrirModalProdutoDoXML(${i})" class="text-indigo-500 bg-indigo-100 p-1.5 rounded"><i class="fa-solid fa-pen-to-square"></i></button></td>
+            <td class="p-2 text-xs text-center"><button onclick="abrirModalProdutoDoXML('${i}')" class="text-indigo-500 bg-indigo-100 p-1.5 rounded"><i class="fa-solid fa-pen-to-square"></i></button></td>
         </tr>`).join('');
     renderXMLFinanceiro(); 
 }
@@ -1386,7 +1386,7 @@ function renderTabelaCompraManual() {
             <td class="p-2 md:p-3"><input type="number" min="0.01" step="0.01" class="w-full text-center bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded outline-none focus:border-emerald-500 text-xs font-bold dark:text-white" value="${item.qtd}" onchange="atualizarLinhaCompraManual(${i}, 'qtd', this.value)"></td>
             <td class="p-2 md:p-3"><input type="number" min="0" step="0.01" class="w-full text-right bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded outline-none focus:border-emerald-500 text-xs font-bold dark:text-white" value="${item.custoUnit.toFixed(2)}" onchange="atualizarLinhaCompraManual(${i}, 'custoUnit', this.value)"></td>
             <td class="p-2 md:p-3 text-right font-bold text-slate-700 dark:text-slate-200">R$ ${(item.qtd * item.custoUnit).toFixed(2).replace('.',',')}</td>
-            <td class="p-2 md:p-3 text-center"><button onclick="removerLinhaCompraManual(${i})" class="text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button></td>
+            <td class="p-2 md:p-3 text-center"><button onclick="removerLinhaCompraManual('${i}')" class="text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button></td>
         </tr>
     `).join('');
     
@@ -1963,7 +1963,7 @@ async function analisarFinanceiroIA() {
     const resposta = await chamarGemini(prompt);
     
     if(resposta) {
-        divRes.innerHTML = resposta.replace(/\*\*/g, '').replace(/\*/g, 'ââ‚¬Â¢');
+        divRes.innerHTML = resposta.replace(/\*\*/g, '').replace(/\*/g, 'ââ‚¬¢');
         showToast('Análise concluída com sucesso!', 'success');
     } else {
         divRes.innerHTML = 'Erro ao gerar análise. Verifique se você salvou sua chave API na aba Sistema.';
@@ -2147,7 +2147,7 @@ function calcularJurosMulta(f) {
 
 
 
-// NOVO: FunÃ§Ãµes auxiliares para VÃ­nculo de XML
+// NOVO: Funções auxiliares para Vínculo de XML
 function alternarAcaoVinculoXML() {
     const acao = document.getElementById('prod-acao-vinculo').value;
     if(acao === 'VINCULAR') {

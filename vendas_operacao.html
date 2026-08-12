@@ -160,7 +160,7 @@
             <div id="print-area" class="hidden bg-white dark:bg-slate-800 text-black font-mono"></div>
             <div class="p-5 bg-slate-50 dark:bg-slate-900 flex flex-col gap-2 max-h-[60vh] overflow-y-auto custom-scrollbar">
                 
-                <!-- [RESERVADO PARA FUTURA EMISSÃO FISCAL] -->
+                <!-- [RESERVADO PARA FUTURA EMISSÁO FISCAL] -->
                 <div id="fiscal-container" class="hidden">
                     <div id="fiscal-status-container" class="hidden mb-2 text-center p-3 rounded-lg border">
                         <!-- Será preenchido via JS (loader, sucesso, erro) -->
@@ -173,7 +173,7 @@
                     
                     <div class="border-t border-slate-200 dark:border-slate-700 my-1"></div>
                 </div>
-                <!-- [/RESERVADO PARA FUTURA EMISSÃO FISCAL] -->
+                <!-- [/RESERVADO PARA FUTURA EMISSÁO FISCAL] -->
 
                 <button onclick="printAction('thermal')" class="w-full bg-slate-800 hover:bg-slate-900 text-white p-3 md:p-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"><i class="fa-solid fa-receipt text-xl"></i> Recibo Bobina</button>
                 <button onclick="printAction('a4')" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-3 md:p-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"><i class="fa-solid fa-print text-xl"></i> Recibo A4</button>
@@ -257,7 +257,7 @@
         </div>
     </div>
 
-    <!-- CONFIRMAÃ‡ÃO DO SISTEMA -->
+    <!-- CONFIRMAÃ‡ÁO DO SISTEMA -->
     <div id="modal-confirmacao" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden text-center p-6">
             <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
@@ -321,7 +321,7 @@
                         <div class="overflow-y-auto max-h-48 border border-slate-100 dark:border-slate-700 rounded-lg custom-scrollbar">
                             <table class="w-full text-left text-xs">
                                 <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase font-bold sticky top-0"><tr><th class="p-2 md:p-3">Data</th><th class="p-2 md:p-3">Ref</th><th class="p-2 md:p-3">Pagamento</th><th class="p-2 md:p-3 text-right">Total</th></tr></thead>
-                                <tbody id="cli-Histórico-body" class="divide-y divide-slate-50"></tbody>
+                                <tbody id="cli-historico-body" class="divide-y divide-slate-50"></tbody>
                             </table>
                         </div>
                     </div>
@@ -334,7 +334,7 @@
         </div>
     </div>
 
-    <!-- CADASTRO RÃÂPIDO DE PRODUTO/SERVIÃ‡O PELO PDV -->
+    <!-- CADASTRO RÁÁPIDO DE PRODUTO/SERVIÃ‡O PELO PDV -->
     <div id="modal-produto" class="fixed inset-0 bg-slate-900/60 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col overflow-hidden max-h-[95vh]">
             <div class="bg-blue-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
@@ -348,7 +348,7 @@
             </div>
 
             <div class="p-4 md:p-6 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900 custom-scrollbar">
-                <!-- NOVO: OPÃ‡ÃO DE VÃNCULO MANUAL (MOSTRADA APENAS NO XML) -->
+                <!-- NOVO: OPÃ‡ÁO DE VÍNCULO MANUAL (MOSTRADA APENAS NO XML) -->
                 <div id="div-acao-vinculo-xml" class="hidden mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-lg">
                     <lAção: Vincular ou Cadastrar?</label>
                     <select id="prod-acao-vinculo" onchange="alternarAcaoVinculoXML()" class="w-full bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 p-2 rounded text-sm outline-none mb-2 font-bold text-slate-700 dark:text-slate-200">

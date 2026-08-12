@@ -70,7 +70,7 @@
             </div>
         </aside>
         
-        <!-- ÃÂREA DE CONTEÃšDO PRINCIPAL -->
+        <!-- ÁÁREA DE CONTEÃšDO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
             <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
                 <div class="flex items-center gap-3">
@@ -209,7 +209,7 @@
                     </div>
                 </div>
 
-                <!-- FUNCIONÃÂRIOS -->
+                <!-- FUNCIONÁÁRIOS -->
                 <div id="view-funcionarios" class="view-section max-w-7xl mx-auto space-y-4 md:space-y-6 hidden">
                     <div class="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 gap-3">
                         <div class="relative w-full md:w-96">
@@ -258,7 +258,7 @@
 
 
             <div class="p-4 md:p-6 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900 custom-scrollbar">
-                <!-- NOVO: OPÃ‡ÃO DE VÃNCULO MANUAL (MOSTRADA APENAS NO XML) -->
+                <!-- NOVO: OPÃ‡ÁO DE VÍNCULO MANUAL (MOSTRADA APENAS NO XML) -->
                 <div id="div-acao-vinculo-xml" class="hidden mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-lg">
                     <lAção: Vincular ou Cadastrar?</label>
                     <select id="prod-acao-vinculo" onchange="alternarAcaoVinculoXML()" class="w-full bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 p-2 rounded text-sm outline-none mb-2 font-bold text-slate-700 dark:text-slate-200">
@@ -405,7 +405,7 @@
                                 <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase font-bold sticky top-0">
                                     <tr><th class="p-2 md:p-3">Data</th><th class="p-2 md:p-3">Tipo</th><th class="p-2 md:p-3">Ref/Documento</th><th class="p-2 md:p-3 text-right">Qtd</th></tr>
                                 </thead>
-                                <tbody id="prod-Histórico-body" class="divide-y divide-slate-50"></tbody>
+                                <tbody id="prod-historico-body" class="divide-y divide-slate-50"></tbody>
                             </table>
                         </div>
                     </div>
@@ -470,7 +470,7 @@
                         <div class="overflow-y-auto max-h-48 border border-slate-100 dark:border-slate-700 rounded-lg custom-scrollbar">
                             <table class="w-full text-left text-xs">
                                 <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase font-bold sticky top-0"><tr><th class="p-2 md:p-3">Data</th><th class="p-2 md:p-3">Ref</th><th class="p-2 md:p-3">Pagamento</th><th class="p-2 md:p-3 text-right">Total</th></tr></thead>
-                                <tbody id="cli-Histórico-body" class="divide-y divide-slate-50"></tbody>
+                                <tbody id="cli-historico-body" class="divide-y divide-slate-50"></tbody>
                             </table>
                         </div>
                     </div>
@@ -494,7 +494,7 @@
             <div class="flex overflow-x-auto border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 md:px-6 pt-4 shrink-0 custom-scrollbar">
                 <button onclick="abaModal('forn', 'dados')" id="forn-btn-dados" class="px-4 md:px-5 py-2 border-b-2 border-blue-600 font-bold text-blue-600 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Dados & Endereço</button>
                 <button onclick="abaModal('forn', 'condicoes')" id="forn-btn-condicoes" class="px-4 md:px-5 py-2 border-b-2 border-transparent font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-200 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Comercial & Produtos</button>
-                <button onclick="abaModal('forn', 'Histórico')" id="forn-btn-Histórico" class="px-4 md:px-5 py-2 border-b-2 border-transparent font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-200 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Histórico NF-e</button>
+                <button onclick="abaModal('forn', 'historico')" id="forn-btn-historico" class="px-4 md:px-5 py-2 border-b-2 border-transparent font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-200 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Histórico NF-e</button>
             </div>
 
             <div class="p-4 md:p-6 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900 custom-scrollbar">
@@ -546,13 +546,13 @@
                     </div>
                 </div>
 
-                <div id="forn-aba-Histórico" class="aba-conteudo hidden space-y-4">
+                <div id="forn-aba-historico" class="aba-conteudo hidden space-y-4">
                     <div class="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
                         <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm border-b pb-2 mb-4">Notas Fiscais Importadas (Entrada)</h4>
                         <div class="overflow-y-auto max-h-60 border border-slate-100 dark:border-slate-700 rounded-lg custom-scrollbar">
                             <table class="w-full text-left text-xs">
                                 <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase font-bold sticky top-0"><tr><th class="p-2 md:p-3">Data</th><th class="p-2 md:p-3">Qtd Itens</th><th class="p-2 md:p-3 text-right">Valor Total</th></tr></thead>
-                                <tbody id="forn-Histórico-body" class="divide-y divide-slate-50"></tbody>
+                                <tbody id="forn-historico-body" class="divide-y divide-slate-50"></tbody>
                             </table>
                         </div>
                     </div>
@@ -565,7 +565,7 @@
         </div>
     </div>
 
-    <!-- MODAL CONFIRMAÃ‡ÃO GENÃ‰RICA -->
+    <!-- MODAL CONFIRMAÃ‡ÁO GENÃ‰RICA -->
     <div id="modal-confirmacao" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl scale-95 transition-transform animate-[pop_0.2s_ease-out_forwards]">
             <div class="p-5 text-center">
@@ -580,7 +580,7 @@
         </div>
     </div>
 
-    <!-- MODAL FUNCIONÃÂRIOS -->
+    <!-- MODAL FUNCIONÁÁRIOS -->
     <div id="modal-funcionario" class="fixed inset-0 z-[60] hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl my-auto animate-[slideIn_0.3s_ease-out]">
             <div class="p-4 md:p-5 text-white flex justify-between items-center shrink-0 bg-blue-600">

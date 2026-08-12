@@ -1,8 +1,8 @@
-﻿// fornecedores.js - Lógica Exclusiva de Fornecedores
+// fornecedores.js - Lógica Exclusiva de Fornecedores
 
 let acaoConfirmacaoPendente = null;
 
-document.addEventListener('DOMContentLoaded', () => {
+function inicializarFornecedores() {
     // Liga os listeners do Firestore para Fornecedores e Compras (para o histórico)
     firestore.collection('fornecedores').onSnapshot(snap => {
         db.fornecedores = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -12,7 +12,9 @@ document.addEventListener('DOMContentLoaded', () => {
     firestore.collection('compras').onSnapshot(snap => {
         db.compras = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     });
-});
+}
+
+window.onload = () => { initGlobalData(inicializarFornecedores); };
 
 function abaModal(prefix, nomeAba) {
     const modalId = `#modal-${prefix === 'cli' ? 'cliente' : (prefix === 'forn' ? 'fornecedor' : 'produto')}`;

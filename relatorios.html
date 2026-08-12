@@ -71,7 +71,7 @@
             </div>
         </aside>
 
-        <!-- ÃÂREA DE CONTEÃšDO PRINCIPAL -->
+        <!-- ÁÁREA DE CONTEÃšDO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
             <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
                 <div class="flex items-center gap-3">
@@ -111,46 +111,8 @@
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 hidden md:block">Gestão de Contas</h2>
                         <div class="flex bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-1 shadow-sm w-full md:w-auto overflow-x-auto custom-scrollbar">
-                            <button onclick="renderFinAbas('caixa')" id="fin-tab-caixa" class="px-4 py-1.5 rounded-md text-sm font-bold bg-blue-600 text-white transition-colors whitespace-nowrap">Caixa Diário</button>
                             <button onclick="renderFinAbas('receber')" id="fin-tab-receber" class="px-4 py-1.5 rounded-md text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:text-slate-100 transition-colors whitespace-nowrap">Contas a Receber</button>
                             <button onclick="renderFinAbas('pagar')" id="fin-tab-pagar" class="px-4 py-1.5 rounded-md text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:text-slate-100 transition-colors whitespace-nowrap">Contas a Pagar</button>
-                        </div>
-                    </div>
-
-                    <!-- SUB-ABA CAIXA -->
-                    <div id="fin-area-caixa" class="fin-area hidden space-y-6">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                            <div class="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-center items-center text-center">
-                                <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Status do Caixa</p>
-                                <div id="caixa-status-badge" class="px-4 py-2 rounded-lg font-black text-lg mb-4 bg-slate-100 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400">FECHADO</div>
-                                <div class="flex gap-2 w-full">
-                                    <button onclick="abrirModalCaixa('abrir')" class="flex-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 py-2 rounded-lg font-bold text-xs md:text-sm transition-colors"><i class="fa-solid fa-lock-open"></i> Abrir</button>
-                                    <button onclick="abrirModalCaixa('fechar')" class="flex-1 bg-red-100 text-red-700 hover:bg-red-200 py-2 rounded-lg font-bold text-xs md:text-sm transition-colors"><i class="fa-solid fa-lock"></i> Fechar</button>
-                                </div>
-                            </div>
-                            <div class="bg-slate-900 p-4 md:p-6 rounded-xl shadow-lg text-white flex flex-col justify-center relative overflow-hidden">
-                                <i class="fa-solid fa-vault absolute -right-4 -bottom-4 text-6xl md:text-8xl opacity-10"></i>
-                                <p class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 relative z-10">Saldo Dinheiro (Gaveta)</p>
-                                <h3 class="text-3xl md:text-4xl font-black text-emerald-400 relative z-10" id="caixa-saldo-display">R$ 0,00</h3>
-                            </div>
-                            <div class="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-center gap-2 md:gap-3 sm:col-span-2 md:col-span-1">
-                                <button onclick="abrirModalCaixa('suprimento')" class="w-full bg-blue-50 text-blue-700 hover:bg-blue-100 py-2 md:py-3 rounded-lg font-bold text-xs md:text-sm transition-colors border border-blue-200 flex items-center justify-center gap-2"><i class="fa-solid fa-arrow-down"></i> Suprimento</button>
-                                <button onclick="abrirModalCaixa('sangria')" class="w-full bg-amber-50 text-amber-700 hover:bg-amber-100 py-2 md:py-3 rounded-lg font-bold text-xs md:text-sm transition-colors border border-amber-200 flex items-center justify-center gap-2"><i class="fa-solid fa-arrow-up"></i> Sangria</button>
-                            </div>
-                        </div>
-                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden" id="print-area-caixa">
-                            <div class="p-3 md:p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex justify-between items-center">
-                                <h3 class="font-bold text-slate-700 dark:text-slate-200 text-sm md:text-base">Fluxo de Caixa</h3>
-                                <input type="date" id="filtro-data-caixa" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-1 text-xs md:text-sm text-slate-700 dark:text-slate-200 outline-none" onchange="renderCaixaDiario()">
-                            </div>
-                            <div class="overflow-x-auto max-h-80 custom-scrollbar">
-                                <table class="w-full text-left text-sm min-w-[500px]" id="tabela-export-caixa">
-                                    <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold sticky top-0 border-b border-slate-200 dark:border-slate-700">
-                                        <tr><th class="p-3">Data/Hora</th><th class="p-3">Operação</th><th class="p-3">Descrição / Origem</th><th class="p-3 text-right">Valor</th></tr>
-                                    </thead>
-                                    <tbody id="tabela-caixa-historico" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
-                                </table>
-                            </div>
                         </div>
                     </div>
 
@@ -437,9 +399,9 @@
         </main>
     </div>
 
-    <!-- M O D A I S   D E   G E S T Ã O -->
+    <!-- M O D A I S   D E   G E S T Á O -->
 
-    <!-- MODAL MOVIMENTAÃ‡ÃO CAIXA -->
+    <!-- MODAL MOVIMENTAÃ‡ÁO CAIXA -->
     <div id="modal-mov-caixa" class="fixed inset-0 bg-slate-900/60 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
             <div id="modal-caixa-header" class="bg-blue-600 p-4 md:p-5 text-white flex justify-between items-center">
@@ -458,7 +420,7 @@
         </div>
     </div>
 
-    <!-- NOVO MODAL: CADASTRO DE CONTA (COM RECORRÃÅ NCIA) -->
+    <!-- NOVO MODAL: CADASTRO DE CONTA (COM RECORRÁÅ NCIA) -->
     <div id="modal-nova-conta" class="fixed inset-0 bg-slate-900/80 z-[200] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-slate-800 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col overflow-hidden max-h-[95vh]">
             <div id="modal-conta-header" class="p-4 md:p-5 text-white flex justify-between items-center shrink-0">
@@ -508,7 +470,7 @@
                         </div>
                     </div>
 
-                    <!-- BLOCO 2: DATAS, VALORES E RECORRÃÅ NCIA -->
+                    <!-- BLOCO 2: DATAS, VALORES E RECORRÁÅ NCIA -->
                     <div class="bg-slate-700 p-4 rounded-xl border border-slate-600 shadow-sm space-y-4">
                         <h4 class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase border-b border-slate-100 dark:border-slate-700 pb-2"><i class="fa-solid fa-calendar-days text-slate-400 mr-1"></i> Datas e Valores</h4>
 
@@ -520,7 +482,7 @@
                             <input type="date" id="conta-vencimento" class="w-full bg-amber-50 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-600 p-2 rounded-lg text-xs font-bold text-amber-800 dark:text-amber-300 outline-none focus:border-amber-500"></div>
                         </div>
 
-                        <!-- RECORRÃÅ NCIA -->
+                        <!-- RECORRÁÅ NCIA -->
                         <div class="grid grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg">
                             <div class="col-span-2 sm:col-span-1">
                                 <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Repetir (Assinatura)?</label>
@@ -605,7 +567,7 @@
         </div>
     </div>
 
-    <!-- MODAL RENEGOCIAÃ‡ÃO (DIVIDIR PARCELAS) -->
+    <!-- MODAL RENEGOCIAÃ‡ÁO (DIVIDIR PARCELAS) -->
     <div id="modal-renegociacao" class="fixed inset-0 bg-slate-900/80 z-[250] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
             <div class="bg-purple-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
@@ -640,7 +602,7 @@
         </div>
     </div>
 
-    <!-- MODAL BAIXA RÃÂPIDA -->
+    <!-- MODAL BAIXA RÁÁPIDA -->
     <div id="modal-baixa-conta" class="fixed inset-0 bg-slate-900/60 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden">
             <div class="bg-emerald-600 p-4 md:p-5 text-white flex justify-between items-center">
@@ -675,7 +637,7 @@
         </div>
     </div>
 
-    <!-- MODAL DETALHES DO TÃÂTULO -->
+    <!-- MODAL DETALHES DO TÁÍTULO -->
     <div id="modal-detalhes-titulo" class="fixed inset-0 bg-slate-900/80 z-[200] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
             <div id="det-tit-header" class="p-4 md:p-5 text-white flex justify-between items-center">
@@ -710,7 +672,7 @@
         </div>
     </div>
 
-    <!-- MODAL CONFERÃÅ NCIA XML E RATEIO -->
+    <!-- MODAL CONFERÁÅ NCIA XML E RATEIO -->
     <div id="modal-conferencia-xml" class="fixed inset-0 bg-slate-900/80 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-6xl flex flex-col overflow-hidden max-h-[95vh]">
             <div class="bg-indigo-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
@@ -788,7 +750,7 @@
                 <button onclick="fecharModalProduto()" class="text-blue-200 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             <div class="p-4 bg-slate-50 dark:bg-slate-900 overflow-y-auto space-y-4">
-                <!-- NOVO: OPÃ‡ÃO DE VÃNCULO MANUAL (MOSTRADA APENAS NO XML) -->
+                <!-- NOVO: OPÃ‡ÁO DE VÍNCULO MANUAL (MOSTRADA APENAS NO XML) -->
                 <div id="div-acao-vinculo-xml" class="hidden mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-lg">
                     <lAção: Vincular ou Cadastrar?</label>
                     <select id="prod-acao-vinculo" onchange="alternarAcaoVinculoXML()" class="w-full bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 p-2 rounded text-sm outline-none mb-2 font-bold text-slate-700 dark:text-slate-200">
@@ -810,11 +772,11 @@
                 <input type="hidden" id="prod-marca" value=""><input type="hidden" id="prod-categoria" value="Geral"><input type="hidden" id="prod-unidade" value="Un"><input type="hidden" id="prod-estoque" value="0"><input type="hidden" id="prod-minimo" value="5"><input type="hidden" id="prod-obs" value=""><input type="hidden" id="prod-foto-base64" value="">
 
                 <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Nome do Produto</label><input type="text" id="prod-nome" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white"></div>
-                <div><label CÃ³d Barras (EAN)</label><input type="text" id="prod-ean" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white"></div>
+                <div><label Cód Barras (EAN)</label><input type="text" id="prod-ean" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white"></div>
                 <div class="grid grid-cols-3 gap-3">
                     <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Custo R$</label><input type="number" id="prod-custo" step="0.01" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white" oninput="calcularPrecoMargin('custo')"></div>
                     <div><label class="text-xs font-bold text-blue-700 mb-1 block">Margem %</label><input type="number" id="prod-margem" step="0.1" class="w-full bg-blue-50 border border-blue-200 text-blue-800 p-2.5 rounded-lg text-sm font-bold outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" oninput="calcularPrecoMargin('margem')"></div>
-                    <div><label class="text-xs font-bold text-emerald-700 mb-1 block">PreÃ§o R$</label><input type="number" id="prod-preco" step="0.01" class="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 p-2.5 rounded-lg text-sm font-bold outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" oninput="calcularPrecoMargin('preco')"></div>
+                    <div><label class="text-xs font-bold text-emerald-700 mb-1 block">Preço R$</label><input type="number" id="prod-preco" step="0.01" class="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 p-2.5 rounded-lg text-sm font-bold outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" oninput="calcularPrecoMargin('preco')"></div>
                 </div>
             </div>
             <div class="bg-white dark:bg-slate-800 p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
@@ -824,7 +786,7 @@
         </div>
     </div>
 
-    <!-- MODAL LANÃ‡AMENTO DE COMPRA MANUAL (SEM NF E EDIÃ‡ÃO) -->
+    <!-- MODAL LANÃ‡AMENTO DE COMPRA MANUAL (SEM NF E EDIÃ‡ÁO) -->
     <div id="modal-compra-manual" class="fixed inset-0 bg-slate-900/80 z-[160] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-slate-800 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col overflow-hidden max-h-[95vh]">
             <div class="bg-emerald-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
@@ -940,7 +902,7 @@
         </div>
     </div>
 
-    <!-- CONFIRMAÃ‡ÃO DO SISTEMA -->
+    <!-- CONFIRMAÃ‡ÁO DO SISTEMA -->
     <div id="modal-confirmacao" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden text-center p-6">
             <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl"><i class="fa-solid fa-triangle-exclamation"></i></div>

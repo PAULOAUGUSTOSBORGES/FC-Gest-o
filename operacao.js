@@ -521,7 +521,7 @@ function renderizarFotosOS() {
     grid.innerHTML = osFotosArray.map((foto, idx) => `
         <div class="relative w-14 h-14 border border-purple-300 rounded overflow-hidden shadow-sm group">
             <div class="w-full h-full bg-cover bg-center cursor-zoom-in" style="background-image: url('${foto}')" onclick="abrirZoom('${foto}')"></div>
-            <button onclick="removerFotoOS(${idx})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="removerFotoOS('${idx}')" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"><i class="fa-solid fa-xmark"></i></button>
         </div>
     `).join(''); 
 }
@@ -1138,7 +1138,7 @@ function pdvMudarObsItem(i, val) {
 
 function renderCarrinho() {
     document.getElementById('pdv-carrinho-body').innerHTML = cart.map((item, i) => { 
-        const fHtml = item.foto ? `<img src="${item.foto}" onclick="abrirZoomCart(${i})" class="w-10 h-10 rounded object-cover border border-slate-200 dark:border-slate-700 mx-auto cursor-zoom-in hover:opacity-80 transition" title="Ver foto em tela cheia">` : `<div class="w-10 h-10 mx-auto rounded bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-400 text-xs border border-slate-200 dark:border-slate-700"><i class="fa-regular fa-image"></i></div>`; 
+        const fHtml = item.foto ? `<img src="${item.foto}" onclick="abrirZoomCart('${i}')" class="w-10 h-10 rounded object-cover border border-slate-200 dark:border-slate-700 mx-auto cursor-zoom-in hover:opacity-80 transition" title="Ver foto em tela cheia">` : `<div class="w-10 h-10 mx-auto rounded bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-400 text-xs border border-slate-200 dark:border-slate-700"><i class="fa-regular fa-image"></i></div>`; 
         return `
         <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-50">
             <td class="py-2 text-center">${fHtml}</td>
@@ -1331,7 +1331,7 @@ function atualizarResumoPagamentosVenda() {
                 </div>
                 <div class="flex items-center gap-3">
                     <span class="font-black text-slate-700 dark:text-slate-200">R$ ${pag.valor.toFixed(2).replace('.', ',')}</span>
-                    <button onclick="removerPagamentoVenda(${index})" class="text-red-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash"></i></button>
+                    <button onclick="removerPagamentoVenda('${index}')" class="text-red-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash"></i></button>
                 </div>
             </div>`; 
         }); 
@@ -2169,7 +2169,7 @@ function atualizarVendedoresPDV() {
 
 
 
-// NOVO: FunÃ§Ãµes auxiliares para VÃ­nculo de XML
+// NOVO: Funções auxiliares para Vínculo de XML
 function alternarAcaoVinculoXML() {
     const acao = document.getElementById('prod-acao-vinculo').value;
     if(acao === 'VINCULAR') {
