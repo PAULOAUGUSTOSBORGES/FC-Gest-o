@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // OPERACAO.JS - SISTEMA 100% WHITE LABEL E BLINDADO
 // ==========================================
 
@@ -568,7 +568,7 @@ function printHtmlSeguro(htmlCompleto) {
     setTimeout(() => { 
         printWin.focus(); 
         printWin.print(); 
-        printWin.close(); 
+        // Janela continua aberta para o usuário observar o documento
     }, 1500);
 }
 
@@ -2225,3 +2225,212 @@ function filtrarProdutosXMLBusca() {
 function mostrarListaProdutosXMLBusca() { filtrarProdutosXMLBusca(); }
 function ocultarListaProdutosXMLBusca() { document.getElementById('prod-vinculo-lista').classList.add('hidden'); }
 
+window.excluirVenda = function(id) {
+    const v = db.vendas.find(x => String(x.id) === String(id)); 
+    if(!v) return showToast('Venda não encontrada.', 'error'); 
+
+    abrirConfirmacao('Excluir Operação', 'Tem certeza que deseja excluir esta venda permanentemente? Esta ação também fará o estorno de estoque e removerá os lançamentos do financeiro associados.', async () => {
+        try {
+            const batch = firestore.batch();
+            const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
+            
+            if(v.tipo !== 'ORÇAMENTO') {
+                if(v.itens && v.itens.length > 0) { 
+                    v.itens.forEach(item => { 
+                        const p = (db.produtos || []).find(prod => String(prod.id) === String(item.id)); 
+                        if(p) { 
+                            const pRef = firestore.collection('produtos').doc(String(p.id));
+                            batch.update(pRef, { estoque: (p.estoque || 0) + Number(item.qtd || 1) });
+                            
+                            const kardexRef = firestore.collection('movimentacoes').doc();
+                            batch.set(kardexRef, {
+                                data: new Date().toISOString(),
+                                ref: `Estorno de Exclusão ${v.tipo || 'VENDA'} #${numPedStr}`,
+                                prodId: p.id,
+                                prodNome: p.nome,
+                                qtd: Number(item.qtd || 1),
+                                tipo: 'ESTORNO'
+                            });
+                        } 
+                    }); 
+                }
+                
+                const finQuery = await firestore.collection('financeiro').where('origemVendaId', '==', String(id)).get();
+                finQuery.docs.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                
+                if(v.pag && typeof v.pag === 'string' && String(v.pag).includes('Dinheiro')) { 
+                    let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
+                    let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
+                    let cxSaldoNovo = (cxAtual.saldo || 0) - (Number(v.valorLiquido || v.tot) || 0);
+                    cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno (Exclusão) ${v.tipo || 'VENDA'} #${numPedStr}`, valor: (Number(v.valorLiquido || v.tot) || 0) });
+                    
+                    const caixaRef = firestore.collection('fc_moveis').doc('caixa');
+                    batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+                }
+            }
+
+            const vendaRef = firestore.collection('vendas').doc(String(id));
+            batch.delete(vendaRef);
+            
+            await batch.commit(); 
+            
+            showToast('Operação excluída com sucesso!', 'success');
+            
+            if(typeof renderVendas === 'function') renderVendas();
+            if(typeof renderOrcamentos === 'function') renderOrcamentos();
+            
+        } catch (error) {
+            console.error('Erro ao excluir:', error);
+            showToast('Erro ao excluir: ' + error.message, 'error');
+        }
+    });
+};
+
+window.reimprimirVenda = function(id) {
+    const v = db.vendas.find(x => String(x.id) === String(id)); 
+    if(!v) return;
+    
+    // Define a venda atual para que os botões do modal funcionem
+    window.vendaAtualImpressao = v;
+    
+    if (v.tipo === 'SERVIÇO' && typeof imprimirContratoObj === 'function') {
+        imprimirContratoObj(v);
+        return;
+    }
+    
+    const emp = typeof obterDadosEmpresa === 'function' ? obterDadosEmpresa() : (db.empresa || { nome: 'FC MÓVEIS', cnpj: '', end: '', tel: '', logoHtml: '' });
+    
+    const isOrcamento = v.tipo === 'ORÇAMENTO';
+    const isServico = v.tipo === 'SERVIÇO';
+    const tituloRecibo = isOrcamento ? 'ORÇAMENTO - VÁLIDO POR 7 DIAS' : (isServico ? 'ORDEM DE PRESTAÇÃO DE SERVIÇO' : 'CUPOM NÃO FISCAL - SEM VALOR LEGAL');
+    const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
+    const vend = v.vendedor || '-';
+    
+    const cNome = v.clienteNome || 'Consumidor';
+    const cDoc = v.clienteDoc || 'Não informado';
+    const cTel = v.clienteTel || 'Não informado';
+    const cEnd = v.clienteEnd || 'Não informado';
+    
+    const sub = v.subTotal || v.tot || 0;
+    const frete = v.taxaFrete || 0;
+    const desc = v.desconto || 0;
+    const tot = v.tot || 0;
+    const troco = v.valorTroco || 0;
+    
+    const obsTexto = v.obs || '';
+    const pagTexto = v.pag || '';
+    // Tentamos pegar array de pagamentos caso exista, senão geramos um array fictício usando pag e tot
+    const pagamentos = (v.pagamentos && v.pagamentos.length > 0) ? v.pagamentos : [{ metodo: pagTexto || 'Não Informado', parcelas: 1, valor: tot }];
+    
+    // For service
+    const servDetails = v.servicoDetalhes || {};
+    const osPrazo = servDetails.prazo || '';
+    const osGarantia = servDetails.garantia || '';
+    const osDesc = servDetails.desc || '';
+    const osFotosParaSalvar = servDetails.fotos || [];
+
+    const htmlRecibo = `
+    <div style="font-family: Arial, sans-serif; color: #000; max-width: 800px; margin: 0 auto; padding: 10px;">
+        <div style="border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 15px; text-align: center;">
+            ${emp.logoHtml || ''}
+            <h1 style="margin: 0; font-size: 22px; text-transform: uppercase; font-weight: 900;">${emp.nome}</h1>
+            <p style="margin: 5px 0; font-size: 13px;">CNPJ: ${emp.cnpj}<br>${emp.end}<br>Tel: ${emp.tel} | Vend: ${vend}</p>
+        </div>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="margin: 0; font-size: 16px; font-weight: 900; border: 2px solid #000; display: inline-block; padding: 6px 15px; border-radius: 4px;">${tituloRecibo}</h2>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-bottom: 20px; font-size: 13px;">
+            <div>
+                <strong>DADOS DO CLIENTE</strong><br>
+                Nome: ${cNome}<br>
+                CPF/CNPJ: ${cDoc}<br>
+                Telefone: ${cTel}<br>
+                Endereço: ${cEnd}
+            </div>
+            <div style="text-align: right; border-left: 1px solid #ccc; padding-left: 15px;">
+                <strong>DADOS DA OPERAÇÃO</strong><br>
+                Nº: #${numPedStr}<br>
+                Data Orig: ${v.data ? new Date(v.data).toLocaleString('pt-BR') : '-'}<br>
+                Op: REIMPRESSÃO
+            </div>
+        </div>
+
+        ${isServico ? `
+        <div style="border: 1px solid #6b21a8; border-radius: 5px; padding: 12px; margin-bottom: 20px; font-size: 13px; background-color: #faf5ff;">
+            <h3 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #d8b4fe; padding-bottom: 5px; color: #6b21a8; text-transform: uppercase;">Dados da Ordem de Serviço</h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+                <div style="flex: 1; min-width: 150px;"><strong>Previsão de Entrega:</strong> ${osPrazo ? osPrazo.split('-').reverse().join('/') : 'Não informada'}</div>
+                <div style="flex: 1; min-width: 150px;"><strong>Garantia do Serviço:</strong> ${osGarantia || 'Não informada'}</div>
+            </div>
+            ${osDesc ? `<div><strong>Escopo / Defeito:</strong><br>${osDesc}</div>` : ''}
+            ${osFotosParaSalvar.length > 0 ? `<div style="margin-top: 10px;"><strong>Fotos de Referência (Estado Inicial):</strong><br><div style="display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px;">${osFotosParaSalvar.map(f => `<img src="${f}" style="height: 120px; border-radius: 4px; border: 1px solid #d8b4fe;">`).join('')}</div></div>` : ''}
+        </div>
+        ` : ''}
+
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px;">
+            <thead>
+                <tr style="background-color: #f1f5f9; border-bottom: 2px solid #000;">
+                    <th style="padding: 8px; text-align: left;">Descrição do Item</th>
+                    <th style="padding: 8px; text-align: center;">Qtd</th>
+                    <th style="padding: 8px; text-align: right;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${(v.itens||[]).map(i => `
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 8px;">
+                            <strong>${i.nome || 'Produto/Serviço'}</strong>
+                            ${i.obsVenda ? `<br><span style="font-size: 11px; color: #475569; font-style: italic;">Obs: ${i.obsVenda}</span>` : ''}
+                        </td>
+                        <td style="padding: 8px; text-align: center;">${i.qtd || 1}</td>
+                        <td style="padding: 8px; text-align: right; font-weight: bold;">${typeof formatMoney==='function'?formatMoney((i.preco || 0) * (i.qtd || 1)):((i.preco || 0) * (i.qtd || 1))}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+
+        <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; margin-bottom: 20px; font-size: 13px;">
+            <div style="flex: 1; min-width: 280px; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-right: 5px; margin-bottom: 5px;">
+                <h3 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">${isOrcamento ? 'PREVISÃO DE PAGAMENTO' : 'PAGAMENTOS REGISTRADOS'}</h3>
+                ${pagTexto !== 'Orçamento (Sem Pagamento Exigido)' ? pagamentos.map(p => `<div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>▪ ${p.metodo} ${p.parcelas > 1 ? `(${p.parcelas}x)` : ''}</span> <strong>${typeof formatMoney==='function'?formatMoney(p.valor):p.valor}</strong></div>`).join('') : '<p style="font-style: italic; color: #555;">Nenhum pagamento registrado no orçamento.</p>'}
+                ${troco > 0 && !isOrcamento ? `<div style="display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #000;"><span>Troco Devolvido:</span> <strong style="color: red;">${typeof formatMoney==='function'?formatMoney(troco):troco}</strong></div>` : ''}
+            </div>
+            <div style="flex: 1; min-width: 280px; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-left: 5px; margin-bottom: 5px;">
+                <h3 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">RESUMO DOS VALORES</h3>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Subtotal:</span> <span>${typeof formatMoney==='function'?formatMoney(sub):sub}</span></div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Taxas / Desloc (+):</span> <span>${typeof formatMoney==='function'?formatMoney(frete):frete}</span></div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Descontos (-):</span> <span>-${typeof formatMoney==='function'?formatMoney(desc):desc}</span></div>
+                <div style="display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 2px solid #000; font-size: 16px; font-weight: bold;"><span>TOTAL GERAL:</span> <span>${typeof formatMoney==='function'?formatMoney(tot):tot}</span></div>
+            </div>
+        </div>
+        
+        ${obsTexto ? `
+        <div style="border: 1px solid #000; border-radius: 5px; padding: 12px; margin-bottom: 30px; font-size: 13px; background-color: #f8fafc;">
+            <strong>Observações Gerais do Pedido:</strong><br>
+            ${obsTexto}
+        </div>
+        ` : ''}
+
+        <div style="display: flex; justify-content: space-around; margin-top: 60px; text-align: center; font-size: 13px;">
+            <div style="width: 40%;">
+                <div style="border-top: 1px solid #000; padding-top: 5px;">Assinatura do Cliente</div>
+                <div style="font-size: 11px; margin-top: 3px; color: #475569;">${isOrcamento ? 'Reconheço o orçamento acima' : (isServico ? 'Aprovo a execução do serviço.' : 'Declaro ter recebido os itens acima.')}</div>
+            </div>
+            <div style="width: 40%;">
+                <div style="border-top: 1px solid #000; padding-top: 5px;">Assinatura da Empresa</div>
+                <div style="font-size: 11px; margin-top: 3px; color: #475569; font-weight: bold;">${emp.nome}</div>
+            </div>
+        </div>
+    </div>
+    `;
+    
+    const printArea = document.getElementById('print-area');
+    if (printArea) {
+        printArea.innerHTML = htmlRecibo; 
+        const modalRecibo = document.getElementById('modal-opcoes-recibo');
+        if (modalRecibo) modalRecibo.classList.remove('hidden');
+    }
+};

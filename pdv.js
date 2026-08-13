@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // OPERACAO.JS - SISTEMA 100% WHITE LABEL E BLINDADO
 // ==========================================
 
@@ -568,7 +568,7 @@ function printHtmlSeguro(htmlCompleto) {
     setTimeout(() => { 
         printWin.focus(); 
         printWin.print(); 
-        printWin.close(); 
+        // Janela continua aberta para o usuário observar o documento
     }, 1500);
 }
 
