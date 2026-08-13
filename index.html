@@ -64,6 +64,7 @@
                 <a href="compras.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & NF-e XML</a>
                 <a href="relatorios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
                 <a href="estoque.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="estoque"><i class="fa-solid fa-pallet w-5 text-center"></i> Estoque & Kardex</a>
+                <a href="agenda.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="agenda"><i class="fa-regular fa-calendar w-5 text-center"></i> Agenda</a>
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Sistema</p>
                 <a href="sistema.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="config"><i class="fa-solid fa-gear w-5 text-center"></i> Configurações</a>
@@ -215,6 +216,17 @@
                         </div>
                     </div>
 
+                    <!-- AGENDA / LEMBRETES -->
+                    <div class="mt-6 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><i class="fa-regular fa-calendar-check text-blue-500"></i> Agenda & Lembretes (Próximos 7 Dias)</h3>
+                            <button onclick="window.location.href='agenda.html'" class="text-xs font-bold bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 px-3 py-1.5 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors">Ver Calendário Completo</button>
+                        </div>
+                        <div id="dash-lembretes" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                            <div class="text-center text-slate-400 text-sm py-6 col-span-full"><i class="fa-solid fa-spinner fa-spin"></i> Carregando lembretes...</div>
+                        </div>
+                    </div>
+
                     <!-- RANKINGS E CURVA ABC (FASE 3) -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
                         
@@ -311,7 +323,7 @@
     
     <!-- Scripts -->
     <script src="global.js?v=9"></script>
-    <script src="index.js?v=9"></script>
+    <script src="index.js?v=12"></script>
 </body>
 </html>
 

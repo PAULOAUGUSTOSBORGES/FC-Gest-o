@@ -1,4 +1,4 @@
-﻿// index.js - Lógica exclusiva do Dashboard (MEGA BI)
+// index.js - Lógica exclusiva do Dashboard (MEGA BI)
 
 let renderTimeout = null;
 
@@ -600,4 +600,74 @@ function renderizarGraficos() {
 window.onload = () => { 
     initGlobalData(inicializarDashboard); 
 };
+
+// Aguardar autenticação do Firebase no global.js para carregar lembretes
+const authLembretesInterval = setInterval(() => {
+    if (typeof window.currentUserInfo !== 'undefined' && window.currentUserInfo !== null) {
+        clearInterval(authLembretesInterval);
+        carregarLembretesDashboard();
+    }
+}, 500);
+
+function carregarLembretesDashboard() {
+    firestore.collection('fc_moveis').doc('config')
+        .onSnapshot((doc) => {
+            const container = document.getElementById('dash-lembretes');
+            if (!container) return;
+            
+            let html = '';
+            let eventos = [];
+            
+            const hoje = new Date();
+            hoje.setHours(0,0,0,0);
+            
+            const em7Dias = new Date();
+            em7Dias.setDate(hoje.getDate() + 7);
+            
+            if (doc.exists) {
+                const docData = doc.data() || {};
+                const dataObj = docData.agenda_eventos || {};
+                Object.keys(dataObj).forEach(key => {
+                    let data = dataObj[key];
+                    if (!data.inicio) return;
+                    const dataInicio = new Date(data.inicio);
+                    
+                    if (dataInicio >= hoje && dataInicio <= em7Dias) {
+                        eventos.push({...data, id: key, dataObj: dataInicio});
+                    }
+                });
+            }
+            
+            eventos.sort((a,b) => a.dataObj - b.dataObj);
+            
+            if (eventos.length === 0) {
+                container.innerHTML = '<div class="text-center text-slate-400 text-sm py-6 col-span-full"><i class="fa-regular fa-calendar-check text-4xl mb-3 block text-slate-300"></i> Nenhum lembrete para os próximos 7 dias!</div>';
+                return;
+            }
+            
+            eventos.forEach(ev => {
+                const isHoje = ev.dataObj.getDate() === hoje.getDate() && ev.dataObj.getMonth() === hoje.getMonth();
+                const isAmanha = ev.dataObj.getDate() === (hoje.getDate() + 1) && ev.dataObj.getMonth() === hoje.getMonth();
+                let diaFormatado = ev.dataObj.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'});
+                if (isHoje) diaFormatado = 'Hoje';
+                else if (isAmanha) diaFormatado = 'Amanhã';
+                
+                const horaFormatada = ev.diaInteiro ? 'Dia Todo' : ev.dataObj.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+                
+                html += `
+                <div class="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex flex-col justify-between shadow-sm cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition-colors" style="border-left: 4px solid ${ev.cor || '#3b82f6'}" onclick="window.location.href='agenda.html'">
+                    <div>
+                        <div class="flex justify-between items-center mb-2 border-b border-slate-100 dark:border-slate-700/50 pb-1.5">
+                            <span class="text-xs font-bold ${isHoje ? 'text-red-500' : 'text-slate-500 dark:text-slate-400'}"><i class="fa-regular fa-calendar-days mr-1"></i> ${diaFormatado}</span>
+                            <span class="text-[10px] bg-white dark:bg-slate-800 px-2 py-0.5 rounded-full shadow-sm border border-slate-200 dark:border-slate-700 font-bold text-slate-600 dark:text-slate-300"><i class="fa-regular fa-clock mr-1"></i> ${horaFormatada}</span>
+                        </div>
+                        <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm line-clamp-2">${ev.titulo}</h4>
+                    </div>
+                </div>`;
+            });
+            
+            container.innerHTML = html;
+        });
+}
+
 
