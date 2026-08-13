@@ -51,7 +51,11 @@ function mudarVisaoLocal(viewId) {
     }
     
     if (viewId === 'financeiro') {
-        renderFinAbas('pagar');
+        if (typeof currentFinView !== 'undefined' && currentFinView === 'calendario') {
+            mudarVisualizacaoFin('calendario');
+        } else {
+            renderFinAbas('pagar');
+        }
         atualizarCardsFluxoDeCaixa(); 
     }
     if (viewId === 'relatorios') renderDashboard();
@@ -359,6 +363,107 @@ function exportarExcel(tabelaId, filename) {
 // ==========================================
 // 3. FINANCEIRO E CAIXA FÃÍSICO
 // ==========================================
+let finCalendar = null;
+let currentFinView = 'lista';
+
+function mudarVisualizacaoFin(modo) {
+    currentFinView = modo;
+    
+    document.getElementById('fin-view-lista').classList.remove('bg-blue-600', 'text-white');
+    document.getElementById('fin-view-lista').classList.add('text-slate-600', 'dark:text-slate-300');
+    
+    document.getElementById('fin-view-calendario').classList.remove('bg-blue-600', 'text-white');
+    document.getElementById('fin-view-calendario').classList.add('text-slate-600', 'dark:text-slate-300');
+    
+    document.getElementById(`fin-view-${modo}`).classList.remove('text-slate-600', 'dark:text-slate-300');
+    document.getElementById(`fin-view-${modo}`).classList.add('bg-blue-600', 'text-white');
+    
+    if (modo === 'calendario') {
+        document.getElementById('fin-abas-container').classList.add('hidden');
+        const areaReceber = document.getElementById('fin-area-receber');
+        const areaPagar = document.getElementById('fin-area-pagar');
+        if (areaReceber) areaReceber.classList.add('hidden');
+        if (areaPagar) areaPagar.classList.add('hidden');
+        document.getElementById('fin-area-calendario').classList.remove('hidden');
+        
+        if (!finCalendar) {
+            initFinCalendar();
+        } else {
+            renderFinCalendarEvents();
+            finCalendar.render();
+        }
+    } else {
+        document.getElementById('fin-abas-container').classList.remove('hidden');
+        document.getElementById('fin-area-calendario').classList.add('hidden');
+        
+        // Retorna para a aba ativa baseada no botÃ£o selecionado
+        const abaAtiva = document.getElementById('fin-tab-receber').classList.contains('bg-blue-600') ? 'receber' : 'pagar';
+        renderFinAbas(abaAtiva);
+    }
+}
+
+function initFinCalendar() {
+    const calendarEl = document.getElementById('fin-calendar');
+    if (!calendarEl || typeof FullCalendar === 'undefined') return;
+    
+    finCalendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'pt-br',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        buttonText: {
+            today: 'Hoje',
+            month: 'MÃªs',
+            week: 'Semana',
+            day: 'Dia'
+        },
+        height: 'auto',
+        dayMaxEvents: true,
+        eventClick: function(info) {
+            const id = info.event.extendedProps.conta.id;
+            abrirModalContaEdicao(id);
+        }
+    });
+    
+    finCalendar.render();
+    renderFinCalendarEvents();
+}
+
+function renderFinCalendarEvents() {
+    if (!finCalendar || !db.financeiro) return;
+    
+    finCalendar.removeAllEvents();
+    let eventos = [];
+    
+    db.financeiro.forEach(f => {
+        if (f.status === 'CANCELADO' || f.status === 'RENEGOCIADO') return;
+        if (!f.data) return;
+        
+        const isReceita = (f.tipo === 'RECEITA' || !f.tipo);
+        const valorReal = f.status === 'PAGO' ? (f.valorPago || f.valor) : f.valor;
+        
+        let corEvento = isReceita ? '#10b981' : '#ef4444'; 
+        if (f.status === 'PAGO') corEvento = isReceita ? '#059669' : '#dc2626';
+        
+        let titulo = (f.pessoa || (isReceita ? 'Sem Nome' : 'Sem Favorecido')) + " - " + formatMoney(valorReal);
+        if (f.status === 'PAGO') titulo = '✓ ' + titulo;
+        
+        eventos.push({
+            id: f.id,
+            title: titulo,
+            start: f.data,
+            allDay: true,
+            backgroundColor: corEvento,
+            borderColor: corEvento,
+            extendedProps: { conta: f }
+        });
+    });
+    finCalendar.addEventSource(eventos);
+}
+
 function renderFinAbas(aba) {
     if (!document.getElementById(`fin-area-${aba}`)) return;
     document.querySelectorAll('.fin-area').forEach(el => el.classList.add('hidden'));
@@ -2241,6 +2346,8 @@ function filtrarProdutosXMLBusca() {
 
 function mostrarListaProdutosXMLBusca() { filtrarProdutosXMLBusca(); }
 function ocultarListaProdutosXMLBusca() { document.getElementById('prod-vinculo-lista').classList.add('hidden'); }
+
+
 
 
 

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -17,6 +17,50 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js?v=9"></script>
     <link rel="stylesheet" href="style.css">
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    <style>
+        .fc-theme-standard .fc-scrollgrid { border-color: #e2e8f0; }
+        .dark .fc-theme-standard .fc-scrollgrid { border-color: #334155; }
+        .fc-theme-standard td, .fc-theme-standard th { border-color: #e2e8f0; }
+        .dark .fc-theme-standard td, .dark .fc-theme-standard th { border-color: #334155; }
+        .dark .fc-day-today { background-color: rgba(59, 130, 246, 0.1) !important; }
+        .dark .fc-col-header-cell { background-color: #1e293b; color: #f8fafc; padding: 10px 0; }
+        .fc-col-header-cell { background-color: #f8fafc; color: #334155; padding: 10px 0; }
+        .dark .fc-button-primary { background-color: #3b82f6 !important; border-color: #2563eb !important; }
+        .fc-toolbar-title { font-size: 1.25rem !important; font-weight: 700; }
+        .dark .fc-daygrid-day-number { color: #cbd5e1; }
+        .fc-daygrid-day-number { color: #475569; font-weight: 600; padding: 4px 8px !important; }
+        
+        .dark .fc-popover { background-color: #1e293b !important; border-color: #334155 !important; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); }
+        .dark .fc-popover-header { background-color: #0f172a !important; color: #f8fafc !important; }
+        .dark .fc-popover-title { color: #f8fafc !important; font-weight: bold; }
+        .dark .fc-popover-close { color: #94a3b8 !important; opacity: 1; }
+        .dark .fc-more-popover .fc-popover-body { background-color: #1e293b !important; }
+        .dark .fc-daygrid-more-link { color: #60a5fa !important; font-weight: bold; }
+        .fc-daygrid-more-link { color: #2563eb !important; font-weight: bold; }
+    </style>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    <style>
+        .fc-theme-standard .fc-scrollgrid { border-color: #e2e8f0; }
+        .dark .fc-theme-standard .fc-scrollgrid { border-color: #334155; }
+        .fc-theme-standard td, .fc-theme-standard th { border-color: #e2e8f0; }
+        .dark .fc-theme-standard td, .dark .fc-theme-standard th { border-color: #334155; }
+        .dark .fc-day-today { background-color: rgba(59, 130, 246, 0.1) !important; }
+        .dark .fc-col-header-cell { background-color: #1e293b; color: #f8fafc; padding: 10px 0; }
+        .fc-col-header-cell { background-color: #f8fafc; color: #334155; padding: 10px 0; }
+        .dark .fc-button-primary { background-color: #3b82f6 !important; border-color: #2563eb !important; }
+        .fc-toolbar-title { font-size: 1.25rem !important; font-weight: 700; }
+        .dark .fc-daygrid-day-number { color: #cbd5e1; }
+        .fc-daygrid-day-number { color: #475569; font-weight: 600; padding: 4px 8px !important; }
+        
+        .dark .fc-popover { background-color: #1e293b !important; border-color: #334155 !important; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); }
+        .dark .fc-popover-header { background-color: #0f172a !important; color: #f8fafc !important; }
+        .dark .fc-popover-title { color: #f8fafc !important; font-weight: bold; }
+        .dark .fc-popover-close { color: #94a3b8 !important; opacity: 1; }
+        .dark .fc-more-popover .fc-popover-body { background-color: #1e293b !important; }
+        .dark .fc-daygrid-more-link { color: #60a5fa !important; font-weight: bold; }
+        .fc-daygrid-more-link { color: #2563eb !important; font-weight: bold; }
+    </style>
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -103,18 +147,35 @@
                             <h3 class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Fluxo 90 Dias (Proj)</h3>
                             <p class="text-xl font-black text-purple-600 mt-1" id="dash-fluxo-90">R$ 0,00</p>
                         </div>
-                        <div class="bg-red-50 p-4 rounded-xl border border-red-200 shadow-sm flex flex-col justify-center">
-                            <h3 class="text-[10px] font-bold text-red-700 uppercase">Inadimplência (Atrasos)</h3>
-                            <p class="text-xl font-black text-red-600 mt-1" id="dash-inadimplencia">R$ 0,00</p>
+                        <div class="bg-red-50 dark:bg-red-900/30 p-4 rounded-xl border border-red-200 dark:border-red-800 shadow-sm flex flex-col justify-center">
+                            <h3 class="text-[10px] font-bold text-red-700 dark:text-red-400 uppercase">Inadimplência (Atrasos)</h3>
+                            <p class="text-xl font-black text-red-600 dark:text-red-500 mt-1" id="dash-inadimplencia">R$ 0,00</p>
                         </div>
                     </div>
 
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 hidden md:block">Gestão de Contas</h2>
-                        <div class="flex bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-1 shadow-sm w-full md:w-auto overflow-x-auto custom-scrollbar">
-                            <button onclick="renderFinAbas('receber')" id="fin-tab-receber" class="px-4 py-1.5 rounded-md text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:text-slate-100 transition-colors whitespace-nowrap">Contas a Receber</button>
-                            <button onclick="renderFinAbas('pagar')" id="fin-tab-pagar" class="px-4 py-1.5 rounded-md text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:text-slate-100 transition-colors whitespace-nowrap">Contas a Pagar</button>
+                        <div class="flex gap-2">
+                            <!-- Toggle View -->
+                            <div class="flex bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-1 shadow-sm w-full md:w-auto overflow-x-auto custom-scrollbar">
+                                <button onclick="mudarVisualizacaoFin('lista')" id="fin-view-lista" class="px-3 py-1.5 rounded-md text-sm font-bold bg-blue-600 text-white transition-colors whitespace-nowrap"><i class="fa-solid fa-list mr-1"></i> Lista</button>
+                                <button onclick="mudarVisualizacaoFin('calendario')" id="fin-view-calendario" class="px-3 py-1.5 rounded-md text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:text-slate-100 transition-colors whitespace-nowrap"><i class="fa-regular fa-calendar mr-1"></i> Calendário</button>
+                            </div>
+                            <!-- Abas Pagar/Receber -->
+                            <div id="fin-abas-container" class="flex bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-1 shadow-sm w-full md:w-auto overflow-x-auto custom-scrollbar">
+                                <button onclick="renderFinAbas('receber')" id="fin-tab-receber" class="px-4 py-1.5 rounded-md text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:text-slate-100 transition-colors whitespace-nowrap">Contas a Receber</button>
+                                <button onclick="renderFinAbas('pagar')" id="fin-tab-pagar" class="px-4 py-1.5 rounded-md text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:text-slate-100 transition-colors whitespace-nowrap">Contas a Pagar</button>
+                            </div>
                         </div>
+                    </div>
+
+                    <!-- MODO CALENDÁRIO -->
+                    <div id="fin-area-calendario" class="fin-area hidden bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 md:p-6 w-full">
+                        <div class="flex gap-4 mb-4 flex-wrap">
+                            <div class="flex items-center gap-2 text-sm"><span class="w-3 h-3 rounded-full bg-emerald-500"></span><span class="text-slate-600 dark:text-slate-300">Contas a Receber</span></div>
+                            <div class="flex items-center gap-2 text-sm"><span class="w-3 h-3 rounded-full bg-red-500"></span><span class="text-slate-600 dark:text-slate-300">Contas a Pagar</span></div>
+                        </div>
+                        <div id="fin-calendar" class="w-full min-h-[500px]"></div>
                     </div>
 
                     <!-- SUB-ABA CONTAS A RECEBER -->
@@ -134,10 +195,9 @@
                                         <option value="CANCELADO">Cancelado</option>
                                     </select>
                                     <select id="filtro-receber-periodo" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('receber')">
-                                        <option value="MES_ATUAL" selected>Este MÃªs</option>
-                                        <option value="30">PrÃ³ximos 30 dias</option>
-                                        <option value="90">PrÃ³ximos 90 dias</option>
-                                        <option value="TUDO">HistÃ³rico Completo</option>
+                                        <option value="30" selected>Próximos 30 dias</option>
+                                        <option value="90">Próximos 90 dias</option>
+                                        <option value="TUDO">Histórico Completo</option>
                                     </select>
                                     <input type="date" id="filtro-receber-ini" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('receber')" title="Data Inicial">
                                     <input type="date" id="filtro-receber-fim" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('receber')" title="Data Final">
@@ -153,7 +213,7 @@
                             <div class="overflow-x-auto custom-scrollbar">
                                 <table class="w-full text-left min-w-[700px]" id="tabela-fin-receber-export">
                                     <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold border-b border-slate-200 dark:border-slate-700">
-                                        <tr><th class="p-3">Vencimento</th><th class="p-3">Cliente / Pagador</th><th class="p-3">Ref/Categoria</th><th class="p-3 text-right">Valor Final</th><th class="p-3 text-center">Status</th><th class="p-3 text-center print:hidden">AÃ§Ãµes AvanÃ§adas</th></tr>
+                                        <tr><th class="p-3">Vencimento</th><th class="p-3">Cliente / Pagador</th><th class="p-3">Ref/Categoria</th><th class="p-3 text-right">Valor Final</th><th class="p-3 text-center">Status</th><th class="p-3 text-center print:hidden">Ações Avançadas</th></tr>
                                     </thead>
                                     <tbody id="tabela-fin-receber" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
                                 </table>
@@ -178,8 +238,7 @@
                                         <option value="RENEGOCIADO">Renegociado</option>
                                     </select>
                                     <select id="filtro-pagar-periodo" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('pagar')">
-                                        <option value="MES_ATUAL" selected>Este Mês</option>
-                                        <option value="30">Próximos 30 dias</option>
+                                        <option value="30" selected>Próximos 30 dias</option>
                                         <option value="90">Próximos 90 dias</option>
                                         <option value="TUDO">Histórico Completo</option>
                                     </select>
@@ -302,6 +361,35 @@
                                     <button onclick="abrirInfoRelatorio('top_fornecedores')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer print:hidden" title="EntendAçõeste relatório"><i class="fa-solid fa-circle-question"></i></button>
                                 </h3>
                                 <div id="bi-top-fornecedores" class="space-y-3"></div>
+                            </div>
+
+                                                        <!-- Despesas por Categoria e Centro de Custo -->
+                            <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                                <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4 flex justify-between items-center">
+                                    <span><i class="fa-solid fa-tags text-slate-400 mr-2"></i> Despesas por Categoria</span>
+                                </h3>
+                                <div id="bi-despesas-categoria" class="space-y-3"></div>
+                            </div>
+                            
+                            <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                                <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4 flex justify-between items-center">
+                                    <span><i class="fa-solid fa-building text-slate-400 mr-2"></i> Despesas por Centro de Custo</span>
+                                </h3>
+                                <div id="bi-despesas-centro-custo" class="space-y-3"></div>
+                            </div>
+
+                                                        <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                                <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4 flex justify-between items-center">
+                                    <span><i class="fa-solid fa-users text-slate-400 mr-2"></i> Despesas por Favorecido</span>
+                                </h3>
+                                <div id="bi-despesas-favorecido" class="space-y-3"></div>
+                            </div>
+                            
+                            <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                                <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4 flex justify-between items-center">
+                                    <span><i class="fa-solid fa-user-tie text-slate-400 mr-2"></i> Despesas por Funcionário (Folha)</span>
+                                </h3>
+                                <div id="bi-despesas-funcionario" class="space-y-3"></div>
                             </div>
 
                             <!-- Evolução de Custos por Produto (NOVO) -->
@@ -915,6 +1003,43 @@
         </div>
     </div>
 
+    <div id="modal-detalhes-funcionario" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="bg-emerald-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-base md:text-lg flex items-center gap-2"><i class="fa-solid fa-user-tie"></i> <span id="modal-func-title">Extrato de Funcionário</span></h3>
+                <button onclick="document.getElementById('modal-detalhes-funcionario').classList.add('hidden')" class="text-white/70 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="p-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-4 shrink-0">
+                <div class="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
+                    <p class="text-[10px] uppercase font-bold text-slate-500 mb-1">Total Recebido</p>
+                    <p class="text-lg md:text-xl font-bold text-emerald-600 dark:text-emerald-400" id="modal-func-total">R$ 0,00</p>
+                </div>
+                <div class="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
+                    <p class="text-[10px] uppercase font-bold text-slate-500 mb-1">Lançamentos</p>
+                    <p class="text-lg md:text-xl font-bold text-slate-700 dark:text-slate-300" id="modal-func-count">0</p>
+                </div>
+            </div>
+            <div class="p-0 overflow-x-auto overflow-y-auto custom-scrollbar flex-1 bg-white dark:bg-slate-800">
+                <table class="w-full text-left border-collapse min-w-[500px]">
+                    <thead class="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10">
+                        <tr>
+                            <th class="p-3 text-xs font-bold text-slate-500 uppercase">Data</th>
+                            <th class="p-3 text-xs font-bold text-slate-500 uppercase">Descrição / Categoria</th>
+                            <th class="p-3 text-xs font-bold text-slate-500 uppercase text-right">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-func-tbody" class="text-sm divide-y divide-slate-100 dark:divide-slate-700">
+                        <!-- Linhas dinâmicas -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex justify-end gap-3 shrink-0">
+                <button onclick="imprimirExtratoFuncionario()" class="bg-white hover:bg-slate-100 dark:bg-slate-700 dark:hover:bg-slate-600 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-bold px-4 py-2 rounded-lg transition-colors flex items-center gap-2 shadow-sm"><i class="fa-solid fa-print"></i> Imprimir</button>
+                <button onclick="document.getElementById('modal-detalhes-funcionario').classList.add('hidden')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2 rounded-lg transition-colors shadow-sm">Fechar</button>
+            </div>
+        </div>
+    </div>
+
     <div id="modal-info-relatorio" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div class="bg-blue-600 p-4 text-white flex justify-between items-center">
@@ -933,9 +1058,17 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js?v=9"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js?v=9"></script>
     <script src="global.js?v=9"></script>
-    <script src="financeiro.js?v=12"></script>
+    <script src="financeiro.js?v=14"></script>
 </body>
 </html>
+
+
+
+
+
+
+
+
 
 
 
