@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -445,7 +445,7 @@
                     <div class="bg-slate-700 p-4 rounded-xl border border-slate-600 shadow-sm space-y-4 md:col-span-3">
                         <h4 class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase border-b border-slate-100 dark:border-slate-700 pb-2"><i class="fa-solid fa-list-check text-slate-400 mr-1"></i> Situação e Documentos</h4>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-7 gap-3">
                             <div class="sm:col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Status Atual</label>
                                 <select id="conta-status" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs font-bold outline-none focus:border-blue-500 dark:text-white">
                                     <option value="PENDENTE">Em Aberto / Pendente</option><option value="PAGO">Liquidado / Pago</option><option value="CANCELADO">Cancelado</option><option value="RENEGOCIADO">Renegociado</option>
@@ -464,7 +464,9 @@
                             <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Nº da NF</label><input type="text" id="conta-num-nf" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
                             <div class="sm:col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Nº do Boleto / Cód. Barras</label><input type="text" id="conta-num-boleto" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
 
-                            <div><label class="text-[10px] font-bold text-red-500 uppercase mb-1 block">Juros / Multa (+)</label><input type="number" step="0.01" id="conta-acrescimo" oninput="calcularValorFinalFormulario()" class="w-full bg-red-50 border border-red-200 text-red-700 p-2 rounded-lg text-xs font-bold outline-none text-right dark:text-white" value="0"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Data de Protesto</label><input type="date" id="conta-data-protesto" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Cartório</label><input type="text" id="conta-cartorio" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white" placeholder="Nome"></div>
+                            <div><label class="text-[10px] font-bold text-red-500 uppercase mb-1 block">Juros / Multa (+)</label><input type="number" step="0.01" id="conta-acrescimo" oninput="calcularValorFinalFormulario()" class="w-full bg-red-50 border border-red-200 text-red-700 p-2 rounded-lg text-xs font-bold outline-none text-right dark:bg-slate-800 dark:border-slate-600 dark:text-white" value="0"></div>
                             <div><label class="text-[10px] font-bold text-emerald-600 uppercase mb-1 block">Desconto (-)</label><input type="number" step="0.01" id="conta-desconto" oninput="calcularValorFinalFormulario()" class="w-full bg-emerald-50 border border-emerald-200 text-emerald-700 p-2 rounded-lg text-xs font-bold outline-none text-right dark:bg-slate-800 dark:border-slate-600 dark:text-white" value="0"></div>
 
                             <div class="bg-slate-900 rounded-lg p-2 text-white flex flex-col justify-center items-end">
