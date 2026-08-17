@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // SISTEMA.JS - Lógica de Configurações, Tema, Empresa e Taxas 1 a 12x
 // ==========================================
 
@@ -105,6 +105,18 @@ function carregarConfiguracoesNaTela() {
         }
     }
 
+    // Carrega Prazos Padrão
+    if (db.config.prazos) {
+        const setPrazo = (id, field, def) => {
+            const el = document.getElementById(id);
+            if (el) el.value = db.config.prazos[field] !== undefined ? db.config.prazos[field] : def;
+        };
+        setPrazo('prazo-fiado', 'Fiado', 30);
+        setPrazo('prazo-boleto', 'Boleto', 30);
+        setPrazo('prazo-credito', 'Cartão Crédito', 1);
+        setPrazo('prazo-debito', 'Cartão Débito', 1);
+    }
+
     // Carrega as 12 Taxas Separadas
     if(db.config.taxas) {
         if(document.getElementById('tx-boleto-custo')) document.getElementById('tx-boleto-custo').value = db.config.custoBoleto || 0;
@@ -172,6 +184,20 @@ async function salvarConfiguracoes() {
     db.config.taxas = {
         'Dinheiro': 0, 'PIX': 0, 'Boleto': 0, 'Fiado': 0, 'Cartão Débito': tDeb,
         'Cartão Crédito': taxasCredito
+    };
+
+    const getPrazo = (id, def) => {
+        const el = document.getElementById(id);
+        if (!el) return def;
+        const val = parseInt(el.value);
+        return isNaN(val) ? def : val;
+    };
+
+    db.config.prazos = {
+        'Fiado': getPrazo('prazo-fiado', 30),
+        'Boleto': getPrazo('prazo-boleto', 30),
+        'Cartão Crédito': getPrazo('prazo-credito', 1),
+        'Cartão Débito': getPrazo('prazo-debito', 1)
     };
 
     try {

@@ -985,3 +985,43 @@ function filtrarProdutosXMLBusca() {
 function mostrarListaProdutosXMLBusca() { filtrarProdutosXMLBusca(); }
 function ocultarListaProdutosXMLBusca() { document.getElementById('prod-vinculo-lista').classList.add('hidden'); }
 
+
+// Expondo globalmente para evitar erros de escopo
+window.mudarVisaoLocal = mudarVisaoLocal;
+window.inicializarCadastro = inicializarCadastro;
+window.abaModal = abaModal;
+window.abrirConfirmacao = abrirConfirmacao;
+window.fecharModalConfirmacao = fecharModalConfirmacao;
+window.abrirZoom = abrirZoom;
+window.fecharZoom = fecharZoom;
+window.renderSelectCategorias = renderSelectCategorias;
+window.atualizarOpcoesSubcategoria = atualizarOpcoesSubcategoria;
+window.renderProdutos = renderProdutos;
+window.abrirModalProduto = abrirModalProduto;
+window.fecharModalProduto = fecharModalProduto;
+window.processarFoto = processarFoto;
+window.calcularPrecoMargin = calcularPrecoMargin;
+window.excluirProduto = excluirProduto;
+window.renderClientes = renderClientes;
+window.abrirModalCliente = abrirModalCliente;
+window.fecharModalCliente = fecharModalCliente;
+window.excluirCliente = excluirCliente;
+window.renderFornecedores = renderFornecedores;
+window.abrirModalFornecedor = abrirModalFornecedor;
+window.fecharModalFornecedor = fecharModalFornecedor;
+window.editarFornecedor = editarFornecedor;
+window.excluirFornecedor = excluirFornecedor;
+window.renderKardex = renderKardex;
+window.baixarPlanilhaModeloProduto = baixarPlanilhaModeloProduto;
+window.renderFuncionarios = renderFuncionarios;
+window.abrirModalFuncionario = abrirModalFuncionario;
+window.fecharModalFuncionario = fecharModalFuncionario;
+window.getSecondaryApp = getSecondaryApp;
+window.excluirFuncionario = excluirFuncionario;
+window.alternarAcaoVinculoXML = alternarAcaoVinculoXML;
+window.preencherVinculoXML = preencherVinculoXML;
+window.selecionarProdutoVinculoXML = selecionarProdutoVinculoXML;
+window.filtrarProdutosXMLBusca = filtrarProdutosXMLBusca;
+window.mostrarListaProdutosXMLBusca = mostrarListaProdutosXMLBusca;
+window.ocultarListaProdutosXMLBusca = ocultarListaProdutosXMLBusca;
+

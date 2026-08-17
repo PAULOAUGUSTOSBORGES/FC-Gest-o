@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÇÕES
 // ==========================================
 
@@ -457,9 +457,25 @@ function renderTitulos(tipo) {
     }
 
     if (periodoFilter !== 'TUDO' && !dataIni && !dataFim) {
-        const hoje = new Date().getTime();
-        const limiteFuturo = hoje + (parseInt(periodoFilter) * 24 * 60 * 60 * 1000);
-        lista = lista.filter(f => new Date(f.data).getTime() <= limiteFuturo);
+        const hoje = new Date();
+        const anoAtual = hoje.getFullYear();
+        const mesAtual = hoje.getMonth();
+        if (periodoFilter === 'MES') {
+            const inicioMes = new Date(anoAtual, mesAtual, 1).getTime();
+            const fimMes = new Date(anoAtual, mesAtual + 1, 0, 23, 59, 59).getTime();
+            lista = lista.filter(f => { const t = new Date(f.data).getTime(); return t >= inicioMes && t <= fimMes; });
+        } else if (periodoFilter === 'MES_ANT') {
+            const inicioMesAnt = new Date(anoAtual, mesAtual - 1, 1).getTime();
+            const fimMesAnt = new Date(anoAtual, mesAtual, 0, 23, 59, 59).getTime();
+            lista = lista.filter(f => { const t = new Date(f.data).getTime(); return t >= inicioMesAnt && t <= fimMesAnt; });
+        } else if (periodoFilter === 'ANO') {
+            const inicioAno = new Date(anoAtual, 0, 1).getTime();
+            const fimAno = new Date(anoAtual, 11, 31, 23, 59, 59).getTime();
+            lista = lista.filter(f => { const t = new Date(f.data).getTime(); return t >= inicioAno && t <= fimAno; });
+        } else {
+            const limiteFuturo = hoje.getTime() + (parseInt(periodoFilter) * 24 * 60 * 60 * 1000);
+            lista = lista.filter(f => new Date(f.data).getTime() <= limiteFuturo);
+        }
     }
     
     lista.sort((a, b) => new Date(a.data) - new Date(b.data));
@@ -588,7 +604,7 @@ function abrirModalConta(tipo) {
     document.getElementById('modal-conta-header').className = `p-4 md:p-5 text-white flex justify-between items-center shrink-0 ${tipo === 'RECEBER' ? 'bg-emerald-500' : 'bg-red-500'}`; 
     document.getElementById('modal-conta-title').innerText = tipo === 'RECEBER' ? 'Nova Conta a Receber' : 'Nova Conta a Pagar';
     
-    ['pessoa','ref','emissao','vencimento','competencia','num-nf','num-boleto','valor','acrescimo','desconto','multa','juros','data-pgto','obs','anexo-base64','cartorio'].forEach(id => {
+    ['pessoa','ref','emissao','vencimento','competencia','num-nf','num-boleto','valor','acrescimo','desconto','multa','juros','data-pgto','obs','anexo-base64','cartorio','data-protesto'].forEach(id => {
         const el = document.getElementById(`conta-${id}`);
         if(el) el.value = '';
     });
@@ -634,7 +650,8 @@ function abrirModalContaEdicao(id) {
     
     document.getElementById('conta-emissao').value = f.dataEmissao || '';
     document.getElementById('conta-vencimento').value = f.data ? f.data.split('T')[0] : '';
-    const elCart = document.getElementById('conta-cartorio'); if(elCart) elCart.value = f.dataCartorio || '';
+    const elCart = document.getElementById('conta-cartorio'); if(elCart) elCart.value = f.cartorioNome || '';
+    const elProt = document.getElementById('conta-data-protesto'); if(elProt) elProt.value = f.dataCartorio || '';
       const elMulta = document.getElementById('conta-multa'); if(elMulta) elMulta.value = f.multaPerc || '';
       const elJuros = document.getElementById('conta-juros'); if(elJuros) elJuros.value = f.jurosMesPerc || '';
     document.getElementById('conta-competencia').value = f.competencia || '';
@@ -722,7 +739,8 @@ function salvarConta() {
             contaBancaria: document.getElementById('conta-banco').value,
             dataEmissao: document.getElementById('conta-emissao').value,
             data: dataVenc.toISOString(), 
-            dataCartorio: document.getElementById('conta-cartorio').value,
+            dataCartorio: document.getElementById('conta-data-protesto') ? document.getElementById('conta-data-protesto').value : '',
+            cartorioNome: document.getElementById('conta-cartorio') ? document.getElementById('conta-cartorio').value : '',
               multaPerc: parseFloat(document.getElementById('conta-multa').value) || 0,
               jurosMesPerc: parseFloat(document.getElementById('conta-juros').value) || 0, 
             competencia: document.getElementById('conta-competencia').value,
@@ -2142,4 +2160,82 @@ function mostrarListaProdutosXMLBusca() { filtrarProdutosXMLBusca(); }
 function ocultarListaProdutosXMLBusca() { document.getElementById('prod-vinculo-lista').classList.add('hidden'); }
 
 
+
+
+// Expondo globalmente para evitar erros de escopo
+window.mudarVisaoLocal = mudarVisaoLocal;
+window.refreshCurrentView = refreshCurrentView;
+window.inicializarGestao = inicializarGestao;
+window.atualizarCardsFluxoDeCaixa = atualizarCardsFluxoDeCaixa;
+window.abrirConfirmacao = abrirConfirmacao;
+window.fecharModalConfirmacao = fecharModalConfirmacao;
+window.printHtmlSeguro = printHtmlSeguro;
+window.imprimirArea = imprimirArea;
+window.baixarPDF = baixarPDF;
+window.downloadPDF = downloadPDF;
+window.exportarExcel = exportarExcel;
+window.renderFinAbas = renderFinAbas;
+window.renderCaixaDiario = renderCaixaDiario;
+window.abrirModalCaixa = abrirModalCaixa;
+window.fecharModalCaixa = fecharModalCaixa;
+window.renderTitulos = renderTitulos;
+window.preencherContaPessoaSelect = preencherContaPessoaSelect;
+window.toggleContaPessoaInput = toggleContaPessoaInput;
+window.getPessoaFinalConta = getPessoaFinalConta;
+window.toggleRecorrencia = toggleRecorrencia;
+window.abrirModalConta = abrirModalConta;
+window.abrirModalContaEdicao = abrirModalContaEdicao;
+window.calcularValorFinalFormulario = calcularValorFinalFormulario;
+window.fecharModalConta = fecharModalConta;
+window.salvarConta = salvarConta;
+window.excluirTitulo = excluirTitulo;
+window.abrirModalRenegociacao = abrirModalRenegociacao;
+window.fecharModalRenegociacao = fecharModalRenegociacao;
+window.verDetalhesTitulo = verDetalhesTitulo;
+window.fecharModalDetalhesTitulo = fecharModalDetalhesTitulo;
+window.abrirModalBaixa = abrirModalBaixa;
+window.fecharModalBaixa = fecharModalBaixa;
+window.calcularAcrescimos = calcularAcrescimos;
+window.processarXMLReal = processarXMLReal;
+window.lerXMLCTe = lerXMLCTe;
+window.recalcularRateioXML = recalcularRateioXML;
+window.renderXMLFinanceiro = renderXMLFinanceiro;
+window.atualizarParcelaXML = atualizarParcelaXML;
+window.addParcelaXML = addParcelaXML;
+window.removeParcelaXML = removeParcelaXML;
+window.xmlAtualizarValores = xmlAtualizarValores;
+window.abrirModalProdutoDoXML = abrirModalProdutoDoXML;
+window.fecharModalProduto = fecharModalProduto;
+window.salvarProdutoXmlModal = salvarProdutoXmlModal;
+window.renderTelaConferenciaXML = renderTelaConferenciaXML;
+window.fecharModalXML = fecharModalXML;
+window.abrirModalCompraManual = abrirModalCompraManual;
+window.fecharModalCompraManual = fecharModalCompraManual;
+window.editarCompra = editarCompra;
+window.addLinhaCompraManual = addLinhaCompraManual;
+window.removerLinhaCompraManual = removerLinhaCompraManual;
+window.atualizarLinhaCompraManual = atualizarLinhaCompraManual;
+window.renderTabelaCompraManual = renderTabelaCompraManual;
+window.calcularTotaisCompraManual = calcularTotaisCompraManual;
+window.renderComprasHist = renderComprasHist;
+window.excluirNF = excluirNF;
+window.verDetalhesNF = verDetalhesNF;
+window.fecharModalDetalhesNF = fecharModalDetalhesNF;
+window.mudarFiltroBI = mudarFiltroBI;
+window.obterIntervaloDatasBI = obterIntervaloDatasBI;
+window.renderDashboard = renderDashboard;
+window.renderCurvaABC = renderCurvaABC;
+window.renderSugestorCompras = renderSugestorCompras;
+window.renderEvolucaoCustos = renderEvolucaoCustos;
+window.exportarDadosParaIA = exportarDadosParaIA;
+window.abrirInfoRelatorio = abrirInfoRelatorio;
+window.renderVendas = renderVendas;
+window.calcularJurosMulta = calcularJurosMulta;
+window.alternarAcaoVinculoXML = alternarAcaoVinculoXML;
+window.preencherVinculoXML = preencherVinculoXML;
+window.abrirModalXML = abrirModalXML;
+window.selecionarProdutoVinculoXML = selecionarProdutoVinculoXML;
+window.filtrarProdutosXMLBusca = filtrarProdutosXMLBusca;
+window.mostrarListaProdutosXMLBusca = mostrarListaProdutosXMLBusca;
+window.ocultarListaProdutosXMLBusca = ocultarListaProdutosXMLBusca;
 

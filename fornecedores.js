@@ -14,6 +14,19 @@ function inicializarFornecedores() {
     });
 }
 
+// Expondo globalmente para evitar erros de escopo
+window.abaModal = abaModal;
+window.abrirConfirmacao = abrirConfirmacao;
+window.fecharModalConfirmacao = fecharModalConfirmacao;
+window.buscarCEP = buscarCEP;
+window.buscarCNPJ = buscarCNPJ;
+window.renderFornecedores = renderFornecedores;
+window.abrirModalFornecedor = abrirModalFornecedor;
+window.fecharModalFornecedor = fecharModalFornecedor;
+window.salvarFornecedor = salvarFornecedor;
+window.editarFornecedor = editarFornecedor;
+window.excluirFornecedor = excluirFornecedor;
+
 window.onload = () => { initGlobalData(inicializarFornecedores); };
 
 function abaModal(prefix, nomeAba) {
@@ -121,14 +134,31 @@ async function salvarFornecedor() {
 }
 
 function editarFornecedor(id) {
-    const f = db.fornecedores.find(x => x.id === id); if (!f) return;
-    abrirModalFornecedor(); document.getElementById('modal-fornecedor-title').innerText = `Editar: ${f.nome}`;
+    const f = db.fornecedores.find(x => String(x.id) === String(id)); 
+    if (!f) return console.error('Fornecedor no encontrado', id);
+    abrirModalFornecedor(); 
+    document.getElementById('modal-fornecedor-title').innerText = `Editar: ${f.nome || 'Sem Nome'}`;
     document.getElementById('forn-id').value = id;
-    for (let key in f) { if (key === 'id') continue; const el = document.getElementById(`forn-${key}`); if (el) el.value = f[key] || ''; }
+    for (let key in f) { 
+        if (key === 'id') continue; 
+        const el = document.getElementById(`forn-${key}`); 
+        if (el) el.value = f[key] || ''; 
+    }
     if (!f.doc && f.cnpj) document.getElementById('forn-doc').value = f.cnpj;
 
-    const hist = db.compras ? db.compras.filter(c => c.cnpj === f.doc || c.cnpj === f.cnpj || c.fornecedor === f.nome) : [];
-    document.getElementById('forn-historico-body').innerHTML = hist.length > 0 ? hist.map(c => `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-3">${(typeof formatData === 'function' ? formatData(c.data) : c.data).split(' ')[0]}</td><td class="p-3 font-bold text-slate-700 dark:text-slate-200">${c.qtdTotal} itens</td><td class="p-3 text-right font-bold text-indigo-600">${typeof formatMoney === 'function' ? formatMoney(c.totalNF) : c.totalNF}</td></tr>`).join('') : '<tr><td colspan="3" class="p-6 text-center text-slate-500 dark:text-slate-400">Sem notas.</td></tr>';
+    try {
+        const hist = (db.compras || []).filter(c => c.cnpj === f.doc || c.cnpj === f.cnpj || c.fornecedor === f.nome);
+        const histBody = document.getElementById('forn-historico-body');
+        if (histBody) {
+            histBody.innerHTML = hist.length > 0 ? hist.map(c => {
+                let dataStr = c.data || '';
+                if(typeof formatData === 'function' && dataStr) dataStr = formatData(dataStr);
+                return `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-3">${dataStr.split(' ')[0]}</td><td class="p-3 font-bold text-slate-700 dark:text-slate-200">${c.qtdTotal || 0} itens</td><td class="p-3 text-right font-bold text-indigo-600">${typeof formatMoney === 'function' ? formatMoney(c.totalNF) : (c.totalNF || 0)}</td></tr>`
+            }).join('') : '<tr><td colspan="3" class="p-6 text-center text-slate-500 dark:text-slate-400">Sem notas.</td></tr>';
+        }
+    } catch(err) {
+        console.error('Erro ao gerar historico:', err);
+    }
 }
 
 function excluirFornecedor(id) {

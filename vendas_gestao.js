@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÇÕES
 // ==========================================
 
@@ -14,8 +14,57 @@ const categoriasReceber = ['Vendas', 'Serviços', 'Outras Receitas'];
 document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const view = urlParams.get('view') || 'vendas_gestao';
+    
+    // Set default filter to 'Este Mês'
+    if(typeof mudarPeriodoVendas === 'function') mudarPeriodoVendas(false);
+    
     if (typeof mudarVisaoLocal === 'function') mudarVisaoLocal(view);
 });
+
+function mudarPeriodoVendas(render = true) {
+    const p = document.getElementById('filtro-vendas-periodo') ? document.getElementById('filtro-vendas-periodo').value : null;
+    const customDiv = document.getElementById('vendas-datas-custom');
+    const ini = document.getElementById('filtro-vendas-ini');
+    const fim = document.getElementById('filtro-vendas-fim');
+    
+    if(!p || !ini || !fim) return;
+    
+    if(p === 'CUSTOM') {
+        if(customDiv) customDiv.classList.remove('hidden');
+        return;
+    }
+    
+    if(customDiv) customDiv.classList.add('hidden');
+    const hoje = new Date();
+    
+    const setDates = (d1, d2) => {
+        ini.value = d1.toISOString().split('T')[0];
+        fim.value = d2.toISOString().split('T')[0];
+    };
+    
+    if(p === 'MES') {
+        setDates(new Date(hoje.getFullYear(), hoje.getMonth(), 1), new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0));
+    } else if (p === 'HOJE') {
+        setDates(hoje, hoje);
+    } else if (p === 'ONTEM') {
+        const ontem = new Date(hoje); ontem.setDate(hoje.getDate() - 1);
+        setDates(ontem, ontem);
+    } else if (p === '7') {
+        const d = new Date(hoje); d.setDate(hoje.getDate() - 7);
+        setDates(d, hoje);
+    } else if (p === '30') {
+        const d = new Date(hoje); d.setDate(hoje.getDate() - 30);
+        setDates(d, hoje);
+    } else if (p === 'MES_ANT') {
+        setDates(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1), new Date(hoje.getFullYear(), hoje.getMonth(), 0));
+    } else if (p === 'ANO') {
+        setDates(new Date(hoje.getFullYear(), 0, 1), new Date(hoje.getFullYear(), 11, 31));
+    } else if (p === 'TUDO') {
+        ini.value = ''; fim.value = '';
+    }
+    
+    if(render && typeof renderVendas === 'function') renderVendas();
+}
 
 // ==========================================
 // 1. NAVEGAÇÃO E DASHBOARDS
@@ -461,9 +510,25 @@ function renderTitulos(tipo) {
     }
 
     if (periodoFilter !== 'TUDO' && !dataIni && !dataFim) {
-        const hoje = new Date().getTime();
-        const limiteFuturo = hoje + (parseInt(periodoFilter) * 24 * 60 * 60 * 1000);
-        lista = lista.filter(f => new Date(f.data).getTime() <= limiteFuturo);
+        const hoje = new Date();
+        const anoAtual = hoje.getFullYear();
+        const mesAtual = hoje.getMonth();
+        if (periodoFilter === 'MES') {
+            const inicioMes = new Date(anoAtual, mesAtual, 1).getTime();
+            const fimMes = new Date(anoAtual, mesAtual + 1, 0, 23, 59, 59).getTime();
+            lista = lista.filter(f => { const t = new Date(f.data).getTime(); return t >= inicioMes && t <= fimMes; });
+        } else if (periodoFilter === 'MES_ANT') {
+            const inicioMesAnt = new Date(anoAtual, mesAtual - 1, 1).getTime();
+            const fimMesAnt = new Date(anoAtual, mesAtual, 0, 23, 59, 59).getTime();
+            lista = lista.filter(f => { const t = new Date(f.data).getTime(); return t >= inicioMesAnt && t <= fimMesAnt; });
+        } else if (periodoFilter === 'ANO') {
+            const inicioAno = new Date(anoAtual, 0, 1).getTime();
+            const fimAno = new Date(anoAtual, 11, 31, 23, 59, 59).getTime();
+            lista = lista.filter(f => { const t = new Date(f.data).getTime(); return t >= inicioAno && t <= fimAno; });
+        } else {
+            const limiteFuturo = hoje.getTime() + (parseInt(periodoFilter) * 24 * 60 * 60 * 1000);
+            lista = lista.filter(f => new Date(f.data).getTime() <= limiteFuturo);
+        }
     }
     
     lista.sort((a, b) => new Date(a.data) - new Date(b.data));
@@ -508,7 +573,10 @@ function renderTitulos(tipo) {
 
         return `
         <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
-            <td class="p-3 text-slate-500 dark:text-slate-400 font-mono text-xs">${formatData(f.data).split(' ')[0]}</td>
+            <td class="p-3 text-slate-500 dark:text-slate-400 font-mono text-xs">
+                  ${formatData(f.data).split(' ')[0]}
+                  ${f.dataCartorio ? `<br><span class="text-[9.5px] font-bold text-red-600 dark:text-red-400 mt-1 inline-block" title="Ir para Cartório"><i class="fa-solid fa-gavel"></i> ${formatData(f.dataCartorio + "T12:00:00").split(" ")[0]}</span>` : ""}
+              </td>
             <td class="p-3 font-bold text-slate-800 dark:text-slate-100 truncate max-w-[200px]">${f.pessoa}</td>
             <td class="p-3 text-slate-600 dark:text-slate-300 text-[11px]">${f.categoria || '-'} <br><span class="font-bold">${f.ref}</span></td>
             <td class="p-3 text-right font-black ${tipo === 'RECEITA' ? 'text-blue-600' : 'text-red-500'}">${formatMoney(valorAExibir)}</td>
@@ -564,6 +632,7 @@ function getPessoaFinalConta() {
 }
 // ==========================================
 // 5. MODAL DE CADASTRO/EDIÇÃO DE CONTA (COM RECORRÊNCIA)
+// 5. MODAL DE CADASTRO/EDIÇÃO DE CONTA (COM RECORRÊNCIA)
 // ==========================================
 function toggleRecorrencia() {
     const rec = document.getElementById('conta-recorrencia').value;
@@ -586,7 +655,7 @@ function abrirModalConta(tipo) {
     const _wrapEl = document.getElementById('conta-pessoa-novo-wrap'); if(_wrapEl) _wrapEl.classList.add('hidden');
     const _pessoaEl = document.getElementById('conta-pessoa'); if(_pessoaEl) _pessoaEl.value = '';
 
-    ['ref','emissao','vencimento','competencia','num-nf','num-boleto','valor','acrescimo','desconto','data-pgto','obs','anexo-base64'].forEach(id => {
+    ['ref','emissao','vencimento','competencia','num-nf','num-boleto','valor','acrescimo','desconto','data-pgto','obs','anexo-base64','cartorio','data-protesto'].forEach(id => {
         const el = document.getElementById(`conta-${id}`);
         if(el) el.value = '';
     });
@@ -648,6 +717,8 @@ function abrirModalContaEdicao(id) {
     
     document.getElementById('conta-emissao').value = f.dataEmissao || '';
     document.getElementById('conta-vencimento').value = f.data ? f.data.split('T')[0] : '';
+    const elCart = document.getElementById('conta-cartorio'); if(elCart) elCart.value = f.cartorioNome || '';
+    const elProt = document.getElementById('conta-data-protesto'); if(elProt) elProt.value = f.dataCartorio || '';
     document.getElementById('conta-competencia').value = f.competencia || '';
     
     document.getElementById('conta-num-nf').value = f.numNF || '';
@@ -730,9 +801,11 @@ function salvarConta() {
             ref: refFinal, 
             categoria: document.getElementById('conta-categoria') ? document.getElementById('conta-categoria').value : '',
             centroCusto: document.getElementById('conta-centro-custo') ? document.getElementById('conta-centro-custo').value : '',
-            contaBancaria: document.getElementById('conta-banco') ? document.getElementById('conta-banco').value : '',
-            dataEmissao: document.getElementById('conta-emissao') ? document.getElementById('conta-emissao').value : '',
+            contaBancaria: document.getElementById('conta-banco').value,
+            dataEmissao: document.getElementById('conta-emissao').value,
             data: dataVenc.toISOString(), 
+            dataCartorio: document.getElementById('conta-data-protesto') ? document.getElementById('conta-data-protesto').value : '',
+            cartorioNome: document.getElementById('conta-cartorio') ? document.getElementById('conta-cartorio').value : '',
             competencia: document.getElementById('conta-competencia') ? document.getElementById('conta-competencia').value : '',
             numNF: document.getElementById('conta-num-nf') ? document.getElementById('conta-num-nf').value : '',
             numBoleto: document.getElementById('conta-num-boleto') ? document.getElementById('conta-num-boleto').value : '',

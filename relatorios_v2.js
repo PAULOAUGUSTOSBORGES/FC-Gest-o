@@ -461,9 +461,25 @@ function renderTitulos(tipo) {
     }
 
     if (periodoFilter !== 'TUDO' && !dataIni && !dataFim) {
-        const hoje = new Date().getTime();
-        const limiteFuturo = hoje + (parseInt(periodoFilter) * 24 * 60 * 60 * 1000);
-        lista = lista.filter(f => new Date(f.data).getTime() <= limiteFuturo);
+        const hoje = new Date();
+        const anoAtual = hoje.getFullYear();
+        const mesAtual = hoje.getMonth();
+        if (periodoFilter === 'MES') {
+            const inicioMes = new Date(anoAtual, mesAtual, 1).getTime();
+            const fimMes = new Date(anoAtual, mesAtual + 1, 0, 23, 59, 59).getTime();
+            lista = lista.filter(f => { const t = new Date(f.data).getTime(); return t >= inicioMes && t <= fimMes; });
+        } else if (periodoFilter === 'MES_ANT') {
+            const inicioMesAnt = new Date(anoAtual, mesAtual - 1, 1).getTime();
+            const fimMesAnt = new Date(anoAtual, mesAtual, 0, 23, 59, 59).getTime();
+            lista = lista.filter(f => { const t = new Date(f.data).getTime(); return t >= inicioMesAnt && t <= fimMesAnt; });
+        } else if (periodoFilter === 'ANO') {
+            const inicioAno = new Date(anoAtual, 0, 1).getTime();
+            const fimAno = new Date(anoAtual, 11, 31, 23, 59, 59).getTime();
+            lista = lista.filter(f => { const t = new Date(f.data).getTime(); return t >= inicioAno && t <= fimAno; });
+        } else {
+            const limiteFuturo = hoje.getTime() + (parseInt(periodoFilter) * 24 * 60 * 60 * 1000);
+            lista = lista.filter(f => new Date(f.data).getTime() <= limiteFuturo);
+        }
     }
     
     lista.sort((a, b) => new Date(a.data) - new Date(b.data));

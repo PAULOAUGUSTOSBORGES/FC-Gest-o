@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // OPERACAO.JS - SISTEMA 100% WHITE LABEL E BLINDADO
 // ==========================================
 
@@ -982,18 +982,18 @@ function imprimirContratoObj(v) {
 // ==========================================
 // 9. LEITOR DE CÓDIGO DE BARRAS
 // ==========================================
-function abrirLeitorCâmera() { 
+function abrirLeitorCamera() { 
     document.getElementById('modal-leitor-codigo').classList.remove('hidden'); 
     if (!html5QrCode) html5QrCode = new Html5Qrcode("reader"); 
     
     html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 150 } }, onScanSuccess)
     .catch(err => { 
         showToast("Erro ao acessar a câmera.", "error"); 
-        fecharLeitorCâmera(); 
+        fecharLeitorCamera(); 
     }); 
 }
 
-function fecharLeitorCâmera() { 
+function fecharLeitorCamera() { 
     document.getElementById('modal-leitor-codigo').classList.add('hidden'); 
     if (html5QrCode && html5QrCode.isScanning) {
         html5QrCode.stop().catch(err => console.log(err)); 
@@ -1001,7 +1001,7 @@ function fecharLeitorCâmera() {
 }
 
 function onScanSuccess(decodedText) { 
-    fecharLeitorCâmera(); 
+    fecharLeitorCamera(); 
     const buscaInput = document.getElementById('pdv-produto-busca'); 
     buscaInput.value = decodedText; 
     const prod = db.produtos.find(x => String(x.ean) === decodedText || String(x.id) === decodedText); 
@@ -1261,8 +1261,11 @@ function renderizarInputsDatasParcelas(qtd) {
     
     contDatas.innerHTML = '';
     
+    const metodo = document.getElementById('pdv-metodo-atual').value;
+    const prazoPadrao = (db.config && db.config.prazos && db.config.prazos[metodo] !== undefined) ? parseInt(db.config.prazos[metodo]) : 30;
+    
     let baseDate = new Date();
-    baseDate.setDate(baseDate.getDate() + 30);
+    baseDate.setDate(baseDate.getDate() + prazoPadrao);
     
     for (let i = 1; i <= qtd; i++) {
         let valDate = '';
@@ -1273,7 +1276,7 @@ function renderizarInputsDatasParcelas(qtd) {
             if (i > 1 && existingDates[0]) {
                 d = new Date(existingDates[0] + 'T12:00:00');
             }
-            d.setDate(d.getDate() + (30 * (i - 1)));
+            d.setDate(d.getDate() + (prazoPadrao * (i - 1)));
             valDate = d.toISOString().split('T')[0];
         }
         
@@ -1291,13 +1294,15 @@ function recalcularDatasParcelas(qtd) {
     const dataPrimeiraEl = document.getElementById('pdv-data-parc-1');
     if (!dataPrimeiraEl || !dataPrimeiraEl.value) return;
     
-    const baseDate = new Date(dataPrimeiraEl.value + 'T12:00:00');
+    const dataPrimeira = new Date(dataPrimeiraEl.value + 'T12:00:00');
+    const metodo = document.getElementById('pdv-metodo-atual').value;
+    const prazoPadrao = (db.config && db.config.prazos && db.config.prazos[metodo] !== undefined) ? parseInt(db.config.prazos[metodo]) : 30;
     
     for (let i = 2; i <= qtd; i++) {
         const el = document.getElementById(`pdv-data-parc-${i}`);
         if (el) {
-            let d = new Date(baseDate);
-            d.setDate(d.getDate() + (30 * (i - 1)));
+            let d = new Date(dataPrimeira);
+            d.setDate(d.getDate() + (prazoPadrao * (i - 1)));
             el.value = d.toISOString().split('T')[0];
         }
     }
@@ -1655,22 +1660,24 @@ async function finalizarVendaMultipla() {
                 
                 if(p.metodo === 'Fiado' || p.metodo === 'Boleto') { 
                     const valParc = valorParaCaixa / (p.parcelas || 1); 
+                    let prazoMetodo = (db.config && db.config.prazos && db.config.prazos[p.metodo] !== undefined) ? parseInt(db.config.prazos[p.metodo]) : 30;
                     let dataBase = p.vencimentoBase ? new Date(p.vencimentoBase + 'T12:00:00') : new Date(); 
-                    if(!p.vencimentoBase) dataBase.setDate(dataBase.getDate() + 30); 
+                    if(!p.vencimentoBase) dataBase.setDate(dataBase.getDate() + prazoMetodo); 
                     for(let i=1; i<=(p.parcelas || 1); i++) { 
                         let dataVencParc = new Date(dataBase); 
                         if (p.vencimentosPersonalizados && p.vencimentosPersonalizados[i-1]) {
                             dataVencParc = new Date(p.vencimentosPersonalizados[i-1] + 'T12:00:00');
                         } else {
-                            dataVencParc.setDate(dataVencParc.getDate() + (30 * (i - 1))); 
+                            dataVencParc.setDate(dataVencParc.getDate() + (prazoMetodo * (i - 1))); 
                         }
                         
                         const finRef = firestore.collection('financeiro').doc();
                         batch.set(finRef, { ref: ` [/]`, data: dataVencParc.toISOString(), pessoa: cliInfo.nome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas', origemVendaId: idFinalVenda }); 
                     } 
                 } else if (p.metodo && (String(p.metodo).includes('Crédito') || String(p.metodo).includes('Débito'))) { 
+                    let prazoCartao = (db.config && db.config.prazos && db.config.prazos[p.metodo] !== undefined) ? parseInt(db.config.prazos[p.metodo]) : 1;
                     let dataAmanha = new Date(); 
-                    dataAmanha.setDate(dataAmanha.getDate() + 1); 
+                    dataAmanha.setDate(dataAmanha.getDate() + prazoCartao); 
                     const valParc = valorParaCaixa / (p.parcelas || 1); 
                     for(let i=1; i<=(p.parcelas || 1); i++) { 
                         const finRef = firestore.collection('financeiro').doc();

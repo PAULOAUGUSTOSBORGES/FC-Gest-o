@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -720,6 +720,104 @@
                 <div><label Cód Barras (EAN)</label><input type="text" id="prod-ean" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white"></div>
                 <div class="grid grid-cols-3 gap-3">
                     <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Custo R$</label><input type="number" id="prod-custo" step="0.01" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white" oninput="calcularPrecoMargin('custo')"></div>
+                    <div><label class="text-xs font-bold text-blue-700 mb-1 block">Margem %</label><input type="number" id="prod-margem" step="0.1" class="w-full bg-blue-50 border border-blue-200 text-blue-800 p-2.5 rounded-lg text-sm font-bold outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" oninput="calcularPrecoMargin('margem')"></div>
+                    <div><label class="text-xs font-bold text-emerald-700 mb-1 block">Preço R$</label><input type="number" id="prod-preco" step="0.01" class="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 p-2.5 rounded-lg text-sm font-bold outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" oninput="calcularPrecoMargin('preco')"></div>
+                </div>
+            </div>
+            <div class="bg-white dark:bg-slate-800 p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
+                <button onclick="fecharModalProduto()" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50">Cancelar</button>
+                <button onclick="salvarProdutoXmlModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 rounded-lg">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL LANÃ‡AMENTO DE COMPRA MANUAL (SEM NF E EDIÃ‡ÁO) -->
+    <div id="modal-compra-manual" class="fixed inset-0 bg-slate-900/80 z-[160] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-slate-800 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col overflow-hidden max-h-[95vh]">
+            <div class="bg-emerald-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-base md:text-lg flex items-center gap-2"><i class="fa-solid fa-cart-flatbed"></i> <span id="compra-manual-titulo-modal">Lançar Compra (Sem NF)</span></h3>
+                <button onclick="fecharModalCompraManual()" class="text-emerald-200 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl md:text-2xl"></i></button>
+            </div>
+            
+            <div class="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 flex-1 overflow-y-auto custom-scrollbar space-y-4">
+                <input type="hidden" id="compra-manual-id" value="">
+                
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Fornecedor / Loja *</label>
+                        <div class="flex gap-2">
+                            <select id="compra-manual-fornecedor" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 font-bold text-slate-800 dark:text-slate-100 dark:text-white">
+                                <option value="">Selecione ou digite ao lado -> </option>
+                            </select>
+                            <input type="text" id="compra-manual-forn-avulso" placeholder="Fornecedor Avulso..." class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 dark:text-white">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Data da Compra *</label>
+                        <input type="date" id="compra-manual-data" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 dark:text-white">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">NÃ‚º Pedido / Ref / Recibo</label>
+                        <input type="text" id="compra-manual-ref" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 dark:text-white">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Frete / Custo Extra (R$) - Será rateado nos itens</label>
+                        <input type="number" id="compra-manual-frete" step="0.01" value="0" oninput="calcularTotaisCompraManual()" class="w-48 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 font-bold text-slate-700 dark:text-slate-200 dark:text-white">
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
+                    <div class="p-3 bg-slate-100 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase flex justify-between items-center">
+                        <span>Produtos Comprados</span>
+                        <button onclick="addLinhaCompraManual()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded shadow-sm transition"><i class="fa-solid fa-plus mr-1"></i> Adicionar Item</button>
+                    </div>
+                    <div class="overflow-x-auto min-h-[150px] custom-scrollbar">
+                        <table class="w-full text-left min-w-[700px]">
+                            <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold border-b border-slate-200 dark:border-slate-700">
+                                <tr>
+                                    <th class="p-2 md:p-3 w-1/2">Produto Existente (Busca) *</th>
+                                    <th class="p-2 md:p-3 text-center w-24">Qtd *</th>
+                                    <th class="p-2 md:p-3 text-right w-32">Custo Unit (R$) *</th>
+                                    <th class="p-2 md:p-3 text-right w-32">Subtotal</th>
+                                    <th class="p-2 md:p-3 text-center w-12">Excluir</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-compra-manual-body" class="divide-y divide-slate-100 text-xs md:text-sm">
+                                <!-- Linhas injetadas via JS -->
+                            </tbody>
+                            <tfoot class="bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700">
+                                <tr>
+                                    <td colspan="3" class="p-3 text-right font-bold text-slate-600 dark:text-slate-300 uppercase text-xs">Total dos Produtos + Frete</td>
+                                    <td class="p-3 text-right font-black text-emerald-600 text-lg" id="compra-manual-total-display">R$ 0,00</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 shadow-sm flex items-center justify-between" id="div-compra-manual-financeiro">
+                    <div>
+                        <h4 class="font-bold text-amber-900 text-sm"><i class="fa-solid fa-money-bill-transfer mr-1"></i> Lançamento Financeiro</h4>
+                        <p class="text-[10px] md:text-xs text-amber-700 mt-1">Deseja criar uma Conta a Pagar (Pendente) automaticamente no valor total desta compra?</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="compra-manual-gerar-financeiro" class="sr-only peer dark:text-white" checked>
+                        <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white dark:bg-slate-800 after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                        <span class="ml-3 text-sm font-bold text-amber-900">SIM</span>
+                    </label>
+                </div>
+
+            </div>
+            <div class="bg-slate-900 p-4 md:p-5 border-t border-slate-700 flex justify-end gap-3 shrink-0 rounded-b-2xl">
+                <button onclick="fecharModalCompraManual()" class="px-6 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl font-bold text-slate-700 dark:text-slate-200 text-sm hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 transition-colors shadow-sm">Cancelar</button>
+                <button onclick="salvarCompraManual()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-2.5 rounded-xl text-sm shadow-md transition-transform active:scale-95" id="compra-manual-btn-salvar"><i class="fa-solid fa-save mr-1"></i> Confirmar Lançamento</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DETALHES DA NF / COMPRA -->
+    <div id="modal-detalhes-nf" class="fixed inset-0 bg-slate-900/80 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col overflow-hidden max-h-[90vh]">
             <div class="bg-indigo-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
                 <h3 class="font-bold text-base md:text-lg flex items-center gap-2"><i class="fa-solid fa-file-lines"></i> Detalhes da Compra / Nota</h3>
@@ -748,6 +846,7 @@
             </div>
         </div>
     </div>
+
 
     <!-- CONFIRMAÃâ€¡ÃÁO DO SISTEMA -->
     <div id="modal-confirmacao" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
@@ -780,7 +879,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js?v=9"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js?v=9"></script>
     <script src="global.js?v=9"></script>
-    <script src="compras.js?v=9"></script>
+    <script src="compras.js?v=10"></script>
 </body>
 </html>
 

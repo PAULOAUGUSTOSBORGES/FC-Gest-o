@@ -59,7 +59,7 @@
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
                 <a href="vendas_gestao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_gestao"><i class="fa-solid fa-chart-line w-5 text-center"></i> Histórico Vendas (Gestão)</a>
                 <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
-                <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
+                <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Fí­sico</a>
                 <a href="compras.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & NF-e XML</a>
                 <a href="relatorios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
                 <a href="estoque.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-pallet w-5 text-center"></i> Estoque & Kardex</a>
@@ -73,7 +73,7 @@
             </div>
         </aside>
 
-        <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
+        <!-- íREA DE CONTEíšDO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
             <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
                 <div class="flex items-center gap-3">
@@ -85,7 +85,7 @@
             <div class="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth custom-scrollbar w-full relative">
                 <div class="max-w-4xl mx-auto space-y-6">
 
-                    <!-- APARÃŠNCIA DO SISTEMA REMOVIDA - MODO ESCURO FORÇADO -->
+                    <!-- APARíƒÅ NCIA DO SISTEMA REMOVIDA - MODO ESCURO FORí‡ADO -->
 
                     <!-- DADOS DA EMPRESA COM BUSCA DE CNPJ -->
                     <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
@@ -174,7 +174,20 @@
                         </div>
                     </div>
 
-                    <!-- TAXAS DE CARTÃO -->
+                    <!-- PRAZOS PADRíƒO -->
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3"><i class="fa-solid fa-calendar-days text-blue-600"></i> Prazos Padrão de Recebimento (Dias)</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Configure o prazo base para gerar as contas a receber nas vendas. (Ex: Fiado = 30 dias)</p>
+                        
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Fiado (Dias)</label><input type="number" id="prazo-fiado" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm font-bold text-slate-700 dark:text-slate-200 dark:text-white" value="30"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Boleto (Dias)</label><input type="number" id="prazo-boleto" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm font-bold text-slate-700 dark:text-slate-200 dark:text-white" value="30"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Cartão de Crédito (Dias)</label><input type="number" id="prazo-credito" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm font-bold text-slate-700 dark:text-slate-200 dark:text-white" value="1"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Cartão de Débito (Dias)</label><input type="number" id="prazo-debito" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm font-bold text-slate-700 dark:text-slate-200 dark:text-white" value="1"></div>
+                        </div>
+                    </div>
+
+                    <!-- TAXAS DE CARTíƒO -->
                     <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                         <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3"><i class="fa-solid fa-credit-card text-blue-600"></i> Taxas da Maquininha (%)</h3>
                         <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Insira o percentual exato cobrado pela sua maquininha. O sistema abaterá isso para mostrar seu Lucro Real no Histórico.</p>
@@ -199,10 +212,10 @@
                         </div>
                     </div>
 
-                    <!-- GESTÃO DE CATEGORIAS E SUBCATEGORIAS -->
+                    <!-- GESTíƒO DE CATEGORIAS E SUBCATEGORIAS -->
                     <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mt-6">
                         <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3"><i class="fa-solid fa-tags text-blue-600"></i> Gestão de Categorias e Subcategorias</h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Gerencie as categorias dos seus produtos. Você poderá usar isso para organizar o estoque e filtrar Relatórios.</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Gerencie as categorias dos seus produtos. Vocíª poderá usar isso para organizar o estoque e filtrar Relatórios.</p>
                         
                         <div class="flex flex-col md:flex-row gap-3 mb-6">
                             <input type="text" id="nova-categoria-nome" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" placeholder="Nome da Nova Categoria (Ex: Ferramentas)">
