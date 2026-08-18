@@ -153,18 +153,28 @@
                         </div>
                     </div>
 
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 hidden md:block">Gestão de Contas</h2>
-                        <div class="flex gap-2">
+                    <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white dark:bg-slate-800/80 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 text-lg shadow-sm">
+                                <i class="fa-solid fa-money-bill-transfer"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight">Gestão Financeira</h2>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Contas a Pagar/Receber, conciliação OFX e transferências</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 w-full xl:w-auto">
                             <!-- Toggle View -->
-                            <div class="flex bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-1 shadow-sm w-full md:w-auto overflow-x-auto custom-scrollbar">
-                                <button onclick="mudarVisualizacaoFin('lista')" id="fin-view-lista" class="px-3 py-1.5 rounded-md text-sm font-bold bg-blue-600 text-white transition-colors whitespace-nowrap"><i class="fa-solid fa-list mr-1"></i> Lista</button>
-                                <button onclick="mudarVisualizacaoFin('calendario')" id="fin-view-calendario" class="px-3 py-1.5 rounded-md text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:text-slate-100 transition-colors whitespace-nowrap"><i class="fa-regular fa-calendar mr-1"></i> Calendário</button>
+                            <div class="flex bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-1 shadow-inner">
+                                <button onclick="mudarVisualizacaoFin('lista')" id="fin-view-lista" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-blue-600 text-white shadow-md hover:bg-blue-700 transition-all whitespace-nowrap"><i class="fa-solid fa-list mr-1.5"></i> Lista</button>
+                                <button onclick="mudarVisualizacaoFin('calendario')" id="fin-view-calendario" class="px-3.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all whitespace-nowrap"><i class="fa-regular fa-calendar mr-1.5"></i> Calendário</button>
                             </div>
                             <!-- Abas Pagar/Receber -->
-                            <div id="fin-abas-container" class="flex bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-1 shadow-sm w-full md:w-auto overflow-x-auto custom-scrollbar">
-                                <button onclick="renderFinAbas('receber')" id="fin-tab-receber" class="px-4 py-1.5 rounded-md text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:text-slate-100 transition-colors whitespace-nowrap">Contas a Receber</button>
-                                <button onclick="renderFinAbas('pagar')" id="fin-tab-pagar" class="px-4 py-1.5 rounded-md text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:text-slate-100 transition-colors whitespace-nowrap">Contas a Pagar</button>
+                            <div id="fin-abas-container" class="flex flex-wrap bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-1 shadow-inner">
+                                <button onclick="renderFinAbas('receber')" id="fin-tab-receber" class="px-3.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all whitespace-nowrap">Contas a Receber</button>
+                                <button onclick="renderFinAbas('pagar')" id="fin-tab-pagar" class="px-3.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all whitespace-nowrap">Contas a Pagar</button>
+                                <button onclick="renderFinAbas('conciliacao')" id="fin-tab-conciliacao" class="px-3.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all whitespace-nowrap"><i class="fa-solid fa-building-columns mr-1.5 text-blue-500"></i> Conciliação OFX</button>
+                                <button onclick="renderFinAbas('transferencias')" id="fin-tab-transferencias" class="px-3.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all whitespace-nowrap"><i class="fa-solid fa-money-bill-transfer mr-1.5 text-purple-500"></i> Transferências</button>
                             </div>
                         </div>
                     </div>
@@ -275,6 +285,129 @@
                                         <tr><th class="p-3">Vencimento</th><th class="p-3">Favorecido</th><th class="p-3">Ref/Categoria</th><th class="p-3 text-right">Valor Final</th><th class="p-3 text-center">Status</th><th class="p-3 text-center print:hidden">Ações Avançadas</th></tr>
                                     </thead>
                                     <tbody id="tabela-fin-pagar" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                     <!-- SUB-ABA CONCILIAÇÃO BANCÁRIA OFX -->
+                     <div id="fin-area-conciliacao" class="fin-area hidden space-y-5">
+
+                         <!-- HERO HEADER -->
+                         <div class="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-2xl shadow-xl p-6 md:p-8">
+                             <div class="absolute inset-0 opacity-10" style="background-image:radial-gradient(circle at 80% 20%, white 1px, transparent 1px); background-size: 24px 24px;"></div>
+                             <div class="relative flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+                                 <div>
+                                     <div class="flex items-center gap-3 mb-2">
+                                         <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                                             <i class="fa-solid fa-building-columns text-white text-lg"></i>
+                                         </div>
+                                         <div>
+                                             <h3 class="text-lg md:text-xl font-extrabold text-white tracking-tight">Conciliação Bancária OFX</h3>
+                                             <p class="text-blue-200 text-xs font-medium">Cruzamento automático de extrato bancário com lançamentos</p>
+                                         </div>
+                                     </div>
+                                     <p class="text-blue-100/80 text-xs max-w-lg leading-relaxed mt-1">
+                                         Importe o arquivo <span class="font-bold text-white">.OFX</span> gerado pelo seu banco (Itaú, Bradesco, Santander, BB, Nubank, Sicredi, Sicoob, Inter) para cruzamento automático de recebimentos e pagamentos.
+                                     </p>
+                                 </div>
+                                 <label class="shrink-0 group cursor-pointer bg-white hover:bg-blue-50 text-blue-700 font-bold px-5 py-3 rounded-xl text-sm shadow-lg transition-all duration-200 flex items-center gap-2.5 border-2 border-white/30 hover:border-blue-200">
+                                     <i class="fa-solid fa-file-arrow-up text-base group-hover:scale-110 transition-transform"></i>
+                                     <span>Selecionar Arquivo OFX</span>
+                                     <input type="file" id="ofx-file-input" accept=".ofx" class="hidden" onchange="processarArquivoOFX(event)">
+                                 </label>
+                             </div>
+                         </div>
+
+                         <!-- RESUMO CARDS (visível após importar OFX) -->
+                         <div id="ofx-resumo-painel" class="hidden grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                             <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm flex items-center gap-3">
+                                 <div class="w-9 h-9 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center shrink-0">
+                                     <i class="fa-solid fa-landmark text-slate-500 dark:text-slate-400 text-sm"></i>
+                                 </div>
+                                 <div class="min-w-0">
+                                     <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Banco</p>
+                                     <p class="font-bold text-slate-800 dark:text-slate-100 text-sm truncate" id="ofx-banco-nome">—</p>
+                                 </div>
+                             </div>
+                             <div class="bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-900 rounded-xl p-4 shadow-sm flex items-center gap-3">
+                                 <div class="w-9 h-9 bg-emerald-50 dark:bg-emerald-900/40 rounded-lg flex items-center justify-center shrink-0">
+                                     <i class="fa-solid fa-arrow-down text-emerald-600 text-sm"></i>
+                                 </div>
+                                 <div>
+                                     <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Entradas (Créditos)</p>
+                                     <p class="font-extrabold text-emerald-600 text-base" id="ofx-total-creditos">R$ 0,00</p>
+                                 </div>
+                             </div>
+                             <div class="bg-white dark:bg-slate-800 border border-red-200 dark:border-red-900 rounded-xl p-4 shadow-sm flex items-center gap-3">
+                                 <div class="w-9 h-9 bg-red-50 dark:bg-red-900/40 rounded-lg flex items-center justify-center shrink-0">
+                                     <i class="fa-solid fa-arrow-up text-red-500 text-sm"></i>
+                                 </div>
+                                 <div>
+                                     <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Saídas (Débitos)</p>
+                                     <p class="font-extrabold text-red-500 text-base" id="ofx-total-debitos">R$ 0,00</p>
+                                 </div>
+                             </div>
+                             <div class="bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-900 rounded-xl p-4 shadow-sm flex items-center gap-3">
+                                 <div class="w-9 h-9 bg-blue-50 dark:bg-blue-900/40 rounded-lg flex items-center justify-center shrink-0">
+                                     <i class="fa-solid fa-list-check text-blue-600 text-sm"></i>
+                                 </div>
+                                 <div>
+                                     <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Lançamentos</p>
+                                     <p class="font-extrabold text-blue-600 text-base" id="ofx-total-registros">0</p>
+                                 </div>
+                             </div>
+                         </div>
+
+                         <!-- TABELA DE LANÇAMENTOS -->
+                         <div id="ofx-tabela-wrap" class="hidden bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                             <div class="px-5 py-3.5 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                                 <div class="flex items-center gap-2.5">
+                                     <i class="fa-solid fa-table-list text-slate-400 dark:text-slate-500 text-sm"></i>
+                                     <span class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide">Lançamentos do Extrato vs Financeiro</span>
+                                 </div>
+                                 <button onclick="conciliarLoteOFX()" class="bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all duration-150 flex items-center gap-2 shadow-sm">
+                                     <i class="fa-solid fa-check-double"></i> Conciliar Selecionados
+                                 </button>
+                             </div>
+                             <div class="overflow-x-auto max-h-[520px] custom-scrollbar">
+                                 <table class="w-full text-left text-xs min-w-[780px]">
+                                     <thead class="bg-slate-50 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold sticky top-0 z-10 border-b border-slate-200 dark:border-slate-700">
+                                         <tr>
+                                             <th class="p-3 text-center w-10">
+                                                 <input type="checkbox" id="ofx-check-todos" onchange="toggleTodosOFX(this.checked)" class="w-3.5 h-3.5 accent-blue-600 cursor-pointer">
+                                             </th>
+                                             <th class="p-3 whitespace-nowrap">Data</th>
+                                             <th class="p-3">Descrição no Extrato</th>
+                                             <th class="p-3 text-right whitespace-nowrap">Valor</th>
+                                             <th class="p-3">Correspondência no Sistema</th>
+                                             <th class="p-3 text-center whitespace-nowrap">Status</th>
+                                             <th class="p-3 text-center whitespace-nowrap">Ação</th>
+                                         </tr>
+                                     </thead>
+                                     <tbody id="ofx-tabela-body" class="divide-y divide-slate-100 dark:divide-slate-700/60"></tbody>
+                                 </table>
+                             </div>
+                         </div>
+
+                     </div>
+
+                    <!-- SUB-ABA TRANSFERÊNCIAS ENTRE CONTAS -->
+                    <div id="fin-area-transferencias" class="fin-area hidden space-y-4 md:space-y-6">
+                        <div class="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                                <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><i class="fa-solid fa-money-bill-transfer text-purple-600"></i> Transferências e Movimentação entre Contas</h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Registre transferências entre Gaveta (Caixa Físico), Cofre Central e Contas Bancárias.</p>
+                            </div>
+                            <button onclick="abrirModalTransferenciaFin()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 shadow"><i class="fa-solid fa-plus"></i> Nova Transferência</button>
+                        </div>
+
+                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                            <div class="overflow-x-auto custom-scrollbar">
+                                <table class="w-full text-left min-w-[650px]">
+                                    <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold border-b border-slate-200 dark:border-slate-700">
+                                        <tr><th class="p-3">Data</th><th class="p-3">Origem ➔ Destino</th><th class="p-3">Observação</th><th class="p-3 text-right">Valor</th><th class="p-3 text-center">Status</th><th class="p-3 text-center print:hidden">Ações</th></tr>
+                                    </thead>
+                                    <tbody id="tabela-transferencias-body" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
                                 </table>
                             </div>
                         </div>
@@ -540,6 +673,17 @@
                     <!-- BLOCO 1: DADOS GERAIS -->
                     <div class="bg-slate-700 p-4 rounded-xl border border-slate-600 shadow-sm space-y-4 md:col-span-2">
                         <h4 class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase border-b border-slate-100 dark:border-slate-700 pb-2"><i class="fa-solid fa-user-tag text-slate-400 mr-1"></i> Dados Gerais</h4>
+                        
+                        <div id="wrap-boleto-dda" class="bg-indigo-900/30 border border-indigo-500/40 p-3 rounded-xl space-y-1.5">
+                            <label class="text-[10px] font-bold text-indigo-300 uppercase flex items-center justify-between">
+                                <span><i class="fa-solid fa-barcode mr-1"></i> Linha Digitável / Boleto DDA (47 ou 48 Dígitos)</span>
+                                <span class="text-[9px] text-slate-400 font-normal">Preenchimento Automático</span>
+                            </label>
+                            <div class="flex gap-2">
+                                <input type="text" id="conta-linha-digitavel" class="w-full bg-slate-800 border border-slate-600 text-slate-100 p-2 rounded-lg text-xs font-mono outline-none focus:border-indigo-400" placeholder="Cole a linha digitável do boleto aqui...">
+                                <button type="button" onclick="decodificarLinhaDigitavelBoleto()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition flex items-center gap-1"><i class="fa-solid fa-wand-magic-sparkles"></i> Decodificar</button>
+                            </div>
+                        </div>
                         
                         <div>
                             <label class="text-[10px] font-bold text-slate-400 uppercase mb-1 block" id="lbl-conta-pessoa">Fornecedor / Favorecido *</label>
@@ -856,9 +1000,9 @@
                 <button onclick="fecharModalProduto()" class="text-blue-200 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             <div class="p-4 bg-slate-50 dark:bg-slate-900 overflow-y-auto space-y-4">
-                <!-- NOVO: OPÃ‡ÁO DE VÍNCULO MANUAL (MOSTRADA APENAS NO XML) -->
+                <!-- NOVO: OPÇÃO DE VÍNCULO MANUAL (MOSTRADA APENAS NO XML) -->
                 <div id="div-acao-vinculo-xml" class="hidden mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-lg">
-                    <lAção: Vincular ou Cadastrar?</label>
+                    <label class="text-xs font-bold text-slate-500 mb-1 block">Ação: Vincular ou Cadastrar?</label>
                     <select id="prod-acao-vinculo" onchange="alternarAcaoVinculoXML()" class="w-full bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 p-2 rounded text-sm outline-none mb-2 font-bold text-slate-700 dark:text-slate-200">
                         <option value="NOVO">Cadastrar como Novo Produto</option>
                         <option value="VINCULAR">Vincular a Produto Existente</option>
@@ -878,7 +1022,7 @@
                 <input type="hidden" id="prod-marca" value=""><input type="hidden" id="prod-categoria" value="Geral"><input type="hidden" id="prod-unidade" value="Un"><input type="hidden" id="prod-estoque" value="0"><input type="hidden" id="prod-minimo" value="5"><input type="hidden" id="prod-obs" value=""><input type="hidden" id="prod-foto-base64" value="">
                 
                 <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Nome do Produto</label><input type="text" id="prod-nome" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white"></div>
-                <div><label Cód Barras (EAN)</label><input type="text" id="prod-ean" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white"></div>
+                <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Cód. Barras (EAN)</label><input type="text" id="prod-ean" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white"></div>
                 <div class="grid grid-cols-3 gap-3">
                     <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Custo R$</label><input type="number" id="prod-custo" step="0.01" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white" oninput="calcularPrecoMargin('custo')"></div>
                     <div><label class="text-xs font-bold text-blue-700 mb-1 block">Margem %</label><input type="number" id="prod-margem" step="0.1" class="w-full bg-blue-50 border border-blue-200 text-blue-800 p-2.5 rounded-lg text-sm font-bold outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" oninput="calcularPrecoMargin('margem')"></div>
@@ -1008,6 +1152,48 @@
         </div>
     </div>
 
+    <!-- MODAL TRANSFERÊNCIA ENTRE CONTAS NO FINANCEIRO -->
+    <div id="modal-transferencia-fin" class="fixed inset-0 bg-slate-900/60 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
+            <div class="bg-purple-600 p-4 md:p-5 text-white flex justify-between items-center">
+                <h3 class="font-bold text-base md:text-lg flex items-center gap-2"><i class="fa-solid fa-money-bill-transfer"></i> Nova Transferência</h3>
+                <button onclick="fecharModalTransferenciaFin()" class="text-white/70 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Conta de Origem (Saída) *</label>
+                    <select id="transf-fin-origem" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-200 outline-none">
+                        <option value="Caixa Físico">Caixa Físico (Gaveta)</option>
+                        <option value="Cofre Central">Cofre Central</option>
+                        <option value="Conta Corrente Principal">Conta Corrente Principal (Banco)</option>
+                        <option value="Conta Secundária (PIX)">Conta Secundária (PIX)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Conta de Destino (Entrada) *</label>
+                    <select id="transf-fin-destino" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-200 outline-none">
+                        <option value="Conta Corrente Principal">Conta Corrente Principal (Banco)</option>
+                        <option value="Cofre Central">Cofre Central</option>
+                        <option value="Caixa Físico">Caixa Físico (Gaveta)</option>
+                        <option value="Conta Secundária (PIX)">Conta Secundária (PIX)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Valor da Transferência (R$) *</label>
+                    <input type="number" step="0.01" id="transf-fin-valor" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-3 rounded-lg text-lg font-black text-purple-700 outline-none focus:border-purple-500 dark:text-white" placeholder="0,00">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Observação / Justificativa</label>
+                    <input type="text" id="transf-fin-obs" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-purple-500 dark:text-white" placeholder="Ex: Depósito de sangrias da semana">
+                </div>
+            </div>
+            <div class="bg-white dark:bg-slate-800 p-4 md:p-5 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
+                <button onclick="fecharModalTransferenciaFin()" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg font-bold text-slate-700 dark:text-slate-200 text-sm">Cancelar</button>
+                <button onclick="confirmarTransferenciaFin()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-2 rounded-lg text-sm"><i class="fa-solid fa-check mr-1"></i> Efetuar Transferência</button>
+            </div>
+        </div>
+    </div>
+
     <!-- CONFIRMAÃ‡ÁO DO SISTEMA -->
     <div id="modal-confirmacao" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden text-center p-6">
@@ -1070,13 +1256,210 @@
                 <button onclick="document.getElementById('modal-info-relatorio').classList.add('hidden')" class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold px-6 py-2 rounded-lg transition-colors">Entendi</button>
             </div>
         </div>
-    </div>
+    <div id="modal-conciliacao-ofx" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-3 md:p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] border border-slate-200 dark:border-slate-700">
+            <!-- Header do Modal -->
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 text-white flex justify-between items-center shrink-0">
+                <div>
+                    <h3 class="font-black text-base md:text-lg flex items-center gap-2">
+                        <i class="fa-solid fa-file-invoice-dollar text-blue-200"></i>
+                        <span>Conciliar Transação Bancária</span>
+                    </h3>
+                    <p class="text-[11px] text-blue-100/90 mt-0.5">Vincule a uma conta existente ou registre um novo lançamento liquidado</p>
+                </div>
+                <button onclick="fecharModalConciliacaoOFX()" class="text-white/70 hover:text-white transition p-1 text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
 
+            <!-- Corpo do Modal -->
+            <div class="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 flex-1 overflow-y-auto space-y-5">
+                <!-- Info Extrato Bancário -->
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                    <div class="flex items-center justify-between mb-2 border-b border-slate-100 dark:border-slate-700/60 pb-2">
+                        <h4 class="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-building-columns text-blue-500"></i> Transação do Extrato Bancário
+                        </h4>
+                        <span id="ofx-modal-ext-banco" class="text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700/60 px-2 py-0.5 rounded">-</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700/40">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Data da Transação</p>
+                            <p class="font-bold text-sm text-slate-800 dark:text-slate-100" id="ofx-modal-ext-data">-</p>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700/40 sm:col-span-2">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Descrição / Histórico</p>
+                            <p class="font-bold text-sm text-slate-800 dark:text-slate-100 truncate" id="ofx-modal-ext-desc" title="">-</p>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700/40 sm:col-span-3 flex items-center justify-between">
+                            <div>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase">Valor do Extrato</p>
+                                <p class="font-black text-xl text-slate-900 dark:text-white" id="ofx-modal-ext-valor">-</p>
+                            </div>
+                            <span id="ofx-modal-ext-tipo-badge" class="px-2.5 py-1 rounded-full text-xs font-black tracking-wide uppercase">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seletor de Modo: Vincular ou Criar Novo -->
+                <div>
+                    <label class="text-[11px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider block mb-1.5">
+                        Como você deseja conciliar esta transação?
+                    </label>
+                    <div class="grid grid-cols-2 gap-2 bg-slate-200 dark:bg-slate-700/60 p-1.5 rounded-xl border border-slate-300/60 dark:border-slate-600/60">
+                        <button type="button" id="ofx-btn-modo-vincular" onclick="ofxAlternarModo('VINCULAR')" class="py-2.5 px-3 rounded-lg text-xs font-black transition flex items-center justify-center gap-2 bg-blue-600 text-white shadow-sm">
+                            <i class="fa-solid fa-link"></i> Vincular a Título Existente
+                        </button>
+                        <button type="button" id="ofx-btn-modo-novo" onclick="ofxAlternarModo('NOVO')" class="py-2.5 px-3 rounded-lg text-xs font-black transition flex items-center justify-center gap-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
+                            <i class="fa-solid fa-plus-circle"></i> Criar Novo Lançamento
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ÁREA MODO 1: VINCULAR A TÍTULO EXISTENTE -->
+                <div id="ofx-area-modo-vincular" class="space-y-3">
+                    <!-- Título Selecionado Atualmente -->
+                    <div id="ofx-card-titulo-selecionado" class="hidden bg-emerald-50 dark:bg-emerald-950/40 p-3.5 rounded-xl border border-emerald-300 dark:border-emerald-700/60">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-[11px] font-black text-emerald-800 dark:text-emerald-300 uppercase flex items-center gap-1.5">
+                                <i class="fa-solid fa-circle-check text-emerald-600"></i> Título Selecionado para Baixa
+                            </span>
+                            <button type="button" onclick="ofxDesvincularTitulo()" class="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1">
+                                <i class="fa-solid fa-rotate-left"></i> Trocar / Desvincular
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                            <div class="sm:col-span-2">
+                                <span class="text-[10px] text-slate-500 dark:text-slate-400 block">Pessoa / Descrição</span>
+                                <span class="font-bold text-slate-800 dark:text-slate-100 truncate block" id="ofx-sel-pessoa">-</span>
+                            </div>
+                            <div>
+                                <span class="text-[10px] text-slate-500 dark:text-slate-400 block">Vencimento</span>
+                                <span class="font-bold text-slate-800 dark:text-slate-100" id="ofx-sel-venc">-</span>
+                            </div>
+                            <div>
+                                <span class="text-[10px] text-slate-500 dark:text-slate-400 block">Valor Original</span>
+                                <span class="font-bold text-slate-800 dark:text-slate-100" id="ofx-sel-valor">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Buscador e Lista de Títulos Pendentes -->
+                    <div id="ofx-painel-busca-titulos" class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase">
+                                Selecione um título pendente abaixo:
+                            </label>
+                            <span class="text-[10px] text-slate-400 font-medium" id="ofx-contador-pendentes">0 encontrados</span>
+                        </div>
+                        <div class="relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                            <input type="text" id="ofx-busca-titulos" oninput="ofxFiltrarTitulosPendentes()" placeholder="Buscar por cliente/fornecedor, documento, referência ou valor..." class="w-full pl-8 pr-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-xs outline-none dark:text-white focus:border-blue-500">
+                        </div>
+                        
+                        <!-- Lista com Scroll de Títulos -->
+                        <div id="ofx-lista-titulos-pendentes" class="max-h-48 overflow-y-auto space-y-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 shadow-inner">
+                            <!-- Preenchido dinamicamente via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ÁREA MODO 2: CRIAR NOVO LANÇAMENTO (AVISO) -->
+                <div id="ofx-area-modo-novo" class="hidden bg-blue-50 dark:bg-blue-950/40 p-3.5 rounded-xl border border-blue-200 dark:border-blue-800/60">
+                    <p class="text-xs text-blue-800 dark:text-blue-200 font-medium flex items-center gap-2">
+                        <i class="fa-solid fa-sparkles text-blue-600 dark:text-blue-400 text-sm"></i>
+                        <span>Um novo lançamento financeiro será criado e já marcado como <strong>PAGO / LIQUIDADO</strong> com os dados abaixo.</span>
+                    </p>
+                </div>
+
+                <!-- SEÇÃO COMUM: CAMPOS EDITÁVEIS DE BAIXA / LANÇAMENTO -->
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
+                    <h4 class="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-700 pb-2 flex items-center justify-between">
+                        <span>Dados de Quitação e Detalhes</span>
+                        <span class="text-[10px] font-normal text-slate-400">Todos os campos são editáveis</span>
+                    </h4>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 block">Tipo de Operação *</label>
+                            <select id="ofx-modal-tipo" onchange="ofxModalAtualizarCategorias()" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none dark:text-white font-bold">
+                                <option value="RECEITA">Receita / Entrada</option>
+                                <option value="DESPESA">Despesa / Saída</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 block">Favorecido / Sacado *</label>
+                            <input type="text" id="ofx-modal-pessoa" list="ofx-pessoas-datalist" placeholder="Nome do cliente ou fornecedor..." class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none dark:text-white font-bold">
+                            <datalist id="ofx-pessoas-datalist"></datalist>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 block">Categoria *</label>
+                            <select id="ofx-modal-categoria" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none dark:text-white font-bold">
+                                <!-- Preenchido dinamicamente -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 block">Centro de Custo</label>
+                            <input type="text" id="ofx-modal-centro-custo" value="Geral" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none dark:text-white font-bold">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 block">Data de Efetivação / Pagamento *</label>
+                            <input type="date" id="ofx-modal-data-pgto" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none dark:text-white font-bold">
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 block">Valor Efetivo (R$) *</label>
+                            <input type="number" step="0.01" id="ofx-modal-valor-pago" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none dark:text-white font-black text-blue-600 dark:text-blue-400">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 block">Forma de Pagamento</label>
+                            <select id="ofx-modal-metodo" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none dark:text-white font-bold">
+                                <option value="Pix">Pix</option>
+                                <option value="Transferência">Transferência Bancária / TED</option>
+                                <option value="Boleto">Boleto Bancário</option>
+                                <option value="Cartão Débito">Cartão de Débito</option>
+                                <option value="Cartão Crédito">Cartão de Crédito</option>
+                                <option value="Dinheiro">Dinheiro (Caixa Físico)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 block">Conta Bancária / Destino</label>
+                            <input type="text" id="ofx-modal-conta-bancaria" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none dark:text-white font-bold">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 block">Observação / Histórico Complementar</label>
+                        <input type="text" id="ofx-modal-obs" placeholder="Detalhes ou anotações..." class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none dark:text-white">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rodapé do Modal com Ações -->
+            <div class="p-3 md:p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex justify-end gap-2.5 shrink-0">
+                <button type="button" onclick="fecharModalConciliacaoOFX()" class="bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-bold px-4 py-2 rounded-xl text-xs transition">
+                    Cancelar
+                </button>
+                <button type="button" onclick="confirmarConciliacaoModalOFX()" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black px-6 py-2 rounded-xl text-xs transition shadow-sm flex items-center gap-2">
+                    <i class="fa-solid fa-check-double"></i> Confirmar Conciliação
+                </button>
+            </div>
+        </div>
+    </div>
+    
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js?v=9"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js?v=9"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js?v=9"></script>
     <script src="global.js?v=9"></script>
-    <script src="financeiro.js?v=16"></script>
+    <script src="financeiro.js?v=17"></script>
 </body>
 </html>
 

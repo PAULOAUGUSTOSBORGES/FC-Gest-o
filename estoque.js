@@ -964,3 +964,49 @@ function filtrarProdutosXMLBusca() {
 function mostrarListaProdutosXMLBusca() { filtrarProdutosXMLBusca(); }
 function ocultarListaProdutosXMLBusca() { document.getElementById('prod-vinculo-lista').classList.add('hidden'); }
 
+// ==========================================
+// EXPORTAÇÕES GLOBAIS (WINDOW)
+// ==========================================
+window.mudarVisaoLocal = mudarVisaoLocal;
+window.abrirModalProduto = abrirModalProduto;
+window.fecharModalProduto = fecharModalProduto;
+window.salvarProduto = salvarProduto;
+window.editarProduto = editarProduto;
+window.excluirProduto = excluirProduto;
+window.renderProdutos = renderProdutos;
+window.abaModal = abaModal;
+window.calcularPrecoMargin = calcularPrecoMargin;
+window.processarFotoProduto = processarFotoProduto;
+window.removerFotoProduto = removerFotoProduto;
+window.renderClientes = renderClientes;
+window.abrirModalCliente = abrirModalCliente;
+window.fecharModalCliente = fecharModalCliente;
+window.salvarCliente = salvarCliente;
+window.editarCliente = editarCliente;
+window.excluirCliente = excluirCliente;
+window.renderFornecedores = renderFornecedores;
+window.abrirModalFornecedor = abrirModalFornecedor;
+window.fecharModalFornecedor = fecharModalFornecedor;
+window.salvarFornecedor = salvarFornecedor;
+window.editarFornecedor = editarFornecedor;
+window.excluirFornecedor = excluirFornecedor;
+window.renderFuncionarios = renderFuncionarios;
+window.abrirModalFuncionario = abrirModalFuncionario;
+window.fecharModalFuncionario = fecharModalFuncionario;
+window.salvarFuncionario = salvarFuncionario;
+window.editarFuncionario = editarFuncionario;
+window.excluirFuncionario = excluirFuncionario;
+window.renderKardex = renderKardex;
+window.gerarDescricaoIA = gerarDescricaoIA;
+window.baixarPlanilhaModeloProduto = baixarPlanilhaModeloProduto;
+window.processarPlanilhaProdutos = processarPlanilhaProdutos;
+window.alternarAcaoVinculoXML = alternarAcaoVinculoXML;
+window.preencherVinculoXML = preencherVinculoXML;
+window.selecionarProdutoVinculoXML = selecionarProdutoVinculoXML;
+window.filtrarProdutosXMLBusca = filtrarProdutosXMLBusca;
+window.mostrarListaProdutosXMLBusca = mostrarListaProdutosXMLBusca;
+window.ocultarListaProdutosXMLBusca = ocultarListaProdutosXMLBusca;
+window.verDetalhesVenda = verDetalhesVenda;
+window.fecharModalDetalhesVenda = fecharModalDetalhesVenda;
+
+

@@ -132,27 +132,27 @@ function inicializarGestao() {
 
     firestore.collection('vendas').onSnapshot(snap => {
         db.vendas = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        tentarRefresh();
+        renderDashboard();
     });
     firestore.collection('financeiro').onSnapshot(snap => {
         db.financeiro = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        tentarRefresh();
+        renderDashboard();
     });
     firestore.collection('compras').onSnapshot(snap => {
         db.compras = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        tentarRefresh();
+        renderDashboard();
     });
     firestore.collection('produtos').onSnapshot(snap => {
         db.produtos = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        tentarRefresh();
+        renderDashboard();
     });
     firestore.collection('clientes').onSnapshot(snap => {
         db.clientes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        tentarRefresh();
+        renderDashboard();
     });
     firestore.collection('fornecedores').onSnapshot(snap => {
         db.fornecedores = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        tentarRefresh();
+        renderDashboard();
     });
     firestore.collection('fc_moveis').doc('caixa').onSnapshot(doc => {
         if(doc.exists) db.caixa = doc.data();
@@ -1585,114 +1585,281 @@ function obterIntervaloDatasBI() {
     if (!tipo) return null;
     
     const hoje = new Date();
-    hoje.setHours(23, 59, 59, 999);
     
-    let inicio = new Date(hoje);
-    inicio.setHours(0, 0, 0, 0);
-    let fim = new Date(hoje);
+    let inicio = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0, 0);
+    let fim = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59, 999);
+    let label = 'Este Mês';
     
     if (tipo.value === 'mes') {
-        inicio.setDate(1);
+        inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1, 0, 0, 0, 0);
+        fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59, 999);
+        label = `Este Mês (${inicio.toLocaleDateString('pt-BR')} a ${fim.toLocaleDateString('pt-BR')})`;
     } else if (tipo.value === '30') {
-        inicio.setDate(inicio.getDate() - 30);
+        inicio = new Date(hoje.getTime() - (30 * 24 * 60 * 60 * 1000));
+        inicio.setHours(0, 0, 0, 0);
+        label = `Últimos 30 dias (${inicio.toLocaleDateString('pt-BR')} a ${fim.toLocaleDateString('pt-BR')})`;
     } else if (tipo.value === '60') {
-        inicio.setDate(inicio.getDate() - 60);
+        inicio = new Date(hoje.getTime() - (60 * 24 * 60 * 60 * 1000));
+        inicio.setHours(0, 0, 0, 0);
+        label = `Últimos 60 dias (${inicio.toLocaleDateString('pt-BR')} a ${fim.toLocaleDateString('pt-BR')})`;
     } else if (tipo.value === '90') {
-        inicio.setDate(inicio.getDate() - 90);
+        inicio = new Date(hoje.getTime() - (90 * 24 * 60 * 60 * 1000));
+        inicio.setHours(0, 0, 0, 0);
+        label = `Últimos 90 dias (${inicio.toLocaleDateString('pt-BR')} a ${fim.toLocaleDateString('pt-BR')})`;
     } else if (tipo.value === 'personalizado') {
         const iStr = document.getElementById('bi-data-inicio')?.value;
         const fStr = document.getElementById('bi-data-fim')?.value;
         if (iStr) {
             inicio = new Date(iStr + 'T00:00:00');
         } else {
-            inicio = new Date('2000-01-01');
+            inicio = new Date('2000-01-01T00:00:00');
         }
         if (fStr) {
             fim = new Date(fStr + 'T23:59:59');
         } else {
-            fim = new Date('2100-01-01');
+            fim = new Date('2100-01-01T23:59:59');
         }
+        label = `Personalizado (${inicio.toLocaleDateString('pt-BR')} a ${fim.toLocaleDateString('pt-BR')})`;
     }
     
-    return { inicio, fim };
+    return { inicio, fim, label };
+}
+
+// Helper: Garante que apenas contas rigorosamente PAGAS cujo pagamento foi feito no período sejam computadas
+function obterDespesasPagasDoPeriodo(periodo) {
+    if (!db.financeiro) return [];
+    return db.financeiro.filter(f => {
+        const tipo = String(f.tipo || '').toUpperCase();
+        if (tipo !== 'DESPESA') return false;
+        
+        // RIGOROSAMENTE APENAS CONTAS EFETIVAMENTE PAGAS
+        const status = String(f.status || '').toUpperCase();
+        if (status !== 'PAGO') return false;
+
+        const cat = String(f.categoria || '').toLowerCase();
+        if (cat.includes('transferência') || cat.includes('transferencia')) return false;
+
+        if (!periodo) return true;
+
+        // Data do pagamento: usa dataPagamento se existir, senão data do título (somente se estiver PAGO)
+        const rawData = f.dataPagamento || f.data;
+        if (!rawData) return false;
+
+        const dataPg = new Date(rawData);
+        if (isNaN(dataPg.getTime())) return false;
+
+        return dataPg >= periodo.inicio && dataPg <= periodo.fim;
+    });
+}
+
+// Helper: Vendas válidas dentro do período filtrado
+function obterVendasDoPeriodo(periodo) {
+    if (!db.vendas) return [];
+    return db.vendas.filter(v => {
+        const tipo = String(v.tipo || '').toUpperCase();
+        if (tipo === 'ORÇAMENTO' || tipo === 'ORCAMENTO') return false;
+        const status = String(v.status || '').toUpperCase();
+        if (status === 'CANCELADA' || status === 'CANCELADO') return false;
+
+        if (!periodo) return true;
+
+        const rawData = v.data || v.dataVenda || v.criadoEm;
+        if (!rawData) return false;
+
+        const dataV = new Date(rawData);
+        if (isNaN(dataV.getTime())) return false;
+
+        return dataV >= periodo.inicio && dataV <= periodo.fim;
+    });
+}
+
+// Helper: Compras registradas dentro do período filtrado
+function obterComprasDoPeriodo(periodo) {
+    if (!db.compras) return [];
+    return db.compras.filter(c => {
+        if (!periodo) return true;
+
+        const rawData = c.data || c.dataEmissao || c.criadoEm;
+        if (!rawData) return false;
+
+        const dataC = new Date(rawData);
+        if (isNaN(dataC.getTime())) return false;
+
+        return dataC >= periodo.inicio && dataC <= periodo.fim;
+    });
 }
 
 function renderDashboard() {
-    let vendas = db.vendas || [];
-    let compras = db.compras || [];
-
     const periodo = obterIntervaloDatasBI();
-    if (periodo) {
-        vendas = vendas.filter(v => {
-            const dataV = new Date(v.data);
-            return dataV >= periodo.inicio && dataV <= periodo.fim;
-        });
-        compras = compras.filter(c => {
-            const dataC = new Date(c.data);
-            return dataC >= periodo.inicio && dataC <= periodo.fim;
-        });
+    const vendas = obterVendasDoPeriodo(periodo);
+    const compras = obterComprasDoPeriodo(periodo);
+    const despesasPagas = obterDespesasPagasDoPeriodo(periodo);
+
+    const fatTotal = vendas.reduce((a, b) => a + Number(b.tot || b.total || b.valor || 0), 0); 
+    const cmvTotal = vendas.reduce((a, b) => a + Number(b.custoTotal || 0), 0); 
+    const taxasTotal = vendas.reduce((a, b) => a + Number(b.taxaValor || 0), 0); 
+    const recLiquida = fatTotal - taxasTotal;
+    const lucroBruto = recLiquida - cmvTotal;
+
+    // Despesas Operacionais e Impostos: rigorosamente apenas despesas pagas no período
+    let despesasOperacionais = 0;
+    let impostosTotal = 0;
+
+    despesasPagas.forEach(d => {
+        const cat = String(d.categoria || '').toLowerCase();
+        const val = Number(d.valorPago || d.valor || 0);
+
+        if (cat.includes('imposto') || cat.includes('das') || cat.includes('icms') || cat.includes('simples') || cat.includes('tributo')) {
+            impostosTotal += val;
+        } else {
+            despesasOperacionais += val;
+        }
+    });
+
+    const resultadoLiquido = lucroBruto - despesasOperacionais - impostosTotal;
+
+    // Elementos DRE Estruturado
+    const dreBrutaEl = document.getElementById('dre-receita-bruta'); if(dreBrutaEl) dreBrutaEl.innerText = formatMoney(fatTotal);
+    const dreTaxEl = document.getElementById('dre-deducoes-taxas'); if(dreTaxEl) dreTaxEl.innerText = `- ${formatMoney(taxasTotal)}`;
+    const dreLiqEl = document.getElementById('dre-receita-liquida'); if(dreLiqEl) dreLiqEl.innerText = formatMoney(recLiquida);
+    const dreCmvEl = document.getElementById('dre-cmv'); if(dreCmvEl) dreCmvEl.innerText = `- ${formatMoney(cmvTotal)}`;
+    const dreLucroBrutoEl = document.getElementById('dre-lucro-bruto'); if(dreLucroBrutoEl) dreLucroBrutoEl.innerText = formatMoney(lucroBruto);
+    const dreDespEl = document.getElementById('dre-despesas-operacionais'); if(dreDespEl) dreDespEl.innerText = `- ${formatMoney(despesasOperacionais)}`;
+    const dreImpEl = document.getElementById('dre-impostos'); if(dreImpEl) dreImpEl.innerText = `- ${formatMoney(impostosTotal)}`;
+    const dreResEl = document.getElementById('dre-resultado-liquido'); 
+    if(dreResEl) {
+        dreResEl.innerText = formatMoney(resultadoLiquido);
+        dreResEl.className = `p-4 rounded-r-lg text-right font-black text-base md:text-lg ${resultadoLiquido >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
     }
 
-    const fatTotal = vendas.reduce((a, b) => a + b.tot, 0); 
-    const cmvTotal = vendas.reduce((a, b) => a + (b.custoTotal || 0), 0); 
-    const taxasTotal = vendas.reduce((a, b) => a + (b.taxaValor || 0), 0); 
-    const lucroReal = fatTotal - cmvTotal - taxasTotal;
-    
+    // Fallback legado
     const rBrutaEl = document.getElementById('bi-receita'); if(rBrutaEl) rBrutaEl.innerText = formatMoney(fatTotal); 
     const rCmvEl = document.getElementById('bi-cmv'); if(rCmvEl) rCmvEl.innerText = `- ${formatMoney(cmvTotal)}`; 
     const rTaxEl = document.getElementById('bi-taxas'); if(rTaxEl) rTaxEl.innerText = `- ${formatMoney(taxasTotal)}`; 
-    const rLucroEl = document.getElementById('bi-lucro'); if(rLucroEl) rLucroEl.innerText = formatMoney(lucroReal);
+    const rLucroEl = document.getElementById('bi-lucro'); if(rLucroEl) rLucroEl.innerText = formatMoney(resultadoLiquido);
+
+    // Top Compras (Produtos em que mais se gastou)
+    const rankingComprasProd = {};
+    compras.forEach(c => {
+        (c.itens || []).forEach(i => {
+            const pNome = i.nome || 'Produto';
+            if (!rankingComprasProd[pNome]) rankingComprasProd[pNome] = 0;
+            rankingComprasProd[pNome] += Number(i.vTotalItemNaNota || (i.custoFinal * (i.qCom || 1)) || 0);
+        });
+    });
+    const topComprasEl = document.getElementById('bi-top-compras');
+    if (topComprasEl) {
+        const itensTopCompras = Object.keys(rankingComprasProd)
+            .map(k => ({ nome: k, val: rankingComprasProd[k] }))
+            .sort((a,b) => b.val - a.val)
+            .slice(0, 5);
+        if (itensTopCompras.length > 0) {
+            topComprasEl.innerHTML = itensTopCompras.map((p, i) => `
+                <div onclick="abrirDrilldownDRE('PRODUTO_COMPRAS', '${p.nome.replace(/'/g, "\\'")}')" class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver compras deste produto">
+                    <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">${i+1}. ${p.nome}</span>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="font-bold text-red-500 dark:text-red-400">${formatMoney(p.val)}</span>
+                        <i class="fa-solid fa-magnifying-glass text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            topComprasEl.innerHTML = '<div class="text-slate-500 dark:text-slate-400 text-sm italic text-center py-2">Nenhuma compra no período</div>';
+        }
+    }
     
+    // Top Vendas Produtos (Top 5)
     const rankingProd = {}; 
     vendas.forEach(v => (v.itens || []).forEach(i => { 
-        if(!rankingProd[i.nome]) rankingProd[i.nome] = 0; 
-        rankingProd[i.nome] += (i.preco * i.qtd); 
+        const pNome = i.nome || 'Produto';
+        if(!rankingProd[pNome]) rankingProd[pNome] = 0; 
+        rankingProd[pNome] += (Number(i.preco || 0) * Number(i.qtd || 1)); 
     }));
     const abcEl = document.getElementById('bi-abc-produtos');
-    if(abcEl) abcEl.innerHTML = Object.keys(rankingProd).map(k => ({nome: k, val: rankingProd[k]})).sort((a,b) => b.val - a.val).slice(0,5).map((p, i) => `<div class="flex justify-between text-sm border-b border-slate-100 dark:border-slate-700 pb-1"><span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200">${i+1}. ${p.nome}</span><span class="font-bold text-emerald-600 dark:text-emerald-400">${formatMoney(p.val)}</span></div>`).join('');
+    if(abcEl) {
+        const itensTopVendas = Object.keys(rankingProd).map(k => ({nome: k, val: rankingProd[k]})).sort((a,b) => b.val - a.val).slice(0,5);
+        if (itensTopVendas.length > 0) {
+            abcEl.innerHTML = itensTopVendas.map((p, i) => `
+                <div onclick="abrirDrilldownDRE('PRODUTO_VENDAS', '${p.nome.replace(/'/g, "\\'")}')" class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver vendas deste produto">
+                    <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">${i+1}. ${p.nome}</span>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="font-bold text-emerald-600 dark:text-emerald-400">${formatMoney(p.val)}</span>
+                        <i class="fa-solid fa-magnifying-glass text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            abcEl.innerHTML = '<div class="text-slate-500 dark:text-slate-400 text-sm italic text-center py-2">Nenhuma venda no período</div>';
+        }
+    }
     
+    // Top Clientes
     const rankingCli = {}; 
     vendas.forEach(v => { 
         const c = v.clienteNome || 'Consumidor'; 
         if(!rankingCli[c]) rankingCli[c] = 0; 
-        rankingCli[c] += v.tot; 
+        rankingCli[c] += Number(v.tot || v.total || v.valor || 0); 
     });
     const cliEl = document.getElementById('bi-top-clientes');
-    if(cliEl) cliEl.innerHTML = Object.keys(rankingCli).map(k => ({nome: k, val: rankingCli[k]})).sort((a,b) => b.val - a.val).slice(0,5).map((c, i) => `<div class="flex justify-between text-sm border-b border-slate-100 dark:border-slate-700 pb-1"><span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200">${i+1}. ${c.nome}</span><span class="font-bold text-blue-600 dark:text-blue-400">${formatMoney(c.val)}</span></div>`).join('');
+    if(cliEl) {
+        const itensTopCli = Object.keys(rankingCli).map(k => ({nome: k, val: rankingCli[k]})).sort((a,b) => b.val - a.val).slice(0,5);
+        if (itensTopCli.length > 0) {
+            cliEl.innerHTML = itensTopCli.map((c, i) => `
+                <div onclick="abrirDrilldownDRE('CLIENTE_VENDAS', '${c.nome.replace(/'/g, "\\'")}')" class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver compras deste cliente">
+                    <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">${i+1}. ${c.nome}</span>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="font-bold text-blue-600 dark:text-blue-400">${formatMoney(c.val)}</span>
+                        <i class="fa-solid fa-magnifying-glass text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            cliEl.innerHTML = '<div class="text-slate-500 dark:text-slate-400 text-sm italic text-center py-2">Nenhum cliente no período</div>';
+        }
+    }
 
+    // Top Fornecedores
     const rankingForn = {};
     compras.forEach(c => {
         const fNome = c.fornecedor || 'Desconhecido';
         if(!rankingForn[fNome]) rankingForn[fNome] = 0;
-        rankingForn[fNome] += (c.totalNF || 0);
+        rankingForn[fNome] += Number(c.totalNF || c.valor || 0);
     });
     const fornEl = document.getElementById('bi-top-fornecedores');
-    if(fornEl) fornEl.innerHTML = Object.keys(rankingForn).map(k => ({nome: k, val: rankingForn[k]})).sort((a,b) => b.val - a.val).slice(0,5).map((f, i) => `<div class="flex justify-between text-sm border-b border-slate-100 dark:border-slate-700 pb-1"><span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200">${i+1}. ${f.nome}</span><span class="font-bold text-red-500 dark:text-red-400">${formatMoney(f.val)}</span></div>`).join('');
-
-
-    let despesas = db.financeiro ? db.financeiro.filter(f => f.tipo === 'DESPESA' && f.status !== 'CANCELADO') : [];
-    if (periodo) {
-        despesas = despesas.filter(f => {
-            const dataF = new Date(f.data);
-            return dataF >= periodo.inicio && dataF <= periodo.fim;
-        });
+    if(fornEl) {
+        const itensTopForn = Object.keys(rankingForn).map(k => ({nome: k, val: rankingForn[k]})).sort((a,b) => b.val - a.val).slice(0,5);
+        if (itensTopForn.length > 0) {
+            fornEl.innerHTML = itensTopForn.map((f, i) => `
+                <div onclick="abrirDrilldownDRE('FORNECEDOR_COMPRAS', '${f.nome.replace(/'/g, "\\'")}')" class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver compras deste fornecedor">
+                    <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-red-500 dark:group-hover:text-red-400 transition-colors">${i+1}. ${f.nome}</span>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="font-bold text-red-500 dark:text-red-400">${formatMoney(f.val)}</span>
+                        <i class="fa-solid fa-magnifying-glass text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            fornEl.innerHTML = '<div class="text-slate-500 dark:text-slate-400 text-sm italic text-center py-2">Nenhum fornecedor no período</div>';
+        }
     }
-    
+
+    // Despesas por Categoria, Centro de Custo, Favorecido e Funcionários (RIGOROSAMENTE APENAS CONTAS PAGAS)
     const rankingCategorias = {};
     const rankingCentros = {};
     const rankingFavorecidos = {};
     const rankingFuncionarios = {};
     
-    despesas.forEach(f => {
+    despesasPagas.forEach(f => {
         const cat = f.categoria || 'Sem Categoria';
         const ctc = f.centroCusto || 'Sem Centro de Custo';
-        const val = parseFloat(f.valor || 0);
+        const val = parseFloat(f.valorPago || f.valor || 0);
         const pessoa = f.pessoa || 'Sem Nome / Não Informado';
+
+        const catLower = cat.toLowerCase();
         
         if (!rankingFavorecidos[pessoa]) rankingFavorecidos[pessoa] = 0;
         rankingFavorecidos[pessoa] += val;
         
-        const catLower = cat.toLowerCase();
         if (catLower.includes('salário') || catLower.includes('salario') || catLower.includes('folha') || catLower.includes('pró-labore') || catLower.includes('pro-labore') || catLower.includes('pro labore')) {
             if (!rankingFuncionarios[pessoa]) rankingFuncionarios[pessoa] = 0;
             rankingFuncionarios[pessoa] += val;
@@ -1711,10 +1878,17 @@ function renderDashboard() {
             catEl.innerHTML = Object.keys(rankingCategorias)
                 .map(k => ({nome: k, val: rankingCategorias[k]}))
                 .sort((a,b) => b.val - a.val)
-                .map((c, i) => `<div class="flex justify-between text-sm border-b border-slate-100 dark:border-slate-700 pb-1"><span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200">${i+1}. ${c.nome}</span><span class="font-bold text-red-500 dark:text-red-400">${formatMoney(c.val)}</span></div>`)
-                .join('');
+                .map((c, i) => `
+                    <div onclick="abrirDrilldownDRE('CATEGORIA', '${c.nome.replace(/'/g, "\\'")}')" class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver extrato detalhado desta categoria">
+                        <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-red-500 transition-colors">${i+1}. ${c.nome}</span>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="font-bold text-red-500 dark:text-red-400">${formatMoney(c.val)}</span>
+                            <i class="fa-solid fa-magnifying-glass text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                        </div>
+                    </div>
+                `).join('');
         } else {
-            catEl.innerHTML = '<div class="text-slate-500 dark:text-slate-400 text-sm italic text-center py-2">Nenhuma despesa no período</div>';
+            catEl.innerHTML = '<div class="text-slate-500 dark:text-slate-400 text-sm italic text-center py-2">Nenhuma despesa paga no período</div>';
         }
     }
     
@@ -1724,10 +1898,17 @@ function renderDashboard() {
             favEl.innerHTML = Object.keys(rankingFavorecidos)
                 .map(k => ({nome: k, val: rankingFavorecidos[k]}))
                 .sort((a,b) => b.val - a.val)
-                .map((c, i) => `<div class="flex justify-between text-sm border-b border-slate-100 dark:border-slate-700 pb-1"><span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200">${i+1}. ${c.nome}</span><span class="font-bold text-indigo-500 dark:text-indigo-400">${formatMoney(c.val)}</span></div>`)
-                .join('');
+                .map((c, i) => `
+                    <div onclick="abrirDrilldownDRE('FAVORECIDO', '${c.nome.replace(/'/g, "\\'")}')" class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver extrato detalhado deste favorecido">
+                        <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-indigo-500 transition-colors">${i+1}. ${c.nome}</span>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="font-bold text-indigo-500 dark:text-indigo-400">${formatMoney(c.val)}</span>
+                            <i class="fa-solid fa-magnifying-glass text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                        </div>
+                    </div>
+                `).join('');
         } else {
-            favEl.innerHTML = '<div class="text-slate-500 dark:text-slate-400 text-sm italic text-center py-2">Nenhuma despesa no período</div>';
+            favEl.innerHTML = '<div class="text-slate-500 dark:text-slate-400 text-sm italic text-center py-2">Nenhuma despesa paga no período</div>';
         }
     }
     
@@ -1737,55 +1918,683 @@ function renderDashboard() {
             funcEl.innerHTML = Object.keys(rankingFuncionarios)
                 .map(k => ({nome: k, val: rankingFuncionarios[k]}))
                 .sort((a,b) => b.val - a.val)
-                .map((c, i) => `<div onclick="abrirDetalhesFuncionario('${c.nome.replace(/'/g, "\\'").replace(/"/g, "&quot;")}')" class="flex justify-between text-sm border-b border-slate-100 dark:border-slate-700 pb-1 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors p-1 rounded"><span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200">${i+1}. ${c.nome}</span><span class="font-bold text-emerald-500 dark:text-emerald-400">${formatMoney(c.val)}</span></div>`)
-                .join('');
+                .map((c, i) => `
+                    <div onclick="abrirDrilldownDRE('FUNCIONARIO', '${c.nome.replace(/'/g, "\\'")}')" class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver extrato deste funcionário">
+                        <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-emerald-500 transition-colors">${i+1}. ${c.nome}</span>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="font-bold text-emerald-500 dark:text-emerald-400">${formatMoney(c.val)}</span>
+                            <i class="fa-solid fa-magnifying-glass text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                        </div>
+                    </div>
+                `).join('');
         } else {
-            funcEl.innerHTML = '<div class="text-slate-500 dark:text-slate-400 text-sm italic text-center py-2">Nenhum pagamento de folha/salário no período</div>';
+            funcEl.innerHTML = '<div class="text-slate-500 dark:text-slate-400 text-sm italic text-center py-2">Nenhum pagamento de folha/salário pago no período</div>';
         }
     }
+
     const ctcEl = document.getElementById('bi-despesas-centro-custo');
     if (ctcEl) {
         if (Object.keys(rankingCentros).length > 0) {
             ctcEl.innerHTML = Object.keys(rankingCentros)
                 .map(k => ({nome: k, val: rankingCentros[k]}))
                 .sort((a,b) => b.val - a.val)
-                .map((c, i) => `<div class="flex justify-between text-sm border-b border-slate-100 dark:border-slate-700 pb-1"><span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200">${i+1}. ${c.nome}</span><span class="font-bold text-amber-600 dark:text-amber-400">${formatMoney(c.val)}</span></div>`)
-                .join('');
+                .map((c, i) => `
+                    <div onclick="abrirDrilldownDRE('CENTRO_CUSTO', '${c.nome.replace(/'/g, "\\'")}')" class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver extrato deste centro de custo">
+                        <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-purple-500 transition-colors">${i+1}. ${c.nome}</span>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="font-bold text-purple-500 dark:text-purple-400">${formatMoney(c.val)}</span>
+                            <i class="fa-solid fa-magnifying-glass text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                        </div>
+                    </div>
+                `).join('');
         } else {
-            ctcEl.innerHTML = '<div class="text-slate-500 dark:text-slate-400 text-sm italic text-center py-2">Nenhuma despesa no período</div>';
+            ctcEl.innerHTML = '<div class="text-slate-500 dark:text-slate-400 text-sm italic text-center py-2">Nenhum lançamento pago no período</div>';
         }
     }
-    const qtdCompras = compras.length;
-    const totalGastoCompras = compras.reduce((acc, c) => acc + (c.totalNF || 0), 0);
-    const ticketMedioCompras = qtdCompras > 0 ? totalGastoCompras / qtdCompras : 0;
-    const totalItensComprados = compras.reduce((acc, c) => acc + (c.qtdTotal || 0), 0);
     
-    const elQtd = document.getElementById('bi-compras-qtd'); if(elQtd) elQtd.innerText = qtdCompras;
-    const elTicket = document.getElementById('bi-compras-ticket'); if(elTicket) elTicket.innerText = formatMoney(ticketMedioCompras);
-    const elItens = document.getElementById('bi-compras-itens'); if(elItens) elItens.innerText = `${totalItensComprados} un`;
+    // Totalizadores de Compras
+    const biQtdEl = document.getElementById('bi-compras-qtd'); if(biQtdEl) biQtdEl.innerText = compras.length;
+    const biTicketEl = document.getElementById('bi-compras-ticket'); if(biTicketEl) biTicketEl.innerText = formatMoney(compras.length ? (compras.reduce((a,b)=>a+(Number(b.totalNF||0)),0)/compras.length) : 0);
+    const biItensEl = document.getElementById('bi-compras-itens'); if(biItensEl) biItensEl.innerText = `${compras.reduce((a,b)=>(a+((b.itens||[]).reduce((x,y)=>x+(Number(y.qCom||0)),0))),0)} un`;
 
-    const rankingCompras = {};
-    compras.forEach(c => {
-        (c.itens || []).forEach(i => {
-            if(!rankingCompras[i.nome]) rankingCompras[i.nome] = 0;
-            rankingCompras[i.nome] += (i.vTotalItemNaNota || 0); 
-        });
-    });
-    const compEl = document.getElementById('bi-top-compras');
-    if(compEl) compEl.innerHTML = Object.keys(rankingCompras).map(k => ({nome: k, val: rankingCompras[k]})).sort((a,b) => b.val - a.val).slice(0,5).map((p, i) => `<div class="flex justify-between text-sm border-b border-slate-100 dark:border-slate-700 pb-1"><span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200">${i+1}. ${p.nome}</span><span class="font-bold text-indigo-600 dark:text-indigo-400">${formatMoney(p.val)}</span></div>`).join('');
-
-    const selProd = document.getElementById('relatorio-custo-produto');
-    if(selProd) {
-        const prodAtual = selProd.value;
-        selProd.innerHTML = '<option value="">Selecione um Produto para carregar o histórico...</option>' + 
-                            (db.produtos || []).map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
-        if(prodAtual) selProd.value = prodAtual;
-    }
-    
-    // Chamar relatórios avançados
+    // Renderiza Curva ABC e Sugestor de Reposição Inteligente
     renderCurvaABC(vendas, fatTotal);
     renderSugestorCompras(vendas, periodo);
+
+    // Popula select de produtos para Histórico/Evolução de Custos
+    const selProdCusto = document.getElementById('relatorio-custo-produto');
+    if (selProdCusto && (selProdCusto.options.length <= 1 || selProdCusto.dataset.loaded !== 'true')) {
+        const sortedProds = [...(db.produtos || [])].sort((a,b) => (a.nome || '').localeCompare(b.nome || ''));
+        selProdCusto.innerHTML = '<option value="">Selecione um Produto para carregar o Histórico...</option>' +
+            sortedProds.map(p => `<option value="${p.id}">${p.nome} (Estoque: ${p.estoque || 0})</option>`).join('');
+        selProdCusto.dataset.loaded = 'true';
+    }
 }
+
+// ==========================================
+// DRILL-DOWN ANALÍTICO DO DRE E BI (100% AUDITÁVEL)
+// ==========================================
+
+window.dadosDrilldownDREAtual = [];
+window.infoDrilldownDREAtual = {};
+
+function abrirDrilldownDRE(tipo, parametroExtra = null) {
+    const periodo = obterIntervaloDatasBI();
+    const vendas = obterVendasDoPeriodo(periodo);
+    const compras = obterComprasDoPeriodo(periodo);
+    const despesasPagas = obterDespesasPagasDoPeriodo(periodo);
+
+    let titulo = 'Detalhamento Analítico';
+    let badgeTipo = 'DRE OFICIAL';
+    let icone = 'fa-solid fa-file-invoice-dollar';
+    let iconeCor = 'text-emerald-400';
+    let listaItens = [];
+    let corTotal = 'text-emerald-600 dark:text-emerald-400';
+
+    switch (tipo) {
+        case 'RECEITA_BRUTA':
+            titulo = 'Detalhamento: Receita Operacional Bruta (Vendas & Serviços)';
+            badgeTipo = 'ENTRADA DE VENDAS';
+            icone = 'fa-solid fa-arrow-trend-up';
+            iconeCor = 'text-emerald-400';
+            corTotal = 'text-emerald-600 dark:text-emerald-400';
+            listaItens = vendas.map(v => {
+                const itensResumo = (v.itens || []).map(i => `${i.qtd || 1}x ${i.nome}`).slice(0, 3).join(', ') + ((v.itens || []).length > 3 ? '...' : '');
+                const numPed = String(v.numeroPedido || v.id || '').padStart(4, '0');
+                return {
+                    data: v.data || v.dataVenda || v.criadoEm,
+                    descricao: `Venda/Serviço #${numPed}${itensResumo ? ' (' + itensResumo + ')' : ''}`,
+                    pessoa: v.clienteNome || 'Consumidor Final',
+                    categoria: v.tipo === 'SERVIÇO' ? 'Prestação de Serviço' : 'Venda de Mercadorias',
+                    centroCusto: v.vendedor ? `Vendedor: ${v.vendedor}` : 'Comercial / Loja',
+                    metodo: v.pag || v.formaPagamento || 'À Vista',
+                    banco: v.contaBancaria || 'PDV / Caixa',
+                    valor: Number(v.tot || v.total || v.valor || 0),
+                    badge: v.tipo === 'SERVIÇO' ? 'SERVIÇO' : 'VENDA',
+                    corValor: 'text-emerald-600 dark:text-emerald-400'
+                };
+            });
+            break;
+
+        case 'DEDUCOES_TAXAS':
+            titulo = 'Detalhamento: Deduções e Taxas de Meios de Pagamento';
+            badgeTipo = 'DEDUÇÃO';
+            icone = 'fa-solid fa-credit-card';
+            iconeCor = 'text-red-400';
+            corTotal = 'text-red-500 dark:text-red-400';
+            listaItens = vendas.filter(v => Number(v.taxaValor || 0) > 0).map(v => {
+                const numPed = String(v.numeroPedido || v.id || '').padStart(4, '0');
+                return {
+                    data: v.data || v.dataVenda || v.criadoEm,
+                    descricao: `Taxa de Cartão / Maquininha (Venda #${numPed})`,
+                    pessoa: `Operadora / Gateway (${v.pag || 'Cartão'})`,
+                    categoria: 'Taxas Financeiras / Meios de Pgto',
+                    centroCusto: 'Financeiro / Deduções',
+                    metodo: v.pag || 'Cartão',
+                    banco: 'Desconto Automático na Liquidação',
+                    valor: Number(v.taxaValor || 0),
+                    badge: 'TAXA PGTO',
+                    corValor: 'text-red-500 dark:text-red-400'
+                };
+            });
+            break;
+
+        case 'RECEITA_LIQUIDA':
+            titulo = 'Detalhamento: Receita Operacional Líquida (Vendas - Taxas)';
+            badgeTipo = 'RECEITA LÍQUIDA';
+            icone = 'fa-solid fa-scale-balanced';
+            iconeCor = 'text-blue-400';
+            corTotal = 'text-blue-600 dark:text-blue-400';
+            listaItens = vendas.map(v => {
+                const numPed = String(v.numeroPedido || v.id || '').padStart(4, '0');
+                const bruto = Number(v.tot || v.total || v.valor || 0);
+                const taxa = Number(v.taxaValor || 0);
+                const liquido = bruto - taxa;
+                return {
+                    data: v.data || v.dataVenda || v.criadoEm,
+                    descricao: `Pedido #${numPed} [Bruto: ${formatMoney(bruto)} | Taxas: -${formatMoney(taxa)}]`,
+                    pessoa: v.clienteNome || 'Consumidor Final',
+                    categoria: v.tipo === 'SERVIÇO' ? 'Serviço Líquido' : 'Mercadoria Líquida',
+                    centroCusto: v.vendedor ? `Vend: ${v.vendedor}` : 'Comercial',
+                    metodo: v.pag || 'À Vista',
+                    banco: v.contaBancaria || 'PDV / Caixa',
+                    valor: liquido,
+                    badge: 'VALOR LÍQUIDO',
+                    corValor: 'text-blue-600 dark:text-blue-400'
+                };
+            });
+            break;
+
+        case 'CMV':
+            titulo = 'Detalhamento: Custo das Mercadorias Vendidas (CMV Analítico)';
+            badgeTipo = 'CUSTO DE ESTOQUE';
+            icone = 'fa-solid fa-boxes-stacked';
+            iconeCor = 'text-amber-400';
+            corTotal = 'text-red-500 dark:text-red-400';
+            vendas.forEach(v => {
+                const numPed = String(v.numeroPedido || v.id || '').padStart(4, '0');
+                if (v.itens && v.itens.length > 0) {
+                    v.itens.forEach(item => {
+                        const qtd = Number(item.qtd || item.quantidade || 1);
+                        const custoUn = Number(item.custo || item.custoUnit || 0);
+                        const custoTotalItem = custoUn * qtd;
+                        listaItens.push({
+                            data: v.data || v.dataVenda || v.criadoEm,
+                            descricao: `CMV: ${item.nome} (${qtd} un × ${formatMoney(custoUn)}) - Ref. Pedido #${numPed}`,
+                            pessoa: `Cliente: ${v.clienteNome || 'Consumidor'}`,
+                            categoria: 'Custo de Reposição de Mercadoria',
+                            centroCusto: 'Estoque / Vendas',
+                            metodo: 'Baixa de Kardex',
+                            banco: 'Custo Direto',
+                            valor: custoTotalItem,
+                            badge: 'CMV ITEM',
+                            corValor: 'text-red-500 dark:text-red-400'
+                        });
+                    });
+                } else if (Number(v.custoTotal || 0) > 0) {
+                    listaItens.push({
+                        data: v.data || v.dataVenda || v.criadoEm,
+                        descricao: `CMV Consolidado da Venda #${numPed}`,
+                        pessoa: `Cliente: ${v.clienteNome || 'Consumidor'}`,
+                        categoria: 'Custo de Mercadoria',
+                        centroCusto: 'Estoque',
+                        metodo: 'Baixa Geral',
+                        banco: 'Custo Direto',
+                        valor: Number(v.custoTotal || 0),
+                        badge: 'CMV VENDA',
+                        corValor: 'text-red-500 dark:text-red-400'
+                    });
+                }
+            });
+            break;
+
+        case 'LUCRO_BRUTO':
+            titulo = 'Detalhamento: Lucro Bruto Operacional (Margem de Contribuição)';
+            badgeTipo = 'MARGEM BRUTA';
+            icone = 'fa-solid fa-chart-pie';
+            iconeCor = 'text-emerald-400';
+            corTotal = 'text-emerald-600 dark:text-emerald-400';
+            listaItens = vendas.map(v => {
+                const numPed = String(v.numeroPedido || v.id || '').padStart(4, '0');
+                const bruto = Number(v.tot || v.total || v.valor || 0);
+                const taxa = Number(v.taxaValor || 0);
+                const cmv = Number(v.custoTotal || 0);
+                const margemBruta = bruto - taxa - cmv;
+                return {
+                    data: v.data || v.dataVenda || v.criadoEm,
+                    descricao: `Margem Pedido #${numPed} [Bruto: ${formatMoney(bruto)} | CMV: ${formatMoney(cmv)} | Taxas: ${formatMoney(taxa)}]`,
+                    pessoa: v.clienteNome || 'Consumidor Final',
+                    categoria: 'Margem de Contribuição',
+                    centroCusto: v.vendedor ? `Vend: ${v.vendedor}` : 'Comercial',
+                    metodo: v.pag || 'À Vista',
+                    banco: 'Resultado Operacional',
+                    valor: margemBruta,
+                    badge: margemBruta >= 0 ? 'MARGEM POSITIVA' : 'MARGEM NEGATIVA',
+                    corValor: margemBruta >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'
+                };
+            });
+            break;
+
+        case 'DESPESAS_OPERACIONAIS':
+            titulo = 'Detalhamento: Despesas Operacionais, Fixas & Boletos Pagos';
+            badgeTipo = 'CONTAS PAGAS';
+            icone = 'fa-solid fa-money-bill-transfer';
+            iconeCor = 'text-red-400';
+            corTotal = 'text-red-500 dark:text-red-400';
+            listaItens = despesasPagas.filter(d => {
+                const cat = String(d.categoria || '').toLowerCase();
+                return !(cat.includes('imposto') || cat.includes('das') || cat.includes('icms') || cat.includes('simples') || cat.includes('tributo'));
+            }).map(d => {
+                const docRef = [
+                    d.ref || d.descricao || 'Despesa',
+                    d.numNF ? `NF ${d.numNF}` : '',
+                    d.numBoleto ? `Bol: ${d.numBoleto}` : ''
+                ].filter(Boolean).join(' - ');
+                return {
+                    data: d.dataPagamento || d.data,
+                    descricao: docRef,
+                    pessoa: d.pessoa || 'Favorecido Não Informado',
+                    categoria: d.categoria || 'Despesa Operacional',
+                    centroCusto: d.centroCusto || 'Operacional',
+                    metodo: d.metodoPagamento || 'Pago',
+                    banco: d.banco || 'Conta Geral',
+                    valor: Number(d.valorPago || d.valor || 0),
+                    badge: 'PAGO',
+                    corValor: 'text-red-500 dark:text-red-400'
+                };
+            });
+            break;
+
+        case 'IMPOSTOS':
+            titulo = 'Detalhamento: Impostos e Tributos Pagos (DAS / Simples / ICMS)';
+            badgeTipo = 'TRIBUTOS PAGOS';
+            icone = 'fa-solid fa-building-columns';
+            iconeCor = 'text-orange-400';
+            corTotal = 'text-red-500 dark:text-red-400';
+            listaItens = despesasPagas.filter(d => {
+                const cat = String(d.categoria || '').toLowerCase();
+                return cat.includes('imposto') || cat.includes('das') || cat.includes('icms') || cat.includes('simples') || cat.includes('tributo');
+            }).map(d => {
+                return {
+                    data: d.dataPagamento || d.data,
+                    descricao: `${d.ref || d.descricao || 'Guia de Impostos'} ${d.numNF ? '[Doc: ' + d.numNF + ']' : ''}`,
+                    pessoa: d.pessoa || 'Receita Federal / Fazenda Estadual',
+                    categoria: d.categoria || 'Impostos & Tributos',
+                    centroCusto: d.centroCusto || 'Fiscal / Tributário',
+                    metodo: d.metodoPagamento || 'Pago',
+                    banco: d.banco || 'Conta Geral',
+                    valor: Number(d.valorPago || d.valor || 0),
+                    badge: 'IMPOSTO PAGO',
+                    corValor: 'text-red-500 dark:text-red-400'
+                };
+            });
+            break;
+
+        case 'RESULTADO_LIQUIDO':
+            titulo = 'Demonstrativo Consolidado do Resultado Líquido (Lucro Real)';
+            badgeTipo = 'DRE CONSOLIDADO';
+            icone = 'fa-solid fa-trophy';
+            iconeCor = 'text-amber-400';
+            const fatT = vendas.reduce((a, b) => a + Number(b.tot || b.total || b.valor || 0), 0);
+            const taxT = vendas.reduce((a, b) => a + Number(b.taxaValor || 0), 0);
+            const recL = fatT - taxT;
+            const cmvT = vendas.reduce((a, b) => a + Number(b.custoTotal || 0), 0);
+            const lucB = recL - cmvT;
+            let despOp = 0; let impT = 0;
+            despesasPagas.forEach(d => {
+                const cat = String(d.categoria || '').toLowerCase();
+                const v = Number(d.valorPago || d.valor || 0);
+                if (cat.includes('imposto') || cat.includes('das') || cat.includes('icms') || cat.includes('simples') || cat.includes('tributo')) impT += v;
+                else despOp += v;
+            });
+            const resL = lucB - despOp - impT;
+            corTotal = resL >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400';
+            listaItens = [
+                { data: periodo.fim.toISOString(), descricao: '(+) RECEITA OPERACIONAL BRUTA (Vendas & Serviços)', pessoa: `${vendas.length} vendas registradas`, categoria: 'Faturamento Bruto', centroCusto: 'Comercial', metodo: 'Todos os meios', banco: 'Consolidado', valor: fatT, badge: 'RECEITA (+)', corValor: 'text-emerald-600 dark:text-emerald-400' },
+                { data: periodo.fim.toISOString(), descricao: '(-) Deduções e Taxas de Meios de Pagamento', pessoa: 'Operadoras de Cartão / Gateway', categoria: 'Deduções', centroCusto: 'Financeiro', metodo: 'Taxas retidas', banco: 'Retenção', valor: -taxT, badge: 'DEDUÇÃO (-)', corValor: 'text-red-500 dark:text-red-400' },
+                { data: periodo.fim.toISOString(), descricao: '(=) RECEITA OPERACIONAL LÍQUIDA', pessoa: 'Resultado após deduções de taxas', categoria: 'Receita Líquida', centroCusto: 'Geral', metodo: '-', banco: '-', valor: recL, badge: 'SUBTOTAL (=)', corValor: 'text-blue-600 dark:text-blue-400' },
+                { data: periodo.fim.toISOString(), descricao: '(-) Custo das Mercadorias Vendidas (CMV)', pessoa: 'Custo de reposição do estoque', categoria: 'CMV Direto', centroCusto: 'Estoque', metodo: 'Kardex', banco: 'Estoque', valor: -cmvT, badge: 'CMV (-)', corValor: 'text-red-500 dark:text-red-400' },
+                { data: periodo.fim.toISOString(), descricao: '(=) LUCRO BRUTO OPERACIONAL (Margem de Contribuição)', pessoa: 'Sobra limpa das vendas para cobrir custos fixos', categoria: 'Margem Contribuição', centroCusto: 'Geral', metodo: '-', banco: '-', valor: lucB, badge: 'SUBTOTAL (=)', corValor: 'text-emerald-600 dark:text-emerald-400' },
+                { data: periodo.fim.toISOString(), descricao: '(-) Despesas Operacionais, Fixas & Boletos Pagos', pessoa: 'Salários, aluguel, água, energia, fornecedores pagos', categoria: 'Despesas Fixas / Variáveis', centroCusto: 'Operacional / ADM', metodo: 'Boletos / PIX Pagos', banco: 'Contas Bancárias', valor: -despOp, badge: 'DESPESAS (-)', corValor: 'text-red-500 dark:text-red-400' },
+                { data: periodo.fim.toISOString(), descricao: '(-) Impostos e Tributos Pagos (DAS / Simples)', pessoa: 'Receita Federal / Fazenda', categoria: 'Impostos', centroCusto: 'Fiscal', metodo: 'Guias Pagas', banco: 'Conta Bancária', valor: -impT, badge: 'IMPOSTOS (-)', corValor: 'text-red-500 dark:text-red-400' }
+            ];
+            break;
+
+        case 'CATEGORIA':
+            titulo = `Detalhamento: Despesas Pagas na Categoria "${parametroExtra}"`;
+            badgeTipo = 'CATEGORIA PAGA';
+            icone = 'fa-solid fa-tags';
+            iconeCor = 'text-red-400';
+            corTotal = 'text-red-500 dark:text-red-400';
+            listaItens = despesasPagas.filter(d => (d.categoria || 'Sem Categoria') === parametroExtra).map(d => ({
+                data: d.dataPagamento || d.data,
+                descricao: `${d.ref || d.descricao || 'Despesa'} ${d.numNF ? '[NF ' + d.numNF + ']' : ''}`,
+                pessoa: d.pessoa || 'Favorecido Não Informado',
+                categoria: d.categoria || 'Sem Categoria',
+                centroCusto: d.centroCusto || 'Operacional',
+                metodo: d.metodoPagamento || 'Pago',
+                banco: d.banco || 'Conta Geral',
+                valor: Number(d.valorPago || d.valor || 0),
+                badge: 'PAGO',
+                corValor: 'text-red-500 dark:text-red-400'
+            }));
+            break;
+
+        case 'CENTRO_CUSTO':
+            titulo = `Detalhamento: Despesas Pagas no Centro de Custo "${parametroExtra}"`;
+            badgeTipo = 'CENTRO DE CUSTO PAGO';
+            icone = 'fa-solid fa-building';
+            iconeCor = 'text-purple-400';
+            corTotal = 'text-purple-600 dark:text-purple-400';
+            listaItens = despesasPagas.filter(d => (d.centroCusto || 'Sem Centro de Custo') === parametroExtra).map(d => ({
+                data: d.dataPagamento || d.data,
+                descricao: `${d.ref || d.descricao || 'Despesa'} ${d.numNF ? '[NF ' + d.numNF + ']' : ''}`,
+                pessoa: d.pessoa || 'Favorecido Não Informado',
+                categoria: d.categoria || 'Sem Categoria',
+                centroCusto: d.centroCusto || 'Centro de Custo',
+                metodo: d.metodoPagamento || 'Pago',
+                banco: d.banco || 'Conta Geral',
+                valor: Number(d.valorPago || d.valor || 0),
+                badge: 'PAGO',
+                corValor: 'text-purple-500 dark:text-purple-400'
+            }));
+            break;
+
+        case 'FAVORECIDO':
+            titulo = `Detalhamento: Despesas Pagas para "${parametroExtra}"`;
+            badgeTipo = 'FAVORECIDO PAGO';
+            icone = 'fa-solid fa-users';
+            iconeCor = 'text-indigo-400';
+            corTotal = 'text-indigo-600 dark:text-indigo-400';
+            listaItens = despesasPagas.filter(d => (d.pessoa || 'Sem Nome / Não Informado') === parametroExtra).map(d => ({
+                data: d.dataPagamento || d.data,
+                descricao: `${d.ref || d.descricao || 'Despesa'} ${d.numNF ? '[NF ' + d.numNF + ']' : ''}`,
+                pessoa: d.pessoa || 'Favorecido',
+                categoria: d.categoria || 'Sem Categoria',
+                centroCusto: d.centroCusto || 'Operacional',
+                metodo: d.metodoPagamento || 'Pago',
+                banco: d.banco || 'Conta Geral',
+                valor: Number(d.valorPago || d.valor || 0),
+                badge: 'PAGO',
+                corValor: 'text-indigo-500 dark:text-indigo-400'
+            }));
+            break;
+
+        case 'FUNCIONARIO':
+            titulo = `Extrato de Pagamentos ao Funcionário: "${parametroExtra}"`;
+            badgeTipo = 'FOLHA DE PAGAMENTO PAGA';
+            icone = 'fa-solid fa-user-tie';
+            iconeCor = 'text-emerald-400';
+            corTotal = 'text-emerald-600 dark:text-emerald-400';
+            listaItens = despesasPagas.filter(d => {
+                const pessoa = d.pessoa || 'Sem Nome / Não Informado';
+                const catLower = (d.categoria || '').toLowerCase();
+                const isFolha = catLower.includes('salário') || catLower.includes('salario') || catLower.includes('folha') || catLower.includes('pró-labore') || catLower.includes('pro-labore') || catLower.includes('pro labore');
+                return pessoa === parametroExtra && isFolha;
+            }).map(d => ({
+                data: d.dataPagamento || d.data,
+                descricao: `${d.ref || d.descricao || 'Pagamento de Salário/Folha'}`,
+                pessoa: d.pessoa || 'Funcionário',
+                categoria: d.categoria || 'Salários / Folha',
+                centroCusto: d.centroCusto || 'RH / Pessoal',
+                metodo: d.metodoPagamento || 'PIX / Transf',
+                banco: d.banco || 'Conta Empresa',
+                valor: Number(d.valorPago || d.valor || 0),
+                badge: 'SALÁRIO PAGO',
+                corValor: 'text-emerald-600 dark:text-emerald-400'
+            }));
+            break;
+
+        case 'CLIENTE_VENDAS':
+            titulo = `Histórico de Compras do Cliente: "${parametroExtra}"`;
+            badgeTipo = 'VENDAS DO CLIENTE';
+            icone = 'fa-solid fa-user-check';
+            iconeCor = 'text-blue-400';
+            corTotal = 'text-blue-600 dark:text-blue-400';
+            listaItens = vendas.filter(v => (v.clienteNome || 'Consumidor') === parametroExtra).map(v => {
+                const numPed = String(v.numeroPedido || v.id || '').padStart(4, '0');
+                const itensResumo = (v.itens || []).map(i => `${i.qtd || 1}x ${i.nome}`).join(', ');
+                return {
+                    data: v.data || v.dataVenda || v.criadoEm,
+                    descricao: `Pedido #${numPed}: ${itensResumo || 'Venda'}`,
+                    pessoa: v.clienteNome || 'Cliente',
+                    categoria: v.tipo || 'Venda',
+                    centroCusto: v.vendedor ? `Vend: ${v.vendedor}` : 'Comercial',
+                    metodo: v.pag || 'À Vista',
+                    banco: v.contaBancaria || 'PDV / Caixa',
+                    valor: Number(v.tot || v.total || v.valor || 0),
+                    badge: 'COMPRA CLIENTE',
+                    corValor: 'text-blue-600 dark:text-blue-400'
+                };
+            });
+            break;
+
+        case 'FORNECEDOR_COMPRAS':
+            titulo = `Histórico de Compras com o Fornecedor: "${parametroExtra}"`;
+            badgeTipo = 'COMPRAS FORNECEDOR';
+            icone = 'fa-solid fa-truck';
+            iconeCor = 'text-red-400';
+            corTotal = 'text-red-500 dark:text-red-400';
+            listaItens = compras.filter(c => (c.fornecedor || 'Desconhecido') === parametroExtra).map(c => {
+                const itensResumo = (c.itens || []).map(i => `${i.qCom || 1}x ${i.nome}`).slice(0, 3).join(', ');
+                return {
+                    data: c.data || c.dataEmissao || c.criadoEm,
+                    descricao: `NF/Pedido #${c.numeroNF || 'S/N'}${itensResumo ? ' (' + itensResumo + ')' : ''}`,
+                    pessoa: c.fornecedor || 'Fornecedor',
+                    categoria: 'Compra de Mercadoria / Matéria-Prima',
+                    centroCusto: 'Estoque / Compras',
+                    metodo: c.numeroNF === 'S/N' ? 'Entrada Manual' : 'XML NF-e',
+                    banco: 'Contas a Pagar / Fornecedor',
+                    valor: Number(c.totalNF || c.valor || 0),
+                    badge: 'COMPRA FORNECEDOR',
+                    corValor: 'text-red-500 dark:text-red-400'
+                };
+            });
+            break;
+
+        case 'PRODUTO_VENDAS':
+            titulo = `Vendas do Produto: "${parametroExtra}"`;
+            badgeTipo = 'CURVA ABC PRODUTO';
+            icone = 'fa-solid fa-box-open';
+            iconeCor = 'text-emerald-400';
+            corTotal = 'text-emerald-600 dark:text-emerald-400';
+            vendas.forEach(v => {
+                const numPed = String(v.numeroPedido || v.id || '').padStart(4, '0');
+                (v.itens || []).forEach(item => {
+                    if (item.nome === parametroExtra) {
+                        const qtd = Number(item.qtd || item.quantidade || 1);
+                        const precoUn = Number(item.preco || 0);
+                        listaItens.push({
+                            data: v.data || v.dataVenda || v.criadoEm,
+                            descricao: `Venda ${qtd} un × ${formatMoney(precoUn)} (Pedido #${numPed})`,
+                            pessoa: `Cliente: ${v.clienteNome || 'Consumidor'}`,
+                            categoria: 'Venda de Produto',
+                            centroCusto: v.vendedor ? `Vend: ${v.vendedor}` : 'Comercial',
+                            metodo: v.pag || 'À Vista',
+                            banco: 'PDV / Caixa',
+                            valor: qtd * precoUn,
+                            badge: 'ITEM VENDIDO',
+                            corValor: 'text-emerald-600 dark:text-emerald-400'
+                        });
+                    }
+                });
+            });
+            break;
+
+        case 'PRODUTO_COMPRAS':
+            titulo = `Histórico de Compras do Produto: "${parametroExtra}"`;
+            badgeTipo = 'COMPRAS PRODUTO';
+            icone = 'fa-solid fa-cart-flatbed';
+            iconeCor = 'text-indigo-400';
+            corTotal = 'text-indigo-600 dark:text-indigo-400';
+            compras.forEach(c => {
+                (c.itens || []).forEach(item => {
+                    if (item.nome === parametroExtra) {
+                        const qtd = Number(item.qCom || item.qtd || 1);
+                        const custoUn = Number(item.custoFinal || item.custoUnitOriginal || 0);
+                        listaItens.push({
+                            data: c.data || c.dataEmissao || c.criadoEm,
+                            descricao: `Compra ${qtd} un × ${formatMoney(custoUn)} (NF/Ref: ${c.numeroNF || 'S/N'})`,
+                            pessoa: `Fornecedor: ${c.fornecedor || 'Fornecedor'}`,
+                            categoria: 'Reposição de Estoque',
+                            centroCusto: 'Estoque / Compras',
+                            metodo: c.numeroNF === 'S/N' ? 'Entrada Manual' : 'XML NF-e',
+                            banco: 'Fornecedor',
+                            valor: Number(item.vTotalItemNaNota || (custoUn * qtd)),
+                            badge: 'COMPRA ITEM',
+                            corValor: 'text-indigo-600 dark:text-indigo-400'
+                        });
+                    }
+                });
+            });
+            break;
+    }
+
+    // Ordena por data mais recente se não for consolidação do DRE
+    if (tipo !== 'RESULTADO_LIQUIDO') {
+        listaItens.sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0));
+    }
+
+    // Calcula totalizador
+    const totalGeral = tipo === 'RESULTADO_LIQUIDO'
+        ? (listaItens.find(x => x.descricao.startsWith('(=) RESULTADO'))?.valor || 0)
+        : listaItens.reduce((acc, item) => acc + item.valor, 0);
+
+    const mediaGeral = listaItens.length > 0 ? (totalGeral / listaItens.length) : 0;
+
+    window.dadosDrilldownDREAtual = listaItens;
+    window.infoDrilldownDREAtual = { tipo, titulo, badgeTipo, totalGeral, mediaGeral, corTotal, periodoLabel: periodo.label };
+
+    // Atualiza modal header e cards
+    document.getElementById('dre-drilldown-title').innerText = titulo;
+    document.getElementById('dre-drilldown-badge-tipo').innerText = badgeTipo;
+    document.getElementById('dre-drilldown-periodo').innerText = periodo.label;
+    
+    const iconWrap = document.getElementById('dre-drilldown-icon-wrap');
+    if (iconWrap) iconWrap.className = `w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-lg md:text-xl ${iconeCor}`;
+    const iconEl = document.getElementById('dre-drilldown-icon');
+    if (iconEl) iconEl.className = icone;
+
+    const cardTotal = document.getElementById('dre-drilldown-card-total');
+    if (cardTotal) {
+        cardTotal.innerText = formatMoney(totalGeral);
+        cardTotal.className = `text-lg md:text-xl font-black ${corTotal}`;
+    }
+
+    const cardQtd = document.getElementById('dre-drilldown-card-qtd');
+    if (cardQtd) cardQtd.innerText = `${listaItens.length} registros`;
+
+    const cardMedia = document.getElementById('dre-drilldown-card-media');
+    if (cardMedia) cardMedia.innerText = formatMoney(mediaGeral);
+
+    const footerTotal = document.getElementById('dre-drilldown-footer-total');
+    if (footerTotal) {
+        footerTotal.innerText = formatMoney(totalGeral);
+        footerTotal.className = `text-lg md:text-xl font-black ${corTotal}`;
+    }
+
+    const buscaInput = document.getElementById('dre-drilldown-busca');
+    if (buscaInput) buscaInput.value = '';
+
+    const countEl = document.getElementById('dre-drilldown-filtrados-count');
+    if (countEl) countEl.innerText = `Exibindo todos os ${listaItens.length} registros`;
+
+    renderLinhasDrilldownDRE(listaItens);
+
+    const modal = document.getElementById('modal-detalhes-dre-drilldown');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function renderLinhasDrilldownDRE(lista) {
+    const tbody = document.getElementById('dre-drilldown-tbody');
+    if (!tbody) return;
+
+    if (!lista || lista.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500 dark:text-slate-400 italic"><i class="fa-solid fa-inbox text-3xl mb-2 block opacity-40"></i>Nenhum registro encontrado no período selecionado.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = lista.map(item => {
+        const dataFmt = item.data ? (typeof formatData === 'function' ? formatData(item.data).split(' ')[0].replace(',', '') : String(item.data).split('T')[0].split('-').reverse().join('/')) : '-';
+        const badgeSpan = item.badge ? `<span class="px-1.5 py-0.5 text-[9px] font-black uppercase rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 ml-1 inline-block">${item.badge}</span>` : '';
+        return `
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors border-b border-slate-100 dark:border-slate-700">
+                <td class="p-3 text-xs font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">${dataFmt}</td>
+                <td class="p-3 font-semibold text-slate-800 dark:text-slate-100">
+                    <div>${item.descricao} ${badgeSpan}</div>
+                </td>
+                <td class="p-3 text-slate-700 dark:text-slate-300">${item.pessoa || '-'}</td>
+                <td class="p-3 text-slate-600 dark:text-slate-400 text-xs">
+                    <span class="font-medium text-slate-800 dark:text-slate-200">${item.categoria || '-'}</span>
+                    <span class="text-[10px] text-slate-400 block">${item.centroCusto || '-'}</span>
+                </td>
+                <td class="p-3 text-slate-600 dark:text-slate-400 text-xs">
+                    <span class="font-medium text-slate-700 dark:text-slate-300">${item.metodo || '-'}</span>
+                    <span class="text-[10px] text-slate-400 block">${item.banco || '-'}</span>
+                </td>
+                <td class="p-3 text-right font-black ${item.corValor || 'text-slate-800 dark:text-slate-100'} whitespace-nowrap">
+                    ${formatMoney(item.valor)}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function filtrarTabelaDrilldownDRE() {
+    const termo = (document.getElementById('dre-drilldown-busca')?.value || '').toLowerCase().trim();
+    const dados = window.dadosDrilldownDREAtual || [];
+    
+    let filtrados = dados;
+    if (termo) {
+        filtrados = dados.filter(item => {
+            return (
+                (item.descricao && item.descricao.toLowerCase().includes(termo)) ||
+                (item.pessoa && item.pessoa.toLowerCase().includes(termo)) ||
+                (item.categoria && item.categoria.toLowerCase().includes(termo)) ||
+                (item.centroCusto && item.centroCusto.toLowerCase().includes(termo)) ||
+                (item.metodo && item.metodo.toLowerCase().includes(termo)) ||
+                (item.banco && item.banco.toLowerCase().includes(termo)) ||
+                (item.data && String(item.data).toLowerCase().includes(termo))
+            );
+        });
+    }
+
+    renderLinhasDrilldownDRE(filtrados);
+    
+    const countEl = document.getElementById('dre-drilldown-filtrados-count');
+    if (countEl) {
+        if (termo) {
+            countEl.innerText = `Filtrados: ${filtrados.length} de ${dados.length}`;
+        } else {
+            countEl.innerText = `Exibindo todos os ${dados.length} registros`;
+        }
+    }
+}
+
+function fecharDrilldownDRE() {
+    const modal = document.getElementById('modal-detalhes-dre-drilldown');
+    if (modal) modal.classList.add('hidden');
+}
+
+function imprimirDrilldownDRE() {
+    const info = window.infoDrilldownDREAtual || {};
+    const tableEl = document.getElementById('dre-drilldown-table');
+    if (!tableEl) return showToast('Tabela de dados não encontrada para impressão.', 'error');
+    
+    let empNome = db?.config?.empresa?.nome || 'FC Móveis';
+    let logoHtml = db?.config?.empresa?.logo ? `<img src="${db.config.empresa.logo}" style="max-height: 50px; margin-bottom: 8px;">` : '';
+
+    const htmlImpressao = `
+        <div style="padding: 20px; font-family: Arial, sans-serif; background: #fff; color: #000;">
+            <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 12px; margin-bottom: 16px;">
+                ${logoHtml}
+                <h2 style="font-size: 18px; margin: 0; text-transform: uppercase;">${empNome}</h2>
+                <h3 style="font-size: 15px; margin: 6px 0 2px 0; color: #1e40af;">${info.titulo || 'Detalhamento Analítico'}</h3>
+                <p style="font-size: 12px; color: #666; margin: 0;">Período: ${info.periodoLabel || '-'} | Total Consolidado: <b>${formatMoney(info.totalGeral || 0)}</b></p>
+            </div>
+            ${tableEl.outerHTML}
+            <div style="margin-top: 20px; border-top: 1px solid #ccc; padding-top: 8px; font-size: 11px; color: #777; display: flex; justify-content: space-between;">
+                <span>Auditoria Oficial: 100% Contas Pagas & Registros de Vendas Validados</span>
+                <span>Emitido em: ${new Date().toLocaleString('pt-BR')}</span>
+            </div>
+        </div>
+    `;
+    printHtmlSeguro(htmlImpressao);
+}
+
+function exportarExcelDrilldownDRE() {
+    const info = window.infoDrilldownDREAtual || {};
+    const dados = window.dadosDrilldownDREAtual || [];
+    if (dados.length === 0) return showToast('Nenhum dado para exportar.', 'info');
+
+    let csv = [];
+    csv.push(['Data', 'Descrição', 'Favorecido / Fornecedor / Cliente', 'Categoria', 'Centro de Custo', 'Método de Pagamento', 'Conta Bancária', 'Valor (R$)'].join(';'));
+
+    dados.forEach(d => {
+        const dataFmt = d.data ? (typeof formatData === 'function' ? formatData(d.data).split(' ')[0].replace(',', '') : String(d.data).split('T')[0]) : '-';
+        csv.push([
+            `"${dataFmt}"`,
+            `"${(d.descricao || '').replace(/"/g, '""')}"`,
+            `"${(d.pessoa || '').replace(/"/g, '""')}"`,
+            `"${(d.categoria || '').replace(/"/g, '""')}"`,
+            `"${(d.centroCusto || '').replace(/"/g, '""')}"`,
+            `"${(d.metodo || '').replace(/"/g, '""')}"`,
+            `"${(d.banco || '').replace(/"/g, '""')}"`,
+            `"${Number(d.valor || 0).toFixed(2).replace('.', ',')}"`
+        ].join(';'));
+    });
+
+    csv.push(['', '', '', '', '', '', 'TOTAL CONSOLIDADO', `"${Number(info.totalGeral || 0).toFixed(2).replace('.', ',')}"`].join(';'));
+
+    let csvFile = new Blob(["\uFEFF" + csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    let link = document.createElement("a");
+    link.href = window.URL.createObjectURL(csvFile);
+    link.setAttribute("download", `DRE_Drilldown_${(info.badgeTipo || 'Relatorio').replace(/\s+/g, '_')}_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    showToast('Planilha Excel exportada com sucesso!', 'success');
+}
+
 
 function renderCurvaABC(vendasFiltradas, fatTotal) {
     const tbody = document.getElementById('tabela-curva-abc');
@@ -2075,8 +2884,13 @@ function abrirInfoRelatorio(tipo) {
 
     switch(tipo) {
         case 'dre':
-            titulo = 'DRE - Demonstra&ccedil;&atilde;o do Resultado';
-            conteudo = '<p class="mb-3">Mostra a sa&uacute;de financeira das suas vendas no per&iacute;odo selecionado.</p><ul class="list-disc pl-5 space-y-2"><li><b>Receita Bruta:</b> Tudo o que voc&ecirc; vendeu (em R$).</li><li><b>Custo da Mercadoria (CMV):</b> Quanto voc&ecirc; pagou nos produtos que foram vendidos (Custo).</li><li><b>Taxas:</b> O total descontado pelas maquininhas de cart&atilde;o.</li><li><b>Lucro Bruto Real:</b> O que sobra limpo da venda dos produtos (Receita - Custo - Taxas). &Eacute; daqui que voc&ecirc; tira o dinheiro para pagar as despesas fixas (luz, aluguel, etc).</li></ul>';
+            titulo = 'DRE - Demonstrativo de Resultado do Exerc&iacute;cio';
+            conteudo = '<p class="mb-3">O DRE (Demonstrativo de Resultado do Exerc&iacute;cio) mostra a sa&uacute;de financeira do neg&oacute;cio. A Receita Bruta &eacute; o total vendido antes de dedu&ccedil;&otilde;es. O CMV (Custo das Mercadorias Vendidas) &eacute; o custo de aquisi&ccedil;&atilde;o dos produtos vendidos. O Lucro Real &eacute; o que sobrou ap&oacute;s pagar todas as despesas.</p>';
+            break;
+        case 'top_vendas':
+        case 'curva_abc_vendas':
+            titulo = 'Curva ABC de Vendas (Top Produtos)';
+            conteudo = '<p>Ranking dos produtos mais vendidos e que geraram maior volume de receita para a loja no período selecionado. Ajuda a identificar com precisão os itens mais procurados e manter estoques ajustados à demanda real.</p>';
             break;
         case 'top_compras':
             titulo = 'Top Compras (Produtos)';
@@ -2105,6 +2919,22 @@ function abrirInfoRelatorio(tipo) {
         case 'estatisticas_compras':
             titulo = 'Estat&iacute;sticas de Compras';
             conteudo = '<p>Um resumo consolidado do volume de compras feitas no per&iacute;odo. Inclui o n&uacute;mero de notas/pedidos, o ticket m&eacute;dio (valor m&eacute;dio de cada compra feita com fornecedores) e a quantidade total de itens que entraram no estoque.</p>';
+            break;
+        case 'despesas_categoria':
+            titulo = 'Despesas por Categoria';
+            conteudo = '<p>Agrupa todas as suas despesas operacionais pelas categorias cadastradas (ex: Aluguel, Sal&aacute;rios, Impostos). Facilita enxergar onde o seu dinheiro est&aacute; sendo mais gasto e onde &eacute; poss&iacute;vel cortar custos.</p>';
+            break;
+        case 'despesas_centro_custo':
+            titulo = 'Despesas por Centro de Custo';
+            conteudo = '<p>Mostra como as despesas est&atilde;o divididas entre os diferentes setores ou filiais da sua empresa (ex: Administra&ccedil;&atilde;o, Vendas, Log&iacute;stica). Ajuda a medir a efici&ecirc;ncia de cada &aacute;rea.</p>';
+            break;
+        case 'despesas_favorecido':
+            titulo = 'Despesas por Favorecido';
+            conteudo = '<p>Lista quem s&atilde;o os maiores recebedores dos pagamentos da sua empresa, independentemente da categoria. Pode ajudar a identificar depend&ecirc;ncia excessiva de um &uacute;nico prestador de servi&ccedil;o ou concentrar pagamentos.</p>';
+            break;
+        case 'despesas_funcionario':
+            titulo = 'Despesas por Funcion&aacute;rio';
+            conteudo = '<p>Demonstra os custos associados a cada colaborador da equipe, incluindo sal&aacute;rios, comiss&otilde;es e outras despesas vinculadas aos funcion&aacute;rios. &Uacute;til para o RH e controle de folha de pagamento.</p>';
             break;
     }
 
@@ -2247,93 +3077,111 @@ function ocultarListaProdutosXMLBusca() { document.getElementById('prod-vinculo-
 
 // --- FUNCOES DO EXTRATO DE FUNCIONARIO ---
 function abrirDetalhesFuncionario(nomeFuncionario) {
-    try {
-        console.log("Abrindo detalhes para:", nomeFuncionario);
-        
-        let periodo = null;
-        if(typeof obterIntervaloDatasBI === 'function') {
-            periodo = obterIntervaloDatasBI();
-        } else {
-            // Fallback for relatorios if it doesn't have it
-            let mesFiltro = document.getElementById('mes-filtro');
-            let anoFiltro = document.getElementById('ano-filtro');
-            let mes = mesFiltro ? mesFiltro.value : new Date().getMonth() + 1;
-            let ano = anoFiltro ? anoFiltro.value : new Date().getFullYear();
-            if(!mesFiltro && document.getElementById('dash-mes')) mes = document.getElementById('dash-mes').value;
-            if(!anoFiltro && document.getElementById('dash-ano')) ano = document.getElementById('dash-ano').value;
-            if (mes === 'todos') mes = null;
-            periodo = {
-                inicio: mes ? new Date(ano, mes - 1, 1) : new Date(ano, 0, 1),
-                fim: mes ? new Date(ano, mes, 0, 23, 59, 59) : new Date(ano, 11, 31, 23, 59, 59)
-            };
-        }
-
-        const tituloModal = document.getElementById('modal-func-title');
-        if (tituloModal) tituloModal.innerText = `Extrato de ${nomeFuncionario}`;
-        
-        const contas = (typeof db !== 'undefined' && db.financeiro) ? db.financeiro : [];
-        let despesasFuncionario = contas.filter(f => (f.tipo === 'despesa' || f.tipo === 'DESPESA') && f.status !== 'CANCELADO');
-        
-        if (periodo) {
-            despesasFuncionario = despesasFuncionario.filter(f => {
-                if(!f.data) return false;
-                const dataF = new Date(f.data);
-                return dataF >= periodo.inicio && dataF <= periodo.fim;
-            });
-        }
-        
-        let totalPago = 0;
-        let tableHtml = '';
-        
-        despesasFuncionario = despesasFuncionario.filter(f => {
-            const pessoa = f.pessoa || 'Sem Nome / Não Informado';
-            if(pessoa === nomeFuncionario) {
-                const catLower = (f.categoria || '').toLowerCase();
-                if (catLower.includes('salário') || catLower.includes('salario') || catLower.includes('folha') || catLower.includes('pró-labore') || catLower.includes('pro-labore') || catLower.includes('pro labore')) {
-                    return true;
-                }
-            }
-            return false;
-        });
-
-        despesasFuncionario.sort((a,b) => new Date(a.data) - new Date(b.data));
-
-        despesasFuncionario.forEach(f => {
-            const val = parseFloat(f.valor || 0);
-            totalPago += val;
-            const dataStr = new Date(f.data).toLocaleDateString('pt-BR');
-            
-            tableHtml += `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                    <td class="p-3 whitespace-nowrap text-slate-700 dark:text-slate-200">${dataStr}</td>
-                    <td class="p-3 text-slate-700 dark:text-slate-200">
-                        <div class="font-medium">${f.descricao || 'Sem Descrição'}</div>
-                        <div class="text-[10px] text-slate-500 uppercase">${f.categoria || 'Sem Categoria'}</div>
-                    </td>
-                    <td class="p-3 font-bold text-emerald-600 dark:text-emerald-400 text-right whitespace-nowrap">${formatMoney(val)}</td>
-                </tr>
-            `;
-        });
-        
-        document.getElementById('modal-func-total').innerText = formatMoney(totalPago);
-        document.getElementById('modal-func-count').innerText = despesasFuncionario.length;
-        document.getElementById('modal-func-tbody').innerHTML = tableHtml || '<tr><td colspan="3" class="text-center p-4 text-slate-500 text-sm">Nenhum detalhe encontrado.</td></tr>';
-        
-        const modalEl = document.getElementById('modal-detalhes-funcionario');
-        if(modalEl) {
-            modalEl.classList.remove('hidden');
-        } else {
-            alert("Erro: O Modal HTML não foi encontrado na página! Avise o suporte.");
-        }
-    } catch(e) {
-        alert("Erro ao abrir detalhes: " + e.message);
-        console.error(e);
+    if (typeof abrirDrilldownDRE === 'function') {
+        abrirDrilldownDRE('FUNCIONARIO', nomeFuncionario);
     }
 }
 
 function imprimirExtratoFuncionario() {
-    window.print();
+    if (typeof imprimirDrilldownDRE === 'function') {
+        imprimirDrilldownDRE();
+    } else {
+        window.print();
+    }
 }
+
+function calcularPrecoMargin(quemMudou = 'preco') {
+    const custoEl = document.getElementById('prod-custo');
+    const margemEl = document.getElementById('prod-margem');
+    const precoEl = document.getElementById('prod-preco');
+    if (!custoEl || !margemEl || !precoEl) return;
+
+    let custo = parseFloat(custoEl.value) || 0;
+    let margem = parseFloat(margemEl.value) || 0;
+    let preco = parseFloat(precoEl.value) || 0;
+
+    if (quemMudou === 'custo' || quemMudou === 'margem') {
+        if (custo > 0) {
+            preco = custo * (1 + (margem / 100));
+            precoEl.value = preco.toFixed(2);
+        }
+    } else if (quemMudou === 'preco') {
+        if (custo > 0) {
+            margem = ((preco - custo) / custo) * 100;
+            margemEl.value = margem.toFixed(2);
+        }
+    }
+}
+
+// ==========================================
+// EXPORTAÇÃO GLOBAL DE FUNÇÕES PARA O ESCOPO WINDOW
+// ==========================================
+window.renderDashboard = renderDashboard;
+window.renderFinAbas = renderFinAbas;
+window.mudarFiltroBI = mudarFiltroBI;
+window.obterIntervaloDatasBI = obterIntervaloDatasBI;
+window.abrirInfoRelatorio = abrirInfoRelatorio;
+window.renderEvolucaoCustos = renderEvolucaoCustos;
+window.exportarDadosParaIA = exportarDadosParaIA;
+window.imprimirArea = imprimirArea;
+window.baixarPDF = typeof baixarPDF !== 'undefined' ? baixarPDF : (typeof exportarPDF !== 'undefined' ? exportarPDF : imprimirArea);
+window.exportarExcel = exportarExcel;
+
+// Modais Financeiro / Títulos
+window.abrirModalConta = abrirModalConta;
+window.fecharModalConta = fecharModalConta;
+window.salvarConta = salvarConta;
+window.toggleContaPessoaInput = toggleContaPessoaInput;
+window.toggleRecorrencia = toggleRecorrencia;
+window.calcularValorFinalFormulario = calcularValorFinalFormulario;
+window.abrirModalBaixa = abrirModalBaixa;
+window.fecharModalBaixa = fecharModalBaixa;
+window.confirmarBaixa = confirmarBaixa;
+window.calcularAcrescimos = calcularAcrescimos;
+window.abrirModalRenegociacao = abrirModalRenegociacao;
+window.fecharModalRenegociacao = fecharModalRenegociacao;
+window.confirmarRenegociacao = confirmarRenegociacao;
+window.abrirDetalhesTitulo = abrirDetalhesTitulo;
+window.fecharModalDetalhesTitulo = fecharModalDetalhesTitulo;
+window.abrirModalCaixa = abrirModalCaixa;
+window.fecharModalCaixa = fecharModalCaixa;
+window.confirmarMovCaixa = confirmarMovCaixa;
+
+// Drilldown DRE & Funcionários
+window.abrirDrilldownDRE = abrirDrilldownDRE;
+window.fecharDrilldownDRE = fecharDrilldownDRE;
+window.filtrarTabelaDrilldownDRE = filtrarTabelaDrilldownDRE;
+window.imprimirDrilldownDRE = imprimirDrilldownDRE;
+window.exportarExcelDrilldownDRE = exportarExcelDrilldownDRE;
+window.abrirDetalhesFuncionario = abrirDetalhesFuncionario;
+window.imprimirExtratoFuncionario = imprimirExtratoFuncionario;
+
+// Compras e XML
+window.abrirModalCompraManual = abrirModalCompraManual;
+window.fecharModalCompraManual = fecharModalCompraManual;
+window.salvarCompraManual = salvarCompraManual;
+window.addLinhaCompraManual = addLinhaCompraManual;
+window.calcularTotaisCompraManual = calcularTotaisCompraManual;
+window.abrirDetalhesNF = abrirDetalhesNF;
+window.fecharModalDetalhesNF = fecharModalDetalhesNF;
+window.abrirModalXML = abrirModalXML;
+window.fecharModalXML = fecharModalXML;
+window.salvarXMLConferido = salvarXMLConferido;
+window.addParcelaXML = addParcelaXML;
+window.recalcularRateioXML = recalcularRateioXML;
+window.lerXMLCTe = lerXMLCTe;
+window.processarXMLReal = processarXMLReal;
+window.fecharModalProduto = fecharModalProduto;
+window.salvarProdutoXmlModal = salvarProdutoXmlModal;
+window.alternarAcaoVinculoXML = alternarAcaoVinculoXML;
+window.preencherVinculoXML = preencherVinculoXML;
+window.selecionarProdutoVinculoXML = selecionarProdutoVinculoXML;
+window.filtrarProdutosXMLBusca = filtrarProdutosXMLBusca;
+window.mostrarListaProdutosXMLBusca = mostrarListaProdutosXMLBusca;
+window.ocultarListaProdutosXMLBusca = ocultarListaProdutosXMLBusca;
+window.calcularPrecoMargin = calcularPrecoMargin;
+window.fecharModalConfirmacao = fecharModalConfirmacao;
+
 
 
 

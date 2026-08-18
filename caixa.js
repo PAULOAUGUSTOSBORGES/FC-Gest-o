@@ -128,32 +128,27 @@ function inicializarGestao() {
 
     firestore.collection('vendas').onSnapshot(snap => {
         db.vendas = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        tentarRefresh();
+        renderCaixaDiario();
     });
     firestore.collection('financeiro').onSnapshot(snap => {
         db.financeiro = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        tentarRefresh();
     });
     firestore.collection('compras').onSnapshot(snap => {
         db.compras = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        tentarRefresh();
     });
     firestore.collection('produtos').onSnapshot(snap => {
         db.produtos = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        tentarRefresh();
     });
     firestore.collection('clientes').onSnapshot(snap => {
         db.clientes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        tentarRefresh();
     });
     firestore.collection('fornecedores').onSnapshot(snap => {
         db.fornecedores = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        tentarRefresh();
     });
     firestore.collection('fc_moveis').doc('caixa').onSnapshot(doc => {
         if(doc.exists) db.caixa = doc.data();
         else db.caixa = { status: 'FECHADO', saldo: 0, historico: [] };
-        if (colecoesProntas >= totalColecoes) refreshCurrentView();
+        renderCaixaDiario();
     });
 }
 
@@ -390,22 +385,469 @@ function abrirModalCaixa(op) {
 function fecharModalCaixa() { document.getElementById('modal-mov-caixa').classList.add('hidden'); }
 
 async function confirmarMovCaixa() {
-    const op = document.getElementById('caixa-operacao-tipo').value; const val = parseFloat(document.getElementById('caixa-op-valor').value) || 0; const desc = document.getElementById('caixa-op-desc').value || op;
+    const op = document.getElementById('caixa-operacao-tipo').value;
+    const val = parseFloat(document.getElementById('caixa-op-valor').value) || 0;
+    const desc = document.getElementById('caixa-op-desc').value || op;
     let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
     let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
-    let novoStatus = cxAtual.status; let novoSaldo = cxAtual.saldo || 0;
+    let novoStatus = cxAtual.status;
+    let novoSaldo = cxAtual.saldo || 0;
+    const dataIso = new Date().toISOString();
+    const operadorNome = window.currentUserInfo?.nome || 'Operador Caixa';
 
-    if(op === 'ABRIR') { novoStatus = 'ABERTO'; novoSaldo = val; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ABERTURA', desc, valor: val }); }
-    else if(op === 'FECHAR') { novoStatus = 'FECHADO'; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'FECHAMENTO', desc: `Fechamento (Retirado: ${formatMoney(val)})`, valor: val }); novoSaldo -= val; }
-    else if(op === 'SANGRIA') { if(val > novoSaldo) return showToast('Saldo insuficiente para sangria!', 'error'); novoSaldo -= val; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `SANGRIA: ${desc}`, valor: val }); }
-    else if(op === 'SUPRIMENTO') { novoSaldo += val; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `SUPRIMENTO: ${desc}`, valor: val }); }
+    if (op === 'ABRIR') {
+        novoStatus = 'ABERTO';
+        novoSaldo = val;
+        cxHistoricoNovo.unshift({
+            data: dataIso,
+            tipo: 'ABERTURA',
+            desc: `Abertura de Caixa (Troco Inicial: ${formatMoney(val)}) - Op: ${operadorNome}`,
+            valor: val,
+            operador: operadorNome,
+            saldoApos: novoSaldo
+        });
+    } else if (op === 'SANGRIA') {
+        if (val > novoSaldo) return showToast('Saldo em dinheiro insuficiente para sangria!', 'error');
+        novoSaldo -= val;
+        cxHistoricoNovo.unshift({
+            data: dataIso,
+            tipo: 'SAIDA',
+            desc: `SANGRIA: ${desc} - Op: ${operadorNome}`,
+            valor: val,
+            operador: operadorNome,
+            saldoApos: novoSaldo
+        });
+    } else if (op === 'SUPRIMENTO') {
+        novoSaldo += val;
+        cxHistoricoNovo.unshift({
+            data: dataIso,
+            tipo: 'ENTRADA',
+            desc: `SUPRIMENTO: ${desc} - Op: ${operadorNome}`,
+            valor: val,
+            operador: operadorNome,
+            saldoApos: novoSaldo
+        });
+    }
     
     try {
-        await firestore.collection('fc_moveis').doc('caixa').set({ ...cxAtual, status: novoStatus, saldo: novoSaldo, histo        fecharModalCaixa(); renderCaixaDiario(); showToast('Operação realizada com sucesso!', 'success');
-    } catch(err) { console.error(err); showToast('Erro ao registrar caixa.', 'error'); }
+        await firestore.collection('fc_moveis').doc('caixa').set({
+            ...cxAtual,
+            status: novoStatus,
+            saldo: novoSaldo,
+            historico: cxHistoricoNovo,
+            ultimaAbertura: op === 'ABRIR' ? dataIso : (cxAtual.ultimaAbertura || dataIso),
+            operadorAtual: op === 'ABRIR' ? operadorNome : (cxAtual.operadorAtual || operadorNome)
+        }, { merge: true });
+
+        fecharModalCaixa();
+        renderCaixaDiario();
+        showToast(`Operação de ${op} realizada com sucesso!`, 'success');
+    } catch(err) {
+        console.error(err);
+        showToast('Erro ao registrar operação no caixa.', 'error');
+    }
 }
 
 // ==========================================
+// FECHAMENTO CEGO E MAPA DE CAIXA
+// ==========================================
+function abrirModalFechamentoCego() {
+    if (!db.caixa || db.caixa.status !== 'ABERTO') {
+        return showToast('O caixa já está FECHADO!', 'warning');
+    }
+    document.getElementById('fc-dinheiro').value = '';
+    document.getElementById('fc-debito').value = '';
+    document.getElementById('fc-credito').value = '';
+    document.getElementById('fc-pix').value = '';
+    document.getElementById('fc-outros').value = '';
+    document.getElementById('fc-obs').value = '';
+    document.getElementById('fc-total-declarado-display').innerText = 'R$ 0,00';
+    document.getElementById('modal-fechamento-cego').classList.remove('hidden');
+}
+
+function fecharModalFechamentoCego() {
+    document.getElementById('modal-fechamento-cego').classList.add('hidden');
+}
+
+function recalcularTotalDeclarado() {
+    const d = parseFloat(document.getElementById('fc-dinheiro').value) || 0;
+    const deb = parseFloat(document.getElementById('fc-debito').value) || 0;
+    const cred = parseFloat(document.getElementById('fc-credito').value) || 0;
+    const pix = parseFloat(document.getElementById('fc-pix').value) || 0;
+    const outros = parseFloat(document.getElementById('fc-outros').value) || 0;
+    const tot = d + deb + cred + pix + outros;
+    document.getElementById('fc-total-declarado-display').innerText = formatMoney(tot);
+    return tot;
+}
+
+async function confirmarFechamentoCego() {
+    const decDinheiro = parseFloat(document.getElementById('fc-dinheiro').value) || 0;
+    const decDebito = parseFloat(document.getElementById('fc-debito').value) || 0;
+    const decCredito = parseFloat(document.getElementById('fc-credito').value) || 0;
+    const decPix = parseFloat(document.getElementById('fc-pix').value) || 0;
+    const decOutros = parseFloat(document.getElementById('fc-outros').value) || 0;
+    const decTotal = decDinheiro + decDebito + decCredito + decPix + decOutros;
+    const obs = document.getElementById('fc-obs').value.trim();
+
+    let cxAtual = db.caixa || { status: 'ABERTO', saldo: 0, historico: [] };
+    const dataAbertura = cxAtual.ultimaAbertura || (new Date(Date.now() - 86400000).toISOString());
+    const dataFechamento = new Date().toISOString();
+    const operador = cxAtual.operadorAtual || window.currentUserInfo?.nome || 'Operador Caixa';
+
+    // 1. Apura dados de vendas do sistema desde a abertura do turno
+    const vendasTurno = (db.vendas || []).filter(v => {
+        if (v.tipo === 'ORÇAMENTO') return false;
+        const dt = new Date(v.data || 0).getTime();
+        return dt >= new Date(dataAbertura).getTime();
+    });
+
+    let sysDinheiro = 0;
+    let sysDebito = 0;
+    let sysCredito = 0;
+    let sysPix = 0;
+    let sysBoleto = 0;
+    let sysFiado = 0;
+
+    vendasTurno.forEach(v => {
+        const pag = String(v.pag || '');
+        const tot = Number(v.tot || 0);
+        if (pag.includes('Dinheiro')) sysDinheiro += tot;
+        else if (pag.includes('Débito') || pag.includes('Debito')) sysDebito += tot;
+        else if (pag.includes('Crédito') || pag.includes('Credito')) sysCredito += tot;
+        else if (pag.includes('PIX') || pag.includes('Pix')) sysPix += tot;
+        else if (pag.includes('Boleto')) sysBoleto += tot;
+        else if (pag.includes('Fiado')) sysFiado += tot;
+    });
+
+    // 2. Apura movimentações físicas de caixa (Abertura, Suprimentos, Sangrias)
+    const movsTurno = (cxAtual.historico || []).filter(m => new Date(m.data || 0).getTime() >= new Date(dataAbertura).getTime());
+    let sysFundoTroco = 0;
+    let sysSuprimentos = 0;
+    let sysSangrias = 0;
+
+    movsTurno.forEach(m => {
+        if (m.tipo === 'ABERTURA') sysFundoTroco += Number(m.valor || 0);
+        else if (m.tipo === 'ENTRADA' && !m.desc.includes('VENDA')) sysSuprimentos += Number(m.valor || 0);
+        else if (m.tipo === 'SAIDA') sysSangrias += Number(m.valor || 0);
+    });
+
+    // Saldo esperado em dinheiro físico na gaveta:
+    const saldoEsperadoGaveta = (cxAtual.saldo || 0);
+    const totalApuradoSistema = saldoEsperadoGaveta + sysDebito + sysCredito + sysPix;
+    const difDinheiro = decDinheiro - saldoEsperadoGaveta;
+    const difGeral = decTotal - totalApuradoSistema;
+
+    const mapaDados = {
+        id: 'FECH-' + Date.now(),
+        dataAbertura: dataAbertura,
+        dataFechamento: dataFechamento,
+        operador: operador,
+        observacao: obs,
+        apuradoSistema: {
+            fundoTroco: sysFundoTroco,
+            suprimentos: sysSuprimentos,
+            sangrias: sysSangrias,
+            vendasDinheiro: sysDinheiro,
+            vendasDebito: sysDebito,
+            vendasCredito: sysCredito,
+            vendasPix: sysPix,
+            vendasBoleto: sysBoleto,
+            vendasFiado: sysFiado,
+            saldoEsperadoGaveta: saldoEsperadoGaveta,
+            totalGeral: totalApuradoSistema
+        },
+        declaradoOperador: {
+            dinheiro: decDinheiro,
+            debito: decDebito,
+            credito: decCredito,
+            pix: decPix,
+            outros: decOutros,
+            totalGeral: decTotal
+        },
+        diferencas: {
+            difDinheiro: difDinheiro,
+            difGeral: difGeral,
+            status: difGeral > 0.05 ? 'SOBRA DE CAIXA' : (difGeral < -0.05 ? 'QUEBRA DE CAIXA' : 'CONCILIADO / EXATO')
+        }
+    };
+
+    try {
+        let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
+        cxHistoricoNovo.unshift({
+            data: dataFechamento,
+            tipo: 'FECHAMENTO',
+            desc: `Fechamento de Turno (${mapaDados.diferencas.status}) - Retirado: ${formatMoney(decDinheiro)} - Op: ${operador}`,
+            valor: decDinheiro,
+            operador: operador,
+            saldoApos: 0
+        });
+
+        const batch = firestore.batch();
+        const caixaRef = firestore.collection('fc_moveis').doc('caixa');
+        batch.set(caixaRef, {
+            ...cxAtual,
+            status: 'FECHADO',
+            saldo: 0,
+            historico: cxHistoricoNovo,
+            ultimoFechamento: mapaDados
+        }, { merge: true });
+
+        const fechamentoDocRef = firestore.collection('fechamentos_caixa').doc(mapaDados.id);
+        batch.set(fechamentoDocRef, mapaDados);
+
+        await batch.commit();
+
+        fecharModalFechamentoCego();
+        renderCaixaDiario();
+        exibirModalMapaCaixa(mapaDados);
+        showToast('Turno de caixa fechado com sucesso!', 'success');
+    } catch (e) {
+        console.error(e);
+        showToast('Erro ao gravar fechamento de caixa.', 'error');
+    }
+}
+
+function exibirModalMapaCaixa(mapa) {
+    if (!mapa) return showToast('Nenhum dado de fechamento disponível.', 'info');
+    const html = renderizarMapaCaixaHTML(mapa);
+    document.getElementById('mapa-caixa-conteudo').innerHTML = html;
+    document.getElementById('modal-mapa-caixa').classList.remove('hidden');
+}
+
+function abrirUltimoMapaCaixa() {
+    if (db.caixa && db.caixa.ultimoFechamento) {
+        exibirModalMapaCaixa(db.caixa.ultimoFechamento);
+    } else {
+        showToast('Nenhum histórico de fechamento registrado ainda.', 'info');
+    }
+}
+
+function renderizarMapaCaixaHTML(m) {
+    const emp = db.config?.empresa || { nome: 'FC Móveis & Interiores', cnpj: '00.000.000/0000-00', telefone: '' };
+    const corDiferenca = m.diferencas.difGeral >= 0 ? 'text-emerald-600' : 'text-red-600';
+    const bgDiferenca = m.diferencas.difGeral >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-red-50 dark:bg-red-950/30';
+
+    return `
+    <div class="font-mono text-xs text-slate-800 dark:text-slate-200 p-2 sm:p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-inner">
+        <div class="text-center border-b border-dashed border-slate-300 dark:border-slate-700 pb-3 mb-3">
+            <h2 class="text-base font-black uppercase text-slate-900 dark:text-white">${emp.nome}</h2>
+            <p class="text-[10px] text-slate-500">CNPJ: ${emp.cnpj || 'Não informado'} | Tel: ${emp.telefone || ''}</p>
+            <p class="text-xs font-bold uppercase mt-1 bg-slate-100 dark:bg-slate-800 py-1 rounded">MAPA DE FECHAMENTO DE CAIXA (REDUÇÃO Z)</p>
+            <p class="text-[10px] text-slate-400 mt-1">Ref: #${m.id}</p>
+        </div>
+
+        <div class="space-y-1.5 border-b border-dashed border-slate-300 dark:border-slate-700 pb-3 mb-3 text-[11px]">
+            <div class="flex justify-between"><span>OPERADOR:</span><strong class="uppercase">${m.operador || 'Balcão'}</strong></div>
+            <div class="flex justify-between"><span>ABERTURA:</span><strong>${formatData(m.dataAbertura)}</strong></div>
+            <div class="flex justify-between"><span>FECHAMENTO:</span><strong>${formatData(m.dataFechamento)}</strong></div>
+            ${m.observacao ? `<div class="flex justify-between text-slate-500"><span>OBS:</span><em>${m.observacao}</em></div>` : ''}
+        </div>
+
+        <!-- MOVIMENTAÇÃO GAVETA -->
+        <div class="border-b border-dashed border-slate-300 dark:border-slate-700 pb-3 mb-3">
+            <h4 class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[10px] mb-1.5">1. FLUXO DE GAVETA (DINHEIRO FÍSICO)</h4>
+            <div class="flex justify-between text-[11px]"><span>(+) Fundo de Troco Inicial:</span><span>${formatMoney(m.apuradoSistema.fundoTroco)}</span></div>
+            <div class="flex justify-between text-[11px]"><span>(+) Suprimentos (Reforços):</span><span>${formatMoney(m.apuradoSistema.suprimentos)}</span></div>
+            <div class="flex justify-between text-[11px]"><span>(+) Vendas em Dinheiro:</span><span>${formatMoney(m.apuradoSistema.vendasDinheiro)}</span></div>
+            <div class="flex justify-between text-[11px]"><span>(-) Sangrias (Retiradas):</span><span>- ${formatMoney(m.apuradoSistema.sangrias)}</span></div>
+            <div class="flex justify-between font-bold text-xs pt-1 border-t border-slate-200 dark:border-slate-800 mt-1">
+                <span>(=) Saldo Esperado Gaveta:</span><span class="text-blue-600">${formatMoney(m.apuradoSistema.saldoEsperadoGaveta)}</span>
+            </div>
+            <div class="flex justify-between font-bold text-xs text-emerald-600">
+                <span>(V) Dinheiro Declarado:</span><span>${formatMoney(m.declaradoOperador.dinheiro)}</span>
+            </div>
+        </div>
+
+        <!-- MÉTODOS ELETRÔNICOS -->
+        <div class="border-b border-dashed border-slate-300 dark:border-slate-700 pb-3 mb-3">
+            <h4 class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[10px] mb-1.5">2. MÉTODOS ELETRÔNICOS E PARCELADOS</h4>
+            <div class="flex justify-between text-[11px]"><span>Cartão Débito (Sistema / Declarado):</span><span>${formatMoney(m.apuradoSistema.vendasDebito)} / <strong>${formatMoney(m.declaradoOperador.debito)}</strong></span></div>
+            <div class="flex justify-between text-[11px]"><span>Cartão Crédito (Sistema / Declarado):</span><span>${formatMoney(m.apuradoSistema.vendasCredito)} / <strong>${formatMoney(m.declaradoOperador.credito)}</strong></span></div>
+            <div class="flex justify-between text-[11px]"><span>PIX (Sistema / Declarado):</span><span>${formatMoney(m.apuradoSistema.vendasPix)} / <strong>${formatMoney(m.declaradoOperador.pix)}</strong></span></div>
+            <div class="flex justify-between text-[11px]"><span>Boletos & Fiados Faturados:</span><span>${formatMoney((m.apuradoSistema.vendasBoleto || 0) + (m.apuradoSistema.vendasFiado || 0))}</span></div>
+        </div>
+
+        <!-- RESUMO GERAL E AUDITORIA -->
+        <div class="${bgDiferenca} p-3 rounded-lg border border-slate-200 dark:border-slate-700 mb-4">
+            <div class="flex justify-between text-xs font-bold mb-1">
+                <span>TOTAL APURADO NO SISTEMA:</span><span>${formatMoney(m.apuradoSistema.totalGeral)}</span>
+            </div>
+            <div class="flex justify-between text-xs font-bold mb-1.5">
+                <span>TOTAL DECLARADO PELO OPERADOR:</span><span>${formatMoney(m.declaradoOperador.totalGeral)}</span>
+            </div>
+            <div class="flex justify-between text-sm font-black pt-1.5 border-t border-slate-300 dark:border-slate-700 ${corDiferenca}">
+                <span>DIVERGÊNCIA (${m.diferencas.status}):</span>
+                <span>${m.diferencas.difGeral >= 0 ? '+' : ''}${formatMoney(m.diferencas.difGeral)}</span>
+            </div>
+        </div>
+
+        <div class="pt-6 border-t border-dashed border-slate-300 dark:border-slate-700 grid grid-cols-2 gap-6 text-center text-[10px]">
+            <div>
+                <div class="border-b border-slate-400 dark:border-slate-600 mb-1"></div>
+                <p>Assinatura do Operador</p>
+            </div>
+            <div>
+                <div class="border-b border-slate-400 dark:border-slate-600 mb-1"></div>
+                <p>Assinatura da Gerência / Auditoria</p>
+            </div>
+        </div>
+    </div>`;
+}
+
+// ==========================================
+// TRANSFERÊNCIAS ENTRE CONTAS
+// ==========================================
+function abrirModalTransferenciaCaixa() {
+    if (!db.caixa || (db.caixa.saldo || 0) <= 0) {
+        return showToast('O caixa físico está sem saldo para transferir.', 'warning');
+    }
+    document.getElementById('transf-valor').value = db.caixa.saldo || '';
+    document.getElementById('transf-obs').value = '';
+    document.getElementById('modal-transferencia-caixa').classList.remove('hidden');
+}
+
+function fecharModalTransferenciaCaixa() {
+    document.getElementById('modal-transferencia-caixa').classList.add('hidden');
+}
+
+async function confirmarTransferenciaCaixa() {
+    const valor = parseFloat(document.getElementById('transf-valor').value) || 0;
+    const destino = document.getElementById('transf-conta-destino').value;
+    const obs = document.getElementById('transf-obs').value.trim() || `Transferência Gaveta -> ${destino}`;
+
+    if (valor <= 0) return showToast('Informe um valor válido maior que zero.', 'error');
+    if (valor > (db.caixa.saldo || 0)) return showToast('Saldo insuficiente no Caixa Físico!', 'error');
+
+    let cxAtual = db.caixa || { status: 'ABERTO', saldo: 0, historico: [] };
+    let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
+    let novoSaldo = (cxAtual.saldo || 0) - valor;
+    const dataIso = new Date().toISOString();
+    const operador = window.currentUserInfo?.nome || 'Operador Caixa';
+
+    cxHistoricoNovo.unshift({
+        data: dataIso,
+        tipo: 'SAIDA',
+        desc: `TRANSFERÊNCIA p/ ${destino}: ${obs} - Op: ${operador}`,
+        valor: valor,
+        operador: operador,
+        saldoApos: novoSaldo
+    });
+
+    const batch = firestore.batch();
+    const caixaRef = firestore.collection('fc_moveis').doc('caixa');
+    batch.set(caixaRef, { ...cxAtual, saldo: novoSaldo, historico: cxHistoricoNovo }, { merge: true });
+
+    // Registra entrada na conta destino no financeiro
+    const finRef = firestore.collection('financeiro').doc();
+    batch.set(finRef, {
+        ref: `TRANSF. ENTRADA (${destino})`,
+        data: dataIso,
+        pessoa: 'Transferência Interna',
+        valor: valor,
+        status: 'PAGO',
+        tipo: 'RECEITA',
+        categoria: 'Transferências Internas',
+        contaBancaria: destino,
+        dataPagamento: dataIso,
+        observacao: `Origem: Caixa Físico (Gaveta). ${obs}`
+    });
+
+    try {
+        await batch.commit();
+        fecharModalTransferenciaCaixa();
+        renderCaixaDiario();
+        showToast(`Transferência de ${formatMoney(valor)} para ${destino} concluída!`, 'success');
+    } catch (e) {
+        console.error(e);
+        showToast('Erro ao realizar transferência.', 'error');
+    }
+}
+
+function imprimirArea(areaId) {
+    let empNome = "Relatório Oficial do Sistema";
+    if (db && db.config && db.config.empresa && db.config.empresa.nome) empNome = db.config.empresa.nome;
+    let logoHtml = "";
+    if (db && db.config && db.config.empresa && db.config.empresa.logo) logoHtml = `<img src="${db.config.empresa.logo}" style="max-height: 60px; margin-bottom: 10px; border-radius: 8px;">`;
+    
+    const element = document.getElementById(areaId);
+    if(!element) return showToast("Área de impressão não encontrada.", "error");
+    
+    const printContent = element.innerHTML; 
+    const htmlCompleto = `
+        <div style="padding: 20px; font-family: Arial, sans-serif; background: #fff; color: #000;">
+            <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
+                ${logoHtml}
+                <h2 style="font-size: 20px; font-weight: bold; margin: 5px 0; text-transform: uppercase;">${empNome}</h2>
+                <p style="margin: 0; font-size: 12px; color: #555;">Documento Gerencial Oficial</p>
+            </div>
+            ${printContent}
+        </div>
+    `; 
+    printHtmlSeguro(htmlCompleto);
+}
+
+function baixarPDF(areaId, filename) {
+    const element = document.getElementById(areaId); 
+    if(!element) return showToast("Erro: Área do PDF não encontrada.", "error");
+
+    const printContent = element.innerHTML; 
+    
+    const win = window.open('', '_blank');
+    if (!win) {
+        return showToast("O bloqueador de pop-ups bloqueou o PDF. Permita pop-ups neste site.", "error");
+    }
+
+    win.document.open();
+    win.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>${filename || 'Documento'}</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+            <style>
+                @page { margin: 15mm; size: A4; }
+                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 20px; max-width: 1000px; margin: 0 auto; }
+                .print\\:hidden { display: none !important; }
+                table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
+                tr { page-break-inside: avoid; page-break-after: auto; }
+                thead { display: table-header-group; }
+                tfoot { display: table-footer-group; }
+                
+                @media print {
+                    body { padding: 0; max-width: none; }
+                }
+            </style>
+        </head>
+        <body class="bg-white text-black">
+            ${printContent}
+            
+            <script>
+                // Executa a impressão quando tudo carregar
+                setTimeout(() => {
+                    window.focus();
+                    window.print();
+                }, 1000);
+            </script>
+        </body>
+        </html>
+    `);
+    win.document.close();
+}
+
+function downloadPDF(areaId, filename) { baixarPDF(areaId, filename); }
+
+function exportarExcel(tabelaId, filename) {
+    let table = document.getElementById(tabelaId); if(!table) return showToast('Tabela não encontrada.', 'error');
+    let rows = table.querySelectorAll('tr'); let csv = [];
+    for (let i = 0; i < rows.length; i++) { let row = [], cols = rows[i].querySelectorAll('td:not(.print\\:hidden), th:not(.print\\:hidden)'); for (let j = 0; j < cols.length; j++) { row.push('"' + cols[j].innerText.replace(/"/g, '""').trim() + '"'); } csv.push(row.join(';')); }
+    let csvFile = new Blob(["\uFEFF"+csv.join('\n')], {type: 'text/csv;charset=utf-8;'});
+    let link = document.createElement("a"); link.href = window.URL.createObjectURL(csvFile); link.setAttribute("download", filename + "_" + Date.now() + ".csv");
+    document.body.appendChild(link); link.click(); showToast('Excel exportado!', 'success');
+}
+
+// ==========================================
+
 // 4. CONTAS A PAGAR E RECEBER
 // ==========================================
 function normalizarTexto(str) {
@@ -968,6 +1410,57 @@ function excluirTitulo(id) {
 
 async function estornarTitulo(id) {
     const f = db.financeiro.find(x => String(x.id) === String(id));
+    if (!f || f.status !== 'PAGO') return;
+
+    abrirConfirmacao('Estornar Pagamento', 'Voltará para PENDENTE e reverterá o caixa.', async () => {
+        const batch = firestore.batch();
+        if (f.metodoPagamento === 'Dinheiro') {
+            let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
+            let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
+            let cxSaldoNovo = cxAtual.saldo || 0;
+            
+            if (f.tipo === 'RECEITA') {
+                cxSaldoNovo -= f.valorPago;
+                cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno: ${f.pessoa}`, valor: f.valorPago });
+            } else {
+                cxSaldoNovo += f.valorPago;
+                cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Estorno: ${f.pessoa}`, valor: f.valorPago });
+            }
+            batch.set(firestore.collection('fc_moveis').doc('caixa'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+        }
+        
+        const finRef = firestore.collection('financeiro').doc(String(id));
+        batch.update(finRef, { status: 'PENDENTE', dataPagamento: '', metodoPagamento: '', ultimaAlteracao: Date.now() });
+        
+        try {
+            await batch.commit();
+            renderFinAbas(f.tipo === 'RECEITA' ? 'receber' : 'pagar');
+            showToast('Estorno concluído!', 'success');
+        } catch (e) {
+            console.error(e);
+            showToast('Erro no estorno.', 'error');
+        }
+    });
+}
+
+function processarXMLReal(event) {
+    const file = event.target.files[0]; if(!file) return; const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const parser = new DOMParser(); const xmlDoc = parser.parseFromString(e.target.result, "text/xml");
+            const getFloatSafe = (context, tag) => { const node = context ? context.getElementsByTagName(tag)[0] : null; return node && node.textContent ? parseFloat(node.textContent) : 0; };
+            const getStringSafe = (context, tag) => { const node = context ? context.getElementsByTagName(tag)[0] : null; return node ? node.textContent : ''; };
+            const emit = xmlDoc.getElementsByTagName("emit")[0]; if(!emit) throw new Error("XML inválido.");
+            
+            const fornNome = getStringSafe(emit, "xNome"); const fornCNPJ = getStringSafe(emit, "CNPJ"); const totalNF = getFloatSafe(xmlDoc, "vNF");
+            const numNF = getStringSafe(xmlDoc.getElementsByTagName("ide")[0], "nNF") || "S/N";
+            const dataEmissao = getStringSafe(xmlDoc.getElementsByTagName("ide")[0], "dhEmi").split('T')[0] || new Date().toISOString().split('T')[0];
+
+            const detNodes = xmlDoc.getElementsByTagName("det"); const produtosXML = [];
+            
+            for(let i=0; i<detNodes.length; i++) {
+                const prod = detNodes[i].getElementsByTagName("prod")[0]; const imposto = detNodes[i].getElementsByTagName("imposto")[0];
+                const nome = getStringSafe(prod, "xProd"); const cEAN = getStringSafe(prod, "cEAN");
                 const vProd = getFloatSafe(prod, "vProd"); const qCom = getFloatSafe(prod, "qCom");
                 const vFrete = getFloatSafe(prod, "vFrete"); const vDesc = getFloatSafe(prod, "vDesc");
                 const vIPI = getFloatSafe(imposto, "vIPI"); const vICMSST = getFloatSafe(imposto, "vICMSST");
@@ -1007,6 +1500,7 @@ async function estornarTitulo(id) {
         } catch (err) { console.log(err); showToast('Erro ao ler XML.', 'error'); }
     }; reader.readAsText(file); document.getElementById('xml-upload').value = '';
 }
+
 
 function lerXMLCTe(event) {
     const file = event.target.files[0]; 
@@ -2271,3 +2765,29 @@ window.filtrarProdutosXMLBusca = filtrarProdutosXMLBusca;
 window.mostrarListaProdutosXMLBusca = mostrarListaProdutosXMLBusca;
 window.ocultarListaProdutosXMLBusca = ocultarListaProdutosXMLBusca;
 
+// Wrappers for backwards compatibility / user requested bindings
+window.abrirCaixa = function() { abrirModalCaixa('abrir'); };
+window.fecharCaixa = function() { abrirModalFechamentoCego(); };
+window.registrarSuprimento = function() { abrirModalCaixa('suprimento'); };
+window.registrarSangria = function() { abrirModalCaixa('sangria'); };
+window.confirmarAberturaCaixa = confirmarMovCaixa;
+window.confirmarFechamentoCaixa = confirmarFechamentoCego;
+window.transferirParaBanco = abrirModalTransferenciaCaixa;
+
+window.abrirModalFechamentoCego = abrirModalFechamentoCego;
+window.fecharModalFechamentoCego = fecharModalFechamentoCego;
+window.recalcularTotalDeclarado = recalcularTotalDeclarado;
+window.confirmarFechamentoCego = confirmarFechamentoCego;
+window.exibirModalMapaCaixa = exibirModalMapaCaixa;
+window.abrirUltimoMapaCaixa = abrirUltimoMapaCaixa;
+window.renderizarMapaCaixaHTML = renderizarMapaCaixaHTML;
+window.abrirModalTransferenciaCaixa = abrirModalTransferenciaCaixa;
+window.fecharModalTransferenciaCaixa = fecharModalTransferenciaCaixa;
+window.confirmarTransferenciaCaixa = confirmarTransferenciaCaixa;
+window.confirmarMovCaixa = confirmarMovCaixa;
+window.abrirModalCaixa = abrirModalCaixa;
+window.fecharModalCaixa = fecharModalCaixa;
+window.renderCaixaDiario = renderCaixaDiario;
+window.imprimirArea = imprimirArea;
+window.baixarPDF = baixarPDF;
+window.fecharModalConfirmacao = fecharModalConfirmacao;

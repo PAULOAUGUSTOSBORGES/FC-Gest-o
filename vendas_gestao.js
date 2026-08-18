@@ -2353,5 +2353,17 @@ function filtrarProdutosXMLBusca() {
 function mostrarListaProdutosXMLBusca() { filtrarProdutosXMLBusca(); }
 function ocultarListaProdutosXMLBusca() { document.getElementById('prod-vinculo-lista').classList.add('hidden'); }
 
+function abrirZoom(url) {
+    if (!url) return;
+    const w = window.open('', '_blank');
+    if (w) {
+        w.document.write(`<img src="${url}" style="max-width:100%; height:auto; display:block; margin:20px auto;">`);
+    }
+}
 
-
+// Aliases de compatibilidade para Histórico de Vendas
+window.filtrarVendas = function() { renderVendas(); };
+window.renderHistoricoVendas = function() { renderVendas(); };
+window.abrirDetalheVenda = function(id) { verDetalhesVenda(id); };
+window.verDetalheVenda = function(id) { verDetalhesVenda(id); };
+window.abrirDetalhesVenda = function(id) { verDetalhesVenda(id); };

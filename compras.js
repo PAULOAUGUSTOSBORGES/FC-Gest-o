@@ -927,19 +927,43 @@ async function confirmarRenegociacao() {
 }
 
 function verDetalhesTitulo(id) {
-    const f = db.financeiro.find(x => x.id === id); if(!f) return; const isReceita = f.tipo === 'RECEITA' || !f.tipo;
-    document.getElementById('det-tit-header').className = `p-4 md:p-5 text-white flex justify-between items-center ${isReceita ? 'bg-blue-600' : 'bg-red-600'}`; document.getElementById('det-tit-lbl-pessoa').innerText = isReceita ? 'Cliente / Pagador' : 'Fornecedor / Favorecido'; document.getElementById('det-tit-pessoa').innerText = f.pessoa || 'Não informado';
-    const isAtrasado = f.status === 'PENDENTE' && new Date(f.data).getTime() < new Date().getTime(); const badge = document.getElementById('det-tit-status'); badge.innerText = f.status === 'PAGO' ? 'PAGO' : (isAtrasado ? 'ATRASADO' : 'PENDENTE'); badge.className = `mt-2 inline-block px-3 py-1 rounded-full text-[10px] font-black tracking-widest ${f.status === 'PAGO' ? 'bg-emerald-100 text-emerald-700' : (isAtrasado ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700')}`;
-    document.getElementById('det-tit-venc').innerText = formatData(f.data).split(' ')[0]; document.getElementById('det-tit-valor-orig').innerText = formatMoney(f.valor); document.getElementById('det-tit-ref').innerText = f.ref || '-'; document.getElementById('det-tit-cat').innerText = f.categoria || '-';
+    const f = db.financeiro.find(x => x.id === id);
+    if (!f) return;
+    const isReceita = f.tipo === 'RECEITA' || !f.tipo;
+    
+    document.getElementById('det-tit-header').className = `p-4 md:p-5 text-white flex justify-between items-center ${isReceita ? 'bg-blue-600' : 'bg-red-600'}`;
+    document.getElementById('det-tit-lbl-pessoa').innerText = isReceita ? 'Cliente / Pagador' : 'Fornecedor / Favorecido';
+    document.getElementById('det-tit-pessoa').innerText = f.pessoa || 'Não informado';
+    
+    const isAtrasado = f.status === 'PENDENTE' && new Date(f.data).getTime() < new Date().getTime();
+    const badge = document.getElementById('det-tit-status');
+    badge.innerText = f.status === 'PAGO' ? 'PAGO' : (isAtrasado ? 'ATRASADO' : 'PENDENTE');
+    badge.className = `mt-2 inline-block px-3 py-1 rounded-full text-[10px] font-black tracking-widest ${f.status === 'PAGO' ? 'bg-emerald-100 text-emerald-700' : (isAtrasado ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700')}`;
+    
+    document.getElementById('det-tit-venc').innerText = formatData(f.data).split(' ')[0];
+    document.getElementById('det-tit-valor-orig').innerText = formatMoney(f.valor);
+    document.getElementById('det-tit-ref').innerText = f.ref || '-';
+    document.getElementById('det-tit-cat').innerText = f.categoria || '-';
+    
     const areaPgto = document.getElementById('det-tit-area-pagamento');
-    if(f.status === 'PAGO') { areaPgto.classList.remove('hidden'); document.getElementById('det-tit-dtpag').innerText = f.dataPagamento ? formatData(f.dataPagamento).split(' ')[0] : '-'; document.getElementById('det-tit-metodo').innerText = f.metodoPagamento || '-'; document.getElementById('det-tit-valfinal').innerText = formatMoney(f.valorPago || f.valor); } else { areaPgto.classList.add('hidden'); }
+    if (f.status === 'PAGO') {
+        areaPgto.classList.remove('hidden');
+        document.getElementById('det-tit-dtpag').innerText = f.dataPagamento ? formatData(f.dataPagamento).split(' ')[0] : '-';
+        document.getElementById('det-tit-metodo').innerText = f.metodoPagamento || '-';
+        document.getElementById('det-tit-valfinal').innerText = formatMoney(f.valorPago || f.valor);
+    } else {
+        areaPgto.classList.add('hidden');
+    }
     document.getElementById('modal-detalhes-titulo').classList.remove('hidden');
 }
-function fecharModalDetalhesTitulo() { document.getElementById('modal-detalhes-titulo').classList.add('hidden'); }
+
+function fecharModalDetalhesTitulo() {
+    document.getElementById('modal-detalhes-titulo').classList.add('hidden');
+}
 
 function abrirModalBaixa(id) { const f = db.financeiro.find(x => x.id === id); if(!f) return; document.getElementById('baixa-id').value = f.id; document.getElementById('baixa-valor-original').innerText = formatMoney(f.valor); document.getElementById('baixa-vencimento').innerText = formatData(f.data).split(' ')[0]; document.getElementById('baixa-acrescimo').value = 0; document.getElementById('baixa-desconto').value = 0; calcularAcrescimos(); document.getElementById('modal-baixa-conta').classList.remove('hidden'); }
 function fecharModalBaixa() { document.getElementById('modal-baixa-conta').classList.add('hidden'); }
-function calcularAcrescimos() { const id = parseInt(document.getElementById('baixa-id').value); const f = db.financeiro.find(x => x.id === id); if(!f) return; const ac = parseFloat(document.getElementById('baixa-acrescimo').value) || 0; const de = parseFloat(document.getElementById('baixa-desconto').value) || 0; const vf = f.valor + ac - de; document.getElementById('baixa-valor-final').innerText = formatMoney(vf); return vf; }
+function calcularAcrescimos() { const id = parseInt(document.getElementById('baixa-id').value); const f = db.financeiro.find(x => String(x.id) === String(id)); if(!f) return; const ac = parseFloat(document.getElementById('baixa-acrescimo').value) || 0; const de = parseFloat(document.getElementById('baixa-desconto').value) || 0; const vf = f.valor + ac - de; document.getElementById('baixa-valor-final').innerText = formatMoney(vf); return vf; }
 
 async function confirmarBaixa() {
     const id = parseInt(document.getElementById('baixa-id').value); const f = db.financeiro.find(x => String(x.id) === String(id)); if(!f) return;
@@ -1007,7 +1031,7 @@ function processarXMLReal(event) {
             }
 
             if(financeiroXML.length === 0 && totalNF > 0) {
-                financeiroXML.push({ num: '001', venc: dataEmissao, valor: totalNF, desc: `NF ${numNF} - Parcela Ãšnica` });
+                financeiroXML.push({ num: '001', venc: dataEmissao, valor: totalNF, desc: `NF ${numNF} - Parcela Única` });
             }
 
             window.tempXMLData = { fornNome, fornCNPJ, numNF, dataEmissao, totalNF, produtosXML, financeiroXML, freteExtra: 0 };
@@ -1025,7 +1049,7 @@ function processarXMLReal(event) {
             renderTelaConferenciaXML(); 
             document.getElementById('modal-conferencia-xml').classList.remove('hidden');
         } catch (err) { console.log(err); showToast('Erro ao ler XML.', 'error'); }
-    }; reader.readAsText(file); document.getElementById('xml-upload').value = '';
+    }; reader.readAsText(file); if (event && event.target) event.target.value = '';
 }
 
 function lerXMLCTe(event) {
@@ -1070,7 +1094,7 @@ function lerXMLCTe(event) {
         }
     }; 
     reader.readAsText(file); 
-    event.target.value = '';
+    if (event && event.target) event.target.value = '';
 }
 
 function recalcularRateioXML() {
@@ -2306,4 +2330,11 @@ window.selecionarProdutoVinculoXML = selecionarProdutoVinculoXML;
 window.filtrarProdutosXMLBusca = filtrarProdutosXMLBusca;
 window.mostrarListaProdutosXMLBusca = mostrarListaProdutosXMLBusca;
 window.ocultarListaProdutosXMLBusca = ocultarListaProdutosXMLBusca;
+window.salvarXMLConferido = salvarXMLConferido;
+window.salvarCompraManual = salvarCompraManual;
+window.confirmarBaixa = confirmarBaixa;
+window.confirmarRenegociacao = confirmarRenegociacao;
+window.estornarTitulo = estornarTitulo;
+window.analisarFinanceiroIA = analisarFinanceiroIA;
+
 
