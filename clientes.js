@@ -1,4 +1,4 @@
-﻿// cadastro.js - Lógica de Produtos, Clientes, Fornecedores e Estoque
+// cadastro.js - Lógica de Produtos, Clientes, Fornecedores e Estoque
 
 let acaoConfirmacaoPendente = null;
 
@@ -138,13 +138,21 @@ async function buscarCNPJ(prefix) {
 function renderSelectCategorias() {
     const selectCat = document.getElementById('prod-categoria');
     if (!selectCat) return;
+    
     const valAtual = selectCat.value;
     let html = '<option value="">Sem Categoria</option>';
     if (db.categorias && db.categorias.length > 0) {
-        db.categorias.forEach(cat => { html += `<option value=""></option>`; });
+        db.categorias.forEach(cat => {
+            html += `<option value="${cat.nome}">${cat.nome}</option>`;
+        });
     }
+    
     selectCat.innerHTML = html;
-    if (valAtual && selectCat.querySelector(`option[value=""]`)) selectCat.value = valAtual;
+    
+    if (valAtual && selectCat.querySelector(`option[value="${valAtual}"]`)) {
+        selectCat.value = valAtual;
+    }
+    
     atualizarOpcoesSubcategoria();
 }
 
@@ -330,8 +338,24 @@ function excluirProduto(id) {
 // CLIENTES
 // ==========================================
 function renderClientes() {
-    const termo = document.getElementById('busca-cliente-lista')?.value.toLowerCase() || '';
-    const filtrados = db.clientes.filter(c => c.nome.toLowerCase().includes(termo) || (c.doc && c.doc.includes(termo)));
+    const termo = document.getElementById('busca-cliente-lista')?.value || '';
+    const termoNorm = typeof normalizarTexto === 'function' ? normalizarTexto(termo) : termo.toLowerCase().trim();
+    const termoDigitos = termo.replace(/\D/g, '');
+
+    const filtrados = (db.clientes || []).filter(c => {
+        if (!termoNorm) return true;
+        const textoNorm = typeof normalizarTexto === 'function'
+            ? normalizarTexto([c.nome, c.razaoSocial, c.doc, c.rg, c.wpp, c.fixo, c.email, c.cidade, c.bairro, c.obs].filter(Boolean).join(' '))
+            : [c.nome, c.razaoSocial, c.doc, c.rg, c.wpp, c.fixo, c.email, c.cidade, c.bairro, c.obs].filter(Boolean).join(' ').toLowerCase();
+        
+        if (textoNorm.includes(termoNorm)) return true;
+        if (termoDigitos && termoDigitos.length >= 2) {
+            const digitos = [c.doc, c.rg, c.wpp, c.fixo].filter(Boolean).map(x => String(x).replace(/\D/g, '')).join(' ');
+            if (digitos.includes(termoDigitos)) return true;
+        }
+        return false;
+    });
+
     document.getElementById('tabela-clientes').innerHTML = filtrados.map(c => `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 font-bold text-slate-800 dark:text-slate-100">${c.nome}</td><td class="p-4 text-slate-600 dark:text-slate-300 font-mono">${c.doc || '-'}</td><td class="p-4 text-slate-800 dark:text-slate-100"><i class="fa-brands fa-whatsapp text-emerald-500 mr-1"></i> ${c.wpp || '-'}</td><td class="p-4 text-slate-600 dark:text-slate-300">${c.cidade || '-'}</td><td class="p-4 text-center"><button onclick="editarCliente('${c.id}')" class="text-blue-500 hover:text-blue-700 p-2"><i class="fa-solid fa-pen"></i></button><button onclick="excluirCliente('${c.id}')" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || '<tr><td colspan="5" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum cliente encontrado.</td></tr>';
 }
 
@@ -446,8 +470,25 @@ function excluirCliente(id) {
 // FORNECEDORES
 // ==========================================
 function renderFornecedores() {
-    const termo = document.getElementById('busca-fornecedor-lista')?.value.toLowerCase() || ''; const filtrados = db.fornecedores.filter(f => f.nome.toLowerCase().includes(termo) || (f.doc && f.doc.includes(termo)));
-    document.getElementById('tabela-fornecedores').innerHTML = filtrados.map(f => `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 font-bold text-slate-800 dark:text-slate-100">${f.nome}</td><td class="p-4 text-slate-600 dark:text-slate-300 font-mono">${f.doc || f.cnpj || '-'}</td><td class="p-4 text-slate-800 dark:text-slate-100"><i class="fa-solid fa-phone text-blue-500 mr-1"></i> ${f.wpp || '-'}</td><td class="p-4 text-center"><button onclick="editarFornecedor('${f.id}')" class="text-blue-500 hover:text-blue-700 p-2"><i class="fa-solid fa-pen"></i></button><button onclick="excluirFornecedor('${f.id}')" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || '<tr><td colspan="4" class="p-6 text-center text-slate-500 dark:text-slate-400">Sem fornecedores.</td></tr>';
+    const termo = document.getElementById('busca-fornecedor-lista')?.value || '';
+    const termoNorm = typeof normalizarTexto === 'function' ? normalizarTexto(termo) : termo.toLowerCase().trim();
+    const termoDigitos = termo.replace(/\D/g, '');
+
+    const filtrados = (db.fornecedores || []).filter(f => {
+        if (!termoNorm) return true;
+        const textoNorm = typeof normalizarTexto === 'function'
+            ? normalizarTexto([f.nome, f.razaoSocial, f.doc, f.cnpj, f.wpp, f.telefone, f.cidade, f.contato].filter(Boolean).join(' '))
+            : [f.nome, f.razaoSocial, f.doc, f.cnpj, f.wpp, f.telefone, f.cidade, f.contato].filter(Boolean).join(' ').toLowerCase();
+        
+        if (textoNorm.includes(termoNorm)) return true;
+        if (termoDigitos && termoDigitos.length >= 2) {
+            const digitos = [f.doc, f.cnpj, f.wpp, f.telefone].filter(Boolean).map(x => String(x).replace(/\D/g, '')).join(' ');
+            if (digitos.includes(termoDigitos)) return true;
+        }
+        return false;
+    });
+
+    document.getElementById('tabela-fornecedores').innerHTML = filtrados.map(f => `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 font-bold text-slate-800 dark:text-slate-100">${f.nome}</td><td class="p-4 text-slate-600 dark:text-slate-300 font-mono">${f.doc || f.cnpj || '-'}</td><td class="p-4 text-slate-800 dark:text-slate-100"><i class="fa-solid fa-phone text-blue-500 mr-1"></i> ${f.wpp || f.telefone || '-'}</td><td class="p-4 text-center"><button onclick="editarFornecedor('${f.id}')" class="text-blue-500 hover:text-blue-700 p-2"><i class="fa-solid fa-pen"></i></button><button onclick="excluirFornecedor('${f.id}')" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || '<tr><td colspan="4" class="p-6 text-center text-slate-500 dark:text-slate-400">Sem fornecedores.</td></tr>';
 }
 
 function abrirModalFornecedor() {

@@ -382,7 +382,7 @@ function renderCaixaDiario() {
 
 function abrirModalCaixa(op) {
     if(op === 'abrir' && db.caixa.status === 'ABERTO') return showToast('O caixa já está aberto!', 'error'); if(op !== 'abrir' && db.caixa.status === 'FECHADO') return showToast('Abra o caixa primeiro!', 'error');
-    document.getElementById('caixa-operação-tipo').value = op.toUpperCase(); document.getElementById('modal-caixa-title').innerText = op === 'abrir' ? 'Abertura de Caixa' : (op === 'fechar' ? 'Fechamento de Caixa' : (op === 'sangria' ? 'Sangria (Retirada)' : 'Suprimento (Entrada)'));
+    document.getElementById('caixa-operacao-tipo').value = op.toUpperCase(); document.getElementById('modal-caixa-title').innerText = op === 'abrir' ? 'Abertura de Caixa' : (op === 'fechar' ? 'Fechamento de Caixa' : (op === 'sangria' ? 'Sangria (Retirada)' : 'Suprimento (Entrada)'));
     document.getElementById('caixa-op-valor').value = ''; document.getElementById('caixa-op-desc').value = '';
     if(op === 'fechar') { document.getElementById('caixa-op-valor').value = db.caixa.saldo; document.getElementById('caixa-op-desc').value = 'Fechamento do dia'; } if(op === 'abrir') { document.getElementById('caixa-op-valor').value = 0; document.getElementById('caixa-op-desc').value = 'Troco Inicial'; }
     document.getElementById('modal-mov-caixa').classList.remove('hidden');
@@ -390,7 +390,7 @@ function abrirModalCaixa(op) {
 function fecharModalCaixa() { document.getElementById('modal-mov-caixa').classList.add('hidden'); }
 
 async function confirmarMovCaixa() {
-    const op = document.getElementById('caixa-operação-tipo').value; const val = parseFloat(document.getElementById('caixa-op-valor').value) || 0; const desc = document.getElementById('caixa-op-desc').value || op;
+    const op = document.getElementById('caixa-operacao-tipo').value; const val = parseFloat(document.getElementById('caixa-op-valor').value) || 0; const desc = document.getElementById('caixa-op-desc').value || op;
     let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
     let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
     let novoStatus = cxAtual.status; let novoSaldo = cxAtual.saldo || 0;
@@ -401,27 +401,83 @@ async function confirmarMovCaixa() {
     else if(op === 'SUPRIMENTO') { novoSaldo += val; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `SUPRIMENTO: ${desc}`, valor: val }); }
     
     try {
-        await firestore.collection('fc_moveis').doc('caixa').set({ ...cxAtual, status: novoStatus, saldo: novoSaldo, historico: cxHistoricoNovo }, { merge: true });
-        fecharModalCaixa(); renderCaixaDiario(); showToast('Operação realizada com sucesso!', 'success');
+        await firestore.collection('fc_moveis').doc('caixa').set({ ...cxAtual, status: novoStatus, saldo: novoSaldo, histo        fecharModalCaixa(); renderCaixaDiario(); showToast('Operação realizada com sucesso!', 'success');
     } catch(err) { console.error(err); showToast('Erro ao registrar caixa.', 'error'); }
 }
 
 // ==========================================
 // 4. CONTAS A PAGAR E RECEBER
 // ==========================================
+function normalizarTexto(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+}
+
+function atualizarFiltrosPessoaFin(prefix) {
+    const isReceber = prefix === 'receber';
+    const datalist = document.getElementById(`lista-${isReceber ? 'clientes' : 'fornecedores'}-fin-${prefix}`);
+    const select = document.getElementById(`filtro-${prefix}-${isReceber ? 'cliente' : 'fornecedor'}`) || document.getElementById(`filtro-${prefix}-pessoa`);
+    
+    const pessoas = isReceber
+        ? (db.clientes || []).map(c => ({ nome: c.nome || c.razaoSocial || '', doc: c.doc || c.cpfCnpj || '' }))
+        : [
+            ...(db.fornecedores || []).map(f => ({ nome: f.nome || f.razaoSocial || '', doc: f.doc || f.cnpj || '' })),
+            ...(db.funcionarios || []).map(func => ({ nome: func.nome || '', doc: func.doc || '' }))
+        ];
+
+    const uniquePessoas = [];
+    const nomesJaVistos = new Set();
+    pessoas.forEach(p => {
+        const nomeTrim = (p.nome || '').trim();
+        if (nomeTrim && !nomesJaVistos.has(nomeTrim.toLowerCase())) {
+            nomesJaVistos.add(nomeTrim.toLowerCase());
+            uniquePessoas.push({ nome: nomeTrim, doc: p.doc ? String(p.doc).trim() : '' });
+        }
+    });
+    uniquePessoas.sort((a, b) => a.nome.localeCompare(b.nome));
+
+    const totalKey = uniquePessoas.length + '_' + (uniquePessoas[0]?.nome || '');
+
+    if (datalist && datalist.dataset.loadedKey !== totalKey) {
+        datalist.innerHTML = uniquePessoas.map(p => `<option value="${p.nome}">${p.doc ? 'CPF/CNPJ: ' + p.doc : ''}</option>`).join('');
+        datalist.dataset.loadedKey = totalKey;
+    }
+
+    if (select && select.dataset.loadedKey !== totalKey) {
+        const valAtual = select.value;
+        select.innerHTML = `<option value="">${isReceber ? 'Todos os Clientes' : 'Todos os Fornecedores'}</option>` +
+            uniquePessoas.map(p => `<option value="${p.nome}">${p.nome}</option>`).join('');
+        select.value = valAtual;
+        select.dataset.loadedKey = totalKey;
+    }
+}
+
 function renderTitulos(tipo) {
     const prefix = tipo === 'RECEITA' ? 'receber' : 'pagar';
     if (!document.getElementById('tabela-fin-' + prefix)) return;
     if (!db.financeiro) return;
     
+    atualizarFiltrosPessoaFin(prefix);
+
     const statusFilterEl = document.getElementById('filtro-' + prefix + '-status');
     const statusFilter = statusFilterEl ? statusFilterEl.value : 'TODOS';
     
     const periodoFilterEl = document.getElementById('filtro-' + prefix + '-periodo');
-    const periodoFilter = periodoFilterEl ? periodoFilterEl.value : 'TUDO';
+    const periodoFilter = periodoFilterEl ? periodoFilterEl.value : 'MES';
     
     const buscaEl = document.getElementById('busca-fin-' + prefix);
-    const termoBusca = buscaEl ? buscaEl.value.toLowerCase() : '';
+    const termoBusca = buscaEl ? buscaEl.value : '';
+    const termoNorm = normalizarTexto(termoBusca);
+    const termoDigitos = termoBusca.replace(/\D/g, '');
+
+    const pessoaFiltroEl = document.getElementById('filtro-' + prefix + '-cliente') || 
+                           document.getElementById('filtro-' + prefix + '-fornecedor') || 
+                           document.getElementById('filtro-' + prefix + '-pessoa');
+    const pessoaFiltroVal = pessoaFiltroEl ? normalizarTexto(pessoaFiltroEl.value) : '';
     
     const dataIniEl = document.getElementById('filtro-' + prefix + '-ini');
     const dataIni = dataIniEl ? dataIniEl.value : '';
@@ -431,36 +487,152 @@ function renderTitulos(tipo) {
     
     let lista = db.financeiro.filter(f => (f.tipo === tipo || (!f.tipo && tipo === 'RECEITA')));
     
-    if (termoBusca) { 
-        lista = lista.filter(f => 
-            (f.pessoa && f.pessoa.toLowerCase().includes(termoBusca)) || 
-            (f.ref && f.ref.toLowerCase().includes(termoBusca)) || 
-            (f.categoria && f.categoria.toLowerCase().includes(termoBusca)) || 
-            (f.numNF && String(f.numNF).includes(termoBusca)) || 
-            (f.data && formatData(f.data).toLowerCase().includes(termoBusca))
-        ); 
+    // 1. FILTRAGEM POR PESSOA (SELECT DROPDOWN)
+    if (pessoaFiltroVal) {
+        lista = lista.filter(f => {
+            const pessoaNorm = normalizarTexto(f.pessoa || f.clienteNome || f.cliente || f.favorecido || f.sacado || '');
+            return pessoaNorm === pessoaFiltroVal || pessoaNorm.includes(pessoaFiltroVal);
+        });
+    }
+
+    // 2. BUSCA TEXTUAL ABRANGENTE E INSENSÍVEL A ACENTOS / CAIXA
+    if (termoNorm) { 
+        lista = lista.filter(f => {
+            let cliVinculado = null;
+            if (db.clientes && db.clientes.length > 0) {
+                if (f.clienteId) {
+                    cliVinculado = db.clientes.find(c => String(c.id) === String(f.clienteId));
+                }
+                if (!cliVinculado && f.pessoa) {
+                    const fPessoaNorm = normalizarTexto(f.pessoa);
+                    cliVinculado = db.clientes.find(c => normalizarTexto(c.nome) === fPessoaNorm || normalizarTexto(c.razaoSocial) === fPessoaNorm);
+                }
+            }
+
+            let fornVinculado = null;
+            if (db.fornecedores && db.fornecedores.length > 0) {
+                if (f.fornecedorId) {
+                    fornVinculado = db.fornecedores.find(forn => String(forn.id) === String(f.fornecedorId));
+                }
+                if (!fornVinculado && f.pessoa) {
+                    const fPessoaNorm = normalizarTexto(f.pessoa);
+                    fornVinculado = db.fornecedores.find(forn => normalizarTexto(forn.nome) === fPessoaNorm || normalizarTexto(forn.razaoSocial) === fPessoaNorm);
+                }
+            }
+
+            let vendaVinculada = null;
+            if (f.origemVendaId && db.vendas && db.vendas.length > 0) {
+                vendaVinculada = db.vendas.find(v => String(v.id) === String(f.origemVendaId));
+            }
+
+            const camposTexto = [
+                f.pessoa,
+                f.clienteNome,
+                f.cliente,
+                f.favorecido,
+                f.sacado,
+                f.cpfCnpj,
+                f.clienteDoc,
+                f.doc,
+                f.telefone,
+                f.wpp,
+                f.tel,
+                f.celular,
+                f.ref,
+                f.origemVendaId,
+                f.numeroPedido,
+                f.categoria,
+                f.numNF,
+                f.numBoleto,
+                f.observacao,
+                f.obs,
+                f.centroCusto,
+                f.contaBancaria,
+                f.cartorioNome,
+                f.metodoPagamento,
+                cliVinculado?.nome,
+                cliVinculado?.razaoSocial,
+                cliVinculado?.doc,
+                cliVinculado?.cpfCnpj,
+                cliVinculado?.telefone,
+                cliVinculado?.wpp,
+                cliVinculado?.email,
+                fornVinculado?.nome,
+                fornVinculado?.razaoSocial,
+                fornVinculado?.doc,
+                fornVinculado?.cnpj,
+                fornVinculado?.telefone,
+                vendaVinculada?.numeroPedido ? `#${String(vendaVinculada.numeroPedido).padStart(4, '0')}` : '',
+                vendaVinculada?.numeroPedido ? String(vendaVinculada.numeroPedido) : '',
+                vendaVinculada?.clienteNome,
+                vendaVinculada?.clienteDoc,
+                vendaVinculada?.vendedor
+            ];
+
+            const textoGeralNorm = normalizarTexto(camposTexto.filter(Boolean).join(' '));
+
+            if (textoGeralNorm.includes(termoNorm)) return true;
+
+            if (termoDigitos && termoDigitos.length >= 2) {
+                const camposDigitos = [
+                    f.cpfCnpj,
+                    f.clienteDoc,
+                    f.doc,
+                    f.telefone,
+                    f.wpp,
+                    f.tel,
+                    f.numNF,
+                    f.numBoleto,
+                    f.numeroPedido,
+                    f.origemVendaId,
+                    cliVinculado?.doc,
+                    cliVinculado?.cpfCnpj,
+                    cliVinculado?.telefone,
+                    cliVinculado?.wpp,
+                    fornVinculado?.doc,
+                    fornVinculado?.cnpj,
+                    vendaVinculada?.numeroPedido
+                ];
+                const digitosGeral = camposDigitos.filter(Boolean).map(x => String(x).replace(/\D/g, '')).join(' ');
+                if (digitosGeral.includes(termoDigitos)) return true;
+            }
+
+            if (f.data) {
+                const dataFormatada = formatData(f.data).toLowerCase();
+                const dataIso = f.data.split('T')[0];
+                if (dataFormatada.includes(termoNorm) || dataIso.includes(termoNorm)) return true;
+            }
+
+            return false;
+        }); 
     }
     
+    // 3. FILTRAGEM POR STATUS
     if (statusFilter !== 'TODOS') { 
         if (statusFilter === 'ATRASADO') {
             lista = lista.filter(f => f.status === 'PENDENTE' && new Date(f.data).getTime() < new Date().getTime());
+        } else if (statusFilter === 'RENEGOCIADO') {
+            lista = lista.filter(f => f.status === 'RENEGOCIADO');
         } else {
             lista = lista.filter(f => f.status === statusFilter); 
         }
     }
 
+    // 4. FILTRO DE DATAS ESPECÍFICAS (SEMPRE RESPEITADO)
     if (dataIni) {
-        lista = lista.filter(f => f.data.split('T')[0] >= dataIni);
+        lista = lista.filter(f => f.data && f.data.split('T')[0] >= dataIni);
     }
     if (dataFim) {
-        lista = lista.filter(f => f.data.split('T')[0] <= dataFim);
+        lista = lista.filter(f => f.data && f.data.split('T')[0] <= dataFim);
     }
 
-    if (periodoFilter !== 'TUDO' && !dataIni && !dataFim) {
+    // 5. FILTRO DE PERÍODO RELATIVO (MÊS, 7 DIAS, ETC.)
+    const temBuscaAtiva = !!(termoNorm || pessoaFiltroVal);
+    if (!temBuscaAtiva && !dataIni && !dataFim && periodoFilter !== 'TUDO') {
         const hoje = new Date();
         const anoAtual = hoje.getFullYear();
         const mesAtual = hoje.getMonth();
-        if (periodoFilter === 'MES') {
+        if (periodoFilter === 'MES' || periodoFilter === 'MES_ATUAL') {
             const inicioMes = new Date(anoAtual, mesAtual, 1).getTime();
             const fimMes = new Date(anoAtual, mesAtual + 1, 0, 23, 59, 59).getTime();
             lista = lista.filter(f => { const t = new Date(f.data).getTime(); return t >= inicioMes && t <= fimMes; });
@@ -796,146 +968,6 @@ function excluirTitulo(id) {
 
 async function estornarTitulo(id) {
     const f = db.financeiro.find(x => String(x.id) === String(id));
-    if (!f || f.status !== 'PAGO') return;
-
-    abrirConfirmacao('Estornar Pagamento', 'Voltará para PENDENTE e reverterá o caixa.', async () => {
-        const batch = firestore.batch();
-        if (f.metodoPagamento === 'Dinheiro') {
-            let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
-            let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
-            let cxSaldoNovo = cxAtual.saldo || 0;
-            
-            if (f.tipo === 'RECEITA') {
-                cxSaldoNovo -= f.valorPago;
-                cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno: ${f.pessoa}`, valor: f.valorPago });
-            } else {
-                cxSaldoNovo += f.valorPago;
-                cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Estorno: ${f.pessoa}`, valor: f.valorPago });
-            }
-            batch.set(firestore.collection('fc_moveis').doc('caixa'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
-        }
-        
-        const finRef = firestore.collection('financeiro').doc(String(id));
-        batch.update(finRef, { status: 'PENDENTE', dataPagamento: '', metodoPagamento: '', ultimaAlteracao: Date.now() });
-        
-        try {
-            await batch.commit();
-            renderFinAbas(f.tipo === 'RECEITA' ? 'receber' : 'pagar'); showToast('Estornado!', 'success');
-        } catch(e) { console.error(e); showToast('Erro', 'error'); }
-    });
-}
-
-function abrirModalRenegociacao(id) {
-    const f = db.financeiro.find(x => x.id === id);
-    if (!f) return;
-    document.getElementById('reneg-id').value = f.id;
-    document.getElementById('reneg-valor').innerText = formatMoney(f.valor);
-    const hoje = new Date(); hoje.setDate(hoje.getDate() + 30);
-    document.getElementById('reneg-data').value = hoje.toISOString().split('T')[0];
-    document.getElementById('modal-renegociacao').classList.remove('hidden');
-}
-function fecharModalRenegociacao() { document.getElementById('modal-renegociacao').classList.add('hidden'); }
-
-async function confirmarRenegociacao() {
-    const id = parseInt(document.getElementById('reneg-id').value);
-    const fOriginal = db.financeiro.find(x => String(x.id) === String(id));
-    if (!fOriginal) return;
-
-    const qtdParcelas = parseInt(document.getElementById('reneg-qtd').value);
-    const dataInicialStr = document.getElementById('reneg-data').value;
-    if (!dataInicialStr || isNaN(qtdParcelas)) return showToast('Preencha as informações.', 'error');
-
-    const valorPorParcela = fOriginal.valor / qtdParcelas;
-    const dataInicial = new Date(dataInicialStr + 'T12:00:00');
-
-    const batch = firestore.batch();
-    
-    const finRef = firestore.collection('financeiro').doc(String(id));
-    batch.update(finRef, {
-        status: 'RENEGOCIADO',
-        observacao: (fOriginal.observacao || '') + `\nRenegociado em ${qtdParcelas}x.`
-    });
-
-    for (let i = 0; i < qtdParcelas; i++) {
-        let novaData = new Date(dataInicial); novaData.setMonth(novaData.getMonth() + i);
-        const refNova = firestore.collection('financeiro').doc();
-        batch.set(refNova, { tipo: fOriginal.tipo, pessoa: fOriginal.pessoa, ref: `${fOriginal.ref} (Reneg. ${i+1}/${qtdParcelas})`, categoria: fOriginal.categoria, data: novaData.toISOString(), valor: valorPorParcela, status: 'PENDENTE' });
-    }
-    
-    try {
-        await batch.commit();
-        fecharModalRenegociacao(); renderFinAbas(fOriginal.tipo === 'RECEITA' ? 'receber' : 'pagar'); showToast('Renegociado!', 'success');
-    } catch(e) { console.error(e); showToast('Erro', 'error'); }
-}
-
-function verDetalhesTitulo(id) {
-    const f = db.financeiro.find(x => x.id === id); if(!f) return; const isReceita = f.tipo === 'RECEITA' || !f.tipo;
-    document.getElementById('det-tit-header').className = `p-4 md:p-5 text-white flex justify-between items-center ${isReceita ? 'bg-blue-600' : 'bg-red-600'}`; document.getElementById('det-tit-lbl-pessoa').innerText = isReceita ? 'Cliente / Pagador' : 'Fornecedor / Favorecido'; document.getElementById('det-tit-pessoa').innerText = f.pessoa || 'Não informado';
-    const isAtrasado = f.status === 'PENDENTE' && new Date(f.data).getTime() < new Date().getTime(); const badge = document.getElementById('det-tit-status'); badge.innerText = f.status === 'PAGO' ? 'PAGO' : (isAtrasado ? 'ATRASADO' : 'PENDENTE'); badge.className = `mt-2 inline-block px-3 py-1 rounded-full text-[10px] font-black tracking-widest ${f.status === 'PAGO' ? 'bg-emerald-100 text-emerald-700' : (isAtrasado ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700')}`;
-    document.getElementById('det-tit-venc').innerText = formatData(f.data).split(' ')[0]; document.getElementById('det-tit-valor-orig').innerText = formatMoney(f.valor); document.getElementById('det-tit-ref').innerText = f.ref || '-'; document.getElementById('det-tit-cat').innerText = f.categoria || '-';
-    const areaPgto = document.getElementById('det-tit-area-pagamento');
-    if(f.status === 'PAGO') { areaPgto.classList.remove('hidden'); document.getElementById('det-tit-dtpag').innerText = f.dataPagamento ? formatData(f.dataPagamento).split(' ')[0] : '-'; document.getElementById('det-tit-metodo').innerText = f.metodoPagamento || '-'; document.getElementById('det-tit-valfinal').innerText = formatMoney(f.valorPago || f.valor); } else { areaPgto.classList.add('hidden'); }
-    document.getElementById('modal-detalhes-titulo').classList.remove('hidden');
-}
-function fecharModalDetalhesTitulo() { document.getElementById('modal-detalhes-titulo').classList.add('hidden'); }
-
-function abrirModalBaixa(id) { const f = db.financeiro.find(x => x.id === id); if(!f) return; document.getElementById('baixa-id').value = f.id; document.getElementById('baixa-valor-original').innerText = formatMoney(f.valor); document.getElementById('baixa-vencimento').innerText = formatData(f.data).split(' ')[0]; document.getElementById('baixa-desconto').value = 0;
-      const calc = calcularJurosMulta(f);
-      if(calc.diasAtraso > 0 && (calc.multa > 0 || calc.juros > 0)) {
-          document.getElementById('baixa-acrescimo').value = (calc.multa + calc.juros).toFixed(2);
-      } else {
-          document.getElementById('baixa-acrescimo').value = 0;
-      } calcularAcrescimos(); document.getElementById('modal-baixa-conta').classList.remove('hidden'); }
-function fecharModalBaixa() { document.getElementById('modal-baixa-conta').classList.add('hidden'); }
-function calcularAcrescimos() { const id = parseInt(document.getElementById('baixa-id').value); const f = db.financeiro.find(x => x.id === id); if(!f) return; const ac = parseFloat(document.getElementById('baixa-acrescimo').value) || 0; const de = parseFloat(document.getElementById('baixa-desconto').value) || 0; const vf = f.valor + ac - de; document.getElementById('baixa-valor-final').innerText = formatMoney(vf); return vf; }
-
-async function confirmarBaixa() {
-    const id = parseInt(document.getElementById('baixa-id').value); const f = db.financeiro.find(x => String(x.id) === String(id)); if(!f) return;
-    const vf = calcularAcrescimos(); const metodo = document.getElementById('baixa-metodo').value;
-    const batch = firestore.batch();
-    
-    if(metodo === 'Dinheiro') {
-        let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
-        let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
-        let cxSaldoNovo = cxAtual.saldo || 0;
-        
-        if(cxAtual.status !== 'ABERTO') return showToast('Abra o Caixa Físico primeiro!', 'error');
-        if(f.tipo === 'RECEITA') { cxSaldoNovo += vf; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Recbto. Título: ${f.pessoa}`, valor: vf }); } 
-        else { if(vf > cxSaldoNovo) return showToast('Saldo do Caixa insuficiente!', 'error'); cxSaldoNovo -= vf; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Pgto. Título: ${f.pessoa}`, valor: vf }); }
-        
-        batch.set(firestore.collection('fc_moveis').doc('caixa'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
-    }
-    
-    const finRef = firestore.collection('financeiro').doc(String(id));
-    batch.update(finRef, { status: 'PAGO', valorPago: vf, metodoPagamento: metodo, dataPagamento: new Date().toISOString(), ultimaAlteracao: Date.now() });
-    
-    try {
-        await batch.commit();
-        fecharModalBaixa(); renderFinAbas(f.tipo === 'RECEITA' ? 'receber' : 'pagar'); showToast('Baixado com sucesso!', 'success');
-    } catch(e) { console.error(e); showToast('Erro', 'error'); }
-}
-
-// ==========================================
-// 8. COMPRAS E LEITURA DE XML / CT-E
-// ==========================================
-function processarXMLReal(event) {
-    const file = event.target.files[0]; if(!file) return; const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const parser = new DOMParser(); const xmlDoc = parser.parseFromString(e.target.result, "text/xml");
-            const getFloatSafe = (context, tag) => { const node = context ? context.getElementsByTagName(tag)[0] : null; return node && node.textContent ? parseFloat(node.textContent) : 0; };
-            const getStringSafe = (context, tag) => { const node = context ? context.getElementsByTagName(tag)[0] : null; return node ? node.textContent : ''; };
-            const emit = xmlDoc.getElementsByTagName("emit")[0]; if(!emit) throw new Error("XML inválido.");
-            
-            const fornNome = getStringSafe(emit, "xNome"); const fornCNPJ = getStringSafe(emit, "CNPJ"); const totalNF = getFloatSafe(xmlDoc, "vNF");
-            const numNF = getStringSafe(xmlDoc.getElementsByTagName("ide")[0], "nNF") || "S/N";
-            const dataEmissao = getStringSafe(xmlDoc.getElementsByTagName("ide")[0], "dhEmi").split('T')[0] || new Date().toISOString().split('T')[0];
-
-            const detNodes = xmlDoc.getElementsByTagName("det"); const produtosXML = [];
-            
-            for(let i=0; i<detNodes.length; i++) {
-                const prod = detNodes[i].getElementsByTagName("prod")[0]; const imposto = detNodes[i].getElementsByTagName("imposto")[0];
-                const nome = getStringSafe(prod, "xProd"); const cEAN = getStringSafe(prod, "cEAN");
                 const vProd = getFloatSafe(prod, "vProd"); const qCom = getFloatSafe(prod, "qCom");
                 const vFrete = getFloatSafe(prod, "vFrete"); const vDesc = getFloatSafe(prod, "vDesc");
                 const vIPI = getFloatSafe(imposto, "vIPI"); const vICMSST = getFloatSafe(imposto, "vICMSST");

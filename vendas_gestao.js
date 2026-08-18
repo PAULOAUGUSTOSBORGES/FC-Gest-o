@@ -435,7 +435,7 @@ function renderCaixaDiario() {
 
 function abrirModalCaixa(op) {
     if(op === 'abrir' && db.caixa.status === 'ABERTO') return showToast('O caixa já está aberto!', 'error'); if(op !== 'abrir' && db.caixa.status === 'FECHADO') return showToast('Abra o caixa primeiro!', 'error');
-    document.getElementById('caixa-operação-tipo').value = op.toUpperCase(); document.getElementById('modal-caixa-title').innerText = op === 'abrir' ? 'Abertura de Caixa' : (op === 'fechar' ? 'Fechamento de Caixa' : (op === 'sangria' ? 'Sangria (Retirada)' : 'Suprimento (Entrada)'));
+    document.getElementById('caixa-operacao-tipo').value = op.toUpperCase(); document.getElementById('modal-caixa-title').innerText = op === 'abrir' ? 'Abertura de Caixa' : (op === 'fechar' ? 'Fechamento de Caixa' : (op === 'sangria' ? 'Sangria (Retirada)' : 'Suprimento (Entrada)'));
     document.getElementById('caixa-op-valor').value = ''; document.getElementById('caixa-op-desc').value = '';
     if(op === 'fechar') { document.getElementById('caixa-op-valor').value = db.caixa.saldo; document.getElementById('caixa-op-desc').value = 'Fechamento do dia'; } if(op === 'abrir') { document.getElementById('caixa-op-valor').value = 0; document.getElementById('caixa-op-desc').value = 'Troco Inicial'; }
     document.getElementById('modal-mov-caixa').classList.remove('hidden');
@@ -443,7 +443,7 @@ function abrirModalCaixa(op) {
 function fecharModalCaixa() { document.getElementById('modal-mov-caixa').classList.add('hidden'); }
 
 async function confirmarMovCaixa() {
-    const op = document.getElementById('caixa-operação-tipo').value; const val = parseFloat(document.getElementById('caixa-op-valor').value) || 0; const desc = document.getElementById('caixa-op-desc').value || op;
+    const op = document.getElementById('caixa-operacao-tipo').value; const val = parseFloat(document.getElementById('caixa-op-valor').value) || 0; const desc = document.getElementById('caixa-op-desc').value || op;
     let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
     let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
     let novoStatus = cxAtual.status; let novoSaldo = cxAtual.saldo || 0;
@@ -2092,7 +2092,9 @@ function renderVendas() {
     const pgtoEl = document.getElementById('filtro-vendas-pgto'); 
     const tipoEl = document.getElementById('filtro-vendas-tipo');
     
-    const termo = buscaEl && buscaEl.value ? String(buscaEl.value).toLowerCase().trim() : ''; 
+    const termo = buscaEl && buscaEl.value ? buscaEl.value : ''; 
+    const termoNorm = typeof normalizarTexto === 'function' ? normalizarTexto(termo) : termo.toLowerCase().trim();
+    const termoDigitos = termo.replace(/\D/g, '');
     const dataIni = dataIniEl ? dataIniEl.value : ''; 
     const dataFim = dataFimEl ? dataFimEl.value : ''; 
     const pgto = pgtoEl ? pgtoEl.value : 'TODOS'; 
@@ -2103,7 +2105,20 @@ function renderVendas() {
     
     if (tipoFiltro === 'VENDAS') filtrados = filtrados.filter(v => v.tipo === 'VENDA' || !v.tipo);
     if (tipoFiltro === 'SERVIÇOS') filtrados = filtrados.filter(v => v.tipo === 'SERVIÇO');
-    if (termo) filtrados = filtrados.filter(v => (v.clienteNome && String(v.clienteNome).toLowerCase().includes(termo)) || (v.numeroPedido && String(v.numeroPedido).includes(termo)) || (v.vendedor && String(v.vendedor).toLowerCase().includes(termo)));
+    if (termoNorm) {
+        filtrados = filtrados.filter(v => {
+            const textoNorm = typeof normalizarTexto === 'function'
+                ? normalizarTexto([v.clienteNome, v.clienteDoc, v.vendedor, v.obs, v.pag].filter(Boolean).join(' '))
+                : [v.clienteNome, v.clienteDoc, v.vendedor, v.obs, v.pag].filter(Boolean).join(' ').toLowerCase();
+            if (textoNorm.includes(termoNorm)) return true;
+            if (v.numeroPedido && String(v.numeroPedido).includes(termoNorm)) return true;
+            if (termoDigitos && termoDigitos.length >= 2) {
+                const digitos = [v.numeroPedido, v.clienteDoc].filter(Boolean).map(x => String(x).replace(/\D/g, '')).join(' ');
+                if (digitos.includes(termoDigitos)) return true;
+            }
+            return false;
+        });
+    }
     if (pgto !== 'TODOS') filtrados = filtrados.filter(v => v.pag && String(v.pag).includes(pgto));
     if (dataIni) { const dIni = new Date(dataIni + 'T00:00:00').getTime(); filtrados = filtrados.filter(v => v.data && new Date(v.data).getTime() >= dIni); }
     if (dataFim) { const dFim = new Date(dataFim + 'T23:59:59').getTime(); filtrados = filtrados.filter(v => v.data && new Date(v.data).getTime() <= dFim); }

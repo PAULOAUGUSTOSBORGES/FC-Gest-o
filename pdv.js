@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // OPERACAO.JS - SISTEMA 100% WHITE LABEL E BLINDADO
 // ==========================================
 
@@ -1021,7 +1021,7 @@ function onScanSuccess(decodedText) {
 function prepararPDV() {
     if(!db.caixa) db.caixa = { status: 'FECHADO', saldo: 0, historico: [] };
     
-    const opSelect = document.getElementById('pdv-operação'); 
+    const opSelect = document.getElementById('pdv-operacao'); 
     if(opSelect) { 
         opSelect.addEventListener('change', () => { 
             atualizarResumoPagamentosVenda(); 
@@ -1047,7 +1047,7 @@ function prepararPDV() {
 }
 
 function togglePanelServico() {
-    const op = document.getElementById('pdv-operação'); 
+    const op = document.getElementById('pdv-operacao'); 
     const panel = document.getElementById('panel-servico');
     
     if (op && panel) { 
@@ -1114,7 +1114,7 @@ document.addEventListener('click', function(event) {
 });
 
 function processarAdicaoProduto(p) { 
-    const op = document.getElementById('pdv-operação') ? document.getElementById('pdv-operação').value : 'Venda'; 
+    const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : 'Venda'; 
     const isOrcamento = op === 'Orçamento';
     const idx = cart.findIndex(i => String(i.id) === String(p.id)); 
     
@@ -1157,7 +1157,7 @@ function renderCarrinho() {
 }
 
 function pdvMudarQtd(i, n) { 
-    const op = document.getElementById('pdv-operação') ? document.getElementById('pdv-operação').value : 'Venda'; 
+    const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : 'Venda'; 
     const isOrcamento = op === 'Orçamento'; 
     const novaQtd = Math.max(0.001, parseFloat(n)||0.001); 
     cart[i].qtd = novaQtd; 
@@ -1310,7 +1310,7 @@ function recalcularDatasParcelas(qtd) {
 }
 
 function atualizarResumoPagamentosVenda() {
-    const opSelect = document.getElementById('pdv-operação'); 
+    const opSelect = document.getElementById('pdv-operacao'); 
     const isOrcamento = opSelect && opSelect.value === 'Orçamento'; 
     const isServico = opSelect && opSelect.value === 'Serviço'; 
     const lista = document.getElementById('lista-pagamentos-adicionados'); 
@@ -1419,7 +1419,7 @@ function removerPagamentoVenda(index) {
 }
 
 async function finalizarVendaMultipla() {
-    const op = document.getElementById('pdv-operação') ? document.getElementById('pdv-operação').value : 'Venda';
+    const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : 'Venda';
     const isOrcamento = op === 'Orçamento'; 
     const isServico = op === 'Serviço';
     
@@ -1483,7 +1483,7 @@ async function finalizarVendaMultipla() {
     if (isEdicao && window.vendaEmEdicao.numeroPedido) {
         numeroPedido = window.vendaEmEdicao.numeroPedido;
     } else {
-        numeroPedido = (db.vendas || []).length > 0 ? Math.max(...db.vendas.map(v => v.numeroPedido || 0)) + 1 : 1;
+        numeroPedido = (db.vendas || []).reduce((max, v) => Math.max(max, Number(v.numeroPedido) || 0), 0) + 1;
     }
     const numPedStr = String(numeroPedido).padStart(4, '0');
 
@@ -1601,7 +1601,7 @@ async function finalizarVendaMultipla() {
             const p = (db.produtos || []).find(x => String(x.id) === String(item.id)); 
             if(p) { 
                 const pRef = firestore.collection('produtos').doc(String(p.id));
-                batch.update(pRef, { estoque: (p.estoque || 0) - item.qtd });
+                batch.update(pRef, { estoque: firebase.firestore.FieldValue.increment(-Number(item.qtd || 1)) });
                 
                 const kardexRef = firestore.collection('movimentacoes').doc();
                 batch.set(kardexRef, {
@@ -1658,10 +1658,10 @@ async function finalizarVendaMultipla() {
             
             if(valorParaCaixa > 0) {
                 let pRef = `${tipoVenda} #${numPedStr} (${p.metodo || ''}${(p.parcelas || 1) > 1 ? ' '+p.parcelas+'x' : ''})`;
+                let prazoMetodo = (db.config && db.config.prazos && db.config.prazos[p.metodo] !== undefined) ? parseInt(db.config.prazos[p.metodo]) : 30;
                 
                 if(p.metodo === 'Fiado' || p.metodo === 'Boleto') { 
                     const valParc = valorParaCaixa / (p.parcelas || 1); 
-                    let prazoMetodo = (db.config && db.config.prazos && db.config.prazos[p.metodo] !== undefined) ? parseInt(db.config.prazos[p.metodo]) : 30;
                     let dataBase = p.vencimentoBase ? new Date(p.vencimentoBase + 'T12:00:00') : new Date(); 
                     if(!p.vencimentoBase) dataBase.setDate(dataBase.getDate() + prazoMetodo); 
                     for(let i=1; i<=(p.parcelas || 1); i++) { 
@@ -1673,16 +1673,16 @@ async function finalizarVendaMultipla() {
                         }
                         
                         const finRef = firestore.collection('financeiro').doc();
-                        batch.set(finRef, { ref: ` [/]`, data: dataVencParc.toISOString(), pessoa: cliInfo.nome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas', origemVendaId: idFinalVenda }); 
+                        batch.set(finRef, { ref: `${pRef} [${i}/${p.parcelas || 1}]`, data: dataVencParc.toISOString(), pessoa: cliInfo.nome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas', origemVendaId: idFinalVenda }); 
                     } 
                 } else if (p.metodo && (String(p.metodo).includes('Crédito') || String(p.metodo).includes('Débito'))) { 
-                    let prazoCartao = (db.config && db.config.prazos && db.config.prazos[p.metodo] !== undefined) ? parseInt(db.config.prazos[p.metodo]) : 1;
-                    let dataAmanha = new Date(); 
-                    dataAmanha.setDate(dataAmanha.getDate() + prazoCartao); 
+                    let prazoCartao = (db.config && db.config.prazos && db.config.prazos[p.metodo] !== undefined) ? parseInt(db.config.prazos[p.metodo]) : 30;
                     const valParc = valorParaCaixa / (p.parcelas || 1); 
                     for(let i=1; i<=(p.parcelas || 1); i++) { 
+                        let dataVencParc = new Date();
+                        dataVencParc.setDate(dataVencParc.getDate() + (prazoCartao * i));
                         const finRef = firestore.collection('financeiro').doc();
-                        batch.set(finRef, { ref: `${pRef} [${i}/${p.parcelas}]`, data: dataAmanha.toISOString(), pessoa: cliInfo.nome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas', metodoPagamento: p.metodo, origemVendaId: idFinalVenda }); 
+                        batch.set(finRef, { ref: `${pRef} [${i}/${p.parcelas || 1}]`, data: dataVencParc.toISOString(), pessoa: cliInfo.nome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas', metodoPagamento: p.metodo, origemVendaId: idFinalVenda }); 
                     } 
                 } else if (p.metodo === 'Dinheiro' || p.metodo === 'PIX') { 
                     const finRef = firestore.collection('financeiro').doc();
@@ -1722,6 +1722,8 @@ function fecharModalOpcoesRecibo() {
     document.getElementById('fiscal-status-container').classList.add('hidden');
     document.getElementById('fiscal-status-container').innerHTML = '';
 }
+
+
 
 async function emitirNota(tipo) {
     if(!window.vendaAtualImpressao || !window.vendaAtualImpressao.id) {
@@ -2082,7 +2084,7 @@ function editarVenda(id) {
                 numeroPedido: v.numeroPedido
             };
             
-            const opSelect = document.getElementById('pdv-operação');
+            const opSelect = document.getElementById('pdv-operacao');
             if(opSelect) opSelect.value = v.tipo === 'ORÇAMENTO' ? 'Orçamento' : (v.tipo === 'SERVIÇO' ? 'Serviço' : 'Venda');
             togglePanelServico();
             

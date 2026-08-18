@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // OPERACAO.JS - SISTEMA 100% WHITE LABEL E BLINDADO
 // ==========================================
 
@@ -1482,7 +1482,7 @@ async function finalizarVendaMultipla() {
     if (isEdicao && window.vendaEmEdicao.numeroPedido) {
         numeroPedido = window.vendaEmEdicao.numeroPedido;
     } else {
-        numeroPedido = (db.vendas || []).length > 0 ? Math.max(...db.vendas.map(v => v.numeroPedido || 0)) + 1 : 1;
+        numeroPedido = (db.vendas || []).reduce((max, v) => Math.max(max, Number(v.numeroPedido) || 0), 0) + 1;
     }
     const numPedStr = String(numeroPedido).padStart(4, '0');
 
@@ -1600,7 +1600,7 @@ async function finalizarVendaMultipla() {
             const p = (db.produtos || []).find(x => String(x.id) === String(item.id)); 
             if(p) { 
                 const pRef = firestore.collection('produtos').doc(String(p.id));
-                batch.update(pRef, { estoque: (p.estoque || 0) - item.qtd });
+                batch.update(pRef, { estoque: firebase.firestore.FieldValue.increment(-Number(item.qtd || 1)) });
                 
                 const kardexRef = firestore.collection('movimentacoes').doc();
                 batch.set(kardexRef, {
@@ -1672,16 +1672,16 @@ async function finalizarVendaMultipla() {
                         }
                         
                         const finRef = firestore.collection('financeiro').doc();
-                        batch.set(finRef, { ref: ` [/]`, data: dataVencParc.toISOString(), pessoa: cliInfo.nome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas', origemVendaId: idFinalVenda }); 
+                        batch.set(finRef, { ref: `${pRef} [${i}/${p.parcelas || 1}]`, data: dataVencParc.toISOString(), pessoa: cliInfo.nome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas', origemVendaId: idFinalVenda }); 
                     } 
                 } else if (p.metodo && (String(p.metodo).includes('Crédito') || String(p.metodo).includes('Débito'))) { 
-                    let prazoCartao = (db.config && db.config.prazos && db.config.prazos[p.metodo] !== undefined) ? parseInt(db.config.prazos[p.metodo]) : 1;
-                    let dataAmanha = new Date(); 
-                    dataAmanha.setDate(dataAmanha.getDate() + prazoCartao); 
+                    let prazoCartao = (db.config && db.config.prazos && db.config.prazos[p.metodo] !== undefined) ? parseInt(db.config.prazos[p.metodo]) : 30;
                     const valParc = valorParaCaixa / (p.parcelas || 1); 
                     for(let i=1; i<=(p.parcelas || 1); i++) { 
+                        let dataVencParc = new Date();
+                        dataVencParc.setDate(dataVencParc.getDate() + (prazoCartao * i));
                         const finRef = firestore.collection('financeiro').doc();
-                        batch.set(finRef, { ref: `${pRef} [${i}/${p.parcelas}]`, data: dataAmanha.toISOString(), pessoa: cliInfo.nome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas', metodoPagamento: p.metodo, origemVendaId: idFinalVenda }); 
+                        batch.set(finRef, { ref: `${pRef} [${i}/${p.parcelas || 1}]`, data: dataVencParc.toISOString(), pessoa: cliInfo.nome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas', metodoPagamento: p.metodo, origemVendaId: idFinalVenda }); 
                     } 
                 } else if (p.metodo === 'Dinheiro' || p.metodo === 'PIX') { 
                     const finRef = firestore.collection('financeiro').doc();

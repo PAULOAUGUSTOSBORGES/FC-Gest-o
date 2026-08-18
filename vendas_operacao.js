@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // OPERACAO.JS - SISTEMA 100% WHITE LABEL E BLINDADO
 // ==========================================
 
@@ -1021,7 +1021,7 @@ function onScanSuccess(decodedText) {
 function prepararPDV() {
     if(!db.caixa) db.caixa = { status: 'FECHADO', saldo: 0, historico: [] };
     
-    const opSelect = document.getElementById('pdv-operação'); 
+    const opSelect = document.getElementById('pdv-operacao'); 
     if(opSelect) { 
         opSelect.addEventListener('change', () => { 
             atualizarResumoPagamentosVenda(); 
@@ -1047,7 +1047,7 @@ function prepararPDV() {
 }
 
 function togglePanelServico() {
-    const op = document.getElementById('pdv-operação'); 
+    const op = document.getElementById('pdv-operacao'); 
     const panel = document.getElementById('panel-servico');
     
     if (op && panel) { 
@@ -1114,7 +1114,7 @@ document.addEventListener('click', function(event) {
 });
 
 function processarAdicaoProduto(p) { 
-    const op = document.getElementById('pdv-operação') ? document.getElementById('pdv-operação').value : 'Venda'; 
+    const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : 'Venda'; 
     const isOrcamento = op === 'Orçamento';
     const idx = cart.findIndex(i => String(i.id) === String(p.id)); 
     
@@ -1157,7 +1157,7 @@ function renderCarrinho() {
 }
 
 function pdvMudarQtd(i, n) { 
-    const op = document.getElementById('pdv-operação') ? document.getElementById('pdv-operação').value : 'Venda'; 
+    const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : 'Venda'; 
     const isOrcamento = op === 'Orçamento'; 
     const novaQtd = Math.max(0.001, parseFloat(n)||0.001); 
     cart[i].qtd = novaQtd; 
@@ -1309,7 +1309,7 @@ function recalcularDatasParcelas(qtd) {
 }
 
 function atualizarResumoPagamentosVenda() {
-    const opSelect = document.getElementById('pdv-operação'); 
+    const opSelect = document.getElementById('pdv-operacao'); 
     const isOrcamento = opSelect && opSelect.value === 'Orçamento'; 
     const isServico = opSelect && opSelect.value === 'Serviço'; 
     const lista = document.getElementById('lista-pagamentos-adicionados'); 
@@ -1418,7 +1418,7 @@ function removerPagamentoVenda(index) {
 }
 
 async function finalizarVendaMultipla() {
-    const op = document.getElementById('pdv-operação') ? document.getElementById('pdv-operação').value : 'Venda';
+    const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : 'Venda';
     const isOrcamento = op === 'Orçamento'; 
     const isServico = op === 'Serviço';
     
@@ -2079,7 +2079,7 @@ function editarVenda(id) {
                 numeroPedido: v.numeroPedido
             };
             
-            const opSelect = document.getElementById('pdv-operação');
+            const opSelect = document.getElementById('pdv-operacao');
             if(opSelect) opSelect.value = v.tipo === 'ORÇAMENTO' ? 'Orçamento' : (v.tipo === 'SERVIÇO' ? 'Serviço' : 'Venda');
             togglePanelServico();
             

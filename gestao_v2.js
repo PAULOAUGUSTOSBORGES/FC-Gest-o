@@ -386,7 +386,7 @@ function renderCaixaDiario() {
 
 function abrirModalCaixa(op) {
     if(op === 'abrir' && db.caixa.status === 'ABERTO') return showToast('O caixa já está aberto!', 'error'); if(op !== 'abrir' && db.caixa.status === 'FECHADO') return showToast('Abra o caixa primeiro!', 'error');
-    document.getElementById('caixa-operação-tipo').value = op.toUpperCase(); document.getElementById('modal-caixa-title').innerText = op === 'abrir' ? 'Abertura de Caixa' : (op === 'fechar' ? 'Fechamento de Caixa' : (op === 'sangria' ? 'Sangria (Retirada)' : 'Suprimento (Entrada)'));
+    document.getElementById('caixa-operacao-tipo').value = op.toUpperCase(); document.getElementById('modal-caixa-title').innerText = op === 'abrir' ? 'Abertura de Caixa' : (op === 'fechar' ? 'Fechamento de Caixa' : (op === 'sangria' ? 'Sangria (Retirada)' : 'Suprimento (Entrada)'));
     document.getElementById('caixa-op-valor').value = ''; document.getElementById('caixa-op-desc').value = '';
     if(op === 'fechar') { document.getElementById('caixa-op-valor').value = db.caixa.saldo; document.getElementById('caixa-op-desc').value = 'Fechamento do dia'; } if(op === 'abrir') { document.getElementById('caixa-op-valor').value = 0; document.getElementById('caixa-op-desc').value = 'Troco Inicial'; }
     document.getElementById('modal-mov-caixa').classList.remove('hidden');
@@ -394,7 +394,7 @@ function abrirModalCaixa(op) {
 function fecharModalCaixa() { document.getElementById('modal-mov-caixa').classList.add('hidden'); }
 
 async function confirmarMovCaixa() {
-    const op = document.getElementById('caixa-operação-tipo').value; const val = parseFloat(document.getElementById('caixa-op-valor').value) || 0; const desc = document.getElementById('caixa-op-desc').value || op;
+    const op = document.getElementById('caixa-operacao-tipo').value; const val = parseFloat(document.getElementById('caixa-op-valor').value) || 0; const desc = document.getElementById('caixa-op-desc').value || op;
     let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
     let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
     let novoStatus = cxAtual.status; let novoSaldo = cxAtual.saldo || 0;
@@ -413,20 +413,76 @@ async function confirmarMovCaixa() {
 // ==========================================
 // 4. CONTAS A PAGAR E RECEBER
 // ==========================================
+function normalizarTexto(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+}
+
+function atualizarFiltrosPessoaFin(prefix) {
+    const isReceber = prefix === 'receber';
+    const datalist = document.getElementById(`lista-${isReceber ? 'clientes' : 'fornecedores'}-fin-${prefix}`);
+    const select = document.getElementById(`filtro-${prefix}-${isReceber ? 'cliente' : 'fornecedor'}`) || document.getElementById(`filtro-${prefix}-pessoa`);
+    
+    const pessoas = isReceber
+        ? (db.clientes || []).map(c => ({ nome: c.nome || c.razaoSocial || '', doc: c.doc || c.cpfCnpj || '' }))
+        : [
+            ...(db.fornecedores || []).map(f => ({ nome: f.nome || f.razaoSocial || '', doc: f.doc || f.cnpj || '' })),
+            ...(db.funcionarios || []).map(func => ({ nome: func.nome || '', doc: func.doc || '' }))
+        ];
+
+    const uniquePessoas = [];
+    const nomesJaVistos = new Set();
+    pessoas.forEach(p => {
+        const nomeTrim = (p.nome || '').trim();
+        if (nomeTrim && !nomesJaVistos.has(nomeTrim.toLowerCase())) {
+            nomesJaVistos.add(nomeTrim.toLowerCase());
+            uniquePessoas.push({ nome: nomeTrim, doc: p.doc ? String(p.doc).trim() : '' });
+        }
+    });
+    uniquePessoas.sort((a, b) => a.nome.localeCompare(b.nome));
+
+    const totalKey = uniquePessoas.length + '_' + (uniquePessoas[0]?.nome || '');
+
+    if (datalist && datalist.dataset.loadedKey !== totalKey) {
+        datalist.innerHTML = uniquePessoas.map(p => `<option value="${p.nome}">${p.doc ? 'CPF/CNPJ: ' + p.doc : ''}</option>`).join('');
+        datalist.dataset.loadedKey = totalKey;
+    }
+
+    if (select && select.dataset.loadedKey !== totalKey) {
+        const valAtual = select.value;
+        select.innerHTML = `<option value="">${isReceber ? 'Todos os Clientes' : 'Todos os Fornecedores'}</option>` +
+            uniquePessoas.map(p => `<option value="${p.nome}">${p.nome}</option>`).join('');
+        select.value = valAtual;
+        select.dataset.loadedKey = totalKey;
+    }
+}
+
 function renderTitulos(tipo) {
     const prefix = tipo === 'RECEITA' ? 'receber' : 'pagar';
     if (!document.getElementById('tabela-fin-' + prefix)) return;
     if (!db.financeiro) return;
     
+    atualizarFiltrosPessoaFin(prefix);
+
     const statusFilterEl = document.getElementById('filtro-' + prefix + '-status');
     const statusFilter = statusFilterEl ? statusFilterEl.value : 'TODOS';
     
     const periodoFilterEl = document.getElementById('filtro-' + prefix + '-periodo');
-    const periodoFilter = periodoFilterEl ? periodoFilterEl.value : 'TUDO';
+    const periodoFilter = periodoFilterEl ? periodoFilterEl.value : 'MES';
     
     const buscaEl = document.getElementById('busca-fin-' + prefix);
-    const termoBusca = buscaEl ? buscaEl.value.toLowerCase() : '';
-    
+    const termoBusca = buscaEl ? buscaEl.value : '';
+    const termoNorm = normalizarTexto(termoBusca);
+    const termoDigitos = termoBusca.replace(/\D/g, '');
+
+    const pessoaFiltroEl = document.getElementById('filtro-' + prefix + '-cliente') || 
+                           document.getElementById('filtro-' + prefix + '-fornecedor') || 
+                           document.getElementById('filtro-' + prefix + '-pessoa');
+    const pessoaFiltroVal = pessoaFiltroEl ? normalizarTexto(pessoaFiltroEl.value) : '';
     const dataIniEl = document.getElementById('filtro-' + prefix + '-ini');
     const dataIni = dataIniEl ? dataIniEl.value : '';
     
@@ -435,36 +491,152 @@ function renderTitulos(tipo) {
     
     let lista = db.financeiro.filter(f => (f.tipo === tipo || (!f.tipo && tipo === 'RECEITA')));
     
-    if (termoBusca) { 
-        lista = lista.filter(f => 
-            (f.pessoa && f.pessoa.toLowerCase().includes(termoBusca)) || 
-            (f.ref && f.ref.toLowerCase().includes(termoBusca)) || 
-            (f.categoria && f.categoria.toLowerCase().includes(termoBusca)) || 
-            (f.numNF && String(f.numNF).includes(termoBusca)) || 
-            (f.data && formatData(f.data).toLowerCase().includes(termoBusca))
-        ); 
+    // 1. FILTRAGEM POR PESSOA (SELECT DROPDOWN)
+    if (pessoaFiltroVal) {
+        lista = lista.filter(f => {
+            const pessoaNorm = normalizarTexto(f.pessoa || f.clienteNome || f.cliente || f.favorecido || f.sacado || '');
+            return pessoaNorm === pessoaFiltroVal || pessoaNorm.includes(pessoaFiltroVal);
+        });
+    }
+
+    // 2. BUSCA TEXTUAL ABRANGENTE E INSENSÍVEL A ACENTOS / CAIXA
+    if (termoNorm) { 
+        lista = lista.filter(f => {
+            let cliVinculado = null;
+            if (db.clientes && db.clientes.length > 0) {
+                if (f.clienteId) {
+                    cliVinculado = db.clientes.find(c => String(c.id) === String(f.clienteId));
+                }
+                if (!cliVinculado && f.pessoa) {
+                    const fPessoaNorm = normalizarTexto(f.pessoa);
+                    cliVinculado = db.clientes.find(c => normalizarTexto(c.nome) === fPessoaNorm || normalizarTexto(c.razaoSocial) === fPessoaNorm);
+                }
+            }
+
+            let fornVinculado = null;
+            if (db.fornecedores && db.fornecedores.length > 0) {
+                if (f.fornecedorId) {
+                    fornVinculado = db.fornecedores.find(forn => String(forn.id) === String(f.fornecedorId));
+                }
+                if (!fornVinculado && f.pessoa) {
+                    const fPessoaNorm = normalizarTexto(f.pessoa);
+                    fornVinculado = db.fornecedores.find(forn => normalizarTexto(forn.nome) === fPessoaNorm || normalizarTexto(forn.razaoSocial) === fPessoaNorm);
+                }
+            }
+
+            let vendaVinculada = null;
+            if (f.origemVendaId && db.vendas && db.vendas.length > 0) {
+                vendaVinculada = db.vendas.find(v => String(v.id) === String(f.origemVendaId));
+            }
+
+            const camposTexto = [
+                f.pessoa,
+                f.clienteNome,
+                f.cliente,
+                f.favorecido,
+                f.sacado,
+                f.cpfCnpj,
+                f.clienteDoc,
+                f.doc,
+                f.telefone,
+                f.wpp,
+                f.tel,
+                f.celular,
+                f.ref,
+                f.origemVendaId,
+                f.numeroPedido,
+                f.categoria,
+                f.numNF,
+                f.numBoleto,
+                f.observacao,
+                f.obs,
+                f.centroCusto,
+                f.contaBancaria,
+                f.cartorioNome,
+                f.metodoPagamento,
+                cliVinculado?.nome,
+                cliVinculado?.razaoSocial,
+                cliVinculado?.doc,
+                cliVinculado?.cpfCnpj,
+                cliVinculado?.telefone,
+                cliVinculado?.wpp,
+                cliVinculado?.email,
+                fornVinculado?.nome,
+                fornVinculado?.razaoSocial,
+                fornVinculado?.doc,
+                fornVinculado?.cnpj,
+                fornVinculado?.telefone,
+                vendaVinculada?.numeroPedido ? `#${String(vendaVinculada.numeroPedido).padStart(4, '0')}` : '',
+                vendaVinculada?.numeroPedido ? String(vendaVinculada.numeroPedido) : '',
+                vendaVinculada?.clienteNome,
+                vendaVinculada?.clienteDoc,
+                vendaVinculada?.vendedor
+            ];
+
+            const textoGeralNorm = normalizarTexto(camposTexto.filter(Boolean).join(' '));
+
+            if (textoGeralNorm.includes(termoNorm)) return true;
+
+            if (termoDigitos && termoDigitos.length >= 2) {
+                const camposDigitos = [
+                    f.cpfCnpj,
+                    f.clienteDoc,
+                    f.doc,
+                    f.telefone,
+                    f.wpp,
+                    f.tel,
+                    f.numNF,
+                    f.numBoleto,
+                    f.numeroPedido,
+                    f.origemVendaId,
+                    cliVinculado?.doc,
+                    cliVinculado?.cpfCnpj,
+                    cliVinculado?.telefone,
+                    cliVinculado?.wpp,
+                    fornVinculado?.doc,
+                    fornVinculado?.cnpj,
+                    vendaVinculada?.numeroPedido
+                ];
+                const digitosGeral = camposDigitos.filter(Boolean).map(x => String(x).replace(/\D/g, '')).join(' ');
+                if (digitosGeral.includes(termoDigitos)) return true;
+            }
+
+            if (f.data) {
+                const dataFormatada = formatData(f.data).toLowerCase();
+                const dataIso = f.data.split('T')[0];
+                if (dataFormatada.includes(termoNorm) || dataIso.includes(termoNorm)) return true;
+            }
+
+            return false;
+        }); 
     }
     
+    // 3. FILTRAGEM POR STATUS
     if (statusFilter !== 'TODOS') { 
         if (statusFilter === 'ATRASADO') {
             lista = lista.filter(f => f.status === 'PENDENTE' && new Date(f.data).getTime() < new Date().getTime());
+        } else if (statusFilter === 'RENEGOCIADO') {
+            lista = lista.filter(f => f.status === 'RENEGOCIADO');
         } else {
             lista = lista.filter(f => f.status === statusFilter); 
         }
     }
 
+    // 4. FILTRO DE DATAS ESPECÍFICAS (SEMPRE RESPEITADO)
     if (dataIni) {
-        lista = lista.filter(f => f.data.split('T')[0] >= dataIni);
+        lista = lista.filter(f => f.data && f.data.split('T')[0] >= dataIni);
     }
     if (dataFim) {
-        lista = lista.filter(f => f.data.split('T')[0] <= dataFim);
+        lista = lista.filter(f => f.data && f.data.split('T')[0] <= dataFim);
     }
 
-    if (periodoFilter !== 'TUDO' && !dataIni && !dataFim) {
+    // 5. FILTRO DE PERÍODO RELATIVO (MÊS, 7 DIAS, ETC.)
+    const temBuscaAtiva = !!(termoNorm || pessoaFiltroVal);
+    if (!temBuscaAtiva && !dataIni && !dataFim && periodoFilter !== 'TUDO') {
         const hoje = new Date();
         const anoAtual = hoje.getFullYear();
         const mesAtual = hoje.getMonth();
-        if (periodoFilter === 'MES') {
+        if (periodoFilter === 'MES' || periodoFilter === 'MES_ATUAL') {
             const inicioMes = new Date(anoAtual, mesAtual, 1).getTime();
             const fimMes = new Date(anoAtual, mesAtual + 1, 0, 23, 59, 59).getTime();
             lista = lista.filter(f => { const t = new Date(f.data).getTime(); return t >= inicioMes && t <= fimMes; });

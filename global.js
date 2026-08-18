@@ -36,6 +36,16 @@ window.currentUserInfo = null;
 const formatMoney = (val) => Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const formatData = (isoStr) => new Date(isoStr).toLocaleString('pt-BR');
 
+function normalizarTexto(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+}
+window.normalizarTexto = normalizarTexto;
+
 function showToast(msg, type = 'info') {
     const container = document.getElementById('toast-container');
     const t = document.createElement('div');
@@ -314,21 +324,84 @@ function aplicarTema() {
 
 
 
-// ===== FUNÇÕES GLOBAIS DE VENDAS (Adicionadas para corrigir erro de botões de Ações) =====
+// ===== FUNÇÕES GLOBAIS DE IA, CONFIRMAÇÃO E VENDAS =====
+
+window.chamarGemini = async function(prompt) {
+    try {
+        const configGemini = (window.db && window.db.config && window.db.config.geminiApiKey) ? window.db.config.geminiApiKey : null;
+        if (configGemini) {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${configGemini}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            });
+            const data = await res.json();
+            if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+                return data.candidates[0].content.parts[0].text;
+            }
+        }
+        // Retorno padrão elegante para descrição de produtos
+        return "Produto de excelente acabamento, matéria-prima selecionada e alta durabilidade, projetado para proporcionar conforto e sofisticação ao ambiente.";
+    } catch (e) {
+        console.warn("Erro ao chamar IA Gemini:", e);
+        return "Produto de alta qualidade e durabilidade com design moderno.";
+    }
+};
+
+let callbackConfirmacaoGlobal = null;
+window.abrirConfirmacao = function(titulo, msg, callback) {
+    callbackConfirmacaoGlobal = callback;
+    const modal = document.getElementById('modal-confirmacao');
+    if (modal) {
+        const titEl = document.getElementById('modal-confirmacao-titulo');
+        const msgEl = document.getElementById('modal-confirmacao-msg');
+        if (titEl) titEl.innerText = titulo;
+        if (msgEl) msgEl.innerText = msg;
+        modal.classList.remove('hidden');
+    } else {
+        if (confirm(`${titulo}\n\n${msg}`)) {
+            if (typeof callback === 'function') callback();
+        }
+    }
+};
+
+window.fecharModalConfirmacao = function() {
+    const modal = document.getElementById('modal-confirmacao');
+    if (modal) modal.classList.add('hidden');
+    callbackConfirmacaoGlobal = null;
+};
+
+window.executarAcaoConfirmada = function() {
+    if (typeof callbackConfirmacaoGlobal === 'function') {
+        callbackConfirmacaoGlobal();
+    }
+    window.fecharModalConfirmacao();
+};
 
 window.reimprimirVenda = function(id) {
-    const v = window.db.vendas.find(x => String(x.id) === String(id)); 
+    const v = (window.db && window.db.vendas) ? window.db.vendas.find(x => String(x.id) === String(id)) : null; 
     if(!v) return showToast('Venda não encontrada.', 'error');
     
     const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
-    const htmlRecibo = `<div style="text-align: center; border-bottom: 1px dashed #999; padding-bottom: 10px; margin-bottom: 10px;"><h2 style="font-weight: bold; font-size: 1.2em; margin: 0;">FC MÓVEIS E INTERIORES</h2><p style="font-size: 0.9em; margin: 0;">Operação: REIMPRESSÃO</p></div><div style="border-bottom: 1px dashed #999; padding-bottom: 10px; margin-bottom: 10px; font-size: 0.9em;"><p style="margin: 2px 0;">Pedido: #${numPedStr}</p><p style="margin: 2px 0;">Data Original: ${new Date(v.data).toLocaleString('pt-BR')}</p><p style="margin: 2px 0;">Cliente: ${v.clienteNome}</p><p style="margin: 2px 0;">Vendedor: ${v.vendedor || '-'}</p></div><table style="width: 100%; text-align: left; font-size: 0.9em; border-collapse: collapse; margin-bottom: 10px;"><tr style="border-bottom: 1px solid #ccc;"><th style="padding-bottom: 4px;">Item</th><th style="padding-bottom: 4px; text-align: center;">Qtd</th><th style="padding-bottom: 4px; text-align: right;">Total</th></tr>${(v.itens || []).map(i => `<tr><td style="padding: 4px 0;">${i.nome}</td><td style="padding: 4px 0; text-align: center;">${i.qtd}</td><td style="padding: 4px 0; text-align: right;">${typeof formatMoney === 'function' ? formatMoney(i.preco*i.qtd) : (i.preco*i.qtd)}</td></tr>`).join('')}</table><div style="text-align: right; font-size: 0.9em;"><h3 style="font-weight: bold; font-size: 1.2em; margin: 5px 0 0 0;">Total Final: ${typeof formatMoney === 'function' ? formatMoney(v.tot) : v.tot}</h3></div><div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #999; text-align: center; font-size: 0.9em;"><p style="margin: 0; font-weight: bold; text-transform: uppercase;">PAGAMENTO: ${v.pag}</p></div>`;
+    const htmlRecibo = `<div style="text-align: center; border-bottom: 1px dashed #999; padding-bottom: 10px; margin-bottom: 10px;"><h2 style="font-weight: bold; font-size: 1.2em; margin: 0;">FC MÓVEIS E INTERIORES</h2><p style="font-size: 0.9em; margin: 0;">Operação: REIMPRESSÃO</p></div><div style="border-bottom: 1px dashed #999; padding-bottom: 10px; margin-bottom: 10px; font-size: 0.9em;"><p style="margin: 2px 0;">Pedido: #${numPedStr}</p><p style="margin: 2px 0;">Data Original: ${new Date(v.data).toLocaleString('pt-BR')}</p><p style="margin: 2px 0;">Cliente: ${v.clienteNome || '-'}</p><p style="margin: 2px 0;">Vendedor: ${v.vendedor || '-'}</p></div><table style="width: 100%; text-align: left; font-size: 0.9em; border-collapse: collapse; margin-bottom: 10px;"><tr style="border-bottom: 1px solid #ccc;"><th style="padding-bottom: 4px;">Item</th><th style="padding-bottom: 4px; text-align: center;">Qtd</th><th style="padding-bottom: 4px; text-align: right;">Total</th></tr>${(v.itens || []).map(i => `<tr><td style="padding: 4px 0;">${i.nome}</td><td style="padding: 4px 0; text-align: center;">${i.qtd}</td><td style="padding: 4px 0; text-align: right;">${typeof formatMoney === 'function' ? formatMoney(i.preco*i.qtd) : (i.preco*i.qtd)}</td></tr>`).join('')}</table><div style="text-align: right; font-size: 0.9em;"><h3 style="font-weight: bold; font-size: 1.2em; margin: 5px 0 0 0;">Total Final: ${typeof formatMoney === 'function' ? formatMoney(v.tot || v.valorLiquido) : (v.tot || v.valorLiquido)}</h3></div><div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #999; text-align: center; font-size: 0.9em;"><p style="margin: 0; font-weight: bold; text-transform: uppercase;">PAGAMENTO: ${v.pag || 'Diversos'}</p></div>`;
     
-    document.getElementById('print-area').innerHTML = htmlRecibo; 
-    document.getElementById('modal-opcoes-recibo').classList.remove('hidden');
+    const printArea = document.getElementById('print-area');
+    const modalRecibo = document.getElementById('modal-opcoes-recibo');
+    if (printArea && modalRecibo) {
+        printArea.innerHTML = htmlRecibo; 
+        modalRecibo.classList.remove('hidden');
+    } else {
+        const w = window.open('', '_blank');
+        if (w) {
+            w.document.write(`<html><body style="font-family: monospace; padding: 20px;">${htmlRecibo}</body></html>`);
+            w.document.close();
+            w.print();
+        }
+    }
 };
 
 window.excluirVenda = function(id) {
-    const v = window.db.vendas.find(x => String(x.id) === String(id)); 
+    const v = (window.db && window.db.vendas) ? window.db.vendas.find(x => String(x.id) === String(id)) : null; 
     if(!v) return showToast('Venda não encontrada.', 'error'); 
 
     const isOrcamento = v.tipo === 'ORÇAMENTO'; 
@@ -336,7 +409,7 @@ window.excluirVenda = function(id) {
         ? 'Deseja excluir este orçamento?' 
         : 'Atenção! Isso fará a exclusão completa desta venda (devolvendo estoque e apagando as parcelas do financeiro). Deseja continuar?';
 
-    abrirConfirmacao('Excluir Operação', msg, async () => {
+    window.abrirConfirmacao('Excluir Operação', msg, async () => {
         try {
             const batch = firestore.batch();
             const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
@@ -347,7 +420,7 @@ window.excluirVenda = function(id) {
                         const p = (window.db.produtos || []).find(prod => String(prod.id) === String(item.id)); 
                         if(p) { 
                             const pRef = firestore.collection('produtos').doc(String(p.id));
-                            batch.update(pRef, { estoque: (p.estoque || 0) + Number(item.qtd || 1) });
+                            batch.update(pRef, { estoque: firebase.firestore.FieldValue.increment(Number(item.qtd || 1)) });
                             
                             const kardexRef = firestore.collection('movimentacoes').doc();
                             batch.set(kardexRef, {
@@ -367,11 +440,28 @@ window.excluirVenda = function(id) {
                     batch.delete(doc.ref);
                 });
                 
-                if(v.pag && typeof v.pag === 'string' && String(v.pag).includes('Dinheiro')) { 
+                // Cálculo preciso do montante efetivamente pago em dinheiro
+                let valorDinheiroEfetivo = 0;
+                if (Array.isArray(v.pagamentos) && v.pagamentos.length > 0) {
+                    const pDinheiro = v.pagamentos.find(p => p && (p.metodo === 'Dinheiro' || String(p.metodo).includes('Dinheiro')));
+                    if (pDinheiro) {
+                        valorDinheiroEfetivo = Number(pDinheiro.valor || 0) - Number(v.troco || 0);
+                        if (valorDinheiroEfetivo < 0) valorDinheiroEfetivo = 0;
+                    }
+                } else if (v.pag && String(v.pag).includes('Dinheiro')) {
+                    valorDinheiroEfetivo = Number(v.valorLiquido || v.tot || 0);
+                }
+
+                if (valorDinheiroEfetivo > 0) { 
                     let cxAtual = window.db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
                     let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
-                    let cxSaldoNovo = (cxAtual.saldo || 0) - (Number(v.valorLiquido) || 0);
-                    cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: 'Estorno (Exclusão) ' + (v.tipo || 'Venda') + ' #' + numPedStr, valor: (Number(v.valorLiquido) || 0) });
+                    let cxSaldoNovo = (cxAtual.saldo || 0) - valorDinheiroEfetivo;
+                    cxHistoricoNovo.unshift({ 
+                        data: new Date().toISOString(), 
+                        tipo: 'SAIDA', 
+                        desc: 'Estorno (Exclusão) ' + (v.tipo || 'Venda') + ' #' + numPedStr, 
+                        valor: valorDinheiroEfetivo 
+                    });
                     
                     const caixaRef = firestore.collection('fc_moveis').doc('caixa');
                     batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
@@ -382,11 +472,11 @@ window.excluirVenda = function(id) {
             batch.delete(vendaRef);
 
             await batch.commit();
-            fecharModalConfirmacao();
+            window.fecharModalConfirmacao();
             showToast('Operação excluída com sucesso!', 'success');
         } catch (err) {
             console.error(err);
-            fecharModalConfirmacao();
+            window.fecharModalConfirmacao();
             showToast('Erro ao excluir a operação.', 'error');
         }
     });

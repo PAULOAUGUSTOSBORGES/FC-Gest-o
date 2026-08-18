@@ -1,4 +1,4 @@
-﻿// cadastro.js - Lógica de Produtos, Clientes, Fornecedores e Estoque
+// cadastro.js - Lógica de Produtos, Clientes, Fornecedores e Estoque
 
 let acaoConfirmacaoPendente = null;
 
@@ -138,13 +138,21 @@ async function buscarCNPJ(prefix) {
 function renderSelectCategorias() {
     const selectCat = document.getElementById('prod-categoria');
     if (!selectCat) return;
+    
     const valAtual = selectCat.value;
     let html = '<option value="">Sem Categoria</option>';
     if (db.categorias && db.categorias.length > 0) {
-        db.categorias.forEach(cat => { html += `<option value=""></option>`; });
+        db.categorias.forEach(cat => {
+            html += `<option value="${cat.nome}">${cat.nome}</option>`;
+        });
     }
+    
     selectCat.innerHTML = html;
-    if (valAtual && selectCat.querySelector(`option[value=""]`)) selectCat.value = valAtual;
+    
+    if (valAtual && selectCat.querySelector(`option[value="${valAtual}"]`)) {
+        selectCat.value = valAtual;
+    }
+    
     atualizarOpcoesSubcategoria();
 }
 

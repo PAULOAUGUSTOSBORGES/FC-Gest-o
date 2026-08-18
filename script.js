@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
         // 1. TRAVA DE SEGURANÇA E CONFIGURAÇÕES GERAIS
         // ==========================================
         if (sessionStorage.getItem('erp_auth_master') !== 'true') {
@@ -554,7 +554,7 @@
 
             const cId = document.getElementById('pdv-cliente').value; 
             const cNome = cId === "0" ? 'Consumidor Final' : (db.clientes.find(x => String(x.id) === String(cId))?.nome || 'Consumidor Final');
-            const op = document.getElementById('pdv-operação').value; 
+            const op = document.getElementById('pdv-operacao').value; 
             const vend = document.getElementById('pdv-vendedor').value; 
             const obsTexto = document.getElementById('pdv-obs') ? document.getElementById('pdv-obs').value.trim() : ''; 
             const vendaId = Date.now(); 
@@ -857,7 +857,7 @@ function fecharModalDetalhesVenda() {
             if(op === 'abrir' && db.caixa.status === 'ABERTO') return showToast('O caixa já está aberto!', 'error');
             if(op !== 'abrir' && db.caixa.status === 'FECHADO') return showToast('Abra o caixa primeiro!', 'error');
             
-            document.getElementById('caixa-operação-tipo').value = op.toUpperCase();
+            document.getElementById('caixa-operacao-tipo').value = op.toUpperCase();
             document.getElementById('modal-caixa-title').innerText = op === 'abrir' ? 'Abertura de Caixa' : (op === 'fechar' ? 'Fechamento de Caixa' : (op === 'sangria' ? 'Sangria (Retirada)' : 'Suprimento (Entrada)'));
             document.getElementById('caixa-op-valor').value = ''; document.getElementById('caixa-op-desc').value = '';
             
@@ -870,7 +870,7 @@ function fecharModalDetalhesVenda() {
         function fecharModalCaixa() { document.getElementById('modal-mov-caixa').classList.add('hidden'); }
 
         function confirmarMovCaixa() {
-            const op = document.getElementById('caixa-operação-tipo').value;
+            const op = document.getElementById('caixa-operacao-tipo').value;
             const val = parseFloat(document.getElementById('caixa-op-valor').value) || 0;
             const desc = document.getElementById('caixa-op-desc').value || op;
 

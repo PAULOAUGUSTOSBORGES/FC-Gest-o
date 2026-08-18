@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -93,7 +93,7 @@
                     <div class="bg-white dark:bg-slate-800 p-3 md:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row flex-wrap gap-3 items-start sm:items-center justify-between shrink-0">
                         <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                             <span id="pdv-status-caixa" class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-bold px-3 py-1.5 rounded-lg text-[10px] md:text-xs uppercase tracking-wider whitespace-nowrap"><i class="fa-solid fa-lock mr-1"></i> Verificando Caixa...</span>
-                            <select id="pdv-operação" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs md:text-sm font-bold text-slate-700 dark:text-slate-200 px-2 py-1.5 md:py-2 rounded-lg outline-none focus:border-blue-500 flex-1 dark:text-white">
+                            <select id="pdv-operacao" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs md:text-sm font-bold text-slate-700 dark:text-slate-200 px-2 py-1.5 md:py-2 rounded-lg outline-none focus:border-blue-500 flex-1 dark:text-white">
                                 <option value="Venda">Venda Real</option>
                                 <option value="Serviço">Prestação de Serviço</option> 
                                 <option value="Orçamento">Apenas Orçamento</option>
@@ -146,13 +146,12 @@
                                                 <th class="pb-2 text-right w-20 md:w-24">Total</th>
                                                 <th class="pb-2 w-8 md:w-10"></th>
                                             </tr>
-                                        </thead>
-                                        <tbody id="pdv-carrinho-body" class="divide-y divide-slate-50 text-xs md:text-sm"></tbody>
+                                                   <tbody id="pdv-carrinho-body" class="divide-y divide-slate-50 text-xs md:text-sm"></tbody>
                                     </table>
                                 </div>
                             </div>
 
-                            <!-- PAINEL DE ORDEM DE SERVIÃ‡O COM GALERIA DE FOTOS -->
+                            <!-- PAINEL DE ORDEM DE SERVIÇO COM GALERIA DE FOTOS -->
                             <div id="panel-servico" class="bg-purple-50 rounded-xl shadow-sm border border-purple-200 shrink-0 p-3 md:p-4 hidden flex-col transition-all">
                                 <h3 class="text-[10px] md:text-xs font-bold text-purple-800 uppercase mb-3 tracking-wider border-b border-purple-200 pb-2"><i class="fa-solid fa-clipboard-list mr-1"></i> Ficha da Ordem de Serviço (OS)</h3>
 
@@ -182,6 +181,7 @@
                             </div>
                         </div>
 
+                        <!-- COLUNA DA DIREITA: TOTAIS E PAGAMENTO -->
                         <div class="w-full lg:w-96 flex flex-col gap-4 z-10 shrink-0">
                             <!-- TOTALIZADORES -->
                             <div class="bg-slate-900 p-4 md:p-6 text-white rounded-xl shadow-lg relative overflow-hidden shrink-0">
@@ -206,7 +206,7 @@
                                 </div>
                             </div>
 
-                            <!-- ÁÁREA DE MÃšLTIPLOS PAGAMENTOS E TROCO -->
+                            <!-- ÁREA DE MÚLTIPLOS PAGAMENTOS E TROCO -->
                             <div class="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex-1 flex flex-col overflow-y-auto custom-scrollbar min-h-[350px]">
                                 <label class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 block tracking-wider">Múltiplos Pagamentos</label>
 
@@ -222,7 +222,7 @@
                                     <select id="pdv-parcelas-atual" onchange="verificarParcelasPagamento()" class="hidden w-16 bg-blue-50 border border-blue-300 p-2.5 rounded-lg text-xs font-bold text-blue-800 outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white">
                                         <option value="1">1x</option><option value="2">2x</option><option value="3">3x</option><option value="4">4x</option><option value="5">5x</option><option value="6">6x</option><option value="7">7x</option><option value="8">8x</option><option value="9">9x</option><option value="10">10x</option><option value="11">11x</option><option value="12">12x</option>
                                     </select>
-                                    <input type="date" id="pdv-vencimento-atual" class="hidden w-32 bg-amber-50 border border-amber-300 p-2.5 rounded-lg text-xs font-bold text-amber-800 outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" title="Vencimento da 1Ã‚ª Parcela">
+                                    <input type="date" id="pdv-vencimento-atual" class="hidden w-32 bg-amber-50 border border-amber-300 p-2.5 rounded-lg text-xs font-bold text-amber-800 outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" title="Vencimento da 1ª Parcela">
                                     <input type="number" id="pdv-valor-atual" step="0.01" class="w-24 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm font-black text-slate-800 dark:text-slate-100 outline-none focus:border-blue-500 dark:text-white" placeholder="R$ 0,00" onkeypress="if(event.key === 'Enter') adicionarPagamentoVenda()">
                                     <button onclick="adicionarPagamentoVenda()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2.5 rounded-lg font-bold transition text-xs shadow-sm"><i class="fa-solid fa-plus"></i></button>
                                 </div>
@@ -248,62 +248,60 @@
                                     <textarea id="pdv-obs" rows="2" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs md:text-sm outline-none focus:border-blue-500 dark:text-white" placeholder="Ex: Cuidado no transporte..."></textarea>
                                 </div>
 
-                                <button id="btn-finalizar-venda" onclick="finalizarVendaMultipla()" class="mt-auto w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black text-base md:text-lg py-3 md:py-4 rounded-xl shadow-lg transition-transform flex items-center justify-center gap-2 opacity-50 cursor-not-allowed shrink-0" disabled><i class="fa-solid fa-circle-check text-xl"></i> FINALIZAR OPERAÃ‡ÁO</button>
+                                <button id="btn-finalizar-venda" onclick="finalizarVendaMultipla()" class="mt-auto w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black text-base md:text-lg py-3 md:py-4 rounded-xl shadow-lg transition-transform flex items-center justify-center gap-2 opacity-50 cursor-not-allowed shrink-0" disabled><i class="fa-solid fa-circle-check text-xl"></i> FINALIZAR OPERAÇÃO</button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- ================== TELA HISTÃ“RICO DE VENDAS E SERVIÃ‡OS ================== -->
-                <!-- ================== TELA: MEUS ORÃ‡AMENTOS ================== -->
+                <!-- ================== TELA: MEUS ORÇAMENTOS ================== -->
                 <div id="view-orcamentos" class="view-section hidden max-w-7xl mx-auto space-y-4 md:space-y-6">
                     <div class="flex flex-col lg:flex-row justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 gap-4">
                         <div class="flex flex-col sm:flex-row flex-wrap md:flex-nowrap gap-2 w-full lg:w-auto flex-1">
                             <div class="relative w-full sm:w-64">
                                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-sm"></i>
-                                <input type="text" id="busca-Orçamentos" placeholder="Buscar Cliente ou Orçamento..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderOrçamentos()">
+                                <input type="text" id="busca-orcamentos" placeholder="Buscar Cliente ou Orçamento..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderOrcamentos()">
                             </div>
                             <div class="flex gap-2 w-full sm:w-auto">
-                                <input type="date" id="filtro-Orçamentos-ini" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm rounded-lg px-3 py-2.5 outline-none focus:border-blue-500 w-full sm:w-auto dark:text-white" onchange="renderOrçamentos()" title="Data Inicial">
-                                <input type="date" id="filtro-Orçamentos-fim" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm rounded-lg px-3 py-2.5 outline-none focus:border-blue-500 w-full sm:w-auto dark:text-white" onchange="renderOrçamentos()" title="Data Final">
+                                <input type="date" id="filtro-orcamentos-ini" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm rounded-lg px-3 py-2.5 outline-none focus:border-blue-500 w-full sm:w-auto dark:text-white" onchange="renderOrcamentos()" title="Data Inicial">
+                                <input type="date" id="filtro-orcamentos-fim" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm rounded-lg px-3 py-2.5 outline-none focus:border-blue-500 w-full sm:w-auto dark:text-white" onchange="renderOrcamentos()" title="Data Final">
                             </div>
                         </div>
                         <div class="flex gap-2 w-full lg:w-auto justify-end">
-                            <button onclick="imprimirArea('print-area-Orçamentos')" class="bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-4 py-2.5 rounded-lg text-sm transition-colors flex-1 sm:flex-none text-center" title="Imprimir"><i class="fa-solid fa-print"></i></button>
-                            <button onclick="baixarPDF('print-area-Orçamentos', 'Meus_Orçamentos')" class="bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-4 py-2.5 rounded-lg text-sm transition-colors flex-1 sm:flex-none text-center" title="Salvar PDF"><i class="fa-solid fa-file-pdf"></i></button>
-                            <button onclick="exportarExcel('tabela-Orçamentos-export', 'Meus_Orçamentos')" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold px-4 py-2.5 rounded-lg text-sm transition-colors flex-1 sm:flex-none text-center" title="Exportar Excel"><i class="fa-solid fa-file-excel mr-1"></i> Excel</button>
+                            <button onclick="imprimirArea('print-area-orcamentos')" class="bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-4 py-2.5 rounded-lg text-sm transition-colors flex-1 sm:flex-none text-center" title="Imprimir"><i class="fa-solid fa-print"></i></button>
+                            <button onclick="baixarPDF('print-area-orcamentos', 'Meus_Orcamentos')" class="bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-4 py-2.5 rounded-lg text-sm transition-colors flex-1 sm:flex-none text-center" title="Salvar PDF"><i class="fa-solid fa-file-pdf"></i></button>
+                            <button onclick="exportarExcel('tabela-orcamentos-export', 'Meus_Orcamentos')" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold px-4 py-2.5 rounded-lg text-sm transition-colors flex-1 sm:flex-none text-center" title="Exportar Excel"><i class="fa-solid fa-file-excel mr-1"></i> Excel</button>
                         </div>
                     </div>
-                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden" id="print-area-Orçamentos">
+                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden" id="print-area-orcamentos">
                         <div class="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 print:hidden">
                             <h3 class="font-bold text-slate-700 dark:text-slate-200">Meus Orçamentos</h3>
-                            <span class="text-xs text-orange-700 dark:text-orange-400 font-bold bg-orange-100 dark:bg-orange-900/40 border border-orange-200 dark:border-orange-800/50 px-3 py-1.5 rounded-lg w-full sm:w-auto text-center" id="Orçamentos-total-filtros">Valor Total em Orçamentos: R$ 0,00</span>
+                            <span class="text-xs text-orange-700 dark:text-orange-400 font-bold bg-orange-100 dark:bg-orange-900/40 border border-orange-200 dark:border-orange-800/50 px-3 py-1.5 rounded-lg w-full sm:w-auto text-center" id="orcamentos-total-filtros">Valor Total em Orçamentos: R$ 0,00</span>
                         </div>
                         <div class="overflow-x-auto custom-scrollbar">
-                            <table class="w-full text-left min-w-[600px]" id="tabela-Orçamentos-export">
+                            <table class="w-full text-left min-w-[600px]" id="tabela-orcamentos-export">
                                 <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold border-b border-slate-200 dark:border-slate-700">
                                     <tr>
                                         <th class="p-3">Data</th>
                                         <th class="p-3">Orçamento</th>
-                                        <th class="p-3">Cliente /Ã‰ Vendedor</th>
+                                        <th class="p-3">Cliente / Vendedor</th>
                                         <th class="p-3 text-center">Itens</th>
                                         <th class="p-3 text-right">Valor Total</th>
                                         <th class="p-3 text-center w-36 print:hidden">Ações</th>
                                     </tr>
                                 </thead>
-                                <tbody id="tabela-Orçamentos-body" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
+                                <tbody id="tabela-orcamentos-body" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
                             </table>
                         </div>
                     </div>
                 </div>
-
             </div>
         </main>
     </div>
 
-    <!-- M O D A I S   D A   O P E R A Ã‡ Á O -->
+    <!-- M O D A I S   D A   O P E R A Ç Ã O -->
 
-    <!-- CÃ‚MERA DO LEITOR -->
+    <!-- CÂMERA DO LEITOR -->
     <div id="modal-leitor-codigo" class="fixed inset-0 bg-slate-900/90 z-[400] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
             <div class="bg-blue-600 p-4 text-white flex justify-between items-center shrink-0">
@@ -317,7 +315,7 @@
         </div>
     </div>
 
-    <!-- OPÃ‡Ã•ES DE RECIBO E CONTRATO -->
+    <!-- OPÇÕES DE RECIBO E CONTRATO -->
     <div id="modal-opcoes-recibo" class="fixed inset-0 bg-slate-900/80 z-[200] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
             <div class="bg-emerald-500 p-5 text-white text-center">
@@ -327,7 +325,7 @@
             <div id="print-area" class="hidden bg-white dark:bg-slate-800 text-black font-mono"></div>
             <div class="p-5 bg-slate-50 dark:bg-slate-900 flex flex-col gap-2 max-h-[60vh] overflow-y-auto custom-scrollbar">
 
-                <!-- [RESERVADO PARA FUTURA EMISSÁO FISCAL] -->
+                <!-- [RESERVADO PARA FUTURA EMISSÃO FISCAL] -->
                 <div id="fiscal-container" class="hidden">
                     <div id="fiscal-status-container" class="hidden mb-2 text-center p-3 rounded-lg border">
                         <!-- Será preenchido via JS (loader, sucesso, erro) -->
@@ -340,7 +338,7 @@
 
                     <div class="border-t border-slate-200 dark:border-slate-700 my-1"></div>
                 </div>
-                <!-- [/RESERVADO PARA FUTURA EMISSÁO FISCAL] -->
+                <!-- [/RESERVADO PARA FUTURA EMISSÃO FISCAL] -->
 
                 <button onclick="printAction('thermal')" class="w-full bg-slate-800 hover:bg-slate-900 text-white p-3 md:p-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"><i class="fa-solid fa-receipt text-xl"></i> Recibo Bobina</button>
                 <button onclick="printAction('a4')" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-3 md:p-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"><i class="fa-solid fa-print text-xl"></i> Recibo A4</button>
@@ -517,7 +515,7 @@
             <div class="p-4 md:p-6 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900 custom-scrollbar">
                 <!-- NOVO: OPÃ‡ÁO DE VÍNCULO MANUAL (MOSTRADA APENAS NO XML) -->
                 <div id="div-acao-vinculo-xml" class="hidden mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-lg">
-                    <lAção: Vincular ou Cadastrar?</label>
+                    <label class="text-xs font-bold text-indigo-700 dark:text-indigo-300 mb-1 block">Ação: Vincular ou Cadastrar?</label>
                     <select id="prod-acao-vinculo" onchange="alternarAcaoVinculoXML()" class="w-full bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 p-2 rounded text-sm outline-none mb-2 font-bold text-slate-700 dark:text-slate-200">
                         <option value="NOVO">Cadastrar como Novo Produto</option>
                         <option value="VINCULAR">Vincular a Produto Existente</option>
