@@ -1363,8 +1363,8 @@ function salvarConta() {
             data: dataVenc.toISOString(), 
             dataCartorio: document.getElementById('conta-data-protesto') ? document.getElementById('conta-data-protesto').value : '',
             cartorioNome: document.getElementById('conta-cartorio') ? document.getElementById('conta-cartorio').value : '',
-              multaPerc: parseFloat(document.getElementById('conta-multa').value) || 0,
-              jurosMesPerc: parseFloat(document.getElementById('conta-juros').value) || 0, 
+              multaPerc: parseFloat(document.getElementById('conta-multa') ? document.getElementById('conta-multa').value : 0) || 0,
+              jurosMesPerc: parseFloat(document.getElementById('conta-juros') ? document.getElementById('conta-juros').value : 0) || 0, 
             competencia: document.getElementById('conta-competencia').value,
             numNF: document.getElementById('conta-num-nf').value,
             numBoleto: document.getElementById('conta-num-boleto').value,
@@ -2799,4 +2799,5 @@ window.renderCaixaDiario = renderCaixaDiario;
 window.imprimirArea = imprimirArea;
 window.baixarPDF = baixarPDF;
 window.fecharModalConfirmacao = fecharModalConfirmacao;
+
 

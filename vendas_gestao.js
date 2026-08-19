@@ -699,7 +699,7 @@ function abrirModalContaEdicao(id) {
     const pessoaWrapEl = document.getElementById('conta-pessoa-novo-wrap');
     const pessoaInputEl = document.getElementById('conta-pessoa');
     if (pessoaSelEl) {
-        const match = [...pessoaSelEl.options].find(o => o.value === f.pessoa);
+        const match = [...pessoaSelEl.options].find(o => o.value.toLowerCase() === (f.pessoa || '').toLowerCase());
         if (match) {
             pessoaSelEl.value = f.pessoa;
             if(pessoaWrapEl) pessoaWrapEl.classList.add('hidden');
@@ -2367,4 +2367,5 @@ window.renderHistoricoVendas = function() { renderVendas(); };
 window.abrirDetalheVenda = function(id) { verDetalhesVenda(id); };
 window.verDetalheVenda = function(id) { verDetalhesVenda(id); };
 window.abrirDetalhesVenda = function(id) { verDetalhesVenda(id); };
+
 
