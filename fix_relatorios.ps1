@@ -1,28 +1,28 @@
 $ErrorActionPreference = "Stop"
 
-$filePath = "g:\VERSOES DO SISTEMA\site sistema\compras.js"
+$filePath = "g:\VERSOES DO SISTEMA\site sistema\relatorios_v2.js"
 $content = Get-Content $filePath -Raw
 
 # Replace onSnapshot
 $targetSnapshot = @"
     firestore.collection('fornecedores').onSnapshot(snap => {
         db.fornecedores = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        tentarRefresh();
+        tentarExecutarFiltro();
     });
 "@
 $replacementSnapshot = @"
     firestore.collection('fornecedores').onSnapshot(snap => {
         db.fornecedores = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        tentarRefresh();
+        tentarExecutarFiltro();
     });
     firestore.collection('funcionarios').onSnapshot(snap => {
         db.funcionarios = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        tentarRefresh();
+        tentarExecutarFiltro();
     });
 "@
 $content = $content.Replace($targetSnapshot, $replacementSnapshot)
 
-# In case it doesn't have tentarRefresh():
+# In case it doesn't have tentarExecutarFiltro():
 $targetSnapshot2 = @"
     firestore.collection('fornecedores').onSnapshot(snap => {
         db.fornecedores = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -52,4 +52,4 @@ $replacementSelect = @"
 $content = $content.Replace($targetSelect, $replacementSelect)
 
 Set-Content -Path $filePath -Value $content -Encoding UTF8
-Write-Output "Fix applied to compras.js successfully"
+Write-Output "Fix applied to relatorios_v2.js successfully"

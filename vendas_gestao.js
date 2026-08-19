@@ -1,5 +1,5 @@
-// ==========================================
-// GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÇÕES
+﻿// ==========================================
+// GESTÃƒO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÃ‡Ã•ES
 // ==========================================
 
 let acaoConfirmacaoPendente = null;
@@ -7,15 +7,15 @@ window.tempXMLData = null;
 window.xmlItemEditIndex = null;
 let compraManualItens = []; 
 
-const categoriasPagar = ['Fornecedores / Compras', 'Impostos (DAS, ICMS, etc)', 'Salários / Folha', 'Aluguel', 'Água', 'Energia', 'Internet / Telefonia', 'Contabilidade', 'Sistema / Software', 'IPTU', 'Outras Despesas'];
-const categoriasReceber = ['Vendas', 'Serviços', 'Outras Receitas'];
+const categoriasPagar = ['Fornecedores / Compras', 'Impostos (DAS, ICMS, etc)', 'SalÃ¡rios / Folha', 'Aluguel', 'Ãgua', 'Energia', 'Internet / Telefonia', 'Contabilidade', 'Sistema / Software', 'IPTU', 'Outras Despesas'];
+const categoriasReceber = ['Vendas', 'ServiÃ§os', 'Outras Receitas'];
 
 // Evita o "piscar" da tela carregando as abas instantaneamente antes do Firebase
 document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const view = urlParams.get('view') || 'vendas_gestao';
     
-    // Set default filter to 'Este Mês'
+    // Set default filter to 'Este MÃªs'
     if(typeof mudarPeriodoVendas === 'function') mudarPeriodoVendas(false);
     
     if (typeof mudarVisaoLocal === 'function') mudarVisaoLocal(view);
@@ -67,7 +67,7 @@ function mudarPeriodoVendas(render = true) {
 }
 
 // ==========================================
-// 1. NAVEGAÇÃO E DASHBOARDS
+// 1. NAVEGAÃ‡ÃƒO E DASHBOARDS
 // ==========================================
 function mudarVisaoLocal(viewId) {
     document.querySelectorAll('.view-section').forEach(el => { 
@@ -115,25 +115,25 @@ function refreshCurrentView() {
 }
 
 // ==========================================
-// MIGRAÇÃO AUTOMÁTICA DO BANCO ANTIGO
+// MIGRAÃ‡ÃƒO AUTOMÃTICA DO BANCO ANTIGO
 // ==========================================
 async function migrarDadosSeNecessario() {
     try {
-        // Verifica se já existem dados nas coleções novas
+        // Verifica se jÃ¡ existem dados nas coleÃ§Ãµes novas
         const comprasSnap = await firestore.collection('compras').limit(1).get();
         const finSnap = await firestore.collection('financeiro').limit(1).get();
         
-        // Se já há dados em compras OU financeiro, não precisa migrar
+        // Se jÃ¡ hÃ¡ dados em compras OU financeiro, nÃ£o precisa migrar
         if (!comprasSnap.empty || !finSnap.empty) return;
 
-        // Coleções novas estão vazias — tenta ler do banco antigo
+        // ColeÃ§Ãµes novas estÃ£o vazias â€” tenta ler do banco antigo
         const bancoPrincipalSnap = await firestore.collection('fc_moveis').doc('banco_principal').get();
         if (!bancoPrincipalSnap.exists) return;
 
         const dados = bancoPrincipalSnap.data();
         if (!dados) return;
 
-        // Checa se há algum dado útil no banco antigo
+        // Checa se hÃ¡ algum dado Ãºtil no banco antigo
         const temDados = (dados.compras && dados.compras.length > 0) || (dados.financeiro && dados.financeiro.length > 0);
         if (!temDados) return;
 
@@ -162,16 +162,16 @@ async function migrarDadosSeNecessario() {
         setTimeout(() => window.location.reload(), 2000);
 
     } catch (e) {
-        console.error('Erro na migração:', e);
+        console.error('Erro na migraÃ§Ã£o:', e);
         showToast('Aviso: Erro ao importar dados anteriores.', 'error');
     }
 }
 
 function inicializarGestao() {
-    // Primeiro tenta migrar dados do banco antigo se necessário
+    // Primeiro tenta migrar dados do banco antigo se necessÃ¡rio
     migrarDadosSeNecessario();
 
-    // Controla quantas coleções já carregaram o primeiro snapshot
+    // Controla quantas coleÃ§Ãµes jÃ¡ carregaram o primeiro snapshot
     let colecoesProntas = 0;
     const totalColecoes = 6;
     function tentarRefresh() {
@@ -254,7 +254,7 @@ function atualizarCardsFluxoDeCaixa() {
 }
 
 // ==========================================
-// 2. MOTORES DE IMPRESSÃO E PDF (100% BLINDADOS E DEFINITIVOS)
+// 2. MOTORES DE IMPRESSÃƒO E PDF (100% BLINDADOS E DEFINITIVOS)
 // ==========================================
 
 function abrirConfirmacao(titulo, mensagem, acao) { 
@@ -276,7 +276,7 @@ function fecharModalConfirmacao() {
 
 
 function printHtmlSeguro(htmlCompleto) {
-    showToast("Preparando documento para Impressão...", "info");
+    showToast("Preparando documento para ImpressÃ£o...", "info");
     
     const printWin = window.open('', '', 'width=800,height=600');
     if (!printWin) {
@@ -290,7 +290,7 @@ function printHtmlSeguro(htmlCompleto) {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Impressão</title>
+            <title>ImpressÃ£o</title>
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
@@ -318,13 +318,13 @@ function printHtmlSeguro(htmlCompleto) {
 }
 
 function imprimirArea(areaId) {
-    let empNome = "Relatório Oficial do Sistema";
+    let empNome = "RelatÃ³rio Oficial do Sistema";
     if (db && db.config && db.config.empresa && db.config.empresa.nome) empNome = db.config.empresa.nome;
     let logoHtml = "";
     if (db && db.config && db.config.empresa && db.config.empresa.logo) logoHtml = `<img src="${db.config.empresa.logo}" style="max-height: 60px; margin-bottom: 10px; border-radius: 8px;">`;
     
     const element = document.getElementById(areaId);
-    if(!element) return showToast("Área de impressão não encontrada.", "error");
+    if(!element) return showToast("Ãrea de impressÃ£o nÃ£o encontrada.", "error");
     
     const printContent = element.innerHTML; 
     const htmlCompleto = `
@@ -342,7 +342,7 @@ function imprimirArea(areaId) {
 
 function baixarPDF(areaId, filename) {
     const element = document.getElementById(areaId); 
-    if(!element) return showToast("Erro: Área do PDF não encontrada.", "error");
+    if(!element) return showToast("Erro: Ãrea do PDF nÃ£o encontrada.", "error");
 
     const printContent = element.innerHTML; 
     
@@ -377,7 +377,7 @@ function baixarPDF(areaId, filename) {
             ${printContent}
             
             <script>
-                // Executa a impressão quando tudo carregar
+                // Executa a impressÃ£o quando tudo carregar
                 setTimeout(() => {
                     window.focus();
                     window.print();
@@ -392,7 +392,7 @@ function baixarPDF(areaId, filename) {
 function downloadPDF(areaId, filename) { baixarPDF(areaId, filename); }
 
 function exportarExcel(tabelaId, filename) {
-    let table = document.getElementById(tabelaId); if(!table) return showToast('Tabela não encontrada.', 'error');
+    let table = document.getElementById(tabelaId); if(!table) return showToast('Tabela nÃ£o encontrada.', 'error');
     let rows = table.querySelectorAll('tr'); let csv = [];
     for (let i = 0; i < rows.length; i++) { let row = [], cols = rows[i].querySelectorAll('td:not(.print\\:hidden), th:not(.print\\:hidden)'); for (let j = 0; j < cols.length; j++) { row.push('"' + cols[j].innerText.replace(/"/g, '""').trim() + '"'); } csv.push(row.join(';')); }
     let csvFile = new Blob(["\uFEFF"+csv.join('\n')], {type: 'text/csv;charset=utf-8;'});
@@ -401,7 +401,7 @@ function exportarExcel(tabelaId, filename) {
 }
 
 // ==========================================
-// 3. FINANCEIRO E CAIXA FÍSICO
+// 3. FINANCEIRO E CAIXA FÃSICO
 // ==========================================
 function renderFinAbas(aba) {
     document.querySelectorAll('.fin-area').forEach(el => el.classList.add('hidden'));
@@ -434,7 +434,7 @@ function renderCaixaDiario() {
 }
 
 function abrirModalCaixa(op) {
-    if(op === 'abrir' && db.caixa.status === 'ABERTO') return showToast('O caixa já está aberto!', 'error'); if(op !== 'abrir' && db.caixa.status === 'FECHADO') return showToast('Abra o caixa primeiro!', 'error');
+    if(op === 'abrir' && db.caixa.status === 'ABERTO') return showToast('O caixa jÃ¡ estÃ¡ aberto!', 'error'); if(op !== 'abrir' && db.caixa.status === 'FECHADO') return showToast('Abra o caixa primeiro!', 'error');
     document.getElementById('caixa-operacao-tipo').value = op.toUpperCase(); document.getElementById('modal-caixa-title').innerText = op === 'abrir' ? 'Abertura de Caixa' : (op === 'fechar' ? 'Fechamento de Caixa' : (op === 'sangria' ? 'Sangria (Retirada)' : 'Suprimento (Entrada)'));
     document.getElementById('caixa-op-valor').value = ''; document.getElementById('caixa-op-desc').value = '';
     if(op === 'fechar') { document.getElementById('caixa-op-valor').value = db.caixa.saldo; document.getElementById('caixa-op-desc').value = 'Fechamento do dia'; } if(op === 'abrir') { document.getElementById('caixa-op-valor').value = 0; document.getElementById('caixa-op-desc').value = 'Troco Inicial'; }
@@ -455,7 +455,7 @@ async function confirmarMovCaixa() {
     
     try {
         await firestore.collection('fc_moveis').doc('caixa').set({ ...cxAtual, status: novoStatus, saldo: novoSaldo, historico: cxHistoricoNovo }, { merge: true });
-        fecharModalCaixa(); renderCaixaDiario(); showToast('Operação realizada com sucesso!', 'success');
+        fecharModalCaixa(); renderCaixaDiario(); showToast('OperaÃ§Ã£o realizada com sucesso!', 'success');
     } catch(err) { console.error(err); showToast('Erro ao registrar caixa.', 'error'); }
 }
 
@@ -549,13 +549,13 @@ function renderTitulos(tipo) {
             let nro = c && c.wpp ? c.wpp.replace(/\D/g, '') : (c && c.telefone ? c.telefone.replace(/\D/g, '') : ''); 
             
             if(nro) { 
-                let texto = `Olá! Notamos que há um título pendente no valor de ${formatMoney(f.valor)} (Ref: ${f.ref}). Por favor, entre em contato conosco da ${db.config?.empresa?.nome || 'nossa loja'}.`; 
-                if (f.status === 'PAGO') texto = `Olá! Gostaríamos de agradecer o pagamento do seu título no valor de ${formatMoney(f.valor)} (Ref: ${f.ref}). Muito obrigado!`;
-                if (f.status === 'ATRASADO' || isAtrasado) texto = `Olá! Verificamos que o título no valor de ${formatMoney(f.valor)} (Ref: ${f.ref}) encontra-se em atraso. Pode nos ajudar com a previsão de pagamento?`;
+                let texto = `OlÃ¡! Notamos que hÃ¡ um tÃ­tulo pendente no valor de ${formatMoney(f.valor)} (Ref: ${f.ref}). Por favor, entre em contato conosco da ${db.config?.empresa?.nome || 'nossa loja'}.`; 
+                if (f.status === 'PAGO') texto = `OlÃ¡! GostarÃ­amos de agradecer o pagamento do seu tÃ­tulo no valor de ${formatMoney(f.valor)} (Ref: ${f.ref}). Muito obrigado!`;
+                if (f.status === 'ATRASADO' || isAtrasado) texto = `OlÃ¡! Verificamos que o tÃ­tulo no valor de ${formatMoney(f.valor)} (Ref: ${f.ref}) encontra-se em atraso. Pode nos ajudar com a previsÃ£o de pagamento?`;
                 
                 btnWhats = `<a href="https://wa.me/55${nro}?text=${encodeURIComponent(texto)}" target="_blank" class="text-emerald-500 hover:text-emerald-700 p-1.5 print:hidden" title="Enviar WhatsApp"><i class="fa-brands fa-whatsapp text-lg"></i></a>`; 
             } else {
-                btnWhats = `<button onclick="showToast('Cliente não possui WhatsApp ou Telefone cadastrado.', 'info')" class="text-slate-300 hover:text-slate-400 p-1.5 print:hidden" title="Sem WhatsApp na Ficha"><i class="fa-brands fa-whatsapp text-lg"></i></button>`;
+                btnWhats = `<button onclick="showToast('Cliente nÃ£o possui WhatsApp ou Telefone cadastrado.', 'info')" class="text-slate-300 hover:text-slate-400 p-1.5 print:hidden" title="Sem WhatsApp na Ficha"><i class="fa-brands fa-whatsapp text-lg"></i></button>`;
             }
         }
 
@@ -575,21 +575,21 @@ function renderTitulos(tipo) {
         <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
             <td class="p-3 text-slate-500 dark:text-slate-400 font-mono text-xs">
                   ${formatData(f.data).split(' ')[0]}
-                  ${f.dataCartorio ? `<br><span class="text-[9.5px] font-bold text-red-600 dark:text-red-400 mt-1 inline-block" title="Ir para Cartório"><i class="fa-solid fa-gavel"></i> ${formatData(f.dataCartorio + "T12:00:00").split(" ")[0]}</span>` : ""}
+                  ${f.dataCartorio ? `<br><span class="text-[9.5px] font-bold text-red-600 dark:text-red-400 mt-1 inline-block" title="Ir para CartÃ³rio"><i class="fa-solid fa-gavel"></i> ${formatData(f.dataCartorio + "T12:00:00").split(" ")[0]}</span>` : ""}
               </td>
             <td class="p-3 font-bold text-slate-800 dark:text-slate-100 truncate max-w-[200px]">${f.pessoa}</td>
             <td class="p-3 text-slate-600 dark:text-slate-300 text-[11px]">${f.categoria || '-'} <br><span class="font-bold">${f.ref}</span></td>
             <td class="p-3 text-right font-black ${tipo === 'RECEITA' ? 'text-blue-600' : 'text-red-500'}">${formatMoney(valorAExibir)}</td>
             <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${corStatus}">${badgeStatus}</span></td>
             <td class="p-3 text-center flex items-center justify-center gap-1 print:hidden">
-                <button onclick="verDetalhesTitulo('${f.id}')" class="text-blue-500 hover:text-blue-700 p-1.5" title="Detalhes do Título"><i class="fa-solid fa-eye"></i></button>
-                <button onclick="abrirModalContaEdicao('${f.id}')" class="text-indigo-500 hover:text-indigo-700 p-1.5" title="Editar Lançamento"><i class="fa-solid fa-pen"></i></button>
+                <button onclick="verDetalhesTitulo('${f.id}')" class="text-blue-500 hover:text-blue-700 p-1.5" title="Detalhes do TÃ­tulo"><i class="fa-solid fa-eye"></i></button>
+                <button onclick="abrirModalContaEdicao('${f.id}')" class="text-indigo-500 hover:text-indigo-700 p-1.5" title="Editar LanÃ§amento"><i class="fa-solid fa-pen"></i></button>
                 ${btnWhats}
                 ${acoesExtras}
                 <button onclick="excluirTitulo('${f.id}')" class="text-slate-400 hover:text-red-500 p-1.5 ml-1" title="Excluir"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
-    }).join('') || `<tr><td colspan="6" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum título encontrado.</td></tr>`;
+    }).join('') || `<tr><td colspan="6" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum tÃ­tulo encontrado.</td></tr>`;
 }
 
 // ==========================================
@@ -600,7 +600,7 @@ function preencherContaPessoaSelect(tipo) {
     if (!sel) return;
     const lista = tipo === 'RECEBER'
         ? (db.clientes || []).map(c => c.nome || c.razaoSocial || '')
-        : (db.fornecedores || []).map(f => f.nome || f.razaoSocial || '');
+        : [...(db.fornecedores || []), ...(db.funcionarios || [])].map(f => f.nome || f.razaoSocial || '');
     const unique = [...new Set(lista.filter(n => n.trim()))].sort();
     sel.innerHTML = '<option value="">-- Selecione um cadastrado --</option>'
         + unique.map(n => `<option value="${n}">${n}</option>`).join('')
@@ -631,8 +631,8 @@ function getPessoaFinalConta() {
     return inputVal;
 }
 // ==========================================
-// 5. MODAL DE CADASTRO/EDIÇÃO DE CONTA (COM RECORRÊNCIA)
-// 5. MODAL DE CADASTRO/EDIÇÃO DE CONTA (COM RECORRÊNCIA)
+// 5. MODAL DE CADASTRO/EDIÃ‡ÃƒO DE CONTA (COM RECORRÃŠNCIA)
+// 5. MODAL DE CADASTRO/EDIÃ‡ÃƒO DE CONTA (COM RECORRÃŠNCIA)
 // ==========================================
 function toggleRecorrencia() {
     const rec = document.getElementById('conta-recorrencia').value;
@@ -667,7 +667,7 @@ function abrirModalConta(tipo) {
     document.getElementById('conta-acrescimo').value = '0';
     document.getElementById('conta-desconto').value = '0';
     document.getElementById('conta-centro-custo').value = 'Geral';
-    document.getElementById('conta-banco').value = 'Caixa Físico';
+    document.getElementById('conta-banco').value = 'Caixa FÃ­sico';
     document.getElementById('conta-status').value = 'PENDENTE';
     document.getElementById('conta-metodo').value = '';
     
@@ -687,7 +687,7 @@ function abrirModalContaEdicao(id) {
     
     document.getElementById('conta-categoria').innerHTML = (tipo === 'RECEBER' ? categoriasReceber : categoriasPagar).map(c => `<option value="${c}">${c}</option>`).join('');
     document.getElementById('modal-conta-header').className = `p-4 md:p-5 text-white flex justify-between items-center shrink-0 bg-indigo-600`; 
-    document.getElementById('modal-conta-title').innerText = 'Editar Lançamento Financeiro';
+    document.getElementById('modal-conta-title').innerText = 'Editar LanÃ§amento Financeiro';
     
     document.getElementById('conta-recorrencia').value = 'UNICA';
     document.getElementById('conta-recorrencia').disabled = true;
@@ -713,7 +713,7 @@ function abrirModalContaEdicao(id) {
     document.getElementById('conta-ref').value = f.ref || '';
     document.getElementById('conta-categoria').value = f.categoria || (tipo === 'RECEBER' ? 'Vendas' : 'Outras Despesas');
     document.getElementById('conta-centro-custo').value = f.centroCusto || 'Geral';
-    document.getElementById('conta-banco').value = f.contaBancaria || 'Caixa Físico';
+    document.getElementById('conta-banco').value = f.contaBancaria || 'Caixa FÃ­sico';
     
     document.getElementById('conta-emissao').value = f.dataEmissao || '';
     document.getElementById('conta-vencimento').value = f.data ? f.data.split('T')[0] : '';
@@ -856,10 +856,10 @@ function salvarConta() {
         renderFinAbas(tipo === 'RECEITA' ? 'receber' : 'pagar'); 
         
         if (isEdicao) {
-            showToast('Título Atualizado!', 'success');
+            showToast('TÃ­tulo Atualizado!', 'success');
         } else {
-            if (qtdLancamentos > 1) showToast(`${contasGeradas} Títulos gerados!`, 'success');
-            else showToast('Título Salvo!', 'success');
+            if (qtdLancamentos > 1) showToast(`${contasGeradas} TÃ­tulos gerados!`, 'success');
+            else showToast('TÃ­tulo Salvo!', 'success');
         }
     }).catch(e => {
         console.error(e);
@@ -868,11 +868,11 @@ function salvarConta() {
 }
 
 function excluirTitulo(id) { 
-    abrirConfirmacao('Excluir Título', 'Deseja apagar permanentemente?', () => { 
+    abrirConfirmacao('Excluir TÃ­tulo', 'Deseja apagar permanentemente?', () => { 
         const tit = db.financeiro.find(f => String(f.id) === String(id)); 
         firestore.collection('financeiro').doc(String(id)).delete().then(() => {
             if(tit) renderFinAbas(tit.tipo === 'RECEITA' ? 'receber' : 'pagar'); 
-            showToast('Excluído!'); 
+            showToast('ExcluÃ­do!'); 
         }).catch(e => { console.error(e); showToast('Erro', 'error'); });
     }); 
 }
@@ -881,7 +881,7 @@ async function estornarTitulo(id) {
     const f = db.financeiro.find(x => String(x.id) === String(id));
     if (!f || f.status !== 'PAGO') return;
 
-    abrirConfirmacao('Estornar Pagamento', 'Voltará para PENDENTE e reverterá o caixa.', async () => {
+    abrirConfirmacao('Estornar Pagamento', 'VoltarÃ¡ para PENDENTE e reverterÃ¡ o caixa.', async () => {
         const batch = firestore.batch();
         if (f.metodoPagamento === 'Dinheiro') {
             let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
@@ -926,7 +926,7 @@ async function confirmarRenegociacao() {
 
     const qtdParcelas = parseInt(document.getElementById('reneg-qtd').value);
     const dataInicialStr = document.getElementById('reneg-data').value;
-    if (!dataInicialStr || isNaN(qtdParcelas)) return showToast('Preencha as informações.', 'error');
+    if (!dataInicialStr || isNaN(qtdParcelas)) return showToast('Preencha as informaÃ§Ãµes.', 'error');
 
     const valorPorParcela = fOriginal.valor / qtdParcelas;
     const dataInicial = new Date(dataInicialStr + 'T12:00:00');
@@ -953,7 +953,7 @@ async function confirmarRenegociacao() {
 
 function verDetalhesTitulo(id) {
     const f = db.financeiro.find(x => x.id === id); if(!f) return; const isReceita = f.tipo === 'RECEITA' || !f.tipo;
-    document.getElementById('det-tit-header').className = `p-4 md:p-5 text-white flex justify-between items-center ${isReceita ? 'bg-blue-600' : 'bg-red-600'}`; document.getElementById('det-tit-lbl-pessoa').innerText = isReceita ? 'Cliente / Pagador' : 'Fornecedor / Favorecido'; document.getElementById('det-tit-pessoa').innerText = f.pessoa || 'Não informado';
+    document.getElementById('det-tit-header').className = `p-4 md:p-5 text-white flex justify-between items-center ${isReceita ? 'bg-blue-600' : 'bg-red-600'}`; document.getElementById('det-tit-lbl-pessoa').innerText = isReceita ? 'Cliente / Pagador' : 'Fornecedor / Favorecido'; document.getElementById('det-tit-pessoa').innerText = f.pessoa || 'NÃ£o informado';
     const isAtrasado = f.status === 'PENDENTE' && new Date(f.data).getTime() < new Date().getTime(); const badge = document.getElementById('det-tit-status'); badge.innerText = f.status === 'PAGO' ? 'PAGO' : (isAtrasado ? 'ATRASADO' : 'PENDENTE'); badge.className = `mt-2 inline-block px-3 py-1 rounded-full text-[10px] font-black tracking-widest ${f.status === 'PAGO' ? 'bg-emerald-100 text-emerald-700' : (isAtrasado ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700')}`;
     document.getElementById('det-tit-venc').innerText = formatData(f.data).split(' ')[0]; document.getElementById('det-tit-valor-orig').innerText = formatMoney(f.valor); document.getElementById('det-tit-ref').innerText = f.ref || '-'; document.getElementById('det-tit-cat').innerText = f.categoria || '-';
     const areaPgto = document.getElementById('det-tit-area-pagamento');
@@ -976,9 +976,9 @@ async function confirmarBaixa() {
         let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
         let cxSaldoNovo = cxAtual.saldo || 0;
         
-        if(cxAtual.status !== 'ABERTO') return showToast('Abra o Caixa Físico primeiro!', 'error');
-        if(f.tipo === 'RECEITA') { cxSaldoNovo += vf; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Recbto. Título: ${f.pessoa}`, valor: vf }); } 
-        else { if(vf > cxSaldoNovo) return showToast('Saldo do Caixa insuficiente!', 'error'); cxSaldoNovo -= vf; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Pgto. Título: ${f.pessoa}`, valor: vf }); }
+        if(cxAtual.status !== 'ABERTO') return showToast('Abra o Caixa FÃ­sico primeiro!', 'error');
+        if(f.tipo === 'RECEITA') { cxSaldoNovo += vf; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Recbto. TÃ­tulo: ${f.pessoa}`, valor: vf }); } 
+        else { if(vf > cxSaldoNovo) return showToast('Saldo do Caixa insuficiente!', 'error'); cxSaldoNovo -= vf; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Pgto. TÃ­tulo: ${f.pessoa}`, valor: vf }); }
         
         batch.set(firestore.collection('fc_moveis').doc('caixa'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
     }
@@ -1002,7 +1002,7 @@ function processarXMLReal(event) {
             const parser = new DOMParser(); const xmlDoc = parser.parseFromString(e.target.result, "text/xml");
             const getFloatSafe = (context, tag) => { const node = context ? context.getElementsByTagName(tag)[0] : null; return node && node.textContent ? parseFloat(node.textContent) : 0; };
             const getStringSafe = (context, tag) => { const node = context ? context.getElementsByTagName(tag)[0] : null; return node ? node.textContent : ''; };
-            const emit = xmlDoc.getElementsByTagName("emit")[0]; if(!emit) throw new Error("XML inválido.");
+            const emit = xmlDoc.getElementsByTagName("emit")[0]; if(!emit) throw new Error("XML invÃ¡lido.");
             
             const fornNome = getStringSafe(emit, "xNome"); const fornCNPJ = getStringSafe(emit, "CNPJ"); const totalNF = getFloatSafe(xmlDoc, "vNF");
             const numNF = getStringSafe(xmlDoc.getElementsByTagName("ide")[0], "nNF") || "S/N";
@@ -1032,7 +1032,7 @@ function processarXMLReal(event) {
             }
 
             if(financeiroXML.length === 0 && totalNF > 0) {
-                financeiroXML.push({ num: '001', venc: dataEmissao, valor: totalNF, desc: `NF ${numNF} - Parcela Única` });
+                financeiroXML.push({ num: '001', venc: dataEmissao, valor: totalNF, desc: `NF ${numNF} - Parcela Ãšnica` });
             }
 
             window.tempXMLData = { fornNome, fornCNPJ, numNF, dataEmissao, totalNF, produtosXML, financeiroXML, freteExtra: 0 };
@@ -1087,7 +1087,7 @@ function lerXMLCTe(event) {
                 
                 showToast(`CT-e lido! Frete de R$ ${valorFrete.toFixed(2)} rateado nos produtos.`, 'success');
             } else {
-                showToast("Valor do frete não encontrado neste CT-e.", "error");
+                showToast("Valor do frete nÃ£o encontrado neste CT-e.", "error");
             }
         } catch (err) { 
             console.error(err); 
@@ -1206,7 +1206,7 @@ function fecharModalProduto() { document.getElementById('modal-produto').classLi
 function salvarProdutoXmlModal() {
     const nome = document.getElementById('prod-nome').value; const id = document.getElementById('prod-id').value;
     const pXML = window.tempXMLData.produtosXML[window.xmlItemEditIndex];
-    if(!nome) return showToast('Nome obrigatório', 'error');
+    if(!nome) return showToast('Nome obrigatÃ³rio', 'error');
     
     const selectAcao = document.getElementById('prod-acao-vinculo');
     if(selectAcao && selectAcao.value === 'VINCULAR' && !id) {
@@ -1223,7 +1223,7 @@ function salvarProdutoXmlModal() {
         pXML.statusDB = 'NOVO CADASTRADO';
         pXML.idMatch = null;
     }
-    fecharModalProduto(); renderTelaConferenciaXML(); showToast('Ficha salva para a importação!');
+    fecharModalProduto(); renderTelaConferenciaXML(); showToast('Ficha salva para a importaÃ§Ã£o!');
 }
 
 function renderTelaConferenciaXML() {
@@ -1270,7 +1270,7 @@ async function salvarXMLConferido() {
                 batch.update(prodRef, { estoque: pDB.estoque, custo: pDB.custo, margem: pDB.margem, preco: pDB.preco, nome: pDB.nome, ativo: true });
             } 
         }
-        p.idMatch = idProd; // Garante a rastreabilidade pro Relatório de Evolução
+        p.idMatch = idProd; // Garante a rastreabilidade pro RelatÃ³rio de EvoluÃ§Ã£o
         totalQtd += p.qCom; 
         const kRef = firestore.collection('movimentacoes').doc();
         batch.set(kRef, { data: new Date().toISOString(), ref: `NF-e ${data.numNF} ${data.fornNome}`, produtoId: idProd, produtoNome: p.nome, qtd: p.qCom, tipo: 'ENTRADA XML' });
@@ -1300,18 +1300,18 @@ async function salvarXMLConferido() {
 
     try {
         await batch.commit();
-        fecharModalXML(); renderComprasHist(); renderFinAbas('pagar'); showToast('Entrada de XML Concluída!', 'success');
+        fecharModalXML(); renderComprasHist(); renderFinAbas('pagar'); showToast('Entrada de XML ConcluÃ­da!', 'success');
     } catch(err) { console.error(err); showToast('Erro ao importar XML.', 'error'); }
 }
 
 // ==========================================
-// COMPRA MANUAL E EDIÇÃO
+// COMPRA MANUAL E EDIÃ‡ÃƒO
 // ==========================================
 function abrirModalCompraManual() {
     compraManualItens = [];
     document.getElementById('compra-manual-id').value = '';
-    document.getElementById('compra-manual-titulo-modal').innerText = 'Lançar Compra (Sem NF)';
-    document.getElementById('compra-manual-btn-salvar').innerHTML = '<i class="fa-solid fa-save mr-1"></i> Confirmar Lançamento';
+    document.getElementById('compra-manual-titulo-modal').innerText = 'LanÃ§ar Compra (Sem NF)';
+    document.getElementById('compra-manual-btn-salvar').innerHTML = '<i class="fa-solid fa-save mr-1"></i> Confirmar LanÃ§amento';
     
     document.getElementById('compra-manual-data').value = new Date().toISOString().split('T')[0];
     document.getElementById('compra-manual-ref').value = '';
@@ -1335,13 +1335,13 @@ function fecharModalCompraManual() {
 
 function editarCompra(id) {
     const c = db.compras.find(x => String(x.id) === String(id));
-    if (!c) return showToast('Compra não encontrada.', 'error');
+    if (!c) return showToast('Compra nÃ£o encontrada.', 'error');
 
-    abrirConfirmacao('Editar Compra', 'Deseja carregar esta compra para edição? O estoque e o financeiro gerado anteriormente serão apagados ao salvar a nova.', () => {
+    abrirConfirmacao('Editar Compra', 'Deseja carregar esta compra para ediÃ§Ã£o? O estoque e o financeiro gerado anteriormente serÃ£o apagados ao salvar a nova.', () => {
         
         document.getElementById('compra-manual-id').value = c.id;
         document.getElementById('compra-manual-titulo-modal').innerText = 'Editar Compra e Estoque';
-        document.getElementById('compra-manual-btn-salvar').innerHTML = '<i class="fa-solid fa-check-double mr-1"></i> Salvar Alteração';
+        document.getElementById('compra-manual-btn-salvar').innerHTML = '<i class="fa-solid fa-check-double mr-1"></i> Salvar AlteraÃ§Ã£o';
         
         document.getElementById('compra-manual-data').value = c.data ? c.data.split('T')[0] : new Date().toISOString().split('T')[0];
         document.getElementById('compra-manual-ref').value = c.numeroNF === 'S/N' ? '' : c.numeroNF;
@@ -1446,7 +1446,7 @@ async function salvarCompraManual() {
     const refPed = document.getElementById('compra-manual-ref').value || 'S/N';
     
     const totais = calcularTotaisCompraManual();
-    if(compraManualItens.length === 0 || totais.totalGeral <= 0) return showToast("Adicione itens válidos!", "error");
+    if(compraManualItens.length === 0 || totais.totalGeral <= 0) return showToast("Adicione itens vÃ¡lidos!", "error");
     
     for(let i=0; i<compraManualItens.length; i++) {
         if(!compraManualItens[i].prodId) return showToast("Selecione os produtos em todas as linhas!", "error");
@@ -1465,7 +1465,7 @@ async function salvarCompraManual() {
                             pDB.estoque -= item.qCom;
                             batch.update(firestore.collection('produtos').doc(String(pDB.id)), { estoque: pDB.estoque });
                             const kRef = firestore.collection('movimentacoes').doc();
-                            batch.set(kRef, { data: new Date().toISOString(), ref: `Estorno Edição Compra ${cAntiga.numeroNF}`, produtoId: pDB.id, produtoNome: pDB.nome, qtd: -item.qCom, tipo: 'ESTORNO COMPRA' });
+                            batch.set(kRef, { data: new Date().toISOString(), ref: `Estorno EdiÃ§Ã£o Compra ${cAntiga.numeroNF}`, produtoId: pDB.id, produtoNome: pDB.nome, qtd: -item.qCom, tipo: 'ESTORNO COMPRA' });
                         }
                     }
                 });
@@ -1531,7 +1531,7 @@ async function salvarCompraManual() {
     try {
         await batch.commit();
         fecharModalCompraManual(); renderComprasHist(); renderFinAbas('pagar');
-        showToast(isEdicao ? "Compra atualizada com sucesso!" : "Compra Manual lançada com sucesso!", "success");
+        showToast(isEdicao ? "Compra atualizada com sucesso!" : "Compra Manual lanÃ§ada com sucesso!", "success");
     } catch(err) { console.error(err); showToast('Erro', 'error'); }
 }
 
@@ -1595,16 +1595,16 @@ function renderComprasHist() {
                 <button onclick="excluirNF('${c.id}')" class="text-red-500 hover:text-red-700 p-2 transition-colors" title="Excluir"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
-    }).join('') || '<tr><td colspan="6" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhuma compra encontrada no período.</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhuma compra encontrada no perÃ­odo.</td></tr>';
 
     const totalEl = document.getElementById('compras-total-filtros');
     if (totalEl) totalEl.innerText = `Total Gasto: ${formatMoney(totalCompras)}`;
 }
 
 function excluirNF(id) { 
-    abrirConfirmacao('Excluir Nota / Compra', 'Atenção: Não reverte o estoque nem o financeiro.', () => { 
+    abrirConfirmacao('Excluir Nota / Compra', 'AtenÃ§Ã£o: NÃ£o reverte o estoque nem o financeiro.', () => { 
         firestore.collection('compras').doc(String(id)).delete().then(() => {
-            renderComprasHist(); showToast('Compra excluída!'); 
+            renderComprasHist(); showToast('Compra excluÃ­da!'); 
         }).catch(e => { console.error(e); showToast('Erro ao excluir NF.', 'error'); });
     }); 
 }
@@ -1623,7 +1623,7 @@ function verDetalhesNF(id) {
 function fecharModalDetalhesNF() { document.getElementById('modal-detalhes-nf').classList.add('hidden'); }
 
 // ==========================================
-// 9. RELATÓRIOS E BI
+// 9. RELATÃ“RIOS E BI
 // ==========================================
 
 function mudarFiltroBI() {
@@ -1748,12 +1748,12 @@ function renderDashboard() {
     const selProd = document.getElementById('relatorio-custo-produto');
     if(selProd) {
         const prodAtual = selProd.value;
-        selProd.innerHTML = '<option value="">Selecione um Produto para carregar o histórico...</option>' + 
+        selProd.innerHTML = '<option value="">Selecione um Produto para carregar o histÃ³rico...</option>' + 
                             (db.produtos || []).map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
         if(prodAtual) selProd.value = prodAtual;
     }
     
-    // Chamar relatórios avançados
+    // Chamar relatÃ³rios avanÃ§ados
     renderCurvaABC(vendas, fatTotal);
     renderSugestorCompras(vendas, periodo);
 }
@@ -1763,7 +1763,7 @@ function renderCurvaABC(vendasFiltradas, fatTotal) {
     if(!tbody) return;
     
     if(fatTotal === 0 || vendasFiltradas.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500 dark:text-slate-400">Nenhuma venda no período para gerar a Curva ABC.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500 dark:text-slate-400">Nenhuma venda no perÃ­odo para gerar a Curva ABC.</td></tr>';
         return;
     }
 
@@ -1822,8 +1822,8 @@ function renderSugestorCompras(vendasFiltradas, periodoObj) {
     const tbody = document.getElementById('tabela-sugestor-compras');
     if(!tbody) return;
 
-    // Calcular quantos dias tem no período filtrado para achar a média diária
-    let diasPeriodo = 30; // padrão
+    // Calcular quantos dias tem no perÃ­odo filtrado para achar a mÃ©dia diÃ¡ria
+    let diasPeriodo = 30; // padrÃ£o
     if (periodoObj && periodoObj.inicio && periodoObj.fim) {
         const diffTime = Math.abs(periodoObj.fim - periodoObj.inicio);
         diasPeriodo = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -1843,14 +1843,14 @@ function renderSugestorCompras(vendasFiltradas, periodoObj) {
 
     let html = '';
     const produtosApp = db.produtos || [];
-    const ALVO_DIAS_ESTOQUE = 30; // O usuário não especificou, mantendo 30 dias de cobertura
+    const ALVO_DIAS_ESTOQUE = 30; // O usuÃ¡rio nÃ£o especificou, mantendo 30 dias de cobertura
 
     produtosApp.forEach(p => {
-        // Ignorar serviços ou itens sem controle de estoque
+        // Ignorar serviÃ§os ou itens sem controle de estoque
         if(p.tipo === 'Servico') return;
 
         const infoVenda = vendaPorProduto[p.id];
-        if(!infoVenda) return; // Se não vendeu nada no período, não entra na sugestão (ou poderia entrar com alerta de encalhe)
+        if(!infoVenda) return; // Se nÃ£o vendeu nada no perÃ­odo, nÃ£o entra na sugestÃ£o (ou poderia entrar com alerta de encalhe)
 
         const mediaDiaria = infoVenda.qtdVendida / diasPeriodo;
         if(mediaDiaria <= 0) return;
@@ -1868,9 +1868,9 @@ function renderSugestorCompras(vendasFiltradas, periodoObj) {
                 if(autonomiaDias <= 0) {
                     statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-bold border bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800/50"><i class="fa-solid fa-triangle-exclamation"></i> Ruptura</span>';
                 } else if(autonomiaDias <= 7) {
-                    statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-bold border bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800/50"><i class="fa-solid fa-fire"></i> Crítico</span>';
+                    statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-bold border bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800/50"><i class="fa-solid fa-fire"></i> CrÃ­tico</span>';
                 } else {
-                    statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-bold border bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800/50"><i class="fa-solid fa-clock"></i> Atenção</span>';
+                    statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-bold border bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800/50"><i class="fa-solid fa-clock"></i> AtenÃ§Ã£o</span>';
                 }
 
                 html += `
@@ -1888,7 +1888,7 @@ function renderSugestorCompras(vendasFiltradas, periodoObj) {
     });
 
     if(html === '') {
-        tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-emerald-600 dark:text-emerald-400 font-medium"><i class="fa-solid fa-check-circle mr-2"></i> Estoque saudável! Nenhuma necessidade de reposição urgente baseada nas vendas.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-emerald-600 dark:text-emerald-400 font-medium"><i class="fa-solid fa-check-circle mr-2"></i> Estoque saudÃ¡vel! Nenhuma necessidade de reposiÃ§Ã£o urgente baseada nas vendas.</td></tr>';
     } else {
         tbody.innerHTML = html;
     }
@@ -1899,7 +1899,7 @@ function renderEvolucaoCustos() {
     const tbody = document.getElementById('tabela-evolucao-custos');
     
     if(!prodId) {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500 dark:text-slate-400">Selecione um produto acima para ver o histórico.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500 dark:text-slate-400">Selecione um produto acima para ver o histÃ³rico.</td></tr>';
         return;
     }
 
@@ -1970,19 +1970,19 @@ async function analisarFinanceiroIA() {
     const despesasPendentes = db.financeiro.filter(f => f.tipo === 'DESPESA' && f.status === 'PENDENTE').reduce((a,b)=>a+b.valor,0);
     const receitasPendentes = db.financeiro.filter(f => f.tipo === 'RECEITA' && f.status === 'PENDENTE').reduce((a,b)=>a+b.valor,0);
 
-    const prompt = `Você é um CFO rigoroso analisando uma loja varejista de móveis. Analise os seguintes números mensais exatos:
+    const prompt = `VocÃª Ã© um CFO rigoroso analisando uma loja varejista de mÃ³veis. Analise os seguintes nÃºmeros mensais exatos:
     - Faturamento Bruto: R$ ${fatTotal.toFixed(2)}
     - Custo de Mercadorias (CMV): R$ ${cmvTotal.toFixed(2)}
-    - Lucro Líquido Parcial: R$ ${lucroReal.toFixed(2)}
+    - Lucro LÃ­quido Parcial: R$ ${lucroReal.toFixed(2)}
     - Contas a Pagar (Atrasadas/Pendentes): R$ ${despesasPendentes.toFixed(2)}
-    - Contas a Receber (Inadimplência/Pendentes): R$ ${receitasPendentes.toFixed(2)}
+    - Contas a Receber (InadimplÃªncia/Pendentes): R$ ${receitasPendentes.toFixed(2)}
     
-    Aja como o consultor financeiro do gestor. Forneça exatamente 3 insights práticos e executáveis para melhorar o caixa. Seja direto ao ponto. Use marcadores (bullet points). Não use formatação markdown como asteriscos duplos.`;
+    Aja como o consultor financeiro do gestor. ForneÃ§a exatamente 3 insights prÃ¡ticos e executÃ¡veis para melhorar o caixa. Seja direto ao ponto. Use marcadores (bullet points). NÃ£o use formataÃ§Ã£o markdown como asteriscos duplos.`;
 
     const btn = document.getElementById('btn-ia-fin');
     const divRes = document.getElementById('resultado-ia-fin');
     
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> O Gemini está pensando...';
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> O Gemini estÃ¡ pensando...';
     btn.disabled = true;
     divRes.classList.remove('hidden');
     divRes.innerHTML = 'Cruzando dados de faturamento, estoque e contas. Aguarde alguns segundos...';
@@ -1990,13 +1990,13 @@ async function analisarFinanceiroIA() {
     const resposta = await chamarGemini(prompt);
     
     if(resposta) {
-        divRes.innerHTML = resposta.replace(/\*\*/g, '').replace(/\*/g, '•');
-        showToast('Análise concluída com sucesso!', 'success');
+        divRes.innerHTML = resposta.replace(/\*\*/g, '').replace(/\*/g, 'â€¢');
+        showToast('AnÃ¡lise concluÃ­da com sucesso!', 'success');
     } else {
-        divRes.innerHTML = 'Erro ao gerar análise. Verifique se você salvou sua chave API na aba Sistema.';
+        divRes.innerHTML = 'Erro ao gerar anÃ¡lise. Verifique se vocÃª salvou sua chave API na aba Sistema.';
     }
 
-    btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Refazer Análise';
+    btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Refazer AnÃ¡lise';
     btn.disabled = false;
 }
 
@@ -2017,18 +2017,18 @@ function exportarDadosParaIA() {
 
     let lucroBruto = receitaBruta - custoTotal;
 
-    let relatorioTexto = `=== RELATÓRIO FINANCEIRO E DE GESTÃO - FC MÓVEIS ===\nData da exportação: ${new Date().toLocaleString('pt-BR')}\n\n`;
+    let relatorioTexto = `=== RELATÃ“RIO FINANCEIRO E DE GESTÃƒO - FC MÃ“VEIS ===\nData da exportaÃ§Ã£o: ${new Date().toLocaleString('pt-BR')}\n\n`;
     relatorioTexto += `--- 1. DRE SIMPLIFICADA ---\n- Receita Bruta Total: R$ ${receitaBruta.toFixed(2)}\n- Custo da Mercadoria Vendida (CMV): R$ ${custoTotal.toFixed(2)}\n- Lucro Bruto Real: R$ ${lucroBruto.toFixed(2)}\n\n`;
-    relatorioTexto += `--- 2. HISTÓRICO DE VENDAS RECENTES ---\n`;
+    relatorioTexto += `--- 2. HISTÃ“RICO DE VENDAS RECENTES ---\n`;
     vendas.slice(-20).forEach((v, index) => { relatorioTexto += `[Venda ${index + 1}] Data: ${v.data || 'N/A'} | Total: R$ ${Number(v.total || 0).toFixed(2)} | Forma de Pagamento: ${v.pagamento || 'N/A'}\n`; });
-    relatorioTexto += `\n--- 3. MOVIMENTAÇÕES FINANCEIRAS / CAIXA ---\n`;
-    financeiro.slice(-20).forEach((f, index) => { relatorioTexto += `[Movimento ${index + 1}] Tipo: ${f.tipo || 'N/A'} | Descrição: ${f.descricao || 'N/A'} | Valor: R$ ${Number(f.valor || 0).toFixed(2)} | Data: ${f.data || 'N/A'}\n`; });
+    relatorioTexto += `\n--- 3. MOVIMENTAÃ‡Ã•ES FINANCEIRAS / CAIXA ---\n`;
+    financeiro.slice(-20).forEach((f, index) => { relatorioTexto += `[Movimento ${index + 1}] Tipo: ${f.tipo || 'N/A'} | DescriÃ§Ã£o: ${f.descricao || 'N/A'} | Valor: R$ ${Number(f.valor || 0).toFixed(2)} | Data: ${f.data || 'N/A'}\n`; });
 
     const blob = new Blob([relatorioTexto], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = `resumo_financeiro_${new Date().toISOString().slice(0,10)}.txt`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-    showToast("Relatório baixado com sucesso! Basta enviar para a IA.", "success");
+    showToast("RelatÃ³rio baixado com sucesso! Basta enviar para a IA.", "success");
 }
 
 
@@ -2101,10 +2101,10 @@ function renderVendas() {
     const tipoFiltro = tipoEl ? tipoEl.value : 'TODOS';
     
     let filtrados = db.vendas || [];
-    filtrados = filtrados.filter(v => v.tipo !== 'ORÇAMENTO');
+    filtrados = filtrados.filter(v => v.tipo !== 'ORÃ‡AMENTO');
     
     if (tipoFiltro === 'VENDAS') filtrados = filtrados.filter(v => v.tipo === 'VENDA' || !v.tipo);
-    if (tipoFiltro === 'SERVIÇOS') filtrados = filtrados.filter(v => v.tipo === 'SERVIÇO');
+    if (tipoFiltro === 'SERVIÃ‡OS') filtrados = filtrados.filter(v => v.tipo === 'SERVIÃ‡O');
     if (termoNorm) {
         filtrados = filtrados.filter(v => {
             const textoNorm = typeof normalizarTexto === 'function'
@@ -2139,7 +2139,7 @@ function renderVendas() {
             const vendRender = v.vendedor || '-'; 
             const pagRender = v.pag || '-';
             
-            const badgeTipo = v.tipo === 'SERVIÇO' ? `<span class="bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">SERVIÇO</span><br>` : `<span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">VENDA</span><br>`;
+            const badgeTipo = v.tipo === 'SERVIÃ‡O' ? `<span class="bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">SERVIÃ‡O</span><br>` : `<span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">VENDA</span><br>`;
             
             return `
             <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
@@ -2285,7 +2285,7 @@ function fecharModalDetalhesVenda() {
     document.getElementById('modal-detalhes-venda').classList.add('hidden'); 
 }
 
-// NOVO: Funções auxiliares para Vínculo de XML
+// NOVO: FunÃ§Ãµes auxiliares para VÃ­nculo de XML
 function alternarAcaoVinculoXML() {
     const acao = document.getElementById('prod-acao-vinculo').value;
     if(acao === 'VINCULAR') {
@@ -2361,9 +2361,10 @@ function abrirZoom(url) {
     }
 }
 
-// Aliases de compatibilidade para Histórico de Vendas
+// Aliases de compatibilidade para HistÃ³rico de Vendas
 window.filtrarVendas = function() { renderVendas(); };
 window.renderHistoricoVendas = function() { renderVendas(); };
 window.abrirDetalheVenda = function(id) { verDetalhesVenda(id); };
 window.verDetalheVenda = function(id) { verDetalhesVenda(id); };
 window.abrirDetalhesVenda = function(id) { verDetalhesVenda(id); };
+

@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$filePath = "g:\VERSOES DO SISTEMA\site sistema\compras.js"
+$filePath = "g:\VERSOES DO SISTEMA\site sistema\vendas_gestao.js"
 $content = Get-Content $filePath -Raw
 
 # Replace onSnapshot
@@ -52,4 +52,4 @@ $replacementSelect = @"
 $content = $content.Replace($targetSelect, $replacementSelect)
 
 Set-Content -Path $filePath -Value $content -Encoding UTF8
-Write-Output "Fix applied to compras.js successfully"
+Write-Output "Fix applied to vendas_gestao.js successfully"

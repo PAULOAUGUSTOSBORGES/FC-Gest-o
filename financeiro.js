@@ -402,6 +402,10 @@ function inicializarGestao() {
         db.fornecedores = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         tentarRefresh();
     });
+    firestore.collection('funcionarios').onSnapshot(snap => {
+        db.funcionarios = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        tentarRefresh();
+    });
     firestore.collection('fc_moveis').doc('caixa').onSnapshot(doc => {
         if(doc.exists) db.caixa = doc.data();
         else db.caixa = { status: 'FECHADO', saldo: 0, historico: [] };
@@ -1448,7 +1452,7 @@ function preencherContaPessoaSelect(tipo) {
     if (!sel) return;
     const lista = tipo === 'RECEBER'
         ? (db.clientes || []).map(c => c.nome || c.razaoSocial || '')
-        : (db.fornecedores || []).map(f => f.nome || f.razaoSocial || '');
+        : [...(db.fornecedores || []), ...(db.funcionarios || [])].map(f => f.nome || f.razaoSocial || '');
     const unique = [...new Set(lista.filter(n => n.trim()))].sort();
     sel.innerHTML = '<option value="">-- Selecione um cadastrado --</option>'
         + unique.map(n => `<option value="${n}">${n}</option>`).join('')
