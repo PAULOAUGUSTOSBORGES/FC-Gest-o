@@ -1557,6 +1557,12 @@ function abrirModalConta(tipo) {
     document.getElementById('lbl-conta-pessoa').innerText = tipo === 'RECEBER' ? 'Cliente / Pagador *' : 'Fornecedor / Favorecido *';
     
     document.getElementById('conta-categoria').innerHTML = (tipo === 'RECEBER' ? categoriasReceber : categoriasPagar).map(c => `<option value="${c}">${c}</option>`).join('');
+    
+    const _selEl = document.getElementById('conta-pessoa-select'); if(_selEl) _selEl.value = '';
+    const _wrapEl = document.getElementById('conta-pessoa-novo-wrap'); if(_wrapEl) _wrapEl.classList.add('hidden');
+    const _pessoaEl = document.getElementById('conta-pessoa'); if(_pessoaEl) _pessoaEl.value = '';
+    preencherContaPessoaSelect(tipo);
+    
     document.getElementById('modal-conta-header').className = `p-4 md:p-5 text-white flex justify-between items-center shrink-0 ${tipo === 'RECEBER' ? 'bg-emerald-500' : 'bg-red-500'}`; 
     document.getElementById('modal-conta-title').innerText = tipo === 'RECEBER' ? 'Nova Conta a Receber' : 'Nova Conta a Pagar';
     
@@ -1591,6 +1597,29 @@ function abrirModalContaEdicao(id) {
     document.getElementById('lbl-conta-pessoa').innerText = tipo === 'RECEBER' ? 'Cliente / Pagador *' : 'Fornecedor / Favorecido *';
     
     document.getElementById('conta-categoria').innerHTML = (tipo === 'RECEBER' ? categoriasReceber : categoriasPagar).map(c => `<option value="${c}">${c}</option>`).join('');
+    
+    preencherContaPessoaSelect(tipo);
+    const pessoaSelEl = document.getElementById('conta-pessoa-select');
+    const pessoaWrapEl = document.getElementById('conta-pessoa-novo-wrap');
+    const pessoaInputEl = document.getElementById('conta-pessoa');
+    if (pessoaSelEl) {
+        let isKnown = false;
+        Array.from(pessoaSelEl.options).forEach(opt => {
+            if (opt.value === f.pessoa) isKnown = true;
+        });
+        if (isKnown) {
+            pessoaSelEl.value = f.pessoa;
+            if (pessoaWrapEl) pessoaWrapEl.classList.add('hidden');
+            if (pessoaInputEl) pessoaInputEl.value = '';
+        } else {
+            pessoaSelEl.value = '__avulso__';
+            if (pessoaWrapEl) pessoaWrapEl.classList.remove('hidden');
+            if (pessoaInputEl) pessoaInputEl.value = f.pessoa || '';
+        }
+    } else {
+        if (pessoaInputEl) pessoaInputEl.value = f.pessoa || '';
+    }
+    
     document.getElementById('modal-conta-header').className = `p-4 md:p-5 text-white flex justify-between items-center shrink-0 bg-indigo-600`; 
     document.getElementById('modal-conta-title').innerText = 'Editar Lançamento Financeiro';
     
@@ -1598,7 +1627,6 @@ function abrirModalContaEdicao(id) {
     document.getElementById('conta-recorrencia').disabled = true;
     toggleRecorrencia();
 
-    document.getElementById('conta-pessoa').value = f.pessoa || '';
     document.getElementById('conta-ref').value = f.ref || '';
     document.getElementById('conta-categoria').value = f.categoria || (tipo === 'RECEBER' ? 'Vendas' : 'Outras Despesas');
     document.getElementById('conta-centro-custo').value = f.centroCusto || 'Geral';

@@ -1218,6 +1218,11 @@ function abrirModalConta(tipo) {
     document.getElementById('modal-conta-header').className = `p-4 md:p-5 text-white flex justify-between items-center shrink-0 ${tipo === 'RECEBER' ? 'bg-emerald-500' : 'bg-red-500'}`; 
     document.getElementById('modal-conta-title').innerText = tipo === 'RECEBER' ? 'Nova Conta a Receber' : 'Nova Conta a Pagar';
     
+    preencherContaPessoaSelect(tipo);
+    const _selEl = document.getElementById('conta-pessoa-select'); if(_selEl) _selEl.value = '';
+    const _wrapEl = document.getElementById('conta-pessoa-novo-wrap'); if(_wrapEl) _wrapEl.classList.add('hidden');
+    const _pessoaEl = document.getElementById('conta-pessoa'); if(_pessoaEl) _pessoaEl.value = '';
+    
     ['pessoa','ref','emissao','vencimento','competencia','num-nf','num-boleto','valor','acrescimo','desconto','multa','juros','data-pgto','obs','anexo-base64','cartorio','data-protesto'].forEach(id => {
         const el = document.getElementById(`conta-${id}`);
         if(el) el.value = '';
