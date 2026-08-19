@@ -380,26 +380,33 @@ function inicializarGestao() {
     firestore.collection('vendas').onSnapshot(snap => {
         db.vendas = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderCaixaDiario();
+        tentarRefresh();
     });
     firestore.collection('financeiro').onSnapshot(snap => {
         db.financeiro = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        tentarRefresh();
     });
     firestore.collection('compras').onSnapshot(snap => {
         db.compras = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        tentarRefresh();
     });
     firestore.collection('produtos').onSnapshot(snap => {
         db.produtos = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        tentarRefresh();
     });
     firestore.collection('clientes').onSnapshot(snap => {
         db.clientes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        tentarRefresh();
     });
     firestore.collection('fornecedores').onSnapshot(snap => {
         db.fornecedores = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        tentarRefresh();
     });
     firestore.collection('fc_moveis').doc('caixa').onSnapshot(doc => {
         if(doc.exists) db.caixa = doc.data();
         else db.caixa = { status: 'FECHADO', saldo: 0, historico: [] };
         renderCaixaDiario();
+        tentarRefresh();
     });
 }
 
@@ -3793,6 +3800,89 @@ window.conciliarItemOFX = conciliarItemOFX;
 window.criarEConciliarItemOFX = criarEConciliarItemOFX;
 window.conciliarLoteOFX = conciliarLoteOFX;
 window.toggleTodosOFX = toggleTodosOFX;
+
+function ofxModalAtualizarCategorias() {
+    const elTipo = document.getElementById('ofx-modal-tipo');
+    const catSelect = document.getElementById('ofx-modal-categoria');
+    if (!elTipo || !catSelect) return;
+    const tipo = elTipo.value;
+    const cats = tipo === 'RECEITA' ? (typeof categoriasReceber !== 'undefined' ? categoriasReceber : ['Outras Receitas']) : (typeof categoriasPagar !== 'undefined' ? categoriasPagar : ['Outras Despesas']);
+    catSelect.innerHTML = cats.map(c => '<option value="' + c + '">' + c + '</option>').join('');
+}
+
+async function confirmarConciliacaoModalOFX() {
+    if (typeof window.ofxItemAtualIdx === 'undefined' || window.ofxItemAtualIdx === null) return;
+    const item = window.extratoOFXAtual.transacoes[window.ofxItemAtualIdx];
+    const docMatch = item.matchDoc;
+    // Se estivermos vinculando a um título já existente
+    const modoVinculo = window.ofxModoAtual === 'VINCULAR';
+    const isNovo = !modoVinculo || !docMatch || (item.statusMatch === 'SEM_MATCH');
+
+    const tipo = document.getElementById('ofx-modal-tipo')?.value || 'DESPESA';
+    const pessoa = document.getElementById('ofx-modal-pessoa')?.value.trim() || '';
+    const categoria = document.getElementById('ofx-modal-categoria')?.value || '';
+    const centroCusto = document.getElementById('ofx-modal-centro-custo')?.value || 'Operacional';
+    const dataPgto = document.getElementById('ofx-modal-data-pgto')?.value;
+    const valorPago = parseFloat(document.getElementById('ofx-modal-valor-pago')?.value);
+    const metodo = document.getElementById('ofx-modal-metodo')?.value || '';
+    const contaBancaria = document.getElementById('ofx-modal-conta-bancaria')?.value.trim() || '';
+    const obs = document.getElementById('ofx-modal-obs')?.value || '';
+
+    if (!pessoa) return showToast('Preencha o Favorecido.', 'error');
+    if (!dataPgto) return showToast('Preencha a Data.', 'error');
+    if (isNaN(valorPago) || valorPago <= 0) return showToast('Preencha um Valor válido.', 'error');
+
+    const batch = firestore.batch();
+    
+    if (isNovo) {
+        const finRef = firestore.collection('financeiro').doc();
+        const novoDoc = {
+            tipo: tipo,
+            pessoa: pessoa,
+            ref: 'OFX: ' + (item.memo || 'Lançamento'),
+            categoria: categoria,
+            centroCusto: centroCusto,
+            contaBancaria: contaBancaria,
+            valor: valorPago,
+            valorPago: valorPago,
+            status: 'PAGO',
+            data: new Date(dataPgto + 'T12:00:00').toISOString(),
+            dataPagamento: new Date(dataPgto + 'T12:00:00').toISOString(),
+            metodoPagamento: metodo,
+            fitid: item.fitid || '',
+            observacao: obs,
+            ultimaAlteracao: Date.now()
+        };
+        batch.set(finRef, novoDoc);
+        item.matchDoc = { id: finRef.id, ...novoDoc };
+    } else {
+        const finRef = firestore.collection('financeiro').doc(String(docMatch.id));
+        batch.update(finRef, {
+            pessoa: pessoa,
+            categoria: categoria,
+            centroCusto: centroCusto,
+            status: 'PAGO',
+            valorPago: valorPago,
+            metodoPagamento: metodo,
+            contaBancaria: contaBancaria,
+            dataPagamento: new Date(dataPgto + 'T12:00:00').toISOString(),
+            fitid: item.fitid || '',
+            observacao: obs,
+            ultimaAlteracao: Date.now()
+        });
+    }
+
+    try {
+        await batch.commit();
+        item.conciliadoSucesso = true;
+        item.statusMatch = 'JA_CONCILIADO';
+        fecharModalConciliacaoOFX();
+        renderConciliacaoOFX();
+        showToast(isNovo ? 'Criado e conciliado!' : 'Conciliado!', 'success');
+    } catch (e) {
+        showToast('Erro ao gravar.', 'error');
+    }
+}
 
 window.ofxAlternarModo = ofxAlternarModo;
 window.ofxRenderizarTitulosPendentes = ofxRenderizarTitulosPendentes;

@@ -34,7 +34,11 @@ let db = {
 window.currentUserInfo = null;
 
 const formatMoney = (val) => Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-const formatData = (isoStr) => new Date(isoStr).toLocaleString('pt-BR');
+const formatData = (isoStr) => {
+    if (!isoStr) return '-';
+    const d = new Date(isoStr);
+    return isNaN(d.getTime()) ? '-' : d.toLocaleString('pt-BR');
+};
 
 function normalizarTexto(str) {
     if (str === null || str === undefined) return '';
