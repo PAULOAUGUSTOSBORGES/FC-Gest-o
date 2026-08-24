@@ -150,7 +150,7 @@ function aplicarControleDeAcesso() {
         // A aba de funcionários é bloqueada para todos que não são Admin Master
         bloqueado = true;
         mensagemBloqueio = 'Acesso Negado: Apenas o Administrador pode gerenciar Funcionários.';
-    } else if ((path.includes('gestao.html') || path.includes('vendas_gestao.html') || path.includes('financeiro.html') || path.includes('relatorios.html') || path.includes('compras.html')) && !p.perm_gestao) {
+    } else if ((path.includes('vendas_gestao.html') || path.includes('financeiro.html') || path.includes('relatorios.html') || path.includes('compras.html')) && !p.perm_gestao) {
         bloqueado = true;
         mensagemBloqueio = 'Acesso Negado à Gestão Financeira.';
     } else if ((path.includes('operacao.html') || path.includes('pdv.html') || path.includes('vendas_operacao.html') || path.includes('orcamentos.html') || path.includes('caixa.html')) && !p.perm_pdv) {
@@ -237,7 +237,7 @@ document.addEventListener('click', (e) => {
     } else if (link.href.includes('cadastro.html') && !p.perm_cadastros) {
         bloqueado = true;
         mensagemBloqueio = 'Acesso Negado aos Cadastros.';
-    } else if (link.href.includes('gestao.html') && !p.perm_gestao) {
+    } else if ((link.href.includes('vendas_gestao.html') || link.href.includes('financeiro.html') || link.href.includes('relatorios.html') || link.href.includes('compras.html')) && !p.perm_gestao) {
         bloqueado = true;
         mensagemBloqueio = 'Acesso Negado à Gestão Financeira.';
     } else if (link.href.includes('operacao.html') && !p.perm_pdv) {

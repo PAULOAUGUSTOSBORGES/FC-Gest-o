@@ -1,5 +1,5 @@
-﻿// ==========================================
-// GESTÃƒO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÃ‡Ã•ES
+// ==========================================
+// GESTÃÆ’O.JS - ERP FINANCEIRO, DASHBOARD E PROJEÃâ€¡Ãâ€¢ES
 // ==========================================
 
 var ofxItemAtualIdx = null;
@@ -15,11 +15,11 @@ window.tempXMLData = null;
 window.xmlItemEditIndex = null;
 let compraManualItens = []; 
 
-const categoriasPagar = ['Fornecedores / Compras', 'Impostos (DAS, ICMS, etc)', 'SalÃ¡rios / Folha', 'Aluguel', 'Ãgua', 'Energia', 'Internet / Telefonia', 'Contabilidade', 'Sistema / Software', 'IPTU', 'Outras Despesas'];
-const categoriasReceber = ['Vendas', 'ServiÃ§os', 'Outras Receitas'];
+const categoriasPagar = ['Fornecedores / Compras', 'Impostos (DAS, ICMS, etc)', 'Salários / Folha', 'Aluguel', 'Água', 'Energia', 'Internet / Telefonia', 'Contabilidade', 'Sistema / Software', 'IPTU', 'Outras Despesas'];
+const categoriasReceber = ['Vendas', 'Serviços', 'Outras Receitas'];
 
 // ==========================================
-// FUNÃ‡Ã•ES DE TÃTULOS (DETALHES, BAIXA, RENEGOCIAÃ‡ÃƒO)
+// FUNÃâ€¡Ãâ€¢ES DE TÍTULOS (DETALHES, BAIXA, RENEGOCIAÃâ€¡ÃÆ’O)
 // ==========================================
 function verDetalhesTitulo(id) {
     if (!db.financeiro) return;
@@ -31,7 +31,7 @@ function verDetalhesTitulo(id) {
     const lblPessoa = document.getElementById('det-tit-lbl-pessoa');
     if (lblPessoa) lblPessoa.innerText = isReceita ? 'Cliente / Pagador' : 'Fornecedor / Favorecido';
     const detPessoa = document.getElementById('det-tit-pessoa');
-    if (detPessoa) detPessoa.innerText = f.pessoa || 'NÃ£o informado';
+    if (detPessoa) detPessoa.innerText = f.pessoa || 'Não informado';
     
     const isAtrasado = f.status === 'PENDENTE' && new Date(f.data).getTime() < new Date().getTime();
     const badge = document.getElementById('det-tit-status');
@@ -121,14 +121,14 @@ async function confirmarBaixa() {
         let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
         let cxSaldoNovo = cxAtual.saldo || 0;
         
-        if (cxAtual.status !== 'ABERTO') return showToast('Abra o Caixa FÃ­sico primeiro!', 'error');
+        if (cxAtual.status !== 'ABERTO') return showToast('Abra o Caixa Físico primeiro!', 'error');
         if (f.tipo === 'RECEITA') {
             cxSaldoNovo += vf;
-            cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Recbto. TÃ­tulo: ${f.pessoa}`, valor: vf });
+            cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Recbto. Título: ${f.pessoa}`, valor: vf });
         } else {
             if (vf > cxSaldoNovo) return showToast('Saldo do Caixa insuficiente!', 'error');
             cxSaldoNovo -= vf;
-            cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Pgto. TÃ­tulo: ${f.pessoa}`, valor: vf });
+            cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Pgto. Título: ${f.pessoa}`, valor: vf });
         }
         batch.set(firestore.collection('fc_moveis').doc('caixa'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
     }
@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ==========================================
-// 1. NAVEGAÃ‡ÃƒO E DASHBOARDS
+// 1. NAVEGAÃâ€¡ÃÆ’O E DASHBOARDS
 // ==========================================
 function mudarVisaoLocal(viewId) {
     document.querySelectorAll('.view-section').forEach(el => { 
@@ -255,7 +255,7 @@ async function confirmarRenegociacao() {
     if (!idEl) return;
     const id = idEl.value;
     const fOriginal = (db.financeiro || []).find(x => String(x.id) === String(id));
-    if (!fOriginal) return showToast('TÃ­tulo original nÃ£o encontrado.', 'error');
+    if (!fOriginal) return showToast('Título original não encontrado.', 'error');
 
     const qtdEl = document.getElementById('reneg-qtd');
     const dataEl = document.getElementById('reneg-data');
@@ -263,7 +263,7 @@ async function confirmarRenegociacao() {
     const dataInicialStr = dataEl ? dataEl.value : '';
     
     if (!dataInicialStr || isNaN(qtdParcelas) || qtdParcelas <= 1) {
-        return showToast('Preencha as informaÃ§Ãµes da renegociaÃ§Ã£o.', 'error');
+        return showToast('Preencha as informações da renegociação.', 'error');
     }
 
     const valorTotal = fOriginal.valor || 0;
@@ -285,10 +285,10 @@ async function confirmarRenegociacao() {
         batch.set(refNova, {
             tipo: fOriginal.tipo || 'DESPESA',
             pessoa: fOriginal.pessoa || 'Sem Favorecido',
-            ref: `${fOriginal.ref || 'TÃ­tulo'} (Reneg. ${i+1}/${qtdParcelas})`,
+            ref: `${fOriginal.ref || 'Título'} (Reneg. ${i+1}/${qtdParcelas})`,
             categoria: fOriginal.categoria || 'Geral',
             centroCusto: fOriginal.centroCusto || 'Operacional',
-            contaBancaria: fOriginal.contaBancaria || 'Caixa FÃ­sico',
+            contaBancaria: fOriginal.contaBancaria || 'Caixa Físico',
             data: novaData.toISOString(),
             valor: valorPorParcela,
             status: 'PENDENTE',
@@ -300,11 +300,11 @@ async function confirmarRenegociacao() {
     try {
         await batch.commit();
         fecharModalRenegociacao();
-        showToast(`TÃ­tulo renegociado em ${qtdParcelas} parcelas com sucesso!`, 'success');
+        showToast(`Título renegociado em ${qtdParcelas} parcelas com sucesso!`, 'success');
         renderFinAbas(fOriginal.tipo === 'RECEITA' ? 'receber' : 'pagar');
     } catch (err) {
         console.error('Erro ao renegociar:', err);
-        showToast('Erro ao renegociar tÃ­tulo.', 'error');
+        showToast('Erro ao renegociar título.', 'error');
     }
 }
 
@@ -313,25 +313,25 @@ window.abrirModalNegociacao = function(id) {
 };
 
 // ==========================================
-// MIGRAÃ‡ÃƒO AUTOMÃTICA DO BANCO ANTIGO
+// MIGRAÃâ€¡ÃÆ’O AUTOMÁTICA DO BANCO ANTIGO
 // ==========================================
 async function migrarDadosSeNecessario() {
     try {
-        // Verifica se jÃ¡ existem dados nas coleÃ§Ãµes novas
+        // Verifica se já existem dados nas coleções novas
         const comprasSnap = await firestore.collection('compras').limit(1).get();
         const finSnap = await firestore.collection('financeiro').limit(1).get();
         
-        // Se jÃ¡ hÃ¡ dados em compras OU financeiro, nÃ£o precisa migrar
+        // Se já há dados em compras OU financeiro, não precisa migrar
         if (!comprasSnap.empty || !finSnap.empty) return;
 
-        // ColeÃ§Ãµes novas estÃ£o vazias â€” tenta ler do banco antigo
+        // Coleções novas estão vazias ââ‚¬â€ tenta ler do banco antigo
         const bancoPrincipalSnap = await firestore.collection('fc_moveis').doc('banco_principal').get();
         if (!bancoPrincipalSnap.exists) return;
 
         const dados = bancoPrincipalSnap.data();
         if (!dados) return;
 
-        // Checa se hÃ¡ algum dado Ãºtil no banco antigo
+        // Checa se há algum dado útil no banco antigo
         const temDados = (dados.compras && dados.compras.length > 0) || (dados.financeiro && dados.financeiro.length > 0);
         if (!temDados) return;
 
@@ -360,16 +360,16 @@ async function migrarDadosSeNecessario() {
         setTimeout(() => window.location.reload(), 2000);
 
     } catch (e) {
-        console.error('Erro na migraÃ§Ã£o:', e);
+        console.error('Erro na migração:', e);
         showToast('Aviso: Erro ao importar dados anteriores.', 'error');
     }
 }
 
 function inicializarGestao() {
-    // Primeiro tenta migrar dados do banco antigo se necessÃ¡rio
+    // Primeiro tenta migrar dados do banco antigo se necessário
     migrarDadosSeNecessario();
 
-    // Controla quantas coleÃ§Ãµes jÃ¡ carregaram o primeiro snapshot
+    // Controla quantas coleções já carregaram o primeiro snapshot
     let colecoesProntas = 0;
     const totalColecoes = 6;
     function tentarRefresh() {
@@ -458,7 +458,7 @@ function atualizarCardsFluxoDeCaixa() {
 }
 
 // ==========================================
-// 2. MOTORES DE IMPRESSÃƒO E PDF (100% BLINDADOS E DEFINITIVOS)
+// 2. MOTORES DE IMPRESSÃÆ’O E PDF (100% BLINDADOS E DEFINITIVOS)
 // ==========================================
 
 function abrirConfirmacao(titulo, mensagem, acao) { 
@@ -480,7 +480,7 @@ function fecharModalConfirmacao() {
 
 
 function printHtmlSeguro(htmlCompleto) {
-    showToast("Preparando documento para ImpressÃ£o...", "info");
+    showToast("Preparando documento para Impressão...", "info");
     
     const printWin = window.open('', '', 'width=800,height=600');
     if (!printWin) {
@@ -494,7 +494,7 @@ function printHtmlSeguro(htmlCompleto) {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>ImpressÃ£o</title>
+            <title>Impressão</title>
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
@@ -522,13 +522,13 @@ function printHtmlSeguro(htmlCompleto) {
 }
 
 function imprimirArea(areaId) {
-    let empNome = "RelatÃ³rio Oficial do Sistema";
+    let empNome = "Relatório Oficial do Sistema";
     if (db && db.config && db.config.empresa && db.config.empresa.nome) empNome = db.config.empresa.nome;
     let logoHtml = "";
     if (db && db.config && db.config.empresa && db.config.empresa.logo) logoHtml = `<img src="${db.config.empresa.logo}" style="max-height: 60px; margin-bottom: 10px; border-radius: 8px;">`;
     
     const element = document.getElementById(areaId);
-    if(!element) return showToast("Ãrea de impressÃ£o nÃ£o encontrada.", "error");
+    if(!element) return showToast("Área de impressão não encontrada.", "error");
     
     const printContent = element.innerHTML; 
     const htmlCompleto = `
@@ -546,7 +546,7 @@ function imprimirArea(areaId) {
 
 function baixarPDF(areaId, filename) {
     const element = document.getElementById(areaId); 
-    if(!element) return showToast("Erro: Ãrea do PDF nÃ£o encontrada.", "error");
+    if(!element) return showToast("Erro: Área do PDF não encontrada.", "error");
 
     const printContent = element.innerHTML; 
     
@@ -581,7 +581,7 @@ function baixarPDF(areaId, filename) {
             ${printContent}
             
             <script>
-                // Executa a impressÃ£o quando tudo carregar
+                // Executa a impressão quando tudo carregar
                 setTimeout(() => {
                     window.focus();
                     window.print();
@@ -596,7 +596,7 @@ function baixarPDF(areaId, filename) {
 function downloadPDF(areaId, filename) { baixarPDF(areaId, filename); }
 
 function exportarExcel(tabelaId, filename) {
-    let table = document.getElementById(tabelaId); if(!table) return showToast('Tabela nÃ£o encontrada.', 'error');
+    let table = document.getElementById(tabelaId); if(!table) return showToast('Tabela não encontrada.', 'error');
     let rows = table.querySelectorAll('tr'); let csv = [];
     for (let i = 0; i < rows.length; i++) { let row = [], cols = rows[i].querySelectorAll('td:not(.print\\:hidden), th:not(.print\\:hidden)'); for (let j = 0; j < cols.length; j++) { row.push('"' + cols[j].innerText.replace(/"/g, '""').trim() + '"'); } csv.push(row.join(';')); }
     let csvFile = new Blob(["\uFEFF"+csv.join('\n')], {type: 'text/csv;charset=utf-8;'});
@@ -605,7 +605,7 @@ function exportarExcel(tabelaId, filename) {
 }
 
 // ==========================================
-// 3. FINANCEIRO E CAIXA FÃSICO
+// 3. FINANCEIRO E CAIXA FÍSICO
 // ==========================================
 function renderFinAbas(aba) {
     document.querySelectorAll('.fin-area').forEach(el => el.classList.add('hidden'));
@@ -657,7 +657,7 @@ function renderCaixaDiario() {
 }
 
 function abrirModalCaixa(op) {
-    if(op === 'abrir' && db.caixa.status === 'ABERTO') return showToast('O caixa jÃ¡ estÃ¡ aberto!', 'error'); if(op !== 'abrir' && db.caixa.status === 'FECHADO') return showToast('Abra o caixa primeiro!', 'error');
+    if(op === 'abrir' && db.caixa.status === 'ABERTO') return showToast('O caixa já está aberto!', 'error'); if(op !== 'abrir' && db.caixa.status === 'FECHADO') return showToast('Abra o caixa primeiro!', 'error');
     document.getElementById('caixa-operacao-tipo').value = op.toUpperCase(); document.getElementById('modal-caixa-title').innerText = op === 'abrir' ? 'Abertura de Caixa' : (op === 'fechar' ? 'Fechamento de Caixa' : (op === 'sangria' ? 'Sangria (Retirada)' : 'Suprimento (Entrada)'));
     document.getElementById('caixa-op-valor').value = ''; document.getElementById('caixa-op-desc').value = '';
     if(op === 'fechar') { document.getElementById('caixa-op-valor').value = db.caixa.saldo; document.getElementById('caixa-op-desc').value = 'Fechamento do dia'; } if(op === 'abrir') { document.getElementById('caixa-op-valor').value = 0; document.getElementById('caixa-op-desc').value = 'Troco Inicial'; }
@@ -722,10 +722,10 @@ async function confirmarMovCaixa() {
 
         fecharModalCaixa();
         renderCaixaDiario();
-        showToast(`OperaÃ§Ã£o de ${op} realizada com sucesso!`, 'success');
+        showToast(`Operação de ${op} realizada com sucesso!`, 'success');
     } catch(err) {
         console.error(err);
-        showToast('Erro ao registrar operaÃ§Ã£o no caixa.', 'error');
+        showToast('Erro ao registrar operação no caixa.', 'error');
     }
 }
 
@@ -734,7 +734,7 @@ async function confirmarMovCaixa() {
 // ==========================================
 function abrirModalFechamentoCego() {
     if (!db.caixa || db.caixa.status !== 'ABERTO') {
-        return showToast('O caixa jÃ¡ estÃ¡ FECHADO!', 'warning');
+        return showToast('O caixa já está FECHADO!', 'warning');
     }
     document.getElementById('fc-dinheiro').value = '';
     document.getElementById('fc-debito').value = '';
@@ -777,7 +777,7 @@ async function confirmarFechamentoCego() {
 
     // 1. Apura dados de vendas do sistema desde a abertura do turno
     const vendasTurno = (db.vendas || []).filter(v => {
-        if (v.tipo === 'ORÃ‡AMENTO') return false;
+        if (v.tipo === 'ORÃâ€¡AMENTO') return false;
         const dt = new Date(v.data || 0).getTime();
         return dt >= new Date(dataAbertura).getTime();
     });
@@ -793,14 +793,14 @@ async function confirmarFechamentoCego() {
         const pag = String(v.pag || '');
         const tot = Number(v.tot || 0);
         if (pag.includes('Dinheiro')) sysDinheiro += tot;
-        else if (pag.includes('DÃ©bito') || pag.includes('Debito')) sysDebito += tot;
-        else if (pag.includes('CrÃ©dito') || pag.includes('Credito')) sysCredito += tot;
+        else if (pag.includes('Débito') || pag.includes('Debito')) sysDebito += tot;
+        else if (pag.includes('Crédito') || pag.includes('Credito')) sysCredito += tot;
         else if (pag.includes('PIX') || pag.includes('Pix')) sysPix += tot;
         else if (pag.includes('Boleto')) sysBoleto += tot;
         else if (pag.includes('Fiado')) sysFiado += tot;
     });
 
-    // 2. Apura movimentaÃ§Ãµes fÃ­sicas de caixa (Abertura, Suprimentos, Sangrias)
+    // 2. Apura movimentações físicas de caixa (Abertura, Suprimentos, Sangrias)
     const movsTurno = (cxAtual.historico || []).filter(m => new Date(m.data || 0).getTime() >= new Date(dataAbertura).getTime());
     let sysFundoTroco = 0;
     let sysSuprimentos = 0;
@@ -812,7 +812,7 @@ async function confirmarFechamentoCego() {
         else if (m.tipo === 'SAIDA') sysSangrias += Number(m.valor || 0);
     });
 
-    // Saldo esperado em dinheiro fÃ­sico na gaveta:
+    // Saldo esperado em dinheiro físico na gaveta:
     const saldoEsperadoGaveta = (cxAtual.saldo || 0);
     const totalApuradoSistema = saldoEsperadoGaveta + sysDebito + sysCredito + sysPix;
     const difDinheiro = decDinheiro - saldoEsperadoGaveta;
@@ -889,7 +889,7 @@ async function confirmarFechamentoCego() {
 }
 
 function exibirModalMapaCaixa(mapa) {
-    if (!mapa) return showToast('Nenhum dado de fechamento disponÃ­vel.', 'info');
+    if (!mapa) return showToast('Nenhum dado de fechamento disponível.', 'info');
     const html = renderizarMapaCaixaHTML(mapa);
     document.getElementById('mapa-caixa-conteudo').innerHTML = html;
     document.getElementById('modal-mapa-caixa').classList.remove('hidden');
@@ -899,12 +899,12 @@ function abrirUltimoMapaCaixa() {
     if (db.caixa && db.caixa.ultimoFechamento) {
         exibirModalMapaCaixa(db.caixa.ultimoFechamento);
     } else {
-        showToast('Nenhum histÃ³rico de fechamento registrado ainda.', 'info');
+        showToast('Nenhum histórico de fechamento registrado ainda.', 'info');
     }
 }
 
 function renderizarMapaCaixaHTML(m) {
-    const emp = db.config?.empresa || { nome: 'FC MÃ³veis & Interiores', cnpj: '00.000.000/0000-00', telefone: '' };
+    const emp = db.config?.empresa || { nome: 'FC Móveis & Interiores', cnpj: '00.000.000/0000-00', telefone: '' };
     const corDiferenca = m.diferencas.difGeral >= 0 ? 'text-emerald-600' : 'text-red-600';
     const bgDiferenca = m.diferencas.difGeral >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-red-50 dark:bg-red-950/30';
 
@@ -912,23 +912,23 @@ function renderizarMapaCaixaHTML(m) {
     <div class="font-mono text-xs text-slate-800 dark:text-slate-200 p-2 sm:p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-inner">
         <div class="text-center border-b border-dashed border-slate-300 dark:border-slate-700 pb-3 mb-3">
             <h2 class="text-base font-black uppercase text-slate-900 dark:text-white">${emp.nome}</h2>
-            <p class="text-[10px] text-slate-500">CNPJ: ${emp.cnpj || 'NÃ£o informado'} | Tel: ${emp.telefone || ''}</p>
-            <p class="text-xs font-bold uppercase mt-1 bg-slate-100 dark:bg-slate-800 py-1 rounded">MAPA DE FECHAMENTO DE CAIXA (REDUÃ‡ÃƒO Z)</p>
+            <p class="text-[10px] text-slate-500">CNPJ: ${emp.cnpj || 'Não informado'} | Tel: ${emp.telefone || ''}</p>
+            <p class="text-xs font-bold uppercase mt-1 bg-slate-100 dark:bg-slate-800 py-1 rounded">MAPA DE FECHAMENTO DE CAIXA (REDUÃâ€¡ÃÆ’O Z)</p>
             <p class="text-[10px] text-slate-400 mt-1">Ref: #${m.id}</p>
         </div>
 
         <div class="space-y-1.5 border-b border-dashed border-slate-300 dark:border-slate-700 pb-3 mb-3 text-[11px]">
-            <div class="flex justify-between"><span>OPERADOR:</span><strong class="uppercase">${m.operador || 'BalcÃ£o'}</strong></div>
+            <div class="flex justify-between"><span>OPERADOR:</span><strong class="uppercase">${m.operador || 'Balcão'}</strong></div>
             <div class="flex justify-between"><span>ABERTURA:</span><strong>${formatData(m.dataAbertura)}</strong></div>
             <div class="flex justify-between"><span>FECHAMENTO:</span><strong>${formatData(m.dataFechamento)}</strong></div>
             ${m.observacao ? `<div class="flex justify-between text-slate-500"><span>OBS:</span><em>${m.observacao}</em></div>` : ''}
         </div>
 
-        <!-- MOVIMENTAÃ‡ÃƒO GAVETA -->
+        <!-- MOVIMENTAÃâ€¡ÃÆ’O GAVETA -->
         <div class="border-b border-dashed border-slate-300 dark:border-slate-700 pb-3 mb-3">
-            <h4 class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[10px] mb-1.5">1. FLUXO DE GAVETA (DINHEIRO FÃSICO)</h4>
+            <h4 class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[10px] mb-1.5">1. FLUXO DE GAVETA (DINHEIRO FÍSICO)</h4>
             <div class="flex justify-between text-[11px]"><span>(+) Fundo de Troco Inicial:</span><span>${formatMoney(m.apuradoSistema.fundoTroco)}</span></div>
-            <div class="flex justify-between text-[11px]"><span>(+) Suprimentos (ReforÃ§os):</span><span>${formatMoney(m.apuradoSistema.suprimentos)}</span></div>
+            <div class="flex justify-between text-[11px]"><span>(+) Suprimentos (Reforços):</span><span>${formatMoney(m.apuradoSistema.suprimentos)}</span></div>
             <div class="flex justify-between text-[11px]"><span>(+) Vendas em Dinheiro:</span><span>${formatMoney(m.apuradoSistema.vendasDinheiro)}</span></div>
             <div class="flex justify-between text-[11px]"><span>(-) Sangrias (Retiradas):</span><span>- ${formatMoney(m.apuradoSistema.sangrias)}</span></div>
             <div class="flex justify-between font-bold text-xs pt-1 border-t border-slate-200 dark:border-slate-800 mt-1">
@@ -939,11 +939,11 @@ function renderizarMapaCaixaHTML(m) {
             </div>
         </div>
 
-        <!-- MÃ‰TODOS ELETRÃ”NICOS -->
+        <!-- MÃâ€°TODOS ELETRÃâ€NICOS -->
         <div class="border-b border-dashed border-slate-300 dark:border-slate-700 pb-3 mb-3">
-            <h4 class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[10px] mb-1.5">2. MÃ‰TODOS ELETRÃ”NICOS E PARCELADOS</h4>
-            <div class="flex justify-between text-[11px]"><span>CartÃ£o DÃ©bito (Sistema / Declarado):</span><span>${formatMoney(m.apuradoSistema.vendasDebito)} / <strong>${formatMoney(m.declaradoOperador.debito)}</strong></span></div>
-            <div class="flex justify-between text-[11px]"><span>CartÃ£o CrÃ©dito (Sistema / Declarado):</span><span>${formatMoney(m.apuradoSistema.vendasCredito)} / <strong>${formatMoney(m.declaradoOperador.credito)}</strong></span></div>
+            <h4 class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[10px] mb-1.5">2. MÃâ€°TODOS ELETRÃâ€NICOS E PARCELADOS</h4>
+            <div class="flex justify-between text-[11px]"><span>Cartão Débito (Sistema / Declarado):</span><span>${formatMoney(m.apuradoSistema.vendasDebito)} / <strong>${formatMoney(m.declaradoOperador.debito)}</strong></span></div>
+            <div class="flex justify-between text-[11px]"><span>Cartão Crédito (Sistema / Declarado):</span><span>${formatMoney(m.apuradoSistema.vendasCredito)} / <strong>${formatMoney(m.declaradoOperador.credito)}</strong></span></div>
             <div class="flex justify-between text-[11px]"><span>PIX (Sistema / Declarado):</span><span>${formatMoney(m.apuradoSistema.vendasPix)} / <strong>${formatMoney(m.declaradoOperador.pix)}</strong></span></div>
             <div class="flex justify-between text-[11px]"><span>Boletos & Fiados Faturados:</span><span>${formatMoney((m.apuradoSistema.vendasBoleto || 0) + (m.apuradoSistema.vendasFiado || 0))}</span></div>
         </div>
@@ -957,7 +957,7 @@ function renderizarMapaCaixaHTML(m) {
                 <span>TOTAL DECLARADO PELO OPERADOR:</span><span>${formatMoney(m.declaradoOperador.totalGeral)}</span>
             </div>
             <div class="flex justify-between text-sm font-black pt-1.5 border-t border-slate-300 dark:border-slate-700 ${corDiferenca}">
-                <span>DIVERGÃŠNCIA (${m.diferencas.status}):</span>
+                <span>DIVERGÃÅ NCIA (${m.diferencas.status}):</span>
                 <span>${m.diferencas.difGeral >= 0 ? '+' : ''}${formatMoney(m.diferencas.difGeral)}</span>
             </div>
         </div>
@@ -969,18 +969,18 @@ function renderizarMapaCaixaHTML(m) {
             </div>
             <div>
                 <div class="border-b border-slate-400 dark:border-slate-600 mb-1"></div>
-                <p>Assinatura da GerÃªncia / Auditoria</p>
+                <p>Assinatura da Gerência / Auditoria</p>
             </div>
         </div>
     </div>`;
 }
 
 // ==========================================
-// TRANSFERÃŠNCIAS ENTRE CONTAS
+// TRANSFERÃÅ NCIAS ENTRE CONTAS
 // ==========================================
 function abrirModalTransferenciaCaixa() {
     if (!db.caixa || (db.caixa.saldo || 0) <= 0) {
-        return showToast('O caixa fÃ­sico estÃ¡ sem saldo para transferir.', 'warning');
+        return showToast('O caixa físico está sem saldo para transferir.', 'warning');
     }
     document.getElementById('transf-valor').value = db.caixa.saldo || '';
     document.getElementById('transf-obs').value = '';
@@ -994,10 +994,10 @@ function fecharModalTransferenciaCaixa() {
 async function confirmarTransferenciaCaixa() {
     const valor = parseFloat(document.getElementById('transf-valor').value) || 0;
     const destino = document.getElementById('transf-conta-destino').value;
-    const obs = document.getElementById('transf-obs').value.trim() || `TransferÃªncia Gaveta -> ${destino}`;
+    const obs = document.getElementById('transf-obs').value.trim() || `Transferência Gaveta -> ${destino}`;
 
-    if (valor <= 0) return showToast('Informe um valor vÃ¡lido maior que zero.', 'error');
-    if (valor > (db.caixa.saldo || 0)) return showToast('Saldo insuficiente no Caixa FÃ­sico!', 'error');
+    if (valor <= 0) return showToast('Informe um valor válido maior que zero.', 'error');
+    if (valor > (db.caixa.saldo || 0)) return showToast('Saldo insuficiente no Caixa Físico!', 'error');
 
     let cxAtual = db.caixa || { status: 'ABERTO', saldo: 0, historico: [] };
     let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
@@ -1008,7 +1008,7 @@ async function confirmarTransferenciaCaixa() {
     cxHistoricoNovo.unshift({
         data: dataIso,
         tipo: 'SAIDA',
-        desc: `TRANSFERÃŠNCIA p/ ${destino}: ${obs} - Op: ${operador}`,
+        desc: `TRANSFERÃÅ NCIA p/ ${destino}: ${obs} - Op: ${operador}`,
         valor: valor,
         operador: operador,
         saldoApos: novoSaldo
@@ -1023,35 +1023,35 @@ async function confirmarTransferenciaCaixa() {
     batch.set(finRef, {
         ref: `TRANSF. ENTRADA (${destino})`,
         data: dataIso,
-        pessoa: 'TransferÃªncia Interna',
+        pessoa: 'Transferência Interna',
         valor: valor,
         status: 'PAGO',
         tipo: 'RECEITA',
-        categoria: 'TransferÃªncias Internas',
+        categoria: 'Transferências Internas',
         contaBancaria: destino,
         dataPagamento: dataIso,
-        observacao: `Origem: Caixa FÃ­sico (Gaveta). ${obs}`
+        observacao: `Origem: Caixa Físico (Gaveta). ${obs}`
     });
 
     try {
         await batch.commit();
         fecharModalTransferenciaCaixa();
         renderCaixaDiario();
-        showToast(`TransferÃªncia de ${formatMoney(valor)} para ${destino} concluÃ­da!`, 'success');
+        showToast(`Transferência de ${formatMoney(valor)} para ${destino} concluída!`, 'success');
     } catch (e) {
         console.error(e);
-        showToast('Erro ao realizar transferÃªncia.', 'error');
+        showToast('Erro ao realizar transferência.', 'error');
     }
 }
 
 function imprimirArea(areaId) {
-    let empNome = "RelatÃ³rio Oficial do Sistema";
+    let empNome = "Relatório Oficial do Sistema";
     if (db && db.config && db.config.empresa && db.config.empresa.nome) empNome = db.config.empresa.nome;
     let logoHtml = "";
     if (db && db.config && db.config.empresa && db.config.empresa.logo) logoHtml = `<img src="${db.config.empresa.logo}" style="max-height: 60px; margin-bottom: 10px; border-radius: 8px;">`;
     
     const element = document.getElementById(areaId);
-    if(!element) return showToast("Ãrea de impressÃ£o nÃ£o encontrada.", "error");
+    if(!element) return showToast("Área de impressão não encontrada.", "error");
     
     const printContent = element.innerHTML; 
     const htmlCompleto = `
@@ -1069,7 +1069,7 @@ function imprimirArea(areaId) {
 
 function baixarPDF(areaId, filename) {
     const element = document.getElementById(areaId); 
-    if(!element) return showToast("Erro: Ãrea do PDF nÃ£o encontrada.", "error");
+    if(!element) return showToast("Erro: Área do PDF não encontrada.", "error");
 
     const printContent = element.innerHTML; 
     
@@ -1104,7 +1104,7 @@ function baixarPDF(areaId, filename) {
             ${printContent}
             
             <script>
-                // Executa a impressÃ£o quando tudo carregar
+                // Executa a impressão quando tudo carregar
                 setTimeout(() => {
                     window.focus();
                     window.print();
@@ -1119,7 +1119,7 @@ function baixarPDF(areaId, filename) {
 function downloadPDF(areaId, filename) { baixarPDF(areaId, filename); }
 
 function exportarExcel(tabelaId, filename) {
-    let table = document.getElementById(tabelaId); if(!table) return showToast('Tabela nÃ£o encontrada.', 'error');
+    let table = document.getElementById(tabelaId); if(!table) return showToast('Tabela não encontrada.', 'error');
     let rows = table.querySelectorAll('tr'); let csv = [];
     for (let i = 0; i < rows.length; i++) { let row = [], cols = rows[i].querySelectorAll('td:not(.print\\:hidden), th:not(.print\\:hidden)'); for (let j = 0; j < cols.length; j++) { row.push('"' + cols[j].innerText.replace(/"/g, '""').trim() + '"'); } csv.push(row.join(';')); }
     let csvFile = new Blob(["\uFEFF"+csv.join('\n')], {type: 'text/csv;charset=utf-8;'});
@@ -1218,7 +1218,7 @@ function renderTitulos(tipo) {
         });
     }
 
-    // 2. BUSCA TEXTUAL ABRANGENTE E INSENSÃVEL A ACENTOS / CAIXA
+    // 2. BUSCA TEXTUAL ABRANGENTE E INSENSÍVEL A ACENTOS / CAIXA
     if (termoNorm) { 
         lista = lista.filter(f => {
             let cliVinculado = null;
@@ -1341,7 +1341,7 @@ function renderTitulos(tipo) {
         }
     }
 
-    // 4. FILTRO DE DATAS ESPECÃFICAS (SEMPRE RESPEITADO)
+    // 4. FILTRO DE DATAS ESPECÍFICAS (SEMPRE RESPEITADO)
     if (dataIni) {
         lista = lista.filter(f => f.data && f.data.split('T')[0] >= dataIni);
     }
@@ -1349,7 +1349,7 @@ function renderTitulos(tipo) {
         lista = lista.filter(f => f.data && f.data.split('T')[0] <= dataFim);
     }
 
-    // 5. FILTRO DE PERÃODO RELATIVO (MÃŠS, 7 DIAS, ETC.)
+    // 5. FILTRO DE PERÍODO RELATIVO (MÃÅ S, 7 DIAS, ETC.)
     const temBuscaAtiva = !!(termoNorm || pessoaFiltroVal);
     if (!temBuscaAtiva && !dataIni && !dataFim && periodoFilter !== 'TUDO') {
         const hoje = new Date();
@@ -1391,13 +1391,13 @@ function renderTitulos(tipo) {
             let nro = c && c.wpp ? c.wpp.replace(/\D/g, '') : (c && c.telefone ? c.telefone.replace(/\D/g, '') : ''); 
             
             if(nro) { 
-                let texto = `OlÃ¡! Notamos que hÃ¡ um tÃ­tulo pendente no valor de ${formatMoney(f.valor)} (Ref: ${f.ref}). Por favor, entre em contato conosco da ${db.config?.empresa?.nome || 'nossa loja'}.`; 
-                if (f.status === 'PAGO') texto = `OlÃ¡! GostarÃ­amos de agradecer o pagamento do seu tÃ­tulo no valor de ${formatMoney(f.valor)} (Ref: ${f.ref}). Muito obrigado!`;
-                if (f.status === 'ATRASADO' || isAtrasado) texto = `OlÃ¡! Verificamos que o tÃ­tulo no valor de ${formatMoney(f.valor)} (Ref: ${f.ref}) encontra-se em atraso. Pode nos ajudar com a previsÃ£o de pagamento?`;
+                let texto = `Olá! Notamos que há um título pendente no valor de ${formatMoney(f.valor)} (Ref: ${f.ref}). Por favor, entre em contato conosco da ${db.config?.empresa?.nome || 'nossa loja'}.`; 
+                if (f.status === 'PAGO') texto = `Olá! Gostaríamos de agradecer o pagamento do seu título no valor de ${formatMoney(f.valor)} (Ref: ${f.ref}). Muito obrigado!`;
+                if (f.status === 'ATRASADO' || isAtrasado) texto = `Olá! Verificamos que o título no valor de ${formatMoney(f.valor)} (Ref: ${f.ref}) encontra-se em atraso. Pode nos ajudar com a previsão de pagamento?`;
                 
                 btnWhats = `<a href="https://wa.me/55${nro}?text=${encodeURIComponent(texto)}" target="_blank" class="text-emerald-500 hover:text-emerald-700 p-1.5 print:hidden" title="Enviar WhatsApp"><i class="fa-brands fa-whatsapp text-lg"></i></a>`; 
             } else {
-                btnWhats = `<button onclick="showToast('Cliente nÃ£o possui WhatsApp ou Telefone cadastrado.', 'info')" class="text-slate-300 hover:text-slate-400 p-1.5 print:hidden" title="Sem WhatsApp na Ficha"><i class="fa-brands fa-whatsapp text-lg"></i></button>`;
+                btnWhats = `<button onclick="showToast('Cliente não possui WhatsApp ou Telefone cadastrado.', 'info')" class="text-slate-300 hover:text-slate-400 p-1.5 print:hidden" title="Sem WhatsApp na Ficha"><i class="fa-brands fa-whatsapp text-lg"></i></button>`;
             }
         }
 
@@ -1417,7 +1417,7 @@ function renderTitulos(tipo) {
         <tr class="hover:bg-slate-100/60 dark:hover:bg-slate-700/50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-700/60 transition-colors text-slate-800 dark:text-slate-200">
             <td class="p-3 text-slate-500 dark:text-slate-400 font-mono text-xs">
                   ${formatData(f.data).split(' ')[0]}
-                  ${f.dataCartorio ? `<br><span class="text-[9.5px] font-bold text-rose-600 dark:text-rose-400 mt-1 inline-block" title="Ir para CartÃ³rio"><i class="fa-solid fa-gavel"></i> ${formatData(f.dataCartorio + "T12:00:00").split(" ")[0]}</span>` : ""}
+                  ${f.dataCartorio ? `<br><span class="text-[9.5px] font-bold text-rose-600 dark:text-rose-400 mt-1 inline-block" title="Ir para Cartório"><i class="fa-solid fa-gavel"></i> ${formatData(f.dataCartorio + "T12:00:00").split(" ")[0]}</span>` : ""}
               </td>
             <td class="p-3 font-bold text-slate-800 dark:text-slate-100 truncate max-w-[200px]">${f.pessoa}</td>
             <td class="p-3 text-slate-600 dark:text-slate-300 text-[11px]">${f.categoria || '-'} <br><span class="font-bold">${f.ref}</span></td>
@@ -1432,18 +1432,18 @@ function renderTitulos(tipo) {
               </td>
             <td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold ${corStatus}">${badgeStatus}</span></td>
             <td class="p-3 text-center flex items-center justify-center gap-1 print:hidden">
-                <button onclick="verDetalhesTitulo('${f.id}')" class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 p-1.5" title="Detalhes do TÃ­tulo"><i class="fa-solid fa-eye"></i></button>
-                <button onclick="abrirModalContaEdicao('${f.id}')" class="text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 p-1.5" title="Editar LanÃ§amento"><i class="fa-solid fa-pen"></i></button>
+                <button onclick="verDetalhesTitulo('${f.id}')" class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 p-1.5" title="Detalhes do Título"><i class="fa-solid fa-eye"></i></button>
+                <button onclick="abrirModalContaEdicao('${f.id}')" class="text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 p-1.5" title="Editar Lançamento"><i class="fa-solid fa-pen"></i></button>
                 ${btnWhats}
                 ${acoesExtras}
                 <button onclick="excluirTitulo('${f.id}')" class="text-slate-400 hover:text-rose-500 p-1.5 ml-1" title="Excluir"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
-    }).join('') || `<tr><td colspan="6" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum tÃ­tulo encontrado.</td></tr>`;
+    }).join('') || `<tr><td colspan="6" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum título encontrado.</td></tr>`;
 }
 
 // ==========================================
-// 5. MODAL DE CADASTRO/EDIÃ‡ÃƒO DE CONTA (COM RECORRÃŠNCIA)
+// 5. MODAL DE CADASTRO/EDIÃâ€¡ÃÆ’O DE CONTA (COM RECORRÃÅ NCIA)
 // ==========================================
 
 // ===== HELPER: PESSOA SELECT DROPDOWN =====
@@ -1487,7 +1487,7 @@ function decodificarLinhaDigitavelBoleto() {
     const input = document.getElementById('conta-linha-digitavel')?.value || '';
     const digits = input.replace(/\D/g, '');
     if (!digits || (digits.length !== 47 && digits.length !== 48)) {
-        return showToast('Linha digitÃ¡vel deve conter 47 ou 48 dÃ­gitos numÃ©ricos.', 'warning');
+        return showToast('Linha digitável deve conter 47 ou 48 dígitos numéricos.', 'warning');
     }
 
     try {
@@ -1534,10 +1534,10 @@ function decodificarLinhaDigitavelBoleto() {
             elNumBoleto.value = digits;
         }
 
-        showToast('Linha digitÃ¡vel decodificada com sucesso!', 'success');
+        showToast('Linha digitável decodificada com sucesso!', 'success');
     } catch (e) {
         console.error('Erro ao decodificar boleto:', e);
-        showToast('Erro ao processar linha digitÃ¡vel.', 'error');
+        showToast('Erro ao processar linha digitável.', 'error');
     }
 }
 
@@ -1582,7 +1582,7 @@ function abrirModalConta(tipo) {
     document.getElementById('conta-acrescimo').value = '0';
     document.getElementById('conta-desconto').value = '0';
     document.getElementById('conta-centro-custo').value = 'Geral';
-    document.getElementById('conta-banco').value = 'Caixa FÃ­sico';
+    document.getElementById('conta-banco').value = 'Caixa Físico';
     document.getElementById('conta-status').value = 'PENDENTE';
     document.getElementById('conta-metodo').value = '';
     
@@ -1626,7 +1626,7 @@ function abrirModalContaEdicao(id) {
     }
     
     document.getElementById('modal-conta-header').className = `p-4 md:p-5 text-white flex justify-between items-center shrink-0 bg-indigo-600`; 
-    document.getElementById('modal-conta-title').innerText = 'Editar LanÃ§amento Financeiro';
+    document.getElementById('modal-conta-title').innerText = 'Editar Lançamento Financeiro';
     
     document.getElementById('conta-recorrencia').value = 'UNICA';
     document.getElementById('conta-recorrencia').disabled = true;
@@ -1635,7 +1635,7 @@ function abrirModalContaEdicao(id) {
     document.getElementById('conta-ref').value = f.ref || '';
     document.getElementById('conta-categoria').value = f.categoria || (tipo === 'RECEBER' ? 'Vendas' : 'Outras Despesas');
     document.getElementById('conta-centro-custo').value = f.centroCusto || 'Geral';
-    document.getElementById('conta-banco').value = f.contaBancaria || 'Caixa FÃ­sico';
+    document.getElementById('conta-banco').value = f.contaBancaria || 'Caixa Físico';
     
     document.getElementById('conta-emissao').value = f.dataEmissao || '';
     document.getElementById('conta-vencimento').value = f.data ? f.data.split('T')[0] : '';
@@ -1648,7 +1648,9 @@ function abrirModalContaEdicao(id) {
     document.getElementById('conta-num-nf').value = f.numNF || '';
     document.getElementById('conta-num-boleto').value = f.numBoleto || '';
     
-    document.getElementById('conta-valor').value = f.valor || 0;
+        let valStr = String(f.valor || 0);
+    if (valStr.includes(',')) { valStr = valStr.replace(/\./g, '').replace(',', '.'); }
+    document.getElementById('conta-valor').value = parseFloat(valStr) || 0;
     document.getElementById('conta-acrescimo').value = f.acrescimo || 0;
     document.getElementById('conta-desconto').value = f.desconto || 0;
     
@@ -1762,10 +1764,10 @@ function salvarConta() {
         renderFinAbas(tipo === 'RECEITA' ? 'receber' : 'pagar'); 
         
         if (isEdicao) {
-            showToast('TÃ­tulo Atualizado!', 'success');
+            showToast('Título Atualizado!', 'success');
         } else {
-            if (qtdLancamentos > 1) showToast(`${contasGeradas} TÃ­tulos gerados!`, 'success');
-            else showToast('TÃ­tulo Salvo!', 'success');
+            if (qtdLancamentos > 1) showToast(`${contasGeradas} Títulos gerados!`, 'success');
+            else showToast('Título Salvo!', 'success');
         }
     }).catch(e => {
         console.error(e);
@@ -1774,11 +1776,11 @@ function salvarConta() {
 }
 
 function excluirTitulo(id) { 
-    abrirConfirmacao('Excluir TÃ­tulo', 'Deseja apagar permanentemente?', () => { 
+    abrirConfirmacao('Excluir Título', 'Deseja apagar permanentemente?', () => { 
         const tit = db.financeiro.find(f => String(f.id) === String(id)); 
         firestore.collection('financeiro').doc(String(id)).delete().then(() => {
             if(tit) renderFinAbas(tit.tipo === 'RECEITA' ? 'receber' : 'pagar'); 
-            showToast('ExcluÃ­do!'); 
+            showToast('Excluído!'); 
         }).catch(e => { console.error(e); showToast('Erro', 'error'); });
     }); 
 }
@@ -1787,7 +1789,7 @@ async function estornarTitulo(id) {
     const f = db.financeiro.find(x => String(x.id) === String(id));
     if (!f || f.status !== 'PAGO') return;
 
-    abrirConfirmacao('Estornar Pagamento', 'VoltarÃ¡ para PENDENTE e reverterÃ¡ o caixa.', async () => {
+    abrirConfirmacao('Estornar Pagamento', 'Voltará para PENDENTE e reverterá o caixa.', async () => {
         const batch = firestore.batch();
         if (f.metodoPagamento === 'Dinheiro') {
             let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
@@ -1810,7 +1812,7 @@ async function estornarTitulo(id) {
         try {
             await batch.commit();
             renderFinAbas(f.tipo === 'RECEITA' ? 'receber' : 'pagar');
-            showToast('Estorno concluÃ­do!', 'success');
+            showToast('Estorno concluído!', 'success');
         } catch (e) {
             console.error(e);
             showToast('Erro no estorno.', 'error');
@@ -1825,7 +1827,7 @@ function processarXMLReal(event) {
             const parser = new DOMParser(); const xmlDoc = parser.parseFromString(e.target.result, "text/xml");
             const getFloatSafe = (context, tag) => { const node = context ? context.getElementsByTagName(tag)[0] : null; return node && node.textContent ? parseFloat(node.textContent) : 0; };
             const getStringSafe = (context, tag) => { const node = context ? context.getElementsByTagName(tag)[0] : null; return node ? node.textContent : ''; };
-            const emit = xmlDoc.getElementsByTagName("emit")[0]; if(!emit) throw new Error("XML invÃ¡lido.");
+            const emit = xmlDoc.getElementsByTagName("emit")[0]; if(!emit) throw new Error("XML inválido.");
             
             const fornNome = getStringSafe(emit, "xNome"); const fornCNPJ = getStringSafe(emit, "CNPJ"); const totalNF = getFloatSafe(xmlDoc, "vNF");
             const numNF = getStringSafe(xmlDoc.getElementsByTagName("ide")[0], "nNF") || "S/N";
@@ -1855,7 +1857,7 @@ function processarXMLReal(event) {
             }
 
             if(financeiroXML.length === 0 && totalNF > 0) {
-                financeiroXML.push({ num: '001', venc: dataEmissao, valor: totalNF, desc: `NF ${numNF} - Parcela Ãšnica` });
+                financeiroXML.push({ num: '001', venc: dataEmissao, valor: totalNF, desc: `NF ${numNF} - Parcela ÃÅ¡nica` });
             }
 
             window.tempXMLData = { fornNome, fornCNPJ, numNF, dataEmissao, totalNF, produtosXML, financeiroXML, freteExtra: 0 };
@@ -1911,7 +1913,7 @@ function lerXMLCTe(event) {
                 
                 showToast(`CT-e lido! Frete de R$ ${valorFrete.toFixed(2)} rateado nos produtos.`, 'success');
             } else {
-                showToast("Valor do frete nÃ£o encontrado neste CT-e.", "error");
+                showToast("Valor do frete não encontrado neste CT-e.", "error");
             }
         } catch (err) { 
             console.error(err); 
@@ -2030,7 +2032,7 @@ function fecharModalProduto() { document.getElementById('modal-produto').classLi
 function salvarProdutoXmlModal() {
     const nome = document.getElementById('prod-nome').value; const id = document.getElementById('prod-id').value;
     const pXML = window.tempXMLData.produtosXML[window.xmlItemEditIndex];
-    if(!nome) return showToast('Nome obrigatÃ³rio', 'error');
+    if(!nome) return showToast('Nome obrigatório', 'error');
     
     const selectAcao = document.getElementById('prod-acao-vinculo');
     if(selectAcao && selectAcao.value === 'VINCULAR' && !id) {
@@ -2047,7 +2049,7 @@ function salvarProdutoXmlModal() {
         pXML.statusDB = 'NOVO CADASTRADO';
         pXML.idMatch = null;
     }
-    fecharModalProduto(); renderTelaConferenciaXML(); showToast('Ficha salva para a importaÃ§Ã£o!');
+    fecharModalProduto(); renderTelaConferenciaXML(); showToast('Ficha salva para a importação!');
 }
 
 function renderTelaConferenciaXML() {
@@ -2094,7 +2096,7 @@ async function salvarXMLConferido() {
                 batch.update(prodRef, { estoque: pDB.estoque, custo: pDB.custo, margem: pDB.margem, preco: pDB.preco, nome: pDB.nome, ativo: true });
             } 
         }
-        p.idMatch = idProd; // Garante a rastreabilidade pro RelatÃ³rio de EvoluÃ§Ã£o
+        p.idMatch = idProd; // Garante a rastreabilidade pro Relatório de Evolução
         totalQtd += p.qCom; 
         const kRef = firestore.collection('movimentacoes').doc();
         batch.set(kRef, { data: new Date().toISOString(), ref: `NF-e ${data.numNF} ${data.fornNome}`, produtoId: idProd, produtoNome: p.nome, qtd: p.qCom, tipo: 'ENTRADA XML' });
@@ -2124,18 +2126,18 @@ async function salvarXMLConferido() {
 
     try {
         await batch.commit();
-        fecharModalXML(); renderComprasHist(); renderFinAbas('pagar'); showToast('Entrada de XML ConcluÃ­da!', 'success');
+        fecharModalXML(); renderComprasHist(); renderFinAbas('pagar'); showToast('Entrada de XML Concluída!', 'success');
     } catch(err) { console.error(err); showToast('Erro ao importar XML.', 'error'); }
 }
 
 // ==========================================
-// COMPRA MANUAL E EDIÃ‡ÃƒO
+// COMPRA MANUAL E EDIÃâ€¡ÃÆ’O
 // ==========================================
 function abrirModalCompraManual() {
     compraManualItens = [];
     document.getElementById('compra-manual-id').value = '';
-    document.getElementById('compra-manual-titulo-modal').innerText = 'LanÃ§ar Compra (Sem NF)';
-    document.getElementById('compra-manual-btn-salvar').innerHTML = '<i class="fa-solid fa-save mr-1"></i> Confirmar LanÃ§amento';
+    document.getElementById('compra-manual-titulo-modal').innerText = 'Lançar Compra (Sem NF)';
+    document.getElementById('compra-manual-btn-salvar').innerHTML = '<i class="fa-solid fa-save mr-1"></i> Confirmar Lançamento';
     
     document.getElementById('compra-manual-data').value = new Date().toISOString().split('T')[0];
     document.getElementById('compra-manual-ref').value = '';
@@ -2159,13 +2161,13 @@ function fecharModalCompraManual() {
 
 function editarCompra(id) {
     const c = db.compras.find(x => String(x.id) === String(id));
-    if (!c) return showToast('Compra nÃ£o encontrada.', 'error');
+    if (!c) return showToast('Compra não encontrada.', 'error');
 
-    abrirConfirmacao('Editar Compra', 'Deseja carregar esta compra para ediÃ§Ã£o? O estoque e o financeiro gerado anteriormente serÃ£o apagados ao salvar a nova.', () => {
+    abrirConfirmacao('Editar Compra', 'Deseja carregar esta compra para edição? O estoque e o financeiro gerado anteriormente serão apagados ao salvar a nova.', () => {
         
         document.getElementById('compra-manual-id').value = c.id;
         document.getElementById('compra-manual-titulo-modal').innerText = 'Editar Compra e Estoque';
-        document.getElementById('compra-manual-btn-salvar').innerHTML = '<i class="fa-solid fa-check-double mr-1"></i> Salvar AlteraÃ§Ã£o';
+        document.getElementById('compra-manual-btn-salvar').innerHTML = '<i class="fa-solid fa-check-double mr-1"></i> Salvar Alteração';
         
         document.getElementById('compra-manual-data').value = c.data ? c.data.split('T')[0] : new Date().toISOString().split('T')[0];
         document.getElementById('compra-manual-ref').value = c.numeroNF === 'S/N' ? '' : c.numeroNF;
@@ -2270,7 +2272,7 @@ async function salvarCompraManual() {
     const refPed = document.getElementById('compra-manual-ref').value || 'S/N';
     
     const totais = calcularTotaisCompraManual();
-    if(compraManualItens.length === 0 || totais.totalGeral <= 0) return showToast("Adicione itens vÃ¡lidos!", "error");
+    if(compraManualItens.length === 0 || totais.totalGeral <= 0) return showToast("Adicione itens válidos!", "error");
     
     for(let i=0; i<compraManualItens.length; i++) {
         if(!compraManualItens[i].prodId) return showToast("Selecione os produtos em todas as linhas!", "error");
@@ -2289,7 +2291,7 @@ async function salvarCompraManual() {
                             pDB.estoque -= item.qCom;
                             batch.update(firestore.collection('produtos').doc(String(pDB.id)), { estoque: pDB.estoque });
                             const kRef = firestore.collection('movimentacoes').doc();
-                            batch.set(kRef, { data: new Date().toISOString(), ref: `Estorno EdiÃ§Ã£o Compra ${cAntiga.numeroNF}`, produtoId: pDB.id, produtoNome: pDB.nome, qtd: -item.qCom, tipo: 'ESTORNO COMPRA' });
+                            batch.set(kRef, { data: new Date().toISOString(), ref: `Estorno Edição Compra ${cAntiga.numeroNF}`, produtoId: pDB.id, produtoNome: pDB.nome, qtd: -item.qCom, tipo: 'ESTORNO COMPRA' });
                         }
                     }
                 });
@@ -2355,7 +2357,7 @@ async function salvarCompraManual() {
     try {
         await batch.commit();
         fecharModalCompraManual(); renderComprasHist(); renderFinAbas('pagar');
-        showToast(isEdicao ? "Compra atualizada com sucesso!" : "Compra Manual lanÃ§ada com sucesso!", "success");
+        showToast(isEdicao ? "Compra atualizada com sucesso!" : "Compra Manual lançada com sucesso!", "success");
     } catch(err) { console.error(err); showToast('Erro', 'error'); }
 }
 
@@ -2419,16 +2421,16 @@ function renderComprasHist() {
                 <button onclick="excluirNF('${c.id}')" class="text-red-500 hover:text-red-700 p-2 transition-colors" title="Excluir"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
-    }).join('') || '<tr><td colspan="6" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhuma compra encontrada no perÃ­odo.</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhuma compra encontrada no período.</td></tr>';
 
     const totalEl = document.getElementById('compras-total-filtros');
     if (totalEl) totalEl.innerText = `Total Gasto: ${formatMoney(totalCompras)}`;
 }
 
 function excluirNF(id) { 
-    abrirConfirmacao('Excluir Nota / Compra', 'AtenÃ§Ã£o: NÃ£o reverte o estoque nem o financeiro.', () => { 
+    abrirConfirmacao('Excluir Nota / Compra', 'Atenção: Não reverte o estoque nem o financeiro.', () => { 
         firestore.collection('compras').doc(String(id)).delete().then(() => {
-            renderComprasHist(); showToast('Compra excluÃ­da!'); 
+            renderComprasHist(); showToast('Compra excluída!'); 
         }).catch(e => { console.error(e); showToast('Erro ao excluir NF.', 'error'); });
     }); 
 }
@@ -2447,7 +2449,7 @@ function verDetalhesNF(id) {
 function fecharModalDetalhesNF() { document.getElementById('modal-detalhes-nf').classList.add('hidden'); }
 
 // ==========================================
-// 9. RELATÃ“RIOS E BI
+// 9. RELATÃâ€œRIOS E BI
 // ==========================================
 
 function mudarFiltroBI() {
@@ -2572,12 +2574,12 @@ function renderDashboard() {
     const selProd = document.getElementById('relatorio-custo-produto');
     if(selProd) {
         const prodAtual = selProd.value;
-        selProd.innerHTML = '<option value="">Selecione um Produto para carregar o histÃ³rico...</option>' + 
+        selProd.innerHTML = '<option value="">Selecione um Produto para carregar o histórico...</option>' + 
                             (db.produtos || []).map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
         if(prodAtual) selProd.value = prodAtual;
     }
     
-    // Chamar relatÃ³rios avanÃ§ados
+    // Chamar relatórios avançados
     renderCurvaABC(vendas, fatTotal);
     renderSugestorCompras(vendas, periodo);
 }
@@ -2587,7 +2589,7 @@ function renderCurvaABC(vendasFiltradas, fatTotal) {
     if(!tbody) return;
     
     if(fatTotal === 0 || vendasFiltradas.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500 dark:text-slate-400">Nenhuma venda no perÃ­odo para gerar a Curva ABC.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500 dark:text-slate-400">Nenhuma venda no período para gerar a Curva ABC.</td></tr>';
         return;
     }
 
@@ -2646,8 +2648,8 @@ function renderSugestorCompras(vendasFiltradas, periodoObj) {
     const tbody = document.getElementById('tabela-sugestor-compras');
     if(!tbody) return;
 
-    // Calcular quantos dias tem no perÃ­odo filtrado para achar a mÃ©dia diÃ¡ria
-    let diasPeriodo = 30; // padrÃ£o
+    // Calcular quantos dias tem no período filtrado para achar a média diária
+    let diasPeriodo = 30; // padrão
     if (periodoObj && periodoObj.inicio && periodoObj.fim) {
         const diffTime = Math.abs(periodoObj.fim - periodoObj.inicio);
         diasPeriodo = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -2667,14 +2669,14 @@ function renderSugestorCompras(vendasFiltradas, periodoObj) {
 
     let html = '';
     const produtosApp = db.produtos || [];
-    const ALVO_DIAS_ESTOQUE = 30; // O usuÃ¡rio nÃ£o especificou, mantendo 30 dias de cobertura
+    const ALVO_DIAS_ESTOQUE = 30; // O usuário não especificou, mantendo 30 dias de cobertura
 
     produtosApp.forEach(p => {
-        // Ignorar serviÃ§os ou itens sem controle de estoque
+        // Ignorar serviços ou itens sem controle de estoque
         if(p.tipo === 'Servico') return;
 
         const infoVenda = vendaPorProduto[p.id];
-        if(!infoVenda) return; // Se nÃ£o vendeu nada no perÃ­odo, nÃ£o entra na sugestÃ£o (ou poderia entrar com alerta de encalhe)
+        if(!infoVenda) return; // Se não vendeu nada no período, não entra na sugestão (ou poderia entrar com alerta de encalhe)
 
         const mediaDiaria = infoVenda.qtdVendida / diasPeriodo;
         if(mediaDiaria <= 0) return;
@@ -2692,9 +2694,9 @@ function renderSugestorCompras(vendasFiltradas, periodoObj) {
                 if(autonomiaDias <= 0) {
                     statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-bold border bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800/50"><i class="fa-solid fa-triangle-exclamation"></i> Ruptura</span>';
                 } else if(autonomiaDias <= 7) {
-                    statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-bold border bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800/50"><i class="fa-solid fa-fire"></i> CrÃ­tico</span>';
+                    statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-bold border bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800/50"><i class="fa-solid fa-fire"></i> Crítico</span>';
                 } else {
-                    statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-bold border bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800/50"><i class="fa-solid fa-clock"></i> AtenÃ§Ã£o</span>';
+                    statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-bold border bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800/50"><i class="fa-solid fa-clock"></i> Atenção</span>';
                 }
 
                 html += `
@@ -2712,7 +2714,7 @@ function renderSugestorCompras(vendasFiltradas, periodoObj) {
     });
 
     if(html === '') {
-        tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-emerald-600 dark:text-emerald-400 font-medium"><i class="fa-solid fa-check-circle mr-2"></i> Estoque saudÃ¡vel! Nenhuma necessidade de reposiÃ§Ã£o urgente baseada nas vendas.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-emerald-600 dark:text-emerald-400 font-medium"><i class="fa-solid fa-check-circle mr-2"></i> Estoque saudável! Nenhuma necessidade de reposição urgente baseada nas vendas.</td></tr>';
     } else {
         tbody.innerHTML = html;
     }
@@ -2723,7 +2725,7 @@ function renderEvolucaoCustos() {
     const tbody = document.getElementById('tabela-evolucao-custos');
     
     if(!prodId) {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500 dark:text-slate-400">Selecione um produto acima para ver o histÃ³rico.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500 dark:text-slate-400">Selecione um produto acima para ver o histórico.</td></tr>';
         return;
     }
 
@@ -2794,19 +2796,19 @@ async function analisarFinanceiroIA() {
     const despesasPendentes = db.financeiro.filter(f => f.tipo === 'DESPESA' && f.status === 'PENDENTE').reduce((a,b)=>a+b.valor,0);
     const receitasPendentes = db.financeiro.filter(f => f.tipo === 'RECEITA' && f.status === 'PENDENTE').reduce((a,b)=>a+b.valor,0);
 
-    const prompt = `VocÃª Ã© um CFO rigoroso analisando uma loja varejista de mÃ³veis. Analise os seguintes nÃºmeros mensais exatos:
+    const prompt = `Você é um CFO rigoroso analisando uma loja varejista de móveis. Analise os seguintes números mensais exatos:
     - Faturamento Bruto: R$ ${fatTotal.toFixed(2)}
     - Custo de Mercadorias (CMV): R$ ${cmvTotal.toFixed(2)}
-    - Lucro LÃ­quido Parcial: R$ ${lucroReal.toFixed(2)}
+    - Lucro Líquido Parcial: R$ ${lucroReal.toFixed(2)}
     - Contas a Pagar (Atrasadas/Pendentes): R$ ${despesasPendentes.toFixed(2)}
-    - Contas a Receber (InadimplÃªncia/Pendentes): R$ ${receitasPendentes.toFixed(2)}
+    - Contas a Receber (Inadimplência/Pendentes): R$ ${receitasPendentes.toFixed(2)}
     
-    Aja como o consultor financeiro do gestor. ForneÃ§a exatamente 3 insights prÃ¡ticos e executÃ¡veis para melhorar o caixa. Seja direto ao ponto. Use marcadores (bullet points). NÃ£o use formataÃ§Ã£o markdown como asteriscos duplos.`;
+    Aja como o consultor financeiro do gestor. Forneça exatamente 3 insights práticos e executáveis para melhorar o caixa. Seja direto ao ponto. Use marcadores (bullet points). Não use formatação markdown como asteriscos duplos.`;
 
     const btn = document.getElementById('btn-ia-fin');
     const divRes = document.getElementById('resultado-ia-fin');
     
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> O Gemini estÃ¡ pensando...';
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> O Gemini está pensando...';
     btn.disabled = true;
     divRes.classList.remove('hidden');
     divRes.innerHTML = 'Cruzando dados de faturamento, estoque e contas. Aguarde alguns segundos...';
@@ -2814,13 +2816,13 @@ async function analisarFinanceiroIA() {
     const resposta = await chamarGemini(prompt);
     
     if(resposta) {
-        divRes.innerHTML = resposta.replace(/\*\*/g, '').replace(/\*/g, 'â€¢');
-        showToast('AnÃ¡lise concluÃ­da com sucesso!', 'success');
+        divRes.innerHTML = resposta.replace(/\*\*/g, '').replace(/\*/g, 'ââ‚¬¢');
+        showToast('Análise concluída com sucesso!', 'success');
     } else {
-        divRes.innerHTML = 'Erro ao gerar anÃ¡lise. Verifique se vocÃª salvou sua chave API na aba Sistema.';
+        divRes.innerHTML = 'Erro ao gerar análise. Verifique se você salvou sua chave API na aba Sistema.';
     }
 
-    btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Refazer AnÃ¡lise';
+    btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Refazer Análise';
     btn.disabled = false;
 }
 
@@ -2841,18 +2843,18 @@ function exportarDadosParaIA() {
 
     let lucroBruto = receitaBruta - custoTotal;
 
-    let relatorioTexto = `=== RELATÃ“RIO FINANCEIRO E DE GESTÃƒO - FC MÃ“VEIS ===\nData da exportaÃ§Ã£o: ${new Date().toLocaleString('pt-BR')}\n\n`;
+    let relatorioTexto = `=== RELATÃâ€œRIO FINANCEIRO E DE GESTÃÆ’O - FC MÃâ€œVEIS ===\nData da exportação: ${new Date().toLocaleString('pt-BR')}\n\n`;
     relatorioTexto += `--- 1. DRE SIMPLIFICADA ---\n- Receita Bruta Total: R$ ${receitaBruta.toFixed(2)}\n- Custo da Mercadoria Vendida (CMV): R$ ${custoTotal.toFixed(2)}\n- Lucro Bruto Real: R$ ${lucroBruto.toFixed(2)}\n\n`;
-    relatorioTexto += `--- 2. HISTÃ“RICO DE VENDAS RECENTES ---\n`;
+    relatorioTexto += `--- 2. HISTÃâ€œRICO DE VENDAS RECENTES ---\n`;
     vendas.slice(-20).forEach((v, index) => { relatorioTexto += `[Venda ${index + 1}] Data: ${v.data || 'N/A'} | Total: R$ ${Number(v.total || 0).toFixed(2)} | Forma de Pagamento: ${v.pagamento || 'N/A'}\n`; });
-    relatorioTexto += `\n--- 3. MOVIMENTAÃ‡Ã•ES FINANCEIRAS / CAIXA ---\n`;
-    financeiro.slice(-20).forEach((f, index) => { relatorioTexto += `[Movimento ${index + 1}] Tipo: ${f.tipo || 'N/A'} | DescriÃ§Ã£o: ${f.descricao || 'N/A'} | Valor: R$ ${Number(f.valor || 0).toFixed(2)} | Data: ${f.data || 'N/A'}\n`; });
+    relatorioTexto += `\n--- 3. MOVIMENTAÃâ€¡Ãâ€¢ES FINANCEIRAS / CAIXA ---\n`;
+    financeiro.slice(-20).forEach((f, index) => { relatorioTexto += `[Movimento ${index + 1}] Tipo: ${f.tipo || 'N/A'} | Descrição: ${f.descricao || 'N/A'} | Valor: R$ ${Number(f.valor || 0).toFixed(2)} | Data: ${f.data || 'N/A'}\n`; });
 
     const blob = new Blob([relatorioTexto], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = `resumo_financeiro_${new Date().toISOString().slice(0,10)}.txt`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-    showToast("RelatÃ³rio baixado com sucesso! Basta enviar para a IA.", "success");
+    showToast("Relatório baixado com sucesso! Basta enviar para a IA.", "success");
 }
 
 
@@ -2923,10 +2925,10 @@ function renderVendas() {
     const tipoFiltro = tipoEl ? tipoEl.value : 'TODOS';
     
     let filtrados = db.vendas || [];
-    filtrados = filtrados.filter(v => v.tipo !== 'ORÃ‡AMENTO');
+    filtrados = filtrados.filter(v => v.tipo !== 'ORÃâ€¡AMENTO');
     
     if (tipoFiltro === 'VENDAS') filtrados = filtrados.filter(v => v.tipo === 'VENDA' || !v.tipo);
-    if (tipoFiltro === 'SERVIÃ‡OS') filtrados = filtrados.filter(v => v.tipo === 'SERVIÃ‡O');
+    if (tipoFiltro === 'SERVIÃâ€¡OS') filtrados = filtrados.filter(v => v.tipo === 'SERVIÃâ€¡O');
     if (termo) filtrados = filtrados.filter(v => (v.clienteNome && String(v.clienteNome).toLowerCase().includes(termo)) || (v.numeroPedido && String(v.numeroPedido).includes(termo)) || (v.vendedor && String(v.vendedor).toLowerCase().includes(termo)));
     if (pgto !== 'TODOS') filtrados = filtrados.filter(v => v.pag && String(v.pag).includes(pgto));
     if (dataIni) { const dIni = new Date(dataIni + 'T00:00:00').getTime(); filtrados = filtrados.filter(v => v.data && new Date(v.data).getTime() >= dIni); }
@@ -2948,7 +2950,7 @@ function renderVendas() {
             const vendRender = v.vendedor || '-'; 
             const pagRender = v.pag || '-';
             
-            const badgeTipo = v.tipo === 'SERVIÃ‡O' ? `<span class="bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">SERVIÃ‡O</span><br>` : `<span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">VENDA</span><br>`;
+            const badgeTipo = v.tipo === 'SERVIÃâ€¡O' ? `<span class="bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">SERVIÃâ€¡O</span><br>` : `<span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">VENDA</span><br>`;
             
             return `
             <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
@@ -2992,7 +2994,7 @@ function calcularJurosMulta(f) {
 
 
 
-// NOVO: FunÃ§Ãµes auxiliares para VÃ­nculo de XML
+// NOVO: Funções auxiliares para Vínculo de XML
 function alternarAcaoVinculoXML() {
     const acao = document.getElementById('prod-acao-vinculo').value;
     if(acao === 'VINCULAR') {
@@ -3162,7 +3164,7 @@ window.confirmarTransferenciaCaixa = confirmarTransferenciaCaixa;
 window.confirmarMovCaixa = confirmarMovCaixa;
 
 // ==========================================
-// TRANSFERÃŠNCIAS ENTRE CONTAS / BANCOS
+// TRANSFERÃÅ NCIAS ENTRE CONTAS / BANCOS
 // ==========================================
 function abrirModalTransferenciaFin() {
     const valEl = document.getElementById('transf-fin-valor');
@@ -3172,7 +3174,7 @@ function abrirModalTransferenciaFin() {
     
     if (valEl) valEl.value = '';
     if (obsEl) obsEl.value = '';
-    if (origEl) origEl.value = 'Caixa FÃ­sico';
+    if (origEl) origEl.value = 'Caixa Físico';
     if (destEl) destEl.value = 'Conta Corrente Principal';
     
     const modal = document.getElementById('modal-transferencia-fin');
@@ -3186,13 +3188,13 @@ function fecharModalTransferenciaFin() {
 }
 
 async function confirmarTransferenciaFin() {
-    const origem = document.getElementById('transf-fin-origem')?.value || 'Caixa FÃ­sico';
+    const origem = document.getElementById('transf-fin-origem')?.value || 'Caixa Físico';
     const destino = document.getElementById('transf-fin-destino')?.value || 'Conta Corrente Principal';
     const valor = parseFloat(document.getElementById('transf-fin-valor')?.value) || 0;
     const obs = document.getElementById('transf-fin-obs')?.value.trim() || '';
 
-    if (valor <= 0) return showToast('Informe um valor vÃ¡lido para a transferÃªncia!', 'error');
-    if (origem === destino) return showToast('A conta de origem e destino nÃ£o podem ser iguais!', 'error');
+    if (valor <= 0) return showToast('Informe um valor válido para a transferência!', 'error');
+    if (origem === destino) return showToast('A conta de origem e destino não podem ser iguais!', 'error');
 
     const batch = firestore.batch();
     let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
@@ -3200,18 +3202,18 @@ async function confirmarTransferenciaFin() {
     let cxSaldoNovo = cxAtual.saldo || 0;
     let atualizouCaixa = false;
 
-    if (origem === 'Caixa FÃ­sico') {
-        if (cxAtual.status !== 'ABERTO') return showToast('O Caixa FÃ­sico estÃ¡ fechado!', 'error');
-        if (valor > cxSaldoNovo) return showToast('Saldo insuficiente no Caixa FÃ­sico!', 'error');
+    if (origem === 'Caixa Físico') {
+        if (cxAtual.status !== 'ABERTO') return showToast('O Caixa Físico está fechado!', 'error');
+        if (valor > cxSaldoNovo) return showToast('Saldo insuficiente no Caixa Físico!', 'error');
         cxSaldoNovo -= valor;
-        cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: 'TransferÃªncia para ' + destino + (obs ? ' (' + obs + ')' : ''), valor: valor });
+        cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: 'Transferência para ' + destino + (obs ? ' (' + obs + ')' : ''), valor: valor });
         atualizouCaixa = true;
     }
 
-    if (destino === 'Caixa FÃ­sico') {
-        if (cxAtual.status !== 'ABERTO') return showToast('O Caixa FÃ­sico estÃ¡ fechado!', 'error');
+    if (destino === 'Caixa Físico') {
+        if (cxAtual.status !== 'ABERTO') return showToast('O Caixa Físico está fechado!', 'error');
         cxSaldoNovo += valor;
-        cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: 'TransferÃªncia de ' + origem + (obs ? ' (' + obs + ')' : ''), valor: valor });
+        cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: 'Transferência de ' + origem + (obs ? ' (' + obs + ')' : ''), valor: valor });
         atualizouCaixa = true;
     }
 
@@ -3224,9 +3226,9 @@ async function confirmarTransferenciaFin() {
         tipo: 'TRANSFERENCIA',
         origem: origem,
         destino: destino,
-        pessoa: origem + ' âž” ' + destino,
-        ref: 'Transf: ' + origem + ' âž” ' + destino,
-        categoria: 'TransferÃªncia Entre Contas',
+        pessoa: origem + ' âÅ¾â€ ' + destino,
+        ref: 'Transf: ' + origem + ' âÅ¾â€ ' + destino,
+        categoria: 'Transferência Entre Contas',
         centroCusto: 'Operacional',
         contaBancaria: destino,
         valor: valor,
@@ -3235,7 +3237,7 @@ async function confirmarTransferenciaFin() {
         observacao: obs,
         data: new Date().toISOString(),
         dataPagamento: new Date().toISOString(),
-        metodoPagamento: 'TransferÃªncia Interna',
+        metodoPagamento: 'Transferência Interna',
         ultimaAlteracao: Date.now()
     };
     batch.set(transfRef, transfObj);
@@ -3244,27 +3246,27 @@ async function confirmarTransferenciaFin() {
         await batch.commit();
         fecharModalTransferenciaFin();
         renderTransferenciasFin();
-        showToast('TransferÃªncia realizada com sucesso!', 'success');
+        showToast('Transferência realizada com sucesso!', 'success');
     } catch (e) {
         console.error('Erro ao transferir:', e);
-        showToast('Erro ao realizar transferÃªncia.', 'error');
+        showToast('Erro ao realizar transferência.', 'error');
     }
 }
 
 function renderTransferenciasFin() {
     const tbody = document.getElementById('tabela-transferencias-body');
     if (!tbody || !db.financeiro) return;
-    const transferencias = db.financeiro.filter(f => f.tipo === 'TRANSFERENCIA' || f.categoria === 'TransferÃªncia Entre Contas').sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0));
+    const transferencias = db.financeiro.filter(f => f.tipo === 'TRANSFERENCIA' || f.categoria === 'Transferência Entre Contas').sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0));
 
     if (transferencias.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhuma transferÃªncia registrada.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhuma transferência registrada.</td></tr>';
         return;
     }
 
     tbody.innerHTML = transferencias.map(t => {
         const dataFmt = t.data ? formatData(t.data) : '-';
         const origemDestino = t.origem && t.destino ? t.origem + ' <i class="fa-solid fa-arrow-right mx-1 text-xs text-slate-400"></i> ' + t.destino : (t.pessoa || t.ref);
-        return '<tr class="hover:bg-slate-100/60 dark:hover:bg-slate-700/50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-700/60 transition-colors text-slate-800 dark:text-slate-200"><td class="p-3 text-xs text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">' + dataFmt + '</td><td class="p-3 text-xs font-bold text-slate-800 dark:text-slate-100">' + origemDestino + '</td><td class="p-3 text-xs text-slate-600 dark:text-slate-300">' + (t.observacao || '-') + '</td><td class="p-3 text-right font-black text-sm text-purple-600 dark:text-purple-400 whitespace-nowrap">' + formatMoney(t.valor || 0) + '</td><td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-purple-100 dark:bg-purple-950/80 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800">CONCLUÃDA</span></td><td class="p-3 text-center"><button onclick="excluirTransferenciaFin(\'' + t.id + '\')" class="text-slate-400 hover:text-red-500 transition-colors p-1" title="Excluir"><i class="fa-solid fa-trash"></i></button></td></tr>';
+        return '<tr class="hover:bg-slate-100/60 dark:hover:bg-slate-700/50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-700/60 transition-colors text-slate-800 dark:text-slate-200"><td class="p-3 text-xs text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">' + dataFmt + '</td><td class="p-3 text-xs font-bold text-slate-800 dark:text-slate-100">' + origemDestino + '</td><td class="p-3 text-xs text-slate-600 dark:text-slate-300">' + (t.observacao || '-') + '</td><td class="p-3 text-right font-black text-sm text-purple-600 dark:text-purple-400 whitespace-nowrap">' + formatMoney(t.valor || 0) + '</td><td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-purple-100 dark:bg-purple-950/80 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800">CONCLUÍDA</span></td><td class="p-3 text-center"><button onclick="excluirTransferenciaFin(\'' + t.id + '\')" class="text-slate-400 hover:text-red-500 transition-colors p-1" title="Excluir"><i class="fa-solid fa-trash"></i></button></td></tr>';
     }).join('');
 }
 
@@ -3272,16 +3274,16 @@ async function excluirTransferenciaFin(id) {
     const t = db.financeiro?.find(x => String(x.id) === String(id));
     if (!t) return;
 
-    abrirConfirmacao('Cancelar', 'Cancelar transferÃªncia de ' + formatMoney(t.valor) + '?', async () => {
+    abrirConfirmacao('Cancelar', 'Cancelar transferência de ' + formatMoney(t.valor) + '?', async () => {
         const batch = firestore.batch();
-        if (t.origem === 'Caixa FÃ­sico' || t.destino === 'Caixa FÃ­sico') {
+        if (t.origem === 'Caixa Físico' || t.destino === 'Caixa Físico') {
             let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
             let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
             let cxSaldoNovo = cxAtual.saldo || 0;
-            if (t.origem === 'Caixa FÃ­sico') {
+            if (t.origem === 'Caixa Físico') {
                 cxSaldoNovo += (t.valor || 0);
                 cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: 'Estorno Transf: para ' + t.destino, valor: t.valor });
-            } else if (t.destino === 'Caixa FÃ­sico') {
+            } else if (t.destino === 'Caixa Físico') {
                 cxSaldoNovo -= (t.valor || 0);
                 cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: 'Estorno Transf: de ' + t.origem, valor: t.valor });
             }
@@ -3291,7 +3293,7 @@ async function excluirTransferenciaFin(id) {
         try {
             await batch.commit();
             renderTransferenciasFin();
-            showToast('TransferÃªncia estornada!', 'success');
+            showToast('Transferência estornada!', 'success');
         } catch (e) {
             showToast('Erro ao estornar.', 'error');
         }
@@ -3306,7 +3308,7 @@ window.extratoOFXAtual = null;
 function processarArquivoOFX(event) {
     const file = event.target?.files?.[0];
     if (!file) return;
-    showToast('Lendo arquivo OFX bancÃ¡rio...', 'info');
+    showToast('Lendo arquivo OFX bancário...', 'info');
     const reader = new FileReader();
     reader.onload = function(e) {
         try {
@@ -3322,7 +3324,7 @@ function processarArquivoOFX(event) {
                 rawText = new TextDecoder('iso-8859-1').decode(buffer);
             }
             const extrato = parseOFXContent(rawText);
-            if (!extrato || !extrato.transacoes || extrato.transacoes.length === 0) return showToast('Sem transaÃ§Ãµes vÃ¡lidas no arquivo OFX', 'warning');
+            if (!extrato || !extrato.transacoes || extrato.transacoes.length === 0) return showToast('Sem transações válidas no arquivo OFX', 'warning');
             window.extratoOFXAtual = extrato;
             cruzarOFXComFinanceiro();
             renderConciliacaoOFX();
@@ -3428,7 +3430,7 @@ function renderConciliacaoOFX() {
         const dTotEl = document.getElementById('ofx-total-debitos');
         if (dTotEl) dTotEl.innerText = formatMoney(debitos);
         const rTotEl = document.getElementById('ofx-total-registros');
-        if (rTotEl) rTotEl.innerText = transacoes.length + ' transaÃ§Ãµes';
+        if (rTotEl) rTotEl.innerText = transacoes.length + ' transações';
     }
 
     if (tabelaWrap) tabelaWrap.classList.remove('hidden');
@@ -3454,9 +3456,9 @@ function renderConciliacaoOFX() {
             statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800"><i class="fa-solid fa-arrows-rotate"></i> MATCH ENCONTRADO</span>';
             acaoHtml = '<button onclick="conciliarItemOFX(' + idx + ')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow-sm transition-all flex items-center gap-1.5 mx-auto"><i class="fa-solid fa-check"></i> Conciliar</button>';
         } else {
-            matchTexto = '<span class="text-slate-400 dark:text-slate-500 italic">NÃ£o identificado</span>';
-            statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">NOVO LANÃ‡AMENTO</span>';
-            acaoHtml = '<button onclick="criarEConciliarItemOFX(' + idx + ')" class="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow-sm transition-all flex items-center gap-1.5 mx-auto"><i class="fa-solid fa-plus"></i> LanÃ§ar & Baixar</button>';
+            matchTexto = '<span class="text-slate-400 dark:text-slate-500 italic">Não identificado</span>';
+            statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">NOVO LANÇAMENTO</span>';
+            acaoHtml = '<button onclick="criarEConciliarItemOFX(' + idx + ')" class="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow-sm transition-all flex items-center gap-1.5 mx-auto"><i class="fa-solid fa-plus"></i> Lançar & Baixar</button>';
         }
         return '<tr class="hover:bg-slate-100/60 dark:hover:bg-slate-700/50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-700/60 transition-colors text-slate-800 dark:text-slate-200"><td class="p-3 text-center">' + checkInput + '</td><td class="p-3 text-xs text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">' + dataFmt + '</td><td class="p-3 text-xs font-bold text-slate-800 dark:text-slate-100">' + t.memo + '</td><td class="p-3 text-right font-black ' + corValor + ' whitespace-nowrap text-sm">' + sinalValor + formatMoney(t.valor) + '</td><td class="p-3 text-xs">' + matchTexto + '</td><td class="p-3 text-center">' + statusBadge + '</td><td class="p-3 text-center">' + acaoHtml + '</td></tr>';
     }).join('');
@@ -3545,9 +3547,9 @@ function ofxRenderizarTitulosPendentes(filtroTexto = '') {
         listaContainer.innerHTML = `
             <div class="p-4 text-center text-slate-400 dark:text-slate-500 text-xs">
                 <i class="fa-solid fa-folder-open text-lg mb-1 block opacity-60"></i>
-                Nenhum tÃ­tulo pendente compatÃ­vel encontrado no momento.
+                Nenhum título pendente compatível encontrado no momento.
                 <button type="button" onclick="ofxAlternarModo('NOVO')" class="mt-2 text-blue-600 dark:text-blue-400 font-bold hover:underline block mx-auto">
-                    + Criar como Novo LanÃ§amento
+                    + Criar como Novo Lançamento
                 </button>
             </div>`;
         return;
@@ -3612,7 +3614,7 @@ function ofxSelecionarTituloVinculado(id) {
     const cardSel = document.getElementById('ofx-card-titulo-selecionado');
     if (cardSel) {
         cardSel.classList.remove('hidden');
-        document.getElementById('ofx-sel-pessoa').innerText = f.pessoa || f.ref || 'NÃ£o especificado';
+        document.getElementById('ofx-sel-pessoa').innerText = f.pessoa || f.ref || 'Não especificado';
         document.getElementById('ofx-sel-venc').innerText = f.data ? formatData(f.data).split(' ')[0] : '-';
         document.getElementById('ofx-sel-valor').innerText = formatMoney(f.valor);
     }
@@ -3632,7 +3634,7 @@ function ofxSelecionarTituloVinculado(id) {
     if (elCc) elCc.value = f.centroCusto || 'Geral';
 
     ofxRenderizarTitulosPendentes(document.getElementById('ofx-busca-titulos')?.value || '');
-    showToast('TÃ­tulo vinculado para baixa!', 'info');
+    showToast('Título vinculado para baixa!', 'info');
 }
 
 function ofxDesvincularTitulo(manterFormulario = false) {
@@ -3662,7 +3664,7 @@ function abrirModalConciliacaoOFX(idx, temMatch) {
     ofxItemAtualIdx = idx;
     window.ofxItemAtualIdx = idx;
 
-    const bancoNome = window.extratoOFXAtual.banco || 'Conta BancÃ¡ria';
+    const bancoNome = window.extratoOFXAtual.banco || 'Conta Bancária';
     const elBanco = document.getElementById('ofx-modal-ext-banco');
     if (elBanco) elBanco.innerText = bancoNome;
 
@@ -3684,10 +3686,10 @@ function abrirModalConciliacaoOFX(idx, temMatch) {
     const elBadge = document.getElementById('ofx-modal-ext-tipo-badge');
     if (elBadge) {
         if (item.isCredito) {
-            elBadge.innerText = 'CrÃ©dito / Entrada';
+            elBadge.innerText = 'Crédito / Entrada';
             elBadge.className = 'px-2.5 py-1 rounded-full text-xs font-black tracking-wide bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800';
         } else {
-            elBadge.innerText = 'DÃ©bito / SaÃ­da';
+            elBadge.innerText = 'Débito / Saída';
             elBadge.className = 'px-2.5 py-1 rounded-full text-xs font-black tracking-wide bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800';
         }
     }
@@ -3722,23 +3724,34 @@ function abrirModalConciliacaoOFX(idx, temMatch) {
     const buscaInput = document.getElementById('ofx-busca-titulos');
     if (buscaInput) buscaInput.value = '';
 
-    if (temMatch && docMatch) {
-        ofxAlternarModo('VINCULAR');
-        ofxSelecionarTituloVinculado(docMatch.id);
-    } else {
-        const temPendentes = (db.financeiro || []).some(f => f.status !== 'PAGO' && f.status !== 'CANCELADO' && (f.tipo === (item.isCredito ? 'RECEITA' : 'DESPESA') || (!f.tipo && item.isCredito)));
-        if (temPendentes) {
+    try {
+        if (temMatch && docMatch) {
             ofxAlternarModo('VINCULAR');
-            ofxDesvincularTitulo(true);
-            document.getElementById('ofx-modal-pessoa').value = item.memo || '';
+            ofxSelecionarTituloVinculado(docMatch.id);
         } else {
-            ofxAlternarModo('NOVO');
-            document.getElementById('ofx-modal-pessoa').value = item.memo || '';
+            const temPendentes = (db.financeiro || []).some(f => f.status !== 'PAGO' && f.status !== 'CANCELADO' && (f.tipo === (item.isCredito ? 'RECEITA' : 'DESPESA') || (!f.tipo && item.isCredito)));
+            if (temPendentes) {
+                ofxAlternarModo('VINCULAR');
+                ofxDesvincularTitulo(true);
+                const elPessoa = document.getElementById('ofx-modal-pessoa');
+                if (elPessoa) elPessoa.value = item.memo || '';
+            } else {
+                ofxAlternarModo('NOVO');
+                const elPessoa = document.getElementById('ofx-modal-pessoa');
+                if (elPessoa) elPessoa.value = item.memo || '';
+            }
         }
-    }
 
-    const modal = document.getElementById('modal-conciliacao-ofx');
-    if (modal) modal.classList.remove('hidden');
+        const modal = document.getElementById('modal-conciliacao-ofx');
+        if (modal) {
+            modal.classList.remove('hidden');
+        } else {
+            alert("ERRO: Modal não encontrado no HTML!");
+        }
+    } catch (err) {
+        alert("Erro ao abrir modal: " + err.message);
+        console.error(err);
+    }
 }
 
 function fecharModalConciliacaoOFX() {
@@ -3760,7 +3773,7 @@ async function conciliarLoteOFX() {
     if (checkboxes.length === 0) return showToast('Selecione ao menos um!', 'warning');
     
     const indices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.idx));
-    const bancoNome = window.extratoOFXAtual.banco || 'Conta BancÃ¡ria';
+    const bancoNome = window.extratoOFXAtual.banco || 'Conta Bancária';
     const batch = firestore.batch();
     let totalConciliados = 0;
 
@@ -3786,8 +3799,8 @@ async function conciliarLoteOFX() {
             const finRef = firestore.collection('financeiro').doc();
             const novoDoc = {
                 tipo: item.tipoFin,
-                pessoa: item.memo || (item.isCredito ? 'Recebimento BancÃ¡rio' : 'Despesa BancÃ¡ria'),
-                ref: 'OFX: ' + (item.memo || 'LanÃ§amento'),
+                pessoa: item.memo || (item.isCredito ? 'Recebimento Bancário' : 'Despesa Bancária'),
+                ref: 'OFX: ' + (item.memo || 'Lançamento'),
                 categoria: item.isCredito ? 'Outras Receitas' : 'Outras Despesas',
                 centroCusto: 'Operacional',
                 contaBancaria: bancoNome,
@@ -3813,7 +3826,7 @@ async function conciliarLoteOFX() {
     try {
         await batch.commit();
         renderConciliacaoOFX();
-        showToast(totalConciliados + ' lanÃ§amentos conciliados!', 'success');
+        showToast(totalConciliados + ' lançamentos conciliados!', 'success');
     } catch (e) {
         showToast('Erro ao processar.', 'error');
     }
@@ -3847,7 +3860,7 @@ async function confirmarConciliacaoModalOFX() {
     if (typeof window.ofxItemAtualIdx === 'undefined' || window.ofxItemAtualIdx === null) return;
     const item = window.extratoOFXAtual.transacoes[window.ofxItemAtualIdx];
     const docMatch = item.matchDoc;
-    // Se estivermos vinculando a um tÃ­tulo jÃ¡ existente
+    // Se estivermos vinculando a um título já existente
     const modoVinculo = window.ofxModoAtual === 'VINCULAR';
     const isNovo = !modoVinculo || !docMatch || (item.statusMatch === 'SEM_MATCH');
 
@@ -3863,7 +3876,7 @@ async function confirmarConciliacaoModalOFX() {
 
     if (!pessoa) return showToast('Preencha o Favorecido.', 'error');
     if (!dataPgto) return showToast('Preencha a Data.', 'error');
-    if (isNaN(valorPago) || valorPago <= 0) return showToast('Preencha um Valor vÃ¡lido.', 'error');
+    if (isNaN(valorPago) || valorPago <= 0) return showToast('Preencha um Valor válido.', 'error');
 
     const batch = firestore.batch();
     
@@ -3872,7 +3885,7 @@ async function confirmarConciliacaoModalOFX() {
         const novoDoc = {
             tipo: tipo,
             pessoa: pessoa,
-            ref: 'OFX: ' + (item.memo || 'LanÃ§amento'),
+            ref: 'OFX: ' + (item.memo || 'Lançamento'),
             categoria: categoria,
             centroCusto: centroCusto,
             contaBancaria: contaBancaria,
@@ -3930,4 +3943,5 @@ window.confirmarConciliacaoModalOFX = confirmarConciliacaoModalOFX;
 
 window.mudarVisualizacaoFin = mudarVisualizacaoFin;
 window.renderFinAbas = renderFinAbas;
+
 

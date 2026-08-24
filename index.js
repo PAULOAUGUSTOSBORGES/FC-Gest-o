@@ -267,7 +267,7 @@ function renderizarNotificacoes(prodVazios, prodBaixo, recVencidas, pagVencidas,
     let alertas = [];
 
     if (caixa < 0) {
-        alertas.push(`<div class="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800/50 rounded-lg flex gap-3 items-center cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors" onclick="window.location.href='gestao.html?view=financeiro'">
+        alertas.push(`<div class="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800/50 rounded-lg flex gap-3 items-center cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors" onclick="window.location.href='financeiro.html'">
             <div class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0"><i class="fa-solid fa-triangle-exclamation"></i></div>
             <div><p class="text-sm font-bold text-slate-800 dark:text-slate-100">Caixa Negativo</p><p class="text-xs text-slate-500 dark:text-slate-400">O saldo em caixa está negativo.</p></div>
         </div>`);
@@ -288,14 +288,14 @@ function renderizarNotificacoes(prodVazios, prodBaixo, recVencidas, pagVencidas,
     }
 
     if (pagVencidas > 0) {
-        alertas.push(`<div class="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800/50 rounded-lg flex gap-3 items-center cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors" onclick="window.location.href='gestao.html?view=financeiro'">
+        alertas.push(`<div class="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800/50 rounded-lg flex gap-3 items-center cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors" onclick="window.location.href='financeiro.html'">
             <div class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0"><i class="fa-solid fa-file-invoice-dollar"></i></div>
             <div><p class="text-sm font-bold text-slate-800 dark:text-slate-100">${pagVencidas} Conta(s) a Pagar vencida(s)</p><p class="text-xs text-slate-500 dark:text-slate-400">Regularize para evitar juros.</p></div>
         </div>`);
     }
 
     if (recVencidas > 0) {
-        alertas.push(`<div class="p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800/50 rounded-lg flex gap-3 items-center cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors" onclick="window.location.href='gestao.html?view=financeiro'">
+        alertas.push(`<div class="p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800/50 rounded-lg flex gap-3 items-center cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors" onclick="window.location.href='financeiro.html'">
             <div class="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0"><i class="fa-solid fa-hand-holding-dollar"></i></div>
             <div><p class="text-sm font-bold text-slate-800 dark:text-slate-100">${recVencidas} Recebimento(s) em atraso</p><p class="text-xs text-slate-500 dark:text-slate-400">Faça cobranças ativas.</p></div>
         </div>`);

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FC MÃ³veis - GestÃ£o e Financeiro</title>
+    <title>FC MÃ³veis - Gestão e Financeiro</title>
     <script>
         // Aplica tema antes do Tailwind carregar (evita flash)
         window.tailwind = window.tailwind || {};
@@ -15,9 +15,11 @@
 <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js?v=639227529208900695"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js?v=639227581293447170"></script>
     <link rel="stylesheet" href="style.css">
-    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    
+    
+
     <style>
         .fc-theme-standard .fc-scrollgrid { border-color: #e2e8f0; }
         .dark .fc-theme-standard .fc-scrollgrid { border-color: #334155; }
@@ -30,29 +32,6 @@
         .fc-toolbar-title { font-size: 1.25rem !important; font-weight: 700; }
         .dark .fc-daygrid-day-number { color: #cbd5e1; }
         .fc-daygrid-day-number { color: #475569; font-weight: 600; padding: 4px 8px !important; }
-        
-        .dark .fc-popover { background-color: #1e293b !important; border-color: #334155 !important; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); }
-        .dark .fc-popover-header { background-color: #0f172a !important; color: #f8fafc !important; }
-        .dark .fc-popover-title { color: #f8fafc !important; font-weight: bold; }
-        .dark .fc-popover-close { color: #94a3b8 !important; opacity: 1; }
-        .dark .fc-more-popover .fc-popover-body { background-color: #1e293b !important; }
-        .dark .fc-daygrid-more-link { color: #60a5fa !important; font-weight: bold; }
-        .fc-daygrid-more-link { color: #2563eb !important; font-weight: bold; }
-    </style>
-    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
-    <style>
-        .fc-theme-standard .fc-scrollgrid { border-color: #e2e8f0; }
-        .dark .fc-theme-standard .fc-scrollgrid { border-color: #334155; }
-        .fc-theme-standard td, .fc-theme-standard th { border-color: #e2e8f0; }
-        .dark .fc-theme-standard td, .dark .fc-theme-standard th { border-color: #334155; }
-        .dark .fc-day-today { background-color: rgba(59, 130, 246, 0.1) !important; }
-        .dark .fc-col-header-cell { background-color: #1e293b; color: #f8fafc; padding: 10px 0; }
-        .fc-col-header-cell { background-color: #f8fafc; color: #334155; padding: 10px 0; }
-        .dark .fc-button-primary { background-color: #3b82f6 !important; border-color: #2563eb !important; }
-        .fc-toolbar-title { font-size: 1.25rem !important; font-weight: 700; }
-        .dark .fc-daygrid-day-number { color: #cbd5e1; }
-        .fc-daygrid-day-number { color: #475569; font-weight: 600; padding: 4px 8px !important; }
-        
         .dark .fc-popover { background-color: #1e293b !important; border-color: #334155 !important; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); }
         .dark .fc-popover-header { background-color: #0f172a !important; color: #f8fafc !important; }
         .dark .fc-popover-title { color: #f8fafc !important; font-weight: bold; }
@@ -87,7 +66,7 @@
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-2 mb-1">VisÃ£o Geral</p>
                 <a href="index.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="dashboard"><i class="fa-solid fa-chart-pie w-5 text-center"></i> Dashboard</a>
                 
-                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">OperaÃ§Ã£o</p>
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">OperAção</p>
                 <a href="pdv.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="pdv"><i class="fa-solid fa-cash-register w-5 text-center"></i> Frente de Caixa (PDV)</a>
                 <a href="vendas_operacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_operacao"><i class="fa-solid fa-receipt w-5 text-center"></i> HistÃ³rico Vendas/ServiÃ§os</a>
                 <a href="orcamentos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="orcamentos"><i class="fa-solid fa-file-invoice w-5 text-center"></i> Meus OrÃ§amentos</a>
@@ -99,8 +78,8 @@
                 <a href="fornecedores.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="fornecedores"><i class="fa-solid fa-truck w-5 text-center"></i> Fornecedores</a>
                 <a href="funcionarios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="funcionarios"><i class="fa-solid fa-user-tie w-5 text-center"></i> FuncionÃ¡rios / Vendedores</a>
                 
-                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">GestÃ£o</p>
-                <a href="vendas_gestao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_gestao"><i class="fa-solid fa-chart-line w-5 text-center"></i> HistÃ³rico Vendas (GestÃ£o)</a>
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
+                <a href="vendas_gestao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_gestao"><i class="fa-solid fa-chart-line w-5 text-center"></i> HistÃ³rico Vendas (Gestão)</a>
                 <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
                 <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa FÃ­sico</a>
                 <a href="compras.html" id="nav-compras" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & Estoque</a>
@@ -116,12 +95,12 @@
             </div>
         </aside>
 
-        <!-- ÃÃREA DE CONTEÃƒÅ¡DO PRINCIPAL -->
+        <!-- ÃÃREA DE CONTEÃƒÃ…Â¡DO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
             <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
                 <div class="flex items-center gap-3">
                     <button onclick="toggleMenu()" class="md:hidden text-slate-600 dark:text-slate-300 hover:text-blue-600 p-2"><i class="fa-solid fa-bars text-xl"></i></button>
-                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate" id="header-title">GestÃ£o</h2>
+                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate" id="header-title">Gestão</h2>
                 </div>
                 <div class="flex items-center gap-2 md:gap-4">
                     <a href="operacao.html" class="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-3 md:px-4 py-2 rounded-lg font-bold text-xs md:text-sm flex items-center gap-2 transition-colors whitespace-nowrap"><i class="fa-solid fa-cart-shopping"></i> <span class="hidden sm:inline">Abrir PDV</span></a>
@@ -131,7 +110,7 @@
 
             <div class="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth custom-scrollbar w-full relative">
 
-                <!-- MÃƒâ€œDULO FINANCEIRO -->
+                <!-- MÃƒÃ¢â‚¬Å“DULO FINANCEIRO -->
                 <div id="view-financeiro" class="view-section max-w-7xl mx-auto space-y-4 md:space-y-6 hidden">
                     <!-- Fluxo de Caixa Projetado -->
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -148,7 +127,7 @@
                             <p class="text-xl font-black text-purple-600 mt-1" id="dash-fluxo-90">R$ 0,00</p>
                         </div>
                         <div class="bg-red-50 dark:bg-red-900/30 p-4 rounded-xl border border-red-200 dark:border-red-800 shadow-sm flex flex-col justify-center">
-                            <h3 class="text-[10px] font-bold text-red-700 dark:text-red-400 uppercase">InadimplÃªncia (Atrasos)</h3>
+                            <h3 class="text-[10px] font-bold text-red-700 dark:text-red-400 uppercase">Inadimplência (Atrasos)</h3>
                             <p class="text-xl font-black text-red-600 dark:text-red-500 mt-1" id="dash-inadimplencia">R$ 0,00</p>
                         </div>
                     </div>
@@ -159,8 +138,8 @@
                                 <i class="fa-solid fa-money-bill-transfer"></i>
                             </div>
                             <div>
-                                <h2 class="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight">GestÃ£o Financeira</h2>
-                                <p class="text-xs text-slate-500 dark:text-slate-400">Contas a Pagar/Receber, conciliaÃ§Ã£o OFX e transferÃªncias</p>
+                                <h2 class="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight">Gestão Financeira</h2>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Contas a Pagar/Receber, conciliAção OFX e Transferências</p>
                             </div>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 w-full xl:w-auto">
@@ -173,8 +152,8 @@
                             <div id="fin-abas-container" class="flex flex-wrap bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-1 shadow-inner">
                                 <button onclick="renderFinAbas('receber')" id="fin-tab-receber" class="px-3.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all whitespace-nowrap">Contas a Receber</button>
                                 <button onclick="renderFinAbas('pagar')" id="fin-tab-pagar" class="px-3.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all whitespace-nowrap">Contas a Pagar</button>
-                                <button onclick="renderFinAbas('conciliacao')" id="fin-tab-conciliacao" class="px-3.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all whitespace-nowrap"><i class="fa-solid fa-building-columns mr-1.5 text-blue-500"></i> ConciliaÃ§Ã£o OFX</button>
-                                <button onclick="renderFinAbas('transferencias')" id="fin-tab-transferencias" class="px-3.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all whitespace-nowrap"><i class="fa-solid fa-money-bill-transfer mr-1.5 text-purple-500"></i> TransferÃªncias</button>
+                                <button onclick="renderFinAbas('conciliacao')" id="fin-tab-conciliacao" class="px-3.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all whitespace-nowrap"><i class="fa-solid fa-building-columns mr-1.5 text-blue-500"></i> ConciliAção OFX</button>
+                                <button onclick="renderFinAbas('transferencias')" id="fin-tab-transferencias" class="px-3.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all whitespace-nowrap"><i class="fa-solid fa-money-bill-transfer mr-1.5 text-purple-500"></i> Transferências</button>
                             </div>
                         </div>
                     </div>
@@ -303,12 +282,12 @@
                                              <i class="fa-solid fa-building-columns text-white text-lg"></i>
                                          </div>
                                          <div>
-                                             <h3 class="text-lg md:text-xl font-extrabold text-white tracking-tight">ConciliaÃ§Ã£o BancÃ¡ria OFX</h3>
-                                             <p class="text-blue-200 text-xs font-medium">Cruzamento automÃ¡tico de extrato bancÃ¡rio com lanÃ§amentos</p>
+                                             <h3 class="text-lg md:text-xl font-extrabold text-white tracking-tight">ConciliAção BancÃ¡ria OFX</h3>
+                                             <p class="text-blue-200 text-xs font-medium">Cruzamento Automático de extrato bancÃ¡rio com Lançamentos</p>
                                          </div>
                                      </div>
                                      <p class="text-blue-100/80 text-xs max-w-lg leading-relaxed mt-1">
-                                         Importe o arquivo <span class="font-bold text-white">.OFX</span> gerado pelo seu banco (ItaÃº, Bradesco, Santander, BB, Nubank, Sicredi, Sicoob, Inter) para cruzamento automÃ¡tico de recebimentos e pagamentos.
+                                         Importe o arquivo <span class="font-bold text-white">.OFX</span> gerado pelo seu banco (Itaú, Bradesco, Santander, BB, Nubank, Sicredi, Sicoob, Inter) para cruzamento Automático de recebimentos e pagamentos.
                                      </p>
                                  </div>
                                  <label class="shrink-0 group cursor-pointer bg-white hover:bg-blue-50 text-blue-700 font-bold px-5 py-3 rounded-xl text-sm shadow-lg transition-all duration-200 flex items-center gap-2.5 border-2 border-white/30 hover:border-blue-200">
@@ -327,7 +306,7 @@
                                  </div>
                                  <div class="min-w-0">
                                      <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Banco</p>
-                                     <p class="font-bold text-slate-800 dark:text-slate-100 text-sm truncate" id="ofx-banco-nome">â€”</p>
+                                     <p class="font-bold text-slate-800 dark:text-slate-100 text-sm truncate" id="ofx-banco-nome">Ã¢â‚¬â€</p>
                                  </div>
                              </div>
                              <div class="bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-900 rounded-xl p-4 shadow-sm flex items-center gap-3">
@@ -335,7 +314,7 @@
                                      <i class="fa-solid fa-arrow-down text-emerald-600 text-sm"></i>
                                  </div>
                                  <div>
-                                     <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Entradas (CrÃ©ditos)</p>
+                                     <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Entradas (Créditos)</p>
                                      <p class="font-extrabold text-emerald-600 text-base" id="ofx-total-creditos">R$ 0,00</p>
                                  </div>
                              </div>
@@ -344,7 +323,7 @@
                                      <i class="fa-solid fa-arrow-up text-red-500 text-sm"></i>
                                  </div>
                                  <div>
-                                     <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">SaÃ­das (DÃ©bitos)</p>
+                                     <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">SaÃ­das (Débitos)</p>
                                      <p class="font-extrabold text-red-500 text-base" id="ofx-total-debitos">R$ 0,00</p>
                                  </div>
                              </div>
@@ -353,7 +332,7 @@
                                      <i class="fa-solid fa-list-check text-blue-600 text-sm"></i>
                                  </div>
                                  <div>
-                                     <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">LanÃ§amentos</p>
+                                     <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Lançamentos</p>
                                      <p class="font-extrabold text-blue-600 text-base" id="ofx-total-registros">0</p>
                                  </div>
                              </div>
@@ -364,7 +343,7 @@
                              <div class="px-5 py-3.5 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
                                  <div class="flex items-center gap-2.5">
                                      <i class="fa-solid fa-table-list text-slate-400 dark:text-slate-500 text-sm"></i>
-                                     <span class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide">LanÃ§amentos do Extrato vs Financeiro</span>
+                                     <span class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide">Lançamentos do Extrato vs Financeiro</span>
                                  </div>
                                  <button onclick="conciliarLoteOFX()" class="bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all duration-150 flex items-center gap-2 shadow-sm">
                                      <i class="fa-solid fa-check-double"></i> Conciliar Selecionados
@@ -380,9 +359,9 @@
                                              <th class="p-3 whitespace-nowrap">Data</th>
                                              <th class="p-3">DescriÃ§Ã£o no Extrato</th>
                                              <th class="p-3 text-right whitespace-nowrap">Valor</th>
-                                             <th class="p-3">CorrespondÃªncia no Sistema</th>
+                                             <th class="p-3">Correspondência no Sistema</th>
                                              <th class="p-3 text-center whitespace-nowrap">Status</th>
-                                             <th class="p-3 text-center whitespace-nowrap">AÃ§Ã£o</th>
+                                             <th class="p-3 text-center whitespace-nowrap">Ação</th>
                                          </tr>
                                      </thead>
                                      <tbody id="ofx-tabela-body" class="divide-y divide-slate-100 dark:divide-slate-700/60"></tbody>
@@ -392,11 +371,11 @@
 
                      </div>
 
-                    <!-- SUB-ABA TRANSFERÃŠNCIAS ENTRE CONTAS -->
+                    <!-- SUB-ABA TRANSFERÃƒÅ NCIAS ENTRE CONTAS -->
                     <div id="fin-area-transferencias" class="fin-area hidden space-y-4 md:space-y-6">
                         <div class="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                                <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><i class="fa-solid fa-money-bill-transfer text-purple-600"></i> TransferÃªncias e MovimentaÃ§Ã£o entre Contas</h3>
-                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Registre transferÃªncias entre Gaveta (Caixa FÃ­sico), Cofre Central e Contas BancÃ¡rias.</p>
+                                <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><i class="fa-solid fa-money-bill-transfer text-purple-600"></i> Transferências e MovimentAção entre Contas</h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Registre Transferências entre Gaveta (Caixa FÃ­sico), Cofre Central e Contas BancÃ¡rias.</p>
                             </div>
                             <button onclick="abrirModalTransferenciaFin()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 shadow"><i class="fa-solid fa-plus"></i> Nova TransferÃªncia</button>
                         </div>
@@ -405,7 +384,7 @@
                             <div class="overflow-x-auto custom-scrollbar">
                                 <table class="w-full text-left min-w-[650px]">
                                     <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold border-b border-slate-200 dark:border-slate-700">
-                                        <tr><th class="p-3">Data</th><th class="p-3">Origem âž” Destino</th><th class="p-3">ObservaÃ§Ã£o</th><th class="p-3 text-right">Valor</th><th class="p-3 text-center">Status</th><th class="p-3 text-center print:hidden">AÃ§Ãµes</th></tr>
+                                        <tr><th class="p-3">Data</th><th class="p-3">Origem Ã¢Å¾â€ Destino</th><th class="p-3">ObservAção</th><th class="p-3 text-right">Valor</th><th class="p-3 text-center">Status</th><th class="p-3 text-center print:hidden">AÃ§Ãµes</th></tr>
                                     </thead>
                                     <tbody id="tabela-transferencias-body" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
                                 </table>
@@ -413,7 +392,7 @@
                         </div>
                     </div>
                 </div>
-<!-- RELATÃƒâ€œRIOS GERENCIAIS E BI -->
+<!-- RELATÃƒÃ¢â‚¬Å“RIOS GERENCIAIS E BI -->
                 <div id="view-relatorios" class="view-section hidden max-w-7xl mx-auto space-y-6">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100">RelatÃ³rios & BI Comercial</h2>
@@ -431,9 +410,9 @@
                             <label class="block text-xs font-bold text-slate-500 uppercase mb-1">PerÃ­odo do RelatÃ³rio</label>
                             <select id="bi-filtro-periodo" onchange="mudarFiltroBI()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 <option value="mes">Este MÃªs (PadrÃ£o)</option>
-                                <option value="30">ÃƒÅ¡ltimos 30 dias</option>
-                                <option value="60">ÃƒÅ¡ltimos 60 dias</option>
-                                <option value="90">ÃƒÅ¡ltimos 90 dias</option>
+                                <option value="30">ÃƒÃ…Â¡ltimos 30 dias</option>
+                                <option value="60">ÃƒÃ…Â¡ltimos 60 dias</option>
+                                <option value="90">ÃƒÃ…Â¡ltimos 90 dias</option>
                                 <option value="personalizado">Personalizado</option>
                             </select>
                         </div>
@@ -560,7 +539,7 @@
                                                 <th class="p-3">Fornecedor / Ref</th>
                                                 <th class="p-3 text-center">Qtd Comprada</th>
                                                 <th class="p-3 text-right">Custo Un. Registrado</th>
-                                                <th class="p-3 text-right">VariaÃ§Ã£o (R$ / %)</th>
+                                                <th class="p-3 text-right">VariAção (R$ / %)</th>
                                             </tr>
                                         </thead>
                                         <tbody id="tabela-evolucao-custos" class="divide-y divide-slate-100 text-xs md:text-sm">
@@ -604,10 +583,10 @@
                                 </div>
                             </div>
 
-                            <!-- SugestÃ£o Inteligente de Compras -->
+                            <!-- SuGestão Inteligente de Compras -->
                             <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 md:col-span-2">
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b pb-2 mb-4 flex justify-between items-center">
-                                    <span><i class="fa-solid fa-boxes-packing mr-1"></i> SugestÃ£o de ReposiÃ§Ã£o</span>
+                                    <span><i class="fa-solid fa-boxes-packing mr-1"></i> SuGestão de ReposiÃ§Ã£o</span>
                                     <button onclick="abrirInfoRelatorio('sugestao_compras')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer print:hidden" title="EntendAÃ§Ãµeste relatÃ³rio"><i class="fa-solid fa-circle-question"></i></button>
                                 </h3>
                                 <div class="overflow-x-auto custom-scrollbar max-h-80">
@@ -619,7 +598,7 @@
                                                 <th class="p-3 text-center">Estoque Atual</th>
                                                 <th class="p-3 text-center">MÃ©dia DiÃ¡ria</th>
                                                 <th class="p-3 text-center">Autonomia</th>
-                                                <th class="p-3 text-right">SugestÃ£o de Compra</th>
+                                                <th class="p-3 text-right">SuGestão de Compra</th>
                                             </tr>
                                         </thead>
                                         <tbody id="tabela-sugestao-compras" class="divide-y divide-slate-100 dark:divide-slate-700 text-xs md:text-sm">
@@ -638,11 +617,11 @@
 
     <!-- M O D A I S   D E   G E S T Ã O -->
 
-    <!-- MODAL MOVIMENTAÃƒâ€¡ÃO CAIXA -->
+    <!-- MODAL MOVIMENTAÃƒÃ¢â‚¬Â¡ÃO CAIXA -->
     <div id="modal-mov-caixa" class="fixed inset-0 bg-slate-900/60 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
             <div id="modal-caixa-header" class="bg-blue-600 p-4 md:p-5 text-white flex justify-between items-center">
-                <h3 class="font-bold text-base md:text-lg"><i class="fa-solid fa-cash-register"></i> <span id="modal-caixa-title">MovimentaÃ§Ã£o</span></h3>
+                <h3 class="font-bold text-base md:text-lg"><i class="fa-solid fa-cash-register"></i> <span id="modal-caixa-title">MovimentAção</span></h3>
                 <button onclick="fecharModalCaixa()" class="text-white/70 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             <div class="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 space-y-4">
@@ -657,7 +636,7 @@
         </div>
     </div>
 
-    <!-- NOVO MODAL: CADASTRO DE CONTA (COM RECORRÃÃ…Â NCIA) -->
+    <!-- NOVO MODAL: CADASTRO DE CONTA (COM RECORRÃÃƒâ€¦Â NCIA) -->
     <div id="modal-nova-conta" class="fixed inset-0 bg-slate-900/80 z-[200] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-slate-800 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col overflow-hidden max-h-[95vh]">
             <div id="modal-conta-header" class="p-4 md:p-5 text-white flex justify-between items-center shrink-0">
@@ -677,7 +656,7 @@
                         <div id="wrap-boleto-dda" class="bg-indigo-900/30 border border-indigo-500/40 p-3 rounded-xl space-y-1.5">
                             <label class="text-[10px] font-bold text-indigo-300 uppercase flex items-center justify-between">
                                 <span><i class="fa-solid fa-barcode mr-1"></i> Linha DigitÃ¡vel / Boleto DDA (47 ou 48 DÃ­gitos)</span>
-                                <span class="text-[9px] text-slate-400 font-normal">Preenchimento AutomÃ¡tico</span>
+                                <span class="text-[9px] text-slate-400 font-normal">Preenchimento Automático</span>
                             </label>
                             <div class="flex gap-2">
                                 <input type="text" id="conta-linha-digitavel" class="w-full bg-slate-800 border border-slate-600 text-slate-100 p-2 rounded-lg text-xs font-mono outline-none focus:border-indigo-400" placeholder="Cole a linha digitÃ¡vel do boleto aqui...">
@@ -708,17 +687,17 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div class="col-span-2 sm:col-span-1"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Centro de Custo</label>
                             <select id="conta-centro-custo" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
-                                <option value="Geral">Geral / NÃ£o Especificado</option><option value="OperaÃ§Ã£onal">OperaÃ§Ã£onal</option><option value="Administrativo">Administrativo</option><option value="Vendas">Vendas / Comercial</option><option value="LogÃ­stica">LogÃ­stica / Frete</option>
+                                <option value="Geral">Geral / NÃ£o Especificado</option><option value="OperAçãonal">OperAçãonal</option><option value="Administrativo">Administrativo</option><option value="Vendas">Vendas / Comercial</option><option value="LogÃ­stica">LogÃ­stica / Frete</option>
                             </select></div>
                             
                             <div class="col-span-2 sm:col-span-1"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Conta BancÃ¡ria / Destino</label>
                             <select id="conta-banco" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
-                                <option value="Caixa FÃ­sico">Gaveta / Caixa FÃ­sico</option><option value="Banco ItaÃº">Banco ItaÃº</option><option value="Banco do Brasil">Banco do Brasil</option><option value="Nubank">Nubank</option><option value="Sicredi">Sicredi</option><option value="Sicoob">Sicoob</option>
+                                <option value="Caixa FÃ­sico">Gaveta / Caixa FÃ­sico</option><option value="Banco Itaú">Banco Itaú</option><option value="Banco do Brasil">Banco do Brasil</option><option value="Nubank">Nubank</option><option value="Sicredi">Sicredi</option><option value="Sicoob">Sicoob</option>
                             </select></div>
                         </div>
                     </div>
 
-                    <!-- BLOCO 2: DATAS, VALORES E RECORRÃÃ…Â NCIA -->
+                    <!-- BLOCO 2: DATAS, VALORES E RECORRÃÃƒâ€¦Â NCIA -->
                     <div class="bg-slate-700 p-4 rounded-xl border border-slate-600 shadow-sm space-y-4">
                         <h4 class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase border-b border-slate-100 dark:border-slate-700 pb-2"><i class="fa-solid fa-calendar-days text-slate-400 mr-1"></i> Datas e Valores</h4>
                         
@@ -730,12 +709,12 @@
                             <input type="date" id="conta-vencimento" class="w-full bg-amber-50 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-600 p-2 rounded-lg text-xs font-bold text-amber-800 dark:text-amber-300 outline-none focus:border-amber-500"></div>
                         </div>
 
-                        <!-- RECORRÃÃ…Â NCIA -->
+                        <!-- RECORRÃÃƒâ€¦Â NCIA -->
                         <div class="grid grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg">
                             <div class="col-span-2 sm:col-span-1">
                                 <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Repetir (Assinatura)?</label>
                                 <select id="conta-recorrencia" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs font-bold outline-none focus:border-blue-500 dark:text-white" onchange="toggleRecorrencia()">
-                                    <option value="UNICA">NÃ£o (Ãšnica)</option>
+                                    <option value="UNICA">NÃ£o (ÃƒÅ¡nica)</option>
                                     <option value="MENSAL">Mensal</option>
                                     <option value="QUINZENAL">Quinzenal</option>
                                     <option value="SEMANAL">Semanal</option>
@@ -761,7 +740,7 @@
 
                     <!-- BLOCO 3: STATUS, MULTAS E DOCUMENTOS -->
                     <div class="bg-slate-700 p-4 rounded-xl border border-slate-600 shadow-sm space-y-4 md:col-span-3">
-                        <h4 class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase border-b border-slate-100 dark:border-slate-700 pb-2"><i class="fa-solid fa-list-check text-slate-400 mr-1"></i> SituaÃ§Ã£o e Documentos</h4>
+                        <h4 class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase border-b border-slate-100 dark:border-slate-700 pb-2"><i class="fa-solid fa-list-check text-slate-400 mr-1"></i> SituAção e Documentos</h4>
                         
                         <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-7 gap-3">
                             <div class="sm:col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Status Atual</label>
@@ -779,8 +758,8 @@
                                 </select>
                             </div>
 
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">NÃƒâ€šÂº da NF</label><input type="text" id="conta-num-nf" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
-                            <div class="sm:col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">NÃƒâ€šÂº do Boleto / CÃ³d. Barras</label><input type="text" id="conta-num-boleto" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">NÃƒÃ¢â‚¬Å¡Âº da NF</label><input type="text" id="conta-num-nf" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
+                            <div class="sm:col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">NÃƒÃ¢â‚¬Å¡Âº do Boleto / CÃ³d. Barras</label><input type="text" id="conta-num-boleto" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
 
                             <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Data de Protesto</label><input type="date" id="conta-data-protesto" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
                             <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">CartÃ³rio</label><input type="text" id="conta-cartorio" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white" placeholder="Nome"></div>
@@ -796,7 +775,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 border-t border-slate-100 dark:border-slate-700 pt-4">
                             <div>
                                 <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">ObservaÃ§Ãµes Livres</label>
-                                <textarea id="conta-obs" rows="3" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 custom-scrollbar dark:text-white" placeholder="AnotaÃ§Ãµes, dados de renegociaÃ§Ã£o, quem aprovou o pagamento..."></textarea>
+                                <textarea id="conta-obs" rows="3" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 custom-scrollbar dark:text-white" placeholder="AnotaÃ§Ãµes, dados de renegociAção, quem aprovou o pagamento..."></textarea>
                             </div>
                             <div>
                                 <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Anexar Comprovante / PDF / Imagem</label>
@@ -817,7 +796,7 @@
         </div>
     </div>
 
-    <!-- MODAL RENEGOCIAÃƒâ€¡ÃO (DIVIDIR PARCELAS) -->
+    <!-- MODAL RENEGOCIAÃƒÃ¢â‚¬Â¡ÃO (DIVIDIR PARCELAS) -->
     <div id="modal-renegociacao" class="fixed inset-0 bg-slate-900/80 z-[250] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
             <div class="bg-purple-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
@@ -839,7 +818,7 @@
                 </div>
                 
                 <div>
-                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Data da 1Ãƒâ€šÂª Parcela (Novo Vencimento)</label>
+                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Data da 1ÃƒÃ¢â‚¬Å¡Âª Parcela (Novo Vencimento)</label>
                     <input type="date" id="reneg-data" class="w-full bg-white dark:bg-slate-800 border border-purple-300 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-purple-500 font-bold dark:text-white">
                 </div>
                 
@@ -922,7 +901,7 @@
         </div>
     </div>
 
-    <!-- MODAL CONFERÃÃ…Â NCIA XML E RATEIO -->
+    <!-- MODAL CONFERÃÃƒâ€¦Â NCIA XML E RATEIO -->
     <div id="modal-conferencia-xml" class="fixed inset-0 bg-slate-900/80 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-6xl flex flex-col overflow-hidden max-h-[95vh]">
             <div class="bg-indigo-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
@@ -933,7 +912,7 @@
                 
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm mb-4">
                     <div class="col-span-2 md:col-span-4"><p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Fornecedor Emitente</p><p class="font-bold text-blue-700 text-sm uppercase" id="xml-forn-nome">-</p><p class="text-[10px] text-slate-500 dark:text-slate-400 font-mono" id="xml-forn-cnpj">-</p></div>
-                    <div><p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">NÃƒâ€šÂº NF-e</p><p class="font-bold text-slate-800 dark:text-slate-100 text-sm" id="rev-nfe">-</p></div>
+                    <div><p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">NÃƒÃ¢â‚¬Å¡Âº NF-e</p><p class="font-bold text-slate-800 dark:text-slate-100 text-sm" id="rev-nfe">-</p></div>
                     <div><p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Data EmissÃ£o</p><p class="font-bold text-slate-800 dark:text-slate-100 text-sm" id="rev-data">-</p></div>
                     <div><p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Total Mercadorias</p><p class="font-bold text-slate-800 dark:text-slate-100 text-sm" id="rev-vprod">R$ 0,00</p></div>
                     <div><p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Total do XML</p><p class="font-bold text-emerald-600 text-lg" id="xml-total-nota">R$ 0,00</p></div>
@@ -963,7 +942,7 @@
 
                 <div class="bg-amber-50 dark:bg-amber-900/20 rounded-xl shadow-sm border border-amber-200 dark:border-amber-800 mb-4 p-4">
                     <div class="flex justify-between items-center mb-3">
-                        <h4 class="text-xs font-bold text-amber-800 uppercase"><i class="fa-solid fa-money-bill-transfer"></i> LanÃ§amentos Financeiros (Boletos)</h4>
+                        <h4 class="text-xs font-bold text-amber-800 uppercase"><i class="fa-solid fa-money-bill-transfer"></i> Lançamentos Financeiros (Boletos)</h4>
                         <button onclick="addParcelaXML()" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded text-[10px] font-bold transition-colors shadow-sm"><i class="fa-solid fa-plus"></i> Add Parcela</button>
                     </div>
                     <div id="xml-financeiro-body" class="space-y-2"></div>
@@ -1002,7 +981,7 @@
             <div class="p-4 bg-slate-50 dark:bg-slate-900 overflow-y-auto space-y-4">
                 <!-- NOVO: OPÃ‡ÃƒO DE VÃNCULO MANUAL (MOSTRADA APENAS NO XML) -->
                 <div id="div-acao-vinculo-xml" class="hidden mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-lg">
-                    <label class="text-xs font-bold text-slate-500 mb-1 block">AÃ§Ã£o: Vincular ou Cadastrar?</label>
+                    <label class="text-xs font-bold text-slate-500 mb-1 block">Ação: Vincular ou Cadastrar?</label>
                     <select id="prod-acao-vinculo" onchange="alternarAcaoVinculoXML()" class="w-full bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 p-2 rounded text-sm outline-none mb-2 font-bold text-slate-700 dark:text-slate-200">
                         <option value="NOVO">Cadastrar como Novo Produto</option>
                         <option value="VINCULAR">Vincular a Produto Existente</option>
@@ -1036,7 +1015,7 @@
         </div>
     </div>
 
-    <!-- MODAL LANÃƒâ€¡AMENTO DE COMPRA MANUAL (SEM NF E EDIÃƒâ€¡ÃO) -->
+    <!-- MODAL LANÃƒÃ¢â‚¬Â¡AMENTO DE COMPRA MANUAL (SEM NF E EDIÃƒÃ¢â‚¬Â¡ÃO) -->
     <div id="modal-compra-manual" class="fixed inset-0 bg-slate-900/80 z-[160] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-slate-800 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col overflow-hidden max-h-[95vh]">
             <div class="bg-emerald-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
@@ -1062,7 +1041,7 @@
                         <input type="date" id="compra-manual-data" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 dark:text-white">
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">NÃƒâ€šÂº Pedido / Ref / Recibo</label>
+                        <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">NÃƒÃ¢â‚¬Å¡Âº Pedido / Ref / Recibo</label>
                         <input type="text" id="compra-manual-ref" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 dark:text-white">
                     </div>
                     <div class="md:col-span-2">
@@ -1152,7 +1131,7 @@
         </div>
     </div>
 
-    <!-- MODAL TRANSFERÃŠNCIA ENTRE CONTAS NO FINANCEIRO -->
+    <!-- MODAL TRANSFERÃƒÅ NCIA ENTRE CONTAS NO FINANCEIRO -->
     <div id="modal-transferencia-fin" class="fixed inset-0 bg-slate-900/60 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
             <div class="bg-purple-600 p-4 md:p-5 text-white flex justify-between items-center">
@@ -1183,7 +1162,7 @@
                     <input type="number" step="0.01" id="transf-fin-valor" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-3 rounded-lg text-lg font-black text-purple-700 outline-none focus:border-purple-500 dark:text-white" placeholder="0,00">
                 </div>
                 <div>
-                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">ObservaÃ§Ã£o / Justificativa</label>
+                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">ObservAção / Justificativa</label>
                     <input type="text" id="transf-fin-obs" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-purple-500 dark:text-white" placeholder="Ex: DepÃ³sito de sangrias da semana">
                 </div>
             </div>
@@ -1194,7 +1173,7 @@
         </div>
     </div>
 
-    <!-- CONFIRMAÃƒâ€¡ÃO DO SISTEMA -->
+    <!-- CONFIRMAÃƒÃ¢â‚¬Â¡ÃO DO SISTEMA -->
     <div id="modal-confirmacao" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden text-center p-6">
             <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
@@ -1219,7 +1198,7 @@
                     <p class="text-lg md:text-xl font-bold text-emerald-600 dark:text-emerald-400" id="modal-func-total">R$ 0,00</p>
                 </div>
                 <div class="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
-                    <p class="text-[10px] uppercase font-bold text-slate-500 mb-1">LanÃ§amentos</p>
+                    <p class="text-[10px] uppercase font-bold text-slate-500 mb-1">Lançamentos</p>
                     <p class="text-lg md:text-xl font-bold text-slate-700 dark:text-slate-300" id="modal-func-count">0</p>
                 </div>
             </div>
@@ -1263,7 +1242,7 @@
                 <div>
                     <h3 class="font-black text-base md:text-lg flex items-center gap-2">
                         <i class="fa-solid fa-file-invoice-dollar text-blue-200"></i>
-                        <span>Conciliar TransaÃ§Ã£o BancÃ¡ria</span>
+                        <span>Conciliar TransAção BancÃ¡ria</span>
                     </h3>
                     <p class="text-[11px] text-blue-100/90 mt-0.5">Vincule a uma conta existente ou registre um novo lanÃ§amento liquidado</p>
                 </div>
@@ -1278,13 +1257,13 @@
                 <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                     <div class="flex items-center justify-between mb-2 border-b border-slate-100 dark:border-slate-700/60 pb-2">
                         <h4 class="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                            <i class="fa-solid fa-building-columns text-blue-500"></i> TransaÃ§Ã£o do Extrato BancÃ¡rio
+                            <i class="fa-solid fa-building-columns text-blue-500"></i> TransAção do Extrato BancÃ¡rio
                         </h4>
                         <span id="ofx-modal-ext-banco" class="text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700/60 px-2 py-0.5 rounded">-</span>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div class="bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700/40">
-                            <p class="text-[10px] font-bold text-slate-400 uppercase">Data da TransaÃ§Ã£o</p>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Data da TransAção</p>
                             <p class="font-bold text-sm text-slate-800 dark:text-slate-100" id="ofx-modal-ext-data">-</p>
                         </div>
                         <div class="bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700/40 sm:col-span-2">
@@ -1304,7 +1283,7 @@
                 <!-- Seletor de Modo: Vincular ou Criar Novo -->
                 <div>
                     <label class="text-[11px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider block mb-1.5">
-                        Como vocÃª deseja conciliar esta transaÃ§Ã£o?
+                        Como vocÃª deseja conciliar esta transAção?
                     </label>
                     <div class="grid grid-cols-2 gap-2 bg-slate-200 dark:bg-slate-700/60 p-1.5 rounded-xl border border-slate-300/60 dark:border-slate-600/60">
                         <button type="button" id="ofx-btn-modo-vincular" onclick="ofxAlternarModo('VINCULAR')" class="py-2.5 px-3 rounded-lg text-xs font-black transition flex items-center justify-center gap-2 bg-blue-600 text-white shadow-sm">
@@ -1375,13 +1354,13 @@
                 <!-- SEÃ‡ÃƒO COMUM: CAMPOS EDITÃVEIS DE BAIXA / LANÃ‡AMENTO -->
                 <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
                     <h4 class="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-700 pb-2 flex items-center justify-between">
-                        <span>Dados de QuitaÃ§Ã£o e Detalhes</span>
+                        <span>Dados de QuitAção e Detalhes</span>
                         <span class="text-[10px] font-normal text-slate-400">Todos os campos sÃ£o editÃ¡veis</span>
                     </h4>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 block">Tipo de OperaÃ§Ã£o *</label>
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 block">Tipo de OperAção *</label>
                             <select id="ofx-modal-tipo" onchange="ofxModalAtualizarCategorias()" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none dark:text-white font-bold">
                                 <option value="RECEITA">Receita / Entrada</option>
                                 <option value="DESPESA">Despesa / SaÃ­da</option>
@@ -1409,7 +1388,7 @@
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 block">Data de EfetivaÃ§Ã£o / Pagamento *</label>
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 block">Data de EfetivAção / Pagamento *</label>
                             <input type="date" id="ofx-modal-data-pgto" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none dark:text-white font-bold">
                         </div>
                         <div>
@@ -1437,7 +1416,7 @@
                     </div>
 
                     <div>
-                        <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 block">ObservaÃ§Ã£o / HistÃ³rico Complementar</label>
+                        <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 block">ObservAção / HistÃ³rico Complementar</label>
                         <input type="text" id="ofx-modal-obs" placeholder="Detalhes ou anotaÃ§Ãµes..." class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none dark:text-white">
                     </div>
                 </div>
@@ -1449,19 +1428,26 @@
                     Cancelar
                 </button>
                 <button type="button" onclick="confirmarConciliacaoModalOFX()" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black px-6 py-2 rounded-xl text-xs transition shadow-sm flex items-center gap-2">
-                    <i class="fa-solid fa-check-double"></i> Confirmar ConciliaÃ§Ã£o
+                    <i class="fa-solid fa-check-double"></i> Confirmar ConciliAção
                 </button>
             </div>
         </div>
     </div>
     
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js?v=639227529208900695"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js?v=639227529208900695"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js?v=639227529208900695"></script>
-    <script src="global.js?v=639227529208900695"></script>
-    <script src="financeiro.js?v=639227529208900695"></script>
+        <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+<script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js?v=639227581293447170"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js?v=639227581293447170"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js?v=639227581293447170"></script>
+    <script src="global.js?v=202608241416"></script>
+    <script src="financeiro.js?v=202608241416"></script>
 </body>
 </html>
+
+
+
+
+
+
 
 
 
