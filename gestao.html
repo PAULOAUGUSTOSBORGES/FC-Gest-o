@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -116,7 +116,7 @@
             </div>
         </aside>
 
-        <!-- ÁÁREA DE CONTEÃƒÅ¡DO PRINCIPAL -->
+        <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
             <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
                 <div class="flex items-center gap-3">
@@ -131,7 +131,7 @@
 
             <div class="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth custom-scrollbar w-full relative">
 
-                <!-- MÃƒâ€œDULO FINANCEIRO -->
+                <!-- MÓDULO FINANCEIRO -->
                 <div id="view-financeiro" class="view-section max-w-7xl mx-auto space-y-4 md:space-y-6 hidden">
                     <!-- Fluxo de Caixa Projetado -->
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -148,18 +148,18 @@
                             <p class="text-xl font-black text-purple-600 mt-1" id="dash-fluxo-90">R$ 0,00</p>
                         </div>
                         <div class="bg-red-50 dark:bg-red-900/30 p-4 rounded-xl border border-red-200 dark:border-red-800 shadow-sm flex flex-col justify-center">
-                            <h3 class="text-[10px] font-bold text-red-700 dark:text-red-400 uppercase">InadimplÃƒªncia (Atrasos)</h3>
+                            <h3 class="text-[10px] font-bold text-red-700 dark:text-red-400 uppercase">Inadimplência (Atrasos)</h3>
                             <p class="text-xl font-black text-red-600 dark:text-red-500 mt-1" id="dash-inadimplencia">R$ 0,00</p>
                         </div>
                     </div>
 
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 hidden md:block">GestÃƒ£o de Contas</h2>
+                        <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 hidden md:block">Gestão de Contas</h2>
                         <div class="flex gap-2">
                             <!-- Toggle View -->
                             <div class="flex bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-1 shadow-sm w-full md:w-auto overflow-x-auto custom-scrollbar">
                                 <button onclick="mudarVisualizacaoFin('lista')" id="fin-view-lista" class="px-3 py-1.5 rounded-md text-sm font-bold bg-blue-600 text-white transition-colors whitespace-nowrap"><i class="fa-solid fa-list mr-1"></i> Lista</button>
-                                <button onclick="mudarVisualizacaoFin('calendario')" id="fin-view-calendario" class="px-3 py-1.5 rounded-md text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:text-slate-100 transition-colors whitespace-nowrap"><i class="fa-regular fa-calendar mr-1"></i> CalendÃƒ¡rio</button>
+                                <button onclick="mudarVisualizacaoFin('calendario')" id="fin-view-calendario" class="px-3 py-1.5 rounded-md text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:text-slate-100 transition-colors whitespace-nowrap"><i class="fa-regular fa-calendar mr-1"></i> Calendário</button>
                             </div>
                             <!-- Abas Pagar/Receber -->
                             <div id="fin-abas-container" class="flex bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-1 shadow-sm w-full md:w-auto overflow-x-auto custom-scrollbar">
@@ -169,7 +169,7 @@
                         </div>
                     </div>
 
-                    <!-- MODO CALENDÃƒRIO -->
+                    <!-- MODO CALENDÁRIO -->
                     <div id="fin-area-calendario" class="fin-area hidden bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 md:p-6 w-full">
                         <div class="flex gap-4 mb-4 flex-wrap">
                             <div class="flex items-center gap-2 text-sm"><span class="w-3 h-3 rounded-full bg-emerald-500"></span><span class="text-slate-600 dark:text-slate-300">Contas a Receber</span></div>
@@ -280,7 +280,7 @@
                         </div>
                     </div>
                 </div>
-<!-- RELATÃƒâ€œRIOS GERENCIAIS E BI -->
+<!-- RELATÓRIOS GERENCIAIS E BI -->
                 <div id="view-relatorios" class="view-section hidden max-w-7xl mx-auto space-y-6">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100">Relatórios & BI Comercial</h2>
@@ -298,9 +298,9 @@
                             <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Período do Relatório</label>
                             <select id="bi-filtro-periodo" onchange="mudarFiltroBI()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 <option value="mes">Este Mês (Padrão)</option>
-                                <option value="30">ÃƒÅ¡ltimos 30 dias</option>
-                                <option value="60">ÃƒÅ¡ltimos 60 dias</option>
-                                <option value="90">ÃƒÅ¡ltimos 90 dias</option>
+                                <option value="30">Ãºltimos 30 dias</option>
+                                <option value="60">Ãºltimos 60 dias</option>
+                                <option value="90">Ãºltimos 90 dias</option>
                                 <option value="personalizado">Personalizado</option>
                             </select>
                         </div>
@@ -505,7 +505,7 @@
 
     <!-- M O D A I S   D E   G E S T Á O -->
 
-    <!-- MODAL MOVIMENTAÃƒâ€¡ÁO CAIXA -->
+    <!-- MODAL MOVIMENTAÇÁO CAIXA -->
     <div id="modal-mov-caixa" class="fixed inset-0 bg-slate-900/60 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
             <div id="modal-caixa-header" class="bg-blue-600 p-4 md:p-5 text-white flex justify-between items-center">
@@ -635,8 +635,8 @@
                                 </select>
                             </div>
 
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">NÃƒâ€šº da NF</label><input type="text" id="conta-num-nf" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
-                            <div class="sm:col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">NÃƒâ€šº do Boleto / Cód. Barras</label><input type="text" id="conta-num-boleto" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Níâ€šº da NF</label><input type="text" id="conta-num-nf" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
+                            <div class="sm:col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Níâ€šº do Boleto / Cód. Barras</label><input type="text" id="conta-num-boleto" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
 
                             <div><label class="text-[10px] font-bold text-red-500 uppercase mb-1 block">Juros / Multa (+)</label><input type="number" step="0.01" id="conta-acrescimo" oninput="calcularValorFinalFormulario()" class="w-full bg-red-50 border border-red-200 text-red-700 p-2 rounded-lg text-xs font-bold outline-none text-right dark:text-white" value="0"></div>
                             <div><label class="text-[10px] font-bold text-emerald-600 uppercase mb-1 block">Desconto (-)</label><input type="number" step="0.01" id="conta-desconto" oninput="calcularValorFinalFormulario()" class="w-full bg-emerald-50 border border-emerald-200 text-emerald-700 p-2 rounded-lg text-xs font-bold outline-none text-right dark:bg-slate-800 dark:border-slate-600 dark:text-white" value="0"></div>
@@ -671,7 +671,7 @@
         </div>
     </div>
 
-    <!-- MODAL RENEGOCIAÃƒâ€¡ÁO (DIVIDIR PARCELAS) -->
+    <!-- MODAL RENEGOCIAÇÁO (DIVIDIR PARCELAS) -->
     <div id="modal-renegociacao" class="fixed inset-0 bg-slate-900/80 z-[250] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
             <div class="bg-purple-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
@@ -693,7 +693,7 @@
                 </div>
                 
                 <div>
-                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Data da 1Ãƒâ€šª Parcela (Novo Vencimento)</label>
+                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Data da 1íâ€šª Parcela (Novo Vencimento)</label>
                     <input type="date" id="reneg-data" class="w-full bg-white dark:bg-slate-800 border border-purple-300 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-purple-500 font-bold dark:text-white">
                 </div>
                 
@@ -706,7 +706,7 @@
         </div>
     </div>
 
-    <!-- MODAL BAIXA RÁÁPIDA -->
+    <!-- MODAL BAIXA RÃPIDA -->
     <div id="modal-baixa-conta" class="fixed inset-0 bg-slate-900/60 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden">
             <div class="bg-emerald-600 p-4 md:p-5 text-white flex justify-between items-center">
@@ -787,7 +787,7 @@
                 
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm mb-4">
                     <div class="col-span-2 md:col-span-4"><p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Fornecedor Emitente</p><p class="font-bold text-blue-700 text-sm uppercase" id="xml-forn-nome">-</p><p class="text-[10px] text-slate-500 dark:text-slate-400 font-mono" id="xml-forn-cnpj">-</p></div>
-                    <div><p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">NÃƒâ€šº NF-e</p><p class="font-bold text-slate-800 dark:text-slate-100 text-sm" id="rev-nfe">-</p></div>
+                    <div><p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Níâ€šº NF-e</p><p class="font-bold text-slate-800 dark:text-slate-100 text-sm" id="rev-nfe">-</p></div>
                     <div><p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Data Emissão</p><p class="font-bold text-slate-800 dark:text-slate-100 text-sm" id="rev-data">-</p></div>
                     <div><p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Total Mercadorias</p><p class="font-bold text-slate-800 dark:text-slate-100 text-sm" id="rev-vprod">R$ 0,00</p></div>
                     <div><p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Total do XML</p><p class="font-bold text-emerald-600 text-lg" id="xml-total-nota">R$ 0,00</p></div>
@@ -854,7 +854,7 @@
                 <button onclick="fecharModalProduto()" class="text-blue-200 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             <div class="p-4 bg-slate-50 dark:bg-slate-900 overflow-y-auto space-y-4">
-                <!-- NOVO: OPÃƒâ€¡ÁO DE VÍNCULO MANUAL (MOSTRADA APENAS NO XML) -->
+                <!-- NOVO: OPÇÁO DE VÍNCULO MANUAL (MOSTRADA APENAS NO XML) -->
                 <div id="div-acao-vinculo-xml" class="hidden mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-lg">
                     <lAção: Vincular ou Cadastrar?</label>
                     <select id="prod-acao-vinculo" onchange="alternarAcaoVinculoXML()" class="w-full bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 p-2 rounded text-sm outline-none mb-2 font-bold text-slate-700 dark:text-slate-200">
@@ -890,7 +890,7 @@
         </div>
     </div>
 
-    <!-- MODAL LANÃƒâ€¡AMENTO DE COMPRA MANUAL (SEM NF E EDIÃƒâ€¡ÁO) -->
+    <!-- MODAL LANÇAMENTO DE COMPRA MANUAL (SEM NF E EDIÇÁO) -->
     <div id="modal-compra-manual" class="fixed inset-0 bg-slate-900/80 z-[160] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-slate-800 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col overflow-hidden max-h-[95vh]">
             <div class="bg-emerald-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
@@ -916,7 +916,7 @@
                         <input type="date" id="compra-manual-data" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 dark:text-white">
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">NÃƒâ€šº Pedido / Ref / Recibo</label>
+                        <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Níâ€šº Pedido / Ref / Recibo</label>
                         <input type="text" id="compra-manual-ref" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 dark:text-white">
                     </div>
                     <div class="md:col-span-2">
@@ -1006,7 +1006,7 @@
         </div>
     </div>
 
-    <!-- CONFIRMAÃƒâ€¡ÁO DO SISTEMA -->
+    <!-- CONFIRMAÇÃO DO SISTEMA -->
     <div id="modal-confirmacao" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden text-center p-6">
             <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
@@ -1070,7 +1070,7 @@
         </div>
     </div>
 
-    <!-- MODAL DETALHES DA VENDA/ORÃ‡AMENTO -->
+    <!-- MODAL DETALHES DA VENDA/ORÇAMENTO -->
     <div id="modal-detalhes-venda" class="fixed inset-0 bg-slate-900/60 z-[500] hidden flex items-center justify-center p-4 backdrop-blur-md transition-all duration-300">
         <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-slate-200/50 dark:border-slate-700/50 w-full max-w-4xl flex flex-col overflow-hidden max-h-[90vh] transform scale-100 transition-transform">
             
