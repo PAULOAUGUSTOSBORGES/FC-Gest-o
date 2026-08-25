@@ -1,0 +1,294 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loja Online</title>
+    
+    <!-- Tailwind CSS (via CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: 'var(--brand-color, #2563eb)',
+                        'brand-dark': 'var(--brand-color-dark, #1d4ed8)',
+                        'brand-light': 'var(--brand-color-light, #eff6ff)',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Google Fonts (Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --brand-color: #2563eb;
+            --brand-color-dark: #1d4ed8;
+            --brand-color-light: #eff6ff;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        .hero-gradient {
+            background: linear-gradient(135deg, var(--brand-color-light) 0%, #ffffff 100%);
+        }
+        .product-card {
+            transition: all 0.3s ease;
+        }
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased selection:bg-brand selection:text-white flex flex-col min-h-screen">
+
+    <!-- LOADER INICIAL -->
+    <div id="loader" class="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center transition-opacity duration-500">
+        <i class="fa-solid fa-store text-4xl text-brand animate-bounce mb-4"></i>
+        <div class="flex gap-2">
+            <div class="w-2.5 h-2.5 rounded-full bg-brand animate-[bounce_1s_infinite_-0.3s]"></div>
+            <div class="w-2.5 h-2.5 rounded-full bg-brand animate-[bounce_1s_infinite_-0.15s]"></div>
+            <div class="w-2.5 h-2.5 rounded-full bg-brand animate-bounce"></div>
+        </div>
+    </div>
+
+    <!-- MENSAGEM LOJA INATIVA -->
+    <div id="loja-inativa" class="hidden fixed inset-0 z-50 bg-gray-50 flex flex-col items-center justify-center p-6 text-center">
+        <i class="fa-solid fa-store-slash text-6xl text-gray-300 mb-6"></i>
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">Loja Temporariamente Indisponível</h1>
+        <p class="text-gray-500 max-w-md">Esta loja não está ativada no momento. Por favor, volte mais tarde.</p>
+    </div>
+
+    <!-- TOP BAR -->
+    <div class="bg-gray-900 text-gray-300 text-[11px] sm:text-xs py-2 hidden sm:block relative z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <span class="flex items-center gap-1.5"><i class="fa-solid fa-truck text-brand"></i> Frete para sua região</span>
+            </div>
+            <div class="flex items-center gap-6">
+                <span class="flex items-center gap-1.5"><i class="fa-solid fa-shield-halved text-brand"></i> Compra Segura</span>
+                <span class="flex items-center gap-1.5"><i class="fa-solid fa-headset text-brand"></i> Atendimento via WhatsApp</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- NAVBAR -->
+    <nav class="sticky top-0 left-0 right-0 z-40 bg-white border-b border-gray-100 shadow-sm transition-all duration-300" id="navbar">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-20 gap-4 lg:gap-8">
+                <!-- Logo/Brand -->
+                <div class="flex items-center gap-3 shrink-0">
+                    <img id="nav-logo" src="" alt="Logo" class="h-10 w-auto hidden rounded">
+                    <span id="nav-title" class="font-extrabold text-2xl tracking-tight text-gray-900">
+                        <i class="fa-solid fa-store text-brand mr-1"></i> Nossa Loja
+                    </span>
+                </div>
+                
+                <!-- Desktop Menu (Categorias) -->
+                <div id="desktop-menu" class="hidden lg:flex items-center gap-6 flex-grow justify-center overflow-x-hidden whitespace-nowrap text-sm font-medium text-gray-600">
+                    <a href="#produtos" class="hover:text-brand transition-colors">Produtos</a>
+                    <a href="#categorias-container" class="hover:text-brand transition-colors">Categorias</a>
+                </div>
+
+                <!-- Busca no Header -->
+                <div class="hidden md:flex flex-grow max-w-md relative group">
+                    <input type="text" id="busca-loja" placeholder="Buscar produtos..." class="block w-full pl-4 pr-10 py-2.5 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-brand focus:border-transparent transition-all outline-none" autocomplete="off">
+                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-magnifying-glass text-gray-400 group-focus-within:text-brand transition-colors"></i>
+                    </div>
+                </div>
+
+                <!-- Icons Right -->
+                <div class="flex items-center gap-4 shrink-0">
+                    <button onclick="abrirCarrinho()" class="text-gray-500 hover:text-brand transition-colors p-2 relative">
+                        <i class="fa-solid fa-cart-shopping text-xl"></i>
+                        <span class="cart-badge hidden absolute top-0 right-0 transform translate-x-1 -translate-y-1 bg-red-500 text-white text-[10px] font-bold h-4 w-4 rounded-full flex items-center justify-center">0</span>
+                    </button>
+                    <a id="nav-whatsapp" href="#" target="_blank" class="text-gray-500 hover:text-brand transition-colors p-2 hidden sm:block">
+                        <i class="fa-brands fa-whatsapp text-xl"></i>
+                    </a>
+                    <!-- Mobile Menu Button -->
+                    <button id="mobile-menu-btn" class="lg:hidden text-gray-600 hover:text-brand p-2 focus:outline-none ml-2">
+                        <i class="fa-solid fa-bars text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Search (Aparece só em telas pequenas) -->
+        <div class="md:hidden px-4 pb-4">
+            <div class="relative group">
+                <input type="text" id="busca-loja-mobile" placeholder="Buscar produtos..." class="block w-full pl-4 pr-10 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:bg-white focus:ring-1 focus:ring-brand outline-none" autocomplete="off">
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden lg:hidden bg-white border-t border-gray-100 absolute w-full shadow-xl">
+            <div class="px-4 pt-2 pb-6 space-y-2">
+                <a href="#produtos" class="block px-3 py-3 rounded-md font-medium text-gray-700 hover:text-brand hover:bg-gray-50">Produtos</a>
+                <button onclick="abrirCarrinho(); document.getElementById('mobile-menu').classList.add('hidden')" class="block w-full text-left px-3 py-3 rounded-md font-medium text-gray-700 hover:text-brand hover:bg-gray-50 flex justify-between">
+                    <span>Meu Carrinho</span>
+                    <span class="cart-badge hidden bg-brand text-white px-2 py-0.5 rounded-full text-xs">0</span>
+                </button>
+                <a id="nav-whatsapp-mobile" href="#" target="_blank" class="mt-4 flex items-center justify-center gap-2 w-full bg-brand text-white px-4 py-3 rounded-xl font-bold shadow-sm">
+                    <i class="fa-brands fa-whatsapp text-xl"></i> Fale Conosco
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO SECTION -->
+    <section id="inicio" class="relative bg-gray-50 overflow-hidden">
+        <!-- Fundo de imagem simulando foto de ambiente -->
+        <div class="absolute inset-0 z-0">
+            <img src="https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80" alt="Ambiente" class="w-full h-full object-cover object-center opacity-80">
+            <div class="absolute inset-0 bg-gradient-to-r from-gray-50 via-gray-50/90 to-transparent"></div>
+        </div>
+        
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="py-20 md:py-32 max-w-2xl">
+                <h1 id="hero-title" class="text-5xl md:text-6xl font-extrabold text-gray-900 tracking-tight mb-6 leading-[1.1]">
+                    Tudo para o <span class="text-brand">seu lar!</span>
+                </h1>
+                <p id="hero-subtitle" class="text-xl md:text-2xl text-gray-600 mb-10 font-medium">
+                    Encontre produtos incríveis para decorar sua casa com conforto e estilo.
+                </p>
+                <div class="flex">
+                    <a href="#produtos" class="bg-brand hover:bg-brand-dark text-white px-10 py-4 rounded-full font-bold text-lg transition-transform active:scale-95 shadow-lg shadow-brand/40 inline-flex items-center justify-center">
+                        Ver Produtos
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- EXPLORE CATEGORIAS -->
+    <section class="py-12 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-10">
+                <h2 class="text-2xl font-bold text-gray-900">Explore nossas categorias</h2>
+            </div>
+            
+            <div class="overflow-x-auto pb-4 custom-scrollbar">
+                <div id="categorias-container" class="flex items-start justify-start md:justify-center gap-6 md:gap-10 min-w-max px-2">
+                    <!-- Renderizado pelo JS -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PRODUTOS SECTION -->
+    <section id="produtos" class="pb-20 bg-gray-50 pt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between mb-8">
+                <h2 id="section-produtos-title" class="text-2xl font-bold text-gray-900">Produtos em destaque</h2>
+            </div>
+            
+            <div id="produtos-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Seções renderizadas via JS -->
+            </div>
+            
+            <!-- Estado Vazio -->
+            <div id="produtos-empty" class="hidden text-center py-20">
+                <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 mb-6">
+                    <i class="fa-solid fa-box-open text-3xl text-gray-400"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-700 mb-2">Nenhum produto disponível</h3>
+                <p class="text-gray-500">Volte mais tarde para ver nossas novidades.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- SOBRE NÃ“S SECTION -->
+    <section id="sobre" class="py-20 hero-gradient">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 id="section-sobre-title" class="text-3xl md:text-4xl font-bold text-gray-900 mb-8">Sobre Nós</h2>
+            <div class="bg-white p-8 md:p-12 rounded-3xl shadow-xl shadow-gray-200/50 relative">
+                <i class="fa-solid fa-quote-left absolute top-6 left-8 text-4xl text-brand opacity-10"></i>
+                <p id="loja-descricao-text" class="text-lg text-gray-600 leading-relaxed relative z-10">
+                    A história da nossa empresa e nossos diferenciais aparecerão aqui.
+                </p>
+                <i class="fa-solid fa-quote-right absolute bottom-6 right-8 text-4xl text-brand opacity-10"></i>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="bg-gray-900 text-white pt-16 pb-8 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
+                <!-- Info -->
+                <div class="md:col-span-1">
+                    <div class="flex items-center gap-3 mb-6">
+                        <img id="footer-logo" src="" alt="Logo" class="h-12 w-auto hidden bg-white rounded p-1">
+                        <h3 id="footer-title" class="text-2xl font-bold text-white">Nossa Loja</h3>
+                    </div>
+                    <p id="footer-slogan" class="text-gray-400 mb-6">Slogan da empresa aparece aqui.</p>
+                    <div class="flex space-x-4" id="social-links">
+                        <!-- Redes Sociais JS -->
+                    </div>
+                </div>
+                
+                <!-- Links Ãšteis -->
+                <div>
+                    <h4 class="text-lg font-bold mb-6 border-b border-gray-700 pb-2 inline-block">Links Ãšteis</h4>
+                    <ul class="space-y-3 text-gray-400">
+                        <li><a href="#inicio" class="hover:text-brand transition-colors">Início</a></li>
+                        <li><a href="#produtos" class="hover:text-brand transition-colors">Produtos</a></li>
+                        <li><a href="#sobre" class="hover:text-brand transition-colors">Sobre Nós</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Contato -->
+                <div>
+                    <h4 class="text-lg font-bold mb-6 border-b border-gray-700 pb-2 inline-block">Contato</h4>
+                    <ul class="space-y-4 text-gray-400" id="contact-info">
+                        <!-- Contato JS -->
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+                <p id="footer-copyright" class="text-gray-500 text-sm text-center md:text-left">
+                    &copy; 2024. Todos os direitos reservados.
+                </p>
+                <p class="text-gray-600 text-xs">
+                    Desenvolvido com <i class="fa-solid fa-heart text-red-500 mx-1"></i>
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Firebase SDK (v10 compat - mesma versão do sistema) -->
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js?v=202608251000"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js?v=202608251000"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js?v=202608251000"></script>
+    
+    <!-- Config Firebase (site público - sem redirecionamento de login) -->
+    <script src="firebase-site.js?v=202608251000"></script>
+    
+    <!-- Lógica da Loja -->
+    <script src="carrinho.js?v=202608251000"></script>
+    <script src="loja.js?v=202608251000"></script>
+</body>
+</html>
+
+
+

@@ -1,0 +1,199 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhes do Produto | Loja Online</title>
+    
+    <!-- Tailwind CSS (via CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: 'var(--brand-color, #2563eb)',
+                        'brand-dark': 'var(--brand-color-dark, #1d4ed8)',
+                        'brand-light': 'var(--brand-color-light, #eff6ff)',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Google Fonts (Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --brand-color: #2563eb;
+            --brand-color-dark: #1d4ed8;
+            --brand-color-light: #eff6ff;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased selection:bg-brand selection:text-white flex flex-col min-h-screen">
+
+    <!-- LOADER INICIAL -->
+    <div id="loader" class="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center transition-opacity duration-500">
+        <i class="fa-solid fa-store text-4xl text-brand animate-bounce mb-4"></i>
+        <div class="flex gap-2">
+            <div class="w-2.5 h-2.5 rounded-full bg-brand animate-[bounce_1s_infinite_-0.3s]"></div>
+            <div class="w-2.5 h-2.5 rounded-full bg-brand animate-[bounce_1s_infinite_-0.15s]"></div>
+            <div class="w-2.5 h-2.5 rounded-full bg-brand animate-bounce"></div>
+        </div>
+    </div>
+
+    <!-- NAVBAR SIMPLIFICADA -->
+    <nav class="fixed top-0 left-0 right-0 z-40 glass-nav transition-all duration-300" id="navbar">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-20">
+                <!-- Voltar -->
+                <a href="index.html" class="flex items-center gap-2 text-gray-600 hover:text-brand transition-colors font-medium">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span class="hidden sm:inline">Voltar para a Loja</span>
+                </a>
+
+                <!-- Logo/Brand -->
+                <div class="flex items-center gap-3">
+                    <img id="nav-logo" src="" alt="Logo" class="h-8 sm:h-10 w-auto hidden rounded">
+                    <span id="nav-title" class="font-bold text-lg sm:text-xl tracking-tight text-brand">Nossa Loja</span>
+                </div>
+                
+                <!-- Cart Icon -->
+                <div class="flex items-center gap-4 shrink-0">
+                    <button onclick="abrirCarrinho()" class="text-gray-500 hover:text-brand transition-colors p-2 relative">
+                        <i class="fa-solid fa-cart-shopping text-xl"></i>
+                        <span class="cart-badge hidden absolute top-0 right-0 transform translate-x-1 -translate-y-1 bg-red-500 text-white text-[10px] font-bold h-4 w-4 rounded-full flex items-center justify-center">0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- PRODUTO CONTAINER -->
+    <main class="pt-32 pb-20 flex-grow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            
+            <!-- Breadcrumb -->
+            <nav class="flex text-sm text-gray-500 mb-8" aria-label="Breadcrumb">
+                <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                    <li class="inline-flex items-center">
+                        <a href="index.html" class="inline-flex items-center hover:text-brand transition-colors">
+                            <i class="fa-solid fa-house mr-2"></i> Início
+                        </a>
+                    </li>
+                    <li>
+                        <div class="flex items-center">
+                            <i class="fa-solid fa-chevron-right text-gray-400 mx-2 text-xs"></i>
+                            <span id="bread-categoria" class="hover:text-brand transition-colors cursor-pointer" onclick="window.location.href='index.html'">Categoria</span>
+                        </div>
+                    </li>
+                    <li aria-current="page">
+                        <div class="flex items-center">
+                            <i class="fa-solid fa-chevron-right text-gray-400 mx-2 text-xs"></i>
+                            <span id="bread-nome" class="text-gray-800 font-medium line-clamp-1">Produto</span>
+                        </div>
+                    </li>
+                </ol>
+            </nav>
+
+            <div id="produto-not-found" class="hidden text-center py-20">
+                <i class="fa-solid fa-triangle-exclamation text-5xl text-gray-300 mb-4"></i>
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">Produto não encontrado</h2>
+                <p class="text-gray-500 mb-8">O produto que você está procurando pode ter sido removido ou o link está incorreto.</p>
+                <a href="index.html" class="bg-brand hover:bg-brand-dark text-white px-8 py-3 rounded-xl font-bold transition-colors">Voltar para a Loja</a>
+            </div>
+
+            <!-- Produto Layout -->
+            <div id="produto-detalhes" class="hidden bg-white rounded-3xl shadow-xl shadow-gray-200/50 overflow-hidden border border-gray-100">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-0">
+                    
+                    <!-- Lado Esquerdo: Imagem -->
+                    <div class="bg-gray-50 flex items-center justify-center p-8 md:p-12 relative group border-b md:border-b-0 md:border-r border-gray-100">
+                        <div id="prod-badge-destaque" class="absolute top-6 left-6 bg-brand text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg z-10 hidden">
+                            <i class="fa-solid fa-star mr-1"></i> Destaque
+                        </div>
+                        <img id="prod-foto" src="" alt="Produto" class="w-full max-w-md h-auto object-contain drop-shadow-2xl transition-transform duration-500 group-hover:scale-105">
+                    </div>
+
+                    <!-- Lado Direito: Infos -->
+                    <div class="p-8 md:p-12 lg:p-16 flex flex-col justify-center">
+                        <span id="prod-categoria" class="text-brand font-bold tracking-wider text-sm uppercase mb-3">Categoria</span>
+                        <h1 id="prod-nome" class="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900 leading-tight mb-4">Nome do Produto</h1>
+                        
+                        <p id="prod-legenda" class="text-gray-500 text-lg mb-8 leading-relaxed font-light hidden"></p>
+                        
+                        <div class="h-px bg-gray-100 w-full mb-8"></div>
+                        
+                        <div class="mb-8">
+                            <span class="text-gray-500 text-sm font-medium uppercase tracking-wider block mb-1">Por apenas</span>
+                            <div class="flex items-baseline gap-2">
+                                <span id="prod-preco" class="text-4xl md:text-5xl font-black text-gray-900">R$ 0,00</span>
+                            </div>
+                        </div>
+
+                        <!-- Botão CTA -->
+                        <button id="btn-comprar" class="w-full bg-brand hover:bg-brand-dark text-white text-lg font-bold py-4 px-6 rounded-2xl text-center transition-all duration-300 flex items-center justify-center gap-3 shadow-xl shadow-brand/30 transform hover:-translate-y-1">
+                            <i class="fa-solid fa-cart-plus text-2xl"></i>
+                            Adicionar ao Carrinho
+                        </button>
+                        
+                        <p id="txt-sem-estoque" class="text-red-500 font-bold text-center mt-4 hidden">Produto temporariamente esgotado.</p>
+                        
+                        <!-- Mini benefits -->
+                        <div class="mt-10 grid grid-cols-2 gap-4">
+                            <div class="flex items-center gap-3 text-gray-600">
+                                <i class="fa-solid fa-shield-check text-brand text-xl"></i>
+                                <span class="text-sm font-medium">Compra Segura</span>
+                            </div>
+                            <div class="flex items-center gap-3 text-gray-600">
+                                <i class="fa-solid fa-truck-fast text-brand text-xl"></i>
+                                <span class="text-sm font-medium">Entrega Rápida</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-gray-900 text-white pt-16 pb-8 border-t border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 id="footer-title" class="text-2xl font-bold mb-2 text-white">Nossa Loja</h2>
+            <p id="footer-slogan" class="text-gray-400 mb-8">Qualidade e Conforto para sua Casa</p>
+            <div id="social-links" class="flex justify-center gap-4 mb-8"></div>
+            <div class="border-t border-gray-800 pt-8 mt-8">
+                <p id="footer-copyright" class="text-gray-500 text-sm"></p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Firebase SDK (v10 compat - mesma versão do sistema) -->
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js?v=202608251000"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js?v=202608251000"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js?v=202608251000"></script>
+    
+    <!-- Config Firebase (site público - sem redirecionamento de login) -->
+    <script src="firebase-site.js?v=202608251000"></script>
+    <script src="carrinho.js?v=202608251000"></script>
+    <script src="loja_produto.js?v=202608251000"></script>
+</body>
+</html>
+
+
+

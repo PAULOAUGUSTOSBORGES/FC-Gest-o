@@ -1,0 +1,357 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FC Móveis - Dashboard</title>
+    <script>
+        window.tailwind = window.tailwind || {};
+        tailwind.config = { darkMode: 'class' };
+        (function(){
+            document.documentElement.classList.add('dark');
+        })();
+    </script>
+<script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
+
+    <div id="toast-container"></div>
+    
+    <div id="app-container" class="flex w-full h-full relative">
+        
+        <div id="sidebar-overlay" class="fixed inset-0 bg-slate-900/60 z-30 hidden md:hidden transition-opacity" onclick="toggleMenu()"></div>
+
+       <!-- BARRA LATERAL (MENU) -->
+        <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 w-64 bg-slate-900 text-slate-300 flex flex-col h-full shrink-0 shadow-2xl z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out no-print">
+            <div class="p-5 flex items-center justify-between gap-3 border-b border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors" onclick="window.location.href='index.html'">
+                <div class="flex items-center gap-3 pointer-events-none">
+                    <!-- O JavaScript vai injetar a foto do banco de dados aqui e esconder o ícone -->
+                    <img id="menu-logo" src="" class="w-10 h-10 rounded-lg object-cover hidden bg-white dark:bg-slate-800 shadow-lg">
+                    <div id="menu-logo-placeholder" class="w-10 h-10 bg-slate-800 border border-slate-600 rounded-lg flex items-center justify-center text-slate-400 text-xl shadow-lg"><i class="fa-solid fa-store"></i></div>
+                    
+                    <div>
+                        <!-- O JavaScript vai injetar o nome do banco de dados no lugar de "Carregando..." -->
+                        <h1 id="menu-empresa-nome" class="font-bold text-white text-lg tracking-wide leading-tight truncate w-32">Carregando...</h1>
+                        <p class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Sistema Ativo</p>
+                    </div>
+                </div>
+                <button onclick="event.stopPropagation(); toggleMenu()" class="md:hidden text-slate-400 hover:text-white text-2xl"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1 custom-scrollbar">
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-2 mb-1">Visão Geral</p>
+                <a href="index.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="dashboard"><i class="fa-solid fa-chart-pie w-5 text-center"></i> Dashboard</a>
+                
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Operação</p>
+                <a href="pdv.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="pdv"><i class="fa-solid fa-cash-register w-5 text-center"></i> Frente de Caixa (PDV)</a>
+                <a href="vendas_operacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_operacao"><i class="fa-solid fa-receipt w-5 text-center"></i> Histórico Vendas/Serviços</a>
+                <a href="orcamentos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="orcamentos"><i class="fa-solid fa-file-invoice w-5 text-center"></i> Meus Orçamentos</a>
+                
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Cadastros</p>
+                <a href="produtos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="produtos"><i class="fa-solid fa-boxes-stacked w-5 text-center"></i> Produtos & Serviços</a>
+
+                <a href="clientes.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="clientes"><i class="fa-solid fa-users w-5 text-center"></i> Clientes</a>
+                <a href="fornecedores.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="fornecedores"><i class="fa-solid fa-truck w-5 text-center"></i> Fornecedores</a>
+                <a href="funcionarios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="funcionarios"><i class="fa-solid fa-user-tie w-5 text-center"></i> Funcionários / Vendedores</a>
+                
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
+                <a href="vendas_gestao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_gestao"><i class="fa-solid fa-chart-line w-5 text-center"></i> Histórico Vendas (Gestão)</a>
+                <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
+                <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
+                <a href="compras.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & NF-e XML</a>
+                <a href="relatorios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
+                <a href="estoque.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="estoque"><i class="fa-solid fa-pallet w-5 text-center"></i> Estoque & Kardex</a>
+                <a href="agenda.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="agenda"><i class="fa-regular fa-calendar w-5 text-center"></i> Agenda</a>
+                <a href="marketing.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="marketing"><i class="fa-solid fa-bullhorn w-5 text-center"></i> Marketing & Lembretes</a>
+                
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Sistema</p>
+                <a href="sistema.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="config"><i class="fa-solid fa-gear w-5 text-center"></i> Configurações</a>
+            </nav>
+            <div class="p-4 border-t border-slate-800">
+                <button onclick="fazerLogout()" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-white text-sm font-medium transition-colors"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair do Sistema</button>
+            </div>
+        </aside>
+        <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
+        <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
+            <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleMenu()" class="md:hidden text-slate-600 dark:text-slate-300 hover:text-blue-600 p-2"><i class="fa-solid fa-bars text-xl"></i></button>
+                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate">Dashboard Geral</h2>
+                </div>
+                <div class="flex items-center gap-2 md:gap-4">
+                    <a href="operacao.html" class="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-3 md:px-4 py-2 rounded-lg font-bold text-xs md:text-sm flex items-center gap-2 transition-colors whitespace-nowrap"><i class="fa-solid fa-cart-shopping"></i> <span class="hidden sm:inline">Ir para o PDV</span></a>
+                    <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs shrink-0">PA</div>
+                </div>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth custom-scrollbar w-full">
+                <!-- CONTEÚDO DASHBOARD (MEGA BI - FASE 1) -->
+                <div class="max-w-7xl mx-auto space-y-4 md:space-y-6 pb-20">
+                    
+                    <!-- FILTROS GLOBAIS E ATALHOS -->
+                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <div class="flex items-center gap-2 w-full lg:w-auto">
+                            <i class="fa-solid fa-calendar-day text-slate-400"></i>
+                            <select id="dash-filtro-periodo" class="w-full lg:w-auto bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 font-medium" onchange="atualizarDashboard()">
+                                <option value="hoje">Hoje</option>
+                                <option value="ontem">Ontem</option>
+                                <option value="7d">Últimos 7 dias</option>
+                                <option value="15d">Últimos 15 dias</option>
+                                <option value="30d">Últimos 30 dias</option>
+                                <option value="mes" selected>Este Mês</option>
+                                <option value="3m">Últimos 3 meses</option>
+                                <option value="ano">Este Ano</option>
+                                <option value="tudo">Todo o Período</option>
+                            </select>
+                        </div>
+                        
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button onclick="window.location.href='pdv.html'" class="bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-blue-200 dark:border-blue-800/50"><i class="fa-solid fa-cart-plus mr-1"></i> Nova Venda</button>
+                            <button onclick="window.location.href='clientes.html'" class="bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-emerald-200 dark:border-emerald-800/50"><i class="fa-solid fa-user-plus mr-1"></i> Cliente</button>
+                            <button onclick="window.location.href='produtos.html'" class="bg-purple-50 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/60 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-purple-200 dark:border-purple-800/50"><i class="fa-solid fa-box-open mr-1"></i> Produto</button>
+                            <button onclick="window.location.href='financeiro.html'" class="bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/60 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-amber-200 dark:border-amber-800/50"><i class="fa-solid fa-money-bill-wave mr-1"></i> Lançar Conta</button>
+                        </div>
+                    </div>
+
+                    <!-- GRID DE KPIS (RESUMO EXECUTIVO) -->
+                    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                        <!-- Bloco Financeiro Principal -->
+                        <div onclick="window.location.href='vendas_operacao.html'" class="cursor-pointer hover:border-blue-500/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5"><i class="fa-solid fa-calendar-day text-blue-500"></i> Faturamento Hoje</p>
+                            <h3 class="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100" id="dash-faturamento-hoje"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
+                        </div>
+                        
+                        <div onclick="window.location.href='vendas_operacao.html'" class="cursor-pointer hover:border-blue-500/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5"><i class="fa-solid fa-sack-dollar text-blue-600"></i> Faturamento (<span class="periodo-label">Mês</span>)</p>
+                            <h3 class="text-xl md:text-2xl font-black text-blue-600" id="dash-faturamento"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
+                        </div>
+                        
+                        <div onclick="window.location.href='financeiro.html'" class="cursor-pointer hover:border-emerald-500/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between relative overflow-hidden">
+                            <div class="absolute -right-4 -top-4 text-emerald-500/10 text-6xl"><i class="fa-solid fa-chart-line"></i></div>
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5"><i class="fa-solid fa-piggy-bank text-emerald-500"></i> Lucro Líquido (<span class="periodo-label">Mês</span>)</p>
+                            <h3 class="text-xl md:text-2xl font-black text-emerald-500 relative z-10" id="dash-lucro"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
+                        </div>
+
+                        <div onclick="window.location.href='financeiro.html'" class="cursor-pointer hover:border-red-500/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5"><i class="fa-solid fa-money-bill-transfer text-red-500"></i> Despesas (<span class="periodo-label">Mês</span>)</p>
+                            <h3 class="text-xl md:text-2xl font-black text-red-500" id="dash-despesas"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
+                        </div>
+
+
+
+                        <div onclick="window.location.href='financeiro.html'" class="cursor-pointer hover:border-emerald-500/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5"><i class="fa-solid fa-hand-holding-dollar text-emerald-400"></i> Contas a Receber</p>
+                            <h3 class="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100" id="dash-receber"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
+                            <p class="text-[10px] text-slate-400 mt-1" id="dash-receber-vencido">...</p>
+                        </div>
+
+                        <div onclick="window.location.href='financeiro.html'" class="cursor-pointer hover:border-red-500/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5"><i class="fa-solid fa-file-invoice-dollar text-red-400"></i> Contas a Pagar</p>
+                            <h3 class="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100" id="dash-pagar"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
+                            <p class="text-[10px] text-slate-400 mt-1" id="dash-pagar-vencido">...</p>
+                        </div>
+
+                        <div onclick="window.location.href='produtos.html'" class="cursor-pointer hover:border-purple-500/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between relative overflow-hidden">
+                            <div class="absolute -right-4 -top-4 text-purple-500/10 text-6xl"><i class="fa-solid fa-boxes-stacked"></i></div>
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5"><i class="fa-solid fa-box-open text-purple-500"></i> Valor em Estoque</p>
+                            <h3 class="text-xl md:text-2xl font-black text-purple-500 relative z-10" id="dash-valor-estoque"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
+                        </div>
+
+                        <!-- Bloco Quantitativo -->
+                        <div onclick="window.location.href='vendas_operacao.html'" class="cursor-pointer hover:border-slate-400/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Qtd. Vendas (<span class="periodo-label">Mês</span>)</p>
+                            <h3 class="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100" id="dash-qtd-vendas"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
+                        </div>
+                        
+                        <div onclick="window.location.href='orcamentos.html'" class="cursor-pointer hover:border-slate-400/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Orçamentos Pendentes</p>
+                            <h3 class="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100" id="dash-orcamentos"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
+                        </div>
+
+                        <div onclick="window.location.href='clientes.html'" class="cursor-pointer hover:border-slate-400/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Clientes Base</p>
+                            <h3 class="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100" id="dash-clientes"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
+                        </div>
+
+                        <div onclick="window.location.href='fornecedores.html'" class="cursor-pointer hover:border-slate-400/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                            <p class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Fornecedores Base</p>
+                            <h3 class="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100" id="dash-fornecedores"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
+                        </div>
+                    </div>
+
+                    <!-- GRÁFICOS (FASE 2) E NOTIFICAÇÕES -->
+                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 md:gap-6 mt-6">
+                        <!-- Gráfico Principal (Vendas e Finanças) -->
+                        <div class="xl:col-span-2 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><i class="fa-solid fa-chart-area text-blue-500"></i> Desempenho no Período <button onclick="abrirInfoDashboard('desempenho')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer ml-1" title="EntendAçõeste gráfico"><i class="fa-solid fa-circle-question"></i></button></h3>
+                                <div class="flex gap-2">
+                                    <button onclick="mudarTipoGraficoPrincipal('vendas')" id="btn-chart-vendas" class="text-xs px-3 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400 font-bold transition-colors">Vendas</button>
+                                    <button onclick="mudarTipoGraficoPrincipal('financeiro')" id="btn-chart-financeiro" class="text-xs px-3 py-1 rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 dark:text-slate-400 font-bold transition-colors">Receita x Despesa</button>
+                                </div>
+                            </div>
+                            <div id="chart-principal" class="w-full min-h-[300px]"></div>
+                        </div>
+                        
+                        <!-- Notificações -->
+                        <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2"><i class="fa-solid fa-bell text-amber-500"></i> Alertas do Sistema</h3>
+                            <div id="dash-notificacoes" class="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2 max-h-[300px]">
+                                <div class="text-center text-slate-400 text-sm mt-10"><i class="fa-solid fa-spinner fa-spin"></i> Analisando dados...</div>
+                            </div>
+                        </div>
+
+                        <!-- Gráfico de Estoque -->
+                        <div class="xl:col-span-1 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2"><i class="fa-solid fa-chart-pie text-purple-500"></i> Estoque por Categoria <button onclick="abrirInfoDashboard('estoque')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer ml-1" title="EntendAçõeste gráfico"><i class="fa-solid fa-circle-question"></i></button></h3>
+                            <div id="chart-estoque" class="w-full flex justify-center items-center min-h-[250px]"></div>
+                        </div>
+
+                        <!-- Fluxo de Caixa Futuro -->
+                        <div class="xl:col-span-2 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2"><i class="fa-solid fa-money-bill-trend-up text-emerald-500"></i> Inadimplência vs Pagamentos em Dia <button onclick="abrirInfoDashboard('inadimplencia')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer ml-1" title="EntendAçõeste gráfico"><i class="fa-solid fa-circle-question"></i></button></h3>
+                            <div id="chart-inadimplencia" class="w-full min-h-[250px]"></div>
+                        </div>
+                    </div>
+
+                    <!-- AGENDA / LEMBRETES -->
+                    <div class="mt-6 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><i class="fa-regular fa-calendar-check text-blue-500"></i> Agenda & Lembretes (Próximos 7 Dias)</h3>
+                            <button onclick="window.location.href='agenda.html'" class="text-xs font-bold bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 px-3 py-1.5 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors">Ver Calendário Completo</button>
+                        </div>
+                        <div id="dash-lembretes" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                            <div class="text-center text-slate-400 text-sm py-6 col-span-full"><i class="fa-solid fa-spinner fa-spin"></i> Carregando lembretes...</div>
+                        </div>
+                    </div>
+
+                                        <!-- MARKETING E WPP -->
+                    <div class="mt-6 bg-gradient-to-r from-emerald-500 to-teal-600 p-5 rounded-xl shadow-md text-white relative overflow-hidden">
+                        <div class="absolute -right-4 -top-10 text-emerald-400/20 text-9xl pointer-events-none"><i class="fa-brands fa-whatsapp"></i></div>
+                        <div class="flex justify-between items-center mb-4 relative z-10">
+                            <h3 class="font-bold flex items-center gap-2 text-lg"><i class="fa-brands fa-whatsapp"></i> WhatsApp: Enviar Hoje</h3>
+                            <button onclick="window.location.href='marketing.html'" class="text-xs font-bold bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg transition-colors shadow-sm">Gerenciar Lembretes</button>
+                        </div>
+                        <div id="dash-wpp-lembretes" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 relative z-10">
+                            <div class="text-center text-emerald-100 text-sm py-6 col-span-full"><i class="fa-solid fa-spinner fa-spin"></i> Verificando clientes...</div>
+                        </div>
+                    </div>
+
+                    <!-- RANKINGS E CURVA ABC (FASE 3) -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
+                        
+                        <!-- Top 5 Produtos -->
+                        <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2"><i class="fa-solid fa-trophy text-yellow-500"></i> Top 5 Produtos (Mais Vendidos) <button onclick="abrirInfoDashboard('top_produtos')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer ml-1" title="EntendAçõeste relatório"><i class="fa-solid fa-circle-question"></i></button></h3>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-sm text-slate-500 dark:text-slate-400">
+                                    <thead class="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-700/50 dark:text-slate-300">
+                                        <tr>
+                                            <th class="px-4 py-2 rounded-l-lg">Produto</th>
+                                            <th class="px-4 py-2">Qtd</th>
+                                            <th class="px-4 py-2 rounded-r-lg">Receita</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dash-top-produtos">
+                                        <tr><td colspan="3" class="text-center py-4"><i class="fa-solid fa-spinner fa-spin"></i></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Top 5 Clientes -->
+                        <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2"><i class="fa-solid fa-medal text-blue-500"></i> Top 5 Clientes (Maior Faturamento) <button onclick="abrirInfoDashboard('top_clientes')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer ml-1" title="EntendAçõeste relatório"><i class="fa-solid fa-circle-question"></i></button></h3>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-sm text-slate-500 dark:text-slate-400">
+                                    <thead class="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-700/50 dark:text-slate-300">
+                                        <tr>
+                                            <th class="px-4 py-2 rounded-l-lg">Cliente</th>
+                                            <th class="px-4 py-2">Compras</th>
+                                            <th class="px-4 py-2 rounded-r-lg">Faturamento</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dash-top-clientes">
+                                        <tr><td colspan="3" class="text-center py-4"><i class="fa-solid fa-spinner fa-spin"></i></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CURVA ABC -->
+                    <div class="mt-6 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-10">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-2">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><i class="fa-solid fa-layer-group text-purple-500"></i> Curva ABC de Vendas (Neste Período) <button onclick="abrirInfoDashboard('curva_abc')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer ml-1" title="EntendAçõeste relatório"><i class="fa-solid fa-circle-question"></i></button></h3>
+                            <div class="text-xs text-slate-500 bg-slate-100 dark:bg-slate-700/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600">
+                                <span class="font-bold text-emerald-600 dark:text-emerald-400">A: 80%</span> | <span class="font-bold text-amber-600 dark:text-amber-400">B: 15%</span> | <span class="font-bold text-red-600 dark:text-red-400">C: 5%</span>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm text-slate-500 dark:text-slate-400">
+                                <thead class="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-700/50 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
+                                    <tr>
+                                        <th class="px-4 py-3">Produto</th>
+                                        <th class="px-4 py-3">Faturamento</th>
+                                        <th class="px-4 py-3">% Total</th>
+                                        <th class="px-4 py-3">% Acumulada</th>
+                                        <th class="px-4 py-3">Curva</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dash-curva-abc">
+                                    <tr><td colspan="5" class="text-center py-8"><i class="fa-solid fa-spinner fa-spin text-2xl text-slate-300 dark:text-slate-600"></i></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal de Informação (Dashboard) -->
+    <div id="modal-info-dashboard" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-slide-up border border-slate-200 dark:border-slate-700">
+            <div class="p-4 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+                <h3 class="font-bold text-lg flex items-center gap-2"><i class="fa-solid fa-circle-info text-blue-500"></i> <span id="modal-info-dash-title" class="text-slate-800 dark:text-slate-100">Sobre o Relatório</span></h3>
+                <button onclick="document.getElementById('modal-info-dashboard').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto custom-scrollbar text-slate-600 dark:text-slate-300 text-sm leading-relaxed" id="modal-info-dash-content">
+                <!-- Conteúdo injetado via JS -->
+            </div>
+            <div class="p-4 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 flex justify-end">
+                <button onclick="document.getElementById('modal-info-dashboard').classList.add('hidden')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 rounded-lg transition-colors shadow-sm shadow-blue-500/30">Entendi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bibliotecas do Firebase e Gráficos -->
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    
+    <!-- Scripts -->
+    <script src="../global.js?v=202608251000"></script>
+    <script src="index.js?v=202608251000"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
