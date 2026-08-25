@@ -113,7 +113,8 @@ function carregarConfiguracoesNaTela() {
         { prop: 'im', id: 'emp-im' },
         { prop: 'crt', id: 'emp-crt' },
         { prop: 'cscToken', id: 'emp-csc-token' },
-        { prop: 'cscId', id: 'emp-csc-id' }
+        { prop: 'cscId', id: 'emp-csc-id' },
+        { prop: 'geminiKey', id: 'emp-gemini-key' }
     ];
 
     mapaCampos.forEach(({ prop, id }) => {
@@ -224,6 +225,7 @@ async function salvarConfiguracoes() {
         crt: document.getElementById('emp-crt') ? document.getElementById('emp-crt').value.trim() : '',
         cscToken: document.getElementById('emp-csc-token') ? document.getElementById('emp-csc-token').value.trim() : '',
         cscId: document.getElementById('emp-csc-id') ? document.getElementById('emp-csc-id').value.trim() : '',
+        geminiKey: document.getElementById('emp-gemini-key') ? document.getElementById('emp-gemini-key').value.trim() : '',
         logo: document.getElementById('emp-logo-base64') ? document.getElementById('emp-logo-base64').value : ''
     };
 

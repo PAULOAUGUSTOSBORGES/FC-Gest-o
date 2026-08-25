@@ -1148,8 +1148,9 @@ function renderCarrinho() {
                 <input type="text" placeholder="Obs do item (cor, lado, etc...)" value="${item.obsVenda || ''}" onchange="pdvMudarObsItem(${i}, this.value)" class="w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-[10px] outline-none focus:border-blue-400 placeholder:text-slate-300 dark:text-white">
             </td>
             <td class="py-2 text-center"><input type="number" step="0.001" min="0.001" value="${item.qtd}" onchange="pdvMudarQtd(${i}, this.value)" class="w-14 text-center border border-slate-300 dark:border-slate-600 rounded-lg p-1.5 font-bold outline-none bg-white dark:bg-slate-800 dark:text-white"></td>
-            <td class="py-2 text-right hidden sm:table-cell"><input type="number" step="0.01" value="${Number(item.preco).toFixed(2)}" onchange="pdvMudarPreco(${i}, this.value)" class="w-20 text-right border border-slate-300 dark:border-slate-600 rounded-lg p-1.5 font-bold text-slate-600 dark:text-slate-300 outline-none focus:border-blue-500 bg-white dark:bg-slate-800 dark:text-white"></td>
-            <td class="py-2 text-right font-bold text-slate-800 dark:text-slate-100">${formatMoney((item.preco || 0) * (item.qtd || 1))}</td>
+            <td class="py-2 text-right"><input type="number" step="0.01" value="${Number(item.preco).toFixed(2)}" onchange="pdvMudarPreco(${i}, this.value)" class="w-20 text-right border border-slate-300 dark:border-slate-600 rounded-lg p-1.5 font-bold text-slate-600 dark:text-slate-300 outline-none focus:border-blue-500 bg-white dark:bg-slate-800 dark:text-white"></td>
+            <td class="py-2 text-right"><input type="number" step="0.01" value="${Number(item.desconto || 0).toFixed(2)}" onchange="pdvMudarDescontoItem(${i}, this.value)" class="w-20 text-right border border-slate-300 dark:border-slate-600 rounded-lg p-1.5 font-bold text-red-500 dark:text-red-400 outline-none focus:border-red-500 bg-white dark:bg-slate-800"></td>
+            <td class="py-2 text-right font-bold text-slate-800 dark:text-slate-100">${formatMoney(((item.preco || 0) * (item.qtd || 1)) - (item.desconto || 0))}</td>
             <td class="py-2 text-center"><button onclick="cart.splice(${i},1); renderCarrinho()" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash text-lg"></i></button></td>
         </tr>`;
     }).join(''); 
@@ -1178,6 +1179,11 @@ function pdvMudarPreco(i, val) {
     renderCarrinho(); 
 }
 
+function pdvMudarDescontoItem(i, n) { 
+    cart[i].desconto = Math.max(0, parseFloat(n) || 0); 
+    renderCarrinho(); 
+}
+
 function pdvLimpar() { 
     cart = []; 
     document.getElementById('pdv-desconto').value = 0; 
@@ -1200,7 +1206,7 @@ function pdvLimpar() {
 }
 
 function pdvAtualizarTotais() { 
-    const sub = cart.reduce((acc, i) => acc + ((i.preco || 0) * (i.qtd || 1)), 0); 
+    const sub = cart.reduce((acc, i) => acc + (((i.preco || 0) * (i.qtd || 1)) - (i.desconto || 0)), 0); 
     let frete = parseFloat(document.getElementById('pdv-frete').value) || 0; 
     let desc = parseFloat(document.getElementById('pdv-desconto').value) || 0; 
     

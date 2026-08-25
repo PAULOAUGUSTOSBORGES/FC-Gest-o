@@ -270,3 +270,324 @@ function formatarDataHoje() {
     const d = String(hj.getDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
 }
+
+// ==========================================
+// ABA NAVIGATION
+// ==========================================
+window.mudarAbaMarketing = function(aba) {
+    document.getElementById('aba-lembretes').classList.add('hidden');
+    document.getElementById('aba-ia').classList.add('hidden');
+    document.getElementById('tab-lembretes').classList.remove('border-blue-600', 'text-blue-600', 'dark:text-blue-400');
+    document.getElementById('tab-lembretes').classList.add('border-transparent', 'text-slate-500');
+    document.getElementById('tab-ia').classList.remove('border-blue-600', 'text-blue-600', 'dark:text-blue-400');
+    document.getElementById('tab-ia').classList.add('border-transparent', 'text-slate-500');
+
+    if (aba === 'lembretes') {
+        document.getElementById('aba-lembretes').classList.remove('hidden');
+        document.getElementById('tab-lembretes').classList.add('border-blue-600', 'text-blue-600', 'dark:text-blue-400');
+        document.getElementById('tab-lembretes').classList.remove('border-transparent', 'text-slate-500');
+    } else if (aba === 'ia') {
+        document.getElementById('aba-ia').classList.remove('hidden');
+        document.getElementById('tab-ia').classList.add('border-blue-600', 'text-blue-600', 'dark:text-blue-400');
+        document.getElementById('tab-ia').classList.remove('border-transparent', 'text-slate-500');
+    }
+};
+
+// ==========================================
+// INTEGRAÇÃO GEMINI IA
+// ==========================================
+window.gerarMarketingIA = async function() {
+    const nicho = document.getElementById('ia-nicho').value.trim();
+    const objetivo = document.getElementById('ia-objetivo').value.trim();
+    
+    if (!nicho || !objetivo) {
+        showToast('Preencha o nicho e o objetivo para gerar ideias.', 'warning');
+        return;
+    }
+    
+    const btn = document.getElementById('btn-gerar-ia');
+    const resultadoContainer = document.getElementById('ia-resultado-container');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Gerando (Aguarde)...';
+    
+    resultadoContainer.innerHTML = '<div class="flex flex-col items-center justify-center text-blue-500 mt-10"><i class="fa-solid fa-spinner fa-spin text-4xl mb-3"></i><p>A Inteligência Artificial está escrevendo...</p></div>';
+
+    try {
+        // 1. Busca a chave da API no banco de dados
+        const docSnap = await firestore.collection('fc_moveis').doc('config').get();
+        let apiKey = '';
+        if (docSnap.exists) {
+            const config = docSnap.data();
+            if (config.empresa && config.empresa.geminiKey) {
+                apiKey = config.empresa.geminiKey;
+            }
+        }
+        
+        if (!apiKey) {
+            resultadoContainer.innerHTML = `
+                <div class="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-lg">
+                    <p class="font-bold"><i class="fa-solid fa-triangle-exclamation"></i> Chave da API não encontrada.</p>
+                    <p class="text-sm mt-2">Você precisa configurar a chave do Gemini no menu <b>Sistema -> Configurações</b> para usar esta funcionalidade.</p>
+                </div>`;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-bolt"></i> Gerar Ideias e Textos';
+            return;
+        }
+
+        // 2. Monta o Prompt para a IA
+        const promptText = `Atue como um Assessor de Marketing Digital Especialista.
+Meu nicho de atuação é: "${nicho}".
+O objetivo desta campanha/postagem é: "${objetivo}".
+
+Preciso que você crie 3 opções de ideias para postagem nas redes sociais (Instagram/Facebook/WhatsApp).
+Para cada ideia, forneça:
+1. Formato (Ex: Reels, Carrossel, Imagem Única, Texto WhatsApp)
+2. Sugestão Visual (O que deve aparecer na imagem ou vídeo)
+3. Copy (Texto completo da postagem usando gatilhos mentais e chamadas para ação claras)
+4. Hashtags recomendadas.
+
+Formate a resposta em HTML limpo. Use <h3> para os títulos das ideias, <p> para os textos, <strong> para negrito e <ul><li> para listas. Não use markdown de código na saída, apenas o HTML puro.`;
+
+        // Lista de modelos recomendados pela API (começando pelo recomendado gemini-3.6-flash, e caindo para versões "lite" se os servidores estiverem cheios)
+        const modelosParaTentar = ['gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-pro-latest'];
+        let response = null;
+        let lastErrorText = "";
+        
+        for (const modelo of modelosParaTentar) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`;
+            try {
+                response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+                });
+                
+                if (response.ok) {
+                    break; // Sucesso, sai do loop
+                } else {
+                    lastErrorText = await response.text();
+                    // Se o erro for de demanda (high demand) ou limite (429), tenta o próximo modelo
+                    if (response.status === 503 || response.status === 429) {
+                        continue;
+                    }
+                    break; // Outro tipo de erro, sai e mostra pro usuário
+                }
+            } catch (e) {
+                lastErrorText = e.toString();
+                // erro de rede, tenta o próximo
+            }
+        }
+
+        if (!response || !response.ok) {
+            let errMsg = "Erro desconhecido ou Servidores do Google sobrecarregados.";
+            try {
+                const errJson = JSON.parse(lastErrorText);
+                if (errJson.error && errJson.error.message) errMsg = errJson.error.message;
+            } catch(e) {
+                if (lastErrorText) errMsg = lastErrorText;
+            }
+            
+            let modelosDisp = "";
+            try {
+                const mResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+                if (mResp.ok) {
+                    const mJson = await mResp.json();
+                    if(mJson.models) {
+                        modelosDisp = "<br><br><strong>Modelos disponíveis nesta chave:</strong><br>" + mJson.models.filter(m => m.name.includes("gemini")).map(m => m.name.replace('models/','')).join(', ');
+                    }
+                }
+            } catch(e) {}
+            
+            resultadoContainer.innerHTML = `
+            <div class="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-4 rounded-xl text-sm mb-4">
+                <strong><i class="fa-solid fa-triangle-exclamation mr-2"></i>Erro ao consultar IA.</strong><br><br>
+                ${errMsg}${modelosDisp}<br><br>
+                Os servidores do Google Gemini podem estar sobrecarregados. Tente novamente em alguns minutos.
+            </div>`;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-bolt"></i> Gerar Ideias e Textos';
+            return;
+        }
+
+        const data = await response.json();
+        // 4. Extrai a resposta
+        let textResult = data.candidates[0].content.parts[0].text;
+        const modeloUsado = data.model || 'Gemini IA'; // Extrai o modelo que retornou o sucesso
+        
+        // Remove blocos de markdown html se a IA colocar
+        textResult = textResult.replace(/```html/g, '').replace(/```/g, '');
+        
+        // Adiciona um aviso discreto sobre o modelo no rodapé do resultado
+        const infoModeloHtml = `<div class="mt-8 pt-4 border-t border-slate-100 dark:border-slate-700 text-xs text-slate-400 text-right italic"><i class="fa-solid fa-microchip mr-1"></i> Respondido por ${modeloUsado.replace('models/', '')}</div>`;
+        
+        resultadoContainer.innerHTML = textResult + infoModeloHtml;
+        
+        // --- 5. Salva no Banco de Dados para Histórico ---
+        try {
+            await firestore.collection('marketing_historico').add({
+                nicho: nicho,
+                objetivo: objetivo,
+                resultado_html: textResult,
+                modelo: modeloUsado.replace('models/', ''),
+                data_geracao: new Date().toISOString()
+            });
+            console.log("Consultoria salva no histórico com sucesso.");
+        } catch(errHistorico) {
+            console.error("Erro ao salvar histórico de marketing:", errHistorico);
+            // não interrompe o fluxo principal se apenas falhar para salvar
+        }
+        
+        showToast('Consultoria gerada com sucesso!', 'success');
+
+    } catch (e) {
+        console.error("Erro Marketing IA:", e);
+        
+        // Se for erro de modelo, vamos tentar buscar a lista de modelos permitidos para esta chave
+        let modelosPermitidosHtml = '';
+        if (e.message && e.message.includes("is not found")) {
+            try {
+                const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+                const listResp = await fetch(listUrl);
+                if (listResp.ok) {
+                    const listData = await listResp.json();
+                    const modelosText = listData.models
+                        .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"))
+                        .map(m => m.name.replace('models/', ''))
+                        .join(', ');
+                    modelosPermitidosHtml = `<p class="text-sm mt-3 font-bold">Modelos disponíveis para sua chave:</p><p class="text-xs mt-1 text-slate-700 bg-red-100 p-2 rounded">${modelosText || 'Nenhum modelo encontrado'}</p>`;
+                }
+            } catch (listErr) {
+                console.error("Erro ao listar modelos", listErr);
+            }
+        }
+
+        resultadoContainer.innerHTML = `
+            <div class="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-lg">
+                <p class="font-bold"><i class="fa-solid fa-triangle-exclamation"></i> Erro ao consultar IA.</p>
+                <p class="text-sm mt-2">${e.message}</p>
+                ${modelosPermitidosHtml}
+                <p class="text-sm mt-3">Tente verificar sua chave da API ou criar uma nova chave em outro projeto.</p>
+            </div>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-bolt"></i> Gerar Ideias e Textos';
+    }
+};
+
+// ==========================================
+// ABA HISTÓRICO DE CONSULTORIAS IA
+// ==========================================
+let todosHistoricosIA = [];
+
+async function carregarHistoricoMarketing() {
+    const container = document.getElementById('historico-container');
+    if (!container) return;
+    
+    container.innerHTML = `<div class="col-span-full p-8 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Carregando histórico e limpando itens antigos...</div>`;
+    
+    try {
+        const dataLimite = new Date();
+        dataLimite.setDate(dataLimite.getDate() - 30); // 30 dias atrás
+        
+        // Busca todos
+        const snapshot = await firestore.collection('marketing_historico')
+            .orderBy('data_geracao', 'desc')
+            .get();
+            
+        todosHistoricosIA = [];
+        let html = '';
+        
+        // Lógica de Exclusão Automática (30 dias)
+        const batch = firestore.batch();
+        let itemsDeletados = 0;
+        
+        snapshot.docs.forEach(doc => {
+            const hist = { id: doc.id, ...doc.data() };
+            const dataHist = new Date(hist.data_geracao);
+            
+            if (dataHist < dataLimite) {
+                // Item é mais velho que 30 dias -> APAGAR DA NUVEM
+                batch.delete(doc.ref);
+                itemsDeletados++;
+            } else {
+                // Item é válido -> MANTER E MOSTRAR
+                todosHistoricosIA.push(hist);
+            }
+        });
+        
+        // Se achou lixo velho, comita a limpeza na nuvem
+        if (itemsDeletados > 0) {
+            await batch.commit();
+            console.log(`🗑️ Limpeza de Histórico: ${itemsDeletados} consultorias velhas apagadas.`);
+        }
+        
+        // Renderiza na tela
+        if (todosHistoricosIA.length === 0) {
+            container.innerHTML = `<div class="col-span-full p-8 text-center text-slate-400 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50">Nenhuma consultoria encontrada nos últimos 30 dias.</div>`;
+            return;
+        }
+        
+        todosHistoricosIA.forEach(hist => {
+            const d = new Date(hist.data_geracao);
+            const dataStr = d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+            
+            const objCurto = hist.objetivo.length > 80 ? hist.objetivo.substring(0, 80) + '...' : hist.objetivo;
+            const nomeModelo = hist.modelo ? hist.modelo : 'IA';
+            
+            html += `
+                <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col h-full hover:shadow-md transition-shadow">
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">${hist.nicho}</span>
+                        <span class="text-[10px] text-slate-400 font-medium"><i class="fa-solid fa-microchip mr-1"></i> ${nomeModelo}</span>
+                    </div>
+                    
+                    <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm mb-2 flex-1">"${objCurto}"</h4>
+                    
+                    <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                        <span class="text-[11px] text-slate-500"><i class="fa-regular fa-calendar mr-1"></i> ${dataStr}</span>
+                        <button onclick="verDetalhesHistorico('${hist.id}')" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-bold flex items-center gap-1 transition-colors">
+                            Ler <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+        
+    } catch (e) {
+        console.error("Erro ao carregar histórico:", e);
+        container.innerHTML = `<div class="col-span-full p-8 text-center text-red-500 bg-red-50 dark:bg-red-900/20 rounded-xl">Erro ao carregar histórico. Verifique a conexão.</div>`;
+    }
+}
+
+window.verDetalhesHistorico = function(id) {
+    const hist = todosHistoricosIA.find(h => h.id === id);
+    if (!hist) return;
+    
+    document.getElementById('modal-hist-nicho').innerText = hist.nicho;
+    document.getElementById('modal-hist-objetivo').innerText = hist.objetivo;
+    document.getElementById('modal-hist-texto').innerHTML = hist.resultado_html;
+    
+    const d = new Date(hist.data_geracao);
+    document.getElementById('modal-hist-data').innerText = `Gerado em ${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`;
+    
+    document.getElementById('modal-historico').classList.remove('hidden');
+    // Adiciona delay para a animação de entrada
+    setTimeout(() => {
+        document.getElementById('modal-historico').classList.add('opacity-100');
+        document.getElementById('modal-historico-content').classList.remove('scale-95');
+        document.getElementById('modal-historico-content').classList.add('scale-100');
+    }, 10);
+};
+
+window.fecharModalHistorico = function() {
+    document.getElementById('modal-historico').classList.remove('opacity-100');
+    document.getElementById('modal-historico-content').classList.remove('scale-100');
+    document.getElementById('modal-historico-content').classList.add('scale-95');
+    
+    setTimeout(() => {
+        document.getElementById('modal-historico').classList.add('hidden');
+    }, 300);
+};

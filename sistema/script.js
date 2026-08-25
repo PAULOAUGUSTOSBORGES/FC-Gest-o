@@ -484,40 +484,6 @@
                 const fHtml = p.foto ? `<img src="${p.foto}" onclick="event.stopPropagation(); abrirZoom('${p.foto}')" class="w-8 h-8 rounded object-cover inline-block mr-2 cursor-zoom-in hover:opacity-80 transition" title="Ver foto em tela cheia">` : `<div class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 inline-flex items-center justify-center text-[10px] text-slate-400 mr-2"><i class="fa-regular fa-image"></i></div>`; 
                 return `<div class="p-3 border-b border-slate-100 dark:border-slate-700 hover:bg-blue-50 cursor-pointer flex justify-between items-center transition-colors" onclick="pdvSelecionarProdutoBusca('${p.id}')"><div class="flex items-center">${fHtml}<div><p class="font-bold text-slate-800 dark:text-slate-100 text-sm">${p.nome}</p><p class="text-[10px] text-slate-500 dark:text-slate-400">Cód: ${p.id}</p></div></div><div class="text-right"><p class="font-bold text-blue-600 text-sm">${formatMoney(p.preco)}</p><p class="text-[10px] font-bold ${p.estoque<1?'text-red-500':'text-emerald-600'}">Est: ${p.estoque}</p></div></div>`
             }).join(''); resC.classList.remove('hidden');
-        }
-
-        function pdvSelecionarProdutoBusca(id) { const p = db.produtos.find(x => x.id === id); if(p) processarAdicaoProduto(p); document.getElementById('pdv-produto-busca').value = ''; document.getElementById('pdv-busca-resultados').classList.add('hidden'); document.getElementById('pdv-produto-busca').focus(); }
-        function pdvAdicionarItemBusca(btnClick = false) { const termo = document.getElementById('pdv-produto-busca').value.toLowerCase().trim(); if(!termo) return; let p = db.produtos.find(x => x.ativo !== false && (String(x.ean) === termo || String(x.id) === termo)); if(!p) { const fil = db.produtos.filter(x => x.ativo !== false && x.nome.toLowerCase().includes(termo)); if(fil.length === 1) p = fil[0]; } if(p) pdvSelecionarProdutoBusca(p.id); else if(btnClick) showToast('Não encontrado.', 'error'); }
-
-        function processarAdicaoProduto(p) { const idx = cart.findIndex(i => i.id === p.id); if(idx >= 0) { cart[idx].qtd++; if(cart[idx].qtd > p.estoque) showToast(`Estoque NEGATIVO! Restam ${p.estoque}.`, 'info'); } else { cart.push({ id: p.id, nome: p.nome, preco: p.preco, custo: p.custo, qtd: 1, foto: p.foto }); if(p.estoque < 1) showToast(`Estoque NEGATIVO!`, 'info'); } renderCarrinho(); }
-        
-        function renderCarrinho() {
-            document.getElementById('pdv-carrinho-body').innerHTML = cart.map((item, i) => { 
-                const fHtml = item.foto ? `<img src="${item.foto}" onclick="abrirZoom('${item.foto}')" class="w-10 h-10 rounded object-cover border border-slate-200 dark:border-slate-700 mx-auto cursor-zoom-in hover:opacity-80 transition" title="Ver foto em tela cheia">` : `<div class="w-10 h-10 mx-auto rounded bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-400 text-xs border border-slate-200 dark:border-slate-700"><i class="fa-regular fa-image"></i></div>`; 
-                return `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-50"><td class="py-2 text-center">${fHtml}</td><td class="py-2 text-slate-800 dark:text-slate-100 font-medium">${item.nome}</td><td class="py-2 text-center"><input type="number" min="1" value="${item.qtd}" onchange="pdvMudarQtd(${i}, this.value)" class="w-16 text-center border border-slate-300 dark:border-slate-600 rounded-lg p-1.5 font-bold outline-none bg-white dark:bg-slate-800 dark:text-white"></td><td class="py-2 text-right text-slate-600 dark:text-slate-300">${formatMoney(item.preco)}</td><td class="py-2 text-right font-bold text-slate-800 dark:text-slate-100">${formatMoney(item.preco * item.qtd)}</td><td class="py-2 text-center"><button onclick="cart.splice(${i},1); renderCarrinho()" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash text-lg"></i></button></td></tr>`
-            }).join('');
-            pdvAtualizarTotais();
-        }
-
-        function pdvMudarQtd(i, n) { const novaQtd = Math.max(0.001, parseFloat(n)||0.001); cart[i].qtd = novaQtd; const p = db.produtos.find(x => x.id === cart[i].id); if(p && novaQtd > p.estoque) showToast(`Estoque NEGATIVO! Restam ${p.estoque}.`, 'info'); renderCarrinho(); }
-        
-        function pdvLimpar() { cart = []; document.getElementById('pdv-desconto').value=0; document.getElementById('pdv-frete').value=0; document.getElementById('pdv-pagamento-selecionado').value=''; if(document.getElementById('pdv-obs')) document.getElementById('pdv-obs').value = ''; document.querySelectorAll('.btn-pag').forEach(b => b.classList.remove('bg-blue-50','border-blue-500','text-blue-700','ring-2')); document.getElementById('area-parcelamento').classList.add('hidden'); renderCarrinho(); }
-
-        function pdvAtualizarTotais() { 
-            const sub = cart.reduce((acc, i) => acc + (i.preco * i.qtd), 0); 
-            let frete = parseFloat(document.getElementById('pdv-frete').value) || 0;
-            let desc = parseFloat(document.getElementById('pdv-desconto').value) || 0; 
-            if(desc > (sub + frete)) desc = sub + frete; 
-            const tot = sub + frete - desc; 
-            document.getElementById('pdv-subtotal').innerText = formatMoney(sub); 
-            document.getElementById('pdv-total').innerText = formatMoney(tot); 
-            document.getElementById('pdv-qtd-itens').innerText = `${cart.reduce((a,b)=>a+b.qtd,0)} itens`; 
-            calcularPreviaParcelas(tot); return { sub, desc, frete, tot }; 
-        }
-
-        function calcularPreviaParcelas(totalParam = null) { 
-            const parc = parseInt(document.getElementById('pdv-parcelas').value) || 1; 
-            let tot = totalParam !== null ? totalParam : pdvAtualizarTotais().tot;
             document.getElementById('pdv-previa-parcelas').innerText = tot > 0 && parc > 0 ? `${parc}x de ${formatMoney(tot/parc)}` : '1x de R$ 0,00'; 
         }
 
