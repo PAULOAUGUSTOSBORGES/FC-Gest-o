@@ -1,0 +1,119 @@
+                    <!-- ================================================ -->
+                    <!-- PÁGINA DA LOJA ONLINE -->
+                    <!-- ================================================ -->
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mt-6">
+                        <div class="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-700 pb-3">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                <i class="fa-solid fa-store text-emerald-500"></i> Página da Loja Online
+                            </h3>
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs text-slate-500">Ativar Loja</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="loja-ativa" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- IDENTIDADE DA LOJA -->
+                        <div class="mb-5">
+                            <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-3 flex items-center gap-1"><i class="fa-solid fa-id-card"></i> Identidade da Loja</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Nome da Loja (Exibido no topo)</label>
+                                    <input type="text" id="loja-nome" placeholder="Ex: FC Móveis" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 dark:text-white">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Slogan / Frase de Impacto</label>
+                                    <input type="text" id="loja-slogan" placeholder="Ex: Qualidade e Conforto para sua Casa" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 dark:text-white">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Descrição da Empresa (Seção "Sobre Nós")</label>
+                                    <textarea id="loja-descricao" rows="3" placeholder="Conte a história da sua empresa, diferenciais, missão e valores..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 dark:text-white resize-none"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- BANNER HERO -->
+                        <div class="mb-5 border-t border-slate-100 dark:border-slate-700 pt-5">
+                            <p class="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-3 flex items-center gap-1"><i class="fa-solid fa-image"></i> Banner Principal (Hero)</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Título do Banner</label>
+                                    <input type="text" id="loja-banner-titulo" placeholder="Ex: Transforme seu Espaço" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Subtítulo do Banner</label>
+                                    <input type="text" id="loja-banner-subtitulo" placeholder="Ex: Móveis exclusivos com qualidade garantida" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Texto do Botão CTA (Chamada para Ação)</label>
+                                    <input type="text" id="loja-btn-cta" placeholder="Ex: Ver Produtos / Fale no WhatsApp" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Cor Principal da Loja</label>
+                                    <div class="flex items-center gap-3">
+                                        <input type="color" id="loja-cor-primaria" value="#2563eb" class="w-14 h-10 rounded-lg border border-slate-300 dark:border-slate-600 cursor-pointer bg-white dark:bg-slate-900">
+                                        <input type="text" id="loja-cor-primaria-hex" placeholder="#2563eb" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white font-mono" oninput="sincronizarCor(this)">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SEÇÕES DA LOJA -->
+                        <div class="mb-5 border-t border-slate-100 dark:border-slate-700 pt-5">
+                            <p class="text-[10px] font-bold text-purple-600 uppercase tracking-wider mb-3 flex items-center gap-1"><i class="fa-solid fa-align-left"></i> Textos das Seções</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Título da Seção de Produtos</label>
+                                    <input type="text" id="loja-titulo-produtos" placeholder="Ex: Nossos Produtos" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-purple-500 dark:text-white">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Título da Seção "Sobre Nós"</label>
+                                    <input type="text" id="loja-titulo-sobre" placeholder="Ex: Quem Somos Nós" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-purple-500 dark:text-white">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Texto do Rodapé</label>
+                                    <input type="text" id="loja-rodape" placeholder="Ex: © 2024 FC Móveis. Todos os direitos reservados." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-purple-500 dark:text-white">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- CONTATO E REDES SOCIAIS -->
+                        <div class="mb-5 border-t border-slate-100 dark:border-slate-700 pt-5">
+                            <p class="text-[10px] font-bold text-green-600 uppercase tracking-wider mb-3 flex items-center gap-1"><i class="fa-solid fa-address-book"></i> Contato e Redes Sociais</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block"><i class="fa-brands fa-whatsapp text-green-500 mr-1"></i>WhatsApp (com DDD, só números)</label>
+                                    <input type="text" id="loja-whatsapp" placeholder="Ex: 51999999999" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-green-500 dark:text-white">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Mensagem padrão WhatsApp</label>
+                                    <input type="text" id="loja-whatsapp-msg" placeholder="Ex: Olá! Vim pelo site e quero saber mais." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-green-500 dark:text-white">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block"><i class="fa-brands fa-instagram text-pink-500 mr-1"></i>Instagram (@ usuário)</label>
+                                    <input type="text" id="loja-instagram" placeholder="Ex: @fcmoveis" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-pink-500 dark:text-white">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block"><i class="fa-brands fa-facebook text-blue-600 mr-1"></i>Facebook (usuário/página)</label>
+                                    <input type="text" id="loja-facebook" placeholder="Ex: fcmoveis" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block"><i class="fa-solid fa-map-location-dot text-red-500 mr-1"></i>Link do Google Maps (URL completa)</label>
+                                    <input type="text" id="loja-maps" placeholder="Ex: https://maps.google.com/?q=..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-red-500 dark:text-white">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PREVIEW LINK -->
+                        <div class="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4 flex items-center justify-between gap-4">
+                            <div>
+                                <p class="text-xs font-bold text-emerald-700 dark:text-emerald-400 mb-1">Sua Página da Loja</p>
+                                <p class="text-xs text-slate-500">Após salvar, abra a loja no seu navegador para ver as atualizações.</p>
+                            </div>
+                            <a href="../loja.html" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm flex items-center gap-2 transition-colors whitespace-nowrap shadow-md">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir Loja
+                            </a>
+                        </div>
+                    </div>

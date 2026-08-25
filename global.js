@@ -485,3 +485,99 @@ window.excluirVenda = function(id) {
         }
     });
 };
+
+// ==========================================
+// FUNCOES DE BUSCA CEP E CNPJ GLOBAIS
+// ==========================================
+
+window.buscarCEP = function(prefixo) {
+    const cepInput = document.getElementById(`${prefixo}-cep`);
+    if(!cepInput) return;
+    const cep = cepInput.value.replace(/\D/g, '');
+    if(cep.length === 8) {
+        fetch(`https://viacep.com.br/ws/${cep}/json/`)
+            .then(res => res.json())
+            .then(data => {
+                if(!data.erro) {
+                    const elEnd = document.getElementById(`${prefixo}-endereco`);
+                    const elBai = document.getElementById(`${prefixo}-bairro`);
+                    const elCid = document.getElementById(`${prefixo}-cidade`);
+                    if(elEnd) elEnd.value = data.logradouro;
+                    if(elBai) elBai.value = data.bairro;
+                    if(elCid) elCid.value = data.localidade + ' - ' + data.uf;
+                }
+            })
+            .catch(() => {});
+    }
+};
+
+window.buscarCNPJ = function(prefixo) {
+    const docInput = document.getElementById(`${prefixo}-doc`);
+    if(!docInput) return;
+    const cnpj = docInput.value.replace(/\D/g, '');
+    if(cnpj.length === 14) {
+        const btnBusca = document.getElementById(`btn-busca-cnpj-${prefixo}`);
+        if(btnBusca) {
+            const oldHtml = btnBusca.innerHTML;
+            btnBusca.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            btnBusca.disabled = true;
+            
+            fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`)
+                .then(res => {
+                    if(!res.ok) throw new Error('CNPJ inválido ou API indisponível.');
+                    return res.json();
+                })
+                .then(data => {
+                    const elNome = document.getElementById(`${prefixo}-nome`);
+                    const elFantasia = document.getElementById(`${prefixo}-fantasia`);
+                    const elCep = document.getElementById(`${prefixo}-cep`);
+                    const elTel = document.getElementById(`${prefixo}-telefone`);
+                    
+                    if(elNome) elNome.value = data.razao_social || '';
+                    if(elFantasia && data.nome_fantasia) elFantasia.value = data.nome_fantasia;
+                    
+                    if(elCep && data.cep) {
+                        elCep.value = data.cep;
+                        // Trigger CEP search
+                        window.buscarCEP(prefixo);
+                    }
+                    
+                    if(elTel && data.ddd_telefone_1) {
+                        elTel.value = data.ddd_telefone_1;
+                    }
+                    
+                    showToast('Dados do CNPJ preenchidos!', 'success');
+                })
+                .catch(err => {
+                    showToast(err.message, 'error');
+                })
+                .finally(() => {
+                    btnBusca.innerHTML = oldHtml;
+                    btnBusca.disabled = false;
+                });
+        }
+    } else {
+        showToast('Digite um CNPJ válido com 14 dígitos.', 'error');
+    }
+};
+
+window.formatarEBuscarDoc = function(input, prefixo) {
+    let v = input.value.replace(/\D/g, '');
+    if (v.length <= 11) {
+        v = v.replace(/(\d{3})(\d)/, '$1.$2');
+        v = v.replace(/(\d{3})(\d)/, '$1.$2');
+        v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    } else {
+        v = v.replace(/^(\d{2})(\d)/, '$1.$2');
+        v = v.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+        v = v.replace(/\.(\d{3})(\d)/, '.$1/$2');
+        v = v.replace(/(\d{4})(\d)/, '$1-$2');
+    }
+    input.value = v;
+
+    if (v.replace(/\D/g, '').length === 14) {
+        if (typeof window.buscarCNPJ === 'function') {
+            window.buscarCNPJ(prefixo);
+        }
+    }
+};

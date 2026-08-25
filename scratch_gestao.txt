@@ -1,0 +1,129 @@
+227:                         </div>
+228:                     </div>
+229: 
+230: 
+231:                     <!-- ================================================ -->
+232:                     <!-- PÁGINA DA LOJA ONLINE -->
+233:                     <!-- ================================================ -->
+234:                     <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mt-6">
+235:                         <div class="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-700 pb-3">
+236:                             <h3 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+237:                                 <i class="fa-solid fa-store text-emerald-500"></i> Página da Loja Online
+238:                             </h3>
+239:                             <div class="flex items-center gap-3">
+240:                                 <span class="text-xs text-slate-500">Ativar Loja</span>
+241:                                 <label class="relative inline-flex items-center cursor-pointer">
+242:                                     <input type="checkbox" id="loja-ativa" class="sr-only peer">
+243:                                     <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+244:                                 </label>
+245:                             </div>
+246:                         </div>
+247: 
+248:                         <!-- IDENTIDADE DA LOJA -->
+249:                         <div class="mb-5">
+250:                             <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-3 flex items-center gap-1"><i class="fa-solid fa-id-card"></i> Identidade da Loja</p>
+251:                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+252:                                 <div>
+253:                                     <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Nome da Loja (Exibido no topo)</label>
+254:                                     <input type="text" id="loja-nome" placeholder="Ex: FC Móveis" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 dark:text-white">
+255:                                 </div>
+256:                                 <div>
+257:                                     <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Slogan / Frase de Impacto</label>
+258:                                     <input type="text" id="loja-slogan" placeholder="Ex: Qualidade e Conforto para sua Casa" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 dark:text-white">
+259:                                 </div>
+260:                                 <div class="md:col-span-2">
+261:                                     <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Descrição da Empresa (Seção "Sobre Nós")</label>
+262:                                     <textarea id="loja-descricao" rows="3" placeholder="Conte a história da sua empresa, diferenciais, missão e valores..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 dark:text-white resize-none"></textarea>
+263:                                 </div>
+264:                             </div>
+265:                         </div>
+266: 
+267:                         <!-- BANNER HERO -->
+268:                         <div class="mb-5 border-t border-slate-100 dark:border-slate-700 pt-5">
+269:                             <p class="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-3 flex items-center gap-1"><i class="fa-solid fa-image"></i> Banner Principal (Hero)</p>
+270:                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+271:                                 <div>
+272:                                     <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Título do Banner</label>
+273:                                     <input type="text" id="loja-banner-titulo" placeholder="Ex: Transforme seu Espaço" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
+274:                                 </div>
+275:                                 <div>
+276:                                     <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Subtítulo do Banner</label>
+277:                                     <input type="text" id="loja-banner-subtitulo" placeholder="Ex: Móveis exclusivos com qualidade garantida" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
+278:                                 </div>
+279:                                 <div>
+280:                                     <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Texto do Botão CTA (Chamada para Ação)</label>
+281:                                     <input type="text" id="loja-btn-cta" placeholder="Ex: Ver Produtos / Fale no WhatsApp" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
+282:                                 </div>
+283:                                 <div>
+284:                                     <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Cor Principal da Loja</label>
+285:                                     <div class="flex items-center gap-3">
+286:                                         <input type="color" id="loja-cor-primaria" value="#2563eb" class="w-14 h-10 rounded-lg border border-slate-300 dark:border-slate-600 cursor-pointer bg-white dark:bg-slate-900">
+287:                                         <input type="text" id="loja-cor-primaria-hex" placeholder="#2563eb" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white font-mono" oninput="sincronizarCor(this)">
+288:                                     </div>
+289:                                 </div>
+290:                             </div>
+291:                         </div>
+292: 
+293:                         <!-- SEÇÕES DA LOJA -->
+294:                         <div class="mb-5 border-t border-slate-100 dark:border-slate-700 pt-5">
+295:                             <p class="text-[10px] font-bold text-purple-600 uppercase tracking-wider mb-3 flex items-center gap-1"><i class="fa-solid fa-align-left"></i> Textos das Seções</p>
+296:                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+297:                                 <div>
+298:                                     <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Título da Seção de Produtos</label>
+299:                                     <input type="text" id="loja-titulo-produtos" placeholder="Ex: Nossos Produtos" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-purple-500 dark:text-white">
+300:                                 </div>
+301:                                 <div>
+302:                                     <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Título da Seção "Sobre Nós"</label>
+303:                                     <input type="text" id="loja-titulo-sobre" placeholder="Ex: Quem Somos Nós" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-purple-500 dark:text-white">
+304:                                 </div>
+305:                                 <div class="md:col-span-2">
+306:                                     <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Texto do Rodapé</label>
+307:                                     <input type="text" id="loja-rodape" placeholder="Ex: © 2024 FC Móveis. Todos os direitos reservados." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-purple-500 dark:text-white">
+308:                                 </div>
+309:                             </div>
+310:                         </div>
+311: 
+312:                         <!-- CONTATO E REDES SOCIAIS -->
+313:                         <div class="mb-5 border-t border-slate-100 dark:border-slate-700 pt-5">
+314:                             <p class="text-[10px] font-bold text-green-600 uppercase tracking-wider mb-3 flex items-center gap-1"><i class="fa-solid fa-address-book"></i> Contato e Redes Sociais</p>
+315:                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+316:                                 <div>
+317:                                     <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block"><i class="fa-brands fa-whatsapp text-green-500 mr-1"></i>WhatsApp (com DDD, só números)</label>
+318:                                     <input type="text" id="loja-whatsapp" placeholder="Ex: 51999999999" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-green-500 dark:text-white">
+319:                                 </div>
+320:                                 <div>
+321:                                     <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Mensagem padrão WhatsApp</label>
+322:                                     <input type="text" id="loja-whatsapp-msg" placeholder="Ex: Olá! Vim pelo site e quero saber mais." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-green-500 dark:text-white">
+323:                                 </div>
+324:                                 <div>
+325:                                     <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block"><i class="fa-brands fa-instagram text-pink-500 mr-1"></i>Instagram (@ usuário)</label>
+326:                                     <input type="text" id="loja-instagram" placeholder="Ex: @fcmoveis" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-pink-500 dark:text-white">
+327:                                 </div>
+328:                                 <div>
+329:                                     <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block"><i class="fa-brands fa-facebook text-blue-600 mr-1"></i>Facebook (usuário/página)</label>
+330:                                     <input type="text" id="loja-facebook" placeholder="Ex: fcmoveis" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
+331:                                 </div>
+332:                                 <div class="md:col-span-2">
+333:                                     <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block"><i class="fa-solid fa-map-location-dot text-red-500 mr-1"></i>Link do Google Maps (URL completa)</label>
+334:                                     <input type="text" id="loja-maps" placeholder="Ex: https://maps.google.com/?q=..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-red-500 dark:text-white">
+335:                                 </div>
+336:                             </div>
+337:                         </div>
+338: 
+339:                         <!-- PREVIEW LINK -->
+340:                         <div class="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4 flex items-center justify-between gap-4">
+341:                             <div>
+342:                                 <p class="text-xs font-bold text-emerald-700 dark:text-emerald-400 mb-1">Sua Página da Loja</p>
+343:                                 <p class="text-xs text-slate-500">Após salvar, abra a loja no seu navegador para ver as atualizações.</p>
+344:                             </div>
+345:                             <a href="loja.html" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm flex items-center gap-2 transition-colors whitespace-nowrap shadow-md">
+346:                                 <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir Loja
+347:                             </a>
+348:                         </div>
+349:                     </div>
+350: 
+351:                     <div class="flex justify-end pt-4 pb-10">
+352:                         <button onclick="salvarConfiguracoes()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg transition-transform active:scale-95 flex items-center gap-2"><i class="fa-solid fa-save"></i> Salvar Todas as Configurações</button>
+353:                     </div>
+354: 
+355: 
