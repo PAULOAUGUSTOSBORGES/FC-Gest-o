@@ -1,4 +1,4 @@
-﻿function escapeHtml(unsafe) {
+function escapeHtml(unsafe) {
     if (!unsafe) return '';
     return String(unsafe)
         .replace(/&/g, "&amp;")
@@ -30,6 +30,10 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 const firestore = firebase.firestore();
+firestore.enablePersistence({ synchronizeTabs: true })
+  .catch(function(err) {
+      console.warn("Persistência offline:", err.code);
+  });
 const auth = firebase.auth();
 
 // Stub Global do DB (para não quebrar as outras telas enquanto são migradas)
@@ -42,6 +46,20 @@ let db = {
     }
 };
 window.currentUserInfo = null;
+
+// ==========================================
+// Monitoramento de Conexão (Online/Offline)
+// ==========================================
+window.addEventListener('offline', () => {
+    showToast('Você está offline! Modo de trabalho local ativado.', 'warning');
+    // Adiciona uma classe ao body para podermos mudar estilos globais se quisermos
+    document.body.classList.add('is-offline');
+});
+
+window.addEventListener('online', () => {
+    showToast('Conexão restabelecida! Sincronizando dados...', 'success');
+    document.body.classList.remove('is-offline');
+});
 
 const formatMoney = (val) => Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const formatData = (isoStr) => {
