@@ -1077,7 +1077,7 @@ function renderTitulos(tipo) {
         lista = lista.filter(f => f.data && f.data.split('T')[0] <= dataFim);
     }
 
-    // 5. FILTRO DE PERÍODO RELATIVO (MÃŠS, 7 DIAS, ETC.)
+    // 5. FILTRO DE PERÍODO RELATIVO (MÊS, 7 DIAS, ETC.)
     const temBuscaAtiva = !!(termoNorm || pessoaFiltroVal);
     if (!temBuscaAtiva && !dataIni && !dataFim && periodoFilter !== 'TUDO') {
         const hoje = new Date();

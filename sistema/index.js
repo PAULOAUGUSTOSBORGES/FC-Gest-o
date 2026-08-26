@@ -584,7 +584,7 @@ function renderizarGraficos() {
     chartEstoque.updateOptions({ labels: labelsEstoque });
 
     // ----------------------------------------------------
-    // 3. GRÁFICO DE INADIMPLÃŠNCIA VS PAGOS (Geral PENDENTES x ATRASADOS x PAGOS)
+    // 3. GRÁFICO DE INADIMPLÊNCIA VS PAGOS (Geral PENDENTES x ATRASADOS x PAGOS)
     // ----------------------------------------------------
     const hoje = new Date().getTime();
     const receber = contas.filter(c => (!c.tipo || c.tipo === 'RECEITA'));

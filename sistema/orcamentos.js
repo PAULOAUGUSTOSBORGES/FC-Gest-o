@@ -2188,7 +2188,7 @@ function atualizarVendedoresPDV() {
 
 
 // ==========================================
-// PERSISTÃŠNCIA DE ESTADO DE ORÇAMENTOS (LOCALSTORAGE)
+// PERSISTÊNCIA DE ESTADO DE ORÇAMENTOS (LOCALSTORAGE)
 // ==========================================
 window.salvarEstadoOrcamento = function() {
     try {

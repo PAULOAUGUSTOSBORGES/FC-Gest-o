@@ -1,4 +1,4 @@
-﻿$files = Get-ChildItem -Path ".\sistema\*.html"
+$files = Get-ChildItem -Path "." -Include "*.html", "*.js", "*.rules" -Recurse
 $map = @{
     "$([char]0x00C3)$([char]0x00A1)" = "á"
     "$([char]0x00C3)$([char]0x00A2)" = "â"

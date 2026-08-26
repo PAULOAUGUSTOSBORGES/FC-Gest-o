@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // ==========================================
-    // FunÃ§Ãµes Auxiliares de AutenticaÃ§Ã£o e RBAC
+    // Funções Auxiliares de Autenticação e RBAC
     // ==========================================
     function isAutenticado() {
       return request.auth != null;
@@ -34,15 +34,15 @@ service cloud.firestore {
     }
 
     // ==========================================
-    // 1. ConfiguraÃ§Ãµes e Caixa FÃ­sico
+    // 1. Configurações e Caixa Físico
     // ==========================================
     match /fc_moveis/config_loja {
-      allow read: if true; // Dados pÃºblicos da vitrine (nome, logo, banners, cores)
+      allow read: if true; // Dados públicos da vitrine (nome, logo, banners, cores)
       allow write: if isAdmin() || temPermissao('perm_config') || temPermissao('perm_gestao');
     }
     
     match /fc_moveis/config {
-      allow read: if true; // MantÃ©m compatibilidade de leitura do frontend existente
+      allow read: if true; // Mantém compatibilidade de leitura do frontend existente
       allow write: if isAdmin() || temPermissao('perm_config') || temPermissao('perm_gestao');
     }
 
@@ -57,10 +57,10 @@ service cloud.firestore {
     }
 
     // ==========================================
-    // 2. CatÃ¡logo de Produtos e Kardex
+    // 2. Catálogo de Produtos e Kardex
     // ==========================================
     match /produtos/{produtoId} {
-      allow read: if true; // Leitura pÃºblica: necessÃ¡ria para a loja virtual
+      allow read: if true; // Leitura pública: necessária para a loja virtual
       allow write: if isAdmin() || temPermissao('perm_cadastros') || temPermissao('perm_pdv');
     }
 
@@ -71,7 +71,7 @@ service cloud.firestore {
     }
 
     match /categorias/{catId} {
-      allow read: if true; // Categorias pÃºblicas para filtro da loja
+      allow read: if true; // Categorias públicas para filtro da loja
       allow write: if isAdmin() || temPermissao('perm_cadastros');
     }
 
@@ -88,7 +88,7 @@ service cloud.firestore {
     }
 
     // ==========================================
-    // 4. Vendas, OrÃ§amentos, Pedidos do Site e Financeiro
+    // 4. Vendas, Orçamentos, Pedidos do Site e Financeiro
     // ==========================================
     match /vendas/{vendaId} {
       allow read: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_gestao'));
@@ -107,7 +107,7 @@ service cloud.firestore {
     }
 
     match /financeiro/{finId} {
-      // PDV precisa criar tÃ­tulos a receber para vendas no crediÃ¡rio/cartÃ£o/pix
+      // PDV precisa criar títulos a receber para vendas no crediário/cartão/pix
       allow read: if isAutenticado() && (temPermissao('perm_gestao') || temPermissao('perm_pdv'));
       allow create: if isAutenticado() && (temPermissao('perm_gestao') || temPermissao('perm_pdv'));
       allow update, delete: if isAdmin() || temPermissao('perm_gestao');
@@ -118,7 +118,7 @@ service cloud.firestore {
     }
 
     // ==========================================
-    // 5. FuncionÃ¡rios e Controle de Acesso
+    // 5. Funcionários e Controle de Acesso
     // ==========================================
     match /funcionarios/{userId} {
       allow read: if isAutenticado();

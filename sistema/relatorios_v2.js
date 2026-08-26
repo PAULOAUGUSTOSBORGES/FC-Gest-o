@@ -3134,7 +3134,7 @@ function calcularPrecoMargin(quemMudou = 'preco') {
 }
 
 // ==========================================
-// EXPORTAÇÃO GLOBAL DE FUNÇÃ•ES PARA O ESCOPO WINDOW
+// EXPORTAÇÃO GLOBAL DE FUNÇÕES PARA O ESCOPO WINDOW
 // ==========================================
 window.renderDashboard = renderDashboard;
 window.renderFinAbas = renderFinAbas;
