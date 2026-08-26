@@ -31,6 +31,16 @@ if (!firebase.apps.length) {
 }
 const firestore = firebase.firestore();
 
+// ATIVAR MODO OFFLINE (Agora funciona pois usamos o servidor local)
+firestore.enablePersistence({ synchronizeTabs: true })
+    .catch(function(err) {
+        if (err.code == 'failed-precondition') {
+            console.warn("Múltiplas abas abertas. A persistência offline funcionará apenas na primeira aba.");
+        } else if (err.code == 'unimplemented') {
+            console.warn("Navegador não suporta persistência offline do Firebase.");
+        }
+    });
+
 const auth = firebase.auth();
 
 // Stub Global do DB (para não quebrar as outras telas enquanto são migradas)

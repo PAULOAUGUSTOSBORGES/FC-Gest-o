@@ -1,0 +1,49 @@
+========================================================================
+ GUIA DEFINITIVO: COMO COLOCAR O FC-GESTÃO NA NUVEM (ONLINE PARA TODOS)
+========================================================================
+
+O Firebase Hosting é um serviço gratuito do Google que coloca o seu sistema na internet (ex: https://seu-site.web.app). Quando o sistema roda na internet oficial, todos os bloqueios de segurança do navegador somem e o "Modo Offline" com persistência de dados funciona nativamente, sem precisar do servidor local.
+
+Siga exatamente os passos abaixo para configurar isso no seu computador.
+
+========================================================================
+ PASSO 1: INSTALAR O NODE.JS (Necessário para os comandos do Firebase)
+========================================================================
+1. Abra o seu navegador e acesse: https://nodejs.org/
+2. Baixe a versão "LTS" (Recomendada).
+3. Instale no seu Windows clicando em "Next" até o final (deixe tudo padrão).
+4. Feche todas as janelas do PowerShell ou VS Code abertas.
+
+========================================================================
+ PASSO 2: INSTALAR O FIREBASE NO SEU COMPUTADOR
+========================================================================
+1. Abra um terminal do PowerShell NOVO.
+2. Digite o seguinte comando e aperte Enter:
+   npm install -g firebase-tools
+   (Isso vai instalar as ferramentas do Google no seu computador).
+
+========================================================================
+ PASSO 3: FAZER LOGIN E PUBLICAR O SEU SISTEMA (DEPLOY)
+========================================================================
+Sempre que você quiser mandar o sistema pra internet, você fará isso:
+
+1. Na mesma pasta do sistema (aonde estão os seus arquivos), rode os scripts do PowerShell:
+   .\compilar.ps1
+   (Para garantir que o cache dos clientes vai limpar)
+
+2. No terminal (dentro da pasta do sistema), digite:
+   firebase login
+   (Isso vai abrir seu navegador para você logar com sua conta Google do Firebase).
+
+3. Depois de logado, digite:
+   firebase init hosting
+   (Responda às perguntas:)
+   - O que você quer usar como diretório público? Digite: . (um ponto) ou apenas a pasta raiz.
+   - Configurar como um aplicativo de página única? Digite: N
+   - Configurar builds automáticos com GitHub? Digite: N
+   - Sobrescrever index.html? Digite: N (MUITO IMPORTANTE: Não deixe sobrescrever!)
+
+4. Digite o comando mágico para jogar tudo pra internet:
+   firebase deploy
+
+PRONTO! O Google vai te dar um link (ex: https://lojafc-a31f9.web.app). Envie esse link para os seus vendedores acessarem no celular e nos computadores deles!
