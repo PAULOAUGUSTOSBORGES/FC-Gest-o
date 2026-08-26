@@ -30,10 +30,7 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 const firestore = firebase.firestore();
-firestore.enablePersistence({ synchronizeTabs: true })
-  .catch(function(err) {
-      console.warn("Persistência offline:", err.code);
-  });
+
 const auth = firebase.auth();
 
 // Stub Global do DB (para não quebrar as outras telas enquanto são migradas)
@@ -50,16 +47,38 @@ window.currentUserInfo = null;
 // ==========================================
 // Monitoramento de Conexão (Online/Offline)
 // ==========================================
+function atualizarBadgeConexao(isOnline) {
+    const titleEl = document.getElementById('menu-empresa-nome');
+    if (titleEl && titleEl.nextElementSibling) {
+        const badge = titleEl.nextElementSibling;
+        if (isOnline) {
+            badge.innerText = 'Sistema Ativo';
+            badge.classList.remove('text-red-400');
+            badge.classList.add('text-emerald-400');
+        } else {
+            badge.innerText = 'Modo Offline';
+            badge.classList.remove('text-emerald-400');
+            badge.classList.add('text-red-400');
+        }
+    }
+}
+
 window.addEventListener('offline', () => {
     showToast('Você está offline! Modo de trabalho local ativado.', 'warning');
-    // Adiciona uma classe ao body para podermos mudar estilos globais se quisermos
     document.body.classList.add('is-offline');
+    atualizarBadgeConexao(false);
 });
 
 window.addEventListener('online', () => {
     showToast('Conexão restabelecida! Sincronizando dados...', 'success');
     document.body.classList.remove('is-offline');
+    atualizarBadgeConexao(true);
 });
+
+// Força checagem na inicialização
+if (!navigator.onLine) {
+    setTimeout(() => { atualizarBadgeConexao(false); }, 1000);
+}
 
 const formatMoney = (val) => Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const formatData = (isoStr) => {

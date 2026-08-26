@@ -114,7 +114,7 @@ function mudarVisaoLocal(viewId) {
     if (viewId === 'orcamentos') renderOrcamentos();
 }
 
-function inicializarOperação() {
+function inicializarOperacao() {
     aplicarIdentidadeVisualNoMenu(); 
     
     firestore.collection('produtos').onSnapshot(snap => {
@@ -149,7 +149,7 @@ function inicializarOperação() {
     mudarVisaoLocal('vendas_operacao');
 }
 
-window.onload = () => { initGlobalData(inicializarOperação); };
+window.onload = () => { initGlobalData(inicializarOperacao); };
 
 // ==========================================
 // 3. FUNÇÕES GENÉRICAS E KARDEX
@@ -1788,6 +1788,9 @@ async function emitirNota(tipo) {
 // 12. HISTÓRICO VENDAS E ORÇAMENTOS
 // ==========================================
 function renderVendas() {
+    const tabelaBody = document.getElementById('tabela-vendas-body');
+    if (!tabelaBody) return;
+
     const buscaEl = document.getElementById('busca-vendas'); 
     const dataIniEl = document.getElementById('filtro-vendas-ini'); 
     const dataFimEl = document.getElementById('filtro-vendas-fim'); 
@@ -1845,6 +1848,9 @@ function renderVendas() {
 }
 
 function renderOrcamentos() {
+    const tabelaBody = document.getElementById('tabela-orcamentos-body');
+    if (!tabelaBody) return;
+
     const buscaEl = document.getElementById('busca-orcamentos'); 
     const dataIniEl = document.getElementById('filtro-orcamentos-ini'); 
     const dataFimEl = document.getElementById('filtro-orcamentos-fim');

@@ -18,10 +18,7 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 const firestore = firebase.firestore();
-firestore.enablePersistence({ synchronizeTabs: true })
-  .catch(function(err) {
-      console.warn("Persistência offline:", err.code);
-  });
+
 
 // Variáveis Globais
 let db = {

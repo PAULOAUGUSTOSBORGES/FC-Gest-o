@@ -18,10 +18,7 @@ const firebaseConfig = {
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
-firebase.firestore().enablePersistence({ synchronizeTabs: true })
-  .catch(function(err) {
-      console.warn("Persistência offline (Site):", err.code);
-  });
+
 
 // Helpers globais necessários para o site
 const formatMoney = (val) => Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });

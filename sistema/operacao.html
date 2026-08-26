@@ -75,7 +75,7 @@
             </div>
         </aside>
 
-        <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
+        <!-- ÃREA DE CONTEÚDO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
             <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
                 <div class="flex items-center gap-3">
@@ -96,7 +96,7 @@
                             <span id="pdv-status-caixa" class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-bold px-3 py-1.5 rounded-lg text-[10px] md:text-xs uppercase tracking-wider whitespace-nowrap"><i class="fa-solid fa-lock mr-1"></i> Verificando Caixa...</span>
                             <select id="pdv-operacao" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs md:text-sm font-bold text-slate-700 dark:text-slate-200 px-2 py-1.5 md:py-2 rounded-lg outline-none focus:border-blue-500 flex-1 dark:text-white">
                                 <option value="Venda">Venda Real</option>
-                                <option value="Serviço">Prestação de Serviço</option> 
+                                <option value="Serviço">Prestaçãoo de Serviço</option> 
                                 <option value="Orçamento">Apenas Orçamento</option>
                             </select>
                             <select id="pdv-vendedor" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs md:text-sm font-bold text-slate-700 dark:text-slate-200 px-2 py-1.5 md:py-2 rounded-lg outline-none focus:border-blue-500 flex-1 dark:text-white">
@@ -160,7 +160,7 @@
                                 
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                                     <div>
-                                        <label class="text-[10px] font-bold text-purple-700 uppercase mb-1 block">Previsão de Entrega / Finalização</label>
+                                        <label class="text-[10px] font-bold text-purple-700 uppercase mb-1 block">Previsão de Entrega / Finalizaçãoo</label>
                                         <input type="date" id="os-prazo" class="w-full bg-white dark:bg-slate-800 border border-purple-300 p-2 rounded-lg text-xs outline-none focus:border-purple-500 dark:text-white">
                                     </div>
                                     <div>
@@ -208,7 +208,7 @@
                                 </div>
                             </div>
                             
-                            <!-- ÁREA DE MÚLTIPLOS PAGAMENTOS E TROCO -->
+                            <!-- ÃREA DE MÚLTIPLOS PAGAMENTOS E TROCO -->
                             <div class="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex-1 flex flex-col overflow-y-auto custom-scrollbar min-h-[350px]">
                                 <label class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 block tracking-wider">Múltiplos Pagamentos</label>
                                 
@@ -303,7 +303,7 @@
         </main>
     </div>
 
-    <!-- M O D A I S   D A   O P E R A Ç Á O -->
+    <!-- M O D A I S   D A   O P E R A Ç Ã O -->
 
     <!-- CMERA DO LEITOR -->
     <div id="modal-leitor-codigo" class="fixed inset-0 bg-slate-900/90 z-[400] hidden flex items-center justify-center p-4 backdrop-blur-sm">
@@ -319,7 +319,7 @@
         </div>
     </div>
 
-    <!-- OPÇÃ•ES DE RECIBO E CONTRATO -->
+    <!-- OPÇÃâ€¢ES DE RECIBO E CONTRATO -->
     <div id="modal-opcoes-recibo" class="fixed inset-0 bg-slate-900/80 z-[200] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
             <div class="bg-emerald-500 p-5 text-white text-center">
@@ -461,7 +461,7 @@
                                 <div class="flex gap-2"><input type="text" id="cli-doc" oninput="formatarEBuscarDoc(this, 'cli')" maxlength="18" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"><button onclick="buscarCNPJ('cli')" class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 md:px-4 rounded-lg font-bold transition-colors"><i class="fa-solid fa-magnifying-glass"></i></button></div>
                             </div>
                             <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">RG / Insc. Estadual</label><input type="text" id="cli-rg" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
-                            <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Nascimento / Fundação</label><input type="date" id="cli-nasc" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
+                            <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Nascimento / Fundaçãoo</label><input type="date" id="cli-nasc" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                             <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">WhatsApp / Celular</label><input type="text" id="cli-wpp" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                             <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Telefone Fixo</label><input type="text" id="cli-fixo" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                             <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">E-mail</label><input type="email" id="cli-email" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
@@ -503,7 +503,7 @@
         </div>
     </div>
 
-    <!-- CADASTRO RÁPIDO DE PRODUTO/SERVIÇO PELO PDV -->
+    <!-- CADASTRO RÃPIDO DE PRODUTO/SERVIÇO PELO PDV -->
     <div id="modal-produto" class="fixed inset-0 bg-slate-900/60 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col overflow-hidden max-h-[95vh]">
             <div class="bg-blue-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
@@ -517,7 +517,7 @@
             </div>
 
             <div class="p-4 md:p-6 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900 custom-scrollbar">
-                <!-- NOVO: OPÇÃO DE VÍNCULO MANUAL (MOSTRADA APENAS NO XML) -->
+                <!-- NOVO: OPÇÃO DE VÃNCULO MANUAL (MOSTRADA APENAS NO XML) -->
                 <div id="div-acao-vinculo-xml" class="hidden mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-lg">
                     <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Vincular ou Cadastrar?</label>
                     <select id="prod-acao-vinculo" onchange="alternarAcaoVinculoXML()" class="w-full bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 p-2 rounded text-sm outline-none mb-2 font-bold text-slate-700 dark:text-slate-200">
@@ -605,7 +605,7 @@
                                 <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Origem da Mercadoria</label>
                                 <select id="prod-origem" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
                                     <option value="0">0 - Nacional</option>
-                                    <option value="1">1 - Estrangeira (Importação direta)</option>
+                                    <option value="1">1 - Estrangeira (Importaçãoo direta)</option>
                                     <option value="2">2 - Estrangeira (Mercado interno)</option>
                                 </select>
                             </div>
@@ -630,10 +630,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
     
-    <script src="../global.js?v=202608251000"></script>
-    <script src="operacao.js?v=202608251000"></script>
+    <script src="../global.js?v=20260826113700"></script>
+    <script src="operacao.js?v=20260826113700"></script>
 </body>
 </html>
+
 
 
 

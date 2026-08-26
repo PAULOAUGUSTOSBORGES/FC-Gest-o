@@ -114,7 +114,7 @@ function mudarVisaoLocal(viewId) {
     if (viewId === 'orcamentos') renderOrcamentos();
 }
 
-function inicializarOperação() {
+function inicializarOperacao() {
     aplicarIdentidadeVisualNoMenu(); 
     
     firestore.collection('produtos').onSnapshot(snap => {
@@ -149,7 +149,7 @@ function inicializarOperação() {
     mudarVisaoLocal('pdv');
 }
 
-window.onload = () => { initGlobalData(inicializarOperação); };
+window.onload = () => { initGlobalData(inicializarOperacao); };
 
 // ==========================================
 // 3. FUNÇÕES GENÉRICAS E KARDEX
@@ -1794,6 +1794,9 @@ async function emitirNota(tipo) {
 // 12. HISTÓRICO VENDAS E ORÇAMENTOS
 // ==========================================
 function renderVendas() {
+    const tabelaBody = document.getElementById('tabela-vendas-body');
+    if (!tabelaBody) return;
+
     const buscaEl = document.getElementById('busca-vendas'); 
     const dataIniEl = document.getElementById('filtro-vendas-ini'); 
     const dataFimEl = document.getElementById('filtro-vendas-fim'); 
@@ -1851,6 +1854,9 @@ function renderVendas() {
 }
 
 function renderOrcamentos() {
+    const tabelaBody = document.getElementById('tabela-orcamentos-body');
+    if (!tabelaBody) return;
+
     const buscaEl = document.getElementById('busca-orcamentos'); 
     const dataIniEl = document.getElementById('filtro-orcamentos-ini'); 
     const dataFimEl = document.getElementById('filtro-orcamentos-fim');
@@ -2020,7 +2026,75 @@ function verDetalhesVenda(id) {
 }
 
 function fecharModalDetalhesVenda() { 
-    document.getElementById('modal-detalhes-venda').classList.add('hidden'); 
+    const m = document.getElementById('modal-detalhes-venda');
+    if (m) m.classList.add('hidden'); 
+}
+
+function editarVenda(id) {
+    const v = (db.vendas || []).find(x => String(x.id) === String(id)); 
+    if(!v) return showToast('Venda não encontrada.', 'error'); 
+
+    const isOrcamento = v.tipo === 'ORÇAMENTO'; 
+    const msg = isOrcamento 
+        ? 'Deseja carregar este orçamento de volta no PDV para editar?' 
+        : 'Atenção! Isso fará o ESTORNO automático desta venda (devolvendo estoque e apagando as parcelas) e carregará todos os itens no PDV para você editar e re-finalizar. Deseja continuar?';
+
+    abrirConfirmacao('Editar Operação', msg, async () => {
+        try {
+            const batch = firestore.batch();
+            const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
+            
+            if(!isOrcamento) {
+                if(v.itens && v.itens.length > 0) {
+                    v.itens.forEach(item => {
+                        if(item.id) {
+                            const pRef = firestore.collection('produtos').doc(String(item.id));
+                            batch.update(pRef, { estoque: firebase.firestore.FieldValue.increment(Number(item.qtd || 1)) });
+                            
+                            const kardexRef = firestore.collection('movimentacoes').doc();
+                            batch.set(kardexRef, {
+                                data: new Date().toISOString(),
+                                ref: `Estorno (Edição) ${v.tipo || 'Venda'} #${numPedStr}`,
+                                prodId: item.id,
+                                prodNome: item.nome || 'Produto',
+                                qtd: Number(item.qtd || 1),
+                                tipo: 'ESTORNO'
+                            });
+                        }
+                    });
+                }
+                
+                const finQuery = await firestore.collection('financeiro').where('origemVendaId', '==', String(id)).get();
+                finQuery.docs.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                
+                // Estorno de Caixa Físico Preciso (Apenas dinheiro em espécie)
+                let valorDinheiroEfetivo = 0;
+                if (Array.isArray(v.pagamentos) && v.pagamentos.length > 0) {
+                    const pDinheiro = v.pagamentos.find(p => p && (p.metodo === 'Dinheiro' || String(p.metodo).includes('Dinheiro')));
+                    if (pDinheiro) {
+                        valorDinheiroEfetivo = Number(pDinheiro.valor || 0) - Number(v.troco || 0);
+                        if (valorDinheiroEfetivo < 0) valorDinheiroEfetivo = 0;
+                    }
+                } else if (v.pag && typeof v.pag === 'string' && String(v.pag).includes('Dinheiro') && !String(v.pag).includes('+')) {
+                    valorDinheiroEfetivo = Number(v.tot || v.valorLiquido || 0);
+                }
+
+                if (valorDinheiroEfetivo > 0) {
+                    let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
+                    let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
+                    let cxSaldoNovo = (cxAtual.saldo || 0) - valorDinheiroEfetivo;
+                    cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno (Edição) ${v.tipo || 'Venda'} #${numPedStr}`, valor: valorDinheiroEfetivo });
+                    
+                    const caixaRef = firestore.collection('fc_moveis').doc('caixa');
+                    batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+                }
+            }
+            const vendaRef = firestore.collection('vendas').doc(String(id));
+            batch.delete(vendaRef);
+            
+            await batch.commit(); 
 
             pdvLimpar(); 
             
@@ -2052,8 +2126,11 @@ function fecharModalDetalhesVenda() {
                 const vendSelect = document.getElementById('pdv-vendedor');
                 if(vendSelect && v.vendedor) vendSelect.value = v.vendedor;
     
-                document.getElementById('pdv-frete').value = v.frete || 0;
-                document.getElementById('pdv-desconto').value = v.desconto || 0;
+                const elFrete = document.getElementById('pdv-frete');
+                if(elFrete) elFrete.value = v.frete || 0;
+                
+                const elDesc = document.getElementById('pdv-desconto');
+                if(elDesc) elDesc.value = v.desconto || 0;
                 
                 const obsEl = document.getElementById('pdv-obs');
                 if(obsEl) obsEl.value = v.obs || '';
@@ -2066,7 +2143,7 @@ function fecharModalDetalhesVenda() {
                     renderizarFotosOS();
                 }
     
-                cart = v.itens.map(i => {
+                cart = (v.itens || []).map(i => {
                     const pBD = (db.produtos || []).find(prod => String(prod.id) === String(i.id));
                     return {
                         id: i.id,
@@ -2091,6 +2168,82 @@ function fecharModalDetalhesVenda() {
             showToast('Erro ao carregar venda para edição.', 'error'); 
         }
     });
+}
+
+function excluirVenda(id) {
+    const v = (db.vendas || []).find(x => String(x.id) === String(id));
+    if (!v) return showToast('Venda não encontrada.', 'error');
+
+    abrirConfirmacao('Excluir Operação e Estornar', 'Isso fará o estorno dos produtos ao estoque e removerá as parcelas do Financeiro. Deseja continuar?', async () => {
+        try {
+            const batch = firestore.batch();
+            const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
+
+            if (v.tipo !== 'ORÇAMENTO') {
+                if (v.itens && v.itens.length > 0) {
+                    v.itens.forEach(item => {
+                        if (item.id) {
+                            const pRef = firestore.collection('produtos').doc(String(item.id));
+                            batch.update(pRef, { estoque: firebase.firestore.FieldValue.increment(Number(item.qtd || 1)) });
+                            
+                            const kardexRef = firestore.collection('movimentacoes').doc();
+                            batch.set(kardexRef, {
+                                data: new Date().toISOString(),
+                                ref: `Estorno Venda #${numPedStr}`,
+                                prodId: item.id,
+                                prodNome: item.nome || 'Produto',
+                                qtd: Number(item.qtd || 1),
+                                tipo: 'ESTORNO'
+                            });
+                        }
+                    });
+                }
+
+                const finQuery = await firestore.collection('financeiro').where('origemVendaId', '==', String(id)).get();
+                finQuery.docs.forEach(doc => batch.delete(doc.ref));
+
+                let valorDinheiroEfetivo = 0;
+                if (Array.isArray(v.pagamentos) && v.pagamentos.length > 0) {
+                    const pDinheiro = v.pagamentos.find(p => p && (p.metodo === 'Dinheiro' || String(p.metodo).includes('Dinheiro')));
+                    if (pDinheiro) {
+                        valorDinheiroEfetivo = Number(pDinheiro.valor || 0) - Number(v.troco || 0);
+                        if (valorDinheiroEfetivo < 0) valorDinheiroEfetivo = 0;
+                    }
+                } else if (v.pag && typeof v.pag === 'string' && String(v.pag).includes('Dinheiro') && !String(v.pag).includes('+')) {
+                    valorDinheiroEfetivo = Number(v.tot || v.valorLiquido || 0);
+                }
+
+                if (valorDinheiroEfetivo > 0) {
+                    let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
+                    let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
+                    let cxSaldoNovo = (cxAtual.saldo || 0) - valorDinheiroEfetivo;
+                    cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno Venda #${numPedStr}`, valor: valorDinheiroEfetivo });
+                    const caixaRef = firestore.collection('fc_moveis').doc('caixa');
+                    batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+                }
+            }
+
+            const vendaRef = firestore.collection('vendas').doc(String(id));
+            batch.delete(vendaRef);
+
+            await batch.commit();
+            showToast('Operação excluída e estornada com sucesso!', 'success');
+            if (typeof carregarVendas === 'function') carregarVendas();
+            if (typeof fecharModalDetalhesVenda === 'function') fecharModalDetalhesVenda();
+        } catch (err) {
+            console.error(err);
+            showToast('Erro ao excluir operação.', 'error');
+        }
+    });
+}
+
+function reimprimirVenda(id) {
+    const v = (db.vendas || []).find(x => String(x.id) === String(id));
+    if (!v) return showToast('Venda não encontrada.', 'error');
+    window.vendaAtualImpressao = v;
+    if (typeof imprimirRecibo === 'function') {
+        imprimirRecibo(v);
+    }
 }
 
 function atualizarVendedoresPDV() {

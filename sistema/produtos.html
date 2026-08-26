@@ -72,7 +72,7 @@
             </div>
         </aside>
 
-        <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
+        <!-- ÃREA DE CONTEÚDO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
             <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
                 <div class="flex items-center gap-3">
@@ -225,7 +225,7 @@
                     </div>
                 </div>
 
-                <!-- FUNCIONÁRIOS -->
+                <!-- FUNCIONÃRIOS -->
                 <div id="view-funcionarios" class="view-section hidden max-w-7xl mx-auto space-y-4 md:space-y-6 hidden">
                     <div class="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 gap-3">
                         <div class="relative w-full md:w-96">
@@ -267,13 +267,13 @@
             </div>
 
             <div class="flex overflow-x-auto border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 md:px-6 pt-4 shrink-0 custom-scrollbar">
-                <button onclick="abaModal('prod', 'dados')" id="prod-btn-dados" class="px-4 md:px-5 py-2 border-b-2 border-blue-600 font-bold text-blue-600 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Dados & Precificação</button>
+                <button onclick="abaModal('prod', 'dados')" id="prod-btn-dados" class="px-4 md:px-5 py-2 border-b-2 border-blue-600 font-bold text-blue-600 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Dados & Precificaçãoo</button>
                 <button onclick="abaModal('prod', 'crm')" id="prod-btn-crm" class="px-4 md:px-5 py-2 border-b-2 border-transparent font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-200 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">CRM & Histórico</button>
                 <button onclick="abaModal('prod', 'fiscal')" id="prod-btn-fiscal" class="px-4 md:px-5 py-2 border-b-2 border-transparent font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-200 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Fiscal & Impostos</button>
             </div>
 
             <div class="p-4 md:p-6 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900 custom-scrollbar">
-                <!-- NOVO: OPÇÃO DE VÍNCULO MANUAL (MOSTRADA APENAS NO XML) -->
+                <!-- NOVO: OPÇÃO DE VÃNCULO MANUAL (MOSTRADA APENAS NO XML) -->
                 <div id="div-acao-vinculo-xml" class="hidden mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-lg">
                     <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Vincular ou Cadastrar?</label>
                     <select id="prod-acao-vinculo" onchange="alternarAcaoVinculoXML()" class="w-full bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 p-2 rounded text-sm outline-none mb-2 font-bold text-slate-700 dark:text-slate-200">
@@ -342,7 +342,7 @@
                     </div>
 
                     <div class="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                        <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm border-b border-slate-100 dark:border-slate-700 pb-3 mb-4 md:mb-5 flex items-center gap-2"><i class="fa-solid fa-money-bill text-emerald-500 text-lg"></i> Precificação Inteligente e Estoque</h4>
+                        <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm border-b border-slate-100 dark:border-slate-700 pb-3 mb-4 md:mb-5 flex items-center gap-2"><i class="fa-solid fa-money-bill text-emerald-500 text-lg"></i> Precificaçãoo Inteligente e Estoque</h4>
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
                             <div>
                                 <label class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Custo Unit. (R$)</label>
@@ -420,7 +420,7 @@
                                 <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Origem da Mercadoria</label>
                                 <select id="prod-origem" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
                                     <option value="0">0 - Nacional</option>
-                                    <option value="1">1 - Estrangeira (Importação direta)</option>
+                                    <option value="1">1 - Estrangeira (Importaçãoo direta)</option>
                                     <option value="2">2 - Estrangeira (Mercado interno)</option>
                                 </select>
                             </div>
@@ -480,7 +480,7 @@
                                 <div class="flex gap-2"><input type="text" id="cli-doc" oninput="formatarEBuscarDoc(this, 'cli')" maxlength="18" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"><button onclick="buscarCNPJ('cli')" class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 md:px-4 rounded-lg font-bold transition-colors"><i class="fa-solid fa-magnifying-glass"></i></button></div>
                             </div>
                             <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">RG / Insc. Estadual</label><input type="text" id="cli-rg" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
-                            <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Nascimento / Fundação</label><input type="date" id="cli-nasc" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
+                            <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Nascimento / Fundaçãoo</label><input type="date" id="cli-nasc" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                             <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">WhatsApp / Celular</label><input type="text" id="cli-wpp" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                             <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Telefone Fixo</label><input type="text" id="cli-fixo" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                             <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">E-mail</label><input type="email" id="cli-email" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
@@ -554,13 +554,13 @@
                                 </div>
                             </div>
 
-                            <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Inscrição Estadual</label><input type="text" id="forn-ie" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white"></div>
+                            <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Inscriçãoo Estadual</label><input type="text" id="forn-ie" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white"></div>
                             <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Pessoa de Contato</label><input type="text" id="forn-contato" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white"></div>
                             <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Telefone / WhatsApp</label><input type="text" id="forn-wpp" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white"></div>
                             <div class="md:col-span-3"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">E-mail Comercial</label><input type="email" id="forn-email" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white"></div>
                         </div>
                         <div class="border-t border-slate-100 dark:border-slate-700 pt-4 mt-6">
-                            <h4 class="font-bold text-slate-700 dark:text-slate-200 text-sm mb-3 flex items-center gap-2"><i class="fa-solid fa-location-dot text-blue-500"></i> Localização</h4>
+                            <h4 class="font-bold text-slate-700 dark:text-slate-200 text-sm mb-3 flex items-center gap-2"><i class="fa-solid fa-location-dot text-blue-500"></i> Localizaçãoo</h4>
                             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">CEP</label><input type="text" id="forn-cep" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white" onblur="buscarCEP('forn')"></div>
                                 <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Rua / Logradouro</label><input type="text" id="forn-rua" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white"></div>
@@ -609,7 +609,7 @@
         <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl scale-95 transition-transform animate-[pop_0.2s_ease-out_forwards]">
             <div class="p-5 text-center">
                 <div class="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-triangle-exclamation text-3xl"></i></div>
-                <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2" id="modal-confirm-title">Confirmar Ação</h3>
+                <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2" id="modal-confirm-title">Confirmar Açãoo</h3>
                 <p class="text-slate-500 dark:text-slate-400 text-sm mb-6" id="modal-confirm-msg">Tem certeza que deseja continuar?</p>
                 <div class="flex gap-3">
                     <button onclick="fecharModalConfirmacao()" class="flex-1 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 py-2.5 rounded-lg font-bold transition-colors">Cancelar</button>
@@ -619,7 +619,7 @@
         </div>
     </div>
 
-    <!-- MODAL FUNCIONÁRIOS -->
+    <!-- MODAL FUNCIONÃRIOS -->
     <div id="modal-funcionario" class="fixed inset-0 z-[60] hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl my-auto animate-[slideIn_0.3s_ease-out]">
             <div class="p-4 md:p-5 text-white flex justify-between items-center shrink-0 bg-blue-600">
@@ -762,10 +762,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../global.js?v=202608251000"></script>
-    <script src="produtos.js?v=202608251000"></script>
+    <script src="../global.js?v=20260826113700"></script>
+    <script src="produtos.js?v=20260826113700"></script>
 </body>
 </html>
+
 
 
 

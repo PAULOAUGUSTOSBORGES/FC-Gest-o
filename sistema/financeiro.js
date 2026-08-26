@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÃâ€¡Ã•ES
 // ==========================================
 
@@ -3669,7 +3669,7 @@ function abrirModalConciliacaoOFX(idx, temMatch) {
     if (elBanco) elBanco.innerText = bancoNome;
 
     const elData = document.getElementById('ofx-modal-ext-data');
-    if (elData) elData.innerText = item.data.split('-').reverse().join('/');
+    if (elData) elData.innerText = item.data ? item.data.split('-').reverse().join('/') : '-';
 
     const elDesc = document.getElementById('ofx-modal-ext-desc');
     if (elDesc) {
@@ -3710,7 +3710,7 @@ function abrirModalConciliacaoOFX(idx, temMatch) {
     if (elDataPgto) elDataPgto.value = item.data;
 
     const elValPago = document.getElementById('ofx-modal-valor-pago');
-    if (elValPago) elValPago.value = item.valor.toFixed(2);
+    if (elValPago) elValPago.value = Number(item.valor || 0).toFixed(2);
 
     const elMetodo = document.getElementById('ofx-modal-metodo');
     if (elMetodo) elMetodo.value = 'Pix';
@@ -3729,28 +3729,20 @@ function abrirModalConciliacaoOFX(idx, temMatch) {
             ofxAlternarModo('VINCULAR');
             ofxSelecionarTituloVinculado(docMatch.id);
         } else {
-            const temPendentes = (db.financeiro || []).some(f => f.status !== 'PAGO' && f.status !== 'CANCELADO' && (f.tipo === (item.isCredito ? 'RECEITA' : 'DESPESA') || (!f.tipo && item.isCredito)));
-            if (temPendentes) {
-                ofxAlternarModo('VINCULAR');
-                ofxDesvincularTitulo(true);
-                const elPessoa = document.getElementById('ofx-modal-pessoa');
-                if (elPessoa) elPessoa.value = item.memo || '';
-            } else {
-                ofxAlternarModo('NOVO');
-                const elPessoa = document.getElementById('ofx-modal-pessoa');
-                if (elPessoa) elPessoa.value = item.memo || '';
-            }
+            ofxAlternarModo('NOVO');
+            const elPessoa = document.getElementById('ofx-modal-pessoa');
+            if (elPessoa) elPessoa.value = item.memo || '';
+            ofxDesvincularTitulo(true);
         }
 
         const modal = document.getElementById('modal-conciliacao-ofx');
         if (modal) {
             modal.classList.remove('hidden');
         } else {
-            alert("ERRO: Modal não encontrado no HTML!");
+            console.error("ERRO: Modal não encontrado no HTML!");
         }
     } catch (err) {
-        alert("Erro ao abrir modal: " + err.message);
-        console.error(err);
+        console.error("Erro ao abrir modal:", err);
     }
 }
 
@@ -3798,7 +3790,7 @@ async function conciliarLoteOFX() {
         } else if (item.statusMatch === 'SEM_MATCH') {
             const finRef = firestore.collection('financeiro').doc();
             const novoDoc = {
-                tipo: item.tipoFin,
+                tipo: item.tipoFin || (item.isCredito ? 'RECEITA' : 'DESPESA'),
                 pessoa: item.memo || (item.isCredito ? 'Recebimento Bancário' : 'Despesa Bancária'),
                 ref: 'OFX: ' + (item.memo || 'Lançamento'),
                 categoria: item.isCredito ? 'Outras Receitas' : 'Outras Despesas',
@@ -3827,55 +3819,41 @@ async function conciliarLoteOFX() {
         await batch.commit();
         renderConciliacaoOFX();
         showToast(totalConciliados + ' lançamentos conciliados!', 'success');
+        if (typeof carregarFinanceiro === 'function') carregarFinanceiro();
     } catch (e) {
         showToast('Erro ao processar.', 'error');
     }
 }
-
-window.abrirModalTransferenciaFin = abrirModalTransferenciaFin;
-window.fecharModalTransferenciaFin = fecharModalTransferenciaFin;
-window.confirmarTransferenciaFin = confirmarTransferenciaFin;
-window.renderTransferenciasFin = renderTransferenciasFin;
-window.excluirTransferenciaFin = excluirTransferenciaFin;
-
-window.processarArquivoOFX = processarArquivoOFX;
-window.parseOFXContent = parseOFXContent;
-window.cruzarOFXComFinanceiro = cruzarOFXComFinanceiro;
-window.renderConciliacaoOFX = renderConciliacaoOFX;
-window.conciliarItemOFX = conciliarItemOFX;
-window.criarEConciliarItemOFX = criarEConciliarItemOFX;
-window.conciliarLoteOFX = conciliarLoteOFX;
-window.toggleTodosOFX = toggleTodosOFX;
 
 function ofxModalAtualizarCategorias() {
     const elTipo = document.getElementById('ofx-modal-tipo');
     const catSelect = document.getElementById('ofx-modal-categoria');
     if (!elTipo || !catSelect) return;
     const tipo = elTipo.value;
-    const cats = tipo === 'RECEITA' ? (typeof categoriasReceber !== 'undefined' ? categoriasReceber : ['Outras Receitas']) : (typeof categoriasPagar !== 'undefined' ? categoriasPagar : ['Outras Despesas']);
+    const cats = tipo === 'RECEITA' ? (typeof categoriasReceber !== 'undefined' ? categoriasReceber : ['Vendas', 'Serviços', 'Outras Receitas']) : (typeof categoriasPagar !== 'undefined' ? categoriasPagar : ['Fornecedores / Compras', 'Impostos (DAS, ICMS, etc)', 'Salários / Folha', 'Aluguel', 'Ãgua', 'Energia', 'Internet / Telefonia', 'Contabilidade', 'Sistema / Software', 'IPTU', 'Outras Despesas']);
     catSelect.innerHTML = cats.map(c => '<option value="' + c + '">' + c + '</option>').join('');
 }
 
 async function confirmarConciliacaoModalOFX() {
     if (typeof window.ofxItemAtualIdx === 'undefined' || window.ofxItemAtualIdx === null) return;
+    if (!window.extratoOFXAtual || !window.extratoOFXAtual.transacoes) return;
     const item = window.extratoOFXAtual.transacoes[window.ofxItemAtualIdx];
-    const docMatch = item.matchDoc;
-    // Se estivermos vinculando a um título já existente
-    const modoVinculo = window.ofxModoAtual === 'VINCULAR';
-    const isNovo = !modoVinculo || !docMatch || (item.statusMatch === 'SEM_MATCH');
+    if (!item) return;
 
-    const tipo = document.getElementById('ofx-modal-tipo')?.value || 'DESPESA';
-    const pessoa = document.getElementById('ofx-modal-pessoa')?.value.trim() || '';
-    const categoria = document.getElementById('ofx-modal-categoria')?.value || '';
+    const idTituloVinculado = window.ofxTituloVinculadoId || item.matchDoc?.id;
+    const modoVinculo = window.ofxModoAtual === 'VINCULAR' && idTituloVinculado;
+    const isNovo = !modoVinculo;
+
+    const tipo = document.getElementById('ofx-modal-tipo')?.value || (item.isCredito ? 'RECEITA' : 'DESPESA');
+    const pessoa = document.getElementById('ofx-modal-pessoa')?.value.trim() || item.memo || 'Lançamento Bancário';
+    const categoria = document.getElementById('ofx-modal-categoria')?.value || (tipo === 'RECEITA' ? 'Outras Receitas' : 'Outras Despesas');
     const centroCusto = document.getElementById('ofx-modal-centro-custo')?.value || 'Operacional';
-    const dataPgto = document.getElementById('ofx-modal-data-pgto')?.value;
-    const valorPago = parseFloat(document.getElementById('ofx-modal-valor-pago')?.value);
-    const metodo = document.getElementById('ofx-modal-metodo')?.value || '';
-    const contaBancaria = document.getElementById('ofx-modal-conta-bancaria')?.value.trim() || '';
-    const obs = document.getElementById('ofx-modal-obs')?.value || '';
+    const dataPgto = document.getElementById('ofx-modal-data-pgto')?.value || item.data || new Date().toISOString().split('T')[0];
+    const valorPago = parseFloat(document.getElementById('ofx-modal-valor-pago')?.value) || item.valor || 0;
+    const metodo = document.getElementById('ofx-modal-metodo')?.value || 'Pix';
+    const contaBancaria = document.getElementById('ofx-modal-conta-bancaria')?.value.trim() || window.extratoOFXAtual.banco || 'Conta Bancária';
+    const obs = document.getElementById('ofx-modal-obs')?.value || `Conciliado via OFX em ${new Date().toLocaleDateString('pt-BR')} (Ref: ${item.memo || ''})`;
 
-    if (!pessoa) return showToast('Preencha o Favorecido.', 'error');
-    if (!dataPgto) return showToast('Preencha a Data.', 'error');
     if (isNaN(valorPago) || valorPago <= 0) return showToast('Preencha um Valor válido.', 'error');
 
     const batch = firestore.batch();
@@ -3902,7 +3880,7 @@ async function confirmarConciliacaoModalOFX() {
         batch.set(finRef, novoDoc);
         item.matchDoc = { id: finRef.id, ...novoDoc };
     } else {
-        const finRef = firestore.collection('financeiro').doc(String(docMatch.id));
+        const finRef = firestore.collection('financeiro').doc(String(idTituloVinculado));
         batch.update(finRef, {
             pessoa: pessoa,
             categoria: categoria,
@@ -3924,11 +3902,28 @@ async function confirmarConciliacaoModalOFX() {
         item.statusMatch = 'JA_CONCILIADO';
         fecharModalConciliacaoOFX();
         renderConciliacaoOFX();
-        showToast(isNovo ? 'Criado e conciliado!' : 'Conciliado!', 'success');
+        showToast(isNovo ? 'Lançamento criado e liquidado com sucesso!' : 'Título conciliado com sucesso!', 'success');
+        if (typeof carregarFinanceiro === 'function') carregarFinanceiro();
     } catch (e) {
-        showToast('Erro ao gravar.', 'error');
+        console.error('Erro ao conciliar OFX:', e);
+        showToast('Erro ao gravar conciliação: ' + e.message, 'error');
     }
 }
+
+window.abrirModalTransferenciaFin = abrirModalTransferenciaFin;
+window.fecharModalTransferenciaFin = fecharModalTransferenciaFin;
+window.confirmarTransferenciaFin = confirmarTransferenciaFin;
+window.renderTransferenciasFin = renderTransferenciasFin;
+window.excluirTransferenciaFin = excluirTransferenciaFin;
+
+window.processarArquivoOFX = processarArquivoOFX;
+window.parseOFXContent = parseOFXContent;
+window.cruzarOFXComFinanceiro = cruzarOFXComFinanceiro;
+window.renderConciliacaoOFX = renderConciliacaoOFX;
+window.conciliarItemOFX = conciliarItemOFX;
+window.criarEConciliarItemOFX = criarEConciliarItemOFX;
+window.conciliarLoteOFX = conciliarLoteOFX;
+window.toggleTodosOFX = toggleTodosOFX;
 
 window.ofxAlternarModo = ofxAlternarModo;
 window.ofxRenderizarTitulosPendentes = ofxRenderizarTitulosPendentes;
@@ -3943,5 +3938,3 @@ window.confirmarConciliacaoModalOFX = confirmarConciliacaoModalOFX;
 
 window.mudarVisualizacaoFin = mudarVisualizacaoFin;
 window.renderFinAbas = renderFinAbas;
-
-
