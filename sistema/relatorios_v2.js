@@ -1,5 +1,5 @@
 // ==========================================
-// GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÇÃ•ES
+// GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÇÕES
 // ==========================================
 
 let acaoConfirmacaoPendente = null;
@@ -77,7 +77,7 @@ async function migrarDadosSeNecessario() {
         // Se já há dados em compras OU financeiro, não precisa migrar
         if (!comprasSnap.empty || !finSnap.empty) return;
 
-        // Coleções novas estão vazias â€” tenta ler do banco antigo
+        // Coleções novas estão vazias — tenta ler do banco antigo
         const bancoPrincipalSnap = await firestore.collection('fc_moveis').doc('banco_principal').get();
         if (!bancoPrincipalSnap.exists) return;
 
@@ -597,7 +597,7 @@ function getPessoaFinalConta() {
     return inputVal;
 }
 // ==========================================
-// 5. MODAL DE CADASTRO/EDIÇÃO DE CONTA (COM RECORRÃŠNCIA)
+// 5. MODAL DE CADASTRO/EDIÇÃO DE CONTA (COM RECORRÊNCIA)
 // ==========================================
 function toggleRecorrencia() {
     const rec = document.getElementById('conta-recorrencia').value;
@@ -995,7 +995,7 @@ function processarXMLReal(event) {
             }
 
             if(financeiroXML.length === 0 && totalNF > 0) {
-                financeiroXML.push({ num: '001', venc: dataEmissao, valor: totalNF, desc: `NF ${numNF} - Parcela Ãšnica` });
+                financeiroXML.push({ num: '001', venc: dataEmissao, valor: totalNF, desc: `NF ${numNF} - Parcela Única` });
             }
 
             window.tempXMLData = { fornNome, fornCNPJ, numNF, dataEmissao, totalNF, produtosXML, financeiroXML, freteExtra: 0 };
@@ -1586,7 +1586,7 @@ function verDetalhesNF(id) {
 function fecharModalDetalhesNF() { document.getElementById('modal-detalhes-nf').classList.add('hidden'); }
 
 // ==========================================
-// 9. RELATÃ“RIOS E BI
+// 9. RELATÓRIOS E BI
 // ==========================================
 
 function mudarFiltroBI() {
@@ -1617,15 +1617,15 @@ function obterIntervaloDatasBI() {
     } else if (tipo.value === '30') {
         inicio = new Date(hoje.getTime() - (30 * 24 * 60 * 60 * 1000));
         inicio.setHours(0, 0, 0, 0);
-        label = `Ãšltimos 30 dias (${inicio.toLocaleDateString('pt-BR')} a ${fim.toLocaleDateString('pt-BR')})`;
+        label = `Últimos 30 dias (${inicio.toLocaleDateString('pt-BR')} a ${fim.toLocaleDateString('pt-BR')})`;
     } else if (tipo.value === '60') {
         inicio = new Date(hoje.getTime() - (60 * 24 * 60 * 60 * 1000));
         inicio.setHours(0, 0, 0, 0);
-        label = `Ãšltimos 60 dias (${inicio.toLocaleDateString('pt-BR')} a ${fim.toLocaleDateString('pt-BR')})`;
+        label = `Últimos 60 dias (${inicio.toLocaleDateString('pt-BR')} a ${fim.toLocaleDateString('pt-BR')})`;
     } else if (tipo.value === '90') {
         inicio = new Date(hoje.getTime() - (90 * 24 * 60 * 60 * 1000));
         inicio.setHours(0, 0, 0, 0);
-        label = `Ãšltimos 90 dias (${inicio.toLocaleDateString('pt-BR')} a ${fim.toLocaleDateString('pt-BR')})`;
+        label = `Últimos 90 dias (${inicio.toLocaleDateString('pt-BR')} a ${fim.toLocaleDateString('pt-BR')})`;
     } else if (tipo.value === 'personalizado') {
         const iStr = document.getElementById('bi-data-inicio')?.value;
         const fStr = document.getElementById('bi-data-fim')?.value;
@@ -2100,7 +2100,7 @@ function abrirDrilldownDRE(tipo, parametroExtra = null) {
                         const custoTotalItem = custoUn * qtd;
                         listaItens.push({
                             data: v.data || v.dataVenda || v.criadoEm,
-                            descricao: `CMV: ${item.nome} (${qtd} un Ã— ${formatMoney(custoUn)}) - Ref. Pedido #${numPed}`,
+                            descricao: `CMV: ${item.nome} (${qtd} un × ${formatMoney(custoUn)}) - Ref. Pedido #${numPed}`,
                             pessoa: `Cliente: ${v.clienteNome || 'Consumidor'}`,
                             categoria: 'Custo de Reposição de Mercadoria',
                             centroCusto: 'Estoque / Vendas',
@@ -2386,7 +2386,7 @@ function abrirDrilldownDRE(tipo, parametroExtra = null) {
                         const precoUn = Number(item.preco || 0);
                         listaItens.push({
                             data: v.data || v.dataVenda || v.criadoEm,
-                            descricao: `Venda ${qtd} un Ã— ${formatMoney(precoUn)} (Pedido #${numPed})`,
+                            descricao: `Venda ${qtd} un × ${formatMoney(precoUn)} (Pedido #${numPed})`,
                             pessoa: `Cliente: ${v.clienteNome || 'Consumidor'}`,
                             categoria: 'Venda de Produto',
                             centroCusto: v.vendedor ? `Vend: ${v.vendedor}` : 'Comercial',
@@ -2414,7 +2414,7 @@ function abrirDrilldownDRE(tipo, parametroExtra = null) {
                         const custoUn = Number(item.custoFinal || item.custoUnitOriginal || 0);
                         listaItens.push({
                             data: c.data || c.dataEmissao || c.criadoEm,
-                            descricao: `Compra ${qtd} un Ã— ${formatMoney(custoUn)} (NF/Ref: ${c.numeroNF || 'S/N'})`,
+                            descricao: `Compra ${qtd} un × ${formatMoney(custoUn)} (NF/Ref: ${c.numeroNF || 'S/N'})`,
                             pessoa: `Fornecedor: ${c.fornecedor || 'Fornecedor'}`,
                             categoria: 'Reposição de Estoque',
                             centroCusto: 'Estoque / Compras',
@@ -2848,7 +2848,7 @@ async function analisarFinanceiroIA() {
     const resposta = await chamarGemini(prompt);
     
     if(resposta) {
-        divRes.innerHTML = resposta.replace(/\*\*/g, '').replace(/\*/g, 'â€¢');
+        divRes.innerHTML = resposta.replace(/\*\*/g, '').replace(/\*/g, '•');
         showToast('Análise concluída com sucesso!', 'success');
     } else {
         divRes.innerHTML = 'Erro ao gerar análise. Verifique se você salvou sua chave API na aba Sistema.';
@@ -2875,11 +2875,11 @@ function exportarDadosParaIA() {
 
     let lucroBruto = receitaBruta - custoTotal;
 
-    let relatorioTexto = `=== RELATÃ“RIO FINANCEIRO E DE GESTÃO - FC MÃ“VEIS ===\nData da exportação: ${new Date().toLocaleString('pt-BR')}\n\n`;
+    let relatorioTexto = `=== RELATÓRIO FINANCEIRO E DE GESTÃO - FC MÓVEIS ===\nData da exportação: ${new Date().toLocaleString('pt-BR')}\n\n`;
     relatorioTexto += `--- 1. DRE SIMPLIFICADA ---\n- Receita Bruta Total: R$ ${receitaBruta.toFixed(2)}\n- Custo da Mercadoria Vendida (CMV): R$ ${custoTotal.toFixed(2)}\n- Lucro Bruto Real: R$ ${lucroBruto.toFixed(2)}\n\n`;
-    relatorioTexto += `--- 2. HISTÃ“RICO DE VENDAS RECENTES ---\n`;
+    relatorioTexto += `--- 2. HISTÓRICO DE VENDAS RECENTES ---\n`;
     vendas.slice(-20).forEach((v, index) => { relatorioTexto += `[Venda ${index + 1}] Data: ${v.data || 'N/A'} | Total: R$ ${Number(v.total || 0).toFixed(2)} | Forma de Pagamento: ${v.pagamento || 'N/A'}\n`; });
-    relatorioTexto += `\n--- 3. MOVIMENTAÇÃ•ES FINANCEIRAS / CAIXA ---\n`;
+    relatorioTexto += `\n--- 3. MOVIMENTAÇÕES FINANCEIRAS / CAIXA ---\n`;
     financeiro.slice(-20).forEach((f, index) => { relatorioTexto += `[Movimento ${index + 1}] Tipo: ${f.tipo || 'N/A'} | Descrição: ${f.descricao || 'N/A'} | Valor: R$ ${Number(f.valor || 0).toFixed(2)} | Data: ${f.data || 'N/A'}\n`; });
 
     const blob = new Blob([relatorioTexto], { type: 'text/plain;charset=utf-8' });

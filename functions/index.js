@@ -80,7 +80,7 @@ exports.emitirNFCe = functions.https.onCall(async (data, context) => {
         }];
 
         // 5. Estruturação do Payload para a API da Focus
-        const refNota = `NFCe_${vendaId}_${Date.now()}`;
+        const refNota = `NFCe_${vendaId}`;
         
         const payload = {
             natureza_operacao: "VENDA DE MERCADORIA",
@@ -166,4 +166,5 @@ exports.emitirNFCe = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError("internal", errorMsg);
     }
 });
+
 

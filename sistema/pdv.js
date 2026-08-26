@@ -1564,7 +1564,7 @@ async function finalizarVendaMultipla() {
         <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; margin-bottom: 20px; font-size: 13px;">
             <div style="flex: 1; min-width: 280px; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-right: 5px; margin-bottom: 5px;">
                 <h3 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">${isOrcamento ? 'PREVISÃO DE PAGAMENTO' : 'PAGAMENTOS REGISTRADOS'}</h3>
-                ${pagTexto !== 'Orçamento (Sem Pagamento Exigido)' ? pagamentosVendaAtual.map(p => `<div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>? ${p.metodo} ${p.parcelas > 1 ? `(${p.parcelas}x)` : ''}</span> <strong>${formatMoney(p.valor)}</strong></div>`).join('') : '<p style="font-style: italic; color: #555;">Nenhum pagamento registrado no orçamento.</p>'}
+                ${pagTexto !== 'Orçamento (Sem Pagamento Exigido)' ? pagamentosVendaAtual.map(p => `<div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>▪ ${p.metodo} ${p.parcelas > 1 ? `(${p.parcelas}x)` : ''}</span> <strong>${formatMoney(p.valor)}</strong></div>`).join('') : '<p style="font-style: italic; color: #555;">Nenhum pagamento registrado no orçamento.</p>'}
                 ${valorTroco > 0 && !isOrcamento ? `<div style="display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #000;"><span>Troco Devolvido:</span> <strong style="color: red;">${formatMoney(valorTroco)}</strong></div>` : ''}
             </div>
             <div style="flex: 1; min-width: 280px; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-left: 5px; margin-bottom: 5px;">
@@ -1593,6 +1593,7 @@ async function finalizarVendaMultipla() {
                 <div style="font-size: 11px; margin-top: 3px; color: #475569; font-weight: bold;">${emp.nome}</div>
             </div>
         </div>
+    </div>
     </div>
     `;
 
@@ -1625,6 +1626,7 @@ async function finalizarVendaMultipla() {
     const itensLimpados = cart.map(i => { return { id: i.id || '', nome: i.nome || '', preco: i.preco || 0, custo: i.custo || 0, qtd: i.qtd || 1, obsVenda: i.obsVenda || '' }; });
 
     const novaVendaObj = { 
+        id: idFinalVenda,
         numeroPedido: numeroPedido, 
         data: dataIso, 
         clienteId: cId || '', 
@@ -1641,6 +1643,7 @@ async function finalizarVendaMultipla() {
         custoTotal: custoTotal || 0, 
         lucroReal: lucroReal || 0, 
         pag: pagTexto || '', 
+        pagamentos: pagamentosVendaAtual ? JSON.parse(JSON.stringify(pagamentosVendaAtual)) : [],
         vendedor: vend || '', 
         obs: obsTexto || '', 
         tipo: tipoVenda, 
@@ -1649,7 +1652,7 @@ async function finalizarVendaMultipla() {
     };
     
     batch.set(vendaRef, novaVendaObj, { merge: true });
-    
+
     if (!isOrcamento) {
         let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
         let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
@@ -2013,72 +2016,11 @@ function verDetalhesVenda(id) {
         }
         tfootEl.innerHTML = tfootHtml;
     }
-    
     document.getElementById('modal-detalhes-venda').classList.remove('hidden');
 }
 
 function fecharModalDetalhesVenda() { 
     document.getElementById('modal-detalhes-venda').classList.add('hidden'); 
-}
-
-// ==========================================
-// 13. EDITAR / REABRIR VENDA (BLINDADO COM STRING E SEM LOOP)
-// ==========================================
-function editarVenda(id) {
-    const v = db.vendas.find(x => String(x.id) === String(id)); 
-    if(!v) return showToast('Venda não encontrada.', 'error'); 
-
-    const isOrcamento = v.tipo === 'ORÇAMENTO'; 
-    const msg = isOrcamento 
-        ? 'Deseja carregar este orçamento de volta no PDV para editar?' 
-        : 'Atenção! Isso fará o ESTORNO automático desta venda (devolvendo estoque e apagando as parcelas) e carregará todos os itens no PDV para você editar e re-finalizar. Deseja continuar?';
-
-    abrirConfirmacao('Editar Operação', msg, async () => {
-        try {
-            const batch = firestore.batch();
-            const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
-            
-            if(!isOrcamento) {
-                if(v.itens && v.itens.length > 0) { 
-                    v.itens.forEach(item => { 
-                        const p = (db.produtos || []).find(prod => String(prod.id) === String(item.id)); 
-                        if(p) { 
-                            const pRef = firestore.collection('produtos').doc(String(p.id));
-                            batch.update(pRef, { estoque: (p.estoque || 0) + Number(item.qtd || 1) });
-                            
-                            const kardexRef = firestore.collection('movimentacoes').doc();
-                            batch.set(kardexRef, {
-                                data: new Date().toISOString(),
-                                ref: `Estorno de Edição ${v.tipo} #${numPedStr}`,
-                                prodId: p.id,
-                                prodNome: p.nome,
-                                qtd: Number(item.qtd || 1),
-                                tipo: 'ESTORNO'
-                            });
-                        } 
-                    }); 
-                }
-                
-                const finQuery = await firestore.collection('financeiro').where('origemVendaId', '==', String(id)).get();
-                finQuery.docs.forEach(doc => {
-                    batch.delete(doc.ref);
-                });
-                
-                if(v.pag && typeof v.pag === 'string' && String(v.pag).includes('Dinheiro')) { 
-                    let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
-                    let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
-                    let cxSaldoNovo = (cxAtual.saldo || 0) - (Number(v.valorLiquido) || 0);
-                    cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno (Edição) ${v.tipo} #${numPedStr}`, valor: (Number(v.valorLiquido) || 0) });
-                    
-                    const caixaRef = firestore.collection('fc_moveis').doc('caixa');
-                    batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
-                }
-            }
-
-            const vendaRef = firestore.collection('vendas').doc(String(id));
-            batch.delete(vendaRef);
-            
-            await batch.commit(); 
 
             pdvLimpar(); 
             
@@ -2185,7 +2127,7 @@ function atualizarVendedoresPDV() {
 
 
 // ==========================================
-// PERSISTÃŠNCIA DE ESTADO DO PDV (LOCALSTORAGE)
+// PERSISTÊNCIA DE ESTADO DO PDV (LOCALSTORAGE)
 // ==========================================
 window.salvarEstadoPDV = function() {
     try {

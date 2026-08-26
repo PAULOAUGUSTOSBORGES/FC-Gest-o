@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FC Móveis - Operação e PDV</title>
+    <title>FC Móveis - Histórico Vendas/Serviços</title>
     <script>
         var tailwind = window.tailwind || {};
         tailwind.config = { darkMode: 'class' };
@@ -75,12 +75,12 @@
             </div>
         </aside>
 
-        <!-- éREA DE CONTEÃšDO PRINCIPAL -->
+        <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
             <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
                 <div class="flex items-center gap-3">
                     <button onclick="toggleMenu()" class="md:hidden text-slate-600 dark:text-slate-300 hover:text-blue-600 p-2"><i class="fa-solid fa-bars text-xl"></i></button>
-                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate" id="header-title">Histórico de Vendas</h2>
+                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate" id="header-title">Histórico Vendas/Serviços</h2>
                 </div>
                 <div class="flex items-center gap-2 md:gap-4">
                     <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs shrink-0">PA</div>
@@ -94,7 +94,7 @@
                     <div class="flex flex-col lg:flex-row justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 gap-4">
                         <div class="flex flex-col sm:flex-row flex-wrap md:flex-nowrap gap-2 w-full lg:w-auto flex-1">
                             
-                            <!-- NOVO FILTRO DE TIPO (VENDA / SERVIÃ‡O) -->
+                            <!-- NOVO FILTRO DE TIPO (VENDA / SERVIÇO) -->
                             <select id="filtro-vendas-tipo" class="w-full sm:w-auto bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm rounded-lg px-3 py-2.5 outline-none focus:border-blue-500 dark:text-white" onchange="renderVendas()">
                                 <option value="TODOS" selected>Vendas e Serviços</option>
                                 <option value="VENDAS">Apenas Vendas</option>
@@ -122,8 +122,8 @@
                         </div>
                         <div class="flex gap-2 w-full lg:w-auto justify-end">
                             <button onclick="imprimirArea('print-area-vendas')" class="bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-4 py-2.5 rounded-lg text-sm transition-colors flex-1 sm:flex-none text-center" title="Imprimir"><i class="fa-solid fa-print"></i></button>
-                            <button onclick="baixarPDF('print-area-vendas', 'Histórico_Operaçãoes')" class="bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-4 py-2.5 rounded-lg text-sm transition-colors flex-1 sm:flex-none text-center" title="Salvar PDF"><i class="fa-solid fa-file-pdf"></i></button>
-                            <button onclick="exportarExcel('tabela-vendas-export', 'Histórico_Operaçãoes')" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold px-4 py-2.5 rounded-lg text-sm transition-colors flex-1 sm:flex-none text-center" title="Exportar Excel"><i class="fa-solid fa-file-excel mr-1"></i> Excel</button>
+                            <button onclick="baixarPDF('print-area-vendas', 'Histórico_Operações')" class="bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-4 py-2.5 rounded-lg text-sm transition-colors flex-1 sm:flex-none text-center" title="Salvar PDF"><i class="fa-solid fa-file-pdf"></i></button>
+                            <button onclick="exportarExcel('tabela-vendas-export', 'Histórico_Operações')" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold px-4 py-2.5 rounded-lg text-sm transition-colors flex-1 sm:flex-none text-center" title="Exportar Excel"><i class="fa-solid fa-file-excel mr-1"></i> Excel</button>
                         </div>
                     </div>
                     <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden" id="print-area-vendas">
@@ -152,7 +152,7 @@
         </main>
     </div>
 
-    <!-- OPÃ‡Ã•ES DE RECIBO E CONTRATO -->
+    <!-- OPÇÃ•ES DE RECIBO E CONTRATO -->
     <div id="modal-opcoes-recibo" class="fixed inset-0 bg-slate-900/80 z-[200] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
             <div class="bg-emerald-500 p-5 text-white text-center">
@@ -162,7 +162,7 @@
             <div id="print-area" class="hidden bg-white dark:bg-slate-800 text-black font-mono"></div>
             <div class="p-5 bg-slate-50 dark:bg-slate-900 flex flex-col gap-2 max-h-[60vh] overflow-y-auto custom-scrollbar">
                 
-                <!-- [RESERVADO PARA FUTURA EMISSÁO FISCAL] -->
+                <!-- [RESERVADO PARA FUTURA EMISSÃO FISCAL] -->
                 <div id="fiscal-container" class="hidden">
                     <div id="fiscal-status-container" class="hidden mb-2 text-center p-3 rounded-lg border">
                         <!-- Será preenchido via JS (loader, sucesso, erro) -->
@@ -175,7 +175,7 @@
                     
                     <div class="border-t border-slate-200 dark:border-slate-700 my-1"></div>
                 </div>
-                <!-- [/RESERVADO PARA FUTURA EMISSÁO FISCAL] -->
+                <!-- [/RESERVADO PARA FUTURA EMISSÃO FISCAL] -->
 
                 <button onclick="printAction('thermal')" class="w-full bg-slate-800 hover:bg-slate-900 text-white p-3 md:p-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"><i class="fa-solid fa-receipt text-xl"></i> Recibo Bobina</button>
                 <button onclick="printAction('a4')" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-3 md:p-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"><i class="fa-solid fa-print text-xl"></i> Recibo A4</button>
@@ -259,7 +259,7 @@
         </div>
     </div>
 
-    <!-- CONFIRMAÃ‡ÁO DO SISTEMA -->
+    <!-- CONFIRMAÇÃO DO SISTEMA -->
     <div id="modal-confirmacao" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden text-center p-6">
             <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
@@ -336,7 +336,7 @@
         </div>
     </div>
 
-    <!-- CADASTRO RÁÁPIDO DE PRODUTO/SERVIÃ‡O PELO PDV -->
+    <!-- CADASTRO RÁPIDO DE PRODUTO/SERVIÇO PELO PDV -->
     <div id="modal-produto" class="fixed inset-0 bg-slate-900/60 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col overflow-hidden max-h-[95vh]">
             <div class="bg-blue-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
@@ -350,9 +350,9 @@
             </div>
 
             <div class="p-4 md:p-6 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900 custom-scrollbar">
-                <!-- NOVO: OPÃ‡ÁO DE VÍNCULO MANUAL (MOSTRADA APENAS NO XML) -->
+                <!-- NOVO: OPÇÃO DE VÍNCULO MANUAL (MOSTRADA APENAS NO XML) -->
                 <div id="div-acao-vinculo-xml" class="hidden mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-lg">
-                    <lAção: Vincular ou Cadastrar?</label>
+                    <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Vincular ou Cadastrar?</label>
                     <select id="prod-acao-vinculo" onchange="alternarAcaoVinculoXML()" class="w-full bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 p-2 rounded text-sm outline-none mb-2 font-bold text-slate-700 dark:text-slate-200">
                         <option value="NOVO">Cadastrar como Novo Produto</option>
                         <option value="VINCULAR">Vincular a Produto Existente</option>
@@ -383,7 +383,7 @@
                             <input type="text" id="prod-nome" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white">
                         </div>
                         <div>
-                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">C?d de Barras (EAN)</label>
+                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Cód de Barras (EAN)</label>
                             <input type="text" id="prod-ean" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white">
                         </div>
                         <div>
@@ -467,6 +467,7 @@
     <script src="vendas_operacao.js?v=202608251000"></script>
 </body>
 </html>
+
 
 
 

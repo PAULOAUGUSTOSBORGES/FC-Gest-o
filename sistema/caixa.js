@@ -1,5 +1,5 @@
 // ==========================================
-// GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÇÃ•ES
+// GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÇÕES
 // ==========================================
 
 let acaoConfirmacaoPendente = null;
@@ -73,7 +73,7 @@ async function migrarDadosSeNecessario() {
         // Se já há dados em compras OU financeiro, não precisa migrar
         if (!comprasSnap.empty || !finSnap.empty) return;
 
-        // Coleções novas estão vazias â€” tenta ler do banco antigo
+        // Coleções novas estão vazias — tenta ler do banco antigo
         const bancoPrincipalSnap = await firestore.collection('fc_moveis').doc('banco_principal').get();
         if (!bancoPrincipalSnap.exists) return;
 
@@ -667,9 +667,9 @@ function renderizarMapaCaixaHTML(m) {
             </div>
         </div>
 
-        <!-- MÉTODOS ELETRÃ”NICOS -->
+        <!-- MÉTODOS ELETRÔNICOS -->
         <div class="border-b border-dashed border-slate-300 dark:border-slate-700 pb-3 mb-3">
-            <h4 class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[10px] mb-1.5">2. MÉTODOS ELETRÃ”NICOS E PARCELADOS</h4>
+            <h4 class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[10px] mb-1.5">2. MÉTODOS ELETRÔNICOS E PARCELADOS</h4>
             <div class="flex justify-between text-[11px]"><span>Cartão Débito (Sistema / Declarado):</span><span>${formatMoney(m.apuradoSistema.vendasDebito)} / <strong>${formatMoney(m.declaradoOperador.debito)}</strong></span></div>
             <div class="flex justify-between text-[11px]"><span>Cartão Crédito (Sistema / Declarado):</span><span>${formatMoney(m.apuradoSistema.vendasCredito)} / <strong>${formatMoney(m.declaradoOperador.credito)}</strong></span></div>
             <div class="flex justify-between text-[11px]"><span>PIX (Sistema / Declarado):</span><span>${formatMoney(m.apuradoSistema.vendasPix)} / <strong>${formatMoney(m.declaradoOperador.pix)}</strong></span></div>
@@ -685,7 +685,7 @@ function renderizarMapaCaixaHTML(m) {
                 <span>TOTAL DECLARADO PELO OPERADOR:</span><span>${formatMoney(m.declaradoOperador.totalGeral)}</span>
             </div>
             <div class="flex justify-between text-sm font-black pt-1.5 border-t border-slate-300 dark:border-slate-700 ${corDiferenca}">
-                <span>DIVERGÃŠNCIA (${m.diferencas.status}):</span>
+                <span>DIVERGÊNCIA (${m.diferencas.status}):</span>
                 <span>${m.diferencas.difGeral >= 0 ? '+' : ''}${formatMoney(m.diferencas.difGeral)}</span>
             </div>
         </div>
@@ -704,7 +704,7 @@ function renderizarMapaCaixaHTML(m) {
 }
 
 // ==========================================
-// TRANSFERÃŠNCIAS ENTRE CONTAS
+// TRANSFERÊNCIAS ENTRE CONTAS
 // ==========================================
 function abrirModalTransferenciaCaixa() {
     if (!db.caixa || (db.caixa.saldo || 0) <= 0) {
@@ -736,7 +736,7 @@ async function confirmarTransferenciaCaixa() {
     cxHistoricoNovo.unshift({
         data: dataIso,
         tipo: 'SAIDA',
-        desc: `TRANSFERÃŠNCIA p/ ${destino}: ${obs} - Op: ${operador}`,
+        desc: `TRANSFERÊNCIA p/ ${destino}: ${obs} - Op: ${operador}`,
         valor: valor,
         operador: operador,
         saldoApos: novoSaldo
@@ -1171,7 +1171,7 @@ function renderTitulos(tipo) {
 }
 
 // ==========================================
-// 5. MODAL DE CADASTRO/EDIÇÃO DE CONTA (COM RECORRÃŠNCIA)
+// 5. MODAL DE CADASTRO/EDIÇÃO DE CONTA (COM RECORRÊNCIA)
 // ==========================================
 
 // ===== HELPER: PESSOA SELECT DROPDOWN =====
@@ -1496,7 +1496,7 @@ function processarXMLReal(event) {
             }
 
             if(financeiroXML.length === 0 && totalNF > 0) {
-                financeiroXML.push({ num: '001', venc: dataEmissao, valor: totalNF, desc: `NF ${numNF} - Parcela Ãšnica` });
+                financeiroXML.push({ num: '001', venc: dataEmissao, valor: totalNF, desc: `NF ${numNF} - Parcela Única` });
             }
 
             window.tempXMLData = { fornNome, fornCNPJ, numNF, dataEmissao, totalNF, produtosXML, financeiroXML, freteExtra: 0 };
@@ -2088,7 +2088,7 @@ function verDetalhesNF(id) {
 function fecharModalDetalhesNF() { document.getElementById('modal-detalhes-nf').classList.add('hidden'); }
 
 // ==========================================
-// 9. RELATÃ“RIOS E BI
+// 9. RELATÓRIOS E BI
 // ==========================================
 
 function mudarFiltroBI() {
@@ -2455,7 +2455,7 @@ async function analisarFinanceiroIA() {
     const resposta = await chamarGemini(prompt);
     
     if(resposta) {
-        divRes.innerHTML = resposta.replace(/\*\*/g, '').replace(/\*/g, 'â€¢');
+        divRes.innerHTML = resposta.replace(/\*\*/g, '').replace(/\*/g, '•');
         showToast('Análise concluída com sucesso!', 'success');
     } else {
         divRes.innerHTML = 'Erro ao gerar análise. Verifique se você salvou sua chave API na aba Sistema.';
@@ -2482,11 +2482,11 @@ function exportarDadosParaIA() {
 
     let lucroBruto = receitaBruta - custoTotal;
 
-    let relatorioTexto = `=== RELATÃ“RIO FINANCEIRO E DE GESTÃO - FC MÃ“VEIS ===\nData da exportação: ${new Date().toLocaleString('pt-BR')}\n\n`;
+    let relatorioTexto = `=== RELATÓRIO FINANCEIRO E DE GESTÃO - FC MÓVEIS ===\nData da exportação: ${new Date().toLocaleString('pt-BR')}\n\n`;
     relatorioTexto += `--- 1. DRE SIMPLIFICADA ---\n- Receita Bruta Total: R$ ${receitaBruta.toFixed(2)}\n- Custo da Mercadoria Vendida (CMV): R$ ${custoTotal.toFixed(2)}\n- Lucro Bruto Real: R$ ${lucroBruto.toFixed(2)}\n\n`;
-    relatorioTexto += `--- 2. HISTÃ“RICO DE VENDAS RECENTES ---\n`;
+    relatorioTexto += `--- 2. HISTÓRICO DE VENDAS RECENTES ---\n`;
     vendas.slice(-20).forEach((v, index) => { relatorioTexto += `[Venda ${index + 1}] Data: ${v.data || 'N/A'} | Total: R$ ${Number(v.total || 0).toFixed(2)} | Forma de Pagamento: ${v.pagamento || 'N/A'}\n`; });
-    relatorioTexto += `\n--- 3. MOVIMENTAÇÃ•ES FINANCEIRAS / CAIXA ---\n`;
+    relatorioTexto += `\n--- 3. MOVIMENTAÇÕES FINANCEIRAS / CAIXA ---\n`;
     financeiro.slice(-20).forEach((f, index) => { relatorioTexto += `[Movimento ${index + 1}] Tipo: ${f.tipo || 'N/A'} | Descrição: ${f.descricao || 'N/A'} | Valor: R$ ${Number(f.valor || 0).toFixed(2)} | Data: ${f.data || 'N/A'}\n`; });
 
     const blob = new Blob([relatorioTexto], { type: 'text/plain;charset=utf-8' });

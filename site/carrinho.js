@@ -1,6 +1,21 @@
-﻿// Lógica do Carrinho de Compras
+function formatarNumeroWhatsApp(tel) {
+    if (!tel) return '5511999999999';
+    let clean = String(tel).replace(/\D/g, '');
+    if (clean.length === 10 || clean.length === 11) {
+        clean = '55' + clean;
+    }
+    return clean;
+}
+// Lógica do Carrinho de Compras
 
-let carrinho = JSON.parse(localStorage.getItem('fc_carrinho')) || [];
+let carrinho = [];
+try {
+    const raw = localStorage.getItem('fc_carrinho');
+    carrinho = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(carrinho)) carrinho = [];
+} catch(e) {
+    carrinho = [];
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     injetaHtmlCarrinho();
@@ -217,4 +232,5 @@ function injetaHtmlCarrinho() {
     
     document.body.insertAdjacentHTML('beforeend', html);
 }
+
 

@@ -277,10 +277,18 @@ function formatarDataHoje() {
 window.mudarAbaMarketing = function(aba) {
     document.getElementById('aba-lembretes').classList.add('hidden');
     document.getElementById('aba-ia').classList.add('hidden');
+    if (document.getElementById('aba-historico')) document.getElementById('aba-historico').classList.add('hidden');
+    
     document.getElementById('tab-lembretes').classList.remove('border-blue-600', 'text-blue-600', 'dark:text-blue-400');
     document.getElementById('tab-lembretes').classList.add('border-transparent', 'text-slate-500');
+    
     document.getElementById('tab-ia').classList.remove('border-blue-600', 'text-blue-600', 'dark:text-blue-400');
     document.getElementById('tab-ia').classList.add('border-transparent', 'text-slate-500');
+    
+    if (document.getElementById('tab-historico')) {
+        document.getElementById('tab-historico').classList.remove('border-blue-600', 'text-blue-600', 'dark:text-blue-400');
+        document.getElementById('tab-historico').classList.add('border-transparent', 'text-slate-500');
+    }
 
     if (aba === 'lembretes') {
         document.getElementById('aba-lembretes').classList.remove('hidden');
@@ -290,6 +298,15 @@ window.mudarAbaMarketing = function(aba) {
         document.getElementById('aba-ia').classList.remove('hidden');
         document.getElementById('tab-ia').classList.add('border-blue-600', 'text-blue-600', 'dark:text-blue-400');
         document.getElementById('tab-ia').classList.remove('border-transparent', 'text-slate-500');
+    } else if (aba === 'historico') {
+        if (document.getElementById('aba-historico')) document.getElementById('aba-historico').classList.remove('hidden');
+        if (document.getElementById('tab-historico')) {
+            document.getElementById('tab-historico').classList.add('border-blue-600', 'text-blue-600', 'dark:text-blue-400');
+            document.getElementById('tab-historico').classList.remove('border-transparent', 'text-slate-500');
+        }
+        if (typeof carregarHistoricoMarketing === 'function') {
+            carregarHistoricoMarketing();
+        }
     }
 };
 

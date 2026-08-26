@@ -1,5 +1,5 @@
 // ==========================================
-// GESTÃÆ’O.JS - ERP FINANCEIRO, DASHBOARD E PROJEÃâ€¡Ãâ€¢ES
+// GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÃâ€¡Ã•ES
 // ==========================================
 
 var ofxItemAtualIdx = null;
@@ -19,7 +19,7 @@ const categoriasPagar = ['Fornecedores / Compras', 'Impostos (DAS, ICMS, etc)', 
 const categoriasReceber = ['Vendas', 'Serviços', 'Outras Receitas'];
 
 // ==========================================
-// FUNÃâ€¡Ãâ€¢ES DE TÍTULOS (DETALHES, BAIXA, RENEGOCIAÃâ€¡ÃÆ’O)
+// FUNÃâ€¡Ã•ES DE TÍTULOS (DETALHES, BAIXA, RENEGOCIAÃâ€¡ÃÆ’O)
 // ==========================================
 function verDetalhesTitulo(id) {
     if (!db.financeiro) return;
@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ==========================================
-// 1. NAVEGAÃâ€¡ÃÆ’O E DASHBOARDS
+// 1. NAVEGAÇÃO E DASHBOARDS
 // ==========================================
 function mudarVisaoLocal(viewId) {
     document.querySelectorAll('.view-section').forEach(el => { 
@@ -313,7 +313,7 @@ window.abrirModalNegociacao = function(id) {
 };
 
 // ==========================================
-// MIGRAÃâ€¡ÃÆ’O AUTOMÁTICA DO BANCO ANTIGO
+// MIGRAÇÃO AUTOMÁTICA DO BANCO ANTIGO
 // ==========================================
 async function migrarDadosSeNecessario() {
     try {
@@ -324,7 +324,7 @@ async function migrarDadosSeNecessario() {
         // Se já há dados em compras OU financeiro, não precisa migrar
         if (!comprasSnap.empty || !finSnap.empty) return;
 
-        // Coleções novas estão vazias ââ‚¬â€ tenta ler do banco antigo
+        // Coleções novas estão vazias — tenta ler do banco antigo
         const bancoPrincipalSnap = await firestore.collection('fc_moveis').doc('banco_principal').get();
         if (!bancoPrincipalSnap.exists) return;
 
@@ -777,7 +777,7 @@ async function confirmarFechamentoCego() {
 
     // 1. Apura dados de vendas do sistema desde a abertura do turno
     const vendasTurno = (db.vendas || []).filter(v => {
-        if (v.tipo === 'ORÃâ€¡AMENTO') return false;
+        if (v.tipo === 'ORÇAMENTO') return false;
         const dt = new Date(v.data || 0).getTime();
         return dt >= new Date(dataAbertura).getTime();
     });
@@ -913,7 +913,7 @@ function renderizarMapaCaixaHTML(m) {
         <div class="text-center border-b border-dashed border-slate-300 dark:border-slate-700 pb-3 mb-3">
             <h2 class="text-base font-black uppercase text-slate-900 dark:text-white">${emp.nome}</h2>
             <p class="text-[10px] text-slate-500">CNPJ: ${emp.cnpj || 'Não informado'} | Tel: ${emp.telefone || ''}</p>
-            <p class="text-xs font-bold uppercase mt-1 bg-slate-100 dark:bg-slate-800 py-1 rounded">MAPA DE FECHAMENTO DE CAIXA (REDUÃâ€¡ÃÆ’O Z)</p>
+            <p class="text-xs font-bold uppercase mt-1 bg-slate-100 dark:bg-slate-800 py-1 rounded">MAPA DE FECHAMENTO DE CAIXA (REDUÇÃO Z)</p>
             <p class="text-[10px] text-slate-400 mt-1">Ref: #${m.id}</p>
         </div>
 
@@ -957,7 +957,7 @@ function renderizarMapaCaixaHTML(m) {
                 <span>TOTAL DECLARADO PELO OPERADOR:</span><span>${formatMoney(m.declaradoOperador.totalGeral)}</span>
             </div>
             <div class="flex justify-between text-sm font-black pt-1.5 border-t border-slate-300 dark:border-slate-700 ${corDiferenca}">
-                <span>DIVERGÃÅ NCIA (${m.diferencas.status}):</span>
+                <span>DIVERGÊNCIA (${m.diferencas.status}):</span>
                 <span>${m.diferencas.difGeral >= 0 ? '+' : ''}${formatMoney(m.diferencas.difGeral)}</span>
             </div>
         </div>
@@ -976,7 +976,7 @@ function renderizarMapaCaixaHTML(m) {
 }
 
 // ==========================================
-// TRANSFERÃÅ NCIAS ENTRE CONTAS
+// TRANSFERÊNCIAS ENTRE CONTAS
 // ==========================================
 function abrirModalTransferenciaCaixa() {
     if (!db.caixa || (db.caixa.saldo || 0) <= 0) {
@@ -1008,7 +1008,7 @@ async function confirmarTransferenciaCaixa() {
     cxHistoricoNovo.unshift({
         data: dataIso,
         tipo: 'SAIDA',
-        desc: `TRANSFERÃÅ NCIA p/ ${destino}: ${obs} - Op: ${operador}`,
+        desc: `TRANSFERÊNCIA p/ ${destino}: ${obs} - Op: ${operador}`,
         valor: valor,
         operador: operador,
         saldoApos: novoSaldo
@@ -1857,7 +1857,7 @@ function processarXMLReal(event) {
             }
 
             if(financeiroXML.length === 0 && totalNF > 0) {
-                financeiroXML.push({ num: '001', venc: dataEmissao, valor: totalNF, desc: `NF ${numNF} - Parcela ÃÅ¡nica` });
+                financeiroXML.push({ num: '001', venc: dataEmissao, valor: totalNF, desc: `NF ${numNF} - Parcela Única` });
             }
 
             window.tempXMLData = { fornNome, fornCNPJ, numNF, dataEmissao, totalNF, produtosXML, financeiroXML, freteExtra: 0 };
@@ -2449,7 +2449,7 @@ function verDetalhesNF(id) {
 function fecharModalDetalhesNF() { document.getElementById('modal-detalhes-nf').classList.add('hidden'); }
 
 // ==========================================
-// 9. RELATÃâ€œRIOS E BI
+// 9. RELATÓRIOS E BI
 // ==========================================
 
 function mudarFiltroBI() {
@@ -2816,7 +2816,7 @@ async function analisarFinanceiroIA() {
     const resposta = await chamarGemini(prompt);
     
     if(resposta) {
-        divRes.innerHTML = resposta.replace(/\*\*/g, '').replace(/\*/g, 'ââ‚¬¢');
+        divRes.innerHTML = resposta.replace(/\*\*/g, '').replace(/\*/g, '•');
         showToast('Análise concluída com sucesso!', 'success');
     } else {
         divRes.innerHTML = 'Erro ao gerar análise. Verifique se você salvou sua chave API na aba Sistema.';
@@ -2843,11 +2843,11 @@ function exportarDadosParaIA() {
 
     let lucroBruto = receitaBruta - custoTotal;
 
-    let relatorioTexto = `=== RELATÃâ€œRIO FINANCEIRO E DE GESTÃÆ’O - FC MÃâ€œVEIS ===\nData da exportação: ${new Date().toLocaleString('pt-BR')}\n\n`;
+    let relatorioTexto = `=== RELATÓRIO FINANCEIRO E DE GESTÃO - FC MÃâ€œVEIS ===\nData da exportação: ${new Date().toLocaleString('pt-BR')}\n\n`;
     relatorioTexto += `--- 1. DRE SIMPLIFICADA ---\n- Receita Bruta Total: R$ ${receitaBruta.toFixed(2)}\n- Custo da Mercadoria Vendida (CMV): R$ ${custoTotal.toFixed(2)}\n- Lucro Bruto Real: R$ ${lucroBruto.toFixed(2)}\n\n`;
-    relatorioTexto += `--- 2. HISTÃâ€œRICO DE VENDAS RECENTES ---\n`;
+    relatorioTexto += `--- 2. HISTÓRICO DE VENDAS RECENTES ---\n`;
     vendas.slice(-20).forEach((v, index) => { relatorioTexto += `[Venda ${index + 1}] Data: ${v.data || 'N/A'} | Total: R$ ${Number(v.total || 0).toFixed(2)} | Forma de Pagamento: ${v.pagamento || 'N/A'}\n`; });
-    relatorioTexto += `\n--- 3. MOVIMENTAÃâ€¡Ãâ€¢ES FINANCEIRAS / CAIXA ---\n`;
+    relatorioTexto += `\n--- 3. MOVIMENTAÃâ€¡Ã•ES FINANCEIRAS / CAIXA ---\n`;
     financeiro.slice(-20).forEach((f, index) => { relatorioTexto += `[Movimento ${index + 1}] Tipo: ${f.tipo || 'N/A'} | Descrição: ${f.descricao || 'N/A'} | Valor: R$ ${Number(f.valor || 0).toFixed(2)} | Data: ${f.data || 'N/A'}\n`; });
 
     const blob = new Blob([relatorioTexto], { type: 'text/plain;charset=utf-8' });
@@ -2925,10 +2925,10 @@ function renderVendas() {
     const tipoFiltro = tipoEl ? tipoEl.value : 'TODOS';
     
     let filtrados = db.vendas || [];
-    filtrados = filtrados.filter(v => v.tipo !== 'ORÃâ€¡AMENTO');
+    filtrados = filtrados.filter(v => v.tipo !== 'ORÇAMENTO');
     
     if (tipoFiltro === 'VENDAS') filtrados = filtrados.filter(v => v.tipo === 'VENDA' || !v.tipo);
-    if (tipoFiltro === 'SERVIÃâ€¡OS') filtrados = filtrados.filter(v => v.tipo === 'SERVIÃâ€¡O');
+    if (tipoFiltro === 'SERVIÇOS') filtrados = filtrados.filter(v => v.tipo === 'SERVIÇO');
     if (termo) filtrados = filtrados.filter(v => (v.clienteNome && String(v.clienteNome).toLowerCase().includes(termo)) || (v.numeroPedido && String(v.numeroPedido).includes(termo)) || (v.vendedor && String(v.vendedor).toLowerCase().includes(termo)));
     if (pgto !== 'TODOS') filtrados = filtrados.filter(v => v.pag && String(v.pag).includes(pgto));
     if (dataIni) { const dIni = new Date(dataIni + 'T00:00:00').getTime(); filtrados = filtrados.filter(v => v.data && new Date(v.data).getTime() >= dIni); }
@@ -2950,7 +2950,7 @@ function renderVendas() {
             const vendRender = v.vendedor || '-'; 
             const pagRender = v.pag || '-';
             
-            const badgeTipo = v.tipo === 'SERVIÃâ€¡O' ? `<span class="bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">SERVIÃâ€¡O</span><br>` : `<span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">VENDA</span><br>`;
+            const badgeTipo = v.tipo === 'SERVIÇO' ? `<span class="bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">SERVIÇO</span><br>` : `<span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">VENDA</span><br>`;
             
             return `
             <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
@@ -3164,7 +3164,7 @@ window.confirmarTransferenciaCaixa = confirmarTransferenciaCaixa;
 window.confirmarMovCaixa = confirmarMovCaixa;
 
 // ==========================================
-// TRANSFERÃÅ NCIAS ENTRE CONTAS / BANCOS
+// TRANSFERÊNCIAS ENTRE CONTAS / BANCOS
 // ==========================================
 function abrirModalTransferenciaFin() {
     const valEl = document.getElementById('transf-fin-valor');
@@ -3226,8 +3226,8 @@ async function confirmarTransferenciaFin() {
         tipo: 'TRANSFERENCIA',
         origem: origem,
         destino: destino,
-        pessoa: origem + ' âÅ¾â€ ' + destino,
-        ref: 'Transf: ' + origem + ' âÅ¾â€ ' + destino,
+        pessoa: origem + ' → ' + destino,
+        ref: 'Transf: ' + origem + ' → ' + destino,
         categoria: 'Transferência Entre Contas',
         centroCusto: 'Operacional',
         contaBancaria: destino,

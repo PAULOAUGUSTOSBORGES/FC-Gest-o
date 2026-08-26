@@ -1,5 +1,5 @@
 // ==========================================
-// GESTÃÆ’O.JS - ERP FINANCEIRO, DASHBOARD E PROJEÃâ€¡Ãâ€¢ES
+// GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÃâ€¡Ã•ES
 // ==========================================
 
 let acaoConfirmacaoPendente = null;
@@ -64,7 +64,7 @@ function mudarPeriodoVendas(render = true) {
 }
 
 // ==========================================
-// 1. NAVEGAÃâ€¡ÃÆ’O E DASHBOARDS
+// 1. NAVEGAÇÃO E DASHBOARDS
 // ==========================================
 function mudarVisaoLocal(viewId) {
     document.querySelectorAll('.view-section').forEach(el => { 
@@ -145,7 +145,7 @@ window.abrirModalNegociacao = function(id) {
 };
 
 // ==========================================
-// MIGRAÃâ€¡ÃÆ’O AUTOMÁTICA DO BANCO ANTIGO
+// MIGRAÇÃO AUTOMÁTICA DO BANCO ANTIGO
 // ==========================================
 async function migrarDadosSeNecessario() {
     try {
@@ -156,7 +156,7 @@ async function migrarDadosSeNecessario() {
         // Se já há dados em compras OU financeiro, não precisa migrar
         if (!comprasSnap.empty || !finSnap.empty) return;
 
-        // Coleções novas estão vazias ââ‚¬â€ tenta ler do banco antigo
+        // Coleções novas estão vazias — tenta ler do banco antigo
         const bancoPrincipalSnap = await firestore.collection('fc_moveis').doc('banco_principal').get();
         if (!bancoPrincipalSnap.exists) return;
 
@@ -1237,7 +1237,7 @@ function processarXMLReal(event) {
             }
 
             if(financeiroXML.length === 0 && totalNF > 0) {
-                financeiroXML.push({ num: '001', venc: dataEmissao, valor: totalNF, desc: `NF ${numNF} - Parcela ÃÅ¡nica` });
+                financeiroXML.push({ num: '001', venc: dataEmissao, valor: totalNF, desc: `NF ${numNF} - Parcela Única` });
             }
 
             window.tempXMLData = { fornNome, fornCNPJ, numNF, dataEmissao, totalNF, produtosXML, financeiroXML, freteExtra: 0 };
@@ -1828,7 +1828,7 @@ function verDetalhesNF(id) {
 function fecharModalDetalhesNF() { document.getElementById('modal-detalhes-nf').classList.add('hidden'); }
 
 // ==========================================
-// 9. RELATÃâ€œRIOS E BI
+// 9. RELATÓRIOS E BI
 // ==========================================
 
 function mudarFiltroBI() {
@@ -2281,7 +2281,7 @@ async function analisarFinanceiroIA() {
     const resposta = await chamarGemini(prompt);
     
     if(resposta) {
-        divRes.innerHTML = resposta.replace(/\*\*/g, '').replace(/\*/g, 'ââ‚¬¢');
+        divRes.innerHTML = resposta.replace(/\*\*/g, '').replace(/\*/g, '•');
         showToast('Análise concluída com sucesso!', 'success');
     } else {
         divRes.innerHTML = 'Erro ao gerar análise. Verifique se você salvou sua chave API na aba Sistema.';
@@ -2308,11 +2308,11 @@ function exportarDadosParaIA() {
 
     let lucroBruto = receitaBruta - custoTotal;
 
-    let relatorioTexto = `=== RELATÃâ€œRIO FINANCEIRO E DE GESTÃÆ’O - FC MÃâ€œVEIS ===\nData da exportação: ${new Date().toLocaleString('pt-BR')}\n\n`;
+    let relatorioTexto = `=== RELATÓRIO FINANCEIRO E DE GESTÃO - FC MÃâ€œVEIS ===\nData da exportação: ${new Date().toLocaleString('pt-BR')}\n\n`;
     relatorioTexto += `--- 1. DRE SIMPLIFICADA ---\n- Receita Bruta Total: R$ ${receitaBruta.toFixed(2)}\n- Custo da Mercadoria Vendida (CMV): R$ ${custoTotal.toFixed(2)}\n- Lucro Bruto Real: R$ ${lucroBruto.toFixed(2)}\n\n`;
-    relatorioTexto += `--- 2. HISTÃâ€œRICO DE VENDAS RECENTES ---\n`;
+    relatorioTexto += `--- 2. HISTÓRICO DE VENDAS RECENTES ---\n`;
     vendas.slice(-20).forEach((v, index) => { relatorioTexto += `[Venda ${index + 1}] Data: ${v.data || 'N/A'} | Total: R$ ${Number(v.total || 0).toFixed(2)} | Forma de Pagamento: ${v.pagamento || 'N/A'}\n`; });
-    relatorioTexto += `\n--- 3. MOVIMENTAÃâ€¡Ãâ€¢ES FINANCEIRAS / CAIXA ---\n`;
+    relatorioTexto += `\n--- 3. MOVIMENTAÃâ€¡Ã•ES FINANCEIRAS / CAIXA ---\n`;
     financeiro.slice(-20).forEach((f, index) => { relatorioTexto += `[Movimento ${index + 1}] Tipo: ${f.tipo || 'N/A'} | Descrição: ${f.descricao || 'N/A'} | Valor: R$ ${Number(f.valor || 0).toFixed(2)} | Data: ${f.data || 'N/A'}\n`; });
 
     const blob = new Blob([relatorioTexto], { type: 'text/plain;charset=utf-8' });
@@ -2390,10 +2390,10 @@ function renderVendas() {
     const tipoFiltro = tipoEl ? tipoEl.value : 'TODOS';
     
     let filtrados = db.vendas || [];
-    filtrados = filtrados.filter(v => v.tipo !== 'ORÃâ€¡AMENTO');
+    filtrados = filtrados.filter(v => v.tipo !== 'ORÇAMENTO');
     
     if (tipoFiltro === 'VENDAS') filtrados = filtrados.filter(v => v.tipo === 'VENDA' || !v.tipo);
-    if (tipoFiltro === 'SERVIÃâ€¡OS') filtrados = filtrados.filter(v => v.tipo === 'SERVIÃâ€¡O');
+    if (tipoFiltro === 'SERVIÇOS') filtrados = filtrados.filter(v => v.tipo === 'SERVIÇO');
     if (termo) filtrados = filtrados.filter(v => (v.clienteNome && String(v.clienteNome).toLowerCase().includes(termo)) || (v.numeroPedido && String(v.numeroPedido).includes(termo)) || (v.vendedor && String(v.vendedor).toLowerCase().includes(termo)));
     if (pgto !== 'TODOS') filtrados = filtrados.filter(v => v.pag && String(v.pag).includes(pgto));
     if (dataIni) { const dIni = new Date(dataIni + 'T00:00:00').getTime(); filtrados = filtrados.filter(v => v.data && new Date(v.data).getTime() >= dIni); }
@@ -2418,7 +2418,7 @@ function renderVendas() {
             const vendRender = v.vendedor || '-'; 
             const pagRender = v.pag || '-';
             
-            const badgeTipo = v.tipo === 'SERVIÃâ€¡O' ? `<span class="bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">SERVIÃâ€¡O</span><br>` : `<span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">VENDA</span><br>`;
+            const badgeTipo = v.tipo === 'SERVIÇO' ? `<span class="bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">SERVIÇO</span><br>` : `<span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">VENDA</span><br>`;
             
             return `
             <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
@@ -2458,10 +2458,10 @@ function verDetalhesVenda(id) {
     const dataEl = document.getElementById('det-venda-data');
     if(dataEl) dataEl.innerText = `${v.data ? formatData(v.data).split(' ')[0] : '-'} | #${numPedStr}`; 
     const pagEl = document.getElementById('det-venda-pag');
-    if(pagEl) pagEl.innerText = tipoTexto === 'ORÃâ€¡AMENTO' ? 'Orçamento' : (v.pag || '-'); 
+    if(pagEl) pagEl.innerText = tipoTexto === 'ORÇAMENTO' ? 'Orçamento' : (v.pag || '-'); 
     
     let osInfoHtml = '';
-    if (tipoTexto === 'SERVIÃâ€¡O' && v.servicoDetalhes) {
+    if (tipoTexto === 'SERVIÇO' && v.servicoDetalhes) {
         let galeriaHtml = '';
         if (v.servicoDetalhes.fotos && v.servicoDetalhes.fotos.length > 0) { 
             galeriaHtml = `<p class="mt-2"><strong>Fotos de Referência:</strong></p><div class="flex gap-2 flex-wrap mt-1">${v.servicoDetalhes.fotos.map(f => `<img src="${f}" onclick="abrirZoom('${f}')" class="h-20 rounded border border-purple-300 cursor-zoom-in shadow-sm hover:opacity-80 transition" title="Clique para ampliar">`).join('')}</div>`; 

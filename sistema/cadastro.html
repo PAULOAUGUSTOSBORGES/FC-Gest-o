@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -72,7 +72,7 @@
             </div>
         </aside>
         
-        <!-- ÁÁREA DE CONTEÃšDO PRINCIPAL -->
+        <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
             <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
                 <div class="flex items-center gap-3">
@@ -211,12 +211,12 @@
                     </div>
                 </div>
 
-                <!-- FUNCIONÁÁRIOS -->
+                <!-- FUNCIONÁRIOS -->
                 <div id="view-funcionarios" class="view-section max-w-7xl mx-auto space-y-4 md:space-y-6 hidden">
                     <div class="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 gap-3">
                         <div class="relative w-full md:w-96">
                             <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-sm"></i>
-                            <input type="text" id="busca-funcionario-lista" placeholder="Buscar Funcionário..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderFuncionários()">
+                            <input type="text" id="busca-funcionario-lista" placeholder="Buscar Funcionário..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderFuncionarios()">
                         </div>
                         <button onclick="abrirModalFuncionario()" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"><i class="fa-solid fa-user-plus text-lg"></i> Novo Funcionário</button>
                     </div>
@@ -227,7 +227,7 @@
                                     <tr>
                                         <th class="p-3">Nome do Colaborador</th>
                                         <th class="p-3">Login / E-mail</th>
-                                        <th class="p-3">Cargo /Ã‰ Vendedor</th>
+                                        <th class="p-3">Cargo /É Vendedor</th>
                                         <th class="p-3">Comissão</th>
                                         <th class="p-3 text-center w-24">Ações</th>
                                     </tr>
@@ -260,9 +260,9 @@
 
 
             <div class="p-4 md:p-6 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900 custom-scrollbar">
-                <!-- NOVO: OPÃ‡ÁO DE VÍNCULO MANUAL (MOSTRADA APENAS NO XML) -->
+                <!-- NOVO: OPÇÃO DE VÍNCULO MANUAL (MOSTRADA APENAS NO XML) -->
                 <div id="div-acao-vinculo-xml" class="hidden mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-lg">
-                    <lAção: Vincular ou Cadastrar?</label>
+                    <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Vincular ou Cadastrar?</label>
                     <select id="prod-acao-vinculo" onchange="alternarAcaoVinculoXML()" class="w-full bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 p-2 rounded text-sm outline-none mb-2 font-bold text-slate-700 dark:text-slate-200">
                         <option value="NOVO">Cadastrar como Novo Produto</option>
                         <option value="VINCULAR">Vincular a Produto Existente</option>
@@ -567,7 +567,7 @@
         </div>
     </div>
 
-    <!-- MODAL CONFIRMAÃ‡ÁO GENÃ‰RICA -->
+    <!-- MODAL CONFIRMAÇÃO GENÉRICA -->
     <div id="modal-confirmacao" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl scale-95 transition-transform animate-[pop_0.2s_ease-out_forwards]">
             <div class="p-5 text-center">
@@ -582,7 +582,7 @@
         </div>
     </div>
 
-    <!-- MODAL FUNCIONÁÁRIOS -->
+    <!-- MODAL FUNCIONÁRIOS -->
     <div id="modal-funcionario" class="fixed inset-0 z-[60] hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl my-auto animate-[slideIn_0.3s_ease-out]">
             <div class="p-4 md:p-5 text-white flex justify-between items-center shrink-0 bg-blue-600">
@@ -593,7 +593,7 @@
             <div class="p-4 md:p-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
                 <input type="hidden" id="func-id">
                 
-                <h4 class="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-100 dark:border-slate-700 pb-2 uppercase tracking-wide">Dados de Açõesso (Login)</h4>
+                <h4 class="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-100 dark:border-slate-700 pb-2 uppercase tracking-wide">Dados de Acesso (Login)</h4>
                 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                     <div>
@@ -614,7 +614,7 @@
                         <input type="text" id="func-nome" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-medium uppercase">
                     </div>
                     <div>
-                        <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Ã‰Ã‰ Vendedor? (Aparece no PDV)</label>
+                        <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">ÉÉ É Vendedor? (Aparece no PDV)</label>
                         <select id="func-vendedor" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-medium">
                             <option value="SIM">Sim</option>
                             <option value="NAO">Não</option>
@@ -630,27 +630,27 @@
                     </div>
                 </div>
 
-                <h4 class="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-100 dark:border-slate-700 pb-2 uppercase tracking-wide">Controle de Açõesso (Permissões)</h4>
+                <h4 class="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-100 dark:border-slate-700 pb-2 uppercase tracking-wide">Controle de Acesso (Permissões)</h4>
                 <div class="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-2">
                     <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
                         <input type="checkbox" id="func-perm-dashboard" class="w-5 h-5 accent-blue-600 rounded">
-                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Açõesso ao Dashboard</span>
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Acesso ao Dashboard</span>
                     </label>
                     <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
                         <input type="checkbox" id="func-perm-pdv" class="w-5 h-5 accent-blue-600 rounded">
-                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Açõesso ao PDV / Caixa</span>
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Acesso ao PDV / Caixa</span>
                     </label>
                     <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
                         <input type="checkbox" id="func-perm-cadastros" class="w-5 h-5 accent-blue-600 rounded">
-                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Açõesso a Cadastros</span>
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Acesso a Cadastros</span>
                     </label>
                     <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
                         <input type="checkbox" id="func-perm-gestao" class="w-5 h-5 accent-blue-600 rounded">
-                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Açõesso Financeiro / Gestão</span>
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Acesso Financeiro / Gestão</span>
                     </label>
                     <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
                         <input type="checkbox" id="func-perm-config" class="w-5 h-5 accent-blue-600 rounded">
-                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Açõesso a Configurações</span>
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Acesso a Configurações</span>
                     </label>
                 </div>
                 <p class="text-[10px] text-slate-400 mb-4">* Se todas desmarcadas, o usuário não conseguirá usar as abas do sistema.</p>
@@ -663,7 +663,7 @@
         </div>
     </div>
 
-    <!-- DETALHES DA VENDA/ORÃ‡AMENTO -->
+    <!-- DETALHES DA VENDA/ORÇAMENTO -->
     <div id="modal-detalhes-venda" class="fixed inset-0 bg-slate-900/80 z-[450] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden max-h-[90vh]">
             <div class="bg-slate-800 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
@@ -729,6 +729,8 @@
     <script src="cadastro.js?v=202608251000"></script>
 </body>
 </html>
+
+
 
 
 

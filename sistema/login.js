@@ -1,4 +1,4 @@
-﻿// Função para os avisos na tela
+// Função para os avisos na tela
 function showToast(msg, type = 'info') {
     const container = document.getElementById('toast-container');
     if(!container) return;
@@ -95,3 +95,22 @@ async function fazerCadastro() {
 
 // Inicializa a escuta de sessão para redirecionar automaticamente quando logar
 window.onload = () => { initGlobalData(); };
+
+window.esqueciSenha = async function() {
+    const email = document.getElementById('login-user')?.value?.trim();
+    if (!email) {
+        if (typeof showToast === 'function') showToast('Digite seu e-mail no campo acima para recuperar a senha.', 'warning');
+        else alert('Digite seu e-mail no campo acima para recuperar a senha.');
+        return;
+    }
+    try {
+        await auth.sendPasswordResetEmail(email);
+        if (typeof showToast === 'function') showToast('E-mail de recuperação enviado com sucesso! Verifique sua caixa de entrada.', 'success');
+        else alert('E-mail de recuperação enviado com sucesso! Verifique sua caixa de entrada.');
+    } catch(err) {
+        console.error(err);
+        const msg = err.code === 'auth/user-not-found' ? 'E-mail não cadastrado.' : 'Erro ao enviar e-mail de recuperação.';
+        if (typeof showToast === 'function') showToast(msg, 'error');
+        else alert(msg);
+    }
+};

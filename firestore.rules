@@ -3,151 +3,147 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Função para pegar os dados do usuário atual de forma segura
-    function getFuncionario() {
-      return request.auth != null && exists(/databases/$(database)/documents/funcionarios/$(request.auth.uid))
+    // ==========================================
+    // FunÃ§Ãµes Auxiliares de AutenticaÃ§Ã£o e RBAC
+    // ==========================================
+    function isAutenticado() {
+      return request.auth != null;
+    }
+    
+    function getFuncionarioDoc() {
+      return isAutenticado() && exists(/databases/$(database)/documents/funcionarios/$(request.auth.uid))
         ? get(/databases/$(database)/documents/funcionarios/$(request.auth.uid)).data
         : {};
     }
     
-    // Função para checar se é Admin Master
     function isAdmin() {
-      return request.auth != null && (
-        getFuncionario().get('isAdmin', false) == true || 
-        getFuncionario().get('isAdmin', false) == 'true'
+      return isAutenticado() && (
+        request.auth.token.admin == true || 
+        getFuncionarioDoc().get('isAdmin', false) == true || 
+        getFuncionarioDoc().get('isAdmin', false) == 'true'
+      );
+    }
+    
+    function temPermissao(perm) {
+      return isAdmin() || (
+        isAutenticado() && (
+          getFuncionarioDoc().get(perm, false) == true ||
+          getFuncionarioDoc().get(perm, false) == 'true'
+        )
       );
     }
 
     // ==========================================
-    // 1. Financeiro, Caixa e Configurações
+    // 1. ConfiguraÃ§Ãµes e Caixa FÃ­sico
     // ==========================================
-    match /financeiro/{document=**} {
-      allow read, write: if isAdmin() || (request.auth != null && (
-        getFuncionario().get('perm_gestao', false) == true || 
-        getFuncionario().get('perm_gestao', false) == 'true'
-      ));
+    match /fc_moveis/config_loja {
+      allow read: if true; // Dados pÃºblicos da vitrine (nome, logo, banners, cores)
+      allow write: if isAdmin() || temPermissao('perm_config') || temPermissao('perm_gestao');
     }
     
-    // Leitura das configurações globais permitida a qualquer autenticado
-    // E também publica para o site da loja (visitantes anônimos)
     match /fc_moveis/config {
-      allow read: if true; // Leitura pública: necessário para o site da loja carregar config e produtos
-      allow write: if isAdmin() || (request.auth != null && (
-        getFuncionario().get('perm_gestao', false) == true || 
-        getFuncionario().get('perm_gestao', false) == 'true' ||
-        getFuncionario().get('perm_config', false) == true || 
-        getFuncionario().get('perm_config', false) == 'true' ||
-        getFuncionario().get('perm_pdv', false) == true || 
-        getFuncionario().get('perm_pdv', false) == 'true'
-      ));
+      allow read: if true; // MantÃ©m compatibilidade de leitura do frontend existente
+      allow write: if isAdmin() || temPermissao('perm_config') || temPermissao('perm_gestao');
+    }
+
+    match /fc_moveis/caixa {
+      allow read: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_gestao'));
+      allow write: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_gestao'));
     }
 
     match /fc_moveis/{document=**} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin() || (request.auth != null && (
-        getFuncionario().get('perm_gestao', false) == true || 
-        getFuncionario().get('perm_gestao', false) == 'true' ||
-        getFuncionario().get('perm_config', false) == true || 
-        getFuncionario().get('perm_config', false) == 'true'
-      ));
+      allow read: if isAutenticado();
+      allow write: if isAdmin() || temPermissao('perm_config') || temPermissao('perm_gestao');
     }
 
-    match /compras/{document=**} {
-      allow read, write: if isAdmin() || (request.auth != null && (
-        getFuncionario().get('perm_gestao', false) == true || 
-        getFuncionario().get('perm_gestao', false) == 'true'
-      ));
-    }
-    
     // ==========================================
-    // 2. Vendas e Orçamentos (PDV ou Admin)
+    // 2. CatÃ¡logo de Produtos e Kardex
     // ==========================================
-    match /vendas/{document=**} {
-      allow read, write: if isAdmin() || (request.auth != null && (
-        getFuncionario().get('perm_pdv', false) == true || 
-        getFuncionario().get('perm_pdv', false) == 'true' ||
-        getFuncionario().get('perm_gestao', false) == true || 
-        getFuncionario().get('perm_gestao', false) == 'true'
-      ));
+    match /produtos/{produtoId} {
+      allow read: if true; // Leitura pÃºblica: necessÃ¡ria para a loja virtual
+      allow write: if isAdmin() || temPermissao('perm_cadastros') || temPermissao('perm_pdv');
     }
-    match /orcamentos/{document=**} {
-      allow read, write: if isAdmin() || (request.auth != null && (
-        getFuncionario().get('perm_pdv', false) == true || 
-        getFuncionario().get('perm_pdv', false) == 'true' ||
-        getFuncionario().get('perm_gestao', false) == true || 
-        getFuncionario().get('perm_gestao', false) == 'true'
-      ));
+
+    match /movimentacoes/{movId} {
+      allow read: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_cadastros') || temPermissao('perm_gestao'));
+      allow create: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_cadastros') || temPermissao('perm_gestao'));
+      allow update, delete: if isAdmin() || temPermissao('perm_gestao');
     }
-    
+
+    match /categorias/{catId} {
+      allow read: if true; // Categorias pÃºblicas para filtro da loja
+      allow write: if isAdmin() || temPermissao('perm_cadastros');
+    }
+
     // ==========================================
-    // 3. Cadastros Básicos
+    // 3. Clientes e Fornecedores
     // ==========================================
-    match /produtos/{document=**} {
-      allow read: if true; // Leitura pública: necessário para o site da loja exibir produtos
-      allow write: if isAdmin() || (request.auth != null && (
-        getFuncionario().get('perm_cadastros', false) == true || 
-        getFuncionario().get('perm_cadastros', false) == 'true' ||
-        getFuncionario().get('perm_pdv', false) == true || 
-        getFuncionario().get('perm_pdv', false) == 'true'
-      ));
+    match /clientes/{clienteId} {
+      allow read: if isAutenticado();
+      allow write: if isAdmin() || temPermissao('perm_cadastros') || temPermissao('perm_pdv');
     }
-    match /clientes/{document=**} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin() || (request.auth != null && (
-        getFuncionario().get('perm_cadastros', false) == true || 
-        getFuncionario().get('perm_cadastros', false) == 'true' ||
-        getFuncionario().get('perm_pdv', false) == true || 
-        getFuncionario().get('perm_pdv', false) == 'true'
-      ));
+
+    match /fornecedores/{fornecedorId} {
+      allow read, write: if isAdmin() || temPermissao('perm_cadastros') || temPermissao('perm_gestao');
     }
-    match /fornecedores/{document=**} {
-      allow read, write: if isAdmin() || (request.auth != null && (
-        getFuncionario().get('perm_cadastros', false) == true || 
-        getFuncionario().get('perm_cadastros', false) == 'true' ||
-        getFuncionario().get('perm_gestao', false) == true || 
-        getFuncionario().get('perm_gestao', false) == 'true'
-      ));
-    }
-    match /categorias/{document=**} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin() || (request.auth != null && (
-        getFuncionario().get('perm_cadastros', false) == true || 
-        getFuncionario().get('perm_cadastros', false) == 'true'
-      ));
-    }
-    
+
     // ==========================================
-    // 4. Movimentações de Estoque
+    // 4. Vendas, OrÃ§amentos, Pedidos do Site e Financeiro
     // ==========================================
-    match /movimentacoes/{document=**} {
-      allow read, write: if isAdmin() || (request.auth != null && (
-        getFuncionario().get('perm_pdv', false) == true || 
-        getFuncionario().get('perm_pdv', false) == 'true' || 
-        getFuncionario().get('perm_cadastros', false) == true || 
-        getFuncionario().get('perm_cadastros', false) == 'true' ||
-        getFuncionario().get('perm_gestao', false) == true || 
-        getFuncionario().get('perm_gestao', false) == 'true'
-      ));
+    match /vendas/{vendaId} {
+      allow read: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_gestao'));
+      allow create: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_gestao'));
+      allow update: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_gestao'));
+      allow delete: if isAdmin() || temPermissao('perm_gestao');
     }
-    
+
+    match /orcamentos/{orcamentoId} {
+      allow read, write: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_gestao'));
+    }
+
+    match /pedidos_site/{pedidoId} {
+      allow create: if true; // Clientes da loja online registram pedidos
+      allow read, update, delete: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_gestao'));
+    }
+
+    match /financeiro/{finId} {
+      // PDV precisa criar tÃ­tulos a receber para vendas no crediÃ¡rio/cartÃ£o/pix
+      allow read: if isAutenticado() && (temPermissao('perm_gestao') || temPermissao('perm_pdv'));
+      allow create: if isAutenticado() && (temPermissao('perm_gestao') || temPermissao('perm_pdv'));
+      allow update, delete: if isAdmin() || temPermissao('perm_gestao');
+    }
+
+    match /compras/{compraId} {
+      allow read, write: if isAdmin() || temPermissao('perm_gestao');
+    }
+
     // ==========================================
-    // 5. Funcionários
+    // 5. FuncionÃ¡rios e Controle de Acesso
     // ==========================================
     match /funcionarios/{userId} {
-      allow read: if request.auth != null;
-      allow create: if isAdmin() || (
-        request.auth.uid == userId 
-        && (request.resource.data.isAdmin == false || request.resource.data.isAdmin == 'false')
-        && (request.resource.data.perm_dashboard == false || request.resource.data.perm_dashboard == 'false')
-        && (request.resource.data.perm_pdv == false || request.resource.data.perm_pdv == 'false')
-        && (request.resource.data.perm_cadastros == false || request.resource.data.perm_cadastros == 'false')
-        && (request.resource.data.perm_gestao == false || request.resource.data.perm_gestao == 'false')
-        && (request.resource.data.perm_config == false || request.resource.data.perm_config == 'false')
+      allow read: if isAutenticado();
+      allow create: if isAutenticado() && (
+        isAdmin() || (
+          request.auth.uid == userId 
+          && (request.resource.data.isAdmin == false || request.resource.data.isAdmin == 'false')
+          && (request.resource.data.perm_dashboard == false || request.resource.data.perm_dashboard == 'false')
+          && (request.resource.data.perm_pdv == false || request.resource.data.perm_pdv == 'false')
+          && (request.resource.data.perm_cadastros == false || request.resource.data.perm_cadastros == 'false')
+          && (request.resource.data.perm_gestao == false || request.resource.data.perm_gestao == 'false')
+          && (request.resource.data.perm_config == false || request.resource.data.perm_config == 'false')
+        )
       );
       allow update, delete: if isAdmin();
     }
-    
-    // Default fallback
+
+    // ==========================================
+    // 6. Marketing e Histórico IA
+    // ==========================================
+    match /marketing_historico/{docId} {
+      allow read, write: if isAutenticado();
+    }
+
+    // Fallback de Segurança
     match /{document=**} {
       allow read, write: if false;
     }

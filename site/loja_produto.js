@@ -1,4 +1,4 @@
-﻿let lojaConfig = {};
+let lojaConfig = {};
 let produtoUrlId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -59,19 +59,19 @@ function aplicarConfiguracoesLoja() {
     document.documentElement.style.setProperty('--brand-color-dark', adjustColorHex(cor, -20));
     document.documentElement.style.setProperty('--brand-color-light', adjustColorHex(cor, 90));
     
-    if (lojaConfig.logoUrl) {
+    if (empresaConfig.logo) {
         const logo = document.getElementById('nav-logo');
         if (logo) {
-            logo.src = lojaConfig.logoUrl;
+            logo.src = empresaConfig.logo;
             logo.classList.remove('hidden');
             document.getElementById('nav-title').classList.add('hidden', 'sm:block');
         }
     }
     
-    if (lojaConfig.nomeLoja) {
+    if (lojaConfig.nome) {
         const titles = [document.getElementById('nav-title'), document.getElementById('footer-title')];
-        titles.forEach(t => { if(t) t.innerText = lojaConfig.nomeLoja; });
-        document.title = lojaConfig.nomeLoja + ' | Detalhes do Produto';
+        titles.forEach(t => { if(t) t.innerText = lojaConfig.nome; });
+        document.title = lojaConfig.nome + ' | Detalhes do Produto';
     }
     
     if (lojaConfig.slogan) {
@@ -79,7 +79,7 @@ function aplicarConfiguracoesLoja() {
         if (slogan) slogan.innerText = lojaConfig.slogan;
     }
 
-    document.getElementById('footer-copyright').innerText = `© ${new Date().getFullYear()} ${lojaConfig.nomeLoja || 'Nossa Loja'}. Todos os direitos reservados.`;
+    document.getElementById('footer-copyright').innerText = `© ${new Date().getFullYear()} ${lojaConfig.nome || 'Nossa Loja'}. Todos os direitos reservados.`;
 }
 
 function mostrarNaoEncontrado() {
@@ -135,4 +135,5 @@ function renderizarProduto(p) {
         document.getElementById('prod-foto').classList.add('grayscale');
     }
 }
+
 

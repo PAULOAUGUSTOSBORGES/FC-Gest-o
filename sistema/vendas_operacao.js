@@ -2034,24 +2034,23 @@ function editarVenda(id) {
             const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
             
             if(!isOrcamento) {
-                if(v.itens && v.itens.length > 0) { 
-                    v.itens.forEach(item => { 
-                        const p = (db.produtos || []).find(prod => String(prod.id) === String(item.id)); 
-                        if(p) { 
-                            const pRef = firestore.collection('produtos').doc(String(p.id));
-                            batch.update(pRef, { estoque: (p.estoque || 0) + Number(item.qtd || 1) });
+                if(v.itens && v.itens.length > 0) {
+                    v.itens.forEach(item => {
+                        if(item.id) {
+                            const pRef = firestore.collection('produtos').doc(String(item.id));
+                            batch.update(pRef, { estoque: firebase.firestore.FieldValue.increment(Number(item.qtd || 1)) });
                             
                             const kardexRef = firestore.collection('movimentacoes').doc();
                             batch.set(kardexRef, {
                                 data: new Date().toISOString(),
-                                ref: `Estorno de Edição ${v.tipo} #${numPedStr}`,
-                                prodId: p.id,
-                                prodNome: p.nome,
+                                ref: `Estorno (Edição) ${v.tipo || 'Venda'} #${numPedStr}`,
+                                prodId: item.id,
+                                prodNome: item.nome || 'Produto',
                                 qtd: Number(item.qtd || 1),
                                 tipo: 'ESTORNO'
                             });
-                        } 
-                    }); 
+                        }
+                    });
                 }
                 
                 const finQuery = await firestore.collection('financeiro').where('origemVendaId', '==', String(id)).get();
@@ -2059,17 +2058,28 @@ function editarVenda(id) {
                     batch.delete(doc.ref);
                 });
                 
-                if(v.pag && typeof v.pag === 'string' && String(v.pag).includes('Dinheiro')) { 
+                // Estorno de Caixa Físico Preciso (Apenas dinheiro em espécie)
+                let valorDinheiroEfetivo = 0;
+                if (Array.isArray(v.pagamentos) && v.pagamentos.length > 0) {
+                    const pDinheiro = v.pagamentos.find(p => p && (p.metodo === 'Dinheiro' || String(p.metodo).includes('Dinheiro')));
+                    if (pDinheiro) {
+                        valorDinheiroEfetivo = Number(pDinheiro.valor || 0) - Number(v.troco || 0);
+                        if (valorDinheiroEfetivo < 0) valorDinheiroEfetivo = 0;
+                    }
+                } else if (v.pag && typeof v.pag === 'string' && String(v.pag).includes('Dinheiro') && !String(v.pag).includes('+')) {
+                    valorDinheiroEfetivo = Number(v.tot || v.valorLiquido || 0);
+                }
+
+                if (valorDinheiroEfetivo > 0) {
                     let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
                     let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
-                    let cxSaldoNovo = (cxAtual.saldo || 0) - (Number(v.valorLiquido) || 0);
-                    cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno (Edição) ${v.tipo} #${numPedStr}`, valor: (Number(v.valorLiquido) || 0) });
+                    let cxSaldoNovo = (cxAtual.saldo || 0) - valorDinheiroEfetivo;
+                    cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno (Edição) ${v.tipo || 'Venda'} #${numPedStr}`, valor: valorDinheiroEfetivo });
                     
                     const caixaRef = firestore.collection('fc_moveis').doc('caixa');
                     batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
                 }
             }
-
             const vendaRef = firestore.collection('vendas').doc(String(id));
             batch.delete(vendaRef);
             

@@ -1,3 +1,13 @@
+﻿function escapeHtml(unsafe) {
+    if (!unsafe) return '';
+    return String(unsafe)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+window.escapeHtml = escapeHtml;
 // ==========================================
 // 1. CONFIGURAÇÕES DO FIREBASE E SEGURANÇA
 // ==========================================
@@ -581,3 +591,4 @@ window.formatarEBuscarDoc = function(input, prefixo) {
         }
     }
 };
+
