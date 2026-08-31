@@ -1,4 +1,4 @@
-ï»¿const fs = require('fs');
+const fs = require('fs');
 const path = require('path');
 
 const dir = __dirname;
@@ -89,7 +89,7 @@ for (let cfg of filesToProcess) {
         }
         
         newHtml = newHtml.replace(`<script src="${cfg.js}"></script>`, `<script src="${view}.js"></script>`);
-        newHtml = newHtml.replace(/<title>.*?<\/title>/, `<title>FC MÃ³veis - ${view.toUpperCase()}</title>`);
+        newHtml = newHtml.replace(/<title>.*?<\/title>/, `<title>FC Móveis - ${view.toUpperCase()}</title>`);
         
         // Remove empty lines created by deleting views
         newHtml = newHtml.replace(/^\s*$(?:\r\n?|\n)/gm, "");
@@ -98,7 +98,7 @@ for (let cfg of filesToProcess) {
         
         let newJs = jsContent;
         
-        // Substituir a inicializaÃ§Ã£o do MudarVisaoLocal
+        // Substituir a inicialização do MudarVisaoLocal
         // No cadastro.js e gestao.js
         if (newJs.includes("const view = urlParams.get('view');")) {
             newJs = newJs.replace(

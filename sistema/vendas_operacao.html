@@ -3,6 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- PWA ConfiguraÃ§Ãµes e Ãcones -->
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FC Gestão">
+    <link rel="apple-touch-icon" href="../icons/icon-apple-touch.png">
+    <link rel="icon" type="image/png" href="../icons/favicon.png">
     <title>FC Móveis - Histórico Vendas/Serviços</title>
     <script>
         var tailwind = window.tailwind || {};
@@ -17,7 +26,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- CORRIGIDO: Removido o ?v=10 que estava quebrando o carregamento offline -->
-    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="../style.css?v=20260829121956">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -392,11 +401,11 @@
                         </div>
                         <div>
                             <label class="text-xs font-bold text-emerald-700 mb-1.5 block">Preço Cobrado (R$)</label>
-                            <input type="number" id="prod-preco" step="0.01" class="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 p-2.5 rounded-lg text-sm font-bold outline-none focus:border-emerald-500 transition-all dark:bg-slate-800 dark:border-slate-600 dark:text-white">
+                            <input type="text" data-mask="money" inputmode="numeric"  id="prod-preco"  class="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 p-2.5 rounded-lg text-sm font-bold outline-none focus:border-emerald-500 transition-all dark:bg-slate-800 dark:border-slate-600 dark:text-white">
                         </div>
                         <div>
                             <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Custo (R$)</label>
-                            <input type="number" id="prod-custo" step="0.01" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" value="0">
+                            <input type="text" data-mask="money" inputmode="numeric"  id="prod-custo"  class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" value="0">
                         </div>
                         <div>
                             <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Estoque Inicial (Zero se for Serviço)</label>
@@ -463,8 +472,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
     
-    <script src="../global.js?v=20260826113700"></script>
-    <script src="vendas_operacao.js?v=20260826113700"></script>
+    <script src="../sistema/config_banco.js?v=20260829121956"></script>
+    <script src="../global.js?v=20260829121956"></script>
+    <script src="vendas_operacao.js?v=20260829121956"></script>
 </body>
 </html>
 

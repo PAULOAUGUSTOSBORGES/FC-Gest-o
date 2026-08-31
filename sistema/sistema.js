@@ -230,11 +230,11 @@ async function salvarConfiguracoes() {
     };
 
     // Salva as 12 Taxas Separadas
-    db.config.custoBoleto = parseFloat(document.getElementById('tx-boleto-custo').value) || 0;
-    const tDeb = parseFloat(document.getElementById('tx-deb').value) || 0;
+    db.config.custoBoleto = parseInputMoney(document.getElementById('tx-boleto-custo').value) || 0;
+    const tDeb = parseInputMoney(document.getElementById('tx-deb').value) || 0;
     const taxasCredito = {};
     for(let i=1; i<=12; i++) {
-        taxasCredito[i] = parseFloat(document.getElementById('tx-c'+i).value) || 0;
+        taxasCredito[i] = parseInputMoney(document.getElementById('tx-c'+i).value) || 0;
     }
 
     db.config.taxas = {

@@ -25,11 +25,11 @@ const Calculos = {
         if (!venda || !venda.itens) return 0;
         let custoTotal = 0;
         venda.itens.forEach(item => {
-            let custoUnitario = parseFloat(item.custo) || 0;
+            let custoUnitario = parseInputMoney(item.custo) || 0;
             custoTotal += (custoUnitario * item.qtd);
         });
         
-        let valorFinal = parseFloat(venda.tot || venda.valorLiquido) || 0;
+        let valorFinal = parseInputMoney(venda.tot || venda.valorLiquido) || 0;
         return valorFinal - custoTotal;
     },
 
@@ -47,7 +47,7 @@ const Calculos = {
         dataHoje.setHours(0,0,0,0);
         
         let juros = 0, multa = 0, diasAtraso = 0;
-        const valorBase = parseFloat(titulo.valor) || 0;
+        const valorBase = parseInputMoney(titulo.valor) || 0;
 
         if (dataHoje > dataVenc) {
             const diffTime = Math.abs(dataHoje - dataVenc);
@@ -59,9 +59,9 @@ const Calculos = {
 
         return {
             diasAtraso,
-            multa: parseFloat(multa.toFixed(2)),
-            juros: parseFloat(juros.toFixed(2)),
-            valorAtualizado: parseFloat((valorBase + multa + juros).toFixed(2))
+            multa: parseInputMoney(multa.toFixed(2)),
+            juros: parseInputMoney(juros.toFixed(2)),
+            valorAtualizado: parseInputMoney((valorBase + multa + juros).toFixed(2))
         };
     }
 };

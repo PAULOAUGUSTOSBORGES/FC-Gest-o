@@ -3,6 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- PWA ConfiguraÃ§Ãµes e Ãcones -->
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FC Gestão">
+    <link rel="apple-touch-icon" href="../icons/icon-apple-touch.png">
+    <link rel="icon" type="image/png" href="../icons/favicon.png">
     <title>Configurações do Sistema</title>
     <script>
         window.tailwind = window.tailwind || {};
@@ -14,7 +23,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="../style.css?v=20260829121956">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -193,22 +202,22 @@
                         <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Insira o percentual exato cobrado pela sua maquininha. O sistema abaterá isso para mostrar seu Lucro Real no Histórico.</p>
                         
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                            <div class="col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Cart&#227;o de D&#233;bito (%)</label><input type="number" step="0.01" id="tx-deb" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm font-bold text-slate-700 dark:text-slate-200 dark:text-white"></div>
-<div class="col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Custo Fixo por Boleto (R$)</label><input type="number" step="0.01" id="tx-boleto-custo" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm font-bold text-slate-700 dark:text-slate-200 dark:text-white"></div>
+                            <div class="col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Cart&#227;o de D&#233;bito (%)</label><input type="text" data-mask="money" inputmode="numeric"   id="tx-deb" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm font-bold text-slate-700 dark:text-slate-200 dark:text-white"></div>
+<div class="col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Custo Fixo por Boleto (R$)</label><input type="text" data-mask="money" inputmode="numeric"   id="tx-boleto-custo" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm font-bold text-slate-700 dark:text-slate-200 dark:text-white"></div>
                             
                             <!-- 1x a 12x -->
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 1x (%)</label><input type="number" step="0.01" id="tx-c1" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 2x (%)</label><input type="number" step="0.01" id="tx-c2" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 3x (%)</label><input type="number" step="0.01" id="tx-c3" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 4x (%)</label><input type="number" step="0.01" id="tx-c4" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 5x (%)</label><input type="number" step="0.01" id="tx-c5" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 6x (%)</label><input type="number" step="0.01" id="tx-c6" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 7x (%)</label><input type="number" step="0.01" id="tx-c7" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 8x (%)</label><input type="number" step="0.01" id="tx-c8" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 9x (%)</label><input type="number" step="0.01" id="tx-c9" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 10x (%)</label><input type="number" step="0.01" id="tx-c10" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 11x (%)</label><input type="number" step="0.01" id="tx-c11" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 12x (%)</label><input type="number" step="0.01" id="tx-c12" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 1x (%)</label><input type="text" data-mask="money" inputmode="numeric"   id="tx-c1" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 2x (%)</label><input type="text" data-mask="money" inputmode="numeric"   id="tx-c2" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 3x (%)</label><input type="text" data-mask="money" inputmode="numeric"   id="tx-c3" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 4x (%)</label><input type="text" data-mask="money" inputmode="numeric"   id="tx-c4" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 5x (%)</label><input type="text" data-mask="money" inputmode="numeric"   id="tx-c5" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 6x (%)</label><input type="text" data-mask="money" inputmode="numeric"   id="tx-c6" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 7x (%)</label><input type="text" data-mask="money" inputmode="numeric"   id="tx-c7" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 8x (%)</label><input type="text" data-mask="money" inputmode="numeric"   id="tx-c8" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 9x (%)</label><input type="text" data-mask="money" inputmode="numeric"   id="tx-c9" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 10x (%)</label><input type="text" data-mask="money" inputmode="numeric"   id="tx-c10" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 11x (%)</label><input type="text" data-mask="money" inputmode="numeric"   id="tx-c11" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 12x (%)</label><input type="text" data-mask="money" inputmode="numeric"   id="tx-c12" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
                         </div>
                     </div>
 
@@ -374,8 +383,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     
-    <script src="../global.js?v=20260826113700"></script>
-    <script src="sistema.js?v=20260826113700"></script>
+    <script src="../sistema/config_banco.js?v=20260829121956"></script>
+    <script src="../global.js?v=20260829121956"></script>
+    <script src="sistema.js?v=20260829121956"></script>
 </body>
 </html>
 

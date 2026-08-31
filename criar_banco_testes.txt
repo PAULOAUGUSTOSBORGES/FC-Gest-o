@@ -1,0 +1,42 @@
+========================================================================
+ GUIA: COMO CRIAR SEU BANCO DE DADOS DE TESTES ISOLADO
+========================================================================
+
+O seu sistema agora possui uma "Chave Mestra" que divide o ambiente entre Oficial (Produção) e Testes (Desenvolvimento local).
+
+Atualmente, se você abrir o arquivo `sistema/config_banco.js`, verá que as senhas do banco oficial estão preenchidas, mas as do banco de testes estão vazias ("SUA_API_KEY_DE_TESTES_AQUI"). 
+
+Para a trava de segurança funcionar, você precisa criar um banco de testes gratuito no Google. Siga os passos:
+
+========================================================================
+ PASSO 1: CRIAR O PROJETO DE TESTES NO FIREBASE
+========================================================================
+1. Acesse o painel do Firebase: https://console.firebase.google.com/
+2. Clique em "Adicionar projeto" (Add project).
+3. Dê o nome de: fcgestao-testes
+4. Desative o Google Analytics (não precisa para testes) e clique em Criar.
+
+========================================================================
+ PASSO 2: PEGAR AS CHAVES (FIREBASE CONFIG)
+========================================================================
+1. No painel do novo projeto, clique no ícone de "Web" (</>) logo na tela inicial.
+2. Dê um apelido (ex: App de Testes) e clique em Registrar.
+3. Ele vai te mostrar um código cheio de senhas (apiKey, authDomain, projectId...).
+4. Copie essas senhas.
+5. Abra o arquivo `sistema/config_banco.js` no seu computador e substitua as palavras "SUA_API_KEY..." pelos valores que o Google te deu.
+
+========================================================================
+ PASSO 3: CRIAR O BANCO DE DADOS
+========================================================================
+1. No menu lateral esquerdo do painel do Firebase, vá em "Firestore Database".
+2. Clique em "Criar banco de dados".
+3. Escolha começar em Modo de Teste (Test mode).
+4. Escolha qualquer localização (ex: nam5 ou us-central) e clique em Criar.
+
+PRONTO!
+Sempre que você quiser programar ou alterar coisas no visual da loja sem afetar o banco oficial da empresa, basta abrir o arquivo `sistema/config_banco.js`, mudar a linha:
+`const MODO_TESTES = false;` 
+para 
+`const MODO_TESTES = true;`
+
+E rodar o `iniciar_sistema.ps1`! Suas vendas e cadastros oficiais estarão blindados.

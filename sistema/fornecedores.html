@@ -3,6 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- PWA ConfiguraÃ§Ãµes e Ãcones -->
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FC Gestão">
+    <link rel="apple-touch-icon" href="../icons/icon-apple-touch.png">
+    <link rel="icon" type="image/png" href="../icons/favicon.png">
     <title>FC Móveis - FORNECEDORES</title>
     <script>
         window.tailwind = window.tailwind || {};
@@ -14,7 +23,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="../style.css?v=20260829121956">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -218,8 +227,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../global.js?v=20260826113700"></script>
-    <script src="fornecedores.js?v=20260826113700"></script>
+    <script src="../sistema/config_banco.js?v=20260829121956"></script>
+    <script src="../global.js?v=20260829121956"></script>
+    <script src="fornecedores.js?v=20260829121956"></script>
 </body>
 </html>
 

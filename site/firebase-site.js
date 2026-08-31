@@ -5,19 +5,7 @@
 // NÃO requer autenticação.
 // ==========================================
 
-const firebaseConfig = {
-    apiKey: "AIzaSyDIlmd3zUTof-lwxyT7j3UxmenPKs_sMJg",
-    authDomain: "lojafc-a31f9.firebaseapp.com",
-    projectId: "lojafc-a31f9",
-    storageBucket: "lojafc-a31f9.firebasestorage.app",
-    messagingSenderId: "221558052645",
-    appId: "1:221558052645:web:ed942d019727a472096ccc"
-};
-
-// Inicializa o Firebase apenas se ainda não foi inicializado
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
+// As credenciais e inicialização do Firebase agora vêm de ../sistema/config_banco.js
 
 
 // Helpers globais necessários para o site

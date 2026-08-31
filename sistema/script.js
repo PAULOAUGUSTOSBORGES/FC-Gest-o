@@ -5,18 +5,6 @@ if (sessionStorage.getItem('erp_auth_master') !== 'true') {
     window.location.href = 'login.html';
 }
 
-const firebaseConfig = {
-    apiKey: "AIzaSyDIlmd3zUTof-lwxyT7j3UxmenPKs_sMJg",
-    authDomain: "lojafc-a31f9.firebaseapp.com",
-    projectId: "lojafc-a31f9",
-    storageBucket: "lojafc-a31f9.firebasestorage.app",
-    messagingSenderId: "221558052645",
-    appId: "1:221558052645:web:ed942d019727a472096ccc"
-};
-
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
 const firestore = firebase.firestore();
 
 
@@ -277,13 +265,13 @@ function renderConfig() {
 
     fixas.forEach(metodo => {
         let mId = metodo.replace(/[^a-zA-Z\u00C0-\u017F]/g, '');
-        htmlInputs += `<div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Taxa: ${metodo}</label><input type="number" step="0.01" id="taxa-${mId}" value="${db.config.taxas[metodo] || 0}" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm font-bold outline-none focus:border-blue-500 dark:text-white"></div>`;
+        htmlInputs += `<div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Taxa: ${metodo}</label><input type="text" data-mask="money" inputmode="numeric"   id="taxa-${mId}" value="${db.config.taxas[metodo] || 0}" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm font-bold outline-none focus:border-blue-500 dark:text-white"></div>`;
     });
 
     htmlInputs += `<div class="md:col-span-3 mt-6 border-b border-slate-200 dark:border-slate-700 pb-2 mb-2"><h3 class="font-bold text-slate-700 dark:text-slate-200">Taxas Cartão de Crédito - Por Parcela (%)</h3></div>`;
     for (let i = 1; i <= 12; i++) {
         let val = db.config.taxas['Cartão Crédito'][i] || 0;
-        htmlInputs += `<div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Crédito em ${i}x</label><input type="number" step="0.01" id="taxa-cc-${i}" value="${val}" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm font-bold outline-none focus:border-blue-500 dark:text-white"></div>`;
+        htmlInputs += `<div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Crédito em ${i}x</label><input type="text" data-mask="money" inputmode="numeric"   id="taxa-cc-${i}" value="${val}" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm font-bold outline-none focus:border-blue-500 dark:text-white"></div>`;
     }
     area.innerHTML = htmlInputs;
 }
@@ -292,10 +280,10 @@ function salvarConfiguracoes() {
     const fixas = ['Dinheiro', 'PIX', 'Cartão Débito', 'Boleto', 'Fiado'];
     fixas.forEach(metodo => {
         let mId = metodo.replace(/[^a-zA-Z\u00C0-\u017F]/g, '');
-        db.config.taxas[metodo] = parseFloat(document.getElementById(`taxa-${mId}`).value) || 0;
+        db.config.taxas[metodo] = parseInputMoney(document.getElementById(`taxa-${mId}`).value) || 0;
     });
     for (let i = 1; i <= 12; i++) {
-        db.config.taxas['Cartão Crédito'][i] = parseFloat(document.getElementById(`taxa-cc-${i}`).value) || 0;
+        db.config.taxas['Cartão Crédito'][i] = parseInputMoney(document.getElementById(`taxa-cc-${i}`).value) || 0;
     }
     saveDB();
     showToast('Configurações e taxas atualizadas!', 'success');
@@ -361,23 +349,23 @@ function processarFoto(event) {
 }
 
 function calcularPrecoMargin(quemMudou = 'preco') {
-    const custo = parseFloat(document.getElementById('prod-custo').value) || 0;
+    const custo = parseInputMoney(document.getElementById('prod-custo').value) || 0;
     const precoEl = document.getElementById('prod-preco'); const margemEl = document.getElementById('prod-margem');
     if (custo <= 0) return;
-    if (quemMudou === 'preco') { margemEl.value = ((((parseFloat(precoEl.value) || 0) - custo) / custo) * 100).toFixed(2); }
-    else if (quemMudou === 'margem') { precoEl.value = (custo * (1 + ((parseFloat(margemEl.value) || 0) / 100))).toFixed(2); }
-    else if (quemMudou === 'custo') { if (parseFloat(margemEl.value) > 0) precoEl.value = (custo * (1 + (parseFloat(margemEl.value) / 100))).toFixed(2); }
+    if (quemMudou === 'preco') { margemEl.value = ((((parseInputMoney(precoEl.value) || 0) - custo) / custo) * 100).toFixed(2); }
+    else if (quemMudou === 'margem') { precoEl.value = (custo * (1 + ((parseInputMoney(margemEl.value) || 0) / 100))).toFixed(2); }
+    else if (quemMudou === 'custo') { if (parseInputMoney(margemEl.value) > 0) precoEl.value = (custo * (1 + (parseInputMoney(margemEl.value) / 100))).toFixed(2); }
 }
 
 function salvarProduto() {
-    const id = document.getElementById('prod-id').value; const nome = document.getElementById('prod-nome').value.trim(); const preco = parseFloat(document.getElementById('prod-preco').value);
+    const id = document.getElementById('prod-id').value; const nome = document.getElementById('prod-nome').value.trim(); const preco = parseInputMoney(document.getElementById('prod-preco').value);
     if (!nome || isNaN(preco)) return showToast('Preencha Nome e Preço de Venda!', 'error');
 
     const p = {
         id: id ? parseInt(id) : Date.now(), nome, preco, ean: document.getElementById('prod-ean').value,
         marca: document.getElementById('prod-marca').value, categoria: document.getElementById('prod-categoria').value,
-        unidade: document.getElementById('prod-unidade').value, custo: parseFloat(document.getElementById('prod-custo').value) || 0,
-        margem: parseFloat(document.getElementById('prod-margem').value) || 0, estoque: parseFloat(document.getElementById('prod-estoque').value) || 0,
+        unidade: document.getElementById('prod-unidade').value, custo: parseInputMoney(document.getElementById('prod-custo').value) || 0,
+        margem: parseInputMoney(document.getElementById('prod-margem').value) || 0, estoque: parseInputMoney(document.getElementById('prod-estoque').value) || 0,
         min: parseInt(document.getElementById('prod-minimo').value) || 0, ativo: document.getElementById('prod-ativo').value === 'true',
         obs: document.getElementById('prod-obs').value, foto: document.getElementById('prod-foto-base64').value
     };
@@ -838,7 +826,7 @@ function fecharModalCaixa() { document.getElementById('modal-mov-caixa').classLi
 
 function confirmarMovCaixa() {
     const op = document.getElementById('caixa-operacao-tipo').value;
-    const val = parseFloat(document.getElementById('caixa-op-valor').value) || 0;
+    const val = parseInputMoney(document.getElementById('caixa-op-valor').value) || 0;
     const desc = document.getElementById('caixa-op-desc').value || op;
 
     if (op === 'ABRIR') { db.caixa.status = 'ABERTO'; db.caixa.saldo = val; db.caixa.historico.unshift({ data: new Date().toISOString(), tipo: 'ABERTURA', desc, valor: val }); }
@@ -853,12 +841,14 @@ function renderTitulos(tipo) {
     const prefix = tipo === 'RECEITA' ? 'receber' : 'pagar';
     if (!document.getElementById('tabela-fin-' + prefix)) return;
     if (!db.financeiro) return;
-
     const statusFilterEl = document.getElementById('filtro-' + prefix + '-status');
     const statusFilter = statusFilterEl ? statusFilterEl.value : 'TODOS';
 
     const periodoFilterEl = document.getElementById('filtro-' + prefix + '-periodo');
-    const periodoFilter = periodoFilterEl ? periodoFilterEl.value : 'TUDO';
+    const periodoFilter = periodoFilterEl ? periodoFilterEl.value : 'MES';
+
+    const formaPagamentoFilterEl = document.getElementById('filtro-' + prefix + '-forma-pagamento');
+    const formaPagamentoFilter = formaPagamentoFilterEl ? formaPagamentoFilterEl.value : '';
 
     const buscaEl = document.getElementById('busca-fin-' + prefix);
     const termoBusca = buscaEl ? buscaEl.value.toLowerCase() : '';
@@ -872,7 +862,25 @@ function renderTitulos(tipo) {
     let lista = db.financeiro.filter(f => (f.tipo === tipo || (!f.tipo && tipo === 'RECEITA')));
 
     if (termoBusca) { lista = lista.filter(f => (f.pessoa && f.pessoa.toLowerCase().includes(termoBusca)) || (f.ref && f.ref.toLowerCase().includes(termoBusca)) || (f.categoria && f.categoria.toLowerCase().includes(termoBusca))); }
-    if (statusFilter !== 'TODOS') { lista = lista.filter(f => f.status === statusFilter); }
+    if (statusFilter !== 'TODOS') { 
+        if (statusFilter === 'ATRASADO') {
+            lista = lista.filter(f => f.status === 'PENDENTE' && new Date(f.data).getTime() < new Date().getTime());
+        } else if (statusFilter === 'RENEGOCIADO') {
+            lista = lista.filter(f => f.status === 'RENEGOCIADO');
+        } else {
+            lista = lista.filter(f => f.status === statusFilter); 
+        }
+    }
+
+    if (formaPagamentoFilter) {
+        lista = lista.filter(f => {
+            const metodo = f.metodoPagamento || f.formaPagamento || f.metodo || '';
+            if (formaPagamentoFilter === 'Cartão') {
+                return metodo.includes('Cartão') || metodo.includes('Credito') || metodo.includes('Debito');
+            }
+            return metodo === formaPagamentoFilter;
+        });
+    }
 
     lista.sort((a, b) => {
         if (sortOrder === 'venc_asc') return new Date(a.data) - new Date(b.data);
@@ -926,7 +934,7 @@ function abrirModalConta(tipo) {
 function fecharModalConta() { document.getElementById('modal-nova-conta').classList.add('hidden'); }
 
 function salvarConta() {
-    const tipo = document.getElementById('conta-tipo').value; const pessoa = document.getElementById('conta-pessoa').value.trim(); const valor = parseFloat(document.getElementById('conta-valor').value); const venc = document.getElementById('conta-vencimento').value;
+    const tipo = document.getElementById('conta-tipo').value; const pessoa = document.getElementById('conta-pessoa').value.trim(); const valor = parseInputMoney(document.getElementById('conta-valor').value); const venc = document.getElementById('conta-vencimento').value;
     if (!pessoa || isNaN(valor) || !venc) return showToast('Preencha Todos os campos!', 'error');
     const dtIso = new Date(venc + 'T12:00:00').toISOString();
     db.financeiro.unshift({ id: Date.now(), tipo: tipo, pessoa: pessoa, ref: document.getElementById('conta-ref').value || 'Avulso', categoria: document.getElementById('conta-categoria').value, data: dtIso, valor: valor, status: 'PENDENTE' });
@@ -960,7 +968,7 @@ function fecharModalDetalhesTitulo() { document.getElementById('modal-detalhes-t
 
 function abrirModalBaixa(id) { const f = db.financeiro.find(x => x.id === id); if (!f) return; document.getElementById('baixa-id').value = f.id; document.getElementById('baixa-valor-original').innerText = formatMoney(f.valor); document.getElementById('baixa-vencimento').innerText = formatData(f.data).split(' ')[0]; document.getElementById('baixa-acrescimo').value = 0; document.getElementById('baixa-desconto').value = 0; calcularAcrescimos(); document.getElementById('modal-baixa-conta').classList.remove('hidden'); }
 function fecharModalBaixa() { document.getElementById('modal-baixa-conta').classList.add('hidden'); }
-function calcularAcrescimos() { const id = parseInt(document.getElementById('baixa-id').value); const f = db.financeiro.find(x => x.id === id); if (!f) return; const ac = parseFloat(document.getElementById('baixa-acrescimo').value) || 0; const de = parseFloat(document.getElementById('baixa-desconto').value) || 0; const vf = f.valor + ac - de; document.getElementById('baixa-valor-final').innerText = formatMoney(vf); return vf; }
+function calcularAcrescimos() { const id = parseInt(document.getElementById('baixa-id').value); const f = db.financeiro.find(x => x.id === id); if (!f) return; const ac = parseInputMoney(document.getElementById('baixa-acrescimo').value) || 0; const de = parseInputMoney(document.getElementById('baixa-desconto').value) || 0; const vf = f.valor + ac - de; document.getElementById('baixa-valor-final').innerText = formatMoney(vf); return vf; }
 
 function confirmarBaixa() {
     const id = parseInt(document.getElementById('baixa-id').value); const f = db.financeiro.find(x => x.id === id); if (!f) return;
@@ -984,7 +992,7 @@ function processarXMLReal(event) {
     reader.onload = function (e) {
         try {
             const parser = new DOMParser(); const xmlDoc = parser.parseFromString(e.target.result, "text/xml");
-            const getFloatSafe = (context, tag) => { const node = context ? context.getElementsByTagName(tag)[0] : null; return node && node.textContent ? parseFloat(node.textContent) : 0; };
+            const getFloatSafe = (context, tag) => { const node = context ? context.getElementsByTagName(tag)[0] : null; return node && node.textContent ? parseInputMoney(node.textContent) : 0; };
             const getStringSafe = (context, tag) => { const node = context ? context.getElementsByTagName(tag)[0] : null; return node ? node.textContent : ''; };
             const emit = xmlDoc.getElementsByTagName("emit")[0];
             if (!emit) throw new Error("XML inválido.");
@@ -1015,12 +1023,12 @@ function processarXMLReal(event) {
 }
 
 function recalcularRateioXML() {
-    window.tempXMLData.freteExtra = parseFloat(document.getElementById('xml-frete-extra').value) || 0;
+    window.tempXMLData.freteExtra = parseInputMoney(document.getElementById('xml-frete-extra').value) || 0;
     window.tempXMLData.produtosXML.forEach(p => { let pesoValor = window.tempXMLData.totalNF > 0 ? (p.vTotalItemNaNota / window.tempXMLData.totalNF) : 0; p.custoFinal = p.qCom > 0 ? ((p.vTotalItemNaNota + (window.tempXMLData.freteExtra * pesoValor)) / p.qCom) : 0; p.precoVendaSug = p.custoFinal * (1 + (p.margemAtual / 100)); }); renderTelaConferenciaXML();
 }
 
 function xmlAtualizarValores(i, campo, val) {
-    const p = window.tempXMLData.produtosXML[i]; val = parseFloat(val) || 0;
+    const p = window.tempXMLData.produtosXML[i]; val = parseInputMoney(val) || 0;
     if (campo === 'custo') { p.custoFinal = val; p.precoVendaSug = p.custoFinal * (1 + (p.margemAtual / 100)); }
     if (campo === 'margem') { p.margemAtual = val; p.precoVendaSug = p.custoFinal * (1 + (p.margemAtual / 100)); }
     if (campo === 'preco') { p.precoVendaSug = val; if (p.custoFinal > 0) p.margemAtual = ((p.precoVendaSug - p.custoFinal) / p.custoFinal) * 100; }
@@ -1072,13 +1080,13 @@ function renderTelaConferenciaXML() {
     let linhas = '';
     d.produtosXML.forEach((p, i) => {
         linhas += `
-                <tr class="border-b border-slate-100 dark:border-slate-700 hover:bg-indigo-50">
+                <tr class="border-b border-slate-100 dark:border-slate-700/50 hover:bg-indigo-50 dark:hover:bg-slate-700/50 transition-colors">
                     <td class="p-2 text-xs"><input type="text" class="w-full bg-transparent font-bold text-slate-800 dark:text-slate-100 outline-none dark:text-white" value="${p.nome}" onchange="tempXMLData.produtosXML[${i}].nome = this.value"><span class="text-[10px] text-slate-500 dark:text-slate-400">EAN: ${p.cEAN || 'S/N'}</span></td>
                     <td class="p-2 text-xs text-center"><span class="${p.statusDB === 'NOVO' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'} px-2 py-0.5 rounded font-bold">${p.statusDB}</span></td>
                     <td class="p-2 text-xs text-center font-bold">${p.qCom}</td>
-                    <td class="p-2 text-xs text-right"><input type="number" step="0.01" class="w-20 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-right font-bold text-red-600 outline-none dark:text-white" value="${p.custoFinal.toFixed(2)}" onchange="xmlAtualizarValores(${i}, 'custo', this.value)"></td>
-                    <td class="p-2 text-xs text-center"><input type="number" step="0.1" class="w-16 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-center font-bold text-blue-600 outline-none dark:text-white" value="${p.margemAtual.toFixed(2)}" onchange="xmlAtualizarValores(${i}, 'margem', this.value)"> %</td>
-                    <td class="p-2 text-xs text-right"><input type="number" step="0.01" class="w-24 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-right font-bold text-emerald-600 outline-none dark:text-white" value="${p.precoVendaSug.toFixed(2)}" onchange="xmlAtualizarValores(${i}, 'preco', this.value)"></td>
+                    <td class="p-2 text-xs text-right"><input type="text" data-mask="money" inputmode="numeric"   class="w-20 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-right font-bold text-red-600 outline-none dark:text-white" value="${p.custoFinal.toFixed(2)}" onchange="xmlAtualizarValores(${i}, 'custo', this.value)"></td>
+                    <td class="p-2 text-xs text-center"><input type="text" data-mask="money" inputmode="numeric" step="0.1" class="w-16 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-center font-bold text-blue-600 outline-none dark:text-white" value="${p.margemAtual.toFixed(2)}" onchange="xmlAtualizarValores(${i}, 'margem', this.value)"> %</td>
+                    <td class="p-2 text-xs text-right"><input type="text" data-mask="money" inputmode="numeric"   class="w-24 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-right font-bold text-emerald-600 outline-none dark:text-white" value="${p.precoVendaSug.toFixed(2)}" onchange="xmlAtualizarValores(${i}, 'preco', this.value)"></td>
                     <td class="p-2 text-xs text-center"><button onclick="abrirModalProdutoDoXML('${i}')" class="text-indigo-500 bg-indigo-100 p-1.5 rounded"><i class="fa-solid fa-pen-to-square"></i></button></td>
                 </tr>`;
     });

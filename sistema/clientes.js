@@ -232,18 +232,18 @@ function processarFoto(event) {
 }
 
 function calcularPrecoMargin(quemMudou = 'preco') {
-    const custo = parseFloat(document.getElementById('prod-custo').value) || 0;
+    const custo = parseInputMoney(document.getElementById('prod-custo').value) || 0;
     const precoEl = document.getElementById('prod-preco'); const margemEl = document.getElementById('prod-margem');
     if (custo <= 0) return;
-    if (quemMudou === 'preco') { margemEl.value = ((((parseFloat(precoEl.value) || 0) - custo) / custo) * 100).toFixed(2); }
-    else if (quemMudou === 'margem') { precoEl.value = (custo * (1 + ((parseFloat(margemEl.value) || 0) / 100))).toFixed(2); }
-    else if (quemMudou === 'custo') { if ((parseFloat(margemEl.value) || 0) > 0) precoEl.value = (custo * (1 + ((parseFloat(margemEl.value) || 0) / 100))).toFixed(2); }
+    if (quemMudou === 'preco') { margemEl.value = ((((parseInputMoney(precoEl.value) || 0) - custo) / custo) * 100).toFixed(2); }
+    else if (quemMudou === 'margem') { precoEl.value = (custo * (1 + ((parseInputMoney(margemEl.value) || 0) / 100))).toFixed(2); }
+    else if (quemMudou === 'custo') { if ((parseInputMoney(margemEl.value) || 0) > 0) precoEl.value = (custo * (1 + ((parseInputMoney(margemEl.value) || 0) / 100))).toFixed(2); }
 }
 
 async function salvarProduto() {
     const id = document.getElementById('prod-id').value;
     const nome = document.getElementById('prod-nome').value.trim();
-    const preco = parseFloat(document.getElementById('prod-preco').value);
+    const preco = parseInputMoney(document.getElementById('prod-preco').value);
 
     if (!nome || isNaN(preco)) return showToast('Preencha Nome e Preço de Venda!', 'error');
 
@@ -253,9 +253,9 @@ async function salvarProduto() {
         marca: document.getElementById('prod-marca').value,
         categoria: document.getElementById('prod-categoria').value,
         unidade: document.getElementById('prod-unidade').value,
-        custo: parseFloat(document.getElementById('prod-custo').value) || 0,
-        margem: parseFloat(document.getElementById('prod-margem').value) || 0,
-        estoque: parseFloat(document.getElementById('prod-estoque').value) || 0,
+        custo: parseInputMoney(document.getElementById('prod-custo').value) || 0,
+        margem: parseInputMoney(document.getElementById('prod-margem').value) || 0,
+        estoque: parseInputMoney(document.getElementById('prod-estoque').value) || 0,
         min: parseInt(document.getElementById('prod-minimo').value) || 0,
         ativo: document.getElementById('prod-ativo').value === 'true',
         obs: document.getElementById('prod-obs').value,
@@ -636,9 +636,9 @@ async function processarPlanilhaProdutos(event) {
                 const ean = colunas[1] || '';
                 const categoria = colunas[2] || 'Geral';
                 const marca = colunas[3] || '';
-                const custo = parseFloat(colunas[4] ? colunas[4].replace(',', '.') : 0) || 0;
-                const margem = parseFloat(colunas[5] ? colunas[5].replace(',', '.') : 0) || 0;
-                const preco = parseFloat(colunas[6] ? colunas[6].replace(',', '.') : 0) || 0;
+                const custo = parseInputMoney(colunas[4] ? colunas[4].replace(',', '.') : 0) || 0;
+                const margem = parseInputMoney(colunas[5] ? colunas[5].replace(',', '.') : 0) || 0;
+                const preco = parseInputMoney(colunas[6] ? colunas[6].replace(',', '.') : 0) || 0;
                 const estoque = parseInt(colunas[7]) || 0;
                 const min = parseInt(colunas[8]) || 5;
 
@@ -792,7 +792,7 @@ async function salvarFuncionario() {
         nome: document.getElementById('func-nome').value.trim().toUpperCase(),
         email: email,
         vendedor: document.getElementById('func-vendedor').value,
-        comissao: parseFloat(document.getElementById('func-comissao').value) || 0,
+        comissao: parseInputMoney(document.getElementById('func-comissao').value) || 0,
         telefone: document.getElementById('func-telefone').value.trim(),
         perm_dashboard: document.getElementById('func-perm-dashboard').checked,
         perm_pdv: document.getElementById('func-perm-pdv').checked,

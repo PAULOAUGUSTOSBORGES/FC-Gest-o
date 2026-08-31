@@ -3,6 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- PWA ConfiguraÃ§Ãµes e Ãcones -->
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FC Gestão">
+    <link rel="apple-touch-icon" href="../icons/icon-apple-touch.png">
+    <link rel="icon" type="image/png" href="../icons/favicon.png">
     <title>FC Móveis - PDV</title>
     <script>
         window.tailwind = window.tailwind || {};
@@ -17,7 +26,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- CORRIGIDO: Removido o ?v=10 que estava quebrando o carregamento offline -->
-    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="../style.css?v=20260829121956">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -195,11 +204,11 @@
                                     </div>
                                     <div class="flex justify-between items-center text-slate-400 text-xs md:text-sm mb-2 border-b border-slate-700 pb-2">
                                         <span>Taxas Extras / Desloc (+)</span>
-                                        <input type="number" id="pdv-frete" oninput="pdvAtualizarTotais(); atualizarResumoPagamentosVenda();" value="0" class="w-20 md:w-24 bg-slate-800 text-white text-right font-bold border border-slate-600 rounded px-2 py-1 outline-none focus:border-blue-400 dark:text-white">
+                                        <input type="text" data-mask="money" inputmode="numeric" id="pdv-frete" oninput="pdvAtualizarTotais(); atualizarResumoPagamentosVenda();" value="0" class="w-20 md:w-24 bg-slate-800 text-white text-right font-bold border border-slate-600 rounded px-2 py-1 outline-none focus:border-blue-400 dark:text-white">
                                     </div>
                                     <div class="flex justify-between items-center text-slate-400 text-xs md:text-sm mb-4 border-b border-slate-700 pb-4">
                                         <span>Desconto (R$ -)</span>
-                                        <input type="number" id="pdv-desconto" oninput="pdvAtualizarTotais(); atualizarResumoPagamentosVenda();" value="0" class="w-20 md:w-24 bg-slate-800 text-white text-right font-bold border border-slate-600 rounded px-2 py-1 outline-none focus:border-red-400 dark:text-white">
+                                        <input type="text" data-mask="money" inputmode="numeric" id="pdv-desconto" oninput="pdvAtualizarTotais(); atualizarResumoPagamentosVenda();" value="0" class="w-20 md:w-24 bg-slate-800 text-white text-right font-bold border border-slate-600 rounded px-2 py-1 outline-none focus:border-red-400 dark:text-white">
                                     </div>
                                     <div class="flex justify-between items-end">
                                         <span class="text-xs md:text-sm font-bold uppercase text-slate-300 tracking-wider">Total Final</span>
@@ -225,7 +234,7 @@
                                         <option value="1">1x</option><option value="2">2x</option><option value="3">3x</option><option value="4">4x</option><option value="5">5x</option><option value="6">6x</option><option value="7">7x</option><option value="8">8x</option><option value="9">9x</option><option value="10">10x</option><option value="11">11x</option><option value="12">12x</option>
                                     </select>
                                     <input type="date" id="pdv-vencimento-atual" class="hidden w-32 bg-amber-50 border border-amber-300 p-2.5 rounded-lg text-xs font-bold text-amber-800 outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" title="Vencimento da 1ª Parcela">
-                                    <input type="number" id="pdv-valor-atual" step="0.01" class="w-24 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm font-black text-slate-800 dark:text-slate-100 outline-none focus:border-blue-500 dark:text-white" placeholder="R$ 0,00" onkeypress="if(event.key === 'Enter') adicionarPagamentoVenda()">
+                                    <input type="text" data-mask="money" inputmode="numeric"  id="pdv-valor-atual"  class="w-24 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm font-black text-slate-800 dark:text-slate-100 outline-none focus:border-blue-500 dark:text-white" placeholder="R$ 0,00" onkeypress="if(event.key === 'Enter') adicionarPagamentoVenda()">
                                     <button onclick="adicionarPagamentoVenda()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2.5 rounded-lg font-bold transition text-xs shadow-sm"><i class="fa-solid fa-plus"></i></button>
                                 </div>
                                 <div id="pdv-datas-parcelas" class="w-full flex flex-col gap-2 mb-3 hidden"></div>
@@ -557,11 +566,11 @@
                         </div>
                         <div>
                             <label class="text-xs font-bold text-emerald-700 mb-1.5 block">Preço Cobrado (R$)</label>
-                            <input type="number" id="prod-preco" step="0.01" class="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 p-2.5 rounded-lg text-sm font-bold outline-none focus:border-emerald-500 transition-all dark:bg-slate-800 dark:border-slate-600 dark:text-white">
+                            <input type="text" data-mask="money" inputmode="numeric"  id="prod-preco"  class="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 p-2.5 rounded-lg text-sm font-bold outline-none focus:border-emerald-500 transition-all dark:bg-slate-800 dark:border-slate-600 dark:text-white">
                         </div>
                         <div>
                             <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Custo (R$)</label>
-                            <input type="number" id="prod-custo" step="0.01" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" value="0">
+                            <input type="text" data-mask="money" inputmode="numeric"  id="prod-custo"  class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" value="0">
                         </div>
                         <div>
                             <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Estoque Inicial (Zero se for Serviço)</label>
@@ -628,8 +637,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
 
-    <script src="../global.js?v=20260826113700"></script>
-    <script src="pdv.js?v=20260826113700"></script>
+    <script src="../sistema/config_banco.js?v=20260829121956"></script>
+    <script src="../global.js?v=20260829121956"></script>
+    <script src="pdv.js?v=20260829121956"></script>
 </body>
 </html>
 

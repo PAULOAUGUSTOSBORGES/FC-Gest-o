@@ -12,23 +12,30 @@ window.escapeHtml = escapeHtml;
 // 1. CONFIGURAÇÕES DO FIREBASE E SEGURANÇA
 // ==========================================
 
+// --- KILL SWITCH DO SERVICE WORKER E CACHE ---
+// Adicionado para resolver o problema de loop infinito (cache travado).
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let r of registrations) {
+            r.unregister();
+        }
+    });
+}
+if (window.caches) {
+    caches.keys().then(function(names) {
+        for (let name of names) {
+            caches.delete(name);
+        }
+    });
+}
+// ---------------------------------------------
+
 // Motor de Tema Instantâneo (Sempre escuro)
 (function () {
     document.documentElement.classList.add('dark');
 })();
 
-const firebaseConfig = {
-    apiKey: "AIzaSyDIlmd3zUTof-lwxyT7j3UxmenPKs_sMJg",
-    authDomain: "lojafc-a31f9.firebaseapp.com",
-    projectId: "lojafc-a31f9",
-    storageBucket: "lojafc-a31f9.firebasestorage.app",
-    messagingSenderId: "221558052645",
-    appId: "1:221558052645:web:ed942d019727a472096ccc"
-};
-
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
+// As credenciais e inicialização do Firebase agora vêm de sistema/config_banco.js
 const firestore = firebase.firestore();
 
 // ATIVAR MODO OFFLINE (Agora funciona pois usamos o servidor local)
@@ -91,6 +98,107 @@ if (!navigator.onLine) {
 }
 
 const formatMoney = (val) => Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+// ==========================================
+// FUNÇÕES DE MÁSCARA DE DINHEIRO
+// ==========================================
+function applyMoneyMask(el) {
+    let value = String(el.value).replace(/\D/g, "");
+    if (!value) value = "0";
+    value = parseInt(value, 10).toString();
+    value = value.padStart(3, '0');
+    
+    let decimals = value.slice(-2);
+    let integers = value.slice(0, -2);
+    
+    integers = integers.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    
+    el.value = integers + "," + decimals;
+}
+
+function parseInputMoney(val) {
+    if (typeof val === 'number') return val;
+    if (!val) return 0;
+    let str = String(val);
+    
+    if (str.includes(',')) {
+        str = str.replace(/\./g, "").replace(",", ".");
+    }
+    
+    let parsed = parseFloat(str);
+    return isNaN(parsed) ? 0 : parsed;
+}
+
+function formatMoneyInput(val) {
+    let num = Number(val) || 0;
+    return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+document.addEventListener('input', function(e) {
+    if (e.target && e.target.dataset && e.target.dataset.mask === 'money') {
+        applyMoneyMask(e.target);
+    }
+});
+
+document.addEventListener('focusin', function(e) {
+    if (e.target && e.target.dataset && e.target.dataset.mask === 'money') {
+        applyMoneyMask(e.target);
+        if (e.target.value === '0,00' || e.target.value === '' || e.target.value === '0') {
+            e.target.select();
+        }
+    }
+});
+
+// Interceptar atribuições de '.value' em inputs de dinheiro para auto-formatar floats
+let isMasking = false;
+const originalValueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+Object.defineProperty(HTMLInputElement.prototype, 'value', {
+    set: function(newVal) {
+        if (this.dataset && this.dataset.mask === 'money' && !isMasking) {
+            if (newVal !== '' && newVal !== null && newVal !== undefined) {
+                if (typeof newVal === 'number' || !String(newVal).includes(',')) {
+                    let parsed = parseFloat(newVal);
+                    if (!isNaN(parsed)) newVal = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+            }
+            isMasking = true;
+            originalValueSetter.call(this, newVal);
+            applyMoneyMask(this);
+            isMasking = false;
+        } else {
+            originalValueSetter.call(this, newVal);
+        }
+    }
+});
+
+// Observer para formatar inputs injetados via innerHTML (ex: tabelas)
+const moneyMaskObserver = new MutationObserver((mutations) => {
+    mutations.forEach(mutation => {
+        if (mutation.type === 'childList') {
+            mutation.addedNodes.forEach(node => {
+                if (node.nodeType === 1) { 
+                    if (node.dataset && node.dataset.mask === 'money') {
+                        if (node.value && !node.value.includes(',')) {
+                            let p = parseFloat(node.value);
+                            if (!isNaN(p)) node.value = p.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        }
+                        applyMoneyMask(node);
+                    }
+                    if (node.querySelectorAll) {
+                        node.querySelectorAll('[data-mask="money"]').forEach(el => {
+                            if (el.value && !el.value.includes(',')) {
+                                let p = parseFloat(el.value);
+                                if (!isNaN(p)) el.value = p.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            }
+                            applyMoneyMask(el);
+                        });
+                    }
+                }
+            });
+        }
+    });
+});
+moneyMaskObserver.observe(document.body, { childList: true, subtree: true });
 const formatData = (isoStr) => {
     if (!isoStr) return '-';
     const d = new Date(isoStr);
@@ -638,4 +746,82 @@ window.formatarEBuscarDoc = function(input, prefixo) {
         }
     }
 };
+
+// ==========================================
+// SUPORTE A PWA & INSTALAÇÃO DE APLICATIVO
+// ==========================================
+let deferredPwaPrompt = null;
+
+if ('serviceWorker' in navigator && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
+    window.addEventListener('load', () => {
+        const swPath = window.location.pathname.includes('/sistema/') ? '../sw.js' : './sw.js';
+        navigator.serviceWorker.register(swPath)
+            .then(reg => console.log('🚀 PWA Service Worker ativo!'))
+            .catch(err => console.warn('PWA Service Worker offline/ignorado:', err));
+    });
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPwaPrompt = e;
+    window.deferredPwaPrompt = e;
+    console.log('📲 PWA: Evento de instalação pronto.');
+    mostrarBotaoInstalarApp();
+});
+
+window.addEventListener('appinstalled', () => {
+    deferredPwaPrompt = null;
+    window.deferredPwaPrompt = null;
+    console.log('🎉 PWA: Aplicativo instalado com sucesso!');
+    const btn = document.getElementById('btn-instalar-pwa');
+    if (btn) btn.remove();
+    if (typeof showToast === 'function') {
+        showToast('Aplicativo instalado com sucesso!', 'success');
+    }
+});
+
+function mostrarBotaoInstalarApp() {
+    if (document.getElementById('btn-instalar-pwa')) return;
+    
+    // Se já estiver rodando instalado como App, não precisa mostrar
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    if (isStandalone) return;
+
+    // Procura o container do botão de Sair no menu lateral
+    const logoutBtn = document.querySelector('button[onclick*="fazerLogout"]');
+    if (logoutBtn && logoutBtn.parentElement) {
+        const container = logoutBtn.parentElement;
+        const btnInstalar = document.createElement('button');
+        btnInstalar.id = 'btn-instalar-pwa';
+        btnInstalar.className = 'w-full mb-3 flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold py-2.5 px-3 rounded-lg shadow-lg shadow-blue-500/20 transition-all transform hover:scale-[1.02] cursor-pointer';
+        btnInstalar.innerHTML = '<i class="fa-solid fa-cloud-arrow-down text-sm"></i> Instalar Aplicativo';
+        btnInstalar.onclick = window.instalarPWA;
+        container.insertBefore(btnInstalar, logoutBtn);
+    }
+}
+
+window.instalarPWA = async function() {
+    if (deferredPwaPrompt) {
+        deferredPwaPrompt.prompt();
+        const choiceResult = await deferredPwaPrompt.userChoice;
+        if (choiceResult && choiceResult.outcome === 'accepted') {
+            console.log('Usuário aceitou instalar o PWA');
+            deferredPwaPrompt = null;
+            const btn = document.getElementById('btn-instalar-pwa');
+            if (btn) btn.remove();
+        }
+    } else {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIOS) {
+            alert('📲 Como instalar no iPhone / iPad:\n\n1. Toque no botão "Compartilhar" (ícone com quadrado e seta para cima na barra do Safari).\n2. Role para baixo e toque em "Adicionar à Tela de Início".\n3. Toque em "Adicionar" no topo direito.');
+        } else {
+            alert('📲 Como instalar no Computador ou Android:\n\n1. No Google Chrome ou Microsoft Edge, clique no ícone "Instalar Aplicativo" na barra de endereços (ao lado da estrela de favoritos).\n2. Ou clique nos 3 pontinhos do navegador e escolha "Instalar FC Gestão".');
+        }
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(mostrarBotaoInstalarApp, 1000);
+});
+
 

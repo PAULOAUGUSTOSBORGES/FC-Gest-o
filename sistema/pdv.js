@@ -130,6 +130,13 @@ function inicializarOperacao() {
         const o = document.getElementById('view-orcamentos');
         if(v && v.classList.contains('active')) renderVendas();
         if(o && o.classList.contains('active')) renderOrcamentos();
+        
+        // Auto-edição vinda de outras páginas
+        const editId = sessionStorage.getItem('autoEditVendaId');
+        if(editId) {
+            sessionStorage.removeItem('autoEditVendaId');
+            executarEstornoEEdicao(editId);
+        }
     });
     firestore.collection('fc_moveis').doc('caixa').onSnapshot(doc => {
         if(doc.exists) db.caixa = doc.data();
@@ -439,13 +446,13 @@ async function salvarProdutoRapido() {
     const nomeEl = document.getElementById('prod-nome');
     const precoEl = document.getElementById('prod-preco');
     if(!nomeEl || !precoEl) return showToast('Erro no formulário.', 'error');
-    const nome = nomeEl.value.trim(); const preco = parseFloat(precoEl.value);
+    const nome = nomeEl.value.trim(); const preco = parseInputMoney(precoEl.value);
     if(!nome || isNaN(preco)) return showToast('Preencha Nome e Preço de Venda!', 'error');
 
     const ean = document.getElementById('prod-ean') ? document.getElementById('prod-ean').value : '';
     const marca = document.getElementById('prod-marca') ? document.getElementById('prod-marca').value : '';
-    const custo = document.getElementById('prod-custo') ? parseFloat(document.getElementById('prod-custo').value) : 0;
-    const estoque = document.getElementById('prod-estoque') ? parseFloat(document.getElementById('prod-estoque').value) : 0;
+    const custo = document.getElementById('prod-custo') ? parseInputMoney(document.getElementById('prod-custo').value) : 0;
+    const estoque = document.getElementById('prod-estoque') ? parseInputMoney(document.getElementById('prod-estoque').value) : 0;
     const foto = document.getElementById('prod-foto-base64') ? document.getElementById('prod-foto-base64').value : '';
 
     const ncm = document.getElementById('prod-ncm') ? document.getElementById('prod-ncm').value : '';
@@ -1148,8 +1155,8 @@ function renderCarrinho() {
                 <input type="text" placeholder="Obs do item (cor, lado, etc...)" value="${item.obsVenda || ''}" onchange="pdvMudarObsItem(${i}, this.value)" class="w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-[10px] outline-none focus:border-blue-400 placeholder:text-slate-300 dark:text-white">
             </td>
             <td class="py-2 text-center"><input type="number" step="0.001" min="0.001" value="${item.qtd}" onchange="pdvMudarQtd(${i}, this.value)" class="w-14 text-center border border-slate-300 dark:border-slate-600 rounded-lg p-1.5 font-bold outline-none bg-white dark:bg-slate-800 dark:text-white"></td>
-            <td class="py-2 text-right"><input type="number" step="0.01" value="${Number(item.preco).toFixed(2)}" onchange="pdvMudarPreco(${i}, this.value)" class="w-20 text-right border border-slate-300 dark:border-slate-600 rounded-lg p-1.5 font-bold text-slate-600 dark:text-slate-300 outline-none focus:border-blue-500 bg-white dark:bg-slate-800 dark:text-white"></td>
-            <td class="py-2 text-right"><input type="number" step="0.01" value="${Number(item.desconto || 0).toFixed(2)}" onchange="pdvMudarDescontoItem(${i}, this.value)" class="w-20 text-right border border-slate-300 dark:border-slate-600 rounded-lg p-1.5 font-bold text-red-500 dark:text-red-400 outline-none focus:border-red-500 bg-white dark:bg-slate-800"></td>
+            <td class="py-2 text-right"><input type="text" data-mask="money" inputmode="numeric"   value="${Number(item.preco).toFixed(2)}" onchange="pdvMudarPreco(${i}, this.value)" class="w-20 text-right border border-slate-300 dark:border-slate-600 rounded-lg p-1.5 font-bold text-slate-600 dark:text-slate-300 outline-none focus:border-blue-500 bg-white dark:bg-slate-800 dark:text-white"></td>
+            <td class="py-2 text-right"><input type="text" data-mask="money" inputmode="numeric"   value="${Number(item.desconto || 0).toFixed(2)}" onchange="pdvMudarDescontoItem(${i}, this.value)" class="w-20 text-right border border-slate-300 dark:border-slate-600 rounded-lg p-1.5 font-bold text-red-500 dark:text-red-400 outline-none focus:border-red-500 bg-white dark:bg-slate-800"></td>
             <td class="py-2 text-right font-bold text-slate-800 dark:text-slate-100">${formatMoney(((item.preco || 0) * (item.qtd || 1)) - (item.desconto || 0))}</td>
             <td class="py-2 text-center"><button onclick="cart.splice(${i},1); renderCarrinho()" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash text-lg"></i></button></td>
         </tr>`;
@@ -1160,7 +1167,7 @@ function renderCarrinho() {
 function pdvMudarQtd(i, n) { 
     const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : 'Venda'; 
     const isOrcamento = op === 'Orçamento'; 
-    const novaQtd = Math.max(0.001, parseFloat(n)||0.001); 
+    const novaQtd = Math.max(0.001, parseInputMoney(n)||0.001); 
     cart[i].qtd = novaQtd; 
     
     const p = db.produtos.find(x => String(x.id) === String(cart[i].id)); 
@@ -1171,7 +1178,7 @@ function pdvMudarQtd(i, n) {
 }
 
 function pdvMudarPreco(i, val) { 
-    const novoPreco = parseFloat(val); 
+    const novoPreco = parseInputMoney(val); 
     if(!isNaN(novoPreco) && novoPreco >= 0) { 
         cart[i].preco = novoPreco; 
     } 
@@ -1201,14 +1208,14 @@ function pdvLimpar() {
 }
 
 function pdvMudarDescontoItem(i, n) { 
-    cart[i].desconto = Math.max(0, parseFloat(n) || 0); 
+    cart[i].desconto = Math.max(0, parseInputMoney(n) || 0); 
     renderCarrinho(); 
 }
 
 function pdvAtualizarTotais() { 
     const sub = cart.reduce((acc, i) => acc + (((i.preco || 0) * (i.qtd || 1)) - (i.desconto || 0)), 0); 
-    let frete = parseFloat(document.getElementById('pdv-frete').value) || 0; 
-    let desc = parseFloat(document.getElementById('pdv-desconto').value) || 0; 
+    let frete = parseInputMoney(document.getElementById('pdv-frete').value) || 0; 
+    let desc = parseInputMoney(document.getElementById('pdv-desconto').value) || 0; 
     
     if(desc > (sub + frete)) desc = sub + frete; 
     const tot = sub + frete - desc; 
@@ -1398,7 +1405,7 @@ function adicionarPagamentoVenda() {
     const metodo = document.getElementById('pdv-metodo-atual').value || ''; 
     const inputValor = document.getElementById('pdv-valor-atual'); 
     const parcelas = parseInt(document.getElementById('pdv-parcelas-atual').value) || 1; 
-    const valor = parseFloat(inputValor.value); 
+    const valor = parseInputMoney(inputValor.value); 
     
     if (!valor || valor <= 0) return showToast("Digite um valor numérico válido para o pagamento.", "error"); 
     
@@ -1483,7 +1490,7 @@ async function finalizarVendaMultipla() {
     
     const isEdicao = window.vendaEmEdicao != null;
     const vendaId = isEdicao ? window.vendaEmEdicao.id : Date.now();
-    const dataIso = isEdicao ? window.vendaEmEdicao.data : new Date().toISOString();
+    const dataIso = (isEdicao && window.vendaEmEdicao && window.vendaEmEdicao.data) ? window.vendaEmEdicao.data : new Date().toISOString();
     
     let numeroPedido = 1;
     if (isEdicao && window.vendaEmEdicao.numeroPedido) {
@@ -1631,9 +1638,9 @@ async function finalizarVendaMultipla() {
         data: dataIso, 
         clienteId: cId || '', 
         clienteNome: cliInfo.nome || '', 
-        clienteDoc: cliInfo.doc,
-        clienteTel: cliInfo.tel,
-        clienteEnd: cliInfo.endCompleto,
+        clienteDoc: cliInfo.doc || 'Não informado',
+        clienteTel: cliInfo.tel || 'Não informado',
+        clienteEnd: cliInfo.endCompleto || 'Não informado',
         subtotal: sub || 0, 
         frete: frete || 0, 
         desconto: desc || 0, 
@@ -1646,8 +1653,8 @@ async function finalizarVendaMultipla() {
         pagamentos: pagamentosVendaAtual ? JSON.parse(JSON.stringify(pagamentosVendaAtual)) : [],
         vendedor: vend || '', 
         obs: obsTexto || '', 
-        tipo: tipoVenda, 
-        servicoDetalhes: isServico ? { prazo: osPrazo, garantia: osGarantia, desc: osDesc, fotos: osFotosParaSalvar } : null, 
+        tipo: tipoVenda || 'VENDA', 
+        servicoDetalhes: isServico ? { prazo: osPrazo || '', garantia: osGarantia || '', desc: osDesc || '', fotos: osFotosParaSalvar || [] } : null, 
         itens: itensLimpados 
     };
     
@@ -2030,6 +2037,144 @@ function fecharModalDetalhesVenda() {
     if (m) m.classList.add('hidden'); 
 }
 
+async function executarEstornoEEdicao(id) {
+    const v = (db.vendas || []).find(x => String(x.id) === String(id)); 
+    if(!v) return showToast('Venda não encontrada.', 'error'); 
+
+    const isOrcamento = v.tipo === 'ORÇAMENTO'; 
+    try {
+        const batch = firestore.batch();
+        const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
+        
+        if(!isOrcamento) {
+            if(v.itens && v.itens.length > 0) {
+                v.itens.forEach(item => {
+                    if(item.id) {
+                        const pRef = firestore.collection('produtos').doc(String(item.id));
+                        batch.update(pRef, { estoque: firebase.firestore.FieldValue.increment(Number(item.qtd || 1)) });
+                        
+                        const kardexRef = firestore.collection('movimentacoes').doc();
+                        batch.set(kardexRef, {
+                            data: new Date().toISOString(),
+                            ref: `Estorno (Edição) ${v.tipo || 'Venda'} #${numPedStr}`,
+                            prodId: item.id,
+                            prodNome: item.nome || 'Produto',
+                            qtd: Number(item.qtd || 1),
+                            tipo: 'ESTORNO'
+                        });
+                    }
+                });
+            }
+            
+            const finQuery = await firestore.collection('financeiro').where('origemVendaId', '==', String(id)).get();
+            finQuery.docs.forEach(doc => {
+                batch.delete(doc.ref);
+            });
+            
+            // Estorno de Caixa Físico Preciso (Apenas dinheiro em espécie)
+            let valorDinheiroEfetivo = 0;
+            if (Array.isArray(v.pagamentos) && v.pagamentos.length > 0) {
+                const pDinheiro = v.pagamentos.find(p => p && (p.metodo === 'Dinheiro' || String(p.metodo).includes('Dinheiro')));
+                if (pDinheiro) {
+                    valorDinheiroEfetivo = Number(pDinheiro.valor || 0) - Number(v.troco || 0);
+                    if (valorDinheiroEfetivo < 0) valorDinheiroEfetivo = 0;
+                }
+            } else if (v.pag && typeof v.pag === 'string' && String(v.pag).includes('Dinheiro') && !String(v.pag).includes('+')) {
+                valorDinheiroEfetivo = Number(v.tot || v.valorLiquido || 0);
+            }
+
+            if (valorDinheiroEfetivo > 0) {
+                let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
+                let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
+                let cxSaldoNovo = (cxAtual.saldo || 0) - valorDinheiroEfetivo;
+                cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno (Edição) ${v.tipo || 'Venda'} #${numPedStr}`, valor: valorDinheiroEfetivo });
+                
+                const caixaRef = firestore.collection('fc_moveis').doc('caixa');
+                batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+            }
+        }
+        const vendaRef = firestore.collection('vendas').doc(String(id));
+        batch.delete(vendaRef);
+        
+        await batch.commit(); 
+
+        pdvLimpar(); 
+        
+        // Em vez de usar mudarVisaoLocal que falha em app multi-page, garantimos estar na página certa
+        if(window.location.pathname.indexOf('pdv.html') === -1) {
+            window.location.href = 'pdv.html';
+            return;
+        }
+        
+        window.vendaEmEdicao = {
+            id: v.id,
+            data: v.data,
+            numeroPedido: v.numeroPedido
+        };
+        
+        const opSelect = document.getElementById('pdv-operacao');
+        if(opSelect) opSelect.value = v.tipo === 'ORÇAMENTO' ? 'Orçamento' : (v.tipo === 'SERVIÇO' ? 'Serviço' : 'Venda');
+        togglePanelServico();
+        
+        setTimeout(() => {
+            const hiddenCli = document.getElementById('pdv-cliente');
+            const buscaCli = document.getElementById('pdv-cliente-busca');
+            if(hiddenCli && buscaCli) {
+                hiddenCli.value = v.clienteId || '0';
+                if (v.clienteId && v.clienteId !== '0') {
+                    const cEncontrado = db.clientes.find(cli => String(cli.id) === String(v.clienteId));
+                    buscaCli.value = cEncontrado ? cEncontrado.nome : (v.clienteNome || '');
+                } else {
+                    buscaCli.value = '';
+                }
+            }
+            
+            const vendSelect = document.getElementById('pdv-vendedor');
+            if(vendSelect && v.vendedor) vendSelect.value = v.vendedor;
+
+            const elFrete = document.getElementById('pdv-frete');
+            if(elFrete) elFrete.value = v.frete || 0;
+            
+            const elDesc = document.getElementById('pdv-desconto');
+            if(elDesc) elDesc.value = v.desconto || 0;
+            
+            const obsEl = document.getElementById('pdv-obs');
+            if(obsEl) obsEl.value = v.obs || '';
+
+            if(v.tipo === 'SERVIÇO' && v.servicoDetalhes) {
+                if(document.getElementById('os-prazo')) document.getElementById('os-prazo').value = v.servicoDetalhes.prazo || '';
+                if(document.getElementById('os-garantia')) document.getElementById('os-garantia').value = v.servicoDetalhes.garantia || '';
+                if(document.getElementById('os-desc')) document.getElementById('os-desc').value = v.servicoDetalhes.desc || '';
+                osFotosArray = v.servicoDetalhes.fotos ? [...v.servicoDetalhes.fotos] : [];
+                renderizarFotosOS();
+            }
+
+            cart = (v.itens || []).map(i => {
+                const pBD = (db.produtos || []).find(prod => String(prod.id) === String(i.id));
+                return {
+                    id: i.id,
+                    nome: i.nome,
+                    preco: (i.preco !== undefined ? i.preco : (i.precoFinal !== undefined ? i.precoFinal : (i.precoBase || 0))),
+                    custo: (i.custo !== undefined ? i.custo : (i.precoCusto || 0)),
+                    qtd: i.qtd || 1,
+                    obsVenda: i.obsVenda || '',
+                    foto: pBD ? (pBD.foto || '') : ''
+                };
+            });
+
+            pagamentosVendaAtual = [];
+            pdvAtualizarTotais();
+            renderCarrinho();
+
+            showToast('Dados carregados no PDV. Modifique e finalize!', 'success');
+        }, 100);
+
+    } catch (err) { 
+        console.error(err); 
+        showToast('Erro ao carregar venda para edição.', 'error'); 
+    }
+}
+
 function editarVenda(id) {
     const v = (db.vendas || []).find(x => String(x.id) === String(id)); 
     if(!v) return showToast('Venda não encontrada.', 'error'); 
@@ -2039,136 +2184,16 @@ function editarVenda(id) {
         ? 'Deseja carregar este orçamento de volta no PDV para editar?' 
         : 'Atenção! Isso fará o ESTORNO automático desta venda (devolvendo estoque e apagando as parcelas) e carregará todos os itens no PDV para você editar e re-finalizar. Deseja continuar?';
 
-    abrirConfirmacao('Editar Operação', msg, async () => {
-        try {
-            const batch = firestore.batch();
-            const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
-            
-            if(!isOrcamento) {
-                if(v.itens && v.itens.length > 0) {
-                    v.itens.forEach(item => {
-                        if(item.id) {
-                            const pRef = firestore.collection('produtos').doc(String(item.id));
-                            batch.update(pRef, { estoque: firebase.firestore.FieldValue.increment(Number(item.qtd || 1)) });
-                            
-                            const kardexRef = firestore.collection('movimentacoes').doc();
-                            batch.set(kardexRef, {
-                                data: new Date().toISOString(),
-                                ref: `Estorno (Edição) ${v.tipo || 'Venda'} #${numPedStr}`,
-                                prodId: item.id,
-                                prodNome: item.nome || 'Produto',
-                                qtd: Number(item.qtd || 1),
-                                tipo: 'ESTORNO'
-                            });
-                        }
-                    });
-                }
-                
-                const finQuery = await firestore.collection('financeiro').where('origemVendaId', '==', String(id)).get();
-                finQuery.docs.forEach(doc => {
-                    batch.delete(doc.ref);
-                });
-                
-                // Estorno de Caixa Físico Preciso (Apenas dinheiro em espécie)
-                let valorDinheiroEfetivo = 0;
-                if (Array.isArray(v.pagamentos) && v.pagamentos.length > 0) {
-                    const pDinheiro = v.pagamentos.find(p => p && (p.metodo === 'Dinheiro' || String(p.metodo).includes('Dinheiro')));
-                    if (pDinheiro) {
-                        valorDinheiroEfetivo = Number(pDinheiro.valor || 0) - Number(v.troco || 0);
-                        if (valorDinheiroEfetivo < 0) valorDinheiroEfetivo = 0;
-                    }
-                } else if (v.pag && typeof v.pag === 'string' && String(v.pag).includes('Dinheiro') && !String(v.pag).includes('+')) {
-                    valorDinheiroEfetivo = Number(v.tot || v.valorLiquido || 0);
-                }
-
-                if (valorDinheiroEfetivo > 0) {
-                    let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
-                    let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
-                    let cxSaldoNovo = (cxAtual.saldo || 0) - valorDinheiroEfetivo;
-                    cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno (Edição) ${v.tipo || 'Venda'} #${numPedStr}`, valor: valorDinheiroEfetivo });
-                    
-                    const caixaRef = firestore.collection('fc_moveis').doc('caixa');
-                    batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
-                }
-            }
-            const vendaRef = firestore.collection('vendas').doc(String(id));
-            batch.delete(vendaRef);
-            
-            await batch.commit(); 
-
-            pdvLimpar(); 
-            
-            mudarVisaoLocal('pdv');
-            
-            window.vendaEmEdicao = {
-                id: v.id,
-                data: v.data,
-                numeroPedido: v.numeroPedido
-            };
-            
-            const opSelect = document.getElementById('pdv-operacao');
-            if(opSelect) opSelect.value = v.tipo === 'ORÇAMENTO' ? 'Orçamento' : (v.tipo === 'SERVIÇO' ? 'Serviço' : 'Venda');
-            togglePanelServico();
-            
-            setTimeout(() => {
-                const hiddenCli = document.getElementById('pdv-cliente');
-                const buscaCli = document.getElementById('pdv-cliente-busca');
-                if(hiddenCli && buscaCli) {
-                    hiddenCli.value = v.clienteId || '0';
-                    if (v.clienteId && v.clienteId !== '0') {
-                        const cEncontrado = db.clientes.find(cli => String(cli.id) === String(v.clienteId));
-                        buscaCli.value = cEncontrado ? cEncontrado.nome : (v.clienteNome || '');
-                    } else {
-                        buscaCli.value = '';
-                    }
-                }
-                
-                const vendSelect = document.getElementById('pdv-vendedor');
-                if(vendSelect && v.vendedor) vendSelect.value = v.vendedor;
-    
-                const elFrete = document.getElementById('pdv-frete');
-                if(elFrete) elFrete.value = v.frete || 0;
-                
-                const elDesc = document.getElementById('pdv-desconto');
-                if(elDesc) elDesc.value = v.desconto || 0;
-                
-                const obsEl = document.getElementById('pdv-obs');
-                if(obsEl) obsEl.value = v.obs || '';
-    
-                if(v.tipo === 'SERVIÇO' && v.servicoDetalhes) {
-                    if(document.getElementById('os-prazo')) document.getElementById('os-prazo').value = v.servicoDetalhes.prazo || '';
-                    if(document.getElementById('os-garantia')) document.getElementById('os-garantia').value = v.servicoDetalhes.garantia || '';
-                    if(document.getElementById('os-desc')) document.getElementById('os-desc').value = v.servicoDetalhes.desc || '';
-                    osFotosArray = v.servicoDetalhes.fotos ? [...v.servicoDetalhes.fotos] : [];
-                    renderizarFotosOS();
-                }
-    
-                cart = (v.itens || []).map(i => {
-                    const pBD = (db.produtos || []).find(prod => String(prod.id) === String(i.id));
-                    return {
-                        id: i.id,
-                        nome: i.nome,
-                        preco: i.preco,
-                        custo: i.custo,
-                        qtd: i.qtd,
-                        obsVenda: i.obsVenda || '',
-                        foto: pBD ? (pBD.foto || '') : ''
-                    };
-                });
-    
-                pagamentosVendaAtual = [];
-                pdvAtualizarTotais();
-                renderCarrinho();
-    
-                showToast('Dados carregados no PDV. Modifique e finalize!', 'success');
-            }, 100);
-
-        } catch (err) { 
-            console.error(err); 
-            showToast('Erro ao carregar venda para edição.', 'error'); 
+    abrirConfirmacao('Editar Operação', msg, () => {
+        if(window.location.pathname.indexOf('pdv.html') > -1) {
+            executarEstornoEEdicao(id);
+        } else {
+            sessionStorage.setItem('autoEditVendaId', id);
+            window.location.href = 'pdv.html';
         }
     });
 }
+
 
 function excluirVenda(id) {
     const v = (db.vendas || []).find(x => String(x.id) === String(id));

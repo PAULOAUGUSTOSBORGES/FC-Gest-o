@@ -100,8 +100,8 @@ function calcularAcrescimos() {
     const id = document.getElementById('baixa-id')?.value;
     const f = db.financeiro?.find(x => String(x.id) === String(id));
     if (!f) return 0;
-    const ac = parseFloat(document.getElementById('baixa-acrescimo')?.value) || 0;
-    const de = parseFloat(document.getElementById('baixa-desconto')?.value) || 0;
+    const ac = parseInputMoney(document.getElementById('baixa-acrescimo')?.value) || 0;
+    const de = parseInputMoney(document.getElementById('baixa-desconto')?.value) || 0;
     const vf = f.valor + ac - de;
     const bValFin = document.getElementById('baixa-valor-final');
     if (bValFin) bValFin.innerText = formatMoney(vf);
@@ -267,7 +267,7 @@ async function confirmarRenegociacao() {
     }
 
     const valorTotal = fOriginal.valor || 0;
-    const valorPorParcela = parseFloat((valorTotal / qtdParcelas).toFixed(2));
+    const valorPorParcela = parseInputMoney((valorTotal / qtdParcelas).toFixed(2));
     const dataInicial = new Date(dataInicialStr + 'T12:00:00');
 
     const batch = firestore.batch();
@@ -667,7 +667,7 @@ function fecharModalCaixa() { document.getElementById('modal-mov-caixa').classLi
 
 async function confirmarMovCaixa() {
     const op = document.getElementById('caixa-operacao-tipo').value;
-    const val = parseFloat(document.getElementById('caixa-op-valor').value) || 0;
+    const val = parseInputMoney(document.getElementById('caixa-op-valor').value) || 0;
     const desc = document.getElementById('caixa-op-desc').value || op;
     let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
     let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
@@ -751,22 +751,22 @@ function fecharModalFechamentoCego() {
 }
 
 function recalcularTotalDeclarado() {
-    const d = parseFloat(document.getElementById('fc-dinheiro').value) || 0;
-    const deb = parseFloat(document.getElementById('fc-debito').value) || 0;
-    const cred = parseFloat(document.getElementById('fc-credito').value) || 0;
-    const pix = parseFloat(document.getElementById('fc-pix').value) || 0;
-    const outros = parseFloat(document.getElementById('fc-outros').value) || 0;
+    const d = parseInputMoney(document.getElementById('fc-dinheiro').value) || 0;
+    const deb = parseInputMoney(document.getElementById('fc-debito').value) || 0;
+    const cred = parseInputMoney(document.getElementById('fc-credito').value) || 0;
+    const pix = parseInputMoney(document.getElementById('fc-pix').value) || 0;
+    const outros = parseInputMoney(document.getElementById('fc-outros').value) || 0;
     const tot = d + deb + cred + pix + outros;
     document.getElementById('fc-total-declarado-display').innerText = formatMoney(tot);
     return tot;
 }
 
 async function confirmarFechamentoCego() {
-    const decDinheiro = parseFloat(document.getElementById('fc-dinheiro').value) || 0;
-    const decDebito = parseFloat(document.getElementById('fc-debito').value) || 0;
-    const decCredito = parseFloat(document.getElementById('fc-credito').value) || 0;
-    const decPix = parseFloat(document.getElementById('fc-pix').value) || 0;
-    const decOutros = parseFloat(document.getElementById('fc-outros').value) || 0;
+    const decDinheiro = parseInputMoney(document.getElementById('fc-dinheiro').value) || 0;
+    const decDebito = parseInputMoney(document.getElementById('fc-debito').value) || 0;
+    const decCredito = parseInputMoney(document.getElementById('fc-credito').value) || 0;
+    const decPix = parseInputMoney(document.getElementById('fc-pix').value) || 0;
+    const decOutros = parseInputMoney(document.getElementById('fc-outros').value) || 0;
     const decTotal = decDinheiro + decDebito + decCredito + decPix + decOutros;
     const obs = document.getElementById('fc-obs').value.trim();
 
@@ -992,7 +992,7 @@ function fecharModalTransferenciaCaixa() {
 }
 
 async function confirmarTransferenciaCaixa() {
-    const valor = parseFloat(document.getElementById('transf-valor').value) || 0;
+    const valor = parseInputMoney(document.getElementById('transf-valor').value) || 0;
     const destino = document.getElementById('transf-conta-destino').value;
     const obs = document.getElementById('transf-obs').value.trim() || `Transferência Gaveta -> ${destino}`;
 
@@ -1191,6 +1191,9 @@ function renderTitulos(tipo) {
     
     const periodoFilterEl = document.getElementById('filtro-' + prefix + '-periodo');
     const periodoFilter = periodoFilterEl ? periodoFilterEl.value : 'MES';
+
+    const formaPagamentoFilterEl = document.getElementById('filtro-' + prefix + '-forma-pagamento');
+    const formaPagamentoFilter = formaPagamentoFilterEl ? formaPagamentoFilterEl.value : '';
     
     const buscaEl = document.getElementById('busca-fin-' + prefix);
     const termoBusca = buscaEl ? buscaEl.value : '';
@@ -1339,6 +1342,19 @@ function renderTitulos(tipo) {
         } else {
             lista = lista.filter(f => f.status === statusFilter); 
         }
+    }
+
+    // 3.5 FILTRAGEM POR FORMA DE PAGAMENTO
+    if (formaPagamentoFilter) {
+        const fpNorm = formaPagamentoFilter.trim().toLowerCase();
+        lista = lista.filter(f => {
+            const metodo = (f.metodoPagamento || f.formaPagamento || f.metodo || '').trim().toLowerCase();
+            if (!metodo) return false;
+            if (fpNorm.includes('cart') || fpNorm.includes('crédito') || fpNorm.includes('débito')) {
+                return metodo.includes('cart') || metodo.includes('credito') || metodo.includes('debito') || metodo.includes('crédito') || metodo.includes('débito');
+            }
+            return metodo === fpNorm || metodo.includes(fpNorm) || fpNorm.includes(metodo);
+        });
     }
 
     // 4. FILTRO DE DATAS ESPECÍFICAS (SEMPRE RESPEITADO)
@@ -1650,7 +1666,7 @@ function abrirModalContaEdicao(id) {
     
         let valStr = String(f.valor || 0);
     if (valStr.includes(',')) { valStr = valStr.replace(/\./g, '').replace(',', '.'); }
-    document.getElementById('conta-valor').value = parseFloat(valStr) || 0;
+    document.getElementById('conta-valor').value = parseInputMoney(valStr) || 0;
     document.getElementById('conta-acrescimo').value = f.acrescimo || 0;
     document.getElementById('conta-desconto').value = f.desconto || 0;
     
@@ -1666,9 +1682,9 @@ function abrirModalContaEdicao(id) {
 }
 
 function calcularValorFinalFormulario() {
-    const vOrig = parseFloat(document.getElementById('conta-valor').value) || 0;
-    const acre = parseFloat(document.getElementById('conta-acrescimo').value) || 0;
-    const desc = parseFloat(document.getElementById('conta-desconto').value) || 0;
+    const vOrig = parseInputMoney(document.getElementById('conta-valor').value) || 0;
+    const acre = parseInputMoney(document.getElementById('conta-acrescimo').value) || 0;
+    const desc = parseInputMoney(document.getElementById('conta-desconto').value) || 0;
     
     const vFin = vOrig + acre - desc;
     document.getElementById('conta-valor-final-display').innerText = formatMoney(vFin);
@@ -1695,7 +1711,7 @@ function salvarConta() {
     const idExistente = document.getElementById('conta-id').value;
     const tipo = document.getElementById('conta-tipo').value; 
     const pessoa = getPessoaFinalConta(); 
-    const valorOriginal = parseFloat(document.getElementById('conta-valor').value); 
+    const valorOriginal = parseInputMoney(document.getElementById('conta-valor').value); 
     const vencBase = document.getElementById('conta-vencimento').value;
     
     if(!pessoa || isNaN(valorOriginal) || !vencBase) return showToast('Preencha Favorecido, Vencimento e Valor!', 'error'); 
@@ -1732,14 +1748,14 @@ function salvarConta() {
             data: dataVenc.toISOString(), 
             dataCartorio: document.getElementById('conta-data-protesto') ? document.getElementById('conta-data-protesto').value : '',
             cartorioNome: document.getElementById('conta-cartorio') ? document.getElementById('conta-cartorio').value : '',
-              multaPerc: parseFloat(document.getElementById('conta-multa') ? document.getElementById('conta-multa').value : 0) || 0,
-              jurosMesPerc: parseFloat(document.getElementById('conta-juros') ? document.getElementById('conta-juros').value : 0) || 0, 
+              multaPerc: parseInputMoney(document.getElementById('conta-multa') ? document.getElementById('conta-multa').value : 0) || 0,
+              jurosMesPerc: parseInputMoney(document.getElementById('conta-juros') ? document.getElementById('conta-juros').value : 0) || 0, 
             competencia: document.getElementById('conta-competencia').value,
             numNF: document.getElementById('conta-num-nf').value,
             numBoleto: document.getElementById('conta-num-boleto').value,
             valor: valorOriginal, 
-            acrescimo: parseFloat(document.getElementById('conta-acrescimo').value) || 0,
-            desconto: parseFloat(document.getElementById('conta-desconto').value) || 0,
+            acrescimo: parseInputMoney(document.getElementById('conta-acrescimo').value) || 0,
+            desconto: parseInputMoney(document.getElementById('conta-desconto').value) || 0,
             valorPago: valorFin,
             status: document.getElementById('conta-status').value,
             dataPagamento: document.getElementById('conta-data-pgto').value ? new Date(document.getElementById('conta-data-pgto').value + 'T12:00:00').toISOString() : '',
@@ -1825,7 +1841,7 @@ function processarXMLReal(event) {
     reader.onload = function(e) {
         try {
             const parser = new DOMParser(); const xmlDoc = parser.parseFromString(e.target.result, "text/xml");
-            const getFloatSafe = (context, tag) => { const node = context ? context.getElementsByTagName(tag)[0] : null; return node && node.textContent ? parseFloat(node.textContent) : 0; };
+            const getFloatSafe = (context, tag) => { const node = context ? context.getElementsByTagName(tag)[0] : null; return node && node.textContent ? parseInputMoney(node.textContent) : 0; };
             const getStringSafe = (context, tag) => { const node = context ? context.getElementsByTagName(tag)[0] : null; return node ? node.textContent : ''; };
             const emit = xmlDoc.getElementsByTagName("emit")[0]; if(!emit) throw new Error("XML inválido.");
             
@@ -1896,8 +1912,8 @@ function lerXMLCTe(event) {
             const nomeTransportadora = xNomeNode ? xNomeNode.textContent : "Transportadora";
             
             let valorFrete = 0;
-            if (vTPrestNode) valorFrete = parseFloat(vTPrestNode.textContent) || 0;
-            else if (vRecNode) valorFrete = parseFloat(vRecNode.textContent) || 0;
+            if (vTPrestNode) valorFrete = parseInputMoney(vTPrestNode.textContent) || 0;
+            else if (vRecNode) valorFrete = parseInputMoney(vRecNode.textContent) || 0;
             
             if (valorFrete > 0) {
                 document.getElementById('xml-frete-extra').value = valorFrete.toFixed(2);
@@ -1925,7 +1941,7 @@ function lerXMLCTe(event) {
 }
 
 function recalcularRateioXML() {
-    window.tempXMLData.freteExtra = parseFloat(document.getElementById('xml-frete-extra').value) || 0;
+    window.tempXMLData.freteExtra = parseInputMoney(document.getElementById('xml-frete-extra').value) || 0;
     window.tempXMLData.produtosXML.forEach(p => { 
         let pesoValor = window.tempXMLData.totalNF > 0 ? (p.vTotalItemNaNota / window.tempXMLData.totalNF) : 0; 
         p.custoFinal = p.qCom > 0 ? ((p.vTotalItemNaNota + (window.tempXMLData.freteExtra * pesoValor)) / p.qCom) : 0; 
@@ -1946,7 +1962,7 @@ function renderXMLFinanceiro() {
         <div class="flex flex-col sm:flex-row gap-2 items-center bg-slate-50 dark:bg-slate-900/50 p-2 md:p-3 rounded-lg border border-amber-200 dark:border-amber-700/50 shadow-sm">
             <input type="text" class="w-full sm:flex-1 bg-transparent text-xs font-bold text-amber-900 dark:text-amber-100 outline-none p-1" value="${f.desc}" onchange="atualizarParcelaXML(${i}, 'desc', this.value)">
             <input type="date" class="w-full sm:w-36 bg-transparent text-xs font-bold text-amber-800 dark:text-amber-200 outline-none p-1" value="${f.venc}" onchange="atualizarParcelaXML(${i}, 'venc', this.value)">
-            <input type="number" step="0.01" class="w-full sm:w-28 text-right bg-transparent text-sm font-black text-red-600 dark:text-red-400 outline-none p-1" value="${f.valor.toFixed(2)}" onchange="atualizarParcelaXML(${i}, 'valor', this.value)">
+            <input type="text" data-mask="money" inputmode="numeric"   class="w-full sm:w-28 text-right bg-transparent text-sm font-black text-red-600 dark:text-red-400 outline-none p-1" value="${f.valor.toFixed(2)}" onchange="atualizarParcelaXML(${i}, 'valor', this.value)">
             <button onclick="removeParcelaXML('${i}')" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-2"><i class="fa-solid fa-trash"></i></button>
         </div>
         `;
@@ -1956,7 +1972,7 @@ function renderXMLFinanceiro() {
 }
 
 function atualizarParcelaXML(idx, campo, val) {
-    if(campo === 'valor') window.tempXMLData.financeiroXML[idx][campo] = parseFloat(val) || 0;
+    if(campo === 'valor') window.tempXMLData.financeiroXML[idx][campo] = parseInputMoney(val) || 0;
     else window.tempXMLData.financeiroXML[idx][campo] = val;
     renderXMLFinanceiro();
 }
@@ -1972,19 +1988,19 @@ function removeParcelaXML(idx) {
 }
 
 function xmlAtualizarValores(i, campo, val) {
-    const p = window.tempXMLData.produtosXML[i]; val = parseFloat(val) || 0;
+    const p = window.tempXMLData.produtosXML[i]; val = parseInputMoney(val) || 0;
     if(campo === 'custo') { p.custoFinal = val; p.precoVendaSug = p.custoFinal * (1 + (p.margemAtual/100)); }
     if(campo === 'margem') { p.margemAtual = val; p.precoVendaSug = p.custoFinal * (1 + (p.margemAtual/100)); }
     if(campo === 'preco') { p.precoVendaSug = val; if(p.custoFinal>0) p.margemAtual = ((p.precoVendaSug-p.custoFinal)/p.custoFinal)*100; }
     
     document.getElementById('xml-produtos-body').innerHTML = window.tempXMLData.produtosXML.map((p, idx) => `
-        <tr class="border-b border-slate-100 dark:border-slate-700 hover:bg-indigo-50">
+        <tr class="border-b border-slate-100 dark:border-slate-700/50 hover:bg-indigo-50 dark:hover:bg-slate-700/50 transition-colors">
             <td class="p-2 text-xs"><input type="text" class="w-full bg-transparent font-bold text-slate-800 dark:text-slate-100 outline-none dark:text-white" value="${p.nome}" onchange="tempXMLData.produtosXML[${idx}].nome = this.value"><span class="text-[10px] text-slate-500 dark:text-slate-400">EAN: ${p.cEAN || 'S/N'}</span></td>
             <td class="p-2 text-xs text-center"><span class="${p.statusDB.includes('NOVO') ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'} px-2 py-0.5 rounded font-bold">${p.statusDB}</span></td>
             <td class="p-2 text-xs text-center font-bold">${p.qCom}</td>
-            <td class="p-2 text-xs text-right"><input type="number" step="0.01" class="w-20 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-right font-bold text-red-600 outline-none dark:text-white" value="${p.custoFinal.toFixed(2)}" onchange="xmlAtualizarValores(${idx}, 'custo', this.value)"></td>
-            <td class="p-2 text-xs text-center"><input type="number" step="0.1" class="w-16 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-center font-bold text-blue-600 outline-none dark:text-white" value="${p.margemAtual.toFixed(2)}" onchange="xmlAtualizarValores(${idx}, 'margem', this.value)"> %</td>
-            <td class="p-2 text-xs text-right"><input type="number" step="0.01" class="w-24 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-right font-bold text-emerald-600 outline-none dark:text-white" value="${p.precoVendaSug.toFixed(2)}" onchange="xmlAtualizarValores(${idx}, 'preco', this.value)"></td>
+            <td class="p-2 text-xs text-right"><input type="text" data-mask="money" inputmode="numeric"   class="w-20 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-right font-bold text-red-600 outline-none dark:text-white" value="${p.custoFinal.toFixed(2)}" onchange="xmlAtualizarValores(${idx}, 'custo', this.value)"></td>
+            <td class="p-2 text-xs text-center"><input type="text" data-mask="money" inputmode="numeric" step="0.1" class="w-16 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-center font-bold text-blue-600 outline-none dark:text-white" value="${p.margemAtual.toFixed(2)}" onchange="xmlAtualizarValores(${idx}, 'margem', this.value)"> %</td>
+            <td class="p-2 text-xs text-right"><input type="text" data-mask="money" inputmode="numeric"   class="w-24 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-right font-bold text-emerald-600 outline-none dark:text-white" value="${p.precoVendaSug.toFixed(2)}" onchange="xmlAtualizarValores(${idx}, 'preco', this.value)"></td>
             <td class="p-2 text-xs text-center"><button onclick="abrirModalProdutoDoXML('${idx}')" class="text-indigo-500 bg-indigo-100 p-1.5 rounded"><i class="fa-solid fa-pen-to-square"></i></button></td>
         </tr>`).join('');
 }
@@ -2040,7 +2056,7 @@ function salvarProdutoXmlModal() {
     }
 
     pXML.nome = nome; pXML.cEAN = document.getElementById('prod-ean').value;
-    pXML.custoFinal = parseFloat(document.getElementById('prod-custo').value)||0; pXML.margemAtual = parseFloat(document.getElementById('prod-margem').value)||0; pXML.precoVendaSug = parseFloat(document.getElementById('prod-preco').value)||0;
+    pXML.custoFinal = parseInputMoney(document.getElementById('prod-custo').value)||0; pXML.margemAtual = parseInputMoney(document.getElementById('prod-margem').value)||0; pXML.precoVendaSug = parseInputMoney(document.getElementById('prod-preco').value)||0;
     
     if(selectAcao && selectAcao.value === 'VINCULAR' && id) {
         pXML.statusDB = 'ATUALIZAR';
@@ -2056,13 +2072,13 @@ function renderTelaConferenciaXML() {
     const d = window.tempXMLData; 
     document.getElementById('xml-forn-nome').innerText = d.fornNome; document.getElementById('xml-forn-cnpj').innerText = d.fornCNPJ; document.getElementById('xml-total-nota').innerText = formatMoney(d.totalNF); document.getElementById('rev-nfe').innerText = d.numNF; document.getElementById('rev-data').innerText = d.dataEmissao.split('-').reverse().join('/'); document.getElementById('rev-vprod').innerText = formatMoney(d.produtosXML.reduce((a,b)=>a+b.vTotalItemNaNota,0));
     document.getElementById('xml-produtos-body').innerHTML = d.produtosXML.map((p, i) => `
-        <tr class="border-b border-slate-100 dark:border-slate-700 hover:bg-indigo-50">
+        <tr class="border-b border-slate-100 dark:border-slate-700/50 hover:bg-indigo-50 dark:hover:bg-slate-700/50 transition-colors">
             <td class="p-2 text-xs"><input type="text" class="w-full bg-transparent font-bold text-slate-800 dark:text-slate-100 outline-none dark:text-white" value="${p.nome}" onchange="tempXMLData.produtosXML[${i}].nome = this.value"><span class="text-[10px] text-slate-500 dark:text-slate-400">EAN: ${p.cEAN || 'S/N'}</span></td>
             <td class="p-2 text-xs text-center"><span class="${p.statusDB.includes('NOVO') ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'} px-2 py-0.5 rounded font-bold">${p.statusDB}</span></td>
             <td class="p-2 text-xs text-center font-bold">${p.qCom}</td>
-            <td class="p-2 text-xs text-right"><input type="number" step="0.01" class="w-20 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-right font-bold text-red-600 outline-none dark:text-white" value="${p.custoFinal.toFixed(2)}" onchange="xmlAtualizarValores(${i}, 'custo', this.value)"></td>
-            <td class="p-2 text-xs text-center"><input type="number" step="0.1" class="w-16 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-center font-bold text-blue-600 outline-none dark:text-white" value="${p.margemAtual.toFixed(2)}" onchange="xmlAtualizarValores(${i}, 'margem', this.value)"> %</td>
-            <td class="p-2 text-xs text-right"><input type="number" step="0.01" class="w-24 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-right font-bold text-emerald-600 outline-none dark:text-white" value="${p.precoVendaSug.toFixed(2)}" onchange="xmlAtualizarValores(${i}, 'preco', this.value)"></td>
+            <td class="p-2 text-xs text-right"><input type="text" data-mask="money" inputmode="numeric"   class="w-20 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-right font-bold text-red-600 outline-none dark:text-white" value="${p.custoFinal.toFixed(2)}" onchange="xmlAtualizarValores(${i}, 'custo', this.value)"></td>
+            <td class="p-2 text-xs text-center"><input type="text" data-mask="money" inputmode="numeric" step="0.1" class="w-16 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-center font-bold text-blue-600 outline-none dark:text-white" value="${p.margemAtual.toFixed(2)}" onchange="xmlAtualizarValores(${i}, 'margem', this.value)"> %</td>
+            <td class="p-2 text-xs text-right"><input type="text" data-mask="money" inputmode="numeric"   class="w-24 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-right font-bold text-emerald-600 outline-none dark:text-white" value="${p.precoVendaSug.toFixed(2)}" onchange="xmlAtualizarValores(${i}, 'preco', this.value)"></td>
             <td class="p-2 text-xs text-center"><button onclick="abrirModalProdutoDoXML('${i}')" class="text-indigo-500 bg-indigo-100 p-1.5 rounded"><i class="fa-solid fa-pen-to-square"></i></button></td>
         </tr>`).join('');
     renderXMLFinanceiro(); 
@@ -2216,7 +2232,7 @@ function removerLinhaCompraManual(index) {
 
 function atualizarLinhaCompraManual(index, campo, valor) {
     if(campo === 'qtd' || campo === 'custoUnit') {
-        compraManualItens[index][campo] = parseFloat(valor) || 0;
+        compraManualItens[index][campo] = parseInputMoney(valor) || 0;
     } else {
         compraManualItens[index][campo] = valor;
         if(campo === 'prodId' && valor) {
@@ -2239,8 +2255,8 @@ function renderTabelaCompraManual() {
                     ${prodsOptions.replace(`value="${item.prodId}"`, `value="${item.prodId}" selected`)}
                 </select>
             </td>
-            <td class="p-2 md:p-3"><input type="number" min="0.01" step="0.01" class="w-full text-center bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded outline-none focus:border-emerald-500 text-xs font-bold dark:text-white" value="${item.qtd}" onchange="atualizarLinhaCompraManual(${i}, 'qtd', this.value)"></td>
-            <td class="p-2 md:p-3"><input type="number" min="0" step="0.01" class="w-full text-right bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded outline-none focus:border-emerald-500 text-xs font-bold dark:text-white" value="${item.custoUnit.toFixed(2)}" onchange="atualizarLinhaCompraManual(${i}, 'custoUnit', this.value)"></td>
+            <td class="p-2 md:p-3"><input type="text" data-mask="money" inputmode="numeric"  min="0.01"  class="w-full text-center bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded outline-none focus:border-emerald-500 text-xs font-bold dark:text-white" value="${item.qtd}" onchange="atualizarLinhaCompraManual(${i}, 'qtd', this.value)"></td>
+            <td class="p-2 md:p-3"><input type="text" data-mask="money" inputmode="numeric"  min="0"  class="w-full text-right bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded outline-none focus:border-emerald-500 text-xs font-bold dark:text-white" value="${item.custoUnit.toFixed(2)}" onchange="atualizarLinhaCompraManual(${i}, 'custoUnit', this.value)"></td>
             <td class="p-2 md:p-3 text-right font-bold text-slate-700 dark:text-slate-200">R$ ${(item.qtd * item.custoUnit).toFixed(2).replace('.',',')}</td>
             <td class="p-2 md:p-3 text-center"><button onclick="removerLinhaCompraManual('${i}')" class="text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button></td>
         </tr>
@@ -2250,7 +2266,7 @@ function renderTabelaCompraManual() {
 }
 
 function calcularTotaisCompraManual() {
-    const frete = parseFloat(document.getElementById('compra-manual-frete').value) || 0;
+    const frete = parseInputMoney(document.getElementById('compra-manual-frete').value) || 0;
     let totalProdutos = compraManualItens.reduce((acc, item) => acc + (item.qtd * item.custoUnit), 0);
     let totalGeral = totalProdutos + frete;
     
@@ -2645,7 +2661,7 @@ function renderCurvaABC(vendasFiltradas, fatTotal) {
 }
 
 function renderSugestorCompras(vendasFiltradas, periodoObj) {
-    const tbody = document.getElementById('tabela-sugestor-compras');
+    const tbody = document.getElementById('tabela-sugestao-compras');
     if(!tbody) return;
 
     // Calcular quantos dias tem no período filtrado para achar a média diária
@@ -3190,7 +3206,7 @@ function fecharModalTransferenciaFin() {
 async function confirmarTransferenciaFin() {
     const origem = document.getElementById('transf-fin-origem')?.value || 'Caixa Físico';
     const destino = document.getElementById('transf-fin-destino')?.value || 'Conta Corrente Principal';
-    const valor = parseFloat(document.getElementById('transf-fin-valor')?.value) || 0;
+    const valor = parseInputMoney(document.getElementById('transf-fin-valor')?.value) || 0;
     const obs = document.getElementById('transf-fin-obs')?.value.trim() || '';
 
     if (valor <= 0) return showToast('Informe um valor válido para a transferência!', 'error');
@@ -3366,7 +3382,7 @@ function parseOFXContent(rawText) {
         const matchData = dtPostedRaw.match(/(\d{4})(\d{2})(\d{2})/);
         if (matchData) dataIso = matchData[1] + '-' + matchData[2] + '-' + matchData[3];
         else dataIso = new Date().toISOString().split('T')[0];
-        const valorNum = parseFloat(trnAmtRaw.replace(',', '.')) || 0;
+        const valorNum = parseInputMoney(trnAmtRaw.replace(',', '.')) || 0;
         if (valorNum === 0 && !memo) continue;
         const isCredito = valorNum > 0 || trnType === 'CREDIT' || trnType === 'DEP';
         transacoes.push({
@@ -3849,7 +3865,7 @@ async function confirmarConciliacaoModalOFX() {
     const categoria = document.getElementById('ofx-modal-categoria')?.value || (tipo === 'RECEITA' ? 'Outras Receitas' : 'Outras Despesas');
     const centroCusto = document.getElementById('ofx-modal-centro-custo')?.value || 'Operacional';
     const dataPgto = document.getElementById('ofx-modal-data-pgto')?.value || item.data || new Date().toISOString().split('T')[0];
-    const valorPago = parseFloat(document.getElementById('ofx-modal-valor-pago')?.value) || item.valor || 0;
+    const valorPago = parseInputMoney(document.getElementById('ofx-modal-valor-pago')?.value) || item.valor || 0;
     const metodo = document.getElementById('ofx-modal-metodo')?.value || 'Pix';
     const contaBancaria = document.getElementById('ofx-modal-conta-bancaria')?.value.trim() || window.extratoOFXAtual.banco || 'Conta Bancária';
     const obs = document.getElementById('ofx-modal-obs')?.value || `Conciliado via OFX em ${new Date().toLocaleDateString('pt-BR')} (Ref: ${item.memo || ''})`;

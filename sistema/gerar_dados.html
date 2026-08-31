@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Dados ERP (Avançado)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-200 p-4 md:p-10">
+
+    <div class="max-w-3xl mx-auto bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
+        <h1 class="text-3xl font-bold text-white mb-2"><i class="fa-solid fa-flask text-emerald-500"></i> Laboratório de Dados Avançado</h1>
+        <p class="text-slate-400 mb-6">Esta ferramenta foi atualizada para injetar um <strong>banco de dados completo</strong>: Vendas, Compras, Fornecedores, Clientes, Produtos (Curva ABC e Ruptura), Orçamentos e Financeiro (receitas e despesas dos últimos 3 meses). <strong>Utilize apenas no Banco de Testes!</strong></p>
+
+        <div id="auth-status" class="mb-6 p-4 bg-red-900/30 border border-red-800 rounded-lg text-red-300 font-medium">
+            Verificando autenticação...
+        </div>
+
+        <button id="btn-gerar" onclick="iniciarGeracao()" disabled class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl shadow-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            <i class="fa-solid fa-rocket mr-2"></i> INJETAR SISTEMA COMPLETO
+        </button>
+
+        <div id="log" class="mt-6 p-4 bg-slate-950 rounded-lg font-mono text-sm h-80 overflow-y-auto text-emerald-400 whitespace-pre-wrap">
+            Aguardando comando...
+        </div>
+    </div>
+
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Carrega a configuração do banco -->
+    <script src="config_banco.js?v=20260829121956"></script>
+
+    <script>
+        const firestore = firebase.firestore();
+        const auth = firebase.auth();
+        let userUid = null;
+
+        function log(msg) {
+            const div = document.getElementById('log');
+            div.innerHTML += `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>`;
+            div.scrollTop = div.scrollHeight;
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                userUid = user.uid;
+                document.getElementById('auth-status').className = 'mb-6 p-4 bg-emerald-900/30 border border-emerald-800 rounded-lg text-emerald-300 font-medium';
+                document.getElementById('auth-status').innerHTML = `<i class="fa-solid fa-check-circle mr-2"></i> Autenticado! Banco atual: ${MODO_TESTES ? 'TESTES' : 'OFICIAL (PERIGO!)'}`;
+                
+                if(!MODO_TESTES) {
+                    log("<span class='text-red-500 font-bold'>CUIDADO! VOCÊ ESTÁ NO BANCO OFICIAL! NÃO GERE DADOS AQUI! Mude MODO_TESTES para true no config_banco.js primeiro.</span>");
+                } else {
+                    document.getElementById('btn-gerar').disabled = false;
+                }
+            } else {
+                document.getElementById('auth-status').className = 'mb-6 p-4 bg-red-900/30 border border-red-800 rounded-lg text-red-300 font-medium';
+                document.getElementById('auth-status').innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-2"></i> Você não está logado. Faça login no sistema primeiro.`;
+                document.getElementById('btn-gerar').disabled = true;
+                log("Erro: Usuário não autenticado.");
+            }
+        });
+
+        // Funções auxiliares
+        function randomDate(daysAgo) {
+            const d = new Date();
+            d.setDate(d.getDate() - Math.floor(Math.random() * daysAgo));
+            return d;
+        }
+
+        function randomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function getISO(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        async function iniciarGeracao() {
+            if (!userUid) return;
+            if (!MODO_TESTES) {
+                const conf = confirm("VOCÊ ESTÁ NO BANCO OFICIAL! Tem certeza que deseja poluir a produção com dados falsos?");
+                if(!conf) return;
+            }
+
+            document.getElementById('btn-gerar').disabled = true;
+            log("Iniciando injeção do sistema completo...");
+
+            try {
+                // 0. Permissões de Admin
+                log("1/9 - Garantindo permissões de Administrador...");
+                await firestore.collection('funcionarios').doc(userUid).set({
+                    nome: "Administrador de Testes",
+                    email: auth.currentUser.email,
+                    isAdmin: true,
+                    perm_dashboard: true,
+                    perm_pdv: true,
+                    perm_cadastros: true,
+                    perm_gestao: true,
+                    perm_config: true,
+                    criadoEm: Date.now()
+                }, { merge: true });
+
+                const batches = [];
+                let currentBatch = firestore.batch();
+                let opsCount = 0;
+
+                function commitDoc(ref, data) {
+                    currentBatch.set(ref, data);
+                    opsCount++;
+                    if(opsCount >= 490) {
+                        batches.push(currentBatch.commit());
+                        currentBatch = firestore.batch();
+                        opsCount = 0;
+                    }
+                }
+
+                // 1. Fornecedores
+                log("2/9 - Criando Fornecedores (Distribuidoras)...");
+                const fornecedoresDados = ['Suvinil Distribuidora', 'Bosch Ferramentas', 'Tigre Tubos', 'Gerdau Aços', 'Votorantim Cimentos'];
+                const fornecedores = [];
+                for(let nome of fornecedoresDados) {
+                    const doc = firestore.collection('fornecedores').doc();
+                    const f = {
+                        id: doc.id,
+                        uid: userUid,
+                        nome: nome,
+                        telefone: `(11) 3000-000${randomInt(1,9)}`,
+                        cnpj: `00.000.000/0001-0${randomInt(1,9)}`,
+                        criadoEm: Date.now()
+                    };
+                    commitDoc(doc, f);
+                    fornecedores.push(f);
+                }
+
+                // 2. Categorias
+                log("3/9 - Criando Categorias detalhadas...");
+                const categoriasDados = [
+                    { nome: "Tintas e Vernizes", cor: "#3b82f6" },
+                    { nome: "Ferramentas Elétricas", cor: "#f59e0b" },
+                    { nome: "Hidráulica", cor: "#10b981" },
+                    { nome: "Elétrica", cor: "#ef4444" },
+                    { nome: "Material Básico", cor: "#8b5cf6" },
+                    { nome: "Acabamentos", cor: "#ec4899" }
+                ];
+                const categorias = [];
+                for(let cat of categoriasDados) {
+                    const doc = firestore.collection('categorias').doc();
+                    cat.id = doc.id;
+                    cat.uid = userUid;
+                    cat.criadoEm = Date.now();
+                    commitDoc(doc, cat);
+                    categorias.push(cat);
+                }
+
+                // 3. Produtos (30 produtos com estoques variados para testar ruptura)
+                log("4/9 - Criando 30 Produtos com diferentes níveis de estoque (Ruptura/Saudável)...");
+                const produtos = [];
+                const prefixos = ['Super', 'Premium', 'Pro', 'Básico', 'Plus'];
+                for(let i=1; i<=30; i++) {
+                    const doc = firestore.collection('produtos').doc();
+                    const cat = categorias[i % categorias.length];
+                    const fornecedor = fornecedores[i % fornecedores.length];
+                    
+                    const precoCusto = randomInt(5, 200);
+                    const precoVenda = precoCusto * (randomInt(13, 20)/10); 
+                    
+                    // Gerar estoques problemáticos para ver na "Sugestão de Reposição"
+                    let estoque = randomInt(20, 150);
+                    if(i % 5 === 0) estoque = randomInt(-5, 5); // Ruptura
+                    if(i % 7 === 0) estoque = randomInt(5, 15); // Crítico
+
+                    const prod = {
+                        id: doc.id,
+                        uid: userUid,
+                        nome: `${cat.nome} ${prefixos[randomInt(0,4)]} Modelo ${i}`,
+                        codigoBarras: `7890000000${i.toString().padStart(3, '0')}`,
+                        precoCusto: precoCusto,
+                        precoVenda: Number(precoVenda.toFixed(2)),
+                        estoqueAtual: estoque,
+                        categoriaId: cat.id,
+                        fornecedorId: fornecedor.id,
+                        tipo: "Produto",
+                        criadoEm: Date.now()
+                    };
+                    commitDoc(doc, prod);
+                    produtos.push(prod);
+                }
+
+                // 4. Clientes
+                log("5/9 - Criando 20 Clientes...");
+                const clientes = [];
+                for(let i=1; i<=20; i++) {
+                    const doc = firestore.collection('clientes').doc();
+                    const cli = {
+                        id: doc.id,
+                        uid: userUid,
+                        nome: `Cliente Fictício ${i}`,
+                        telefone: `(11) 9${randomInt(1111,9999)}-${randomInt(1111,9999)}`,
+                        criadoEm: Date.now()
+                    };
+                    commitDoc(doc, cli);
+                    clientes.push(cli);
+                }
+
+                // 5. Vendas e Contas a Receber (200 vendas em 90 dias)
+                log("6/9 - Simulando 200 Vendas retroativas e Contas a Receber (90 dias)...");
+                for(let i=1; i<=200; i++) {
+                    const docVenda = firestore.collection('vendas').doc();
+                    const dataVenda = randomDate(90);
+                    
+                    const qtdItens = randomInt(1, 5);
+                    const itensVenda = [];
+                    let totalVenda = 0;
+                    let custoTotalVenda = 0;
+
+                    for(let k=0; k<qtdItens; k++) {
+                        const p = produtos[randomInt(0, produtos.length-1)];
+                        const qtd = randomInt(1, 5);
+                        itensVenda.push({
+                            id: p.id,
+                            nome: p.nome,
+                            precoBase: p.precoVenda,
+                            precoFinal: p.precoVenda, // sem desconto
+                            qtd: qtd,
+                            subtotal: p.precoVenda * qtd,
+                            precoCusto: p.precoCusto
+                        });
+                        totalVenda += (p.precoVenda * qtd);
+                        custoTotalVenda += (p.precoCusto * qtd);
+                    }
+
+                    const cli = Math.random() > 0.4 ? clientes[randomInt(0, clientes.length-1)] : null;
+                    const metodos = ['PIX', 'Cartão de Crédito', 'Dinheiro', 'Boleto'];
+                    const metodo = metodos[randomInt(0,3)];
+                    
+                    const lucro = totalVenda - custoTotalVenda;
+                    const margem = (lucro / totalVenda) * 100;
+
+                    const vendaData = {
+                        uid: userUid,
+                        itens: itensVenda,
+                        totalVenda: Number(totalVenda.toFixed(2)),
+                        totalItens: itensVenda.reduce((acc, curr) => acc + curr.qtd, 0),
+                        lucroTotal: Number(lucro.toFixed(2)),
+                        margemLucroBruto: Number(margem.toFixed(2)),
+                        status: 'concluido',
+                        metodoPagamento: metodo,
+                        clienteId: cli ? cli.id : null,
+                        clienteNome: cli ? cli.nome : 'Avulso',
+                        criadoEm: dataVenda.getTime(),
+                        vendedor: "Sistema (Teste)"
+                    };
+                    commitDoc(docVenda, vendaData);
+
+                    // Gerar Conta a Receber (Financeiro) para essa venda
+                    const docFin = firestore.collection('financeiro').doc();
+                    let statusFin = 'pago';
+                    let venc = new Date(dataVenda);
+                    if (metodo === 'Boleto') {
+                        venc.setDate(venc.getDate() + 30);
+                        if (venc > new Date()) statusFin = 'pendente';
+                    }
+
+                    commitDoc(docFin, {
+                        uid: userUid,
+                        tipo: "receita",
+                        descricao: `Venda ${docVenda.id.substring(0,6).toUpperCase()} - ${metodo}`,
+                        valor: Number(totalVenda.toFixed(2)),
+                        dataVencimento: getISO(venc),
+                        categoria: "Venda de Produtos",
+                        status: statusFin,
+                        dataPagamento: statusFin === 'pago' ? getISO(dataVenda) : null,
+                        origemId: docVenda.id,
+                        criadoEm: dataVenda.getTime()
+                    });
+                }
+
+                // 6. Compras e Contas a Pagar (30 compras)
+                log("7/9 - Simulando 30 Notas de Compra de Fornecedores...");
+                for(let i=1; i<=30; i++) {
+                    const docCompra = firestore.collection('compras').doc();
+                    const dataCompra = randomDate(90);
+                    const fornecedor = fornecedores[randomInt(0, fornecedores.length-1)];
+                    
+                    const totalCompra = randomInt(500, 5000);
+                    commitDoc(docCompra, {
+                        uid: userUid,
+                        fornecedorId: fornecedor.id,
+                        fornecedorNome: fornecedor.nome,
+                        total: totalCompra,
+                        notaFiscal: `NF-${randomInt(1000,9999)}`,
+                        status: 'concluido',
+                        criadoEm: dataCompra.getTime()
+                    });
+
+                    // Conta a Pagar
+                    const docFin = firestore.collection('financeiro').doc();
+                    const venc = new Date(dataCompra);
+                    venc.setDate(venc.getDate() + 15);
+                    const pago = venc < new Date();
+                    
+                    commitDoc(docFin, {
+                        uid: userUid,
+                        tipo: "despesa",
+                        descricao: `Compra Fornecedor: ${fornecedor.nome}`,
+                        valor: totalCompra,
+                        dataVencimento: getISO(venc),
+                        categoria: "Compra de Mercadorias",
+                        status: pago ? 'pago' : 'pendente',
+                        dataPagamento: pago ? getISO(venc) : null,
+                        origemId: docCompra.id,
+                        criadoEm: dataCompra.getTime()
+                    });
+                }
+
+                // 7. Despesas Fixas (Operacionais)
+                log("8/9 - Gerando Contas a Pagar mensais (Aluguel, Luz, etc)...");
+                const despesasFixas = [
+                    { nome: "Aluguel Loja", valor: 2500 },
+                    { nome: "Conta de Energia", valor: 450 },
+                    { nome: "Internet", valor: 120 },
+                    { nome: "Salários", valor: 6000 }
+                ];
+                for(let df of despesasFixas) {
+                    for(let mes = 0; mes < 3; mes++) { // ultimos 3 meses
+                        const docFin = firestore.collection('financeiro').doc();
+                        const d = new Date();
+                        d.setMonth(d.getMonth() - mes);
+                        d.setDate(10); // Vence dia 10
+                        const pago = d < new Date();
+
+                        commitDoc(docFin, {
+                            uid: userUid,
+                            tipo: "despesa",
+                            descricao: df.nome,
+                            valor: df.valor,
+                            dataVencimento: getISO(d),
+                            categoria: "Custos Operacionais",
+                            status: pago ? 'pago' : 'pendente',
+                            dataPagamento: pago ? getISO(d) : null,
+                            criadoEm: d.getTime()
+                        });
+                    }
+                }
+
+                // 8. Orçamentos
+                log("9/9 - Gerando 15 Orçamentos de Clientes...");
+                for(let i=1; i<=15; i++) {
+                    const docOrc = firestore.collection('orcamentos').doc();
+                    const dataOrc = randomDate(30);
+                    const cli = clientes[randomInt(0, clientes.length-1)];
+                    const p = produtos[randomInt(0, produtos.length-1)];
+                    const valor = p.precoVenda * randomInt(1, 5);
+
+                    commitDoc(docOrc, {
+                        uid: userUid,
+                        clienteId: cli.id,
+                        clienteNome: cli.nome,
+                        itens: [{ id: p.id, nome: p.nome, qtd: 1, precoFinal: valor, subtotal: valor }],
+                        totalVenda: valor,
+                        status: Math.random() > 0.5 ? 'pendente' : 'aprovado',
+                        validade: getISO(new Date(dataOrc.getTime() + 15*24*60*60*1000)),
+                        criadoEm: dataOrc.getTime()
+                    });
+                }
+
+                if(opsCount > 0) {
+                    batches.push(currentBatch.commit());
+                }
+
+                log("Salvando tudo no banco de dados...");
+                await Promise.all(batches);
+
+                log("<span class='text-emerald-400 font-bold'>===================================================</span>");
+                log("<span class='text-emerald-400 font-bold'>✨ SUCESSO! SISTEMA COMPLETAMENTE POPULADO! ✨</span>");
+                log("<span class='text-emerald-400 font-bold'>Fornecedores, Produtos, Clientes, Vendas (200x), Compras e Financeiro criados.</span>");
+                log("<span class='text-emerald-400 font-bold'>Abra o sistema e aproveite seus novos gráficos!</span>");
+                log("<span class='text-emerald-400 font-bold'>===================================================</span>");
+
+            } catch (err) {
+                log("<span class='text-red-500 font-bold'>ERRO: " + err.message + "</span>");
+                console.error(err);
+            }
+            document.getElementById('btn-gerar').disabled = false;
+        }
+    </script>
+</body>
+</html>

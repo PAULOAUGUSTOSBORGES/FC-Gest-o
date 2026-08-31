@@ -19,7 +19,7 @@ $cacheString = "?v=$versao"
 
 Write-Host "Nova Versao de Cache Gerada: $versao" -ForegroundColor Green
 
-$htmlFiles = Get-ChildItem -Path $root -Filter "*.html" -Recurse
+$htmlFiles = Get-ChildItem -Path $root -Filter "*.html" -Recurse -ErrorAction SilentlyContinue
 
 $arquivosAtualizados = 0
 
@@ -34,8 +34,8 @@ foreach ($file in $htmlFiles) {
     # e links css: href="estilo.css?v=QUALQUERCOISA"
     
     # Expressões regulares robustas para pegar js e css
-    $content = $content -replace '(\.js\?v=)\d+', "`$1$versao"
-    $content = $content -replace '(\.css\?v=)\d+', "`$1$versao"
+    $content = $content -replace '(\.js\?v=)\d+', "`${1}$versao"
+    $content = $content -replace '(\.css\?v=)\d+', "`${1}$versao"
 
     # Caso existam arquivos que AINDA não tem ?v=, adiciona pela primeira vez (ex: src="script.js" -> src="script.js?v=...")
     # Isso requer cuidado para não quebrar links externos, focando apenas em arquivos .js e .css locais
@@ -65,5 +65,9 @@ Write-Host "=======================================================" -Foreground
 Write-Host "Concluido! $arquivosAtualizados arquivos HTML atualizados." -ForegroundColor Green
 Write-Host "Sempre que voce publicar na nuvem, o navegador dos seus clientes"
 Write-Host "baixara automaticamente a nova versao."
-Write-Host "Pressione qualquer tecla para sair..." -ForegroundColor Yellow
-$null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+try {
+    if ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
+        Write-Host "Pressione qualquer tecla para continuar..." -ForegroundColor Yellow
+        $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+    }
+} catch {}
