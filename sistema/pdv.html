@@ -133,7 +133,8 @@
                                     <input type="text" id="pdv-produto-busca" placeholder="Busque por Nome ou EAN..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 pl-10 pr-4 py-2.5 md:py-3 rounded-lg font-medium text-xs md:text-sm focus:outline-none focus:border-blue-500 dark:text-white" 
                                            onfocus="filtrarProdutosPDV(this.value)" 
                                            onclick="filtrarProdutosPDV(this.value)"
-                                           oninput="filtrarProdutosPDV(this.value)">
+                                           oninput="filtrarProdutosPDV(this.value)"
+                                           onkeypress="if(event.key === 'Enter') { event.preventDefault(); buscarProdutoPorEAN(this.value); }">
                                     <div id="pdv-busca-resultados" class="absolute z-50 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl rounded-lg mt-1 hidden max-h-60 overflow-y-auto custom-scrollbar"></div>
                                 </div>
                                 <button onclick="abrirLeitorCamera()" class="bg-slate-800 hover:bg-slate-900 text-white px-3 md:px-4 font-bold rounded-lg transition-colors shadow-md text-sm" title="Ler Código de Barras"><i class="fa-solid fa-camera"></i></button>

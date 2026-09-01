@@ -1102,6 +1102,26 @@ function filtrarProdutosPDV(termo) {
     dropdown.classList.remove('hidden');
 }
 
+function buscarProdutoPorEAN(termo) {
+    if (!termo) return;
+    const busca = String(termo).trim();
+    if (busca === '') return;
+    
+    const listaProdutos = db.produtos || [];
+    const produto = listaProdutos.find(p => p.ean && String(p.ean) === busca && p.ativo !== false);
+    
+    if (produto) {
+        processarAdicaoProduto(produto);
+        document.getElementById('pdv-produto-busca').value = '';
+        const dropdown = document.getElementById('pdv-busca-resultados');
+        if (dropdown) dropdown.classList.add('hidden');
+        document.getElementById('pdv-produto-busca').focus();
+    } else {
+        showToast('Produto não encontrado com este código de barras!', 'error');
+    }
+}
+window.buscarProdutoPorEAN = buscarProdutoPorEAN;
+
 document.addEventListener('click', function(event) { 
     const dropdown = document.getElementById('pdv-busca-resultados'); 
     if (dropdown && !event.target.closest('#pdv-produto-busca') && !event.target.closest('#pdv-busca-resultados')) {
