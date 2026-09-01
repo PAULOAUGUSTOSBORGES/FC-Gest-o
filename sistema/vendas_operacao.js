@@ -2095,7 +2095,7 @@ function preencherVinculoXML() {
             document.getElementById('prod-id').value = prod.id;
             document.getElementById('prod-nome').value = prod.nome;
             document.getElementById('prod-ean').value = prod.ean || '';
-            document.getElementById('prod-margem').value = (prod.margem || 50).toFixed(2);
+            document.getElementById('prod-margem').value = (prod.custo > 0 && prod.preco > 0) ? (((prod.preco - prod.custo) / prod.custo) * 100).toFixed(2) : (prod.margem || 50).toFixed(2);
             if(typeof calcularPrecoMargin === 'function') {
                 calcularPrecoMargin('margem');
             }

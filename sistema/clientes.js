@@ -191,7 +191,7 @@ function renderProdutos() {
         <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700 ${p.ativo === false ? 'opacity-60' : ''}">
             <td class="p-3 text-center">${fHtml}</td>
             <td class="p-3"><p class="font-bold text-slate-800 dark:text-slate-100">${p.nome} ${badgeInativo}</p><p class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">EAN: ${p.ean || 'S/N'} | ${p.categoria} | Marca: ${p.marca || '-'}</p></td>
-            <td class="p-3 text-right"><p class="text-slate-600 dark:text-slate-300 font-medium">${formatMoney(p.custo)}</p><p class="text-[10px] text-blue-500 font-bold">${p.margem}% MKP</p></td>
+            <td class="p-3 text-right"><p class="text-slate-600 dark:text-slate-300 font-medium">${formatMoney(p.custo)}</p><p class="text-[10px] text-blue-500 font-bold">${p.custo > 0 ? (((p.preco - p.custo) / p.custo) * 100).toFixed(2) : (p.margem || 0).toFixed(2)}% MKP</p></td>
             <td class="p-3 text-right font-bold text-emerald-600">${formatMoney(p.preco)}</td>
             <td class="p-3 text-center font-bold"><span class="px-2 py-1 rounded ${corEstoque}">${p.estoque} un</span></td>
             <td class="p-3 text-center flex items-center justify-center gap-1 mt-2"><button onclick="editarProduto('${p.id}')" class="text-blue-500 hover:text-blue-700 p-2"><i class="fa-solid fa-pen"></i></button><button onclick="excluirProduto('${p.id}')" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash"></i></button></td>
@@ -232,12 +232,34 @@ function processarFoto(event) {
 }
 
 function calcularPrecoMargin(quemMudou = 'preco') {
-    const custo = parseInputMoney(document.getElementById('prod-custo').value) || 0;
-    const precoEl = document.getElementById('prod-preco'); const margemEl = document.getElementById('prod-margem');
+    const custoEl = document.getElementById('prod-custo');
+    const margemEl = document.getElementById('prod-margem');
+    const precoEl = document.getElementById('prod-preco');
+    if (!custoEl || !margemEl || !precoEl) return;
+
+    const custo = parseInputMoney(custoEl.value);
+    const margem = parseInputMoney(margemEl.value);
+    const preco = parseInputMoney(precoEl.value);
+
     if (custo <= 0) return;
-    if (quemMudou === 'preco') { margemEl.value = ((((parseInputMoney(precoEl.value) || 0) - custo) / custo) * 100).toFixed(2); }
-    else if (quemMudou === 'margem') { precoEl.value = (custo * (1 + ((parseInputMoney(margemEl.value) || 0) / 100))).toFixed(2); }
-    else if (quemMudou === 'custo') { if ((parseInputMoney(margemEl.value) || 0) > 0) precoEl.value = (custo * (1 + ((parseInputMoney(margemEl.value) || 0) / 100))).toFixed(2); }
+
+    if (quemMudou === 'preco') {
+        if (preco > 0) {
+            const novaMargem = ((preco - custo) / custo) * 100;
+            margemEl.value = novaMargem.toFixed(2);
+        }
+    } else if (quemMudou === 'margem') {
+        const novoPreco = custo * (1 + (margem / 100));
+        precoEl.value = novoPreco.toFixed(2);
+    } else if (quemMudou === 'custo') {
+        if (margem !== 0) {
+            const novoPreco = custo * (1 + (margem / 100));
+            precoEl.value = novoPreco.toFixed(2);
+        } else if (preco > 0) {
+            const novaMargem = ((preco - custo) / custo) * 100;
+            margemEl.value = novaMargem.toFixed(2);
+        }
+    }
 }
 
 async function salvarProduto() {
@@ -254,7 +276,7 @@ async function salvarProduto() {
         categoria: document.getElementById('prod-categoria').value,
         unidade: document.getElementById('prod-unidade').value,
         custo: parseInputMoney(document.getElementById('prod-custo').value) || 0,
-        margem: parseInputMoney(document.getElementById('prod-margem').value) || 0,
+        margem: (parseInputMoney(document.getElementById('prod-custo').value) || 0) > 0 ? parseFloat((((preco - (parseInputMoney(document.getElementById('prod-custo').value) || 0)) / (parseInputMoney(document.getElementById('prod-custo').value) || 0)) * 100).toFixed(2)) : (parseInputMoney(document.getElementById('prod-margem').value) || 0),
         estoque: parseInputMoney(document.getElementById('prod-estoque').value) || 0,
         min: parseInt(document.getElementById('prod-minimo').value) || 0,
         ativo: document.getElementById('prod-ativo').value === 'true',
@@ -311,7 +333,19 @@ async function editarProduto(id) {
     for (let key in p) {
         if (key === 'id') continue;
         const el = document.getElementById(`prod-${key === 'min' ? 'minimo' : key}`);
-        if (el && key !== 'foto' && key !== 'ativo') el.value = p[key];
+        if (el && key !== 'foto' && key !== 'ativo' && key !== 'custo' && key !== 'preco' && key !== 'margem') { el.value = p[key]; }
+    }
+    
+    const custoNum = parseInputMoney(p.custo);
+    const precoNum = parseInputMoney(p.preco);
+    if (document.getElementById('prod-custo')) document.getElementById('prod-custo').value = custoNum.toFixed(2);
+    if (document.getElementById('prod-preco')) document.getElementById('prod-preco').value = precoNum.toFixed(2);
+    if (document.getElementById('prod-margem')) {
+        if (custoNum > 0 && precoNum > 0) {
+            document.getElementById('prod-margem').value = (((precoNum - custoNum) / custoNum) * 100).toFixed(2);
+        } else {
+            document.getElementById('prod-margem').value = parseInputMoney(p.margem || 50).toFixed(2);
+        }
     }
 
     document.getElementById('prod-ativo').value = p.ativo !== false ? 'true' : 'false';
@@ -637,8 +671,9 @@ async function processarPlanilhaProdutos(event) {
                 const categoria = colunas[2] || 'Geral';
                 const marca = colunas[3] || '';
                 const custo = parseInputMoney(colunas[4] ? colunas[4].replace(',', '.') : 0) || 0;
-                const margem = parseInputMoney(colunas[5] ? colunas[5].replace(',', '.') : 0) || 0;
                 const preco = parseInputMoney(colunas[6] ? colunas[6].replace(',', '.') : 0) || 0;
+                let margem = parseInputMoney(colunas[5] ? colunas[5].replace(',', '.') : 0) || 0;
+                if (custo > 0 && preco > 0) margem = parseFloat((((preco - custo) / custo) * 100).toFixed(2));
                 const estoque = parseInt(colunas[7]) || 0;
                 const min = parseInt(colunas[8]) || 5;
 
@@ -958,7 +993,7 @@ function preencherVinculoXML() {
             document.getElementById('prod-id').value = prod.id;
             document.getElementById('prod-nome').value = prod.nome;
             document.getElementById('prod-ean').value = prod.ean || '';
-            document.getElementById('prod-margem').value = (prod.margem || 50).toFixed(2);
+            document.getElementById('prod-margem').value = (prod.custo > 0 && prod.preco > 0) ? (((prod.preco - prod.custo) / prod.custo) * 100).toFixed(2) : (prod.margem || 50).toFixed(2);
             if(typeof calcularPrecoMargin === 'function') {
                 calcularPrecoMargin('margem');
             }

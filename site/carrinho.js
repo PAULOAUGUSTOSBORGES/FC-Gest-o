@@ -144,7 +144,7 @@ function renderizarItensCarrinho() {
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
                     </div>
-                    <div class="text-brand font-black text-sm">${formatMoney(item.preco)}</div>
+                    <!-- Preço removido -->
                     <div class="flex items-center gap-3 mt-2">
                         <div class="flex items-center border border-gray-200 rounded-lg overflow-hidden">
                             <button onclick="alterarQuantidade('${item.id}', -1)" class="w-8 h-8 flex items-center justify-center bg-gray-50 text-gray-600 hover:bg-gray-200 transition-colors">-</button>
@@ -165,15 +165,13 @@ function finalizarPedidoWhatsApp() {
     
     const nomeCliente = document.getElementById('carrinho-nome-cliente')?.value || 'Cliente';
     
-    let mensagem = `*NOVO PEDIDO*\r\n\r\n`;
+    let mensagem = `*NOVO ORÇAMENTO*\r\n\r\n`;
     mensagem += `*Cliente:* ${nomeCliente}\r\n\r\n`;
-    mensagem += `*Itens do Pedido:*\r\n`;
+    mensagem += `*Itens do Orçamento:*\r\n`;
     
     carrinho.forEach(item => {
-        mensagem += `- ${item.quantidade}x ${item.nome} (R$ ${Number(item.preco).toFixed(2)})\r\n`;
+        mensagem += `- ${item.quantidade}x ${item.nome}\r\n`;
     });
-    
-    mensagem += `\r\n*TOTAL: ${formatMoney(calcularTotal())}*`;
     
     // Pega o número do wpp configurado na loja globalmente
     let wpp = '';
@@ -215,10 +213,6 @@ function injetaHtmlCarrinho() {
         
         <!-- Footer / Checkout -->
         <div class="border-t border-gray-100 px-6 py-6 bg-gray-50 space-y-4">
-            <div class="flex justify-between items-center text-lg">
-                <span class="text-gray-500 font-medium">Total Estimado</span>
-                <span id="carrinho-total" class="font-black text-2xl text-gray-900">R$ 0,00</span>
-            </div>
             
             <input type="text" id="carrinho-nome-cliente" placeholder="Como podemos te chamar? (Nome)" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:ring-1 focus:ring-brand outline-none text-sm bg-white">
             

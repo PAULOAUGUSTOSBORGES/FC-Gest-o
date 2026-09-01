@@ -23,7 +23,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css?v=20260829121956">
+    <link rel="stylesheet" href="../style.css?v=20260831174026">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -386,7 +386,7 @@
             </div>
 
             <div class="flex overflow-x-auto border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 md:px-6 pt-4 shrink-0 custom-scrollbar">
-                <button onclick="abaModal('prod', 'dados')" id="prod-btn-dados" class="px-4 md:px-5 py-2 border-b-2 border-blue-600 font-bold text-blue-600 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Dados & Precificaçãoo</button>
+                <button onclick="abaModal('prod', 'dados')" id="prod-btn-dados" class="px-4 md:px-5 py-2 border-b-2 border-blue-600 font-bold text-blue-600 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Dados & Precificação</button>
                 <button onclick="abaModal('prod', 'crm')" id="prod-btn-crm" class="px-4 md:px-5 py-2 border-b-2 border-transparent font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-200 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">CRM & Histórico</button>
                 <button onclick="abaModal('prod', 'fiscal')" id="prod-btn-fiscal" class="px-4 md:px-5 py-2 border-b-2 border-transparent font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-200 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Fiscal & Impostos</button>
             </div>
@@ -461,7 +461,7 @@
                     </div>
 
                     <div class="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                        <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm border-b border-slate-100 dark:border-slate-700 pb-3 mb-4 md:mb-5 flex items-center gap-2"><i class="fa-solid fa-money-bill text-emerald-500 text-lg"></i> Precificaçãoo Inteligente e Estoque</h4>
+                        <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm border-b border-slate-100 dark:border-slate-700 pb-3 mb-4 md:mb-5 flex items-center gap-2"><i class="fa-solid fa-money-bill text-emerald-500 text-lg"></i> Precificação Inteligente e Estoque</h4>
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
                             <div>
                                 <label class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Custo Unit. (R$)</label>
@@ -469,7 +469,7 @@
                             </div>
                             <div>
                                 <label class="text-[10px] md:text-xs font-bold text-blue-700 mb-1.5 block">Margem (%)</label>
-                                <input type="text" data-mask="money" inputmode="numeric" id="prod-margem" step="0.1" class="w-full bg-blue-50 border border-blue-200 text-blue-800 p-2 md:p-2.5 rounded-lg text-sm font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all dark:bg-slate-800 dark:border-slate-600 dark:text-white" oninput="calcularPrecoMargin('margem')">
+                                <input type="text"  inputmode="numeric" id="prod-margem" step="0.1" class="w-full bg-blue-50 border border-blue-200 text-blue-800 p-2 md:p-2.5 rounded-lg text-sm font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all dark:bg-slate-800 dark:border-slate-600 dark:text-white" oninput="calcularPrecoMargin('margem')">
                             </div>
                             <div>
                                 <label class="text-[10px] md:text-xs font-bold text-emerald-700 mb-1.5 block">Preço Venda (R$)</label>
@@ -857,9 +857,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20260829121956"></script>
-    <script src="../global.js?v=20260829121956"></script>
-    <script src="estoque.js?v=20260829121956"></script>
+    <script src="../sistema/config_banco.js?v=20260831174026"></script>
+    <script src="../global.js?v=20260831174026"></script>
+    <script src="estoque.js?v=20260831174026"></script>
 </body>
 </html>
 

@@ -258,7 +258,7 @@ function criarCardProduto(p) {
             
             <div class="mt-4 flex items-end justify-between">
                 <div>
-                    <div class="text-2xl font-black text-gray-900">${formatMoney(p.preco)}</div>
+                    <!-- Preço removido -->
                 </div>
             </div>
             

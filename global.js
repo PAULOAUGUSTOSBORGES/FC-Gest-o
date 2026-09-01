@@ -8,24 +8,43 @@ function escapeHtml(unsafe) {
         .replace(/'/g, "&#039;");
 }
 window.escapeHtml = escapeHtml;
+window.selecionarProdutoCustoBusca = function(nomeProd) {
+    const hiddenId = document.getElementById('relatorio-custo-produto');
+    if(!hiddenId) return;
+    const produtosDb = (typeof db !== 'undefined' && db.produtos) ? db.produtos : [];
+    const prod = produtosDb.find(p => p.nome === nomeProd);
+    if(prod) {
+        hiddenId.value = prod.id;
+    } else {
+        hiddenId.value = '';
+    }
+    if(typeof renderEvolucaoCustos === 'function') {
+        renderEvolucaoCustos();
+    }
+};
+
 // ==========================================
 // 1. CONFIGURAÇÕES DO FIREBASE E SEGURANÇA
 // ==========================================
 
 // --- KILL SWITCH DO SERVICE WORKER E CACHE ---
 // Adicionado para resolver o problema de loop infinito (cache travado).
-if ('serviceWorker' in navigator) {
+if ('serviceWorker' in navigator && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
     navigator.serviceWorker.getRegistrations().then(function(registrations) {
         for(let r of registrations) {
             r.unregister();
         }
+    }).catch(function(err) {
+        console.warn("ServiceWorker:", err);
     });
 }
-if (window.caches) {
+if (window.caches && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
     caches.keys().then(function(names) {
         for (let name of names) {
             caches.delete(name);
         }
+    }).catch(function(err) {
+        console.warn("Caches:", err);
     });
 }
 // ---------------------------------------------
@@ -38,15 +57,17 @@ if (window.caches) {
 // As credenciais e inicialização do Firebase agora vêm de sistema/config_banco.js
 const firestore = firebase.firestore();
 
-// ATIVAR MODO OFFLINE (Agora funciona pois usamos o servidor local)
-firestore.enablePersistence({ synchronizeTabs: true })
-    .catch(function(err) {
-        if (err.code == 'failed-precondition') {
-            console.warn("Múltiplas abas abertas. A persistência offline funcionará apenas na primeira aba.");
-        } else if (err.code == 'unimplemented') {
-            console.warn("Navegador não suporta persistência offline do Firebase.");
-        }
-    });
+// ATIVAR MODO OFFLINE (Apenas em ambiente HTTP/HTTPS com servidor)
+if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+    firestore.enablePersistence({ synchronizeTabs: true })
+        .catch(function(err) {
+            if (err.code == 'failed-precondition') {
+                console.warn("Múltiplas abas abertas. A persistência offline funcionará apenas na primeira aba.");
+            } else if (err.code == 'unimplemented') {
+                console.warn("Navegador não suporta persistência offline do Firebase.");
+            }
+        });
+}
 
 const auth = firebase.auth();
 
@@ -103,23 +124,25 @@ const formatMoney = (val) => Number(val).toLocaleString('pt-BR', { style: 'curre
 // FUNÇÕES DE MÁSCARA DE DINHEIRO
 // ==========================================
 function applyMoneyMask(el) {
-    let value = String(el.value).replace(/\D/g, "");
-    if (!value) value = "0";
-    value = parseInt(value, 10).toString();
-    value = value.padStart(3, '0');
+    let raw = String(el.value || '');
+    let isNegative = raw.trim().startsWith('-');
+    let digits = raw.replace(/\D/g, "");
+    if (!digits) digits = "0";
+    digits = parseInt(digits, 10).toString();
+    digits = digits.padStart(3, '0');
     
-    let decimals = value.slice(-2);
-    let integers = value.slice(0, -2);
+    let decimals = digits.slice(-2);
+    let integers = digits.slice(0, -2);
     
     integers = integers.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     
-    el.value = integers + "," + decimals;
+    el.value = (isNegative ? "-" : "") + integers + "," + decimals;
 }
 
 function parseInputMoney(val) {
-    if (typeof val === 'number') return val;
+    if (typeof val === 'number') return isNaN(val) ? 0 : val;
     if (!val) return 0;
-    let str = String(val);
+    let str = String(val).trim();
     
     if (str.includes(',')) {
         str = str.replace(/\./g, "").replace(",", ".");
@@ -138,7 +161,13 @@ document.addEventListener('input', function(e) {
     if (e.target && e.target.dataset && e.target.dataset.mask === 'money') {
         applyMoneyMask(e.target);
     }
-});
+}, true); // Fase de Captura: roda ANTES de qualquer oninput inline nos inputs!
+
+document.addEventListener('change', function(e) {
+    if (e.target && e.target.dataset && e.target.dataset.mask === 'money') {
+        applyMoneyMask(e.target);
+    }
+}, true);
 
 document.addEventListener('focusin', function(e) {
     if (e.target && e.target.dataset && e.target.dataset.mask === 'money') {
@@ -147,7 +176,7 @@ document.addEventListener('focusin', function(e) {
             e.target.select();
         }
     }
-});
+}, true);
 
 // Interceptar atribuições de '.value' em inputs de dinheiro para auto-formatar floats
 let isMasking = false;

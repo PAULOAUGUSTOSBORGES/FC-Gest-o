@@ -1880,7 +1880,7 @@ function processarXMLReal(event) {
             
             window.tempXMLData.produtosXML.forEach(p => {
                 let match = db.produtos.find(prod => (prod.ean && prod.ean === p.cEAN && p.cEAN !== 'SEM GTIN') || prod.nome.toLowerCase() === p.nome.toLowerCase());
-                if(match) { p.statusDB = 'ATUALIZAR'; p.idMatch = match.id; p.margemAtual = match.margem || 50; }
+                if(match) { p.statusDB = 'ATUALIZAR'; p.idMatch = match.id; p.margemAtual = (match.custo > 0 && match.preco > 0) ? ((match.preco - match.custo) / match.custo) * 100 : (match.margem || 50); }
                 let pesoValor = window.tempXMLData.totalNF > 0 ? (p.vTotalItemNaNota / window.tempXMLData.totalNF) : 0;
                 let freteRateado = window.tempXMLData.freteExtra * pesoValor;
                 p.custoFinal = p.qCom > 0 ? ((p.vTotalItemNaNota + freteRateado) / p.qCom) : 0;
@@ -2587,12 +2587,9 @@ function renderDashboard() {
     const compEl = document.getElementById('bi-top-compras');
     if(compEl) compEl.innerHTML = Object.keys(rankingCompras).map(k => ({nome: k, val: rankingCompras[k]})).sort((a,b) => b.val - a.val).slice(0,5).map((p, i) => `<div class="flex justify-between text-sm border-b border-slate-100 dark:border-slate-700 pb-1"><span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200">${i+1}. ${p.nome}</span><span class="font-bold text-indigo-600 dark:text-indigo-400">${formatMoney(p.val)}</span></div>`).join('');
 
-    const selProd = document.getElementById('relatorio-custo-produto');
-    if(selProd) {
-        const prodAtual = selProd.value;
-        selProd.innerHTML = '<option value="">Selecione um Produto para carregar o histórico...</option>' + 
-                            (db.produtos || []).map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
-        if(prodAtual) selProd.value = prodAtual;
+    const dlProdCusto = document.getElementById('lista-produtos-custo');
+    if(dlProdCusto) {
+        dlProdCusto.innerHTML = (db.produtos || []).map(p => `<option value="${p.nome}">Estoque: ${p.estoque || 0}</option>`).join('');
     }
     
     // Chamar relatórios avançados
@@ -2697,7 +2694,7 @@ function renderSugestorCompras(vendasFiltradas, periodoObj) {
         const mediaDiaria = infoVenda.qtdVendida / diasPeriodo;
         if(mediaDiaria <= 0) return;
 
-        const estoqueAtual = Number(p.estoqueAtual) || 0;
+        const estoqueAtual = Number(p.estoque) || 0;
         const autonomiaDias = estoqueAtual / mediaDiaria;
         
         // Sugere compra se a autonomia for menor que 15 dias ou se o estoque cobrir menos que o alvo (30)
@@ -3029,7 +3026,7 @@ function preencherVinculoXML() {
             document.getElementById('prod-id').value = prod.id;
             document.getElementById('prod-nome').value = prod.nome;
             document.getElementById('prod-ean').value = prod.ean || '';
-            document.getElementById('prod-margem').value = (prod.margem || 50).toFixed(2);
+            document.getElementById('prod-margem').value = (prod.custo > 0 && prod.preco > 0) ? (((prod.preco - prod.custo) / prod.custo) * 100).toFixed(2) : (prod.margem || 50).toFixed(2);
             if(typeof calcularPrecoMargin === 'function') {
                 calcularPrecoMargin('margem');
             }

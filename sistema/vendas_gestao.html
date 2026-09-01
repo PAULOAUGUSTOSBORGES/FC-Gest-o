@@ -25,7 +25,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link rel="stylesheet" href="../style.css?v=20260829121956">
+    <link rel="stylesheet" href="../style.css?v=20260831174026">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -552,7 +552,7 @@
                 <div><label class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Cód Barras (EAN)</label><input type="text" id="prod-ean" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white"></div>
                 <div class="grid grid-cols-3 gap-3">
                     <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Custo R$</label><input type="text" data-mask="money" inputmode="numeric"  id="prod-custo"  class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white" oninput="calcularPrecoMargin('custo')"></div>
-                    <div><label class="text-xs font-bold text-blue-700 mb-1 block">Margem %</label><input type="text" data-mask="money" inputmode="numeric" id="prod-margem" step="0.1" class="w-full bg-blue-50 border border-blue-200 text-blue-800 p-2.5 rounded-lg text-sm font-bold outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" oninput="calcularPrecoMargin('margem')"></div>
+                    <div><label class="text-xs font-bold text-blue-700 mb-1 block">Margem %</label><input type="text"  inputmode="numeric" id="prod-margem" step="0.1" class="w-full bg-blue-50 border border-blue-200 text-blue-800 p-2.5 rounded-lg text-sm font-bold outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" oninput="calcularPrecoMargin('margem')"></div>
                     <div><label class="text-xs font-bold text-emerald-700 mb-1 block">Preço R$</label><input type="text" data-mask="money" inputmode="numeric"  id="prod-preco"  class="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 p-2.5 rounded-lg text-sm font-bold outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" oninput="calcularPrecoMargin('preco')"></div>
                 </div>
             </div>
@@ -768,9 +768,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20260829121956"></script>
-    <script src="../global.js?v=20260829121956"></script>
-    <script src="vendas_gestao.js?v=20260829121956"></script>
+    <script src="../sistema/config_banco.js?v=20260831174026"></script>
+    <script src="../global.js?v=20260831174026"></script>
+    <script src="vendas_gestao.js?v=20260831174026"></script>
 </body>
 
 

@@ -5,7 +5,7 @@
 // CHAVE MESTRA:
 // Mude para TRUE quando estiver desenvolvendo no seu computador.
 // Mude para FALSE quando for dar o 'firebase deploy' para os clientes usarem.
-const MODO_TESTES = true;
+const MODO_TESTES = false;
 
 // ==========================================
 // CREDENCIAIS DA PRODUÇÃO (BANCO REAL)

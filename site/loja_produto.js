@@ -20,7 +20,7 @@ async function initProduto() {
         if (configDoc.exists) {
             const data = configDoc.data();
             lojaConfig = data.loja || {};
-            aplicarConfiguracoesLoja();
+            aplicarConfiguracoesLoja(data.empresa || {});
         }
 
         const prodDoc = await firebase.firestore().collection('produtos').doc(produtoUrlId).get();
@@ -47,7 +47,7 @@ async function initProduto() {
     }
 }
 
-function aplicarConfiguracoesLoja() {
+function aplicarConfiguracoesLoja(empresaConfig = {}) {
     const cor = lojaConfig['cor-primaria-hex'] || lojaConfig['cor-primaria'] || '#2563eb';
     document.documentElement.style.setProperty('--brand-color', cor);
     
