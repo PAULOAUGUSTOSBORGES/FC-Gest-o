@@ -257,6 +257,7 @@ function filtrarClientesPDV(termo) {
         div.onclick = () => {
             document.getElementById('pdv-cliente').value = c.id;
             document.getElementById('pdv-cliente-busca').value = c.nome;
+            dropdown.classList.add('hidden');
         };
         dropdown.appendChild(div);
     });
@@ -1002,11 +1003,12 @@ function fecharLeitorCamera() {
 
 function onScanSuccess(decodedText) { 
     fecharLeitorCamera(); 
-    const buscaInput = document.getElementById('pdv-produto-busca'); 
-    buscaInput.value = decodedText; 
-    const prod = db.produtos.find(x => String(x.ean) === decodedText || String(x.id) === decodedText); 
+    const buscaInput = document.getElementById('pdv-produto-busca');
+    const codigoLido = String(decodedText).trim();
+    buscaInput.value = codigoLido; 
+    const prod = db.produtos.find(x => (String(x.ean) === codigoLido || String(x.id) === codigoLido) && x.ativo !== false); 
     
-    if(prod && prod.ativo !== false) { 
+    if(prod) { 
         processarAdicaoProduto(prod); 
         showToast('Código lido com sucesso!', 'success'); 
     } else { 
@@ -1070,9 +1072,17 @@ function filtrarProdutosPDV(termo) {
     const busca = termo ? String(termo).trim().toLowerCase() : '';
     
     const produtosFiltrados = busca === '' ? listaProdutos : listaProdutos.filter(p => { 
-        const nomeStr = p.nome ? String(p.nome).toLowerCase() : ''; 
-        const eanStr = p.ean ? String(p.ean) : ''; 
-        return (nomeStr.includes(busca) || eanStr === busca) && p.ativo !== false; 
+        if (p.ativo === false) return false;
+        return (
+            (p.nome && String(p.nome).toLowerCase().includes(busca)) ||
+            (p.ean && String(p.ean).toLowerCase().includes(busca)) ||
+            (p.marca && String(p.marca).toLowerCase().includes(busca)) ||
+            (p.categoria && String(p.categoria).toLowerCase().includes(busca)) ||
+            (p.subcategoria && String(p.subcategoria).toLowerCase().includes(busca)) ||
+            (p.ncm && String(p.ncm).toLowerCase().includes(busca)) ||
+            (p.id && String(p.id).toLowerCase().includes(busca)) ||
+            (p.obs && String(p.obs).toLowerCase().includes(busca))
+        );
     });
     
     const limitados = produtosFiltrados.slice(0, 50);
@@ -1089,7 +1099,9 @@ function filtrarProdutosPDV(termo) {
         const precoFormatado = Number(prod.preco || 0).toFixed(2).replace('.', ','); 
         const nomeProd = prod.nome || 'Produto Sem Nome';
         
-        div.innerHTML = `<span class="font-medium text-slate-700 dark:text-slate-200">${nomeProd}</span> <span class="font-bold text-emerald-600">R$ ${precoFormatado}</span>`;
+        const fHtml = prod.foto ? `<img src="${prod.foto}" onclick="event.stopPropagation(); abrirZoom(this.src)" class="w-8 h-8 rounded object-cover border border-slate-200 dark:border-slate-700 shrink-0 cursor-zoom-in hover:opacity-80 transition img-zoom-trigger" title="Ver foto">` : `<div class="w-8 h-8 rounded bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-400 text-xs shrink-0"><i class="fa-regular fa-image"></i></div>`;
+        
+        div.innerHTML = `<div class="flex items-center gap-3"><div class="flex-shrink-0">${fHtml}</div><span class="font-medium text-slate-700 dark:text-slate-200">${nomeProd}</span></div> <span class="font-bold text-emerald-600 shrink-0">R$ ${precoFormatado}</span>`;
         div.onclick = () => { 
             processarAdicaoProduto(prod); 
             document.getElementById('pdv-produto-busca').value = ''; 
@@ -1108,7 +1120,7 @@ function buscarProdutoPorEAN(termo) {
     if (busca === '') return;
     
     const listaProdutos = db.produtos || [];
-    const produto = listaProdutos.find(p => p.ean && String(p.ean) === busca && p.ativo !== false);
+    const produto = listaProdutos.find(p => (String(p.ean) === busca || String(p.id) === busca) && p.ativo !== false);
     
     if (produto) {
         processarAdicaoProduto(produto);
@@ -1158,7 +1170,7 @@ function pdvMudarObsItem(i, val) {
 
 function renderCarrinho() {
     document.getElementById('pdv-carrinho-body').innerHTML = cart.map((item, i) => { 
-        const fHtml = item.foto ? `<img src="${item.foto}" onclick="abrirZoomCart('${i}')" class="w-10 h-10 rounded object-cover border border-slate-200 dark:border-slate-700 mx-auto cursor-zoom-in hover:opacity-80 transition" title="Ver foto em tela cheia">` : `<div class="w-10 h-10 mx-auto rounded bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-400 text-xs border border-slate-200 dark:border-slate-700"><i class="fa-regular fa-image"></i></div>`; 
+        const fHtml = item.foto ? `<img src="${item.foto}" onclick="event.stopPropagation(); abrirZoom(this.src)" class="w-10 h-10 rounded object-cover border border-slate-200 dark:border-slate-700 mx-auto cursor-zoom-in hover:opacity-80 transition img-zoom-trigger" title="Ver foto em tela cheia">` : `<div class="w-10 h-10 mx-auto rounded bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-400 text-xs border border-slate-200 dark:border-slate-700"><i class="fa-regular fa-image"></i></div>`; 
         return `
         <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-50">
             <td class="py-2 text-center">${fHtml}</td>
@@ -1741,8 +1753,118 @@ async function finalizarVendaMultipla() {
     document.getElementById('print-area').innerHTML = htmlRecibo; 
     document.getElementById('modal-opcoes-recibo').classList.remove('hidden'); 
     
+    // Configurar campos do lembrete de pós-venda na agenda
+    const inputLembreteData = document.getElementById('pdv-lembrete-data');
+    if (inputLembreteData) {
+        const hojeStr = new Date().toISOString().split('T')[0];
+        inputLembreteData.value = hojeStr;
+    }
+    const inputLembreteHora = document.getElementById('pdv-lembrete-hora');
+    if (inputLembreteHora) inputLembreteHora.value = '';
+    const inputLembreteObs = document.getElementById('pdv-lembrete-obs');
+    if (inputLembreteObs) inputLembreteObs.value = '';
+    const radioEntrega = document.querySelector('input[name="pdv-lembrete-tipo"][value="ENTREGA"]');
+    if (radioEntrega) radioEntrega.checked = true;
+    const badgeStatus = document.getElementById('badge-lembrete-status');
+    if (badgeStatus) badgeStatus.classList.add('hidden');
+    const btnSalvarLembrete = document.getElementById('btn-salvar-lembrete-pdv');
+    if (btnSalvarLembrete) {
+        btnSalvarLembrete.disabled = false;
+        btnSalvarLembrete.innerHTML = '<i class="fa-solid fa-calendar-plus"></i> Salvar Lembrete na Agenda';
+        btnSalvarLembrete.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
+        btnSalvarLembrete.classList.add('bg-blue-600', 'hover:bg-blue-700');
+    }
+
     pdvLimpar(); 
     showToast(isOrcamento ? "Orçamento salvo!" : (isServico ? "Serviço registrado!" : "Venda registrada com sucesso!"), "success");
+}
+
+async function salvarLembretePDV() {
+    const dataStr = document.getElementById('pdv-lembrete-data')?.value;
+    if (!dataStr) {
+        return showToast("Selecione a data para o lembrete.", "warning");
+    }
+
+    const tipoEl = document.querySelector('input[name="pdv-lembrete-tipo"]:checked');
+    const tipo = tipoEl ? tipoEl.value : 'ENTREGA';
+    const horaStr = document.getElementById('pdv-lembrete-hora')?.value || '';
+    const obsLembrete = document.getElementById('pdv-lembrete-obs')?.value.trim() || '';
+
+    const venda = window.vendaAtualImpressao || {};
+    const numPedStr = venda.numeroPedido ? String(venda.numeroPedido).padStart(4, '0') : '';
+    const clienteNome = venda.clienteNome || 'Cliente';
+    const clienteTel = venda.clienteTel || '';
+    const clienteEnd = venda.clienteEnd || '';
+    const totalFormatado = formatMoney(venda.tot || 0);
+
+    const tipoLabel = tipo === 'ENTREGA' ? 'Entrega' : 'Cobrança';
+    const cor = tipo === 'ENTREGA' ? '#10b981' : '#f59e0b';
+
+    let titulo = `[${tipoLabel.toUpperCase()}] Pedido #${numPedStr || '-'} - ${clienteNome}`;
+    
+    let inicio = dataStr;
+    let diaInteiro = true;
+    if (horaStr) {
+        inicio = `${dataStr}T${horaStr}:00`;
+        diaInteiro = false;
+    }
+
+    let descricao = `Lembrete de ${tipoLabel}:\n`;
+    descricao += `• Pedido: #${numPedStr || '-'}\n`;
+    descricao += `• Cliente: ${clienteNome}\n`;
+    if (clienteTel && clienteTel !== 'Não informado') descricao += `• Telefone: ${clienteTel}\n`;
+    if (clienteEnd && clienteEnd !== 'Não informado') descricao += `• Endereço: ${clienteEnd}\n`;
+    descricao += `• Valor Total: ${totalFormatado}\n`;
+    if (venda.pag) descricao += `• Pagamento: ${venda.pag}\n`;
+    if (obsLembrete) descricao += `• Detalhes/Obs: ${obsLembrete}\n`;
+
+    const newId = 'lembrete_' + Date.now();
+    const eventoData = {
+        titulo: titulo,
+        inicio: inicio,
+        diaInteiro: diaInteiro,
+        descricao: descricao,
+        cor: cor,
+        tipoLembrete: tipo,
+        vendaId: venda.id || '',
+        numeroPedido: numPedStr,
+        clienteNome: clienteNome,
+        criadoEm: new Date().toISOString(),
+        atualizadoEm: new Date().toISOString()
+    };
+
+    const btnSalvar = document.getElementById('btn-salvar-lembrete-pdv');
+    const badge = document.getElementById('badge-lembrete-status');
+    if (btnSalvar) {
+        btnSalvar.disabled = true;
+        btnSalvar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Agendando...';
+    }
+
+    try {
+        await firestore.collection('fc_moveis').doc('config').set({
+            agenda_eventos: {
+                [newId]: eventoData
+            }
+        }, { merge: true });
+
+        showToast(`Lembrete de ${tipoLabel} agendado na Agenda!`, "success");
+
+        if (btnSalvar) {
+            btnSalvar.innerHTML = '<i class="fa-solid fa-circle-check"></i> Agendado com Sucesso!';
+            btnSalvar.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+            btnSalvar.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
+        }
+        if (badge) {
+            badge.classList.remove('hidden');
+        }
+    } catch (err) {
+        console.error("Erro ao salvar lembrete:", err);
+        showToast("Erro ao agendar lembrete: " + err.message, "error");
+        if (btnSalvar) {
+            btnSalvar.disabled = false;
+            btnSalvar.innerHTML = '<i class="fa-solid fa-calendar-plus"></i> Tentar Novamente';
+        }
+    }
 }
 
 function fecharModalOpcoesRecibo() { 
@@ -1975,13 +2097,14 @@ function verDetalhesVenda(id) {
         const subTot = preco * qtd;
         const subCusto = custo * qtd;
         const lucroSub = subTot - subCusto;
+        const margemSub = subTot > 0 ? ((lucroSub / subTot) * 100) : 0;
         
         totalCusto += subCusto;
         
         return `
         <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800/50 transition-colors group">
             <td class="p-4 border-b border-slate-100 dark:border-slate-800/50">
-                <div class="font-bold text-slate-800 dark:text-slate-200 text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">${i.nome || 'Produto/Servi\u00e7o'}</div>
+                <div class="font-bold text-slate-800 dark:text-slate-200 text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">${i.nome || 'Produto/Serviço'}</div>
                 ${i.obsVenda ? `<div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 bg-slate-100 dark:bg-slate-800 inline-block px-2 py-0.5 rounded-md"><i class="fa-solid fa-note-sticky mr-1"></i>${i.obsVenda}</div>` : ''}
             </td>
             <td class="p-4 text-center border-b border-slate-100 dark:border-slate-800/50">
@@ -1993,14 +2116,19 @@ function verDetalhesVenda(id) {
             </td>
             <td class="p-4 text-right border-b border-slate-100 dark:border-slate-800/50">
                 <div class="font-black text-slate-800 dark:text-white text-sm">${typeof formatMoney === 'function' ? formatMoney(subTot) : subTot}</div>
-                ${isGestao ? `<div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5 bg-emerald-50 dark:bg-emerald-900/20 inline-block px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-800/30">Lucro: ${typeof formatMoney === 'function' ? formatMoney(lucroSub) : lucroSub}</div>` : ''}
+                ${isGestao ? `<div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5 bg-emerald-50 dark:bg-emerald-900/20 inline-block px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-800/30">Lucro: ${typeof formatMoney === 'function' ? formatMoney(lucroSub) : lucroSub} <span class="text-blue-500">(${margemSub.toFixed(1)}%)</span></div>` : ''}
             </td>
         </tr>`;
     }).join('');
     
     const tot = Number(v.tot) || 0;
     const taxaCartao = Number(v.taxaValor) || 0;
-    const lucroLiquido = tot - totalCusto - taxaCartao;
+    const taxaBoleto = Number(v.taxaBoleto) || 0;
+    const totalDespesas = taxaCartao + taxaBoleto;
+    const custoGeral = totalCusto + totalDespesas;
+    const lucroLiquido = tot - custoGeral;
+    const margemLiquidaReal = tot > 0 ? ((lucroLiquido / tot) * 100) : 0;
+    const markupReal = custoGeral > 0 ? ((lucroLiquido / custoGeral) * 100) : 0;
     
     const tfootEl = document.querySelector('#det-venda-tfoot');
     if (tfootEl) {
@@ -2015,7 +2143,7 @@ function verDetalhesVenda(id) {
             if (taxaCartao > 0) {
                 tfootHtml += `
                 <tr>
-                    <td colspan="3" class="p-4 text-right font-bold text-slate-500 dark:text-slate-400 text-[11px] uppercase tracking-wider">Taxa de Cart\u00e3o / Despesa</td>
+                    <td colspan="3" class="p-4 text-right font-bold text-slate-500 dark:text-slate-400 text-[11px] uppercase tracking-wider">Taxa de Cartão / Despesa</td>
                     <td class="p-4 text-right font-black text-red-500 dark:text-red-400 text-sm bg-red-50/50 dark:bg-red-900/10">- ${typeof formatMoney === 'function' ? formatMoney(taxaCartao) : taxaCartao}</td>
                 </tr>`;
             }
@@ -2025,8 +2153,15 @@ function verDetalhesVenda(id) {
                     <td class="p-4 text-right font-black text-slate-900 dark:text-white text-lg">${typeof formatMoney === 'function' ? formatMoney(tot) : tot}</td>
                 </tr>
                 <tr class="bg-gradient-to-r from-emerald-50 to-emerald-100/50 dark:from-emerald-900/30 dark:to-emerald-900/10 border-t border-emerald-200 dark:border-emerald-800/50">
-                    <td colspan="3" class="p-4 text-right font-black text-emerald-800 dark:text-emerald-400 text-sm uppercase tracking-wide">Lucro L\u00edquido Real</td>
+                    <td colspan="3" class="p-4 text-right font-black text-emerald-800 dark:text-emerald-400 text-sm uppercase tracking-wide">Lucro Líquido Real</td>
                     <td class="p-4 text-right font-black text-emerald-600 dark:text-emerald-400 text-xl shadow-sm">${typeof formatMoney === 'function' ? formatMoney(lucroLiquido) : lucroLiquido}</td>
+                </tr>
+                <tr class="bg-emerald-50/40 dark:bg-emerald-950/20 border-t border-emerald-100 dark:border-emerald-800/30">
+                    <td colspan="3" class="p-3 text-right font-bold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider">Margem de Lucro Real / Markup</td>
+                    <td class="p-3 text-right font-black text-sm">
+                        <span class="bg-emerald-100 dark:bg-emerald-800/60 text-emerald-800 dark:text-emerald-200 px-2 py-0.5 rounded font-black text-xs">${margemLiquidaReal.toFixed(2)}% Margem</span>
+                        <span class="text-[11px] text-blue-600 dark:text-blue-400 font-bold ml-1">(${markupReal.toFixed(2)}% MKP)</span>
+                    </td>
                 </tr>
             `;
         } else {
@@ -2157,3 +2292,11 @@ function filtrarProdutosXMLBusca() {
 function mostrarListaProdutosXMLBusca() { filtrarProdutosXMLBusca(); }
 function ocultarListaProdutosXMLBusca() { document.getElementById('prod-vinculo-lista').classList.add('hidden'); }
 
+// Delegação de eventos para zoom de imagens (evita problema com URLs especiais do Firebase no onclick inline)
+document.addEventListener('click', function(e) {
+    const img = e.target.closest('.img-zoom-trigger');
+    if (img && img.dataset.zoomSrc) {
+        e.stopPropagation();
+        abrirZoom(img.dataset.zoomSrc);
+    }
+});

@@ -118,19 +118,44 @@ function setupContatos(empresaConfig) {
     document.getElementById('nav-whatsapp').href = linkWpp;
     document.getElementById('nav-whatsapp-mobile').href = linkWpp;
 
+function formatarUrlSocial(valor, rede) {
+    if (!valor) return '';
+    let url = String(valor).trim();
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+    }
+    url = url.replace(/^@/, '');
+    if (rede === 'facebook') {
+        if (url.startsWith('facebook.com/') || url.startsWith('www.facebook.com/')) {
+            return 'https://' + url;
+        }
+        return `https://facebook.com/${url}`;
+    }
+    if (rede === 'instagram') {
+        if (url.startsWith('instagram.com/') || url.startsWith('www.instagram.com/')) {
+            return 'https://' + url;
+        }
+        return `https://instagram.com/${url}`;
+    }
+    return url;
+}
+
     // Redes Sociais Footer
     const socialContainer = document.getElementById('social-links');
-    socialContainer.innerHTML = '';
-    
-    if (lojaConfig.instagram) {
-        const user = String(lojaConfig.instagram).replace('@', '');
-        socialContainer.innerHTML += `<a href="https://instagram.com/${user}" target="_blank" class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 hover:bg-brand hover:text-white transition-colors"><i class="fa-brands fa-instagram"></i></a>`;
-    }
-    if (lojaConfig.facebook) {
-        socialContainer.innerHTML += `<a href="https://facebook.com/${lojaConfig.facebook}" target="_blank" class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 hover:bg-brand hover:text-white transition-colors"><i class="fa-brands fa-facebook-f"></i></a>`;
-    }
-    if (wpp) {
-        socialContainer.innerHTML += `<a href="${linkWpp}" target="_blank" class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 hover:bg-[#25D366] hover:text-white transition-colors"><i class="fa-brands fa-whatsapp"></i></a>`;
+    if (socialContainer) {
+        socialContainer.innerHTML = '';
+        
+        if (lojaConfig.instagram) {
+            const instaUrl = formatarUrlSocial(lojaConfig.instagram, 'instagram');
+            socialContainer.innerHTML += `<a href="${instaUrl}" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 hover:bg-brand hover:text-white transition-colors" title="Instagram"><i class="fa-brands fa-instagram"></i></a>`;
+        }
+        if (lojaConfig.facebook) {
+            const fbUrl = formatarUrlSocial(lojaConfig.facebook, 'facebook');
+            socialContainer.innerHTML += `<a href="${fbUrl}" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 hover:bg-brand hover:text-white transition-colors" title="Facebook"><i class="fa-brands fa-facebook-f"></i></a>`;
+        }
+        if (wpp) {
+            socialContainer.innerHTML += `<a href="${linkWpp}" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 hover:bg-[#25D366] hover:text-white transition-colors" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>`;
+        }
     }
 
     // Informações de Contato Footer
@@ -230,41 +255,35 @@ function renderizarCategorias() {
 
 function criarCardProduto(p) {
     const temEstoque = p.estoque > 0 || !p.hasOwnProperty('estoque');
-    const fotoUrl = p.foto || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmM2Y0ZjYiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5Y2EzYWYiIGR5PSIuM2VtIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5TZW0gSW1hZ2VtPC90ZXh0Pjwvc3ZnPg==';
+    const fotoUrl = (p.fotos && Array.isArray(p.fotos) && p.fotos.length > 0 ? p.fotos[0] : p.foto) || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmM2Y0ZjYiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5Y2EzYWYiIGR5PSIuM2VtIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5TZW0gSW1hZ2VtPC90ZXh0Pjwvc3ZnPg==';
     
     let legendaHtml = '';
     if (p.legenda) {
-        legendaHtml = `<p class="text-sm text-gray-500 mt-1 mb-2 line-clamp-2">${p.legenda}</p>`;
+        legendaHtml = `<p class="text-xs sm:text-sm text-gray-500 mt-1 mb-2 line-clamp-2 leading-relaxed">${p.legenda}</p>`;
     }
 
-    const destaqueHtml = p.destaque ? `<div class="absolute top-4 right-4 bg-brand text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg z-10"><i class="fa-solid fa-star mr-1"></i> Destaque</div>` : '';
-    const estoqueBadge = !temEstoque ? `<div class="absolute top-4 left-4 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg z-10">Esgotado</div>` : '';
+    const destaqueHtml = p.destaque ? `<div class="absolute top-3 right-3 bg-brand text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md z-10 flex items-center gap-1 backdrop-blur-sm"><i class="fa-solid fa-star text-[10px]"></i> Destaque</div>` : '';
+    const estoqueBadge = !temEstoque ? `<div class="absolute top-3 left-3 bg-amber-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md z-10 flex items-center gap-1.5 backdrop-blur-sm"><i class="fa-solid fa-clock text-[10px]"></i> Sob Encomenda</div>` : '';
 
     return `
     <a href="produto.html?id=${p.id}" class="bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 overflow-hidden product-card flex flex-col h-full relative group transition-all duration-300 block">
         ${destaqueHtml}
         ${estoqueBadge}
         
-        <div class="aspect-square bg-gray-50 overflow-hidden relative">
-            <img src="${fotoUrl}" alt="${p.nome}" class="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-700 ${!temEstoque ? 'grayscale' : ''}">
-            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-5 transition-all duration-300"></div>
+        <div class="aspect-square bg-gray-50 overflow-hidden relative flex items-center justify-center">
+            <img src="${fotoUrl}" alt="${p.nome}" loading="lazy" decoding="async" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500">
+            <div class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300"></div>
         </div>
         
-        <div class="p-6 flex flex-col flex-grow">
-            <div class="text-xs font-bold text-brand uppercase tracking-wider mb-2">${p.categoria || 'Geral'}</div>
-            <h3 class="text-lg font-bold text-gray-900 leading-tight ${p.legenda ? '' : 'mb-2 flex-grow'} group-hover:text-brand transition-colors">${p.nome}</h3>
+        <div class="p-5 sm:p-6 flex flex-col flex-grow">
+            <div class="text-[11px] font-bold text-brand uppercase tracking-wider mb-1.5">${p.categoria || 'Geral'}</div>
+            <h3 class="text-base sm:text-lg font-bold text-gray-900 leading-snug group-hover:text-brand transition-colors mb-1">${p.nome}</h3>
             ${legendaHtml}
-            ${p.legenda ? '<div class="flex-grow"></div>' : ''}
+            <div class="flex-grow"></div>
             
-            <div class="mt-4 flex items-end justify-between">
-                <div>
-                    <!-- Preço removido -->
-                </div>
-            </div>
-            
-            <div class="mt-6 w-full bg-gray-50 group-hover:bg-brand text-gray-600 group-hover:text-white font-bold py-3 px-4 rounded-xl text-center transition-colors flex items-center justify-center gap-2 border border-gray-100 group-hover:border-brand">
+            <div class="mt-4 w-full bg-gray-50 group-hover:bg-brand text-gray-700 group-hover:text-white font-bold py-2.5 sm:py-3 px-4 rounded-xl text-center transition-all duration-200 flex items-center justify-center gap-2 border border-gray-100 group-hover:border-brand shadow-sm text-sm">
                 <span>Ver Detalhes</span>
-                <i class="fa-solid fa-arrow-right text-sm"></i>
+                <i class="fa-solid fa-arrow-right text-xs group-hover:translate-x-1 transition-transform"></i>
             </div>
         </div>
     </a>

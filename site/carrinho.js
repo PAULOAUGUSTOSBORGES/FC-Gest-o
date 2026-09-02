@@ -31,15 +31,19 @@ function salvarCarrinho() {
 function adicionarAoCarrinho(produto, quantidade = 1) {
     const itemExistente = carrinho.find(item => item.id === produto.id);
     
+    const fotoPrincipal = (produto.fotos && Array.isArray(produto.fotos) && produto.fotos.length > 0 ? produto.fotos[0] : produto.foto) || '';
+    const temEstoque = produto.estoque > 0 || !produto.hasOwnProperty('estoque');
+
     if (itemExistente) {
         itemExistente.quantidade += quantidade;
     } else {
         carrinho.push({
             id: produto.id,
             nome: produto.nome,
-            preco: produto.preco,
-            foto: produto.foto || '',
-            quantidade: quantidade
+            preco: produto.preco || 0,
+            foto: fotoPrincipal,
+            quantidade: quantidade,
+            sobEncomenda: !temEstoque
         });
     }
     
@@ -70,7 +74,7 @@ function limparCarrinho() {
 }
 
 function calcularTotal() {
-    return carrinho.reduce((total, item) => total + (Number(item.preco) * item.quantidade), 0);
+    return carrinho.reduce((total, item) => total + (Number(item.preco || 0) * item.quantidade), 0);
 }
 
 function atualizarBadgeCarrinho() {
@@ -87,6 +91,9 @@ function atualizarBadgeCarrinho() {
 }
 
 function abrirCarrinho() {
+    if (!document.getElementById('carrinho-sidebar')) {
+        injetaHtmlCarrinho();
+    }
     const sidebar = document.getElementById('carrinho-sidebar');
     const overlay = document.getElementById('carrinho-overlay');
     if (sidebar && overlay) {
@@ -107,49 +114,59 @@ function fecharCarrinho() {
 
 function renderizarItensCarrinho() {
     const container = document.getElementById('carrinho-itens');
+    if (!container) return;
+    
     const totalEl = document.getElementById('carrinho-total');
-    if (!container || !totalEl) return;
+    const btnFinalizar = document.getElementById('carrinho-btn-finalizar');
     
     container.innerHTML = '';
     
     if (carrinho.length === 0) {
         container.innerHTML = `
-            <div class="flex flex-col items-center justify-center h-full text-gray-400 py-10">
-                <i class="fa-solid fa-cart-arrow-down text-6xl mb-4 opacity-50"></i>
-                <p>Seu carrinho está vazio.</p>
-                <button onclick="fecharCarrinho()" class="mt-4 text-brand font-medium hover:underline">Continuar Comprando</button>
+            <div class="flex flex-col items-center justify-center h-full text-gray-400 py-12 text-center">
+                <i class="fa-solid fa-cart-arrow-down text-6xl mb-4 opacity-40 text-gray-300"></i>
+                <p class="font-medium text-gray-600">Seu carrinho está vazio.</p>
+                <button type="button" onclick="fecharCarrinho()" class="mt-4 text-brand font-bold hover:underline">Continuar Comprando</button>
             </div>
         `;
-        totalEl.innerText = formatMoney(0);
-        document.getElementById('carrinho-btn-finalizar').disabled = true;
-        document.getElementById('carrinho-btn-finalizar').classList.add('opacity-50', 'cursor-not-allowed');
+        if (totalEl) totalEl.innerText = (typeof formatMoney === 'function' ? formatMoney(0) : 'R$ 0,00');
+        if (btnFinalizar) {
+            btnFinalizar.disabled = true;
+            btnFinalizar.classList.add('opacity-50', 'cursor-not-allowed');
+        }
         return;
     }
 
-    document.getElementById('carrinho-btn-finalizar').disabled = false;
-    document.getElementById('carrinho-btn-finalizar').classList.remove('opacity-50', 'cursor-not-allowed');
+    if (btnFinalizar) {
+        btnFinalizar.disabled = false;
+        btnFinalizar.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
 
     carrinho.forEach(item => {
         const fotoUrl = item.foto || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmM2Y0ZjYiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5Y2EzYWYiIGR5PSIuM2VtIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5TZW0gSW1hZ2VtPC90ZXh0Pjwvc3ZnPg==';
-        
+        const badgeEncomenda = item.sobEncomenda ? `<div class="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md inline-flex items-center gap-1 mt-1 w-fit"><i class="fa-solid fa-clock text-[9px]"></i> Sob Encomenda</div>` : '';
+
         container.innerHTML += `
-            <div class="flex gap-4 py-4 border-b border-gray-100">
-                <div class="w-20 h-20 rounded-lg overflow-hidden bg-gray-50 flex-shrink-0 border border-gray-100">
-                    <img src="${fotoUrl}" alt="${item.nome}" class="w-full h-full object-cover">
+            <div class="flex gap-3 sm:gap-4 py-3.5 border-b border-gray-100 items-center">
+                <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0 border border-gray-100 shadow-sm flex items-center justify-center">
+                    <img src="${fotoUrl}" alt="${item.nome}" loading="lazy" class="w-full h-full object-cover">
                 </div>
-                <div class="flex-grow flex flex-col justify-between">
+                <div class="flex-grow flex flex-col justify-between min-w-0">
                     <div class="flex justify-between items-start gap-2">
-                        <h4 class="text-sm font-bold text-gray-900 leading-tight">${item.nome}</h4>
-                        <button onclick="removerDoCarrinho('${item.id}')" class="text-gray-400 hover:text-red-500 transition-colors">
-                            <i class="fa-solid fa-trash-can"></i>
+                        <div>
+                            <h4 class="text-sm font-bold text-gray-900 leading-tight truncate" title="${item.nome}">${item.nome}</h4>
+                            ${badgeEncomenda}
+                        </div>
+                        <button type="button" onclick="removerDoCarrinho('${item.id}')" class="text-gray-400 hover:text-red-500 transition-colors p-1 shrink-0" title="Remover item">
+                            <i class="fa-solid fa-trash-can text-sm"></i>
                         </button>
                     </div>
-                    <!-- Preço removido -->
-                    <div class="flex items-center gap-3 mt-2">
-                        <div class="flex items-center border border-gray-200 rounded-lg overflow-hidden">
-                            <button onclick="alterarQuantidade('${item.id}', -1)" class="w-8 h-8 flex items-center justify-center bg-gray-50 text-gray-600 hover:bg-gray-200 transition-colors">-</button>
-                            <span class="w-8 text-center text-sm font-medium">${item.quantidade}</span>
-                            <button onclick="alterarQuantidade('${item.id}', 1)" class="w-8 h-8 flex items-center justify-center bg-gray-50 text-gray-600 hover:bg-gray-200 transition-colors">+</button>
+                    
+                    <div class="flex items-center justify-between mt-2.5">
+                        <div class="flex items-center border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                            <button type="button" onclick="alterarQuantidade('${item.id}', -1)" class="w-7 h-7 flex items-center justify-center bg-gray-50 text-gray-600 hover:bg-gray-200 transition-colors font-bold text-sm select-none">-</button>
+                            <span class="w-8 text-center text-xs font-bold text-gray-800">${item.quantidade}</span>
+                            <button type="button" onclick="alterarQuantidade('${item.id}', 1)" class="w-7 h-7 flex items-center justify-center bg-gray-50 text-gray-600 hover:bg-gray-200 transition-colors font-bold text-sm select-none">+</button>
                         </div>
                     </div>
                 </div>
@@ -157,32 +174,33 @@ function renderizarItensCarrinho() {
         `;
     });
     
-    totalEl.innerText = formatMoney(calcularTotal());
+    if (totalEl) totalEl.innerText = (typeof formatMoney === 'function' ? formatMoney(calcularTotal()) : `R$ ${calcularTotal().toFixed(2)}`);
 }
 
 function finalizarPedidoWhatsApp() {
     if (carrinho.length === 0) return;
     
-    const nomeCliente = document.getElementById('carrinho-nome-cliente')?.value || 'Cliente';
+    const nomeCliente = document.getElementById('carrinho-nome-cliente')?.value.trim() || 'Cliente';
     
     let mensagem = `*NOVO ORÇAMENTO*\r\n\r\n`;
     mensagem += `*Cliente:* ${nomeCliente}\r\n\r\n`;
     mensagem += `*Itens do Orçamento:*\r\n`;
     
     carrinho.forEach(item => {
-        mensagem += `- ${item.quantidade}x ${item.nome}\r\n`;
+        const tagEncomenda = item.sobEncomenda ? ' *(Sob Encomenda)*' : '';
+        mensagem += `- ${item.quantidade}x ${item.nome}${tagEncomenda}\r\n`;
     });
     
     // Pega o número do wpp configurado na loja globalmente
     let wpp = '';
     if (typeof lojaConfig !== 'undefined' && lojaConfig.whatsapp) {
         wpp = lojaConfig.whatsapp;
-    } else {
-        wpp = '5511999999999'; // fallback
+    } else if (typeof window.lojaConfig !== 'undefined' && window.lojaConfig.whatsapp) {
+        wpp = window.lojaConfig.whatsapp;
     }
     
-    const numeroLimpo = String(wpp).replace(/\D/g, '');
-    const url = `https://wa.me/55${numeroLimpo}?text=${encodeURIComponent(mensagem)}`;
+    const numeroFormatado = formatarNumeroWhatsApp(wpp);
+    const url = `https://wa.me/${numeroFormatado || '5511999999999'}?text=${encodeURIComponent(mensagem)}`;
     
     window.open(url, '_blank');
 }

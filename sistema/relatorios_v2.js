@@ -3014,6 +3014,7 @@ function renderVendas() {
         try {
             const custoTotalDaVenda = (Number(v.custoTotal) || 0) + (Number(v.taxaValor) || 0); 
             const lucroDaVenda = (Number(v.tot) || 0) - custoTotalDaVenda; 
+            const margemDaVenda = (Number(v.tot) > 0) ? ((lucroDaVenda / Number(v.tot)) * 100) : 0;
             const numPedStr = String(v.numeroPedido || v.id || '0').padStart(4, '0'); 
             totalLucro += lucroDaVenda;
             
@@ -3032,7 +3033,10 @@ function renderVendas() {
                 <td class="p-3"><span class="bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap">${pagRender}</span></td>
                 <td class="p-3 text-right font-black text-slate-700 dark:text-slate-200">${typeof formatMoney === 'function' ? formatMoney(v.tot || 0) : (v.tot || 0)}</td>
                 <td class="p-3 text-right font-bold text-red-500">-${typeof formatMoney === 'function' ? formatMoney(custoTotalDaVenda) : custoTotalDaVenda}</td>
-                <td class="p-3 text-right font-black text-emerald-600">${typeof formatMoney === 'function' ? formatMoney(lucroDaVenda) : lucroDaVenda}</td>
+                <td class="p-3 text-right">
+                    <div class="font-black text-emerald-600">${typeof formatMoney === 'function' ? formatMoney(lucroDaVenda) : lucroDaVenda}</div>
+                    <div class="text-[10px] text-blue-500 dark:text-blue-400 font-bold mt-0.5">${margemDaVenda.toFixed(1)}% Margem</div>
+                </td>
             </tr>`;
         } catch (e) { console.error(e); return ''; }
     }).join('') || '<tr><td colspan="7" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum registro encontrado com os filtros atuais.</td></tr>';

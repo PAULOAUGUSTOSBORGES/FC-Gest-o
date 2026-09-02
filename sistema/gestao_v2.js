@@ -2424,6 +2424,7 @@ function renderVendas() {
         try {
             const custoTotalDaVenda = (Number(v.custoTotal) || 0) + (Number(v.taxaValor) || 0); 
             const lucroDaVenda = (Number(v.tot) || 0) - custoTotalDaVenda; 
+            const margemDaVenda = (Number(v.tot) > 0) ? ((lucroDaVenda / Number(v.tot)) * 100) : 0;
             const numPedStr = String(v.numeroPedido || v.id || '0').padStart(4, '0'); 
             totalLucro += lucroDaVenda;
             
@@ -2442,7 +2443,10 @@ function renderVendas() {
                 <td class="p-3"><span class="bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap">${pagRender}</span></td>
                 <td class="p-3 text-right font-black text-slate-700 dark:text-slate-200">${typeof formatMoney === 'function' ? formatMoney(v.tot || 0) : (v.tot || 0)}</td>
                 <td class="p-3 text-right font-bold text-red-500">-${typeof formatMoney === 'function' ? formatMoney(custoTotalDaVenda) : custoTotalDaVenda}</td>
-                <td class="p-3 text-right font-black text-emerald-600">${typeof formatMoney === 'function' ? formatMoney(lucroDaVenda) : lucroDaVenda}</td>
+                <td class="p-3 text-right">
+                    <div class="font-black text-emerald-600">${typeof formatMoney === 'function' ? formatMoney(lucroDaVenda) : lucroDaVenda}</div>
+                    <div class="text-[10px] text-blue-500 dark:text-blue-400 font-bold mt-0.5">${margemDaVenda.toFixed(1)}% Margem</div>
+                </td>
                 <td class="p-3 text-center print:hidden"><button onclick="verDetalhesVenda('${v.id}')" class="text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1.5 rounded font-bold text-xs" title="Ver Detalhes"><i class="fa-solid fa-eye"></i></button></td>
             </tr>`;
         } catch (e) { console.error(e); return ''; }
@@ -2508,6 +2512,7 @@ function verDetalhesVenda(id) {
             const subTot = preco * qtd;
             const subCusto = custo * qtd;
             const lucroSub = subTot - subCusto;
+            const margemSub = subTot > 0 ? ((lucroSub / subTot) * 100) : 0;
             
             totalCusto += subCusto;
             
@@ -2526,7 +2531,7 @@ function verDetalhesVenda(id) {
                 </td>
                 <td class="p-4 text-right border-b border-slate-100 dark:border-slate-800/50">
                     <div class="font-black text-slate-800 dark:text-white text-sm">${typeof formatMoney === 'function' ? formatMoney(subTot) : subTot}</div>
-                    ${isGestao ? `<div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5 bg-emerald-50 dark:bg-emerald-900/20 inline-block px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-800/30">Lucro: ${typeof formatMoney === 'function' ? formatMoney(lucroSub) : lucroSub}</div>` : ''}
+                    ${isGestao ? `<div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5 bg-emerald-50 dark:bg-emerald-900/20 inline-block px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-800/30">Lucro: ${typeof formatMoney === 'function' ? formatMoney(lucroSub) : lucroSub} <span class="text-blue-500">(${margemSub.toFixed(1)}%)</span></div>` : ''}
                 </td>
             </tr>`;
         }).join('');
@@ -2535,7 +2540,11 @@ function verDetalhesVenda(id) {
     const tot = Number(v.tot) || 0;
     const taxaCartao = Number(v.taxaValor) || 0;
     const taxaBoleto = Number(v.taxaBoleto) || 0;
-    const lucroLiquido = tot - totalCusto - taxaCartao - taxaBoleto;
+    const totalDespesas = taxaCartao + taxaBoleto;
+    const custoGeral = totalCusto + totalDespesas;
+    const lucroLiquido = tot - custoGeral;
+    const margemLiquidaReal = tot > 0 ? ((lucroLiquido / tot) * 100) : 0;
+    const markupReal = custoGeral > 0 ? ((lucroLiquido / custoGeral) * 100) : 0;
     
     const tfootEl = document.querySelector('#det-venda-tfoot');
     if (tfootEl) {
@@ -2562,6 +2571,13 @@ function verDetalhesVenda(id) {
                 <tr class="bg-gradient-to-r from-emerald-50 to-emerald-100/50 dark:from-emerald-900/30 dark:to-emerald-900/10 border-t border-emerald-200 dark:border-emerald-800/50">
                     <td colspan="3" class="p-4 text-right font-black text-emerald-800 dark:text-emerald-400 text-sm uppercase tracking-wide">Lucro Líquido Real</td>
                     <td class="p-4 text-right font-black text-emerald-600 dark:text-emerald-400 text-xl shadow-sm">${typeof formatMoney === 'function' ? formatMoney(lucroLiquido) : lucroLiquido}</td>
+                </tr>
+                <tr class="bg-emerald-50/40 dark:bg-emerald-950/20 border-t border-emerald-100 dark:border-emerald-800/30">
+                    <td colspan="3" class="p-3 text-right font-bold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider">Margem de Lucro Real / Markup</td>
+                    <td class="p-3 text-right font-black text-sm">
+                        <span class="bg-emerald-100 dark:bg-emerald-800/60 text-emerald-800 dark:text-emerald-200 px-2 py-0.5 rounded font-black text-xs">${margemLiquidaReal.toFixed(2)}% Margem</span>
+                        <span class="text-[11px] text-blue-600 dark:text-blue-400 font-bold ml-1">(${markupReal.toFixed(2)}% MKP)</span>
+                    </td>
                 </tr>
             `;
         } else {

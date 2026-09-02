@@ -54,7 +54,7 @@ function inicializarCadastro() {
 
     firestore.collection('funcionarios').onSnapshot(snap => {
         db.funcionarios = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        
+        if (typeof renderFuncionarios === 'function') renderFuncionarios();
     });
 
     unsubKardex = firestore.collection('movimentacoes').orderBy('data', 'desc').limit(50).onSnapshot(snap => {
@@ -76,7 +76,7 @@ function inicializarCadastro() {
 
     const urlParams = new URLSearchParams(window.location.search);
     const view = urlParams.get('view');
-    mudarVisaoLocal(view || 'estoque');
+    mudarVisaoLocal(view || 'produtos');
 }
 
 window.onload = () => { initGlobalData(inicializarCadastro); };
@@ -139,7 +139,9 @@ function renderSelectCategorias() {
     const selectCat = document.getElementById('prod-categoria');
     if (!selectCat) return;
     
+    // Guarda o valor selecionado atualmente para não perder ao atualizar
     const valAtual = selectCat.value;
+    
     let html = '<option value="">Sem Categoria</option>';
     if (db.categorias && db.categorias.length > 0) {
         db.categorias.forEach(cat => {
@@ -149,6 +151,7 @@ function renderSelectCategorias() {
     
     selectCat.innerHTML = html;
     
+    // Tenta restaurar
     if (valAtual && selectCat.querySelector(`option[value="${valAtual}"]`)) {
         selectCat.value = valAtual;
     }
@@ -160,27 +163,70 @@ function atualizarOpcoesSubcategoria() {
     const selectCat = document.getElementById('prod-categoria');
     const selectSub = document.getElementById('prod-subcategoria');
     if (!selectCat || !selectSub) return;
+    
     const catSelecionada = selectCat.value;
     const valAtualSub = selectSub.value;
+    
     let html = '<option value="">Sem Subcategoria</option>';
+    
     if (catSelecionada && db.categorias) {
         const categoria = db.categorias.find(c => c.nome === catSelecionada);
         if (categoria && categoria.subcategorias && Array.isArray(categoria.subcategorias)) {
-            categoria.subcategorias.forEach(sub => { html += `<option value=""></option>`; });
+            categoria.subcategorias.forEach(sub => {
+                html += `<option value="${sub}">${sub}</option>`;
+            });
         }
     }
+    
     selectSub.innerHTML = html;
-    if (valAtualSub && selectSub.querySelector(`option[value=""]`)) selectSub.value = valAtualSub;
+    
+    if (valAtualSub && selectSub.querySelector(`option[value="${valAtualSub}"]`)) {
+        selectSub.value = valAtualSub;
+    }
 }
+
 // ==========================================
 // PRODUTOS
 // ==========================================
+window.prodSortDirection = null;
+
+function toggleSortProdutos() {
+    if (window.prodSortDirection === null || window.prodSortDirection === 'desc') {
+        window.prodSortDirection = 'asc';
+    } else {
+        window.prodSortDirection = 'desc';
+    }
+    renderProdutos();
+    const thIcon = document.getElementById('sort-icon-produto');
+    if (thIcon) {
+        if (window.prodSortDirection === 'asc') thIcon.className = 'fa-solid fa-sort-alpha-down ml-1 text-indigo-500';
+        else thIcon.className = 'fa-solid fa-sort-alpha-up-alt ml-1 text-indigo-500';
+    }
+}
+
 function renderProdutos() {
     const termo = document.getElementById('busca-produto-lista')?.value.toLowerCase() || ''; const statusFiltro = document.getElementById('filtro-prod-status')?.value || 'todos';
-    let filtrados = db.produtos.filter(p => p.nome.toLowerCase().includes(termo) || (p.ean && p.ean.includes(termo)) || (p.marca && p.marca.toLowerCase().includes(termo)));
+    let filtrados = db.produtos.filter(p => 
+        (p.nome && String(p.nome).toLowerCase().includes(termo)) || 
+        (p.ean && String(p.ean).toLowerCase().includes(termo)) || 
+        (p.marca && String(p.marca).toLowerCase().includes(termo)) ||
+        (p.categoria && String(p.categoria).toLowerCase().includes(termo)) ||
+        (p.subcategoria && String(p.subcategoria).toLowerCase().includes(termo)) ||
+        (p.ncm && String(p.ncm).toLowerCase().includes(termo)) ||
+        (p.obs && String(p.obs).toLowerCase().includes(termo)) ||
+        (p.legenda && String(p.legenda).toLowerCase().includes(termo)) ||
+        (p.id && String(p.id).toLowerCase().includes(termo))
+    );
     if (statusFiltro === 'alerta') filtrados = filtrados.filter(p => p.estoque > 0 && p.estoque <= p.min);
     if (statusFiltro === 'zerado') filtrados = filtrados.filter(p => p.estoque <= 0);
     if (statusFiltro === 'ok') filtrados = filtrados.filter(p => p.estoque > p.min);
+
+    if (window.prodSortDirection === 'asc') {
+        filtrados.sort((a, b) => a.nome.replace(/\s+/g, '').localeCompare(b.nome.replace(/\s+/g, ''), undefined, { numeric: true, sensitivity: 'base' }));
+    } else if (window.prodSortDirection === 'desc') {
+        filtrados.sort((a, b) => b.nome.replace(/\s+/g, '').localeCompare(a.nome.replace(/\s+/g, ''), undefined, { numeric: true, sensitivity: 'base' }));
+    }
+
 
     document.getElementById('tabela-produtos').innerHTML = filtrados.map(p => {
         const isBaixo = p.estoque <= p.min; const isZerado = p.estoque <= 0;
@@ -199,12 +245,15 @@ function renderProdutos() {
     }).join('');
 }
 
+let fotosGaleria = [];
+
 function abrirModalProduto() {
     const divAcao = document.getElementById('div-acao-vinculo-xml'); if(divAcao) divAcao.classList.add('hidden');
     abaModal('prod', 'dados'); document.getElementById('modal-produto-title').innerText = 'Cadastrar Produto';
     ['id', 'nome', 'ean', 'marca', 'custo', 'preco', 'margem', 'estoque', 'minimo', 'obs', 'ncm', 'cfop', 'csosn', 'origem', 'cest'].forEach(id => { const el = document.getElementById(`prod-${id}`); if (el) el.value = ''; });
     document.getElementById('prod-ativo').value = 'true'; document.getElementById('prod-foto-base64').value = '';
-    document.getElementById('preview-foto').src = ''; document.getElementById('preview-foto').classList.add('hidden'); document.getElementById('texto-sem-foto').classList.remove('hidden');
+    fotosGaleria = [];
+    renderizarGaleriaFotos();
     document.getElementById('prod-historico-body').innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-500 dark:text-slate-400">Cadastre para ver o histórico.</td></tr>';
     const modalProd = document.getElementById('modal-produto');
     modalProd.classList.remove('hidden');
@@ -217,18 +266,146 @@ function fecharModalProduto() {
     modalProd.style.display = '';
 }
 
+function comprimirImagem(file, maxDimension = 1200, quality = 0.85) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                let w = img.width;
+                let h = img.height;
+                if (w > h) {
+                    if (w > maxDimension) {
+                        h = Math.round(h * (maxDimension / w));
+                        w = maxDimension;
+                    }
+                } else {
+                    if (h > maxDimension) {
+                        w = Math.round(w * (maxDimension / h));
+                        h = maxDimension;
+                    }
+                }
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(img, 0, 0, w, h);
+                const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                resolve(dataUrl);
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+async function processarFotosGaleria(event) {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+    
+    const limiteMax = 5;
+    const espacoDisponivel = limiteMax - fotosGaleria.length;
+    
+    if (espacoDisponivel <= 0) {
+        showToast('Limite máximo de 5 fotos por produto atingido!', 'warning');
+        event.target.value = '';
+        return;
+    }
+    
+    const selecionados = files.slice(0, espacoDisponivel);
+    for (const file of selecionados) {
+        try {
+            const dataUrl = await comprimirImagem(file, 1200, 0.85);
+            fotosGaleria.push(dataUrl);
+        } catch(err) {
+            console.error('Erro ao processar imagem:', err);
+        }
+    }
+    
+    event.target.value = '';
+    renderizarGaleriaFotos();
+}
+
 function processarFoto(event) {
-    const file = event.target.files[0]; if (!file) return; const reader = new FileReader();
-    reader.onload = function (e) {
-        const img = new Image(); img.onload = function () {
-            const canvas = document.createElement('canvas'); let w = img.width, h = img.height; const MAX = 300;
-            if (w > h) { if (w > MAX) { h *= MAX / w; w = MAX; } } else { if (h > MAX) { w *= MAX / h; h = MAX; } }
-            canvas.width = w; canvas.height = h; canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-            document.getElementById('preview-foto').src = dataUrl; document.getElementById('preview-foto').classList.remove('hidden');
-            document.getElementById('texto-sem-foto').classList.add('hidden'); document.getElementById('prod-foto-base64').value = dataUrl;
-        }; img.src = e.target.result;
-    }; reader.readAsDataURL(file);
+    processarFotosGaleria(event);
+}
+
+function renderizarGaleriaFotos() {
+    const container = document.getElementById('galeria-preview-container');
+    if (!container) return;
+    
+    const inputBase64 = document.getElementById('prod-foto-base64');
+    if (inputBase64) inputBase64.value = fotosGaleria[0] || '';
+    
+    const previewFoto = document.getElementById('preview-foto');
+    if (previewFoto) {
+        if (fotosGaleria[0]) {
+            previewFoto.src = fotosGaleria[0];
+            previewFoto.classList.remove('hidden');
+        } else {
+            previewFoto.src = '';
+            previewFoto.classList.add('hidden');
+        }
+    }
+    
+    let html = '';
+    
+    fotosGaleria.forEach((foto, index) => {
+        const isPrincipal = index === 0;
+        html += `
+        <div class="relative group rounded-xl overflow-hidden border-2 ${isPrincipal ? 'border-blue-500 shadow-md ring-2 ring-blue-200 dark:ring-blue-900/50' : 'border-slate-200 dark:border-slate-700'} aspect-square bg-slate-100 dark:bg-slate-800 flex items-center justify-center transition-all">
+            <img src="${foto}" class="w-full h-full object-cover cursor-zoom-in" onclick="typeof abrirZoom === 'function' ? abrirZoom('${foto}') : window.open('${foto}')" title="Clique para ampliar">
+            
+            ${isPrincipal ? `
+                <div class="absolute top-1.5 left-1.5 bg-blue-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-md shadow-sm pointer-events-none">
+                    <i class="fa-solid fa-star text-[8px] mr-0.5"></i> Capa
+                </div>
+            ` : `
+                <button type="button" onclick="tornarFotoPrincipal(${index})" class="absolute top-1.5 left-1.5 bg-slate-900/80 hover:bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow opacity-0 group-hover:opacity-100 transition-opacity" title="Definir como foto principal">
+                    Tornar Capa
+                </button>
+            `}
+            
+            <button type="button" onclick="removerFotoGaleria(${index})" class="absolute top-1.5 right-1.5 bg-red-600 hover:bg-red-700 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs shadow-md transition transform active:scale-90" title="Remover Foto">
+                <i class="fa-solid fa-trash text-[10px]"></i>
+            </button>
+            
+            <div class="absolute bottom-1 right-1.5 bg-black/60 text-white text-[9px] font-mono px-1 rounded pointer-events-none">
+                #${index + 1}
+            </div>
+        </div>`;
+    });
+    
+    if (fotosGaleria.length < 5) {
+        html += `
+        <div onclick="document.getElementById('prod-foto-file').click()" class="border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-blue-500 dark:hover:border-blue-400 rounded-xl aspect-square flex flex-col items-center justify-center text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 bg-white/50 dark:bg-slate-800/30 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 cursor-pointer transition-all p-2 text-center group">
+            <i class="fa-solid fa-camera text-xl sm:text-2xl mb-1 group-hover:scale-110 transition-transform"></i>
+            <span class="text-[10px] font-bold">+ Adicionar</span>
+            <span class="text-[8px] text-slate-400">(${fotosGaleria.length}/5)</span>
+        </div>`;
+    }
+    
+    container.innerHTML = html;
+}
+
+function removerFotoGaleria(index) {
+    if (index >= 0 && index < fotosGaleria.length) {
+        fotosGaleria.splice(index, 1);
+        renderizarGaleriaFotos();
+    }
+}
+
+function tornarFotoPrincipal(index) {
+    if (index > 0 && index < fotosGaleria.length) {
+        const item = fotosGaleria.splice(index, 1)[0];
+        fotosGaleria.unshift(item);
+        renderizarGaleriaFotos();
+        showToast('Foto definida como capa principal!');
+    }
 }
 
 function calcularPrecoMargin(quemMudou = 'preco') {
@@ -274,19 +451,24 @@ async function salvarProduto() {
         ean: document.getElementById('prod-ean').value,
         marca: document.getElementById('prod-marca').value,
         categoria: document.getElementById('prod-categoria').value,
+        subcategoria: document.getElementById('prod-subcategoria') ? document.getElementById('prod-subcategoria').value : '',
         unidade: document.getElementById('prod-unidade').value,
         custo: parseInputMoney(document.getElementById('prod-custo').value) || 0,
         margem: (parseInputMoney(document.getElementById('prod-custo').value) || 0) > 0 ? parseFloat((((preco - (parseInputMoney(document.getElementById('prod-custo').value) || 0)) / (parseInputMoney(document.getElementById('prod-custo').value) || 0)) * 100).toFixed(2)) : (parseInputMoney(document.getElementById('prod-margem').value) || 0),
         estoque: parseInputMoney(document.getElementById('prod-estoque').value) || 0,
-        min: parseInt(document.getElementById('prod-minimo').value) || 0,
+        min: parseInputMoney(document.getElementById('prod-minimo').value) || 0,
         ativo: document.getElementById('prod-ativo').value === 'true',
         obs: document.getElementById('prod-obs').value,
-        foto: document.getElementById('prod-foto-base64').value,
+        foto: fotosGaleria[0] || document.getElementById('prod-foto-base64').value || '',
+        fotos: fotosGaleria,
         ncm: document.getElementById('prod-ncm') ? document.getElementById('prod-ncm').value : '',
         cfop: document.getElementById('prod-cfop') ? document.getElementById('prod-cfop').value : '',
         csosn: document.getElementById('prod-csosn') ? document.getElementById('prod-csosn').value : '',
         origem: document.getElementById('prod-origem') ? document.getElementById('prod-origem').value : '0',
-        cest: document.getElementById('prod-cest') ? document.getElementById('prod-cest').value : ''
+        cest: document.getElementById('prod-cest') ? document.getElementById('prod-cest').value : '',
+        exibirLoja: document.getElementById('prod-exibirLoja') ? document.getElementById('prod-exibirLoja').value === 'true' : false,
+        destaque: document.getElementById('prod-destaque') ? document.getElementById('prod-destaque').value === 'true' : false,
+        legenda: document.getElementById('prod-legenda') ? document.getElementById('prod-legenda').value : ''
     };
 
     try {
@@ -333,7 +515,7 @@ async function editarProduto(id) {
     for (let key in p) {
         if (key === 'id') continue;
         const el = document.getElementById(`prod-${key === 'min' ? 'minimo' : key}`);
-        if (el && key !== 'foto' && key !== 'ativo' && key !== 'custo' && key !== 'preco' && key !== 'margem') { el.value = p[key]; }
+        if (el && key !== 'foto' && key !== 'fotos' && key !== 'ativo' && key !== 'custo' && key !== 'preco' && key !== 'margem') { el.value = p[key]; }
     }
     
     const custoNum = parseInputMoney(p.custo);
@@ -347,11 +529,24 @@ async function editarProduto(id) {
             document.getElementById('prod-margem').value = parseInputMoney(p.margem || 50).toFixed(2);
         }
     }
+    
+    // Atualiza opções de subcategoria e seta o valor correto novamente
+    if (typeof atualizarOpcoesSubcategoria === 'function') {
+        atualizarOpcoesSubcategoria();
+        const elSub = document.getElementById('prod-subcategoria');
+        if (elSub && p.subcategoria) elSub.value = p.subcategoria;
+    }
 
     document.getElementById('prod-ativo').value = p.ativo !== false ? 'true' : 'false';
-    document.getElementById('prod-foto-base64').value = p.foto || '';
-    if (p.foto) { document.getElementById('preview-foto').src = p.foto; document.getElementById('preview-foto').classList.remove('hidden'); document.getElementById('texto-sem-foto').classList.add('hidden'); }
-    else { document.getElementById('preview-foto').src = ''; document.getElementById('preview-foto').classList.add('hidden'); document.getElementById('texto-sem-foto').classList.remove('hidden'); }
+    
+    if (p.fotos && Array.isArray(p.fotos) && p.fotos.length > 0) {
+        fotosGaleria = [...p.fotos];
+    } else if (p.foto) {
+        fotosGaleria = [p.foto];
+    } else {
+        fotosGaleria = [];
+    }
+    renderizarGaleriaFotos();
 
     const hist = db.movimentacoes ? db.movimentacoes.filter(m => String(m.prodId) === idStr) : [];
     document.getElementById('prod-historico-body').innerHTML = hist.length > 0 ? hist.map(m => `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-3">${formatData(m.data).split(' ')[0]}</td><td class="p-3 font-bold">${m.tipo}</td><td class="p-3">${m.ref}</td><td class="p-3 text-right font-bold ${m.qtd > 0 ? 'text-indigo-600' : 'text-red-500'}">${m.qtd > 0 ? '+' + m.qtd : m.qtd}</td></tr>`).join('') : '<tr><td colspan="4" class="p-6 text-center text-slate-500 dark:text-slate-400">Sem movimentações.</td></tr>';
@@ -432,7 +627,7 @@ async function salvarCliente() {
             showToast('Cliente cadastrado!', 'success');
         }
         fecharModalCliente();
-    } catch (e) {
+        } catch (e) {
         console.error('[salvarCliente] ERRO:', e);
         showToast('Erro ao salvar: ' + (e.message || e.code || 'Verifique o console'), 'error');
     }
@@ -641,8 +836,8 @@ async function processarPlanilhaProdutos(event) {
                 const preco = parseInputMoney(colunas[6] ? colunas[6].replace(',', '.') : 0) || 0;
                 let margem = parseInputMoney(colunas[5] ? colunas[5].replace(',', '.') : 0) || 0;
                 if (custo > 0 && preco > 0) margem = parseFloat((((preco - custo) / custo) * 100).toFixed(2));
-                const estoque = parseInt(colunas[7]) || 0;
-                const min = parseInt(colunas[8]) || 5;
+                const estoque = parseInputMoney((colunas[7]||'0').replace(',','.')) || 0;
+                const min = parseInputMoney((colunas[8]||'5').replace(',','.')) || 5;
 
                 let existe = false;
                 if (ean && ean !== '') {
@@ -999,49 +1194,51 @@ function filtrarProdutosXMLBusca() {
 function mostrarListaProdutosXMLBusca() { filtrarProdutosXMLBusca(); }
 function ocultarListaProdutosXMLBusca() { document.getElementById('prod-vinculo-lista').classList.add('hidden'); }
 
-// ==========================================
-// EXPORTAÇÕES GLOBAIS (WINDOW)
-// ==========================================
+
+// Expondo globalmente para evitar erros de escopo
 window.mudarVisaoLocal = mudarVisaoLocal;
+window.inicializarCadastro = inicializarCadastro;
+window.abaModal = abaModal;
+window.abrirConfirmacao = abrirConfirmacao;
+window.fecharModalConfirmacao = fecharModalConfirmacao;
+window.abrirZoom = abrirZoom;
+window.fecharZoom = fecharZoom;
+window.renderSelectCategorias = renderSelectCategorias;
+window.atualizarOpcoesSubcategoria = atualizarOpcoesSubcategoria;
+window.renderProdutos = renderProdutos;
 window.abrirModalProduto = abrirModalProduto;
 window.fecharModalProduto = fecharModalProduto;
-window.salvarProduto = salvarProduto;
-window.editarProduto = editarProduto;
-window.excluirProduto = excluirProduto;
-window.renderProdutos = renderProdutos;
-window.abaModal = abaModal;
+window.processarFoto = processarFoto;
+window.processarFotosGaleria = processarFotosGaleria;
+window.renderizarGaleriaFotos = renderizarGaleriaFotos;
+window.removerFotoGaleria = removerFotoGaleria;
+window.tornarFotoPrincipal = tornarFotoPrincipal;
 window.calcularPrecoMargin = calcularPrecoMargin;
-window.processarFotoProduto = processarFotoProduto;
-window.removerFotoProduto = removerFotoProduto;
+window.excluirProduto = excluirProduto;
 window.renderClientes = renderClientes;
 window.abrirModalCliente = abrirModalCliente;
 window.fecharModalCliente = fecharModalCliente;
-window.salvarCliente = salvarCliente;
-window.editarCliente = editarCliente;
 window.excluirCliente = excluirCliente;
 window.renderFornecedores = renderFornecedores;
 window.abrirModalFornecedor = abrirModalFornecedor;
 window.fecharModalFornecedor = fecharModalFornecedor;
-window.salvarFornecedor = salvarFornecedor;
 window.editarFornecedor = editarFornecedor;
 window.excluirFornecedor = excluirFornecedor;
+window.renderKardex = renderKardex;
+window.baixarPlanilhaModeloProduto = baixarPlanilhaModeloProduto;
 window.renderFuncionarios = renderFuncionarios;
 window.abrirModalFuncionario = abrirModalFuncionario;
 window.fecharModalFuncionario = fecharModalFuncionario;
-window.salvarFuncionario = salvarFuncionario;
-window.editarFuncionario = editarFuncionario;
+window.getSecondaryApp = getSecondaryApp;
 window.excluirFuncionario = excluirFuncionario;
-window.renderKardex = renderKardex;
-window.gerarDescricaoIA = gerarDescricaoIA;
-window.baixarPlanilhaModeloProduto = baixarPlanilhaModeloProduto;
-window.processarPlanilhaProdutos = processarPlanilhaProdutos;
 window.alternarAcaoVinculoXML = alternarAcaoVinculoXML;
 window.preencherVinculoXML = preencherVinculoXML;
 window.selecionarProdutoVinculoXML = selecionarProdutoVinculoXML;
 window.filtrarProdutosXMLBusca = filtrarProdutosXMLBusca;
 window.mostrarListaProdutosXMLBusca = mostrarListaProdutosXMLBusca;
 window.ocultarListaProdutosXMLBusca = ocultarListaProdutosXMLBusca;
-window.verDetalhesVenda = verDetalhesVenda;
-window.fecharModalDetalhesVenda = fecharModalDetalhesVenda;
+
+
+
 
 

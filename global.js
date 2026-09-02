@@ -246,6 +246,7 @@ window.normalizarTexto = normalizarTexto;
 
 function showToast(msg, type = 'info') {
     const container = document.getElementById('toast-container');
+    if (!container) return;
     const t = document.createElement('div');
     t.className = `toast show ${type}`;
     t.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-circle-exclamation' : 'fa-info-circle')}"></i> ${msg}`;
@@ -263,10 +264,37 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
         if (!user) {
             if (!isLoginPage) window.location.href = 'login.html';
         } else {
+            const hoje = new Date().toLocaleDateString('pt-BR');
+            const sessaoData = localStorage.getItem('fc_sessao_data');
+            const sessaoUid = localStorage.getItem('fc_sessao_uid');
+
             if (isLoginPage) {
-                window.location.href = 'index.html';
+                // Se estiver na tela de login mas a sessão diária já for válida hoje, vai para o index
+                if (sessaoData === hoje && sessaoUid === user.uid) {
+                    window.location.href = 'index.html';
+                    return;
+                } else {
+                    // Sessão expirada/antiga: desloga para exigir que digite a senha
+                    try { await auth.signOut(); } catch(e) {}
+                    localStorage.removeItem('fc_sessao_data');
+                    localStorage.removeItem('fc_sessao_uid');
+                    return;
+                }
+            }
+
+            // Se NÃO for a tela de login, valida se a sessão é do dia de hoje
+            if (!sessaoData || sessaoData !== hoje || sessaoUid !== user.uid) {
+                console.warn("Sessão diária expirada ou inexistente para hoje. Solicitando novo login...");
+                localStorage.removeItem('fc_sessao_data');
+                localStorage.removeItem('fc_sessao_uid');
+                sessionStorage.setItem('fc_sessao_expirada_msg', 'Sua sessão diária expirou. Por favor, faça login novamente.');
+                try { await auth.signOut(); } catch(e) {}
+                window.location.href = 'login.html';
                 return;
             }
+
+            // Inicia monitor para expirar caso o dia vire com a aba aberta
+            iniciarMonitorSessaoDiaria();
 
             try {
                 const confSnap = await firestore.collection("fc_moveis").doc("config").get();
@@ -286,22 +314,22 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                 if (userSnap.exists) {
                     window.currentUserInfo = userSnap.data();
                 } else {
-                                                                                      // Usuário não está na tabela (nova conta criada)
-                      console.warn("Usuário não cadastrado na base de funcionários.");
-                      window.currentUserInfo = { isAdmin: false, perm_dashboard: false, perm_pdv: false, perm_cadastros: false, perm_gestao: false, perm_config: false };
-                      
-                      try {
-                          await firestore.collection('funcionarios').doc(user.uid).set({
-                              nome: "NOVO CADASTRO", email: user.email || '', isAdmin: false,
-                              perm_dashboard: false, perm_pdv: false, perm_cadastros: false,
-                              perm_gestao: false, perm_config: false, dataCadastro: new Date().toISOString(), status: 'PENDENTE'
-                          });
-                      } catch(e) { console.error("Erro ao registrar no banco:", e); }
-                      
-                      const avisoAprovacao = document.createElement('div');
-                      avisoAprovacao.style.cssText = "position:absolute; top:20px; left:50%; transform:translateX(-50%); z-index:999999; background:#eab308; color:black; padding:15px 30px; font-size:16px; font-weight:bold; border-radius:10px; text-align:center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);";
-                      avisoAprovacao.innerHTML = "<i class='fa-solid fa-clock'></i> Conta Registrada!<br><span style='font-size:13px; font-weight:normal;'>Aguarde o Administrador liberar suas permiss&otilde;es de acesso.</span>";
-                      document.body.appendChild(avisoAprovacao);
+                    // Usuário não está na tabela (nova conta criada)
+                    console.warn("Usuário não cadastrado na base de funcionários.");
+                    window.currentUserInfo = { isAdmin: false, perm_dashboard: false, perm_pdv: false, perm_cadastros: false, perm_gestao: false, perm_config: false };
+                    
+                    try {
+                        await firestore.collection('funcionarios').doc(user.uid).set({
+                            nome: "NOVO CADASTRO", email: user.email || '', isAdmin: false,
+                            perm_dashboard: false, perm_pdv: false, perm_cadastros: false,
+                            perm_gestao: false, perm_config: false, dataCadastro: new Date().toISOString(), status: 'PENDENTE'
+                        });
+                    } catch(e) { console.error("Erro ao registrar no banco:", e); }
+                    
+                    const avisoAprovacao = document.createElement('div');
+                    avisoAprovacao.style.cssText = "position:absolute; top:20px; left:50%; transform:translateX(-50%); z-index:999999; background:#eab308; color:black; padding:15px 30px; font-size:16px; font-weight:bold; border-radius:10px; text-align:center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);";
+                    avisoAprovacao.innerHTML = "<i class='fa-solid fa-clock'></i> Conta Registrada!<br><span style='font-size:13px; font-weight:normal;'>Aguarde o Administrador liberar suas permiss&otilde;es de acesso.</span>";
+                    document.body.appendChild(avisoAprovacao);
                 }
                 aplicarControleDeAcesso();
                 mostrarNomeUsuarioNoHeader(window.currentUserInfo.isAdmin ? 'Admin Master' : `Func.: ${window.currentUserInfo.nome || 'Usuário'}`);
@@ -317,6 +345,38 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                 funcaoDeRenderizacaoDaPagina();
             }
         }
+    });
+}
+
+// Monitor para encerrar a sessão caso a meia-noite seja cruzada com a aba aberta
+function iniciarMonitorSessaoDiaria() {
+    if (window._monitorSessaoIniciado) return;
+    window._monitorSessaoIniciado = true;
+
+    const checarViradaDoDia = async () => {
+        const isLoginPage = window.location.pathname.includes('login.html');
+        if (isLoginPage) return;
+
+        const user = auth.currentUser;
+        if (!user) return;
+
+        const hoje = new Date().toLocaleDateString('pt-BR');
+        const sessaoData = localStorage.getItem('fc_sessao_data');
+
+        if (sessaoData && sessaoData !== hoje) {
+            console.warn("Virada do dia detectada. Encerrando sessão diária...");
+            localStorage.removeItem('fc_sessao_data');
+            localStorage.removeItem('fc_sessao_uid');
+            sessionStorage.setItem('fc_sessao_expirada_msg', 'O dia virou e sua sessão diária expirou. Por favor, faça login novamente.');
+            try { await auth.signOut(); } catch(e) {}
+            window.location.href = 'login.html';
+        }
+    };
+
+    setInterval(checarViradaDoDia, 30000);
+    window.addEventListener('focus', checarViradaDoDia);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) checarViradaDoDia();
     });
 }
 
@@ -451,9 +511,6 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Fim da função
-
-
 async function salvarKardex(ref, prodId, prodNome, qtd, tipo) {
     try {
         await firestore.collection('movimentacoes').add({
@@ -469,18 +526,27 @@ function saveDB() {
 }
 
 async function fazerLogout() {
-    await auth.signOut();
+    localStorage.removeItem('fc_sessao_data');
+    localStorage.removeItem('fc_sessao_uid');
+    try {
+        await auth.signOut();
+    } catch(e) {
+        console.error("Erro no signOut:", e);
+    }
+    window.location.href = 'login.html';
 }
 
 function toggleMenu() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebar-overlay');
-    if (sidebar.classList.contains('-translate-x-full')) {
-        sidebar.classList.remove('-translate-x-full');
-        overlay.classList.remove('hidden');
-    } else {
-        sidebar.classList.add('-translate-x-full');
-        overlay.classList.add('hidden');
+    if (sidebar && overlay) {
+        if (sidebar.classList.contains('-translate-x-full')) {
+            sidebar.classList.remove('-translate-x-full');
+            overlay.classList.remove('hidden');
+        } else {
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('hidden');
+        }
     }
 }
 
@@ -514,12 +580,6 @@ function aplicarTema() {
     document.documentElement.classList.add('dark');
     document.documentElement.classList.remove('tema-escuro');
 }
-
-// Removido o listener de preferência de cores do sistema, pois o tema é fixo.
-
-
-
-
 
 
 // ===== FUNÇÕES GLOBAIS DE IA, CONFIRMAÇÃO E VENDAS =====

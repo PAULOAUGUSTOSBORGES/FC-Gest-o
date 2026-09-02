@@ -48,9 +48,16 @@ async function fazerLogin() {
     try {
         const btn = document.getElementById('btn-acao');
         btn.innerText = 'Aguarde...'; btn.disabled = true;
-        await firebase.auth().signInWithEmailAndPassword(u, p);
+        const cred = await firebase.auth().signInWithEmailAndPassword(u, p);
+        if (cred && cred.user) {
+            const hoje = new Date().toLocaleDateString('pt-BR');
+            localStorage.setItem('fc_sessao_data', hoje);
+            localStorage.setItem('fc_sessao_uid', cred.user.uid);
+        }
         showToast('Acesso liberado! Redirecionando...', 'success');
-        // O redirecionamento será automático via listener no global.js
+        setTimeout(() => {
+            window.location.href = 'index.html';
+        }, 500);
     } catch (e) { 
         document.getElementById('btn-acao').innerText = 'Entrar'; document.getElementById('btn-acao').disabled = false;
         if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential' || e.code === 'auth/invalid-login-credentials' || e.code === 'auth/wrong-password') {
@@ -79,9 +86,16 @@ async function fazerCadastro() {
     try {
         const btn = document.getElementById('btn-acao');
         btn.innerText = 'Aguarde...'; btn.disabled = true;
-        await firebase.auth().createUserWithEmailAndPassword(u, p);
+        const cred = await firebase.auth().createUserWithEmailAndPassword(u, p);
+        if (cred && cred.user) {
+            const hoje = new Date().toLocaleDateString('pt-BR');
+            localStorage.setItem('fc_sessao_data', hoje);
+            localStorage.setItem('fc_sessao_uid', cred.user.uid);
+        }
         showToast('Conta criada com sucesso! Redirecionando...', 'success');
-        // O redirecionamento será automático via listener no global.js
+        setTimeout(() => {
+            window.location.href = 'index.html';
+        }, 500);
     } catch (e) { 
         document.getElementById('btn-acao').innerText = 'Criar Conta'; document.getElementById('btn-acao').disabled = false;
         if (e.code === 'auth/email-already-in-use') {
@@ -94,7 +108,14 @@ async function fazerCadastro() {
 }
 
 // Inicializa a escuta de sessão para redirecionar automaticamente quando logar
-window.onload = () => { initGlobalData(); };
+window.onload = () => {
+    const msgExpirada = sessionStorage.getItem('fc_sessao_expirada_msg');
+    if (msgExpirada) {
+        showToast(msgExpirada, 'info');
+        sessionStorage.removeItem('fc_sessao_expirada_msg');
+    }
+    initGlobalData();
+};
 
 window.esqueciSenha = async function() {
     const email = document.getElementById('login-user')?.value?.trim();

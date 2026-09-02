@@ -51,6 +51,10 @@
             backdrop-filter: blur(12px);
             border-bottom: 1px solid rgba(0,0,0,0.05);
         }
+        img {
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: auto;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 antialiased selection:bg-brand selection:text-white flex flex-col min-h-screen">
@@ -130,12 +134,29 @@
             <div id="produto-detalhes" class="hidden bg-white rounded-3xl shadow-xl shadow-gray-200/50 overflow-hidden border border-gray-100">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-0">
                     
-                    <!-- Lado Esquerdo: Imagem -->
-                    <div class="bg-gray-50 flex items-center justify-center p-8 md:p-12 relative group border-b md:border-b-0 md:border-r border-gray-100">
+                    <!-- Lado Esquerdo: Imagem e Galeria -->
+                    <div class="bg-gray-50 flex flex-col items-center justify-between p-6 md:p-8 relative border-b md:border-b-0 md:border-r border-gray-100">
                         <div id="prod-badge-destaque" class="absolute top-6 left-6 bg-brand text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg z-10 hidden">
                             <i class="fa-solid fa-star mr-1"></i> Destaque
                         </div>
-                        <img id="prod-foto" src="" alt="Produto" class="w-full max-w-md h-auto object-contain drop-shadow-2xl transition-transform duration-500 group-hover:scale-105">
+                        
+                        <!-- Imagem Principal com Navegação de Setas e Zoom -->
+                        <div class="relative w-full flex items-center justify-center min-h-[300px] md:min-h-[400px] group">
+                            <button id="btn-foto-prev" type="button" onclick="mudarFotoGaleria(-1)" class="hidden absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 w-10 h-10 rounded-full shadow-lg items-center justify-center z-10 transition transform hover:scale-110">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
+                            
+                            <img id="prod-foto" src="" alt="Produto" onclick="abrirModalZoomSite(this.src)" class="w-full max-w-md max-h-[380px] object-contain drop-shadow-2xl transition-all duration-300 cursor-zoom-in hover:scale-105" title="Clique para ampliar">
+                            
+                            <button id="btn-foto-next" type="button" onclick="mudarFotoGaleria(1)" class="hidden absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 w-10 h-10 rounded-full shadow-lg items-center justify-center z-10 transition transform hover:scale-110">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
+
+                        <!-- Miniaturas da Galeria de Fotos -->
+                        <div id="prod-galeria-thumbs" class="flex items-center justify-center gap-3 mt-4 flex-wrap w-full">
+                            <!-- Renderizado dinamicamente via JS -->
+                        </div>
                     </div>
 
                     <!-- Lado Direito: Infos -->
@@ -160,7 +181,22 @@
                             Adicionar ao Carrinho
                         </button>
                         
-                        <p id="txt-sem-estoque" class="text-red-500 font-bold text-center mt-4 hidden">Produto temporariamente esgotado.</p>
+                        <!-- Box Informativo de Sob Encomenda -->
+                        <div id="badge-sob-encomenda" class="hidden mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-sm shadow-sm">
+                            <div class="flex items-start gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm text-sm">
+                                    <i class="fa-solid fa-clock"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="font-bold text-amber-950 text-sm">Disponível Sob Encomenda</p>
+                                    <p class="text-xs text-amber-800 mt-1 leading-relaxed">
+                                        Este produto é produzido ou encomendado sob medida. Você pode adicioná-lo ao carrinho normalmente para solicitar seu orçamento e prazos no WhatsApp!
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <p id="txt-sem-estoque" class="text-amber-600 font-bold text-center mt-4 hidden"></p>
                         
                         <!-- Mini benefits -->
                         <div class="mt-10 grid grid-cols-2 gap-4">
@@ -192,20 +228,24 @@
         </div>
     </footer>
 
+    <!-- Modal Zoom de Foto -->
+    <div id="modal-zoom-site" class="fixed inset-0 z-50 bg-black/90 hidden items-center justify-center p-4 backdrop-blur-sm transition-all" onclick="fecharModalZoomSite()">
+        <button type="button" class="absolute top-5 right-5 text-white/80 hover:text-white text-3xl transition">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <img id="modal-zoom-img" src="" class="max-w-[95vw] max-h-[90vh] object-contain rounded-xl shadow-2xl transition-all scale-100" onclick="event.stopPropagation()">
+    </div>
+
     <!-- Firebase SDK (v10 compat - mesma versão do sistema) -->
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js?v=20260831174026"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js?v=20260831174026"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js?v=20260831174026"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js?v=20260901162449"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js?v=20260901162449"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js?v=20260901162449"></script>
     
     <!-- Config Firebase (site público - sem redirecionamento de login) -->
-    <script src="../sistema/config_banco.js?v=20260831174026"></script>
-    <script src="firebase-site.js?v=20260831174026"></script>
-    <script src="carrinho.js?v=20260831174026"></script>
-    <script src="loja_produto.js?v=20260831174026"></script>
+    <script src="../sistema/config_banco.js?v=20260901162449"></script>
+    <script src="firebase-site.js?v=20260901162449"></script>
+    <script src="carrinho.js?v=20260901162449"></script>
+    <script src="loja_produto.js?v=20260901162449"></script>
 </body>
 </html>
-
-
-
-
 
