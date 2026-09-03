@@ -3,36 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- PWA ConfiguraÃ§Ãµes e Ãcones -->
-    <link rel="manifest" href="../manifest.json">
-    <meta name="theme-color" content="#0f172a">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="FC Gestão">
-    <link rel="apple-touch-icon" href="../icons/icon-apple-touch.png">
-    <link rel="icon" type="image/png" href="../icons/favicon.png">
-    <title>Detalhes do Produto | Loja Online</title>
-    
-    <!-- Tailwind CSS (via CDN) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        brand: 'var(--brand-color, #2563eb)',
-                        'brand-dark': 'var(--brand-color-dark, #1d4ed8)',
-                        'brand-light': 'var(--brand-color-light, #eff6ff)',
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- PWA Configurações e Ícones -->
+            
     
     <!-- Google Fonts (Inter) -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -40,27 +12,43 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        :root {
-            --brand-color: #2563eb;
-            --brand-color-dark: #1d4ed8;
-            --brand-color-light: #eff6ff;
-        }
+        :root { --brand-color: #2563eb; --brand-color-dark: #1d4ed8; --brand-color-light: #eff6ff; }
         body { font-family: 'Inter', sans-serif; }
-        .glass-nav {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(0,0,0,0.05);
+        .glass-nav { backdrop-filter: blur(12px); }
+        img { image-rendering: -webkit-optimize-contrast; image-rendering: auto; }
+
+        /* TEMA ESCURO */
+        [data-theme="dark"], [data-theme="dark"] body { background-color: #0f172a !important; color: #f1f5f9 !important; }
+        [data-theme="dark"] #navbar { background-color: rgba(15, 23, 42, 0.97) !important; border-bottom-color: #1e293b !important; }
+        [data-theme="dark"] .bg-white, [data-theme="dark"] .bg-gray-50 { background-color: #1e293b !important; }
+        [data-theme="dark"] .text-gray-800, [data-theme="dark"] .text-gray-900 { color: #f1f5f9 !important; }
+        [data-theme="dark"] .text-gray-500, [data-theme="dark"] .text-gray-400 { color: #94a3b8 !important; }
+        [data-theme="dark"] .border-gray-100, [data-theme="dark"] .border-gray-200 { border-color: #334155 !important; }
+        [data-theme="dark"] #loader { background-color: #0f172a !important; }
+
+        /* TEMA CLARO */
+        [data-theme="light"], [data-theme="light"] body { background-color: #f8fafc !important; color: #1e293b !important; }
+        [data-theme="light"] #navbar { background-color: rgba(255, 255, 255, 0.97) !important; border-bottom-color: #f1f5f9 !important; }
+        [data-theme="light"] .bg-white { background-color: #ffffff !important; }
+        [data-theme="light"] .bg-gray-50 { background-color: #f8fafc !important; }
+        [data-theme="light"] .text-gray-800, [data-theme="light"] .text-gray-900 { color: #1e293b !important; }
+        [data-theme="light"] #loader { background-color: #ffffff !important; }
+
+        /* Anula preferência do sistema operacional */
+        @media (prefers-color-scheme: dark) {
+            html[data-theme="light"], html[data-theme="light"] body { background-color: #f8fafc !important; color: #1e293b !important; }
+            html[data-theme="light"] #navbar { background-color: rgba(255,255,255,0.97) !important; }
         }
-        img {
-            image-rendering: -webkit-optimize-contrast;
-            image-rendering: auto;
+        @media (prefers-color-scheme: light) {
+            html[data-theme="dark"], html[data-theme="dark"] body { background-color: #0f172a !important; color: #f1f5f9 !important; }
         }
     </style>
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260902202810">
 </head>
-<body class="bg-gray-50 text-gray-800 antialiased selection:bg-brand selection:text-white flex flex-col min-h-screen">
+<body class="bg-gray-50 dark:bg-slate-900 text-gray-800 dark:text-slate-100 antialiased selection:bg-brand selection:text-white flex flex-col min-h-screen transition-colors duration-200">
 
     <!-- LOADER INICIAL -->
-    <div id="loader" class="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center transition-opacity duration-500">
+    <div id="loader" class="fixed inset-0 z-50 bg-white dark:bg-slate-900 flex flex-col items-center justify-center transition-opacity duration-500">
         <i class="fa-solid fa-store text-4xl text-brand animate-bounce mb-4"></i>
         <div class="flex gap-2">
             <div class="w-2.5 h-2.5 rounded-full bg-brand animate-[bounce_1s_infinite_-0.3s]"></div>
@@ -70,26 +58,30 @@
     </div>
 
     <!-- NAVBAR SIMPLIFICADA -->
-    <nav class="fixed top-0 left-0 right-0 z-40 glass-nav transition-all duration-300" id="navbar">
+    <nav class="fixed top-0 left-0 right-0 z-40 bg-white/90 dark:bg-slate-900/90 border-b border-gray-100 dark:border-slate-800 glass-nav transition-all duration-300" id="navbar">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-20">
                 <!-- Voltar -->
-                <a href="index.html" class="flex items-center gap-2 text-gray-600 hover:text-brand transition-colors font-medium">
+                <a href="index.html" class="flex items-center gap-2 text-gray-600 dark:text-slate-300 hover:text-brand dark:hover:text-brand-light transition-colors font-medium">
                     <i class="fa-solid fa-arrow-left"></i>
                     <span class="hidden sm:inline">Voltar para a Loja</span>
                 </a>
 
                 <!-- Logo/Brand -->
                 <div class="flex items-center gap-3">
-                    <img id="nav-logo" src="" alt="Logo" class="h-8 sm:h-10 w-auto hidden rounded">
-                    <span id="nav-title" class="font-bold text-lg sm:text-xl tracking-tight text-brand">Nossa Loja</span>
+                    <img id="nav-logo" src="" alt="Logo" class="h-8 sm:h-10 w-auto hidden rounded bg-white p-0.5 shadow-sm">
+                    <span id="nav-title" class="font-extrabold text-lg sm:text-xl tracking-tight text-gray-900 dark:text-white">Nossa Loja</span>
                 </div>
                 
-                <!-- Cart Icon -->
-                <div class="flex items-center gap-4 shrink-0">
-                    <button onclick="abrirCarrinho()" class="text-gray-500 hover:text-brand transition-colors p-2 relative">
+                <!-- Icons (Tema + Carrinho) -->
+                <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+                    <button type="button" onclick="toggleTemaSite()" class="p-2.5 rounded-xl text-gray-500 dark:text-slate-400 hover:text-brand dark:hover:text-brand-light hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors" title="Alternar Modo Escuro / Claro">
+                        <i class="fa-solid fa-moon theme-toggle-icon text-lg"></i>
+                    </button>
+
+                    <button onclick="abrirCarrinho()" class="text-gray-500 dark:text-slate-400 hover:text-brand dark:hover:text-brand-light transition-colors p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 relative">
                         <i class="fa-solid fa-cart-shopping text-xl"></i>
-                        <span class="cart-badge hidden absolute top-0 right-0 transform translate-x-1 -translate-y-1 bg-red-500 text-white text-[10px] font-bold h-4 w-4 rounded-full flex items-center justify-center">0</span>
+                        <span class="cart-badge hidden absolute top-1 right-1 bg-red-500 text-white text-[10px] font-bold h-4 w-4 rounded-full flex items-center justify-center shadow">0</span>
                     </button>
                 </div>
             </div>
@@ -97,58 +89,64 @@
     </nav>
 
     <!-- PRODUTO CONTAINER -->
-    <main class="pt-32 pb-20 flex-grow">
+    <main class="pt-28 sm:pt-32 pb-20 flex-grow">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
             <!-- Breadcrumb -->
-            <nav class="flex text-sm text-gray-500 mb-8" aria-label="Breadcrumb">
-                <ol class="inline-flex items-center space-x-1 md:space-x-3">
+            <nav class="flex text-sm text-gray-500 dark:text-slate-400 mb-6 sm:mb-8" aria-label="Breadcrumb">
+                <ol class="inline-flex items-center space-x-1 md:space-x-2 flex-wrap">
                     <li class="inline-flex items-center">
-                        <a href="index.html" class="inline-flex items-center hover:text-brand transition-colors">
-                            <i class="fa-solid fa-house mr-2"></i> Início
+                        <a href="index.html" class="inline-flex items-center hover:text-brand dark:hover:text-brand-light transition-colors">
+                            <i class="fa-solid fa-house mr-1.5 text-xs"></i> Início
                         </a>
                     </li>
                     <li>
                         <div class="flex items-center">
-                            <i class="fa-solid fa-chevron-right text-gray-400 mx-2 text-xs"></i>
-                            <span id="bread-categoria" class="hover:text-brand transition-colors cursor-pointer" onclick="window.location.href='index.html'">Categoria</span>
+                            <i class="fa-solid fa-chevron-right text-gray-400 dark:text-slate-600 mx-2 text-xs"></i>
+                            <span id="bread-categoria" class="hover:text-brand dark:hover:text-brand-light transition-colors cursor-pointer" onclick="window.location.href='index.html'">Categoria</span>
+                        </div>
+                    </li>
+                    <li id="bread-subcategoria-item" class="hidden">
+                        <div class="flex items-center">
+                            <i class="fa-solid fa-chevron-right text-gray-400 dark:text-slate-600 mx-2 text-xs"></i>
+                            <span id="bread-subcategoria" class="hover:text-brand dark:hover:text-brand-light transition-colors cursor-pointer" onclick="window.location.href='index.html'">Subcategoria</span>
                         </div>
                     </li>
                     <li aria-current="page">
                         <div class="flex items-center">
-                            <i class="fa-solid fa-chevron-right text-gray-400 mx-2 text-xs"></i>
-                            <span id="bread-nome" class="text-gray-800 font-medium line-clamp-1">Produto</span>
+                            <i class="fa-solid fa-chevron-right text-gray-400 dark:text-slate-600 mx-2 text-xs"></i>
+                            <span id="bread-nome" class="text-gray-800 dark:text-slate-200 font-medium line-clamp-1">Produto</span>
                         </div>
                     </li>
                 </ol>
             </nav>
 
-            <div id="produto-not-found" class="hidden text-center py-20">
-                <i class="fa-solid fa-triangle-exclamation text-5xl text-gray-300 mb-4"></i>
-                <h2 class="text-2xl font-bold text-gray-800 mb-2">Produto não encontrado</h2>
-                <p class="text-gray-500 mb-8">O produto que você está procurando pode ter sido removido ou o link está incorreto.</p>
+            <div id="produto-not-found" class="hidden text-center py-20 bg-white dark:bg-slate-800 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm">
+                <i class="fa-solid fa-triangle-exclamation text-5xl text-gray-300 dark:text-slate-600 mb-4"></i>
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">Produto não encontrado</h2>
+                <p class="text-gray-500 dark:text-slate-400 mb-8">O produto que você está procurando pode ter sido removido ou o link está incorreto.</p>
                 <a href="index.html" class="bg-brand hover:bg-brand-dark text-white px-8 py-3 rounded-xl font-bold transition-colors">Voltar para a Loja</a>
             </div>
 
             <!-- Produto Layout -->
-            <div id="produto-detalhes" class="hidden bg-white rounded-3xl shadow-xl shadow-gray-200/50 overflow-hidden border border-gray-100">
+            <div id="produto-detalhes" class="hidden bg-white dark:bg-slate-800 rounded-3xl shadow-xl shadow-gray-200/50 dark:shadow-slate-950/50 overflow-hidden border border-gray-100 dark:border-slate-700/80 transition-colors">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-0">
                     
                     <!-- Lado Esquerdo: Imagem e Galeria -->
-                    <div class="bg-gray-50 flex flex-col items-center justify-between p-6 md:p-8 relative border-b md:border-b-0 md:border-r border-gray-100">
+                    <div class="bg-gray-50 dark:bg-slate-900/60 flex flex-col items-center justify-between p-6 md:p-8 relative border-b md:border-b-0 md:border-r border-gray-100 dark:border-slate-700/80">
                         <div id="prod-badge-destaque" class="absolute top-6 left-6 bg-brand text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg z-10 hidden">
                             <i class="fa-solid fa-star mr-1"></i> Destaque
                         </div>
                         
                         <!-- Imagem Principal com Navegação de Setas e Zoom -->
                         <div class="relative w-full flex items-center justify-center min-h-[300px] md:min-h-[400px] group">
-                            <button id="btn-foto-prev" type="button" onclick="mudarFotoGaleria(-1)" class="hidden absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 w-10 h-10 rounded-full shadow-lg items-center justify-center z-10 transition transform hover:scale-110">
+                            <button id="btn-foto-prev" type="button" onclick="mudarFotoGaleria(-1)" class="hidden absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-slate-800/90 hover:bg-white dark:hover:bg-slate-700 text-gray-800 dark:text-white w-10 h-10 rounded-full shadow-lg items-center justify-center z-10 transition transform hover:scale-110">
                                 <i class="fa-solid fa-chevron-left"></i>
                             </button>
                             
                             <img id="prod-foto" src="" alt="Produto" onclick="abrirModalZoomSite(this.src)" class="w-full max-w-md max-h-[380px] object-contain drop-shadow-2xl transition-all duration-300 cursor-zoom-in hover:scale-105" title="Clique para ampliar">
                             
-                            <button id="btn-foto-next" type="button" onclick="mudarFotoGaleria(1)" class="hidden absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 w-10 h-10 rounded-full shadow-lg items-center justify-center z-10 transition transform hover:scale-110">
+                            <button id="btn-foto-next" type="button" onclick="mudarFotoGaleria(1)" class="hidden absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-slate-800/90 hover:bg-white dark:hover:bg-slate-700 text-gray-800 dark:text-white w-10 h-10 rounded-full shadow-lg items-center justify-center z-10 transition transform hover:scale-110">
                                 <i class="fa-solid fa-chevron-right"></i>
                             </button>
                         </div>
@@ -161,50 +159,47 @@
 
                     <!-- Lado Direito: Infos -->
                     <div class="p-8 md:p-12 lg:p-16 flex flex-col justify-center">
-                        <span id="prod-categoria" class="text-brand font-bold tracking-wider text-sm uppercase mb-3">Categoria</span>
-                        <h1 id="prod-nome" class="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900 leading-tight mb-4">Nome do Produto</h1>
-                        
-                        <p id="prod-legenda" class="text-gray-500 text-lg mb-8 leading-relaxed font-light hidden"></p>
-                        
-                        <div class="h-px bg-gray-100 w-full mb-8"></div>
-                        
-                        <div class="mb-8">
-                            <span class="text-gray-500 text-sm font-medium uppercase tracking-wider block mb-1">Por apenas</span>
-                            <div class="flex items-baseline gap-2">
-                                <span id="prod-preco" class="text-4xl md:text-5xl font-black text-gray-900 hidden">R$ 0,00</span>
-                            </div>
+                        <div id="prod-categorias-wrapper" class="flex items-center gap-2 mb-3 flex-wrap">
+                            <span id="prod-categoria" class="text-brand dark:text-blue-400 font-bold tracking-wider text-sm uppercase">Categoria</span>
+                            <span id="prod-subcategoria-tag" class="hidden bg-blue-50 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 px-2.5 py-0.5 rounded-lg text-xs font-semibold">Subcategoria</span>
                         </div>
 
+                        <h1 id="prod-nome" class="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900 dark:text-white leading-tight mb-4 tracking-tight">Nome do Produto</h1>
+                        
+                        <p id="prod-legenda" class="text-gray-500 dark:text-slate-300 text-lg mb-8 leading-relaxed font-light hidden"></p>
+                        
+
+
                         <!-- Botão CTA -->
-                        <button id="btn-comprar" class="w-full bg-brand hover:bg-brand-dark text-white text-lg font-bold py-4 px-6 rounded-2xl text-center transition-all duration-300 flex items-center justify-center gap-3 shadow-xl shadow-brand/30 transform hover:-translate-y-1">
+                        <button id="btn-comprar" class="w-full bg-brand hover:bg-brand-dark text-white text-lg font-bold py-4 px-6 rounded-2xl text-center transition-all duration-300 flex items-center justify-center gap-3 shadow-xl shadow-brand/30 transform hover:-translate-y-1 active:scale-[0.98]">
                             <i class="fa-solid fa-cart-plus text-2xl"></i>
                             Adicionar ao Carrinho
                         </button>
                         
                         <!-- Box Informativo de Sob Encomenda -->
-                        <div id="badge-sob-encomenda" class="hidden mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-sm shadow-sm">
+                        <div id="badge-sob-encomenda" class="hidden mt-4 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-sm shadow-sm">
                             <div class="flex items-start gap-3">
                                 <div class="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm text-sm">
                                     <i class="fa-solid fa-clock"></i>
                                 </div>
                                 <div class="flex-1">
-                                    <p class="font-bold text-amber-950 text-sm">Disponível Sob Encomenda</p>
-                                    <p class="text-xs text-amber-800 mt-1 leading-relaxed">
+                                    <p class="font-bold text-amber-950 dark:text-amber-200 text-sm">Disponível Sob Encomenda</p>
+                                    <p class="text-xs text-amber-800 dark:text-amber-300/90 mt-1 leading-relaxed">
                                         Este produto é produzido ou encomendado sob medida. Você pode adicioná-lo ao carrinho normalmente para solicitar seu orçamento e prazos no WhatsApp!
                                     </p>
                                 </div>
                             </div>
                         </div>
                         
-                        <p id="txt-sem-estoque" class="text-amber-600 font-bold text-center mt-4 hidden"></p>
+                        <p id="txt-sem-estoque" class="text-amber-600 dark:text-amber-400 font-bold text-center mt-4 hidden"></p>
                         
                         <!-- Mini benefits -->
-                        <div class="mt-10 grid grid-cols-2 gap-4">
-                            <div class="flex items-center gap-3 text-gray-600">
+                        <div class="mt-10 grid grid-cols-2 gap-4 border-t border-gray-100 dark:border-slate-700/80 pt-6">
+                            <div class="flex items-center gap-3 text-gray-600 dark:text-slate-300">
                                 <i class="fa-solid fa-shield-halved text-brand text-xl"></i>
                                 <span class="text-sm font-medium">Compra Segura</span>
                             </div>
-                            <div class="flex items-center gap-3 text-gray-600">
+                            <div class="flex items-center gap-3 text-gray-600 dark:text-slate-300">
                                 <i class="fa-solid fa-truck-fast text-brand text-xl"></i>
                                 <span class="text-sm font-medium">Entrega Rápida</span>
                             </div>
@@ -217,7 +212,7 @@
     </main>
 
     <!-- FOOTER -->
-    <footer class="bg-gray-900 text-white pt-16 pb-8 border-t border-gray-800">
+    <footer class="bg-gray-900 dark:bg-slate-950 text-white pt-16 pb-8 border-t border-gray-800 dark:border-slate-800">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h2 id="footer-title" class="text-2xl font-bold mb-2 text-white">Nossa Loja</h2>
             <p id="footer-slogan" class="text-gray-400 mb-8">Qualidade e Conforto para sua Casa</p>
@@ -236,16 +231,15 @@
         <img id="modal-zoom-img" src="" class="max-w-[95vw] max-h-[90vh] object-contain rounded-xl shadow-2xl transition-all scale-100" onclick="event.stopPropagation()">
     </div>
 
-    <!-- Firebase SDK (v10 compat - mesma versão do sistema) -->
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js?v=20260901162449"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js?v=20260901162449"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js?v=20260901162449"></script>
+    <!-- Firebase SDK (v10 compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     
-    <!-- Config Firebase (site público - sem redirecionamento de login) -->
-    <script src="../sistema/config_banco.js?v=20260901162449"></script>
-    <script src="firebase-site.js?v=20260901162449"></script>
-    <script src="carrinho.js?v=20260901162449"></script>
-    <script src="loja_produto.js?v=20260901162449"></script>
+    <!-- Config Firebase -->
+    <script src="../sistema/config_banco.js?v=20260902202810"></script>
+    <script src="firebase-site.js?v=20260902202810"></script>
+    <script src="carrinho.js?v=20260902202810"></script>
+    <script src="loja_produto.js?v=20260902202810"></script>
 </body>
 </html>
-

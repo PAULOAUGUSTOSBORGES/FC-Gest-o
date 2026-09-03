@@ -891,48 +891,373 @@ async function estornarTitulo(id) {
     });
 }
 
+let renegociacaoAtual = null;
+
 function abrirModalRenegociacao(id) {
-    const f = db.financeiro.find(x => x.id === id);
-    if (!f) return;
-    document.getElementById('reneg-id').value = f.id;
-    document.getElementById('reneg-valor').innerText = formatMoney(f.valor);
-    const hoje = new Date(); hoje.setDate(hoje.getDate() + 30);
-    document.getElementById('reneg-data').value = hoje.toISOString().split('T')[0];
-    document.getElementById('modal-renegociacao').classList.remove('hidden');
-}
-function fecharModalRenegociacao() { document.getElementById('modal-renegociacao').classList.add('hidden'); }
+    const f = (db.financeiro || []).find(x => String(x.id) === String(id));
+    if (!f) return showToast('Título não encontrado.', 'error');
 
-async function confirmarRenegociacao() {
-    const id = parseInt(document.getElementById('reneg-id').value);
-    const fOriginal = db.financeiro.find(x => String(x.id) === String(id));
-    if (!fOriginal) return;
+    renegociacaoAtual = { ...f };
 
-    const qtdParcelas = parseInt(document.getElementById('reneg-qtd').value);
-    const dataInicialStr = document.getElementById('reneg-data').value;
-    if (!dataInicialStr || isNaN(qtdParcelas)) return showToast('Preencha as informações.', 'error');
+    const isReceber = (f.tipo === 'RECEITA' || !f.tipo);
+    const idEl = document.getElementById('reneg-id');
+    const badgeTipo = document.getElementById('reneg-badge-tipo');
+    const subtitulo = document.getElementById('reneg-tipo-subtitulo');
+    const pessoaEl = document.getElementById('reneg-pessoa');
+    const refEl = document.getElementById('reneg-ref');
+    const valOrigEl = document.getElementById('reneg-valor-original');
+    const vencOrigEl = document.getElementById('reneg-venc-original');
+    const modalEl = document.getElementById('modal-renegociacao');
 
-    const valorPorParcela = fOriginal.valor / qtdParcelas;
-    const dataInicial = new Date(dataInicialStr + 'T12:00:00');
-
-    const batch = firestore.batch();
-    
-    const finRef = firestore.collection('financeiro').doc(String(id));
-    batch.update(finRef, {
-        status: 'RENEGOCIADO',
-        observacao: (fOriginal.observacao || '') + `\nRenegociado em ${qtdParcelas}x.`
-    });
-
-    for (let i = 0; i < qtdParcelas; i++) {
-        let novaData = new Date(dataInicial); novaData.setMonth(novaData.getMonth() + i);
-        const refNova = firestore.collection('financeiro').doc();
-        batch.set(refNova, { tipo: fOriginal.tipo, pessoa: fOriginal.pessoa, ref: `${fOriginal.ref} (Reneg. ${i+1}/${qtdParcelas})`, categoria: fOriginal.categoria, data: novaData.toISOString(), valor: valorPorParcela, status: 'PENDENTE' });
+    if (idEl) idEl.value = f.id;
+    if (badgeTipo) {
+        badgeTipo.innerText = isReceber ? 'Conta a Receber (Cliente)' : 'Conta a Pagar (Dívida / Fornecedor)';
+        badgeTipo.className = isReceber 
+            ? 'px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300' 
+            : 'px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-300';
     }
+    if (subtitulo) {
+        subtitulo.innerText = isReceber ? 'Negociação de Recebimento de Cliente' : 'Renegociação de Dívida / Pagamento a Fornecedor';
+    }
+    if (pessoaEl) pessoaEl.innerText = f.pessoa || 'Sem Favorecido';
+    if (refEl) refEl.innerText = `Ref: ${f.ref || 'Título'} | Categoria: ${f.categoria || 'Geral'}`;
     
-    try {
-        await batch.commit();
-        fecharModalRenegociacao(); renderFinAbas(fOriginal.tipo === 'RECEITA' ? 'receber' : 'pagar'); showToast('Renegociado!', 'success');
-    } catch(e) { console.error(e); showToast('Erro', 'error'); }
+    const valorOriginal = Number(f.valor || 0);
+    if (valOrigEl) valOrigEl.innerText = formatMoney(valorOriginal);
+    if (vencOrigEl) {
+        vencOrigEl.innerText = `Venc. Original: ${f.data ? formatData(f.data).split(' ')[0] : '--/--/----'}`;
+    }
+
+    const jurosEl = document.getElementById('reneg-juros');
+    const descEl = document.getElementById('reneg-desconto');
+    const entradaEl = document.getElementById('reneg-entrada');
+    const qtdEl = document.getElementById('reneg-qtd');
+    const intervaloEl = document.getElementById('reneg-intervalo');
+    const dataPrimeiraEl = document.getElementById('reneg-data-primeira');
+    const obsEl = document.getElementById('reneg-obs');
+
+    if (jurosEl) jurosEl.value = '0.00';
+    if (descEl) descEl.value = '0.00';
+    if (entradaEl) entradaEl.value = '0.00';
+    if (qtdEl) qtdEl.value = '2';
+    if (intervaloEl) intervaloEl.value = '30';
+    
+    const dIni = new Date();
+    dIni.setDate(dIni.getDate() + 30);
+    if (dataPrimeiraEl) dataPrimeiraEl.value = dIni.toISOString().split('T')[0];
+    if (obsEl) obsEl.value = '';
+
+    recalcularTotaisRenegociacao();
+    if (modalEl) modalEl.classList.remove('hidden');
 }
+
+function fecharModalRenegociacao() {
+    const modalEl = document.getElementById('modal-renegociacao');
+    if (modalEl) modalEl.classList.add('hidden');
+    renegociacaoAtual = null;
+}
+
+function recalcularTotaisRenegociacao() {
+    if (!renegociacaoAtual) return;
+    
+    const valorOriginal = Number(renegociacaoAtual.valor || 0);
+    const juros = parseFloat(document.getElementById('reneg-juros')?.value) || 0;
+    const desconto = parseFloat(document.getElementById('reneg-desconto')?.value) || 0;
+    const entrada = parseFloat(document.getElementById('reneg-entrada')?.value) || 0;
+
+    const totalRenegociado = Math.max(0, valorOriginal + juros - desconto);
+    const saldoAParcelar = Math.max(0, totalRenegociado - entrada);
+
+    const totalEl = document.getElementById('reneg-novo-total');
+    if (totalEl) totalEl.innerText = formatMoney(totalRenegociado);
+
+    const saldoDisplay = document.getElementById('reneg-saldo-parcelar-display');
+    if (saldoDisplay) saldoDisplay.innerText = formatMoney(saldoAParcelar);
+
+    gerarPreviewParcelasRenegociacao();
+}
+
+function gerarPreviewParcelasRenegociacao() {
+    if (!renegociacaoAtual) return;
+
+    const valorOriginal = Number(renegociacaoAtual.valor || 0);
+    const juros = parseFloat(document.getElementById('reneg-juros')?.value) || 0;
+    const desconto = parseFloat(document.getElementById('reneg-desconto')?.value) || 0;
+    const entrada = parseFloat(document.getElementById('reneg-entrada')?.value) || 0;
+
+    const totalRenegociado = Math.max(0, valorOriginal + juros - desconto);
+    const saldoAParcelar = Math.max(0, totalRenegociado - entrada);
+
+    const qtdEl = document.getElementById('reneg-qtd');
+    let qtd = parseInt(qtdEl ? qtdEl.value : '1') || 1;
+    if (qtd < 1) qtd = 1;
+    if (qtd > 48) qtd = 48;
+    if (qtdEl) qtdEl.value = qtd;
+
+    const intervaloDias = parseInt(document.getElementById('reneg-intervalo')?.value || '30');
+    const dataPrimeiraStr = document.getElementById('reneg-data-primeira')?.value;
+    
+    let baseDate = dataPrimeiraStr ? new Date(dataPrimeiraStr + 'T12:00:00') : new Date();
+    if (isNaN(baseDate.getTime())) baseDate = new Date();
+
+    const tbody = document.getElementById('reneg-tabela-parcelas');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const valorBaseParcela = Math.floor((saldoAParcelar / qtd) * 100) / 100;
+    let restoCentavos = Math.round((saldoAParcelar - (valorBaseParcela * qtd)) * 100) / 100;
+
+    for (let i = 0; i < qtd; i++) {
+        let vencimento = new Date(baseDate);
+        if (intervaloDias === 30) {
+            vencimento.setMonth(vencimento.getMonth() + i);
+        } else {
+            vencimento.setDate(vencimento.getDate() + (i * intervaloDias));
+        }
+
+        let valParcela = valorBaseParcela;
+        if (i === 0) {
+            valParcela = Math.round((valParcela + restoCentavos) * 100) / 100;
+        }
+
+        const dataVencIso = vencimento.toISOString().split('T')[0];
+        const numParcela = `${i + 1}/${qtd}`;
+
+        tbody.innerHTML += `
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40 border-b border-slate-100 dark:border-slate-700/60">
+                <td class="p-2.5 text-center font-bold text-slate-500 dark:text-slate-400">${numParcela}</td>
+                <td class="p-2.5">
+                    <input type="date" value="${dataVencIso}" class="reneg-item-data w-full sm:w-auto bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-1.5 rounded-lg text-xs font-bold text-slate-800 dark:text-white outline-none focus:border-purple-500">
+                </td>
+                <td class="p-2.5 text-right">
+                    <div class="flex items-center justify-end gap-1">
+                        <span class="text-[11px] text-slate-400 font-bold">R$</span>
+                        <input type="number" step="0.01" min="0" value="${valParcela.toFixed(2)}" oninput="validarSomaParcelasManual()" class="reneg-item-valor w-28 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-1.5 rounded-lg text-xs font-black text-slate-900 dark:text-white outline-none focus:border-purple-500 text-right">
+                    </div>
+                </td>
+                <td class="p-2.5">
+                    <input type="text" placeholder="Obs / Cheque / Ref..." value="${renegociacaoAtual.ref || ''} (${numParcela})" class="reneg-item-obs w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-1.5 rounded-lg text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-purple-500">
+                </td>
+            </tr>
+        `;
+    }
+
+    validarSomaParcelasManual();
+}
+
+function validarSomaParcelasManual() {
+    if (!renegociacaoAtual) return;
+
+    const valorOriginal = Number(renegociacaoAtual.valor || 0);
+    const juros = parseFloat(document.getElementById('reneg-juros')?.value) || 0;
+    const desconto = parseFloat(document.getElementById('reneg-desconto')?.value) || 0;
+    const entrada = parseFloat(document.getElementById('reneg-entrada')?.value) || 0;
+
+    const totalRenegociado = Math.max(0, valorOriginal + juros - desconto);
+    const saldoAParcelar = Math.max(0, totalRenegociado - entrada);
+
+    const valorInputs = document.querySelectorAll('.reneg-item-valor');
+    let soma = 0;
+    valorInputs.forEach(inp => {
+        soma += parseFloat(inp.value) || 0;
+    });
+    soma = Math.round(soma * 100) / 100;
+
+    const somaDisplay = document.getElementById('reneg-soma-parcelas-display');
+    if (somaDisplay) somaDisplay.innerText = formatMoney(soma);
+
+    const alerta = document.getElementById('reneg-alerta-diferenca');
+    const alertaTexto = document.getElementById('reneg-diferenca-texto');
+    const dif = Math.round((soma - saldoAParcelar) * 100) / 100;
+
+    if (Math.abs(dif) > 0.01) {
+        if (alerta) alerta.classList.remove('hidden');
+        if (alertaTexto) {
+            alertaTexto.innerText = dif > 0 
+                ? `Soma ultrapassa o saldo em ${formatMoney(Math.abs(dif))}` 
+                : `Faltam ${formatMoney(Math.abs(dif))} para atingir o saldo`;
+        }
+    } else {
+        if (alerta) alerta.classList.add('hidden');
+    }
+}
+
+function ajustarDiferencaUltimaParcela() {
+    if (!renegociacaoAtual) return;
+
+    const valorOriginal = Number(renegociacaoAtual.valor || 0);
+    const juros = parseFloat(document.getElementById('reneg-juros')?.value) || 0;
+    const desconto = parseFloat(document.getElementById('reneg-desconto')?.value) || 0;
+    const entrada = parseFloat(document.getElementById('reneg-entrada')?.value) || 0;
+
+    const totalRenegociado = Math.max(0, valorOriginal + juros - desconto);
+    const saldoAParcelar = Math.max(0, totalRenegociado - entrada);
+
+    const valorInputs = Array.from(document.querySelectorAll('.reneg-item-valor'));
+    if (valorInputs.length === 0) return;
+
+    let somaExcetoUltima = 0;
+    for (let i = 0; i < valorInputs.length - 1; i++) {
+        somaExcetoUltima += parseFloat(valorInputs[i].value) || 0;
+    }
+
+    const valorUltima = Math.max(0, Math.round((saldoAParcelar - somaExcetoUltima) * 100) / 100);
+    valorInputs[valorInputs.length - 1].value = valorUltima.toFixed(2);
+    validarSomaParcelasManual();
+}
+
+async function confirmarRenegociacaoAvancada() {
+    if (!renegociacaoAtual) return showToast('Nenhum título selecionado para renegociação.', 'error');
+    const idOriginal = renegociacaoAtual.id;
+    const fOriginal = (db.financeiro || []).find(x => String(x.id) === String(idOriginal)) || renegociacaoAtual;
+
+    const juros = parseFloat(document.getElementById('reneg-juros')?.value) || 0;
+    const desconto = parseFloat(document.getElementById('reneg-desconto')?.value) || 0;
+    const entrada = parseFloat(document.getElementById('reneg-entrada')?.value) || 0;
+    const entradaForma = document.getElementById('reneg-entrada-forma')?.value || 'PIX';
+    const entradaConta = document.getElementById('reneg-entrada-conta')?.value || 'Caixa Físico';
+    const obsAcordo = document.getElementById('reneg-obs')?.value.trim() || '';
+
+    const datasInp = Array.from(document.querySelectorAll('.reneg-item-data'));
+    const valoresInp = Array.from(document.querySelectorAll('.reneg-item-valor'));
+    const obsInp = Array.from(document.querySelectorAll('.reneg-item-obs'));
+
+    if (valoresInp.length === 0 && entrada <= 0) {
+        return showToast('Informe ao menos uma parcela ou valor de entrada.', 'error');
+    }
+
+    const parcelas = [];
+    let somaParcelas = 0;
+
+    for (let i = 0; i < valoresInp.length; i++) {
+        const val = parseFloat(valoresInp[i].value) || 0;
+        const dt = datasInp[i] ? datasInp[i].value : '';
+        const obsP = obsInp[i] ? obsInp[i].value.trim() : '';
+
+        if (!dt) return showToast(`Preencha a data da parcela ${i + 1}.`, 'error');
+        if (val <= 0) return showToast(`O valor da parcela ${i + 1} deve ser maior que zero.`, 'error');
+
+        somaParcelas += val;
+        parcelas.push({
+            numero: i + 1,
+            totalParcelas: valoresInp.length,
+            dataVencimento: dt,
+            valor: val,
+            obs: obsP
+        });
+    }
+
+    const valorOriginal = Number(fOriginal.valor || 0);
+    const totalRenegociado = Math.max(0, valorOriginal + juros - desconto);
+    const saldoAParcelar = Math.max(0, totalRenegociado - entrada);
+
+    const dif = Math.abs(Math.round((somaParcelas - saldoAParcelar) * 100) / 100);
+    if (dif > 0.05) {
+        return showToast(`A soma das parcelas difere do saldo a parcelar. Corrija antes de salvar.`, 'warning');
+    }
+
+    const btnConfirmar = document.getElementById('reneg-btn-confirmar');
+    if (btnConfirmar) {
+        btnConfirmar.disabled = true;
+        btnConfirmar.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+
+    try {
+        const batch = firestore.batch();
+        const agoraIso = new Date().toISOString();
+        const hojeBr = new Date().toLocaleDateString('pt-BR');
+        const tipoOriginal = fOriginal.tipo || 'DESPESA';
+        const pessoaOriginal = fOriginal.pessoa || fOriginal.clienteNome || 'Sem Favorecido';
+
+        const refOriginalDoc = firestore.collection('financeiro').doc(String(idOriginal));
+        const historicoTexto = `\n[Renegociado em ${hojeBr}: ${entrada > 0 ? `Entrada ${formatMoney(entrada)} + ` : ''}${parcelas.length}x. Acordo: ${obsAcordo || 'N/A'}]`;
+
+        batch.update(refOriginalDoc, {
+            status: 'RENEGOCIADO',
+            observacao: (fOriginal.observacao || '') + historicoTexto,
+            renegociadoEm: agoraIso,
+            renegociacaoJuros: juros,
+            renegociacaoDesconto: desconto,
+            renegociacaoEntrada: entrada,
+            renegociacaoQtdParcelas: parcelas.length,
+            ultimaAlteracao: Date.now()
+        });
+
+        if (entrada > 0) {
+            const refEntrada = firestore.collection('financeiro').doc();
+            batch.set(refEntrada, {
+                tipo: tipoOriginal,
+                pessoa: pessoaOriginal,
+                clienteId: fOriginal.clienteId || null,
+                fornecedorId: fOriginal.fornecedorId || null,
+                ref: `${fOriginal.ref || 'Título'} (Entrada Renegociação)`,
+                categoria: fOriginal.categoria || 'Renegociação',
+                centroCusto: fOriginal.centroCusto || 'Operacional',
+                contaBancaria: entradaConta,
+                formaPagamento: entradaForma,
+                metodoPagamento: entradaForma,
+                data: agoraIso,
+                dataPagamento: agoraIso,
+                valor: entrada,
+                valorPago: entrada,
+                status: 'PAGO',
+                origemRenegociacaoId: String(idOriginal),
+                observacao: `Entrada da renegociação do título ${fOriginal.ref || idOriginal}. ${obsAcordo}`.trim(),
+                criadoEm: agoraIso,
+                ultimaAlteracao: Date.now()
+            });
+        }
+
+        parcelas.forEach(p => {
+            const refParcela = firestore.collection('financeiro').doc();
+            const dataParcelaIso = new Date(p.dataVencimento + 'T12:00:00').toISOString();
+
+            batch.set(refParcela, {
+                tipo: tipoOriginal,
+                pessoa: pessoaOriginal,
+                clienteId: fOriginal.clienteId || null,
+                fornecedorId: fOriginal.fornecedorId || null,
+                ref: p.obs || `${fOriginal.ref || 'Título'} (Reneg. ${p.numero}/${p.totalParcelas})`,
+                categoria: fOriginal.categoria || 'Renegociação',
+                centroCusto: fOriginal.centroCusto || 'Operacional',
+                contaBancaria: fOriginal.contaBancaria || 'Caixa Físico',
+                data: dataParcelaIso,
+                valor: p.valor,
+                status: 'PENDENTE',
+                origemRenegociacaoId: String(idOriginal),
+                parcelaNumero: p.numero,
+                parcelaTotal: p.totalParcelas,
+                observacao: `Parcela ${p.numero}/${p.totalParcelas} da renegociação do título ${fOriginal.ref || idOriginal}. ${obsAcordo}`.trim(),
+                criadoEm: agoraIso,
+                ultimaAlteracao: Date.now()
+            });
+        });
+
+        await batch.commit();
+
+        fecharModalRenegociacao();
+        showToast(`Título renegociado com sucesso em ${entrada > 0 ? 'Entrada + ' : ''}${parcelas.length} parcelas!`, 'success');
+        renderFinAbas(tipoOriginal === 'RECEITA' ? 'receber' : 'pagar');
+
+    } catch (err) {
+        console.error('Erro ao salvar renegociação:', err);
+        showToast('Erro ao gravar renegociação no banco de dados.', 'error');
+    } finally {
+        if (btnConfirmar) {
+            btnConfirmar.disabled = false;
+            btnConfirmar.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+    }
+}
+
+window.abrirModalRenegociacao = abrirModalRenegociacao;
+window.fecharModalRenegociacao = fecharModalRenegociacao;
+window.recalcularTotaisRenegociacao = recalcularTotaisRenegociacao;
+window.gerarPreviewParcelasRenegociacao = gerarPreviewParcelasRenegociacao;
+window.validarSomaParcelasManual = validarSomaParcelasManual;
+window.ajustarDiferencaUltimaParcela = ajustarDiferencaUltimaParcela;
+window.confirmarRenegociacaoAvancada = confirmarRenegociacaoAvancada;
+window.confirmarRenegociacao = confirmarRenegociacaoAvancada;
 
 function verDetalhesTitulo(id) {
     const f = db.financeiro.find(x => x.id === id); if(!f) return; const isReceita = f.tipo === 'RECEITA' || !f.tipo;

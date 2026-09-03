@@ -266,7 +266,7 @@ function fecharModalProduto() {
     modalProd.style.display = '';
 }
 
-function comprimirImagem(file, maxDimension = 1200, quality = 0.85) {
+function comprimirImagem(file, maxDimension = 650, quality = 0.72) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -307,11 +307,11 @@ async function processarFotosGaleria(event) {
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
     
-    const limiteMax = 5;
+    const limiteMax = 3;
     const espacoDisponivel = limiteMax - fotosGaleria.length;
     
     if (espacoDisponivel <= 0) {
-        showToast('Limite máximo de 5 fotos por produto atingido!', 'warning');
+        showToast('Limite máximo de 3 fotos por produto atingido!', 'warning');
         event.target.value = '';
         return;
     }
@@ -319,7 +319,7 @@ async function processarFotosGaleria(event) {
     const selecionados = files.slice(0, espacoDisponivel);
     for (const file of selecionados) {
         try {
-            const dataUrl = await comprimirImagem(file, 1200, 0.85);
+            const dataUrl = await comprimirImagem(file, 650, 0.72);
             fotosGaleria.push(dataUrl);
         } catch(err) {
             console.error('Erro ao processar imagem:', err);
@@ -380,12 +380,12 @@ function renderizarGaleriaFotos() {
         </div>`;
     });
     
-    if (fotosGaleria.length < 5) {
+    if (fotosGaleria.length < 3) {
         html += `
         <div onclick="document.getElementById('prod-foto-file').click()" class="border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-blue-500 dark:hover:border-blue-400 rounded-xl aspect-square flex flex-col items-center justify-center text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 bg-white/50 dark:bg-slate-800/30 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 cursor-pointer transition-all p-2 text-center group">
             <i class="fa-solid fa-camera text-xl sm:text-2xl mb-1 group-hover:scale-110 transition-transform"></i>
             <span class="text-[10px] font-bold">+ Adicionar</span>
-            <span class="text-[8px] text-slate-400">(${fotosGaleria.length}/5)</span>
+            <span class="text-[8px] text-slate-400">(${fotosGaleria.length}/3)</span>
         </div>`;
     }
     
@@ -486,7 +486,7 @@ async function salvarProduto() {
         }
         fecharModalProduto();
     } catch (e) {
-        showToast('Erro ao salvar produto.', 'error');
+        showToast('Erro ao salvar produto: ' + (e.message || ''), 'error');
         console.error(e);
     }
 }
@@ -791,10 +791,10 @@ async function gerarDescricaoIA(event) {
 // IMPORTAÇÃO DE PLANILHA
 // ==========================================
 function baixarPlanilhaModeloProduto() {
-    const cabecalho = "Nome do Produto;EAN (Codigo de Barras);Categoria;Marca;Custo;Margem de Lucro %;Preco de Venda Final;Estoque Atual;Estoque Minimo\\n";
-    const exemplo1 = "Mesa de Jantar Madeira Maciça;78900000000;Mesas;FC Móveis;500,00;50;750,00;10;2\\n";
-    const exemplo2 = "Cadeira Estofada;78900000001;Cadeiras;FC Móveis;120,50;100;241,00;40;10\\n";
-    const csvContent = "\\uFEFF" + cabecalho + exemplo1 + exemplo2;
+    const cabecalho = "Nome do Produto;EAN (Codigo de Barras);Categoria;Custo;Preco de Venda;Estoque Atual\n";
+    const exemplo1 = "Mesa de Jantar Madeira Maciça;78900000000;Mesas;500,00;750,00;10\n";
+    const exemplo2 = "Cadeira Estofada;78900000001;Cadeiras;120,50;241,00;40\n";
+    const csvContent = "\uFEFF" + cabecalho + exemplo1 + exemplo2;
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -812,36 +812,83 @@ async function processarPlanilhaProdutos(event) {
 
     showToast("Lendo planilha, aguarde...", "info");
 
+    // Verifica se não é csv
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+        showToast("Por favor, envie um arquivo .csv (separado por vírgulas ou ponto e vírgula).", "error");
+        event.target.value = '';
+        return;
+    }
+
     const reader = new FileReader();
     reader.onload = async function (e) {
         try {
             const text = e.target.result;
-            const linhas = text.split('\\n').filter(linha => linha.trim() !== '');
-            if (linhas.length <= 1) return showToast("A planilha parece estar vazia ou só tem o cabeçalho.", "error");
+            // Correcao: divide por CRLF, LF ou CR
+            const linhas = text.split(/\r\n|\n|\r/).filter(linha => linha.trim() !== '');
+            
+            if (linhas.length <= 1) {
+                showToast("A planilha parece estar vazia ou só tem o cabeçalho.", "error");
+                return;
+            }
 
             const separador = linhas[0].includes(';') ? ';' : ',';
             let produtosAdicionados = 0;
 
             const batch = firestore.batch();
+            
+            // Leitura dinâmica do cabeçalho para suportar planilha velha ou nova
+            let colIndex = { nome: 0, ean: 1, categoria: 2, marca: 3, custo: 4, margem: 5, preco: 6, estoque: 7, min: 8 };
+            const hCols = linhas[0].toLowerCase().split(separador).map(c => c.trim().replace(/^"|"$/g, ''));
+            if (hCols[0].includes('nome')) {
+                colIndex.nome = hCols.findIndex(c => c.includes('nome'));
+                colIndex.ean = hCols.findIndex(c => c.includes('ean') || c.includes('barras'));
+                colIndex.categoria = hCols.findIndex(c => c.includes('categoria'));
+                colIndex.marca = hCols.findIndex(c => c.includes('marca'));
+                colIndex.custo = hCols.findIndex(c => c.includes('custo'));
+                colIndex.margem = hCols.findIndex(c => c.includes('margem'));
+                colIndex.preco = hCols.findIndex(c => c.includes('preco') || c.includes('preço') || c.includes('venda'));
+                colIndex.estoque = hCols.findIndex(c => c.includes('estoque') || c.includes('atual') || c.includes('qtd'));
+                colIndex.min = hCols.findIndex(c => c.includes('minimo') || c.includes('mínimo'));
+            }
 
             for (let i = 1; i < linhas.length; i++) {
                 const colunas = linhas[i].split(separador).map(c => c.trim().replace(/^"|"$/g, ''));
-                if (!colunas[0]) continue;
+                const nomeIdx = colIndex.nome !== -1 ? colIndex.nome : 0;
+                if (!colunas[nomeIdx]) continue;
 
-                const nome = colunas[0];
-                const ean = colunas[1] || '';
-                const categoria = colunas[2] || 'Geral';
-                const marca = colunas[3] || '';
-                const custo = parseInputMoney(colunas[4] ? colunas[4].replace(',', '.') : 0) || 0;
-                const preco = parseInputMoney(colunas[6] ? colunas[6].replace(',', '.') : 0) || 0;
-                let margem = parseInputMoney(colunas[5] ? colunas[5].replace(',', '.') : 0) || 0;
-                if (custo > 0 && preco > 0) margem = parseFloat((((preco - custo) / custo) * 100).toFixed(2));
-                const estoque = parseInputMoney((colunas[7]||'0').replace(',','.')) || 0;
-                const min = parseInputMoney((colunas[8]||'5').replace(',','.')) || 5;
+                const nome = colunas[nomeIdx];
+                const ean = colIndex.ean !== -1 ? (colunas[colIndex.ean] || '') : '';
+                const categoria = colIndex.categoria !== -1 ? (colunas[colIndex.categoria] || 'Geral') : 'Geral';
+                const marca = colIndex.marca !== -1 ? (colunas[colIndex.marca] || '') : '';
+                
+                const strCusto = colIndex.custo !== -1 ? colunas[colIndex.custo] : null;
+                const strPreco = colIndex.preco !== -1 ? colunas[colIndex.preco] : null;
+                const strMargem = colIndex.margem !== -1 ? colunas[colIndex.margem] : null;
+                
+                const parseCustom = (val) => {
+                    if (typeof parseInputMoney !== 'undefined') {
+                        return parseInputMoney(val ? val.replace(',', '.') : 0) || 0;
+                    }
+                    return parseFloat((val || '0').replace(',', '.')) || 0;
+                };
+
+                const custo = parseCustom(strCusto);
+                const preco = parseCustom(strPreco);
+                let margem = parseCustom(strMargem);
+                
+                if (custo > 0 && preco > 0 && margem === 0) {
+                    margem = parseFloat((((preco - custo) / custo) * 100).toFixed(2));
+                }
+                
+                const strEstoque = colIndex.estoque !== -1 ? colunas[colIndex.estoque] : null;
+                const strMin = colIndex.min !== -1 ? colunas[colIndex.min] : null;
+                
+                const estoque = typeof parseInputMoney !== 'undefined' ? (parseInputMoney((strEstoque||'0').replace(',','.')) || 0) : (parseFloat((strEstoque||'0').replace(',','.'))||0);
+                const min = typeof parseInputMoney !== 'undefined' ? (parseInputMoney((strMin||'5').replace(',','.')) || 5) : (parseFloat((strMin||'5').replace(',','.'))||5);
 
                 let existe = false;
                 if (ean && ean !== '') {
-                    existe = db.produtos.find(p => p.ean === ean);
+                    existe = db.produtos && db.produtos.find(p => p.ean === ean);
                 }
 
                 if (!existe) {
@@ -860,11 +907,10 @@ async function processarPlanilhaProdutos(event) {
                 await batch.commit();
                 showToast(`${produtosAdicionados} produtos importados com sucesso!`, "success");
             } else {
-                showToast("Nenhum produto novo importado (podem ser EANs duplicados).", "info");
+                showToast("Nenhum produto novo importado (podem ser EANs duplicados).", "warning");
             }
-
-        } catch (err) {
-            console.error(err);
+        } catch (error) {
+            console.error("Erro ao importar planilha:", error);
             showToast("Erro ao processar planilha.", "error");
         }
     };

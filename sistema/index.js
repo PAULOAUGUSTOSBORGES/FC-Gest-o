@@ -444,6 +444,16 @@ function mudarTipoGraficoPrincipal(tipo) {
     renderizarGraficos(); 
 }
 
+function formatarMoedaEixoY(val) {
+    if (val === null || val === undefined || isNaN(val)) return 'R$ 0';
+    const num = Number(val);
+    if (Math.abs(num) < 0.0001) return 'R$ 0';
+    const str = Number.isInteger(num)
+        ? num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 })
+        : num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return str.replace(/\u00A0/g, ' ');
+}
+
 function inicializarGraficos() {
     if (typeof ApexCharts === 'undefined') {
         setTimeout(inicializarGraficos, 500); // Aguarda carregar script
@@ -451,8 +461,8 @@ function inicializarGraficos() {
     }
 
     const isDark = document.documentElement.classList.contains('dark');
-    const textColor = isDark ? '#94a3b8' : '#64748b';
-    const gridColor = isDark ? '#334155' : '#e2e8f0';
+    const textColor = isDark ? '#94a3b8' : '#334155';
+    const gridColor = isDark ? '#334155' : '#cbd5e1';
 
     // Gráfico Principal
     const optionsPrincipal = {
@@ -464,7 +474,19 @@ function inicializarGraficos() {
         fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] } },
         dataLabels: { enabled: false },
         xaxis: { categories: [], tooltip: { enabled: false }, labels: { style: { colors: textColor } } },
-        yaxis: { labels: { style: { colors: textColor }, formatter: (value) => `R$ ${Number(value).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}` } },
+        yaxis: { 
+            decimalsInFloat: 0,
+            labels: { 
+                style: { colors: textColor }, 
+                formatter: (value) => formatarMoedaEixoY(value) 
+            } 
+        },
+        tooltip: {
+            theme: isDark ? 'dark' : 'light',
+            y: {
+                formatter: (val) => typeof formatMoney === 'function' ? formatMoney(val) : `R$ ${Number(val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            }
+        },
         grid: { borderColor: gridColor, strokeDashArray: 4 },
         legend: { position: 'top', horizontalAlign: 'right' }
     };
@@ -493,10 +515,23 @@ function inicializarGraficos() {
         theme: { mode: isDark ? 'dark' : 'light' },
         plotOptions: { bar: { horizontal: true, borderRadius: 4, dataLabels: { total: { enabled: false } } } },
         stroke: { width: 1, colors: ['transparent'] },
-        xaxis: { categories: ['Recebimentos'], labels: { style: { colors: textColor }, formatter: (val) => "R$ " + Number(val).toLocaleString('pt-BR') } },
+        xaxis: { 
+            decimalsInFloat: 0,
+            categories: ['Recebimentos'], 
+            labels: { 
+                style: { colors: textColor }, 
+                formatter: (val) => formatarMoedaEixoY(val) 
+            } 
+        },
         yaxis: { show: false },
         fill: { opacity: 1 },
-        legend: { position: 'top', horizontalAlign: 'left' }
+        legend: { position: 'top', horizontalAlign: 'left' },
+        tooltip: {
+            theme: isDark ? 'dark' : 'light',
+            y: {
+                formatter: (val) => typeof formatMoney === 'function' ? formatMoney(val) : `R$ ${Number(val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            }
+        }
     };
     chartInadimplencia = new ApexCharts(document.querySelector("#chart-inadimplencia"), optionsInad);
     chartInadimplencia.render();
@@ -504,6 +539,58 @@ function inicializarGraficos() {
     // Popula os gráficos assim que terminam de inicializar
     renderizarGraficos();
 }
+
+window.atualizarTemaGraficos = function() {
+    if (typeof chartPrincipal !== 'undefined' && chartPrincipal) {
+        const isDark = document.documentElement.classList.contains('dark');
+        const textColor = isDark ? '#94a3b8' : '#334155';
+        const gridColor = isDark ? '#334155' : '#cbd5e1';
+        try {
+            chartPrincipal.updateOptions({
+                theme: { mode: isDark ? 'dark' : 'light' },
+                xaxis: { labels: { style: { colors: textColor } } },
+                yaxis: { 
+                    decimalsInFloat: 0,
+                    labels: { 
+                        style: { colors: textColor },
+                        formatter: (val) => formatarMoedaEixoY(val)
+                    } 
+                },
+                tooltip: { theme: isDark ? 'dark' : 'light' },
+                grid: { borderColor: gridColor }
+            });
+            if (chartEstoque) chartEstoque.updateOptions({ 
+                theme: { mode: isDark ? 'dark' : 'light' },
+                plotOptions: { pie: { donut: { labels: { name: { color: textColor }, value: { color: isDark ? '#f8fafc' : '#0f172a' } } } } }
+            });
+            if (chartInadimplencia) chartInadimplencia.updateOptions({ 
+                theme: { mode: isDark ? 'dark' : 'light' },
+                xaxis: { 
+                    labels: { 
+                        style: { colors: textColor },
+                        formatter: (val) => formatarMoedaEixoY(val)
+                    } 
+                },
+                tooltip: { theme: isDark ? 'dark' : 'light' }
+            });
+        } catch(e) {}
+    }
+};
+
+window.addEventListener('storage', function(e) {
+    if (e.key === 'fc_theme_sistema') {
+        setTimeout(window.atualizarTemaGraficos, 100);
+    }
+});
+
+try {
+    if ('BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('fc_theme_channel');
+        bc.onmessage = function() {
+            setTimeout(window.atualizarTemaGraficos, 100);
+        };
+    }
+} catch(e) {}
 
 function renderizarGraficos() {
     if (!chartPrincipal || !chartEstoque || !chartInadimplencia) return;
@@ -529,29 +616,46 @@ function renderizarGraficos() {
 
         // Vendas no dia
         let vDia = vendas.filter(v => v.data && v.data.startsWith(dateStr) && v.status !== 'Cancelada' && v.tipo !== 'ORÇAMENTO');
-        let totalVenda = vDia.reduce((a, b) => a + (Number(b.tot) || 0), 0);
+        let totalVenda = Math.round(vDia.reduce((a, b) => a + (Number(b.tot) || 0), 0) * 100) / 100;
         dadosVendas.push(totalVenda);
 
         // Receitas no dia (PAGAS)
         let rDia = contas.filter(c => (!c.tipo || c.tipo === 'RECEITA') && c.status === 'PAGO' && c.dataPagamento && c.dataPagamento.startsWith(dateStr));
-        dadosReceitas.push(rDia.reduce((a, b) => a + (Number(b.valor) || 0), 0));
+        let totalReceita = Math.round(rDia.reduce((a, b) => a + (Number(b.valor) || 0), 0) * 100) / 100;
+        dadosReceitas.push(totalReceita);
 
         // Despesas no dia (PAGAS)
         let dDia = contas.filter(c => c.tipo === 'DESPESA' && c.status === 'PAGO' && c.dataPagamento && c.dataPagamento.startsWith(dateStr));
-        dadosDespesas.push(dDia.reduce((a, b) => a + (Number(b.valor) || 0), 0));
+        let totalDespesa = Math.round(dDia.reduce((a, b) => a + (Number(b.valor) || 0), 0) * 100) / 100;
+        dadosDespesas.push(totalDespesa);
     }
 
+    const isDark = document.documentElement.classList.contains('dark');
+    const textColor = isDark ? '#94a3b8' : '#334155';
+
+    chartPrincipal.updateOptions({
+        colors: modoGraficoPrincipal === 'vendas' ? ['#3b82f6'] : ['#10b981', '#ef4444'],
+        xaxis: { 
+            categories: categorias,
+            labels: { style: { colors: textColor } }
+        },
+        yaxis: {
+            decimalsInFloat: 0,
+            labels: {
+                style: { colors: textColor },
+                formatter: (val) => formatarMoedaEixoY(val)
+            }
+        }
+    });
+
     if (modoGraficoPrincipal === 'vendas') {
-        chartPrincipal.updateOptions({ colors: ['#3b82f6'] });
         chartPrincipal.updateSeries([{ name: 'Vendas (R$)', data: dadosVendas }]);
     } else {
-        chartPrincipal.updateOptions({ colors: ['#10b981', '#ef4444'] });
         chartPrincipal.updateSeries([
             { name: 'Receitas (R$)', data: dadosReceitas },
             { name: 'Despesas (R$)', data: dadosDespesas }
         ]);
     }
-    chartPrincipal.updateOptions({ xaxis: { categories: categorias } });
 
     // ----------------------------------------------------
     // 2. GRÁFICO DE ESTOQUE (Top 5 Categorias)

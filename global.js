@@ -49,10 +49,150 @@ if (window.caches && (window.location.protocol === 'http:' || window.location.pr
 }
 // ---------------------------------------------
 
-// Motor de Tema Instantâneo (Sempre escuro)
+// ==========================================
+// MOTOR DE TEMA DO SISTEMA (Dark / Light)
+// Sincronização em tempo real entre todas as telas
+// Padrão: escuro (dark).
+// ==========================================
 (function () {
-    document.documentElement.classList.add('dark');
+    const tema = localStorage.getItem('fc_theme_sistema') || 'dark';
+    const html = document.documentElement;
+    if (tema === 'light') {
+        html.classList.remove('dark');
+        html.setAttribute('data-theme', 'light');
+    } else {
+        html.classList.add('dark');
+        html.setAttribute('data-theme', 'dark');
+    }
 })();
+
+function aplicarTemaSistema(tema, broadcast = true) {
+    if (tema !== 'dark' && tema !== 'light') {
+        tema = 'dark';
+    }
+    
+    const html = document.documentElement;
+    const body = document.body;
+    if (tema === 'light') {
+        html.classList.remove('dark');
+        html.classList.add('light');
+        html.setAttribute('data-theme', 'light');
+        if (body) {
+            body.classList.remove('dark');
+            body.classList.add('light');
+        }
+    } else {
+        html.classList.add('dark');
+        html.classList.remove('light');
+        html.setAttribute('data-theme', 'dark');
+        if (body) {
+            body.classList.add('dark');
+            body.classList.remove('light');
+        }
+    }
+    
+    localStorage.setItem('fc_theme_sistema', tema);
+    _atualizarBotaoTemaSistema();
+    
+    // Se a tela atual possuir cards de configuração de tema (ex: sistema.html), atualiza-os
+    if (typeof window.atualizarCardsTemaTela === 'function') {
+        window.atualizarCardsTemaTela(tema);
+    }
+    
+    // Notifica instantaneamente as outras abas/telas do sistema
+    if (broadcast) {
+        try {
+            if ('BroadcastChannel' in window) {
+                const bc = new BroadcastChannel('fc_theme_channel');
+                bc.postMessage({ tema: tema });
+                bc.close();
+            }
+        } catch (e) {}
+    }
+}
+window.aplicarTemaSistema = aplicarTemaSistema;
+
+function toggleTemaSistema() {
+    const html = document.documentElement;
+    const isDark = html.classList.contains('dark');
+    const novoTema = isDark ? 'light' : 'dark';
+    aplicarTemaSistema(novoTema, true);
+    
+    if (typeof showToast === 'function') {
+        showToast(`Tema alterado para Modo ${novoTema === 'dark' ? 'Escuro' : 'Claro'} em todo o sistema!`, 'info');
+    }
+}
+window.toggleTemaSistema = toggleTemaSistema;
+
+function _atualizarBotaoTemaSistema() {
+    const isDark = document.documentElement.classList.contains('dark');
+    document.querySelectorAll('.sistema-theme-btn-icon').forEach(icon => {
+        icon.className = isDark
+            ? 'fa-solid fa-moon sistema-theme-btn-icon text-indigo-400'
+            : 'fa-solid fa-sun sistema-theme-btn-icon text-amber-500';
+    });
+    document.querySelectorAll('.sistema-theme-btn-label').forEach(el => {
+        el.textContent = isDark ? 'Tema Escuro (Toque p/ Claro)' : 'Tema Claro (Toque p/ Escuro)';
+    });
+    document.querySelectorAll('#header-btn-tema').forEach(btn => {
+        btn.title = isDark ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro';
+    });
+}
+
+// Ouvinte do evento storage: se o usuário mudar o tema em outra aba, esta aba se atualiza na hora!
+window.addEventListener('storage', function (e) {
+    if (e.key === 'fc_theme_sistema' && e.newValue) {
+        aplicarTemaSistema(e.newValue, false);
+    }
+});
+
+// Canal Broadcast para sincronização ultrarrápida entre abas abertas
+try {
+    if ('BroadcastChannel' in window) {
+        const bcListen = new BroadcastChannel('fc_theme_channel');
+        bcListen.onmessage = function (e) {
+            if (e.data && e.data.tema) {
+                aplicarTemaSistema(e.data.tema, false);
+            }
+        };
+    }
+} catch (e) {}
+
+// Injeta os botões de tema (no rodapé da sidebar e no topo do header)
+document.addEventListener('DOMContentLoaded', function () {
+    // 1. Botão no rodapé da Sidebar
+    const sidebarBottom = document.querySelector('#sidebar .p-4.border-t');
+    if (sidebarBottom && !document.getElementById('btn-tema-sistema')) {
+        const isDark = document.documentElement.classList.contains('dark');
+        const btn = document.createElement('button');
+        btn.id = 'btn-tema-sistema';
+        btn.onclick = toggleTemaSistema;
+        btn.className = 'w-full flex items-center justify-center gap-2 text-sm font-medium transition-all mt-2 py-2.5 px-3 rounded-xl cursor-pointer shadow-sm';
+        btn.title = 'Alternar Modo Escuro / Claro';
+        btn.innerHTML = `
+            <i class="${isDark ? 'fa-solid fa-moon text-indigo-400' : 'fa-solid fa-sun text-amber-500'} sistema-theme-btn-icon"></i>
+            <span class="sistema-theme-btn-label text-xs font-semibold">${isDark ? 'Tema Escuro (Toque p/ Claro)' : 'Tema Claro (Toque p/ Escuro)'}</span>
+        `;
+        sidebarBottom.prepend(btn);
+    }
+
+    // 2. Botão no Header (acesso instantâneo direto no celular e PC sem precisar abrir menu)
+    const headerActions = document.querySelector('header .flex.items-center.gap-2, header .flex.items-center.gap-4');
+    if (headerActions && !document.getElementById('header-btn-tema')) {
+        const isDark = document.documentElement.classList.contains('dark');
+        const headerBtn = document.createElement('button');
+        headerBtn.id = 'header-btn-tema';
+        headerBtn.onclick = toggleTemaSistema;
+        headerBtn.className = 'w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700 shrink-0 cursor-pointer shadow-sm';
+        headerBtn.title = isDark ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro';
+        headerBtn.innerHTML = `<i class="${isDark ? 'fa-solid fa-moon text-indigo-400' : 'fa-solid fa-sun text-amber-500'} sistema-theme-btn-icon"></i>`;
+        headerActions.prepend(headerBtn);
+    }
+
+    _atualizarBotaoTemaSistema();
+});
+
+
 
 // As credenciais e inicialização do Firebase agora vêm de sistema/config_banco.js
 const firestore = firebase.firestore();
@@ -259,7 +399,7 @@ function showToast(msg, type = 'info') {
 // ==========================================
 function initGlobalData(funcaoDeRenderizacaoDaPagina) {
     auth.onAuthStateChanged(async (user) => {
-        const isLoginPage = window.location.pathname.includes('login.html');
+        const isLoginPage = window.location.pathname.toLowerCase().includes('login.html') || window.location.href.toLowerCase().includes('login.html');
 
         if (!user) {
             if (!isLoginPage) window.location.href = 'login.html';
@@ -269,12 +409,15 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
             const sessaoUid = localStorage.getItem('fc_sessao_uid');
 
             if (isLoginPage) {
-                // Se estiver na tela de login mas a sessão diária já for válida hoje, vai para o index
-                if (sessaoData === hoje && sessaoUid === user.uid) {
+                // Se estiver na tela de login:
+                if (window._fazendoLogin || (sessaoData === hoje && sessaoUid === user.uid)) {
+                    // Sessão válida de hoje ou acabou de clicar em entrar: valida e vai para o index
+                    localStorage.setItem('fc_sessao_data', hoje);
+                    localStorage.setItem('fc_sessao_uid', user.uid);
                     window.location.href = 'index.html';
                     return;
                 } else {
-                    // Sessão expirada/antiga: desloga para exigir que digite a senha
+                    // Sessão antiga do dia anterior ao abrir a tela de login: desloga para forçar digitar a senha
                     try { await auth.signOut(); } catch(e) {}
                     localStorage.removeItem('fc_sessao_data');
                     localStorage.removeItem('fc_sessao_uid');
@@ -572,14 +715,15 @@ function aplicarIdentidadeVisualGlobal() {
         }
     }
 
-    // O tema agora é fixo e sempre escuro
+    // Aplica o tema salvo pelo usuário (Light ou Dark)
     aplicarTema();
 }
 
 function aplicarTema() {
-    document.documentElement.classList.add('dark');
-    document.documentElement.classList.remove('tema-escuro');
+    const tema = localStorage.getItem('fc_theme_sistema') || (window.db && window.db.config && window.db.config.tema) || 'dark';
+    aplicarTemaSistema(tema, false);
 }
+
 
 
 // ===== FUNÇÕES GLOBAIS DE IA, CONFIRMAÇÃO E VENDAS =====
@@ -912,5 +1056,38 @@ window.instalarPWA = async function() {
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(mostrarBotaoInstalarApp, 1000);
 });
+
+// ==========================================
+// TABELAS RESPONSIVAS MOBILE (data-label)
+// Injeta atributo data-label em cada <td> com base
+// no cabeçalho correspondente da coluna, para que
+// o CSS mobile exiba os labels sem scroll horizontal.
+// ==========================================
+function initResponsiveTables() {
+    document.querySelectorAll('table').forEach(table => {
+        const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.innerText.trim());
+        if (!headers.length) return;
+        table.querySelectorAll('tbody tr').forEach(tr => {
+            Array.from(tr.querySelectorAll('td')).forEach((td, i) => {
+                if (headers[i]) td.setAttribute('data-label', headers[i]);
+            });
+        });
+    });
+}
+window.initResponsiveTables = initResponsiveTables;
+
+// Observa mutações no DOM para aplicar labels automaticamente
+// quando as tabelas são preenchidas via JS assíncrono
+(function() {
+    const observer = new MutationObserver(() => {
+        if (window.innerWidth <= 640) {
+            initResponsiveTables();
+        }
+    });
+    document.addEventListener('DOMContentLoaded', () => {
+        observer.observe(document.body, { childList: true, subtree: true });
+        if (window.innerWidth <= 640) initResponsiveTables();
+    });
+})();
 
 

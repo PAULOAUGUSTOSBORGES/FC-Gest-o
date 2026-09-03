@@ -1,14 +1,417 @@
-body {
+/* ==============================================================
+   ESTILOS GLOBAIS - FC GESTÃO & SITE
+   Responsividade Rígida Vertical e Suporte a Dark/Light Mode
+   ============================================================== */
+
+/* =============================================
+   TEMA CLARO DO SISTEMA DE GESTÃO (ALTO CONTRASTE)
+   Quando html NÃO tem a classe 'dark',
+   o sistema exibe tema claro de alto contraste, nítido e legível.
+/* =============================================
+   TEMA CLARO DO SISTEMA DE GESTÃO (ALTO CONTRASTE)
+   Suporte a: html:not(.dark), html.light, html[data-theme="light"], body.light
+   ============================================= */
+html:not(.dark),
+html.light,
+html[data-theme="light"] {
+    color-scheme: light !important;
+}
+
+html:not(.dark) body,
+html.light body,
+html[data-theme="light"] body,
+body.light {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+}
+
+/* =============================================
+   SIDEBAR EM MODO CLARO (ALTO PADRÃO VISUAL)
+   ============================================= */
+html:not(.dark) #sidebar,
+html.light #sidebar,
+html[data-theme="light"] #sidebar {
+    background-color: #ffffff !important;
+    color: #1e293b !important;
+    border-right: 1px solid #e2e8f0 !important;
+    box-shadow: 4px 0 24px -2px rgba(15, 23, 42, 0.08) !important;
+}
+
+html:not(.dark) #sidebar div.border-b,
+html.light #sidebar div.border-b,
+html[data-theme="light"] #sidebar div.border-b,
+html:not(.dark) #sidebar div.border-t,
+html.light #sidebar div.border-t,
+html[data-theme="light"] #sidebar div.border-t,
+html:not(.dark) #sidebar .border-slate-800,
+html.light #sidebar .border-slate-800,
+html[data-theme="light"] #sidebar .border-slate-800 {
+    border-color: #e2e8f0 !important;
+}
+
+html:not(.dark) #sidebar h1,
+html.light #sidebar h1,
+html[data-theme="light"] #sidebar h1,
+html:not(.dark) #sidebar #menu-empresa-nome,
+html.light #sidebar #menu-empresa-nome,
+html[data-theme="light"] #sidebar #menu-empresa-nome {
+    color: #0f172a !important;
+}
+
+html:not(.dark) #sidebar #menu-logo-placeholder,
+html.light #sidebar #menu-logo-placeholder,
+html[data-theme="light"] #sidebar #menu-logo-placeholder {
+    background-color: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+    color: #2563eb !important;
+}
+
+html:not(.dark) #sidebar p.text-slate-500,
+html.light #sidebar p.text-slate-500,
+html[data-theme="light"] #sidebar p.text-slate-500,
+html:not(.dark) #sidebar p.text-slate-400,
+html.light #sidebar p.text-slate-400,
+html[data-theme="light"] #sidebar p.text-slate-400 {
+    color: #64748b !important;
+}
+
+html:not(.dark) #sidebar .nav-btn:not(.bg-blue-600),
+html.light #sidebar .nav-btn:not(.bg-blue-600),
+html[data-theme="light"] #sidebar .nav-btn:not(.bg-blue-600) {
+    color: #334155 !important;
+}
+
+html:not(.dark) #sidebar .nav-btn:not(.bg-blue-600):hover,
+html.light #sidebar .nav-btn:not(.bg-blue-600):hover,
+html[data-theme="light"] #sidebar .nav-btn:not(.bg-blue-600):hover {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+}
+
+html:not(.dark) #sidebar .nav-btn.bg-blue-600,
+html.light #sidebar .nav-btn.bg-blue-600,
+html[data-theme="light"] #sidebar .nav-btn.bg-blue-600 {
+    background-color: #2563eb !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
+}
+
+html:not(.dark) #sidebar button[onclick*="fazerLogout"],
+html.light #sidebar button[onclick*="fazerLogout"],
+html[data-theme="light"] #sidebar button[onclick*="fazerLogout"] {
+    color: #64748b !important;
+}
+
+html:not(.dark) #sidebar button[onclick*="fazerLogout"]:hover,
+html.light #sidebar button[onclick*="fazerLogout"]:hover,
+html[data-theme="light"] #sidebar button[onclick*="fazerLogout"]:hover {
+    color: #ef4444 !important;
+    background-color: #fee2e2 !important;
+}
+
+html:not(.dark) #btn-tema-sistema,
+html.light #btn-tema-sistema,
+html[data-theme="light"] #btn-tema-sistema {
+    background-color: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+html:not(.dark) #btn-tema-sistema:hover,
+html.light #btn-tema-sistema:hover,
+html[data-theme="light"] #btn-tema-sistema:hover {
+    background-color: #e2e8f0 !important;
+}
+
+html:not(.dark) #sidebar-overlay,
+html.light #sidebar-overlay,
+html[data-theme="light"] #sidebar-overlay {
+    background-color: rgba(15, 23, 42, 0.35) !important;
+    backdrop-filter: blur(2px) !important;
+}
+
+
+/* Cabeçalho */
+html:not(.dark) header,
+html.light header,
+html[data-theme="light"] header {
+    background-color: #ffffff !important;
+    border-bottom: 1px solid #cbd5e1 !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Cards e Contêineres de Conteúdo */
+html:not(.dark) .bg-white,
+html.light .bg-white,
+html[data-theme="light"] .bg-white,
+html:not(.dark) .bg-slate-800,
+html.light .bg-slate-800,
+html[data-theme="light"] .bg-slate-800,
+html:not(.dark) .dark\:bg-slate-800,
+html.light .dark\:bg-slate-800,
+html[data-theme="light"] .dark\:bg-slate-800 {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.06) !important;
+}
+
+html:not(.dark) .bg-slate-50,
+html.light .bg-slate-50,
+html[data-theme="light"] .bg-slate-50,
+html:not(.dark) .dark\:bg-slate-900,
+html.light .dark\:bg-slate-900,
+html[data-theme="light"] .dark\:bg-slate-900,
+html:not(.dark) .bg-slate-900,
+html.light .bg-slate-900,
+html[data-theme="light"] .bg-slate-900 {
+    background-color: #f8fafc !important;
+}
+
+html:not(.dark) .bg-slate-100,
+html.light .bg-slate-100,
+html[data-theme="light"] .bg-slate-100 {
+    background-color: #f1f5f9 !important;
+}
+
+/* Textos e Títulos de Alto Contraste */
+html:not(.dark) h1, html.light h1, html[data-theme="light"] h1,
+html:not(.dark) h2, html.light h2, html[data-theme="light"] h2,
+html:not(.dark) h3, html.light h3, html[data-theme="light"] h3,
+html:not(.dark) h4, html.light h4, html[data-theme="light"] h4,
+html:not(.dark) h5, html.light h5, html[data-theme="light"] h5,
+html:not(.dark) h6, html.light h6, html[data-theme="light"] h6 {
+    color: #0f172a !important;
+}
+
+html:not(.dark) .text-slate-900, html.light .text-slate-900, html[data-theme="light"] .text-slate-900,
+html:not(.dark) .text-slate-800, html.light .text-slate-800, html[data-theme="light"] .text-slate-800,
+html:not(.dark) .dark\:text-slate-100, html.light .dark\:text-slate-100, html[data-theme="light"] .dark\:text-slate-100,
+html:not(.dark) .dark\:text-white, html.light .dark\:text-white, html[data-theme="light"] .dark\:text-white {
+    color: #0f172a !important;
+}
+
+/* Subtítulos e Labels (nítidos, legíveis e com contraste AAA) */
+html:not(.dark) .text-slate-500, html.light .text-slate-500, html[data-theme="light"] .text-slate-500,
+html:not(.dark) .dark\:text-slate-400, html.light .dark\:text-slate-400, html[data-theme="light"] .dark\:text-slate-400 {
+    color: #334155 !important;
+}
+
+html:not(.dark) .text-slate-400:not(i):not(.fa-solid):not(.fa-regular):not(.fa-brands),
+html.light .text-slate-400:not(i):not(.fa-solid):not(.fa-regular):not(.fa-brands),
+html[data-theme="light"] .text-slate-400:not(i):not(.fa-solid):not(.fa-regular):not(.fa-brands) {
+    color: #475569 !important;
+}
+
+/* Bordas Nítidas */
+html:not(.dark) .border-slate-700, html.light .border-slate-700, html[data-theme="light"] .border-slate-700,
+html:not(.dark) .dark\:border-slate-700, html.light .dark\:border-slate-700, html[data-theme="light"] .dark\:border-slate-700,
+html:not(.dark) .border-slate-600, html.light .border-slate-600, html[data-theme="light"] .border-slate-600,
+html:not(.dark) .dark\:border-slate-600, html.light .dark\:border-slate-600, html[data-theme="light"] .dark\:border-slate-600,
+html:not(.dark) .border-slate-300, html.light .border-slate-300, html[data-theme="light"] .border-slate-300,
+html:not(.dark) .border-slate-200, html.light .border-slate-200, html[data-theme="light"] .border-slate-200 {
+    border-color: #cbd5e1 !important;
+}
+
+html:not(.dark) .border-slate-100,
+html.light .border-slate-100,
+html[data-theme="light"] .border-slate-100 {
+    border-color: #e2e8f0 !important;
+}
+
+/* Formulários, Inputs e Selects em Modo Claro */
+html:not(.dark) input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="color"]),
+html.light input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="color"]),
+html[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="color"]),
+html:not(.dark) select, html.light select, html[data-theme="light"] select,
+html:not(.dark) textarea, html.light textarea, html[data-theme="light"] textarea {
+    background-color: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    color: #0f172a !important;
+    font-weight: 600 !important;
+}
+
+html:not(.dark) input:focus, html.light input:focus, html[data-theme="light"] input:focus,
+html:not(.dark) select:focus, html.light select:focus, html[data-theme="light"] select:focus,
+html:not(.dark) textarea:focus, html.light textarea:focus, html[data-theme="light"] textarea:focus {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+}
+
+html:not(.dark) ::placeholder,
+html.light ::placeholder,
+html[data-theme="light"] ::placeholder {
+    color: #94a3b8 !important;
+    font-weight: normal !important;
+}
+
+/* Botões de Atalhos do Topo (Dashboard) */
+html:not(.dark) .bg-blue-50, html.light .bg-blue-50, html[data-theme="light"] .bg-blue-50 {
+    background-color: #dbeafe !important;
+    color: #1e40af !important;
+    border-color: #93c5fd !important;
+    font-weight: 700 !important;
+}
+html:not(.dark) .bg-blue-50:hover, html.light .bg-blue-50:hover, html[data-theme="light"] .bg-blue-50:hover {
+    background-color: #bfdbfe !important;
+}
+html:not(.dark) .bg-emerald-50, html.light .bg-emerald-50, html[data-theme="light"] .bg-emerald-50 {
+    background-color: #d1fae5 !important;
+    color: #065f46 !important;
+    border-color: #6ee7b7 !important;
+    font-weight: 700 !important;
+}
+html:not(.dark) .bg-emerald-50:hover, html.light .bg-emerald-50:hover, html[data-theme="light"] .bg-emerald-50:hover {
+    background-color: #a7f3d0 !important;
+}
+html:not(.dark) .bg-purple-50, html.light .bg-purple-50, html[data-theme="light"] .bg-purple-50 {
+    background-color: #ede9fe !important;
+    color: #5b21b6 !important;
+    border-color: #c4b5fd !important;
+    font-weight: 700 !important;
+}
+html:not(.dark) .bg-purple-50:hover, html.light .bg-purple-50:hover, html[data-theme="light"] .bg-purple-50:hover {
+    background-color: #ddd6fe !important;
+}
+html:not(.dark) .bg-amber-50, html.light .bg-amber-50, html[data-theme="light"] .bg-amber-50 {
+    background-color: #fef3c7 !important;
+    color: #92400e !important;
+    border-color: #fcd34d !important;
+    font-weight: 700 !important;
+}
+html:not(.dark) .bg-amber-50:hover, html.light .bg-amber-50:hover, html[data-theme="light"] .bg-amber-50:hover {
+    background-color: #fde68a !important;
+}
+
+/* Alertas do Dashboard em Modo Claro (Visual vívido, nítido e limpo) */
+html:not(.dark) #dash-notificacoes > div.bg-red-50,
+html.light #dash-notificacoes > div.bg-red-50,
+html[data-theme="light"] #dash-notificacoes > div.bg-red-50,
+html:not(.dark) .bg-red-50,
+html.light .bg-red-50,
+html[data-theme="light"] .bg-red-50 {
+    background-color: #fff1f2 !important;
+    border: 1.5px solid #fecdd3 !important;
+}
+html:not(.dark) #dash-notificacoes .bg-red-50:hover,
+html.light #dash-notificacoes .bg-red-50:hover,
+html[data-theme="light"] #dash-notificacoes .bg-red-50:hover {
+    background-color: #ffe4e6 !important;
+}
+html:not(.dark) #dash-notificacoes .bg-red-50 p.text-sm,
+html.light #dash-notificacoes .bg-red-50 p.text-sm,
+html[data-theme="light"] #dash-notificacoes .bg-red-50 p.text-sm {
+    color: #9f1239 !important;
+    font-weight: 800 !important;
+}
+html:not(.dark) #dash-notificacoes .bg-red-50 p.text-xs,
+html.light #dash-notificacoes .bg-red-50 p.text-xs,
+html[data-theme="light"] #dash-notificacoes .bg-red-50 p.text-xs {
+    color: #881337 !important;
+    font-weight: 500 !important;
+}
+html:not(.dark) #dash-notificacoes .bg-red-100,
+html.light #dash-notificacoes .bg-red-100,
+html[data-theme="light"] #dash-notificacoes .bg-red-100 {
+    background-color: #ffe4e6 !important;
+    color: #e11d48 !important;
+}
+
+html:not(.dark) #dash-notificacoes > div.bg-amber-50,
+html.light #dash-notificacoes > div.bg-amber-50,
+html[data-theme="light"] #dash-notificacoes > div.bg-amber-50 {
+    background-color: #fffbeb !important;
+    border: 1.5px solid #fde68a !important;
+}
+html:not(.dark) #dash-notificacoes .bg-amber-50:hover,
+html.light #dash-notificacoes .bg-amber-50:hover,
+html[data-theme="light"] #dash-notificacoes .bg-amber-50:hover {
+    background-color: #fef3c7 !important;
+}
+html:not(.dark) #dash-notificacoes .bg-amber-50 p.text-sm,
+html.light #dash-notificacoes .bg-amber-50 p.text-sm,
+html[data-theme="light"] #dash-notificacoes .bg-amber-50 p.text-sm {
+    color: #92400e !important;
+    font-weight: 800 !important;
+}
+html:not(.dark) #dash-notificacoes .bg-amber-50 p.text-xs,
+html.light #dash-notificacoes .bg-amber-50 p.text-xs,
+html[data-theme="light"] #dash-notificacoes .bg-amber-50 p.text-xs {
+    color: #78350f !important;
+    font-weight: 500 !important;
+}
+html:not(.dark) #dash-notificacoes .bg-amber-100,
+html.light #dash-notificacoes .bg-amber-100,
+html[data-theme="light"] #dash-notificacoes .bg-amber-100 {
+    background-color: #fef3c7 !important;
+    color: #d97706 !important;
+}
+
+/* Tabelas em Modo Claro */
+html:not(.dark) table thead th,
+html.light table thead th,
+html[data-theme="light"] table thead th {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    font-weight: 700 !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+}
+html:not(.dark) table tbody td,
+html.light table tbody td,
+html[data-theme="light"] table tbody td {
+    color: #1e293b !important;
+    border-color: #e2e8f0 !important;
+}
+html:not(.dark) table tbody tr:hover td,
+html.light table tbody tr:hover td,
+html[data-theme="light"] table tbody tr:hover td {
+    background-color: #f8fafc !important;
+}
+
+/* Modais em Modo Claro */
+html:not(.dark) .modal-content,
+html.light .modal-content,
+html[data-theme="light"] .modal-content,
+html:not(.dark) [id^="modal-"] > div:not(.fixed),
+html.light [id^="modal-"] > div:not(.fixed),
+html[data-theme="light"] [id^="modal-"] > div:not(.fixed),
+html:not(.dark) [id*="modal"] .bg-white,
+html.light [id*="modal"] .bg-white,
+html[data-theme="light"] [id*="modal"] .bg-white,
+html:not(.dark) [id*="modal"] .dark\:bg-slate-800,
+html.light [id*="modal"] .dark\:bg-slate-800,
+html[data-theme="light"] [id*="modal"] .dark\:bg-slate-800 {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+
+/* Botão de tema no sidebar */
+#btn-tema-sistema {
+    cursor: pointer;
+}
+
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html, body {
     font-family: 'Inter', sans-serif;
-    overflow-x: hidden;
-    overflow-y: auto;
+    max-width: 100vw;
+    width: 100%;
+    overflow-x: hidden !important;
+    position: relative;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y; /* Permite rolagem vertical livre e previne gestos horizontais indesejados */
 }
 
 /* Permitir que o Tailwind controle as cores */
 .bg-slate-50 {
-    /* Removido o forced white para suportar dark mode */
+    /* Suporte total ao Dark Mode */
 }
 
+/* Scrollbars customizadas e discretas */
 .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -23,8 +426,16 @@ body {
     border-radius: 4px;
 }
 
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #475569;
+}
+
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -36,6 +447,7 @@ body {
     scrollbar-width: none;
 }
 
+/* Seções e Abas */
 .view-section {
     display: none !important;
 }
@@ -59,13 +471,13 @@ body {
         opacity: 0;
         transform: translateY(5px);
     }
-
     to {
         opacity: 1;
         transform: translateY(0);
     }
 }
 
+/* Toast Notifications */
 #toast-container {
     position: fixed;
     top: 20px;
@@ -74,6 +486,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    max-width: calc(100vw - 40px);
 }
 
 .toast {
@@ -86,6 +499,7 @@ body {
     opacity: 0;
     transform: translateX(100%);
     transition: all 0.3s ease;
+    word-break: break-word;
 }
 
 .toast.show {
@@ -105,6 +519,7 @@ body {
     background-color: #3b82f6;
 }
 
+/* Impressão */
 @media print {
     .no-print,
     #sidebar,
@@ -134,7 +549,88 @@ body {
     }
 }
 
+/* ================================================================
+   TABELAS RESPONSIVAS EM MOBILE — SEM SCROLL HORIZONTAL
+   Em telas pequenas, cada linha da tabela vira um card empilhado.
+   As colunas aparecem como label: valor um abaixo do outro.
+   ================================================================ */
+@media (max-width: 640px) {
 
+    /* Desativa overflow horizontal nos wrappers de tabela */
+    .overflow-x-auto {
+        overflow-x: visible !important;
+    }
 
+    /* Tabela ocupa 100% sem min-width fixo */
+    .overflow-x-auto table,
+    table[class*="min-w-"] {
+        min-width: 0 !important;
+        width: 100% !important;
+    }
 
+    /* Esconde o cabeçalho da tabela — os labels viram dados nos cards */
+    .overflow-x-auto thead,
+    table[class*="min-w-"] thead {
+        display: none !important;
+    }
 
+    /* Cada <tr> vira um card */
+    .overflow-x-auto tbody tr,
+    table[class*="min-w-"] tbody tr {
+        display: flex !important;
+        flex-direction: column !important;
+        border-radius: 0.75rem;
+        margin: 0.5rem 0;
+        border: 1px solid #e2e8f0;
+        padding: 0.75rem;
+        background-color: #fff;
+        box-shadow: 0 1px 4px 0 rgba(0,0,0,0.06);
+        gap: 0.35rem;
+    }
+    .dark .overflow-x-auto tbody tr,
+    .dark table[class*="min-w-"] tbody tr,
+    [data-theme="dark"] .overflow-x-auto tbody tr,
+    [data-theme="dark"] table[class*="min-w-"] tbody tr {
+        border-color: #334155;
+        background-color: #1e293b;
+    }
+
+    /* Cada <td> mostra o label (data-label) e o valor */
+    .overflow-x-auto tbody td,
+    table[class*="min-w-"] tbody td {
+        display: flex !important;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 0.5rem;
+        padding: 0.25rem 0 !important;
+        border: none !important;
+        font-size: 0.8125rem;
+        text-align: left !important;
+        min-height: unset !important;
+    }
+
+    /* Oculta células completamente vazias */
+    .overflow-x-auto tbody td:empty,
+    table[class*="min-w-"] tbody td:empty {
+        display: none !important;
+    }
+
+    /* Prefixo do label gerado via JS (data-label) */
+    .overflow-x-auto tbody td::before,
+    table[class*="min-w-"] tbody td::before {
+        content: attr(data-label);
+        font-weight: 700;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #64748b;
+        flex-shrink: 0;
+        min-width: 90px;
+    }
+    .dark .overflow-x-auto tbody td::before,
+    .dark table[class*="min-w-"] tbody td::before,
+    [data-theme="dark"] .overflow-x-auto tbody td::before,
+    [data-theme="dark"] table[class*="min-w-"] tbody td::before {
+        color: #94a3b8;
+    }
+}

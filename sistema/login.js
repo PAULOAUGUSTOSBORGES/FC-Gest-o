@@ -46,6 +46,7 @@ async function fazerLogin() {
     }
     
     try {
+        window._fazendoLogin = true;
         const btn = document.getElementById('btn-acao');
         btn.innerText = 'Aguarde...'; btn.disabled = true;
         const cred = await firebase.auth().signInWithEmailAndPassword(u, p);
@@ -54,11 +55,10 @@ async function fazerLogin() {
             localStorage.setItem('fc_sessao_data', hoje);
             localStorage.setItem('fc_sessao_uid', cred.user.uid);
         }
-        showToast('Acesso liberado! Redirecionando...', 'success');
-        setTimeout(() => {
-            window.location.href = 'index.html';
-        }, 500);
+        showToast('Acesso liberado! Entrando...', 'success');
+        window.location.href = 'index.html';
     } catch (e) { 
+        window._fazendoLogin = false;
         document.getElementById('btn-acao').innerText = 'Entrar'; document.getElementById('btn-acao').disabled = false;
         if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential' || e.code === 'auth/invalid-login-credentials' || e.code === 'auth/wrong-password') {
             showToast('E-mail não encontrado ou senha incorreta!', 'error');
@@ -84,6 +84,7 @@ async function fazerCadastro() {
     }
     
     try {
+        window._fazendoLogin = true;
         const btn = document.getElementById('btn-acao');
         btn.innerText = 'Aguarde...'; btn.disabled = true;
         const cred = await firebase.auth().createUserWithEmailAndPassword(u, p);
@@ -92,11 +93,10 @@ async function fazerCadastro() {
             localStorage.setItem('fc_sessao_data', hoje);
             localStorage.setItem('fc_sessao_uid', cred.user.uid);
         }
-        showToast('Conta criada com sucesso! Redirecionando...', 'success');
-        setTimeout(() => {
-            window.location.href = 'index.html';
-        }, 500);
+        showToast('Conta criada com sucesso! Entrando...', 'success');
+        window.location.href = 'index.html';
     } catch (e) { 
+        window._fazendoLogin = false;
         document.getElementById('btn-acao').innerText = 'Criar Conta'; document.getElementById('btn-acao').disabled = false;
         if (e.code === 'auth/email-already-in-use') {
             showToast('Este e-mail já possui uma conta. Vá para a aba Entrar.', 'error');

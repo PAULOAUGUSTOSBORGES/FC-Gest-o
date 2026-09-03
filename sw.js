@@ -3,13 +3,14 @@
 // Cache inteligente, carregamento ultra-rápido e suporte Offline
 // ==============================================================
 
-const CACHE_NAME = 'fc-gestao-cache-v3';
+const CACHE_NAME = 'fc-gestao-cache-v6';
 
 // Arquivos do App Shell para pré-armazenamento em cache
 const SHELL_ASSETS = [
     '/',
     '/index.html',
     '/style.css',
+    '/tailwind-built.css',
     '/global.js',
     '/manifest.json',
     '/icons/icon-192.png',
@@ -122,7 +123,10 @@ self.addEventListener('fetch', (event) => {
                 })
                 .catch(() => {
                     return caches.match(request).then((cachedResponse) => {
-                        return cachedResponse || caches.match('/sistema/index.html');
+                        if (cachedResponse) return cachedResponse;
+                        return caches.match('/sistema/index.html').then(idxResp => {
+                            return idxResp || Response.error();
+                        });
                     });
                 })
         );
@@ -140,11 +144,12 @@ self.addEventListener('fetch', (event) => {
                     }
                     return networkResponse;
                 })
-                .catch(() => {
-                    // Se falhar a rede e não tiver no cache, apenas falha silenciosamente
+                .catch((err) => {
+                    // Se falhar a rede e não tiver no cache, retorna Response.error() para evitar o TypeError de 'undefined'
+                    throw err;
                 });
 
-            return cachedResponse || fetchPromise;
+            return cachedResponse || fetchPromise.catch(() => Response.error());
         })
     );
 });

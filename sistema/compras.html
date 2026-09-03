@@ -13,19 +13,13 @@
     <link rel="apple-touch-icon" href="../icons/icon-apple-touch.png">
     <link rel="icon" type="image/png" href="../icons/favicon.png">
     <title>FC Móveis - COMPRAS</title>
-    <script>
-        // Aplica tema antes do Tailwind carregar (evita flash)
-        window.tailwind = window.tailwind || {};
-        tailwind.config = { darkMode: 'class' };
-        (function(){
-            document.documentElement.classList.add('dark');
-        })();
-    </script>
-<script src="https://cdn.tailwindcss.com"></script>
+    
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link rel="stylesheet" href="../style.css?v=20260901162449">
+    <link rel="stylesheet" href="../style.css?v=20260902202810">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260902202810">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -509,37 +503,181 @@
         </div>
     </div>
 
-    <!-- MODAL RENEGOCIAÃââââ‚¬Å¡¬¡ÃÁO (DIVIDIR PARCELAS) -->
-    <div id="modal-renegociacao" class="fixed inset-0 bg-slate-900/80 z-[250] hidden flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
-            <div class="bg-purple-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
-                <h3 class="font-bold text-base md:text-lg flex items-center gap-2"><i class="fa-solid fa-handshake"></i> Renegociar / Parcelar</h3>
-                <button onclick="fecharModalRenegociacao()" class="text-purple-200 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl md:text-2xl"></i></button>
+    <!-- MODAL RENEGOCIAÇÃO AVANÇADA (DÍVIDAS A PAGAR & CONTAS A RECEBER) -->
+    <div id="modal-renegociacao" class="fixed inset-0 bg-slate-900/80 z-[250] hidden flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm overflow-y-auto">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[94vh] flex flex-col overflow-hidden my-auto border border-slate-200 dark:border-slate-700">
+            <!-- Header do Modal -->
+            <div id="reneg-modal-header" class="bg-gradient-to-r from-purple-600 to-indigo-700 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm text-lg">
+                        <i class="fa-solid fa-handshake"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-extrabold text-base md:text-lg leading-tight">Renegociar Título Financeiro</h3>
+                        <p id="reneg-tipo-subtitulo" class="text-purple-200 text-xs font-medium">Contas a Receber / Pagar</p>
+                    </div>
+                </div>
+                <button type="button" onclick="fecharModalRenegociacao()" class="text-purple-200 hover:text-white transition-colors w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
             </div>
-            <div class="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 space-y-4">
+
+            <!-- Corpo com Scroll Suave -->
+            <div class="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 overflow-y-auto custom-scrollbar space-y-5 flex-grow">
                 <input type="hidden" id="reneg-id">
-                <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
-                    <div><p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Valor do Título</p><p class="text-lg font-bold text-slate-800 dark:text-slate-100" id="reneg-valor">R$ 0,00</p></div>
-                    <div class="text-right"><p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Status</p><span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold">EM ATRASO</span></div>
+
+                <!-- Card de Identificação do Título Original -->
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700/60 pb-3">
+                        <div>
+                            <span id="reneg-badge-tipo" class="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-purple-100 text-purple-700 dark:bg-purple-950/70 dark:text-purple-300">
+                                Conta a Pagar
+                            </span>
+                            <h4 id="reneg-pessoa" class="text-base font-bold text-slate-800 dark:text-white mt-1">Nome do Favorecido / Cliente</h4>
+                            <p id="reneg-ref" class="text-xs text-slate-500 dark:text-slate-400">Ref: -</p>
+                        </div>
+                        <div class="sm:text-right">
+                            <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Valor Original em Aberto</p>
+                            <p id="reneg-valor-original" class="text-xl font-black text-slate-900 dark:text-white">R$ 0,00</p>
+                            <p id="reneg-venc-original" class="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">Venc: --/--/----</p>
+                        </div>
+                    </div>
+
+                    <!-- Ajustes Financeiros: Juros / Descontos / Novo Total -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1">
+                                <i class="fa-solid fa-arrow-trend-up text-rose-500 mr-1"></i> Acréscimo / Juros (R$)
+                            </label>
+                            <input type="number" step="0.01" min="0" id="reneg-juros" value="0.00" oninput="recalcularTotaisRenegociacao()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1">
+                                <i class="fa-solid fa-arrow-trend-down text-emerald-500 mr-1"></i> Desconto (R$)
+                            </label>
+                            <input type="number" step="0.01" min="0" id="reneg-desconto" value="0.00" oninput="recalcularTotaisRenegociacao()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-purple-500">
+                        </div>
+                        <div class="bg-purple-50 dark:bg-purple-950/40 p-2.5 rounded-lg border border-purple-200 dark:border-purple-900/50 flex flex-col justify-center">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">Total da Renegociação</span>
+                            <span id="reneg-novo-total" class="text-lg font-black text-purple-900 dark:text-purple-200">R$ 0,00</span>
+                        </div>
+                    </div>
                 </div>
 
+                <!-- Entrada e Condições de Parcelamento -->
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                    <h5 class="text-xs font-extrabold text-slate-700 dark:text-slate-200 uppercase tracking-wide flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-purple-600"></i> Condições do Parcelamento
+                    </h5>
+
+                    <!-- Entrada -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1">Valor de Entrada (R$)</label>
+                            <input type="number" step="0.01" min="0" id="reneg-entrada" value="0.00" oninput="recalcularTotaisRenegociacao()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-purple-500" placeholder="0.00">
+                        </div>
+                        <div id="reneg-entrada-forma-wrap">
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1">Forma da Entrada</label>
+                            <select id="reneg-entrada-forma" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-xs font-semibold text-slate-800 dark:text-white outline-none focus:border-purple-500">
+                                <option value="Dinheiro">Dinheiro</option>
+                                <option value="PIX" selected>PIX</option>
+                                <option value="Cartão de Débito">Cartão de Débito</option>
+                                <option value="Cartão de Crédito">Cartão de Crédito</option>
+                                <option value="Transferência">Transferência Bancária</option>
+                            </select>
+                        </div>
+                        <div id="reneg-entrada-conta-wrap">
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1">Conta de Liquidação</label>
+                            <select id="reneg-entrada-conta" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-xs font-semibold text-slate-800 dark:text-white outline-none focus:border-purple-500">
+                                <option value="Caixa Físico">Caixa Físico (Balcão)</option>
+                                <option value="Conta Bancária">Conta Bancária</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Quantidade de Parcelas e Intervalo -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100 dark:border-slate-700/60">
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1">Número de Parcelas</label>
+                            <div class="flex items-center gap-1">
+                                <input type="number" id="reneg-qtd" min="1" max="48" value="2" onchange="gerarPreviewParcelasRenegociacao()" class="w-full bg-slate-50 dark:bg-slate-900 border border-purple-300 dark:border-purple-800 p-2 rounded-lg text-sm font-extrabold text-purple-900 dark:text-white outline-none focus:border-purple-500 text-center">
+                                <span class="text-xs font-bold text-slate-500 dark:text-slate-400">x</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1">Periodicidade</label>
+                            <select id="reneg-intervalo" onchange="gerarPreviewParcelasRenegociacao()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-xs font-semibold text-slate-800 dark:text-white outline-none focus:border-purple-500">
+                                <option value="30" selected>Mensal (a cada 30 dias)</option>
+                                <option value="15">Quinzenal (a cada 15 dias)</option>
+                                <option value="7">Semanal (a cada 7 dias)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1">1º Vencimento</label>
+                            <input type="date" id="reneg-data-primeira" onchange="gerarPreviewParcelasRenegociacao()" class="w-full bg-slate-50 dark:bg-slate-900 border border-purple-300 dark:border-purple-800 p-2 rounded-lg text-xs font-bold text-slate-800 dark:text-white outline-none focus:border-purple-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabela de Parcelas Editáveis Individualmente -->
+                <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                    <div class="p-3 bg-slate-100 dark:bg-slate-700/60 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center flex-wrap gap-2">
+                        <span class="text-xs font-extrabold text-slate-700 dark:text-slate-200 uppercase tracking-wide flex items-center gap-1.5">
+                            <i class="fa-solid fa-list-ol text-purple-600"></i> Parcelas Geradas (Você pode alterar datas e valores)
+                        </span>
+                        <button type="button" onclick="gerarPreviewParcelasRenegociacao()" class="text-[11px] bg-purple-100 dark:bg-purple-900/60 hover:bg-purple-200 dark:hover:bg-purple-900 text-purple-800 dark:text-purple-200 px-2.5 py-1 rounded-md font-bold transition-colors flex items-center gap-1">
+                            <i class="fa-solid fa-rotate text-[10px]"></i> Recalcular Divisão
+                        </button>
+                    </div>
+
+                    <div class="max-h-56 overflow-y-auto custom-scrollbar">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead class="bg-slate-50 dark:bg-slate-900 text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 sticky top-0 border-b border-slate-200 dark:border-slate-700 z-10">
+                                <tr>
+                                    <th class="p-2.5 text-center w-12">#</th>
+                                    <th class="p-2.5">Data de Vencimento</th>
+                                    <th class="p-2.5 text-right w-36">Valor da Parcela</th>
+                                    <th class="p-2.5">Observação / Ref</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reneg-tabela-parcelas" class="divide-y divide-slate-100 dark:divide-slate-700/60 text-slate-800 dark:text-slate-200">
+                                <!-- Renderizado dinamicamente via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Resumo da Validação de Soma -->
+                    <div class="p-3 bg-slate-50 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-2">
+                        <div class="flex items-center gap-4">
+                            <span>Saldo a Parcelar: <strong id="reneg-saldo-parcelar-display" class="text-slate-800 dark:text-white font-bold">R$ 0,00</strong></span>
+                            <span>Soma das Parcelas: <strong id="reneg-soma-parcelas-display" class="text-purple-600 dark:text-purple-400 font-bold">R$ 0,00</strong></span>
+                        </div>
+                        <div id="reneg-alerta-diferenca" class="hidden text-amber-600 dark:text-amber-400 font-bold text-[11px] flex items-center gap-1">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <span id="reneg-diferenca-texto">Diferença de R$ 0,00</span>
+                            <button type="button" onclick="ajustarDiferencaUltimaParcela()" class="ml-1 underline hover:text-amber-700">Ajustar na última</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Observação Geral do Acordo -->
                 <div>
-                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Dividir em quantas parcelas?</label>
-                    <select id="reneg-qtd" class="w-full bg-white dark:bg-slate-800 border border-purple-300 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-purple-500 font-bold text-purple-900 dark:text-white">
-                        <option value="2">2x</option><option value="3">3x</option><option value="4">4x</option><option value="5">5x</option><option value="6">6x</option><option value="10">10x</option><option value="12">12x</option>
-                    </select>
+                    <label class="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
+                        <i class="fa-solid fa-comment-dots text-slate-400 mr-1"></i> Anotações da Renegociação / Acordo
+                    </label>
+                    <textarea id="reneg-obs" rows="2" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-xl text-xs outline-none focus:border-purple-500 custom-scrollbar text-slate-800 dark:text-white" placeholder="Detalhes do acordo, contato com o cliente/fornecedor, condições combinadas..."></textarea>
                 </div>
-
-                <div>
-                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Data da 1ª Parcela (Novo Vencimento)</label>
-                    <input type="date" id="reneg-data" class="w-full bg-white dark:bg-slate-800 border border-purple-300 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-purple-500 font-bold dark:text-white">
-                </div>
-
-                <p class="text-[10px] text-slate-500 dark:text-slate-400 italic mt-2">* O título original será cancelado e novos títulos serão criados a cada 30 dias a partir da data acima.</p>
             </div>
-            <div class="bg-slate-900 p-4 md:p-5 border-t border-slate-700 flex justify-end gap-3 shrink-0 rounded-b-2xl">
-                <button onclick="fecharModalRenegociacao()" class="px-4 md:px-6 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 transition-colors shadow-sm text-sm">Cancelar</button>
-                <button onclick="confirmarRenegociacao()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-2 rounded-lg shadow-md transition-colors text-sm"><i class="fa-solid fa-check"></i> Criar Parcelas</button>
+
+            <!-- Rodapé / Ações -->
+            <div class="bg-slate-100 dark:bg-slate-900 p-4 md:p-5 border-t border-slate-200 dark:border-slate-700 flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 shrink-0">
+                <button type="button" onclick="fecharModalRenegociacao()" class="w-full sm:w-auto px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm text-sm text-center">
+                    Cancelar
+                </button>
+                <button type="button" id="reneg-btn-confirmar" onclick="confirmarRenegociacaoAvancada()" class="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-purple-600/30 transition-transform active:scale-95 text-sm flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-check"></i>
+                    <span>Confirmar e Criar Parcelas</span>
+                </button>
             </div>
         </div>
     </div>
@@ -888,9 +1026,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20260901162449"></script>
-    <script src="../global.js?v=20260901162449"></script>
-    <script src="compras.js?v=20260901162449"></script>
+    <script src="../sistema/config_banco.js?v=20260902202810"></script>
+    <script src="../global.js?v=20260902202810"></script>
+    <script src="compras.js?v=20260902202810"></script>
 </body>
 </html>
 

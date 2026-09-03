@@ -42,6 +42,64 @@ window.sincronizarCor = function(input) {
 };
 
 // ==========================================
+// SELEÇÃO DE TEMA DO SISTEMA (CONFIGURAÇÃO)
+// ==========================================
+window.selecionarTemaSistema = function(tema) {
+    if (tema !== 'dark' && tema !== 'light') tema = 'dark';
+    
+    // Aplicação síncrona imediata no DOM para feedback instantâneo
+    const html = document.documentElement;
+    const body = document.body;
+    if (tema === 'light') {
+        html.classList.remove('dark');
+        html.classList.add('light');
+        html.setAttribute('data-theme', 'light');
+        if (body) { body.classList.remove('dark'); body.classList.add('light'); }
+    } else {
+        html.classList.add('dark');
+        html.classList.remove('light');
+        html.setAttribute('data-theme', 'dark');
+        if (body) { body.classList.add('dark'); body.classList.remove('light'); }
+    }
+    localStorage.setItem('fc_theme_sistema', tema);
+    
+    // Chama o motor global para propagar para outras abas e atualizar botões
+    if (typeof aplicarTemaSistema === 'function') {
+        aplicarTemaSistema(tema, true);
+    }
+    
+    atualizarCardsTemaTela(tema);
+    if (typeof showToast === 'function') {
+        showToast(`Modo ${tema === 'dark' ? 'Escuro' : 'Claro'} ativado em todo o sistema!`, 'success');
+    }
+};
+
+
+window.atualizarCardsTemaTela = function(tema) {
+    if (!tema) tema = localStorage.getItem('fc_theme_sistema') || 'dark';
+    
+    const cardDark = document.getElementById('card-tema-dark');
+    const cardLight = document.getElementById('card-tema-light');
+    const badgeDark = document.getElementById('badge-tema-dark');
+    const badgeLight = document.getElementById('badge-tema-light');
+    
+    if (!cardDark || !cardLight) return;
+    
+    if (tema === 'dark') {
+        cardDark.className = "relative border-2 border-blue-500 bg-blue-50/10 dark:bg-blue-950/40 ring-2 ring-blue-500 rounded-xl p-4 cursor-pointer transition-all duration-200 shadow-md flex flex-col justify-between";
+        cardLight.className = "relative border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:shadow-md flex flex-col justify-between opacity-75 hover:opacity-100";
+        if (badgeDark) badgeDark.classList.remove('hidden');
+        if (badgeLight) badgeLight.classList.add('hidden');
+    } else {
+        cardLight.className = "relative border-2 border-blue-600 bg-blue-50/50 dark:bg-blue-950/40 ring-2 ring-blue-500 rounded-xl p-4 cursor-pointer transition-all duration-200 shadow-md flex flex-col justify-between";
+        cardDark.className = "relative border-2 border-slate-200 dark:border-slate-700 bg-slate-900 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:shadow-md flex flex-col justify-between opacity-75 hover:opacity-100";
+        if (badgeLight) badgeLight.classList.remove('hidden');
+        if (badgeDark) badgeDark.classList.add('hidden');
+    }
+};
+
+
+// ==========================================
 // BUSCA AUTOMÁTICA DE CNPJ NA RECEITA
 // ==========================================
 async function formatarEBuscarCNPJ(input) {
@@ -94,6 +152,10 @@ async function formatarEBuscarCNPJ(input) {
 function carregarConfiguracoesNaTela() {
     if (!db.config) db.config = {};
     if (!db.config.empresa) db.config.empresa = { nome: 'FC Móveis e Interiores', fantasia: 'FC Móveis' };
+
+    // Carrega Tema Ativo nos Cards de Configuração
+    const temaSalvo = localStorage.getItem('fc_theme_sistema') || (db.config && db.config.tema) || 'dark';
+    atualizarCardsTemaTela(temaSalvo);
 
     // Carrega Dados da Empresa
     const emp = db.config.empresa;
@@ -206,7 +268,9 @@ function processarLogoEmpresa(event) {
 async function salvarConfiguracoes() {
     if(!db.config) db.config = {};
     
-    db.config.tema = 'escuro';
+    const temaEscolhido = localStorage.getItem('fc_theme_sistema') || 'dark';
+    db.config.tema = temaEscolhido;
+    db.config.aparencia = { tema: temaEscolhido };
 
     db.config.empresa = {
         nome: document.getElementById('emp-nome') ? document.getElementById('emp-nome').value.trim() : '',
