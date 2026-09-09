@@ -230,7 +230,7 @@ function fecharModalConfirmacao() {
 
 async function buscarCEP(prefix) {
     const el = document.getElementById(`${prefix}-cep`); if (!el) return; let cep = el.value.replace(/\D/g, ''); if (cep.length !== 8) return;
-    try { let res = await fetch(`https://viacep.com.br/ws/${cep}/json/`); let data = await res.json(); if (!data.erro) { document.getElementById(`${prefix}-rua`).value = data.logradouro || ''; document.getElementById(`${prefix}-bairro`).value = data.bairro || ''; document.getElementById(`${prefix}-cidade`).value = `${data.localidade} - ${data.uf}`; } } catch (e) { }
+    try { let res = await fetch(`https://viacep.com.br/ws/${cep}/json/`); let data = await res.json(); if (!data.erro) { document.getElementById(`${prefix}-rua`).value = data.logradouro || ''; document.getElementById(`${prefix}-bairro`).value = data.bairro || ''; document.getElementById(`${prefix}-cidade`).value = `${data.localidade} - ${data.uf}`; } } catch (e) { console.error("Erro interno:", e); }
 }
 
 async function buscarCNPJ(prefix) {
@@ -300,6 +300,12 @@ function renderProdutos() {
     if (statusFiltro === 'alerta') filtrados = filtrados.filter(p => p.estoque > 0 && p.estoque <= p.min);
     if (statusFiltro === 'zerado') filtrados = filtrados.filter(p => p.estoque <= 0);
     if (statusFiltro === 'ok') filtrados = filtrados.filter(p => p.estoque > p.min);
+
+    if (typeof ordenarListaAlfabeticamente === 'function') {
+        filtrados = ordenarListaAlfabeticamente(filtrados, 'nome');
+    } else {
+        filtrados.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+    }
 
     const tbody = document.getElementById('tabela-produtos');
     let linhas = '';
@@ -450,7 +456,13 @@ function excluirProduto(id) { abrirConfirmacao('Excluir Produto', 'Remover produ
 // 7. CLIENTES E FORNECEDORES
 // ==========================================
 function renderClientes() {
-    const termo = document.getElementById('busca-cliente-lista')?.value.toLowerCase() || ''; const filtrados = db.clientes.filter(c => c.nome.toLowerCase().includes(termo) || (c.doc && c.doc.includes(termo)));
+    const termo = document.getElementById('busca-cliente-lista')?.value.toLowerCase() || ''; 
+    let filtrados = db.clientes.filter(c => c.nome.toLowerCase().includes(termo) || (c.doc && c.doc.includes(termo)));
+    if (typeof ordenarListaAlfabeticamente === 'function') {
+        filtrados = ordenarListaAlfabeticamente(filtrados, 'nome');
+    } else {
+        filtrados.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+    }
     document.getElementById('tabela-clientes').innerHTML = filtrados.map(c => `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 font-bold text-slate-800 dark:text-slate-100">${c.nome}</td><td class="p-4 text-slate-600 dark:text-slate-300 font-mono">${c.doc || '-'}</td><td class="p-4 text-slate-800 dark:text-slate-100"><i class="fa-brands fa-whatsapp text-emerald-500 mr-1"></i> ${c.wpp || '-'}</td><td class="p-4 text-slate-600 dark:text-slate-300">${c.cidade || '-'}</td><td class="p-4 text-center"><button onclick="editarCliente('${c.id}')" class="text-blue-500 hover:text-blue-700 p-2"><i class="fa-solid fa-pen"></i></button><button onclick="excluirCliente('${c.id}')" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('');
 }
 function abrirModalCliente() { abaModal('cli', 'dados'); document.getElementById('cli-id').value = '';['nome', 'doc', 'rg', 'nasc', 'wpp', 'fixo', 'email', 'cep', 'rua', 'numero', 'bairro', 'cidade', 'obs'].forEach(id => { const el = document.getElementById(`cli-${id}`); if (el) el.value = ''; }); document.getElementById('cli-historico-body').innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500 dark:text-slate-400">Cadastre para ver o histórico.</td></tr>'; document.getElementById('modal-cliente-title').innerText = 'Novo Cliente'; document.getElementById('modal-cliente').classList.remove('hidden'); }
@@ -471,7 +483,13 @@ function editarCliente(id) {
 function excluirCliente(id) { abrirConfirmacao('Excluir Cliente', 'Remover cliente?', () => { db.clientes = db.clientes.filter(c => c.id !== id); saveDB(); renderClientes(); showToast('Excluído!'); }); }
 
 function renderFornecedores() {
-    const termo = document.getElementById('busca-fornecedor-lista')?.value.toLowerCase() || ''; const filtrados = db.fornecedores.filter(f => f.nome.toLowerCase().includes(termo) || (f.doc && f.doc.includes(termo)));
+    const termo = document.getElementById('busca-fornecedor-lista')?.value.toLowerCase() || ''; 
+    let filtrados = db.fornecedores.filter(f => f.nome.toLowerCase().includes(termo) || (f.doc && f.doc.includes(termo)));
+    if (typeof ordenarListaAlfabeticamente === 'function') {
+        filtrados = ordenarListaAlfabeticamente(filtrados, 'nome');
+    } else {
+        filtrados.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+    }
     document.getElementById('tabela-fornecedores').innerHTML = filtrados.map(f => `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 font-bold text-slate-800 dark:text-slate-100">${f.nome}</td><td class="p-4 text-slate-600 dark:text-slate-300 font-mono">${f.doc || f.cnpj || '-'}</td><td class="p-4 text-slate-800 dark:text-slate-100"><i class="fa-solid fa-phone text-blue-500 mr-1"></i> ${f.wpp || '-'}</td><td class="p-4 text-center"><button onclick="editarFornecedor('${f.id}')" class="text-blue-500 hover:text-blue-700 p-2"><i class="fa-solid fa-pen"></i></button><button onclick="excluirFornecedor('${f.id}')" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || '<tr><td colspan="4" class="p-6 text-center text-slate-500 dark:text-slate-400">Sem fornecedores.</td></tr>';
 }
 function abrirModalFornecedor() { abaModal('forn', 'dados'); document.getElementById('forn-id').value = '';['nome', 'doc', 'ie', 'contato', 'wpp', 'email', 'cep', 'rua', 'numero', 'bairro', 'cidade', 'condicoes', 'produtos'].forEach(id => { const el = document.getElementById(`forn-${id}`); if (el) el.value = ''; }); document.getElementById('forn-historico-body').innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-500 dark:text-slate-400">Cadastre para ver histórico.</td></tr>'; document.getElementById('modal-fornecedor-title').innerText = 'Novo Fornecedor'; document.getElementById('modal-fornecedor').classList.remove('hidden'); }
@@ -600,7 +618,15 @@ function renderVendas() {
     if (dataIni) { const dIni = new Date(dataIni + 'T00:00:00').getTime(); filtrados = filtrados.filter(v => new Date(v.data).getTime() >= dIni); }
     if (dataFim) { const dFim = new Date(dataFim + 'T23:59:59').getTime(); filtrados = filtrados.filter(v => new Date(v.data).getTime() <= dFim); }
 
-    filtrados.sort((a, b) => new Date(b.data) - new Date(a.data));
+    if (termo) {
+        if (typeof ordenarListaAlfabeticamente === 'function') {
+            filtrados = ordenarListaAlfabeticamente(filtrados, v => v.clienteNome || '');
+        } else {
+            filtrados.sort((a, b) => (a.clienteNome || '').localeCompare(b.clienteNome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+        }
+    } else {
+        filtrados.sort((a, b) => new Date(b.data) - new Date(a.data));
+    }
 
     const tbody = document.getElementById('tabela-vendas-body');
     let totalLucro = 0;
@@ -920,13 +946,25 @@ function renderTitulos(tipo) {
         });
     }
 
-    lista.sort((a, b) => {
-        if (sortOrder === 'venc_asc') return new Date(a.data) - new Date(b.data);
-        if (sortOrder === 'venc_desc') return new Date(b.data) - new Date(a.data);
-        if (sortOrder === 'valor_desc') return b.valor - a.valor;
-        if (sortOrder === 'valor_asc') return a.valor - b.valor;
-        return 0;
-    });
+    if (termoBusca) {
+        if (typeof ordenarListaAlfabeticamente === 'function') {
+            lista = ordenarListaAlfabeticamente(lista, f => f.pessoa || f.clienteNome || f.favorecido || f.sacado || f.ref || f.categoria || '');
+        } else {
+            lista.sort((a, b) => {
+                const pA = a.pessoa || a.clienteNome || a.favorecido || a.sacado || a.ref || a.categoria || '';
+                const pB = b.pessoa || b.clienteNome || b.favorecido || b.sacado || b.ref || b.categoria || '';
+                return pA.localeCompare(pB, 'pt-BR', { numeric: true, sensitivity: 'base' });
+            });
+        }
+    } else {
+        lista.sort((a, b) => {
+            if (sortOrder === 'venc_asc') return new Date(a.data) - new Date(b.data);
+            if (sortOrder === 'venc_desc') return new Date(b.data) - new Date(a.data);
+            if (sortOrder === 'valor_desc') return b.valor - a.valor;
+            if (sortOrder === 'valor_asc') return a.valor - b.valor;
+            return 0;
+        });
+    }
 
     const tbody = document.getElementById(`tabela-fin-${prefix}`);
     let linhas = '';

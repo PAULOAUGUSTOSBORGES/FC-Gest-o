@@ -1,9 +1,29 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="dark" data-theme="dark">
 <head>
     <meta charset="UTF-8">
+    <!-- Anti-FOUC: Previne flash branco ao alternar páginas no sistema -->
+    <script>
+        (function() {
+            const t = localStorage.getItem('fc_theme_sistema') || 'dark';
+            if (t === 'light') {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.classList.add('light');
+                document.documentElement.setAttribute('data-theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                document.documentElement.classList.remove('light');
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+    <style>
+        :root { color-scheme: dark; background-color: #0f172a; }
+        html, body { background-color: #0f172a; }
+        html.light, html.light body, html[data-theme="light"], html[data-theme="light"] body { background-color: #f1f5f9; color-scheme: light; }
+    </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- PWA ConfiguraÃ§Ãµes e Ãcones -->
+    <!-- PWA Configurações e Ícones -->
     <link rel="manifest" href="../manifest.json">
     <meta name="theme-color" content="#0f172a">
     <meta name="mobile-web-app-capable" content="yes">
@@ -17,7 +37,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
-    <link rel="stylesheet" href="../style.css?v=20260902202810">
+    <link rel="stylesheet" href="../style.css?v=20260909083536">
     <style>
         .fc-theme-standard .fc-scrollgrid { border-color: #e2e8f0; }
         .dark .fc-theme-standard .fc-scrollgrid { border-color: #334155; }
@@ -40,7 +60,7 @@
         .dark .fc-daygrid-more-link { color: #60a5fa !important; font-weight: bold; }
         .fc-daygrid-more-link { color: #2563eb !important; font-weight: bold; }
     </style>
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260902202810">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260909083536">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -174,9 +194,7 @@
                         <textarea id="evento-desc" rows="3" placeholder="Detalhes opcionais do lembrete..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white custom-scrollbar"></textarea>
                     </div>
                 </div>
-            </div>
-            
-            <div class="p-4 md:p-5 border-t border-slate-200 dark:border-slate-700 flex justify-between gap-3 shrink-0 rounded-b-xl bg-slate-50 dark:bg-slate-900/50">
+                   <div class="p-4 md:p-5 border-t border-slate-200 dark:border-slate-700 flex justify-between gap-3 shrink-0 rounded-b-xl bg-slate-50 dark:bg-slate-900/50">
                 <button id="btn-excluir-evento" onclick="excluirEvento()" class="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg font-bold transition-colors shadow-sm text-sm hidden"><i class="fa-solid fa-trash"></i></button>
                 <div class="flex gap-3 ml-auto">
                     <button onclick="fecharModalEvento()" class="px-4 md:px-6 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:bg-slate-900 transition-colors shadow-sm text-sm">Cancelar</button>
@@ -189,16 +207,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    
-    <script src="../sistema/config_banco.js?v=20260902202810"></script>
-    <script src="../global.js?v=20260902202810"></script>
-    <script src="agenda.js?v=20260902202810"></script>
+    <script src="../sistema/config_banco.js?v=20260909083536"></script>
+    <script src="../global.js?v=20260909083536"></script>
+    <script src="fc_cache.js?v=20260909083536"></script>
+    <script src="agenda.js?v=20260909083536"></script>
 </body>
 </html>
-
-
-
-
-
-
-

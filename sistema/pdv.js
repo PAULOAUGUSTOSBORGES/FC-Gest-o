@@ -117,38 +117,48 @@ function mudarVisaoLocal(viewId) {
 function inicializarOperacao() {
     aplicarIdentidadeVisualNoMenu(); 
     
-    firestore.collection('produtos').onSnapshot(snap => {
-        db.produtos = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Cache inteligente: serve dados instantaneamente do sessionStorage
+    const _listen = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb, opts) {
+        let ref = firestore.collection(col);
+        if (opts && typeof opts.query === 'function') ref = opts.query(ref);
+        return ref.onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    };
+    const _listenDoc = (typeof window.fcListenDoc === 'function') ? window.fcListenDoc : function(col, id, cb) {
+        return firestore.collection(col).doc(id).onSnapshot(doc => cb(doc.exists ? doc.data() : null));
+    };
+
+    _listen('produtos', function(dados) {
+        db.produtos = dados;
     });
-    firestore.collection('clientes').onSnapshot(snap => {
-        db.clientes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('clientes', function(dados) {
+        db.clientes = dados;
         atualizarListaClientesPDV();
     });
-    firestore.collection('vendas').onSnapshot(snap => {
-        db.vendas = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('vendas', function(dados) {
+        db.vendas = dados;
         const v = document.getElementById('view-vendas');
         const o = document.getElementById('view-orcamentos');
         if(v && v.classList.contains('active')) renderVendas();
         if(o && o.classList.contains('active')) renderOrcamentos();
         
-        // Auto-edição vinda de outras páginas
+        // Auto-edicao vinda de outras paginas
         const editId = sessionStorage.getItem('autoEditVendaId');
         if(editId) {
             sessionStorage.removeItem('autoEditVendaId');
             executarEstornoEEdicao(editId);
         }
     });
-    firestore.collection('fc_moveis').doc('caixa').onSnapshot(doc => {
-        if(doc.exists) db.caixa = doc.data();
-        else db.caixa = { status: 'FECHADO', saldo: 0, historico: [] };
+    // Caixa: sempre ativo pois Ã© crÃ­tico (saldo em tempo real)
+    _listenDoc('fc_moveis', 'caixa', function(data) {
+        db.caixa = data || { status: 'FECHADO', saldo: 0, historico: [] };
         const badgeCaixa = document.getElementById('pdv-status-caixa');
         if (badgeCaixa) prepararPDV();
     });
-    firestore.collection('financeiro').onSnapshot(snap => {
-        db.financeiro = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('financeiro', function(dados) {
+        db.financeiro = dados;
     });
-    firestore.collection('funcionarios').onSnapshot(snap => {
-        db.funcionarios = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('funcionarios', function(dados) {
+        db.funcionarios = dados;
         atualizarVendedoresPDV();
     });
 
@@ -233,6 +243,12 @@ function filtrarClientesPDV(termo) {
         );
     }
 
+    if (typeof ordenarListaAlfabeticamente === 'function') {
+        filtrados = ordenarListaAlfabeticamente(filtrados, 'nome');
+    } else {
+        filtrados.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+    }
+
     const divConsumidor = document.createElement('div');
     divConsumidor.className = 'p-3 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-900';
     divConsumidor.innerHTML = `<i class="fa-solid fa-user text-slate-400 mr-2"></i>Consumidor Final (Padrão)`;
@@ -302,7 +318,7 @@ function fecharModalCliente() {
 
 async function buscarCEP(prefix) {
     const el = document.getElementById(`${prefix}-cep`); if (!el) return; let cep = el.value.replace(/\D/g, ''); if (cep.length !== 8) return;
-    try { let res = await fetch(`https://viacep.com.br/ws/${cep}/json/`); let data = await res.json(); if (!data.erro) { document.getElementById(`${prefix}-rua`).value = data.logradouro || ''; document.getElementById(`${prefix}-bairro`).value = data.bairro || ''; document.getElementById(`${prefix}-cidade`).value = `${data.localidade} - ${data.uf}`; } } catch (e) { }
+    try { let res = await fetch(`https://viacep.com.br/ws/${cep}/json/`); let data = await res.json(); if (!data.erro) { document.getElementById(`${prefix}-rua`).value = data.logradouro || ''; document.getElementById(`${prefix}-bairro`).value = data.bairro || ''; document.getElementById(`${prefix}-cidade`).value = `${data.localidade} - ${data.uf}`; } } catch (e) { console.error("Erro interno:", e); }
 }
 
 async function buscarCNPJ(prefix) {
@@ -761,8 +777,13 @@ function enviarPDFWhatsApp(id) {
                 ${(v.itens || []).map(i => `
                     <tr style="border-bottom: 1px solid #e2e8f0;">
                         <td style="padding: 8px;">
-                            <strong>${i.nome || 'Produto/Serviço'}</strong>
-                            ${i.obsVenda ? `<br><span style="font-size: 11px; color: #475569; font-style: italic;">Obs: ${i.obsVenda}</span>` : ''}
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                ${i.foto ? `<img src="${i.foto}" style="width: 30px; height: 30px; object-fit: cover; border-radius: 4px; border: 1px solid #ccc; flex-shrink: 0;">` : ''}
+                                <div>
+                                    <strong>${i.nome || 'Produto/Serviço'}</strong>
+                                    ${i.obsVenda ? `<br><span style="font-size: 11px; color: #475569; font-style: italic;">Obs: ${i.obsVenda}</span>` : ''}
+                                </div>
+                            </div>
                         </td>
                         <td style="padding: 8px; text-align: center;">${i.qtd || 1}</td>
                         <td style="padding: 8px; text-align: right; font-weight: bold;">${formatMoney((i.preco || 0) * (i.qtd || 1))}</td>
@@ -1078,7 +1099,7 @@ function filtrarProdutosPDV(termo) {
     const listaProdutos = db.produtos || []; 
     const busca = termo ? String(termo).trim().toLowerCase() : '';
     
-    const produtosFiltrados = busca === '' ? listaProdutos : listaProdutos.filter(p => { 
+    let produtosFiltrados = busca === '' ? listaProdutos : listaProdutos.filter(p => { 
         if (p.ativo === false) return false;
         return (
             (p.nome && String(p.nome).toLowerCase().includes(busca)) ||
@@ -1092,6 +1113,12 @@ function filtrarProdutosPDV(termo) {
         );
     });
     
+    if (typeof ordenarListaAlfabeticamente === 'function') {
+        produtosFiltrados = ordenarListaAlfabeticamente(produtosFiltrados, 'nome');
+    } else {
+        produtosFiltrados.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+    }
+
     const limitados = produtosFiltrados.slice(0, 50);
     if (limitados.length === 0) { 
         dropdown.classList.add('hidden'); 
@@ -1590,8 +1617,13 @@ async function finalizarVendaMultipla() {
                 ${cart.map(i => `
                     <tr style="border-bottom: 1px solid #e2e8f0;">
                         <td style="padding: 8px;">
-                            <strong>${i.nome || 'Produto/Serviço'}</strong>
-                            ${i.obsVenda ? `<br><span style="font-size: 11px; color: #475569; font-style: italic;">Obs: ${i.obsVenda}</span>` : ''}
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                ${i.foto ? `<img src="${i.foto}" style="width: 30px; height: 30px; object-fit: cover; border-radius: 4px; border: 1px solid #ccc; flex-shrink: 0;">` : ''}
+                                <div>
+                                    <strong>${i.nome || 'Produto/Serviço'}</strong>
+                                    ${i.obsVenda ? `<br><span style="font-size: 11px; color: #475569; font-style: italic;">Obs: ${i.obsVenda}</span>` : ''}
+                                </div>
+                            </div>
                         </td>
                         <td style="padding: 8px; text-align: center;">${i.qtd || 1}</td>
                         <td style="padding: 8px; text-align: right; font-weight: bold;">${formatMoney((i.preco || 0) * (i.qtd || 1))}</td>
@@ -1608,9 +1640,16 @@ async function finalizarVendaMultipla() {
             </div>
             <div style="flex: 1; min-width: 280px; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-left: 5px; margin-bottom: 5px;">
                 <h3 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">RESUMO DOS VALORES</h3>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Subtotal:</span> <span>${formatMoney(sub)}</span></div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Taxas / Desloc (+):</span> <span>${formatMoney(frete)}</span></div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Descontos (-):</span> <span>-${formatMoney(desc)}</span></div>
+                ${(function(){
+                    const grossSub = cart.reduce((a, i) => a + ((i.preco || 0) * (i.qtd || 1)), 0);
+                    const itemDesc = cart.reduce((a, i) => a + (i.desconto || 0), 0);
+                    const totalDesc = desc + itemDesc;
+                    return `
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Subtotal:</span> <span>${formatMoney(grossSub)}</span></div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Taxas / Desloc (+):</span> <span>${formatMoney(frete)}</span></div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Descontos (-):</span> <span>-${formatMoney(totalDesc)}</span></div>
+                    `;
+                })()}
                 <div style="display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 2px solid #000; font-size: 16px; font-weight: bold;"><span>TOTAL GERAL:</span> <span>${formatMoney(tot)}</span></div>
             </div>
         </div>
@@ -1662,7 +1701,7 @@ async function finalizarVendaMultipla() {
         }); 
     }
 
-    const itensLimpados = cart.map(i => { return { id: i.id || '', nome: i.nome || '', preco: i.preco || 0, custo: i.custo || 0, qtd: i.qtd || 1, obsVenda: i.obsVenda || '' }; });
+    const itensLimpados = cart.map(i => { return { id: i.id || '', nome: i.nome || '', preco: i.preco || 0, custo: i.custo || 0, qtd: i.qtd || 1, obsVenda: i.obsVenda || '', foto: i.foto || '', desconto: i.desconto || 0 }; });
 
     const novaVendaObj = { 
         id: idFinalVenda,
@@ -1930,7 +1969,7 @@ async function emitirNota(tipo) {
             } else if (parsed.mensagem_sefaz) {
                 errorMsg = parsed.mensagem_sefaz;
             }
-        } catch(e) {}
+        } catch (e) { console.error("Erro interno:", e); }
         
         statusContainer.innerHTML = `<p class="text-red-700 font-bold text-sm"><i class="fa-solid fa-circle-exclamation"></i> Erro: ${errorMsg}</p>`;
         
@@ -2021,7 +2060,15 @@ function renderOrcamentos() {
     if (dataIni) { const dIni = new Date(dataIni + 'T00:00:00').getTime(); filtrados = filtrados.filter(v => v.data && new Date(v.data).getTime() >= dIni); }
     if (dataFim) { const dFim = new Date(dataFim + 'T23:59:59').getTime(); filtrados = filtrados.filter(v => v.data && new Date(v.data).getTime() <= dFim); }
     
-    filtrados.sort((a,b) => new Date(b.data || 0) - new Date(a.data || 0));
+    if (termo) {
+        if (typeof ordenarListaAlfabeticamente === 'function') {
+            filtrados = ordenarListaAlfabeticamente(filtrados, v => v.clienteNome || '');
+        } else {
+            filtrados.sort((a, b) => (a.clienteNome || '').localeCompare(b.clienteNome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+        }
+    } else {
+        filtrados.sort((a,b) => new Date(b.data || 0) - new Date(a.data || 0));
+    }
 
     let totalOrcamentos = 0;
     
@@ -2477,7 +2524,7 @@ window.salvarEstadoPDV = function() {
             vendaEmEdicao: window.vendaEmEdicao || null
         };
         localStorage.setItem('pdvState', JSON.stringify(estado));
-    } catch(e) {}
+    } catch (e) { console.error("Erro interno:", e); }
 };
 
 window.carregarEstadoPDV = function() {

@@ -1,7 +1,27 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="dark" data-theme="dark">
 <head>
     <meta charset="UTF-8">
+    <!-- Anti-FOUC: Previne flash branco ao alternar páginas no sistema -->
+    <script>
+        (function() {
+            const t = localStorage.getItem('fc_theme_sistema') || 'dark';
+            if (t === 'light') {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.classList.add('light');
+                document.documentElement.setAttribute('data-theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                document.documentElement.classList.remove('light');
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+    <style>
+        :root { color-scheme: dark; background-color: #0f172a; }
+        html, body { background-color: #0f172a; }
+        html.light, html.light body, html[data-theme="light"], html[data-theme="light"] body { background-color: #f1f5f9; color-scheme: light; }
+    </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- PWA Configurações e Ícones -->
     <link rel="manifest" href="../manifest.json">
@@ -15,8 +35,8 @@
     <title>Configurações do Sistema</title>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css?v=20260902202810">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260902202810">
+    <link rel="stylesheet" href="../style.css?v=20260909083536">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260909083536">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -171,7 +191,9 @@
                                 <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">CNPJ (Busca Automática na Receita)</label>
                                 <div class="relative">
                                     <input type="text" id="emp-cnpj" oninput="formatarEBuscarCNPJ(this)" maxlength="18" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm font-bold text-blue-700 outline-none focus:border-blue-500 dark:text-white" placeholder="Ex: 00.000.000/0000-00">
-                                    <i class="fa-solid fa-magnifying-glass absolute right-3 top-3.5 text-slate-400"></i>
+                                    <button type="button" onclick="formatarEBuscarCNPJ(document.getElementById('emp-cnpj'))" class="absolute right-2.5 top-2 text-slate-400 hover:text-blue-500 p-1.5 transition-colors" title="Buscar CNPJ na Receita Federal">
+                                        <i class="fa-solid fa-magnifying-glass"></i>
+                                    </button>
                                 </div>
                             </div>
                             <div>
@@ -191,7 +213,7 @@
                         <div class="border-t border-slate-100 dark:border-slate-700 pt-4 mt-2 mb-4">
                             <h4 class="font-bold text-slate-700 dark:text-slate-200 text-sm mb-3 flex items-center gap-2"><i class="fa-solid fa-location-dot text-blue-500"></i> Endereço da Empresa</h4>
                             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">CEP</label><input type="text" id="emp-cep" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
+                                <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">CEP</label><input type="text" id="emp-cep" oninput="buscarCEPEmpresa(this)" maxlength="9" placeholder="00000-000" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                                 <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Logradouro</label><input type="text" id="emp-rua" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                                 <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Número</label><input type="text" id="emp-numero" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                                 <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Bairro</label><input type="text" id="emp-bairro" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
@@ -446,8 +468,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     
-    <script src="../sistema/config_banco.js?v=20260902202810"></script>
-    <script src="../global.js?v=20260902202810"></script>
-    <script src="sistema.js?v=20260902202810"></script>
+    <script src="../sistema/config_banco.js?v=20260909083536"></script>
+    <script src="../global.js?v=20260909083536"></script>
+    <script src="fc_cache.js?v=20260909083536"></script>
+    <script src="sistema.js?v=20260909083536"></script>
 </body>
 </html>

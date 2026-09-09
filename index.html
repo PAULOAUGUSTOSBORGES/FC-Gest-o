@@ -1,7 +1,12 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="dark" data-theme="dark">
 <head>
-    <!-- PWA ConfiguraÃ§Ãµes e Ãcones -->
+    <!-- Anti-FOUC: Previne flash branco ao alternar páginas no sistema -->
+    <style>
+        :root { color-scheme: dark; background-color: #0f172a; }
+        html, body { background-color: #0f172a; color: #94a3b8; }
+    </style>
+    <!-- PWA Configurações e Ícones -->
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#0f172a">
     <meta name="mobile-web-app-capable" content="yes">
@@ -13,9 +18,9 @@
     <meta charset="UTF-8">
     <meta http-equiv="refresh" content="0; url=./sistema/index.html">
     <title>Redirecionando...</title>
-    <link rel="stylesheet" href="./tailwind-built.css?v=20260902202810">
+    <link rel="stylesheet" href="./tailwind-built.css?v=20260909083536">
 </head>
-<body>
-    <p>Se você não for redirecionado automaticamente, <a href="./sistema/index.html">clique aqui</a>.</p>
+<body class="bg-slate-900 text-slate-400 flex items-center justify-center min-h-screen">
+    <p>Redirecionando para o sistema... Se não for redirecionado automaticamente, <a href="./sistema/index.html" class="text-blue-400 underline">clique aqui</a>.</p>
 </body>
 </html>

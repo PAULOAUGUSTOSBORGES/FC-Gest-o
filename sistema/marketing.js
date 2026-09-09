@@ -4,34 +4,34 @@ let unsubscribeClientes = null;
 let todosClientes = [];
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Aguardar autenticação do Firebase no global.js para carregar dados
-    const authInterval = setInterval(() => {
-        if (typeof window.currentUserInfo !== 'undefined' && window.currentUserInfo !== null) {
-            clearInterval(authInterval);
-            carregarClientesELembretes();
-        }
-    }, 500);
+    if (typeof window.currentUserInfo !== 'undefined' && window.currentUserInfo !== null) {
+        carregarClientesELembretes();
+    } else {
+        const authInterval = setInterval(() => {
+            if (typeof window.currentUserInfo !== 'undefined' && window.currentUserInfo !== null) {
+                clearInterval(authInterval);
+                carregarClientesELembretes();
+            }
+        }, 150);
+    }
 });
 
-window.onload = () => { if (typeof initGlobalData === 'function') initGlobalData(); };
+window.onload = () => { if (typeof initGlobalData === 'function') initGlobalData(carregarClientesELembretes); };
 
 function carregarClientesELembretes() {
     if (unsubscribeClientes) unsubscribeClientes();
     
-    showToast("Carregando lembretes...", "info");
-    
-    unsubscribeClientes = firestore.collection('clientes')
-        .onSnapshot((snap) => {
-            todosClientes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            
-            // Renderiza tabela e opções do select
-            renderTabelaLembretes();
-            popularSelectClientes();
-            
-        }, (error) => {
-            console.error("Erro ao carregar clientes:", error);
-            showToast("Erro ao carregar clientes. Verifique permissões.", "error");
-        });
+    const _listen = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb, opts) {
+        let ref = firestore.collection(col);
+        if (opts && typeof opts.query === 'function') ref = opts.query(ref);
+        return ref.onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    };
+
+    unsubscribeClientes = _listen('clientes', function(dados) {
+        todosClientes = dados;
+        renderTabelaLembretes();
+        popularSelectClientes();
+    });
 }
 
 function renderTabelaLembretes() {
@@ -39,7 +39,12 @@ function renderTabelaLembretes() {
     if (!tbody) return;
     
     // Filtra apenas os clientes que têm o lembrete de WhatsApp ativo
-    const lembretes = todosClientes.filter(c => c.lembrete_wpp === true);
+    let lembretes = todosClientes.filter(c => c.lembrete_wpp === true);
+    if (typeof ordenarListaAlfabeticamente === 'function') {
+        lembretes = ordenarListaAlfabeticamente(lembretes, 'nome');
+    } else {
+        lembretes.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+    }
     
     if (lembretes.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400">Nenhum lembrete de WhatsApp configurado.</td></tr>`;
@@ -92,7 +97,7 @@ function popularSelectClientes() {
     let html = '<option value="">-- Selecione o Cliente --</option>';
     
     // Ordena alfabeticamente
-    const ordenados = [...todosClientes].sort((a,b) => (a.nome || '').localeCompare(b.nome || ''));
+    const ordenados = typeof ordenarListaAlfabeticamente === 'function' ? ordenarListaAlfabeticamente(todosClientes, 'nome') : [...todosClientes].sort((a,b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
     
     ordenados.forEach(c => {
         const flag = c.lembrete_wpp ? ' (Já possui lembrete)' : '';
@@ -414,7 +419,7 @@ Formate a resposta em HTML limpo. Use <h3> para os títulos das ideias, <p> para
                         modelosDisp = "<br><br><strong>Modelos disponíveis nesta chave:</strong><br>" + mJson.models.filter(m => m.name.includes("gemini")).map(m => m.name.replace('models/','')).join(', ');
                     }
                 }
-            } catch(e) {}
+            } catch (e) { console.error("Erro interno:", e); }
             
             resultadoContainer.innerHTML = `
             <div class="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-4 rounded-xl text-sm mb-4">

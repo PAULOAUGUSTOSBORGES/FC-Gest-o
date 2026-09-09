@@ -5,16 +5,19 @@ let currentEventId = null;
 document.addEventListener('DOMContentLoaded', function() {
     initCalendar();
     
-    // Aguardar autenticação do Firebase no global.js para carregar eventos
-    const authInterval = setInterval(() => {
-        if (typeof window.currentUserInfo !== 'undefined' && window.currentUserInfo !== null) {
-            clearInterval(authInterval);
-            carregarEventos();
-        }
-    }, 500);
+    if (typeof window.currentUserInfo !== 'undefined' && window.currentUserInfo !== null) {
+        carregarEventos();
+    } else {
+        const authInterval = setInterval(() => {
+            if (typeof window.currentUserInfo !== 'undefined' && window.currentUserInfo !== null) {
+                clearInterval(authInterval);
+                carregarEventos();
+            }
+        }, 150);
+    }
 });
 
-window.onload = () => { initGlobalData(); };
+window.onload = () => { initGlobalData(carregarEventos); };
 
 function initCalendar() {
     var calendarEl = document.getElementById('calendar');
@@ -67,37 +70,32 @@ function initCalendar() {
 function carregarEventos() {
     if (unsubscribeAgenda) unsubscribeAgenda();
     
-    showToast("Carregando agenda...", "info");
+    const _listenDoc = (typeof window.fcListenDoc === 'function') ? window.fcListenDoc : function(col, id, cb) {
+        return firestore.collection(col).doc(id).onSnapshot(doc => cb(doc.exists ? doc.data() : null));
+    };
     
-    unsubscribeAgenda = firestore.collection('fc_moveis').doc('config')
-        .onSnapshot((doc) => {
-            // Remove todos os eventos atuais
-            calendar.removeAllEvents();
-            
-            if (!doc.exists) return;
-            
-            const docData = doc.data() || {};
-            const data = docData.agenda_eventos || {};
-            
-            Object.keys(data).forEach(key => {
-                let ev = data[key];
-                calendar.addEvent({
-                    id: key,
-                    title: ev.titulo,
-                    start: ev.inicio,
-                    end: ev.fim || null,
-                    allDay: ev.diaInteiro,
-                    backgroundColor: ev.cor || '#3b82f6',
-                    borderColor: ev.cor || '#3b82f6',
-                    extendedProps: {
-                        descricao: ev.descricao || ''
-                    }
-                });
+    unsubscribeAgenda = _listenDoc('fc_moveis', 'config', function(docData) {
+        if (!calendar) return;
+        calendar.removeAllEvents();
+        if (!docData) return;
+        
+        const data = docData.agenda_eventos || {};
+        Object.keys(data).forEach(key => {
+            let ev = data[key];
+            calendar.addEvent({
+                id: key,
+                title: ev.titulo,
+                start: ev.inicio,
+                end: ev.fim || null,
+                allDay: ev.diaInteiro,
+                backgroundColor: ev.cor || '#3b82f6',
+                borderColor: ev.cor || '#3b82f6',
+                extendedProps: {
+                    descricao: ev.descricao || ''
+                }
             });
-        }, (error) => {
-            console.error("Erro ao carregar agenda:", error);
-            showToast("Erro ao carregar agenda. Verifique permissões.", "error");
         });
+    });
 }
 
 function abrirModalEvento(eventoObj = null, dataInicio = '', dataFim = '') {

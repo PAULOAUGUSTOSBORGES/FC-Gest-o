@@ -20,7 +20,8 @@ service cloud.firestore {
       return isAutenticado() && (
         request.auth.token.admin == true || 
         getFuncionarioDoc().get('isAdmin', false) == true || 
-        getFuncionarioDoc().get('isAdmin', false) == 'true'
+        getFuncionarioDoc().get('isAdmin', false) == 'true' ||
+        request.auth.token.email == 'fabricadecoresgoiania@gmail.com'
       );
     }
     
@@ -42,7 +43,7 @@ service cloud.firestore {
     }
     
     match /fc_moveis/config {
-      allow read: if true; // Mantém compatibilidade de leitura do frontend existente
+      allow read: if isAutenticado(); // REMOVIDO: leitura pública irrestrita
       allow write: if isAdmin() || temPermissao('perm_config') || temPermissao('perm_gestao');
     }
 
@@ -52,7 +53,7 @@ service cloud.firestore {
     }
 
     match /fc_moveis/{document=**} {
-      allow read: if isAutenticado();
+      allow read: if isAdmin(); // REMOVIDO: acesso para qualquer usuário autenticado
       allow write: if isAdmin() || temPermissao('perm_config') || temPermissao('perm_gestao');
     }
 
@@ -102,7 +103,10 @@ service cloud.firestore {
     }
 
     match /pedidos_site/{pedidoId} {
-      allow create: if true; // Clientes da loja online registram pedidos
+      // VALIDAÇÃO MÍNIMA ADICIONADA para evitar injeção/spam
+      allow create: if request.resource.data.keys().hasAll(['nome','itens','total']) 
+                    && request.resource.data.total is number 
+                    && request.resource.data.total >= 0;
       allow read, update, delete: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_gestao'));
     }
 
@@ -121,7 +125,7 @@ service cloud.firestore {
     // 5. Funcionários e Controle de Acesso
     // ==========================================
     match /funcionarios/{userId} {
-      allow read: if isAutenticado();
+      allow read: if isAdmin() || request.auth.uid == userId; // REMOVIDO: leitura por qualquer um
       allow create: if isAutenticado() && (
         isAdmin() || (
           request.auth.uid == userId 
@@ -140,7 +144,13 @@ service cloud.firestore {
     // 6. Marketing e Histórico IA
     // ==========================================
     match /marketing_historico/{docId} {
-      allow read, write: if isAutenticado();
+      allow read: if isAutenticado() && (temPermissao('perm_gestao') || isAdmin());
+      allow write: if isAdmin() || temPermissao('perm_gestao');
+    }
+
+    match /relatorios_ia_historico/{docId} {
+      allow read: if isAutenticado() && (temPermissao('perm_gestao') || isAdmin());
+      allow write: if isAdmin() || temPermissao('perm_gestao');
     }
 
     // Fallback de Segurança

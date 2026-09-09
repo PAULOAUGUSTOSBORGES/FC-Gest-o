@@ -51,7 +51,7 @@ async function fazerLogin() {
         btn.innerText = 'Aguarde...'; btn.disabled = true;
         const cred = await firebase.auth().signInWithEmailAndPassword(u, p);
         if (cred && cred.user) {
-            const hoje = new Date().toLocaleDateString('pt-BR');
+            const hoje = new Date().toDateString();
             localStorage.setItem('fc_sessao_data', hoje);
             localStorage.setItem('fc_sessao_uid', cred.user.uid);
         }
@@ -89,7 +89,7 @@ async function fazerCadastro() {
         btn.innerText = 'Aguarde...'; btn.disabled = true;
         const cred = await firebase.auth().createUserWithEmailAndPassword(u, p);
         if (cred && cred.user) {
-            const hoje = new Date().toLocaleDateString('pt-BR');
+            const hoje = new Date().toDateString();
             localStorage.setItem('fc_sessao_data', hoje);
             localStorage.setItem('fc_sessao_uid', cred.user.uid);
         }

@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÃâ€¡ÕES
 // ==========================================
 
@@ -660,7 +660,7 @@ async function migrarDadosSeNecessario() {
 
         await Promise.all(promessas);
         // Marca como migrado
-        try { await firestore.collection('fc_moveis').doc('banco_principal').update({ migrado: true }); } catch(e2){}
+        try { await firestore.collection('fc_moveis').doc('banco_principal').update({ migrado: true }); } catch (e2) { console.error("Erro interno:", e2); }
 
         showToast('Dados importados com sucesso! Recarregando...', 'success');
         setTimeout(() => window.location.reload(), 2000);
@@ -672,10 +672,20 @@ async function migrarDadosSeNecessario() {
 }
 
 function inicializarGestao() {
-    // Primeiro tenta migrar dados do banco antigo se necessário
+    // Primeiro tenta migrar dados do banco antigo se necessario
     migrarDadosSeNecessario();
 
-    // Controla quantas coleções já carregaram o primeiro snapshot
+    // Cache inteligente: serve dados instantaneamente do sessionStorage
+    const _listen = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb, opts) {
+        let ref = firestore.collection(col);
+        if (opts && typeof opts.query === 'function') ref = opts.query(ref);
+        return ref.onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    };
+    const _listenDoc = (typeof window.fcListenDoc === 'function') ? window.fcListenDoc : function(col, id, cb) {
+        return firestore.collection(col).doc(id).onSnapshot(doc => cb(doc.exists ? doc.data() : null));
+    };
+
+    // Controla quantas colecoes ja carregaram o primeiro snapshot
     let colecoesProntas = 0;
     const totalColecoes = 6;
     function tentarRefresh() {
@@ -683,40 +693,38 @@ function inicializarGestao() {
         if (colecoesProntas >= totalColecoes) refreshCurrentView();
     }
 
-    firestore.collection('vendas').onSnapshot(snap => {
-        db.vendas = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderCaixaDiario();
+    _listen('vendas', function(dados) {
+        db.vendas = dados;
         tentarRefresh();
     });
-    firestore.collection('financeiro').onSnapshot(snap => {
-        db.financeiro = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('financeiro', function(dados) {
+        db.financeiro = dados;
         tentarRefresh();
     });
-    firestore.collection('compras').onSnapshot(snap => {
-        db.compras = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('compras', function(dados) {
+        db.compras = dados;
         tentarRefresh();
     });
-    firestore.collection('produtos').onSnapshot(snap => {
-        db.produtos = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('produtos', function(dados) {
+        db.produtos = dados;
         tentarRefresh();
     });
-    firestore.collection('clientes').onSnapshot(snap => {
-        db.clientes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('clientes', function(dados) {
+        db.clientes = dados;
         tentarRefresh();
     });
-    firestore.collection('fornecedores').onSnapshot(snap => {
-        db.fornecedores = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('fornecedores', function(dados) {
+        db.fornecedores = dados;
         tentarRefresh();
     });
-    firestore.collection('funcionarios').onSnapshot(snap => {
-        db.funcionarios = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        tentarRefresh();
+    _listen('funcionarios', function(dados) {
+        db.funcionarios = dados;
+        // Nao conta no tentarRefresh (colecao adicional)
     });
-    firestore.collection('fc_moveis').doc('caixa').onSnapshot(doc => {
-        if(doc.exists) db.caixa = doc.data();
-        else db.caixa = { status: 'FECHADO', saldo: 0, historico: [] };
-        renderCaixaDiario();
-        tentarRefresh();
+    // Caixa: sempre ativo pois e critico (saldo em tempo real)
+    _listenDoc('fc_moveis', 'caixa', function(data) {
+        db.caixa = data || { status: 'FECHADO', saldo: 0, historico: [] };
+        if (colecoesProntas >= totalColecoes) refreshCurrentView();
     });
 }
 
@@ -1695,7 +1703,19 @@ function renderTitulos(tipo) {
         }
     }
     
-    lista.sort((a, b) => new Date(a.data) - new Date(b.data));
+    if (termoNorm || pessoaFiltroVal) {
+        if (typeof ordenarListaAlfabeticamente === 'function') {
+            lista = ordenarListaAlfabeticamente(lista, f => f.pessoa || f.clienteNome || f.favorecido || f.sacado || f.ref || f.categoria || '');
+        } else {
+            lista.sort((a, b) => {
+                const pA = a.pessoa || a.clienteNome || a.favorecido || a.sacado || a.ref || a.categoria || '';
+                const pB = b.pessoa || b.clienteNome || b.favorecido || b.sacado || b.ref || b.categoria || '';
+                return pA.localeCompare(pB, 'pt-BR', { numeric: true, sensitivity: 'base' });
+            });
+        }
+    } else {
+        lista.sort((a, b) => new Date(a.data) - new Date(b.data));
+    }
     
     document.getElementById(`tabela-fin-${prefix}`).innerHTML = lista.map(f => {
         const isAtrasado = f.status === 'PENDENTE' && new Date(f.data).getTime() < new Date().getTime(); 
@@ -1775,7 +1795,7 @@ function preencherContaPessoaSelect(tipo) {
     const lista = tipo === 'RECEBER'
         ? (db.clientes || []).map(c => c.nome || c.razaoSocial || '')
         : [...(db.fornecedores || []), ...(db.funcionarios || [])].map(f => f.nome || f.razaoSocial || '');
-    const unique = [...new Set(lista.filter(n => n.trim()))].sort();
+    const unique = [...new Set(lista.filter(n => n.trim()))].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' }));
     sel.innerHTML = '<option value="">-- Selecione um cadastrado --</option>'
         + unique.map(n => `<option value="${n}">${n}</option>`).join('')
         + '<option value="__novo__">+ Cadastrar novo...</option>';

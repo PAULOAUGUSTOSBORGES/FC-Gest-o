@@ -1,9 +1,29 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="dark" data-theme="dark">
 <head>
     <meta charset="UTF-8">
+    <!-- Anti-FOUC: Previne flash branco ao alternar páginas no sistema -->
+    <script>
+        (function() {
+            const t = localStorage.getItem('fc_theme_sistema') || 'dark';
+            if (t === 'light') {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.classList.add('light');
+                document.documentElement.setAttribute('data-theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                document.documentElement.classList.remove('light');
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+    <style>
+        :root { color-scheme: dark; background-color: #0f172a; }
+        html, body { background-color: #0f172a; }
+        html.light, html.light body, html[data-theme="light"], html[data-theme="light"] body { background-color: #f1f5f9; color-scheme: light; }
+    </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- PWA ConfiguraÃ§Ãµes e Ãcones -->
+    <!-- PWA Configurações e Ícones -->
     <link rel="manifest" href="../manifest.json">
     <meta name="theme-color" content="#0f172a">
     <meta name="mobile-web-app-capable" content="yes">
@@ -16,8 +36,8 @@
         
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css?v=20260902202810">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260902202810">
+    <link rel="stylesheet" href="../style.css?v=20260909083536">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260909083536">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -221,9 +241,10 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20260902202810"></script>
-    <script src="../global.js?v=20260902202810"></script>
-    <script src="fornecedores.js?v=20260902202810"></script>
+    <script src="../sistema/config_banco.js?v=20260909083536"></script>
+    <script src="../global.js?v=20260909083536"></script>
+    <script src="fc_cache.js?v=20260909083536"></script>
+    <script src="fornecedores.js?v=20260909083536"></script>
 </body>
 </html>
 

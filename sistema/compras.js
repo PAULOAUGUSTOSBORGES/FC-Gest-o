@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÃÆ’ââ‚¬¡ÃÆ’•ES
 // ==========================================
 
@@ -107,7 +107,7 @@ async function migrarDadosSeNecessario() {
 
         await Promise.all(promessas);
         // Marca como migrado
-        try { await firestore.collection('fc_moveis').doc('banco_principal').update({ migrado: true }); } catch(e2){}
+        try { await firestore.collection('fc_moveis').doc('banco_principal').update({ migrado: true }); } catch (e2) { console.error("Erro interno:", e2); }
 
         showToast('Dados importados com sucesso! Recarregando...', 'success');
         setTimeout(() => window.location.reload(), 2000);
@@ -119,10 +119,20 @@ async function migrarDadosSeNecessario() {
 }
 
 function inicializarGestao() {
-    // Primeiro tenta migrar dados do banco antigo se necessário
+    // Primeiro tenta migrar dados do banco antigo se necessario
     migrarDadosSeNecessario();
 
-    // Controla quantas coleções já carregaram o primeiro snapshot
+    // Cache inteligente: serve dados instantaneamente do sessionStorage
+    const _listen = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb, opts) {
+        let ref = firestore.collection(col);
+        if (opts && typeof opts.query === 'function') ref = opts.query(ref);
+        return ref.onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    };
+    const _listenDoc = (typeof window.fcListenDoc === 'function') ? window.fcListenDoc : function(col, id, cb) {
+        return firestore.collection(col).doc(id).onSnapshot(doc => cb(doc.exists ? doc.data() : null));
+    };
+
+    // Controla quantas colecoes ja carregaram o primeiro snapshot
     let colecoesProntas = 0;
     const totalColecoes = 6;
     function tentarRefresh() {
@@ -130,33 +140,37 @@ function inicializarGestao() {
         if (colecoesProntas >= totalColecoes) refreshCurrentView();
     }
 
-    firestore.collection('vendas').onSnapshot(snap => {
-        db.vendas = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('vendas', function(dados) {
+        db.vendas = dados;
         tentarRefresh();
     });
-    firestore.collection('financeiro').onSnapshot(snap => {
-        db.financeiro = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('financeiro', function(dados) {
+        db.financeiro = dados;
         tentarRefresh();
     });
-    firestore.collection('compras').onSnapshot(snap => {
-        db.compras = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('compras', function(dados) {
+        db.compras = dados;
         tentarRefresh();
     });
-    firestore.collection('produtos').onSnapshot(snap => {
-        db.produtos = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('produtos', function(dados) {
+        db.produtos = dados;
         tentarRefresh();
     });
-    firestore.collection('clientes').onSnapshot(snap => {
-        db.clientes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('clientes', function(dados) {
+        db.clientes = dados;
         tentarRefresh();
     });
-    firestore.collection('fornecedores').onSnapshot(snap => {
-        db.fornecedores = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('fornecedores', function(dados) {
+        db.fornecedores = dados;
         tentarRefresh();
     });
-    firestore.collection('fc_moveis').doc('caixa').onSnapshot(doc => {
-        if(doc.exists) db.caixa = doc.data();
-        else db.caixa = { status: 'FECHADO', saldo: 0, historico: [] };
+    _listen('funcionarios', function(dados) {
+        db.funcionarios = dados;
+        // Nao conta no tentarRefresh (colecao adicional)
+    });
+    // Caixa: sempre ativo pois Ã© crÃ­tico (saldo em tempo real)
+    _listenDoc('fc_moveis', 'caixa', function(data) {
+        db.caixa = data || { status: 'FECHADO', saldo: 0, historico: [] };
         if (colecoesProntas >= totalColecoes) refreshCurrentView();
     });
 }
@@ -1667,7 +1681,8 @@ function abrirModalCompraManual() {
     document.getElementById('compra-manual-gerar-financeiro').checked = true;
     
     const selFornecedor = document.getElementById('compra-manual-fornecedor');
-    selFornecedor.innerHTML = '<option value="">Selecione Fornecedor...</option>' + (db.fornecedores || []).map(f => `<option value="${f.nome}">${f.nome}</option>`).join('');
+    const sortedForns = (typeof ordenarListaAlfabeticamente === 'function') ? ordenarListaAlfabeticamente(db.fornecedores || [], 'nome') : [...(db.fornecedores || [])].sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+    selFornecedor.innerHTML = '<option value="">Selecione Fornecedor...</option>' + sortedForns.map(f => `<option value="${f.nome}">${f.nome}</option>`).join('');
     
     renderTabelaCompraManual();
     document.getElementById('modal-compra-manual').classList.remove('hidden');
@@ -1692,7 +1707,8 @@ function editarCompra(id) {
         document.getElementById('compra-manual-frete').value = c.freteExtra || 0;
         
         const selFornecedor = document.getElementById('compra-manual-fornecedor');
-        selFornecedor.innerHTML = '<option value="">Selecione Fornecedor...</option>' + (db.fornecedores || []).map(f => `<option value="${f.nome}">${f.nome}</option>`).join('');
+        const sortedForns = (typeof ordenarListaAlfabeticamente === 'function') ? ordenarListaAlfabeticamente(db.fornecedores || [], 'nome') : [...(db.fornecedores || [])].sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+    selFornecedor.innerHTML = '<option value="">Selecione Fornecedor...</option>' + sortedForns.map(f => `<option value="${f.nome}">${f.nome}</option>`).join('');
         
         const optExiste = Array.from(selFornecedor.options).some(opt => opt.value === c.fornecedor);
         if (optExiste) {
@@ -1748,7 +1764,8 @@ function atualizarLinhaCompraManual(index, campo, valor) {
 
 function renderTabelaCompraManual() {
     const tbody = document.getElementById('tabela-compra-manual-body');
-    const prodsOptions = '<option value="">Selecione ou busque...</option>' + (db.produtos || []).map(p => `<option value="${p.id}">${p.nome} (Est: ${p.estoque})</option>`).join('');
+    const sortedProds = (typeof ordenarListaAlfabeticamente === 'function') ? ordenarListaAlfabeticamente(db.produtos || [], 'nome') : [...(db.produtos || [])].sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+    const prodsOptions = '<option value="">Selecione ou busque...</option>' + sortedProds.map(p => `<option value="${p.id}">${p.nome} (Est: ${p.estoque})</option>`).join('');
     tbody.innerHTML = compraManualItens.map((item, i) => `
         <tr>
             <td class="p-2 md:p-3">
@@ -1939,7 +1956,15 @@ function renderComprasHist() {
     if (dataIni) { const dIni = new Date(dataIni + 'T00:00:00').getTime(); filtrados = filtrados.filter(c => c.data && new Date(c.data).getTime() >= dIni); }
     if (dataFim) { const dFim = new Date(dataFim + 'T23:59:59').getTime(); filtrados = filtrados.filter(c => c.data && new Date(c.data).getTime() <= dFim); }
 
-    filtrados.sort((a,b) => new Date(b.data || 0) - new Date(a.data || 0));
+    if (termo) {
+        if (typeof ordenarListaAlfabeticamente === 'function') {
+            filtrados = ordenarListaAlfabeticamente(filtrados, 'fornecedor');
+        } else {
+            filtrados.sort((a, b) => (a.fornecedor || '').localeCompare(b.fornecedor || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+        }
+    } else {
+        filtrados.sort((a,b) => new Date(b.data || 0) - new Date(a.data || 0));
+    }
 
     let totalCompras = 0;
 

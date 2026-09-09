@@ -23,7 +23,9 @@ const BANCO_OFICIAL = {
 // CREDENCIAIS DE TESTE (HOMOLOGAÇÃO)
 // ==========================================
 const BANCO_TESTES = {
-    apiKey: "AIzaSyAvaDdhJSFP6WKs8UFRvlQmNGFlc1ZKgFk",
+    // PREENCHA AS CREDENCIAIS DE TESTE APENAS NO SEU AMBIENTE LOCAL.
+    // NÃO FAÇA COMMIT DISSO PARA A PRODUÇÃO!
+    apiKey: "COLE_A_CHAVE_AQUI",
     authDomain: "fcgestao-testes.firebaseapp.com",
     projectId: "fcgestao-testes",
     storageBucket: "fcgestao-testes.firebasestorage.app",
@@ -39,7 +41,7 @@ const firebaseConfig = MODO_TESTES ? BANCO_TESTES : BANCO_OFICIAL;
 
 if (typeof firebase !== 'undefined' && !firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
-    console.log(`🔥 Firebase Conectado! MODO: ${MODO_TESTES ? '🛑 TESTES (Isolado)' : '✅ OFICIAL (Produção)'}`);
+    if (MODO_TESTES) console.log(`🔥 Firebase Conectado! MODO: TESTES`);
 } else if (typeof firebase === 'undefined') {
     console.error("Firebase SDK não foi carregado antes do config_banco.js");
 }

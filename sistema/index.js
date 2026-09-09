@@ -313,11 +313,15 @@ function renderizarNotificacoes(prodVazios, prodBaixo, recVencidas, pagVencidas,
 
 async function migrarBancoAntigo() {
     try {
+        if (localStorage.getItem('fc_banco_migrado') === 'true') return;
         const docRef = firestore.collection("fc_moveis").doc("banco_principal");
         const docSnap = await docRef.get();
         if (docSnap.exists) {
             const dados = docSnap.data();
-            if (dados.migrado) return;
+            if (dados.migrado) {
+                localStorage.setItem('fc_banco_migrado', 'true');
+                return;
+            }
             
             showToast("Sincronizando banco de dados para a nova versão...", "info");
             
@@ -340,9 +344,12 @@ async function migrarBancoAntigo() {
             
             await Promise.all(promessas);
             await docRef.update({ migrado: true });
+            localStorage.setItem('fc_banco_migrado', 'true');
             
             showToast(`Migração concluída! ${count} registros importados.`, "success");
             setTimeout(() => window.location.reload(), 1500);
+        } else {
+            localStorage.setItem('fc_banco_migrado', 'true');
         }
     } catch (e) {
         console.error("Erro ao migrar dados: ", e);
@@ -352,29 +359,39 @@ async function migrarBancoAntigo() {
 function inicializarDashboard() {
     migrarBancoAntigo();
 
-    // Listeners para todas as coleções que afetam os KPIs
-    firestore.collection('produtos').onSnapshot(snap => {
-        db.produtos = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Cache inteligente: serve dados instantaneamente do sessionStorage
+    const _listen = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb, opts) {
+        let ref = firestore.collection(col);
+        if (opts && typeof opts.query === 'function') ref = opts.query(ref);
+        return ref.onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    };
+    const _listenDoc = (typeof window.fcListenDoc === 'function') ? window.fcListenDoc : function(col, id, cb) {
+        return firestore.collection(col).doc(id).onSnapshot(doc => cb(doc.exists ? doc.data() : null));
+    };
+
+    // Listeners para todas as coleções que afetam os KPIs com suporte a cache
+    _listen('produtos', function(dados) {
+        db.produtos = dados;
         renderDashboard();
     });
-    firestore.collection('clientes').onSnapshot(snap => {
-        db.clientes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('clientes', function(dados) {
+        db.clientes = dados;
         renderDashboard();
     });
-    firestore.collection('fornecedores').onSnapshot(snap => {
-        db.fornecedores = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('fornecedores', function(dados) {
+        db.fornecedores = dados;
         renderDashboard();
     });
-    firestore.collection('vendas').onSnapshot(snap => {
-        db.vendas = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('vendas', function(dados) {
+        db.vendas = dados;
         renderDashboard();
     });
-    firestore.collection('financeiro').onSnapshot(snap => {
-        db.financeiro = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('financeiro', function(dados) {
+        db.financeiro = dados;
         renderDashboard();
     });
-    firestore.collection('fc_moveis').doc('caixa').onSnapshot(doc => {
-        db.caixa = doc.data() || { saldo: 0 };
+    _listenDoc('fc_moveis', 'caixa', function(data) {
+        db.caixa = data || { saldo: 0 };
         renderDashboard();
     });
 
@@ -573,7 +590,7 @@ window.atualizarTemaGraficos = function() {
                 },
                 tooltip: { theme: isDark ? 'dark' : 'light' }
             });
-        } catch(e) {}
+        } catch (e) { console.error("Erro interno:", e); }
     }
 };
 
@@ -590,7 +607,7 @@ try {
             setTimeout(window.atualizarTemaGraficos, 100);
         };
     }
-} catch(e) {}
+} catch (e) { console.error("Erro interno:", e); }
 
 function renderizarGraficos() {
     if (!chartPrincipal || !chartEstoque || !chartInadimplencia) return;
@@ -708,36 +725,42 @@ window.onload = () => {
     initGlobalData(inicializarDashboard); 
 };
 
-// Aguardar autenticação do Firebase no global.js para carregar lembretes
-const authLembretesInterval = setInterval(() => {
-    if (typeof window.currentUserInfo !== 'undefined' && window.currentUserInfo !== null) {
-        clearInterval(authLembretesInterval);
-        carregarLembretesDashboard();
-    }
-}, 500);
+// Carrega lembretes assim que o usuário estiver autenticado
+if (typeof window.currentUserInfo !== 'undefined' && window.currentUserInfo !== null) {
+    carregarLembretesDashboard();
+} else {
+    const authLembretesInterval = setInterval(() => {
+        if (typeof window.currentUserInfo !== 'undefined' && window.currentUserInfo !== null) {
+            clearInterval(authLembretesInterval);
+            carregarLembretesDashboard();
+        }
+    }, 200);
+}
 
 function carregarLembretesDashboard() {
-    firestore.collection('fc_moveis').doc('config')
-        .onSnapshot((doc) => {
-            const container = document.getElementById('dash-lembretes');
-            if (!container) return;
-            
-            let html = '';
-            let eventos = [];
-            
-            const hoje = new Date();
-            hoje.setHours(0,0,0,0);
-            
-            const em7Dias = new Date();
-            em7Dias.setDate(hoje.getDate() + 7);
-            
-            if (doc.exists) {
-                const docData = doc.data() || {};
-                const dataObj = docData.agenda_eventos || {};
-                Object.keys(dataObj).forEach(key => {
-                    let data = dataObj[key];
-                    if (!data.inicio) return;
-                    const dataInicio = new Date(data.inicio);
+    const _listenDoc = (typeof window.fcListenDoc === 'function') ? window.fcListenDoc : function(col, id, cb) {
+        return firestore.collection(col).doc(id).onSnapshot(doc => cb(doc.exists ? doc.data() : null));
+    };
+
+    _listenDoc('fc_moveis', 'config', function(docData) {
+        const container = document.getElementById('dash-lembretes');
+        if (!container) return;
+        
+        let html = '';
+        let eventos = [];
+        
+        const hoje = new Date();
+        hoje.setHours(0,0,0,0);
+        
+        const em7Dias = new Date();
+        em7Dias.setDate(hoje.getDate() + 7);
+        
+        if (docData) {
+            const dataObj = docData.agenda_eventos || {};
+            Object.keys(dataObj).forEach(key => {
+                let data = dataObj[key];
+                if (!data.inicio) return;
+                const dataInicio = new Date(data.inicio);
                     
                     if (dataInicio >= hoje && dataInicio <= em7Dias) {
                         eventos.push({...data, id: key, dataObj: dataInicio});

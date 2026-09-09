@@ -3,14 +3,20 @@
 let acaoConfirmacaoPendente = null;
 
 function inicializarFornecedores() {
-    // Liga os listeners do Firestore para Fornecedores e Compras (para o histórico)
-    firestore.collection('fornecedores').onSnapshot(snap => {
-        db.fornecedores = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // Liga os listeners do Firestore para Fornecedores e Compras com cache inteligente
+    const _listen = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb, opts) {
+        let ref = firestore.collection(col);
+        if (opts && typeof opts.query === 'function') ref = opts.query(ref);
+        return ref.onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    };
+
+    _listen('fornecedores', function(dados) {
+        db.fornecedores = dados;
         renderFornecedores();
     });
 
-    firestore.collection('compras').onSnapshot(snap => {
-        db.compras = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    _listen('compras', function(dados) {
+        db.compras = dados;
     });
 }
 
@@ -67,7 +73,7 @@ function fecharModalConfirmacao() {
 
 async function buscarCEP(prefix) {
     const el = document.getElementById(`${prefix}-cep`); if (!el) return; let cep = el.value.replace(/\D/g, ''); if (cep.length !== 8) return;
-    try { let res = await fetch(`https://viacep.com.br/ws/${cep}/json/`); let data = await res.json(); if (!data.erro) { document.getElementById(`${prefix}-rua`).value = data.logradouro || ''; document.getElementById(`${prefix}-bairro`).value = data.bairro || ''; document.getElementById(`${prefix}-cidade`).value = `${data.localidade} - ${data.uf}`; } } catch (e) { }
+    try { let res = await fetch(`https://viacep.com.br/ws/${cep}/json/`); let data = await res.json(); if (!data.erro) { document.getElementById(`${prefix}-rua`).value = data.logradouro || ''; document.getElementById(`${prefix}-bairro`).value = data.bairro || ''; document.getElementById(`${prefix}-cidade`).value = `${data.localidade} - ${data.uf}`; } } catch (e) { console.error("Erro interno:", e); }
 }
 
 async function buscarCNPJ(prefix) {
@@ -89,7 +95,12 @@ async function buscarCNPJ(prefix) {
 
 function renderFornecedores() {
     const termo = document.getElementById('busca-fornecedor-lista')?.value.toLowerCase() || ''; 
-    const filtrados = (db.fornecedores || []).filter(f => (f.nome || '').toLowerCase().includes(termo) || (f.doc && f.doc.includes(termo)));
+    let filtrados = (db.fornecedores || []).filter(f => (f.nome || '').toLowerCase().includes(termo) || (f.doc && f.doc.includes(termo)));
+    if (typeof ordenarListaAlfabeticamente === 'function') {
+        filtrados = ordenarListaAlfabeticamente(filtrados, 'nome');
+    } else {
+        filtrados.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+    }
     document.getElementById('tabela-fornecedores').innerHTML = filtrados.map(f => `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 font-bold text-slate-800 dark:text-slate-100">${f.nome}</td><td class="p-4 text-slate-600 dark:text-slate-300 font-mono">${f.doc || f.cnpj || '-'}</td><td class="p-4 text-slate-800 dark:text-slate-100"><i class="fa-solid fa-phone text-blue-500 mr-1"></i> ${f.wpp || '-'}</td><td class="p-4 text-center"><button onclick="editarFornecedor('${f.id}')" class="text-blue-500 hover:text-blue-700 p-2"><i class="fa-solid fa-pen"></i></button><button onclick="excluirFornecedor('${f.id}')" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || '<tr><td colspan="4" class="p-6 text-center text-slate-500 dark:text-slate-400">Sem fornecedores.</td></tr>';
 }
 

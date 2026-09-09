@@ -107,7 +107,7 @@ async function migrarDadosSeNecessario() {
 
         await Promise.all(promessas);
         // Marca como migrado
-        try { await firestore.collection('fc_moveis').doc('banco_principal').update({ migrado: true }); } catch(e2){}
+        try { await firestore.collection('fc_moveis').doc('banco_principal').update({ migrado: true }); } catch (e2) { console.error("Erro interno:", e2); }
 
         showToast('Dados importados com sucesso! Recarregando...', 'success');
         setTimeout(() => window.location.reload(), 2000);
@@ -121,6 +121,16 @@ async function migrarDadosSeNecessario() {
 function inicializarGestao() {
     // Primeiro tenta migrar dados do banco antigo se necessario
     migrarDadosSeNecessario();
+
+    // Cache inteligente: serve dados instantaneamente do sessionStorage
+    const _listen = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb, opts) {
+        let ref = firestore.collection(col);
+        if (opts && typeof opts.query === 'function') ref = opts.query(ref);
+        return ref.onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    };
+    const _listenDoc = (typeof window.fcListenDoc === 'function') ? window.fcListenDoc : function(col, id, cb) {
+        return firestore.collection(col).doc(id).onSnapshot(doc => cb(doc.exists ? doc.data() : null));
+    };
 
     // Debounce para evitar renderizacoes multiplas simultaneas
     let renderTimer = null;
@@ -137,44 +147,44 @@ function inicializarGestao() {
         if (colecoesProntas >= totalColecoes) refreshCurrentView();
     }
 
-    firestore.collection('vendas').onSnapshot(snap => {
-        db.vendas = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('vendas', function(dados) {
+        db.vendas = dados;
         tentarRefresh(); // CORRECAO: tentarRefresh ao inves de renderDashboard direto
         debouncedRenderDashboard();
     });
-    firestore.collection('financeiro').onSnapshot(snap => {
-        db.financeiro = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('financeiro', function(dados) {
+        db.financeiro = dados;
         tentarRefresh(); // CORRECAO: adicionado tentarRefresh()
         debouncedRenderDashboard();
     });
-    firestore.collection('compras').onSnapshot(snap => {
-        db.compras = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('compras', function(dados) {
+        db.compras = dados;
         tentarRefresh(); // CORRECAO: adicionado tentarRefresh()
         debouncedRenderDashboard();
     });
-    firestore.collection('produtos').onSnapshot(snap => {
-        db.produtos = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('produtos', function(dados) {
+        db.produtos = dados;
         tentarRefresh(); // CORRECAO: adicionado tentarRefresh()
         debouncedRenderDashboard();
     });
-    firestore.collection('clientes').onSnapshot(snap => {
-        db.clientes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('clientes', function(dados) {
+        db.clientes = dados;
         tentarRefresh(); // CORRECAO: adicionado tentarRefresh()
         debouncedRenderDashboard();
     });
-    firestore.collection('fornecedores').onSnapshot(snap => {
-        db.fornecedores = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('fornecedores', function(dados) {
+        db.fornecedores = dados;
         tentarRefresh(); // CORRECAO: adicionado tentarRefresh()
         debouncedRenderDashboard();
     });
-    firestore.collection('funcionarios').onSnapshot(snap => {
-        db.funcionarios = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('funcionarios', function(dados) {
+        db.funcionarios = dados;
         // Nao conta no tentarRefresh (colecao adicional)
         debouncedRenderDashboard();
     });
-    firestore.collection('fc_moveis').doc('caixa').onSnapshot(doc => {
-        if(doc.exists) db.caixa = doc.data();
-        else db.caixa = { status: 'FECHADO', saldo: 0, historico: [] };
+    // Caixa: sempre ativo pois e critico (saldo em tempo real)
+    _listenDoc('fc_moveis', 'caixa', function(data) {
+        db.caixa = data || { status: 'FECHADO', saldo: 0, historico: [] };
         if (colecoesProntas >= totalColecoes) refreshCurrentView();
     });
 }
@@ -520,7 +530,19 @@ function renderTitulos(tipo) {
         }
     }
     
-    lista.sort((a, b) => new Date(a.data) - new Date(b.data));
+    if (termoNorm || pessoaFiltroVal) {
+        if (typeof ordenarListaAlfabeticamente === 'function') {
+            lista = ordenarListaAlfabeticamente(lista, f => f.pessoa || f.clienteNome || f.favorecido || f.sacado || f.ref || f.categoria || '');
+        } else {
+            lista.sort((a, b) => {
+                const pA = a.pessoa || a.clienteNome || a.favorecido || a.sacado || a.ref || a.categoria || '';
+                const pB = b.pessoa || b.clienteNome || b.favorecido || b.sacado || b.ref || b.categoria || '';
+                return pA.localeCompare(pB, 'pt-BR', { numeric: true, sensitivity: 'base' });
+            });
+        }
+    } else {
+        lista.sort((a, b) => new Date(a.data) - new Date(b.data));
+    }
     
     document.getElementById(`tabela-fin-${prefix}`).innerHTML = lista.map(f => {
         const isAtrasado = f.status === 'PENDENTE' && new Date(f.data).getTime() < new Date().getTime(); 
@@ -2883,6 +2905,12 @@ function filtrarTabelaDrilldownDRE() {
         });
     }
 
+    if (typeof ordenarListaAlfabeticamente === 'function') {
+        filtrados = ordenarListaAlfabeticamente(filtrados, item => item.descricao || item.pessoa || item.categoria || '');
+    } else {
+        filtrados.sort((a, b) => (a.descricao || a.pessoa || '').localeCompare(b.descricao || b.pessoa || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+    }
+
     renderLinhasDrilldownDRE(filtrados);
     
     const countEl = document.getElementById('dre-drilldown-filtrados-count');
@@ -3044,7 +3072,7 @@ function renderSugestorCompras(vendasFiltradas, periodoObj) {
     });
 
     let html = '';
-    const produtosApp = db.produtos || [];
+    const produtosApp = (typeof ordenarListaAlfabeticamente === 'function') ? ordenarListaAlfabeticamente(db.produtos || [], 'nome') : [...(db.produtos || [])].sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
     const ALVO_DIAS_ESTOQUE = 30; // O usuário não especificou, mantendo 30 dias de cobertura
 
     produtosApp.forEach(p => {
@@ -3483,78 +3511,453 @@ function calcularPrecoMargin(quemMudou = 'preco') {
 
 // ==========================================
 // EXPORTAÇÃO GLOBAL DE FUNÇÕES PARA O ESCOPO WINDOW
+
+
+
+
+
+
+
+
+
+
+
 // ==========================================
-window.renderDashboard = renderDashboard;
-window.renderFinAbas = renderFinAbas;
-window.mudarFiltroBI = mudarFiltroBI;
-window.obterIntervaloDatasBI = obterIntervaloDatasBI;
-window.abrirInfoRelatorio = abrirInfoRelatorio;
-window.renderEvolucaoCustos = renderEvolucaoCustos;
-window.exportarDadosParaIA = exportarDadosParaIA;
-window.imprimirArea = imprimirArea;
-window.baixarPDF = typeof baixarPDF !== 'undefined' ? baixarPDF : (typeof exportarPDF !== 'undefined' ? exportarPDF : imprimirArea);
-window.exportarExcel = exportarExcel;
+// PAINEL INTELIGENTE IA - ASSISTENTE DE RELATÓRIOS
+// ==========================================
 
-// Modais Financeiro / Títulos
-window.abrirModalConta = abrirModalConta;
-window.fecharModalConta = fecharModalConta;
-window.salvarConta = salvarConta;
-window.toggleContaPessoaInput = toggleContaPessoaInput;
-window.toggleRecorrencia = toggleRecorrencia;
-window.calcularValorFinalFormulario = calcularValorFinalFormulario;
-window.abrirModalBaixa = abrirModalBaixa;
-window.fecharModalBaixa = fecharModalBaixa;
-window.confirmarBaixa = confirmarBaixa;
-window.calcularAcrescimos = calcularAcrescimos;
-window.abrirModalRenegociacao = abrirModalRenegociacao;
-window.fecharModalRenegociacao = fecharModalRenegociacao;
-window.confirmarRenegociacao = confirmarRenegociacao;
-window.abrirDetalhesTitulo = abrirDetalhesTitulo;
-window.fecharModalDetalhesTitulo = fecharModalDetalhesTitulo;
-window.abrirModalCaixa = abrirModalCaixa;
-window.fecharModalCaixa = fecharModalCaixa;
-window.confirmarMovCaixa = confirmarMovCaixa;
+function coletarDadosCompletosParaIA() {
+    if (!db) return "Nenhum dado carregado no sistema.";
+    
+    const periodo = obterIntervaloDatasBI();
+    const txtPeriodo = (periodo && periodo.inicio && periodo.fim) ? 
+        (periodo.inicio.toLocaleDateString('pt-BR') + ' ate ' + periodo.fim.toLocaleDateString('pt-BR')) : 'Todo o Historico';
 
-// Drilldown DRE & Funcionários
-window.abrirDrilldownDRE = abrirDrilldownDRE;
-window.fecharDrilldownDRE = fecharDrilldownDRE;
-window.filtrarTabelaDrilldownDRE = filtrarTabelaDrilldownDRE;
-window.imprimirDrilldownDRE = imprimirDrilldownDRE;
-window.exportarExcelDrilldownDRE = exportarExcelDrilldownDRE;
-window.abrirDetalhesFuncionario = abrirDetalhesFuncionario;
-window.imprimirExtratoFuncionario = imprimirExtratoFuncionario;
+    const vendas = obterVendasDoPeriodo(periodo) || [];
+    const compras = obterComprasDoPeriodo(periodo) || [];
+    const despesasPagasObj = obterDespesasPagasDoPeriodo(periodo) || [];
+    const financeiroTodos = db.financeiro || []; 
+    const produtos = db.produtos || [];
+    const clientes = db.clientes || [];
+    const hoje = new Date();
 
-// Compras e XML
-window.abrirModalCompraManual = abrirModalCompraManual;
-window.fecharModalCompraManual = fecharModalCompraManual;
-window.salvarCompraManual = salvarCompraManual;
-window.addLinhaCompraManual = addLinhaCompraManual;
-window.calcularTotaisCompraManual = calcularTotaisCompraManual;
-window.abrirDetalhesNF = abrirDetalhesNF;
-window.fecharModalDetalhesNF = fecharModalDetalhesNF;
-window.abrirModalXML = abrirModalXML;
-window.fecharModalXML = fecharModalXML;
-window.salvarXMLConferido = salvarXMLConferido;
-window.addParcelaXML = addParcelaXML;
-window.recalcularRateioXML = recalcularRateioXML;
-window.lerXMLCTe = lerXMLCTe;
-window.processarXMLReal = processarXMLReal;
-window.fecharModalProduto = fecharModalProduto;
-window.salvarProdutoXmlModal = salvarProdutoXmlModal;
-window.alternarAcaoVinculoXML = alternarAcaoVinculoXML;
-window.preencherVinculoXML = preencherVinculoXML;
-window.selecionarProdutoVinculoXML = selecionarProdutoVinculoXML;
-window.filtrarProdutosXMLBusca = filtrarProdutosXMLBusca;
-window.mostrarListaProdutosXMLBusca = mostrarListaProdutosXMLBusca;
-window.ocultarListaProdutosXMLBusca = ocultarListaProdutosXMLBusca;
-window.calcularPrecoMargin = calcularPrecoMargin;
-window.fecharModalConfirmacao = fecharModalConfirmacao;
+    const fatTotal = vendas.reduce((a, b) => a + Number(b.tot || b.total || b.valor || 0), 0); 
+    const cmvTotal = vendas.reduce((a, b) => a + Number(b.custoTotal || 0), 0); 
+    const taxasTotal = vendas.reduce((a, b) => a + Number(b.taxaValor || 0), 0); 
+    const descontosTotal = vendas.reduce((a, b) => a + Number(b.desconto || 0), 0);
+    const recLiquida = fatTotal - taxasTotal;
+    const lucroBruto = recLiquida - cmvTotal;
+    
+    let despesasOperacionais = 0;
+    let impostosTotal = 0;
+    despesasPagasObj.forEach(d => {
+        const cat = String(d.categoria || '').toLowerCase();
+        const val = Number(d.valorPago || d.valor || 0);
+        if (cat.includes('imposto') || cat.includes('das') || cat.includes('icms') || cat.includes('simples') || cat.includes('tributo')) {
+            impostosTotal += val;
+        } else {
+            despesasOperacionais += val;
+        }
+    });
 
+    const lucroReal = lucroBruto - despesasOperacionais - impostosTotal;
+    const ticketMedio = vendas.length > 0 ? fatTotal / vendas.length : 0;
 
+    var despesasPendentes = financeiroTodos.filter(function(f){return f.tipo==='DESPESA'&&f.status==='PENDENTE';}).reduce(function(a,b){return a+(Number(b.valor)||0);},0);
+    var receitasPendentes = financeiroTodos.filter(function(f){return f.tipo==='RECEITA'&&f.status==='PENDENTE';}).reduce(function(a,b){return a+(Number(b.valor)||0);},0);
 
+    var pagamentos = {};
+    vendas.forEach(function(v){
+        var pag = v.pagamento || v.formaPagamento || 'Nao informado';
+        if(!pagamentos[pag]) pagamentos[pag] = {qtd:0, total:0};
+        pagamentos[pag].qtd++; pagamentos[pag].total += (Number(v.tot||v.total||v.valor)||0);
+    });
+    var pagamentosTexto = Object.entries(pagamentos).sort(function(a,b){return b[1].total-a[1].total;})
+        .map(function(e){return '  - '+e[0]+': '+e[1].qtd+' vendas = R$ '+e[1].total.toFixed(2)+' ('+((fatTotal > 0 ? (e[1].total/fatTotal)*100 : 0)).toFixed(1)+'%)';}).join('\n');
 
+    var prodVendidos = {};
+    var categVendidas = {};
+    vendas.forEach(function(v){
+        (v.itens||[]).forEach(function(item){
+            var nome = item.nome||item.produto||'Desconhecido';
+            if(!prodVendidos[nome]) prodVendidos[nome]={qtd:0,receita:0};
+            prodVendidos[nome].qtd += (Number(item.quantidade)||1);
+            prodVendidos[nome].receita += (Number(item.subtotal)||(Number(item.preco)*(Number(item.quantidade)||1))||0);
 
+            // Tentar inferir categoria a partir do produto cadastrado
+            let pDb = produtos.find(p => p.nome === nome);
+            let cat = pDb ? (pDb.categoria || 'Geral') : 'Desconhecida';
+            if(!categVendidas[cat]) categVendidas[cat]={qtd:0,receita:0};
+            categVendidas[cat].qtd += (Number(item.quantidade)||1);
+            categVendidas[cat].receita += (Number(item.subtotal)||(Number(item.preco)*(Number(item.quantidade)||1))||0);
+        });
+    });
+    var topProdTexto = Object.entries(prodVendidos).sort(function(a,b){return b[1].receita-a[1].receita;}).slice(0,20)
+        .map(function(e,i){return '  '+(i+1)+'. '+e[0]+': '+e[1].qtd+' un = R$ '+e[1].receita.toFixed(2);}).join('\n');
+    
+    var categTexto = Object.entries(categVendidas).sort(function(a,b){return b[1].receita-a[1].receita;}).slice(0,10)
+        .map(function(e,i){return '  '+(i+1)+'. '+e[0]+': '+e[1].qtd+' itens = R$ '+e[1].receita.toFixed(2);}).join('\n');
 
+    var clienteCompras = {};
+    vendas.forEach(function(v){
+        var nome = v.cliente||v.nomeCliente||'Consumidor Final';
+        if(!clienteCompras[nome]) clienteCompras[nome]={qtd:0,total:0,ultima:v.data||''};
+        clienteCompras[nome].qtd++; clienteCompras[nome].total+=(Number(v.tot||v.total||v.valor)||0);
+        if((v.data||'')>clienteCompras[nome].ultima) clienteCompras[nome].ultima=v.data;
+    });
+    var topClientesTexto = Object.entries(clienteCompras).sort(function(a,b){return b[1].total-a[1].total;}).slice(0,15)
+        .map(function(e,i){return '  '+(i+1)+'. '+e[0]+': '+e[1].qtd+' compras = R$ '+e[1].total.toFixed(2)+' | Ticket: R$ '+(e[1].total/e[1].qtd).toFixed(2)+' | Ultima: '+e[1].ultima;}).join('\n');
 
+    var inativos60 = Object.entries(clienteCompras).filter(function(e){
+        if(!e[1].ultima||e[0]==='Consumidor Final') return false;
+        var parts = e[1].ultima.split('/');
+        var ultima = parts.length===3 ? new Date(parts[2],parts[1]-1,parts[0]) : new Date(e[1].ultima);
+        return ((hoje-ultima)/(86400000)) > 60;
+    }).slice(0,10).map(function(e){return '  - '+e[0]+': ultima '+e[1].ultima+', total R$ '+e[1].total.toFixed(2);}).join('\n');
 
+    var vendedores = {};
+    vendas.forEach(function(v){
+        var vend = v.vendedor||v.operador||'Sem vendedor';
+        if(!vendedores[vend]) vendedores[vend]={qtd:0,total:0};
+        vendedores[vend].qtd++; vendedores[vend].total+=(Number(v.tot||v.total||v.valor)||0);
+    });
+    var vendedoresTexto = Object.entries(vendedores).sort(function(a,b){return b[1].total-a[1].total;})
+        .map(function(e){return '  - '+e[0]+': '+e[1].qtd+' vendas = R$ '+e[1].total.toFixed(2)+' | Ticket: R$ '+(e[1].total/e[1].qtd).toFixed(2);}).join('\n');
 
+    var estoqueBaixo = produtos.filter(function(p){return (Number(p.estoque)||0)<=(Number(p.estoqueMin)||0);}).slice(0,15)
+        .map(function(p){return '  - '+p.nome+': '+p.estoque+' un (min: '+(p.estoqueMin||0)+')';}).join('\n');
+    var valorEstoqueTotal = produtos.reduce(function(a,p){return a+((Number(p.estoque)||0)*(Number(p.custo)||0));},0);
+
+    var fornecedores = {};
+    (compras||[]).forEach(function(c){
+        var forn=c.fornecedor||'Desconhecido';
+        if(!fornecedores[forn]) fornecedores[forn]={qtd:0,total:0};
+        fornecedores[forn].qtd++; fornecedores[forn].total+=(Number(c.total)||0);
+    });
+    var fornTexto = Object.entries(fornecedores).sort(function(a,b){return b[1].total-a[1].total;}).slice(0,10)
+        .map(function(e){return '  - '+e[0]+': '+e[1].qtd+' pedidos = R$ '+e[1].total.toFixed(2);}).join('\n');
+
+    var fiados = financeiroTodos.filter(function(f){return f.tipo==='RECEITA'&&f.status==='PENDENTE'&&(f.formaPagamento==='Fiado'||(f.descricao||'').toLowerCase().includes('fiado'));});
+    var totalFiado = fiados.reduce(function(a,f){return a+(Number(f.valor)||0);},0);
+
+    return '\n=== DADOS DO SISTEMA FC GESTAO ===\nPERIODO ANALISADO: '+txtPeriodo+'\nData de hoje: '+hoje.toLocaleDateString('pt-BR')+
+    '\n\n--- DRE RESUMIDA DO PERIODO ---\nReceita Bruta: R$ '+fatTotal.toFixed(2)+
+    '\nDeducoes/Taxas Maquininha: R$ '+taxasTotal.toFixed(2)+
+    '\nReceita Liquida: R$ '+recLiquida.toFixed(2)+
+    '\nCMV (Custo Mercadoria): R$ '+cmvTotal.toFixed(2)+
+    '\nLucro Bruto: R$ '+lucroBruto.toFixed(2)+
+    '\nDespesas Operacionais Pagas: R$ '+despesasOperacionais.toFixed(2)+
+    '\nImpostos Pagos: R$ '+impostosTotal.toFixed(2)+
+    '\nLucro Real (DRE): R$ '+lucroReal.toFixed(2)+
+    '\nTicket Medio: R$ '+ticketMedio.toFixed(2)+
+    '\n\n--- INADIMPLENCIA E COMPROMISSOS (GERAL) ---\nContas Pagar Pendentes: R$ '+despesasPendentes.toFixed(2)+
+    '\nContas Receber Pendentes: R$ '+receitasPendentes.toFixed(2)+'\nFiado Pendente (Subconjunto de Receber): R$ '+totalFiado.toFixed(2)+
+    '\nValor Estoque Total Atual: R$ '+valorEstoqueTotal.toFixed(2)+
+    '\n\n--- FORMAS DE PAGAMENTO NO PERIODO ---\n'+(pagamentosTexto||'Sem dados')+
+    '\n\n--- VENDAS POR CATEGORIA NO PERIODO ---\n'+(categTexto||'Sem dados')+
+    '\n\n--- TOP 20 PRODUTOS VENDIDOS NO PERIODO ---\n'+(topProdTexto||'Sem dados')+
+    '\n\n--- TOP 15 CLIENTES NO PERIODO ---\n'+(topClientesTexto||'Sem dados')+
+    '\n\n--- CLIENTES INATIVOS (+60 DIAS SEM COMPRAR) ---\n'+(inativos60||'Nenhum')+
+    '\n\n--- DESEMPENHO VENDEDORES NO PERIODO ---\n'+(vendedoresTexto||'Sem dados')+
+    '\n\n--- ESTOQUE CRITICO (GERAL) ---\n'+(estoqueBaixo||'Nenhum critico')+
+    '\n\n--- COMPRAS FORNECEDORES NO PERIODO ---\n'+(fornTexto||'Sem compras');
+}
+
+async function gerarRelatorioComIA(descricaoRelatorio) {
+    var divRes = document.getElementById('ia-rel-resultado');
+    if (!divRes) return;
+    divRes.innerHTML = '<div class="flex flex-col items-center justify-center py-10"><div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center mb-4"><i class="fa-solid fa-brain text-white text-2xl animate-pulse"></i></div><p class="text-slate-200 font-semibold text-sm mb-1">Analisando seus dados em tempo real...</p><p class="text-slate-500 text-xs">Coletando vendas, estoque, clientes, financeiro...</p><div class="mt-4 flex gap-1.5"><span class="w-2 h-2 rounded-full bg-violet-400 animate-bounce"></span><span class="w-2 h-2 rounded-full bg-violet-400 animate-bounce" style="animation-delay:150ms"></span><span class="w-2 h-2 rounded-full bg-violet-400 animate-bounce" style="animation-delay:300ms"></span></div></div>';
+    var inputLivre = document.getElementById('ia-rel-pergunta-livre');
+    var btnLivre = document.getElementById('btn-ia-rel-livre');
+    if (inputLivre) inputLivre.disabled = true;
+    if (btnLivre) { btnLivre.disabled = true; btnLivre.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+    try {
+        var contextoDados = coletarDadosCompletosParaIA();
+        var prompt = 'Voce e um analista de negocios experiente de uma loja de varejo brasileira chamada FC Gestao.\nAbaixo estao os dados reais do sistema de gestao desta loja. Com base nesses dados, realize a seguinte tarefa:\n\nTAREFA: '+descricaoRelatorio+'\n\nDADOS DO SISTEMA:\n'+contextoDados+'\n\nINSTRUCOES:\n- Use os dados reais fornecidos para embasar TODA a analise.\n- Se um dado nao estiver disponivel, informe claramente.\n- Organize a resposta em secoes com titulos claros.\n- Use tabelas quando apresentar rankings ou comparacoes.\n- Destaque pontos importantes em **negrito**.\n- Forneca insights praticos e acionaveis.\n- Seja objetivo, direto e profissional.\n- Escreva em Portugues do Brasil.\n- Ao final, adicione uma secao com 2-3 Recomendacoes Praticas baseadas nos dados.';
+        var resposta = await chamarGemini(prompt);
+        if (resposta) {
+            renderizarRelatorioIA(resposta);
+            if (typeof showToast === 'function') showToast('Relatorio gerado com sucesso!', 'success');
+            
+            // Salvar no Historico
+            if (typeof firestore !== 'undefined') {
+                firestore.collection('relatorios_ia_historico').add({
+                    pergunta: descricaoRelatorio,
+                    resposta: resposta,
+                    dataGeracao: new Date().toISOString()
+                }).catch(function(err){ console.error('Erro ao salvar historico:', err); });
+            }
+        } else {
+            divRes.innerHTML = '<div class="flex flex-col items-center py-8"><i class="fa-solid fa-triangle-exclamation text-4xl text-amber-400 mb-3"></i><p class="text-slate-300 font-semibold text-sm mb-1">Nao foi possivel gerar o relatorio</p><p class="text-slate-500 text-xs text-center">Verifique se voce configurou a <strong class="text-slate-300">Chave API do Gemini</strong> em <strong class="text-slate-300">Sistema -> Configuracoes -> Inteligencia Artificial</strong>.</p></div>';
+        }
+    } catch(e) {
+        console.error('Erro ao gerar relatorio com IA:', e);
+        divRes.innerHTML = '<div class="p-4 text-center text-red-400 text-sm"><i class="fa-solid fa-xmark mr-2"></i>Erro: '+(e.message||'Tente novamente')+'</div>';
+    } finally {
+        if (inputLivre) inputLivre.disabled = false;
+        if (btnLivre) { btnLivre.disabled = false; btnLivre.innerHTML = '<i class="fa-solid fa-paper-plane"></i><span class="hidden sm:inline">Perguntar</span>'; }
+    }
+}
+
+async function gerarRelatorioLivre() {
+    var input = document.getElementById('ia-rel-pergunta-livre');
+    if (!input) return;
+    var pergunta = input.value.trim();
+    if (!pergunta) { if (typeof showToast === 'function') showToast('Digite sua pergunta antes de enviar.', 'warning'); return; }
+    input.value = '';
+    await gerarRelatorioComIA(pergunta);
+}
+
+function renderizarRelatorioIA(resposta) {
+    var divRes = document.getElementById('ia-rel-resultado');
+    if (!divRes) return;
+    
+    // Armazena o texto puro no data-raw decodificando aspas para os botoes de copiar/baixar
+    divRes.setAttribute('data-raw', resposta.replace(/"/g, '&quot;'));
+
+    var html = resposta
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/\*\*(.+?)\*\*/g,'<strong class="text-white">$1</strong>')
+        .replace(/\*(.+?)\*/g,'<em class="text-slate-300">$1</em>')
+        .replace(/^###\s+(.+)$/gm,'<h4 class="text-violet-300 font-bold text-sm mt-5 mb-2">$1</h4>')
+        .replace(/^##\s+(.+)$/gm,'<h3 class="text-violet-200 font-bold text-base mt-6 mb-2 border-b border-slate-700 pb-2">$1</h3>')
+        .replace(/^#\s+(.+)$/gm,'<h2 class="text-white font-bold text-lg mt-6 mb-3">$1</h2>')
+        .replace(/^---$/gm,'<hr class="border-slate-700 my-4">');
+
+    // Parse de Tabelas Markdown
+    html = html.replace(/(?:^[^\n]*\|[^\n]*\n?)+/gm, function(match) {
+        if (!match.includes('|')) return match;
+        var rows = match.trim().split('\n');
+        var tableHtml = '<div class="overflow-x-auto my-5 rounded-lg border border-slate-700"><table class="w-full text-left border-collapse text-sm text-slate-300">';
+        var hasHeaders = false;
+        rows.forEach(function(row, index) {
+            if (row.match(/^[\s\|:\-]+$/)) return;
+            var cells = row.split('|');
+            if(cells.length > 0 && cells[0].trim() === '') cells.shift();
+            if(cells.length > 0 && cells[cells.length-1].trim() === '') cells.pop();
+            
+            tableHtml += '<tr class="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">';
+            cells.forEach(function(cell) {
+                var isHeader = (index === 0);
+                var tag = isHeader ? 'th' : 'td';
+                var cls = isHeader ? 'px-4 py-3 text-violet-300 font-semibold text-xs uppercase tracking-wider bg-slate-800/50' : 'px-4 py-2.5';
+                tableHtml += '<' + tag + ' class="' + cls + '">' + cell.trim() + '</' + tag + '>';
+            });
+            tableHtml += '</tr>';
+        });
+        tableHtml += '</table></div>';
+        return tableHtml;
+    });
+
+    // Parse de Listas
+    html = html.replace(/^[•\-]\s+(.+)$/gm,'<li class="flex gap-2 items-start text-slate-200 text-sm mt-1.5"><span class="text-violet-400 mt-0.5"><i class="fa-solid fa-circle text-[8px]"></i></span><span>$1</span></li>')
+        .replace(/^(\d+)\.\s+(.+)$/gm,'<li class="flex gap-2 items-start text-slate-200 text-sm mt-1.5"><span class="text-violet-300 font-bold shrink-0 mt-0.5">$1.</span><span>$2</span></li>')
+        .replace(/\n\n/g,'</p><p class="text-slate-300 text-sm mb-3">')
+        .replace(/\n/g,'<br>');
+
+    // Limpeza de <br> excedentes perto das tabelas
+    html = html.replace(/<br><div class="overflow-x-auto/g, '<div class="overflow-x-auto').replace(/<\/div><br>/g, '</div>');
+
+    // Botões de Ação
+    var botoes = `
+        <div class="mt-8 pt-4 border-t border-slate-700/50 flex flex-wrap gap-2 justify-end">
+            <button onclick="copiarRelatorioIA()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-2 rounded border border-slate-600 transition-all flex items-center gap-1.5">
+                <i class="fa-regular fa-copy"></i> Copiar
+            </button>
+            <button onclick="baixarRelatorioTXT()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-2 rounded border border-slate-600 transition-all flex items-center gap-1.5" title="Texto">
+                <i class="fa-solid fa-file-lines text-slate-400"></i> .TXT
+            </button>
+            <button onclick="baixarRelatorioPlanilha()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-2 rounded border border-slate-600 transition-all flex items-center gap-1.5" title="Excel">
+                <i class="fa-solid fa-file-excel text-green-500"></i> Planilha
+            </button>
+            <button onclick="baixarRelatorioWord()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-2 rounded border border-slate-600 transition-all flex items-center gap-1.5" title="Word">
+                <i class="fa-solid fa-file-word text-blue-500"></i> Word
+            </button>
+            <button onclick="window.print()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-2 rounded border border-slate-600 transition-all flex items-center gap-1.5">
+                <i class="fa-solid fa-print text-emerald-400"></i> Imprimir
+            </button>
+        </div>
+    `;
+
+    divRes.innerHTML = '<div><div class="flex items-center justify-between gap-3 mb-5 pb-3 border-b border-slate-700/50"><div class="flex items-center gap-2"><i class="fa-solid fa-file-lines text-violet-400 text-base"></i><span class="text-xs font-bold text-slate-300 uppercase tracking-wide">Relatório Inteligente (Gerado por IA)</span></div><span class="text-xs text-slate-500">'+new Date().toLocaleString('pt-BR')+'</span></div><div class="text-slate-200 text-sm leading-relaxed space-y-1" id="ia-rel-conteudo-html"><p class="text-slate-200 text-sm mb-2">'+html+'</p></div>'+botoes+'</div>';
+}
+
+function baixarRelatorioWord() {
+    var divRes = document.getElementById('ia-rel-conteudo-html');
+    if (!divRes) return;
+    
+    // Constrói um HTML simples suportado pelo Word
+    var header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>";
+    header += "<head><meta charset='utf-8'><title>Relatório IA - FC Gestão</title>";
+    header += "<style>";
+    header += "body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; }";
+    header += "h2 { color: #2E1B4E; font-size: 16pt; margin-top: 15pt; margin-bottom: 5pt; }";
+    header += "h3 { color: #4B2885; font-size: 14pt; margin-top: 10pt; margin-bottom: 5pt; border-bottom: 1px solid #CCC; padding-bottom: 2pt; }";
+    header += "h4 { color: #643EAC; font-size: 12pt; margin-top: 10pt; margin-bottom: 2pt; }";
+    header += "table { border-collapse: collapse; width: 100%; margin-top: 10pt; margin-bottom: 10pt; }";
+    header += "th, td { border: 1px solid #999; padding: 5pt; text-align: left; }";
+    header += "th { background-color: #E8E0F5; font-weight: bold; }";
+    header += "p, li { line-height: 1.5; }";
+    header += "</style></head><body>";
+    
+    var htmlContent = divRes.innerHTML;
+    // O Word se perde com algumas classes do tailwind, mas o CSS injetado acima contorna,
+    // e o formato das tags é padrão (h2, h3, h4, table, tr, th, td, p, li)
+    
+    var footer = "</body></html>";
+    var sourceHTML = header + htmlContent + footer;
+    
+    var source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
+    var fileDownload = document.createElement("a");
+    document.body.appendChild(fileDownload);
+    fileDownload.href = source;
+    fileDownload.download = 'Relatorio_IA_FC_Gestao_' + Date.now() + '.doc';
+    fileDownload.click();
+    document.body.removeChild(fileDownload);
+}
+
+function baixarRelatorioPlanilha() {
+    var divRes = document.getElementById('ia-rel-resultado');
+    if (!divRes) return;
+    var texto = divRes.getAttribute('data-raw') || '';
+    if (!texto) return;
+
+    var linhas = texto.split('\\n');
+    var csv = [];
+    var dentroDaTabela = false;
+
+    linhas.forEach(function(linha) {
+        linha = linha.trim();
+        // Converte tabelas Markdown para CSV
+        if (linha.startsWith('|')) {
+            if (linha.match(/^[\\s\\|:\\-]+$/)) return; // ignora linha de formatação markdown
+            dentroDaTabela = true;
+            var colunas = linha.split('|');
+            // Remove primeiro e último que são vazios em markdown
+            if (colunas.length > 0 && colunas[0].trim() === '') colunas.shift();
+            if (colunas.length > 0 && colunas[colunas.length-1].trim() === '') colunas.pop();
+            
+            var csvRow = colunas.map(function(c) {
+                var limpa = c.trim().replace(/\"/g, '""'); // escapa aspas
+                return '"' + limpa + '"';
+            });
+            csv.push(csvRow.join(';')); // Usa ponto-e-vírgula para excel PT-BR
+        } else {
+            // Se não for tabela, insere como texto numa única célula para contexto
+            if (linha !== '') {
+                // Remove formatação de negrito e itálico do texto
+                var limpa = linha.replace(/\\*\\*(.*?)\\*\\*/g, '$1').replace(/\\*(.*?)\\*/g, '$1');
+                csv.push('"' + limpa.replace(/\"/g, '""') + '"');
+            } else if (dentroDaTabela) {
+                // Adiciona espaço após a tabela
+                csv.push('');
+                dentroDaTabela = false;
+            }
+        }
+    });
+
+    // Inserir BOM (Byte Order Mark) para o Excel reconhecer UTF-8
+    var blob = new Blob(["\\uFEFF" + csv.join('\\r\\n')], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement("a");
+    link.href = url;
+    link.download = 'Relatorio_IA_FC_Gestao_' + Date.now() + '.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 100);
+}
+
+async function carregarHistoricoRelatoriosIA() {
+    var list = document.getElementById('ia-historico-lista');
+    if (!list) return;
+    list.innerHTML = '<div class="text-center py-4 text-slate-400 text-sm"><i class="fa-solid fa-spinner fa-spin"></i> Carregando histórico...</div>';
+    try {
+        if (typeof firestore === 'undefined') {
+            list.innerHTML = '<div class="text-center py-4 text-red-400 text-sm">Banco de dados indisponível.</div>';
+            return;
+        }
+        var trintaDiasAtras = new Date();
+        trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
+        
+        var snap = await firestore.collection('relatorios_ia_historico')
+            .where('dataGeracao', '>=', trintaDiasAtras.toISOString())
+            .orderBy('dataGeracao', 'desc')
+            .get();
+            
+        if (snap.empty) {
+            list.innerHTML = '<div class="text-center py-6 text-slate-400 text-sm"><i class="fa-solid fa-clock-rotate-left mb-2 text-2xl text-slate-500 block"></i>Nenhum relatório salvo nos últimos 30 dias.</div>';
+            return;
+        }
+        
+        var html = '';
+        snap.forEach(function(doc) {
+            var data = doc.data();
+            var d = new Date(data.dataGeracao);
+            var titulo = (data.pergunta || 'Relatório Geral').substring(0, 60) + (data.pergunta && data.pergunta.length > 60 ? '...' : '');
+            
+            html += '<div class="bg-slate-800 border border-slate-700 rounded-lg p-4 mb-3 hover:border-violet-500 transition-colors cursor-pointer" onclick="verRelatorioHistorico(\''+doc.id+'\')">';
+            html += '<div class="flex justify-between items-start mb-2">';
+            html += '<h4 class="text-slate-200 font-semibold text-sm leading-tight">'+titulo+'</h4>';
+            html += '<span class="text-xs text-slate-500 whitespace-nowrap ml-2">'+d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'</span>';
+            html += '</div>';
+            html += '<div class="text-xs text-slate-400 truncate">'+(data.resposta||'').substring(0, 80)+'...</div>';
+            html += '<textarea id="hist-raw-'+doc.id+'" class="hidden">'+(data.resposta||'').replace(/</g,'&lt;')+'</textarea>';
+            html += '</div>';
+        });
+        list.innerHTML = html;
+    } catch(e) {
+        console.error('Erro historico IA:', e);
+        list.innerHTML = '<div class="text-center py-4 text-red-400 text-sm">Erro ao carregar histórico.</div>';
+    }
+}
+
+function verRelatorioHistorico(id) {
+    var rawEl = document.getElementById('hist-raw-'+id);
+    if (!rawEl) return;
+    renderizarRelatorioIA(rawEl.value);
+    // Volta pra aba principal
+    mudarAbaRelIA('vendas');
+}
+
+function mudarAbaRelIA(aba) {
+    document.querySelectorAll('.ia-chips-area').forEach(function(el){el.classList.add('hidden');});
+    var chips = document.getElementById('ia-chips-'+aba);
+    if (chips) chips.classList.remove('hidden');
+    document.querySelectorAll('.ia-rel-tab').forEach(function(btn){
+        btn.classList.remove('border-violet-500','text-violet-300');
+        btn.classList.add('border-transparent','text-slate-400');
+    });
+    var tab = document.getElementById('ia-tab-'+aba);
+    if (tab) { tab.classList.remove('border-transparent','text-slate-400'); tab.classList.add('border-violet-500','text-violet-300'); }
+}
+
+window.copiarRelatorioIA = function() {
+    var raw = document.getElementById('ia-rel-resultado').getAttribute('data-raw');
+    if(!raw) return;
+    raw = raw.replace(/&quot;/g, '"');
+    navigator.clipboard.writeText(raw).then(function(){
+        if(typeof showToast === 'function') showToast('Relatório copiado para a área de transferência!', 'success');
+        else alert('Relatório copiado para a área de transferência!');
+    });
+};
+
+window.baixarRelatorioTXT = function() {
+    var raw = document.getElementById('ia-rel-resultado').getAttribute('data-raw');
+    if(!raw) return;
+    raw = raw.replace(/&quot;/g, '"');
+    var blob = new Blob([raw], { type: 'text/plain;charset=utf-8' });
+    var link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    var dateStr = new Date().toISOString().split('T')[0];
+    link.download = 'Relatorio_IA_FC_Gestao_' + dateStr + '.txt';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+
+window.gerarRelatorioComIA = gerarRelatorioComIA;
+window.gerarRelatorioLivre = gerarRelatorioLivre;
+window.renderizarRelatorioIA = renderizarRelatorioIA;
+window.mudarAbaRelIA = mudarAbaRelIA;
+window.coletarDadosCompletosParaIA = coletarDadosCompletosParaIA;

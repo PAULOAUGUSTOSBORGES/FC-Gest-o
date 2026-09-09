@@ -375,7 +375,7 @@ function renderizarCategorias() {
     container.appendChild(divTodas);
 
     // Renderiza cada Subcategoria diretamente como categoria de exploração
-    Array.from(subcategoriasUnicas).sort().forEach(sub => {
+    Array.from(subcategoriasUnicas).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' })).forEach(sub => {
         const div = document.createElement('div');
         div.className = 'flex flex-col items-center gap-3 cursor-pointer group shrink-0';
         div.onclick = () => { 
@@ -461,6 +461,8 @@ function renderProdutos() {
 
         return matchSubcategoria && matchBusca;
     });
+
+    produtosFiltrados.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
 
     // Atualiza badge e status de filtro ativo
     const temFiltroAtivo = subcategoriaAtiva !== 'Todas' || termoBusca !== '';

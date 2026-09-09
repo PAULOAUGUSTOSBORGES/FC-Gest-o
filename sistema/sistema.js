@@ -3,7 +3,36 @@
 // ==========================================
 
 function inicializarSistema() {
+    // 1. Tenta preencher a tela imediatamente com o que já estiver no db.config
     carregarConfiguracoesNaTela();
+
+    // 2. Conecta listener em tempo real com suporte a cache para fc_moveis/config:
+    // Se o cache for válido, o callback roda na mesma hora.
+    // Assim que o Firestore sincronizar ou mudar, a tela se atualiza automaticamente!
+    const _listenDoc = (typeof window.fcListenDoc === 'function') ? window.fcListenDoc : function(col, id, cb) {
+        return firestore.collection(col).doc(id).onSnapshot(doc => cb(doc.exists ? doc.data() : null));
+    };
+
+    _listenDoc('fc_moveis', 'config', function(dados) {
+        if (dados) {
+            db.config = {
+                ...db.config,
+                ...dados,
+                empresa: { ...(db.config?.empresa || {}), ...(dados.empresa || {}) },
+                taxas: dados.taxas || db.config?.taxas,
+                prazos: dados.prazos || db.config?.prazos,
+                loja: { ...(db.config?.loja || {}), ...(dados.loja || {}) }
+            };
+            if (typeof window.FCCache !== 'undefined') {
+                window.FCCache.set('fc_moveis_config', db.config);
+            }
+            carregarConfiguracoesNaTela();
+            if (typeof aplicarIdentidadeVisualGlobal === 'function') {
+                aplicarIdentidadeVisualGlobal();
+            }
+        }
+    });
+
     carregarCategorias();
     
     // Configura sincronização do color picker
@@ -103,6 +132,9 @@ window.atualizarCardsTemaTela = function(tema) {
 // BUSCA AUTOMÁTICA DE CNPJ NA RECEITA
 // ==========================================
 async function formatarEBuscarCNPJ(input) {
+    if (!input) input = document.getElementById('emp-cnpj');
+    if (!input) return;
+
     // Aplica máscara visual
     let valor = input.value.replace(/\D/g, '');
     if (valor.length > 14) valor = valor.slice(0, 14);
@@ -123,20 +155,25 @@ async function formatarEBuscarCNPJ(input) {
             if (response.ok) {
                 const data = await response.json();
                 
-                // Preenche Nome Fantasia ou Razão Social
-                document.getElementById('emp-nome').value = data.nome_fantasia || data.razao_social || '';
+                // Preenche Razão Social e Nome Fantasia
+                const elRazao = document.getElementById('emp-nome');
+                const elFantasia = document.getElementById('emp-fantasia');
+                if (elRazao) elRazao.value = data.razao_social || data.nome_fantasia || '';
+                if (elFantasia) elFantasia.value = data.nome_fantasia || data.razao_social || '';
                 
                 // Preenche Telefone com DDD
-                if(data.ddd_telefone_1) document.getElementById('emp-telefone').value = data.ddd_telefone_1;
+                if (data.ddd_telefone_1 && document.getElementById('emp-telefone')) {
+                    document.getElementById('emp-telefone').value = data.ddd_telefone_1;
+                }
                 
                 // Preenche Endereço formatado e outros campos
-                if(data.cep) document.getElementById('emp-cep').value = data.cep;
-                if(data.logradouro) document.getElementById('emp-rua').value = data.logradouro;
-                if(data.numero) document.getElementById('emp-numero').value = data.numero;
-                if(data.bairro) document.getElementById('emp-bairro').value = data.bairro;
-                if(data.municipio) document.getElementById('emp-cidade').value = data.municipio;
-                if(data.uf) document.getElementById('emp-uf').value = data.uf;
-                if(data.codigo_municipio_ibge) document.getElementById('emp-ibge').value = data.codigo_municipio_ibge;
+                if (data.cep && document.getElementById('emp-cep')) document.getElementById('emp-cep').value = data.cep;
+                if (data.logradouro && document.getElementById('emp-rua')) document.getElementById('emp-rua').value = data.logradouro;
+                if (data.numero && document.getElementById('emp-numero')) document.getElementById('emp-numero').value = data.numero;
+                if (data.bairro && document.getElementById('emp-bairro')) document.getElementById('emp-bairro').value = data.bairro;
+                if (data.municipio && document.getElementById('emp-cidade')) document.getElementById('emp-cidade').value = data.municipio;
+                if (data.uf && document.getElementById('emp-uf')) document.getElementById('emp-uf').value = data.uf;
+                if (data.codigo_municipio_ibge && document.getElementById('emp-ibge')) document.getElementById('emp-ibge').value = data.codigo_municipio_ibge;
                 
                 showToast('Dados da empresa puxados com sucesso!', 'success');
             } else {
@@ -148,6 +185,32 @@ async function formatarEBuscarCNPJ(input) {
         }
     }
 }
+window.formatarEBuscarCNPJ = formatarEBuscarCNPJ;
+
+async function buscarCEPEmpresa(input) {
+    if (!input) input = document.getElementById('emp-cep');
+    if (!input) return;
+    let cep = input.value.replace(/\D/g, '');
+    if (cep.length > 8) cep = cep.slice(0, 8);
+    if (cep.length > 5) input.value = cep.replace(/^(\d{5})(\d)/, "$1-$2");
+    else input.value = cep;
+    
+    if (cep.length === 8) {
+        try {
+            const res = await fetch(`https://brasilapi.com.br/api/cep/v1/${cep}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.street && document.getElementById('emp-rua')) document.getElementById('emp-rua').value = data.street;
+                if (data.neighborhood && document.getElementById('emp-bairro')) document.getElementById('emp-bairro').value = data.neighborhood;
+                if (data.city && document.getElementById('emp-cidade')) document.getElementById('emp-cidade').value = data.city;
+                if (data.state && document.getElementById('emp-uf')) document.getElementById('emp-uf').value = data.state;
+                if (document.getElementById('emp-numero')) document.getElementById('emp-numero').focus();
+                showToast('Endereço preenchido pelo CEP!', 'success');
+            }
+        } catch(e) { console.error("Erro ao buscar CEP:", e); }
+    }
+}
+window.buscarCEPEmpresa = buscarCEPEmpresa;
 
 function carregarConfiguracoesNaTela() {
     if (!db.config) db.config = {};
@@ -206,23 +269,32 @@ function carregarConfiguracoesNaTela() {
         };
         setPrazo('prazo-fiado', 'Fiado', 30);
         setPrazo('prazo-boleto', 'Boleto', 30);
-        setPrazo('prazo-credito', 'Cartão Crédito', 1);
-        setPrazo('prazo-debito', 'Cartão Débito', 1);
+        const pCred = db.config.prazos['Cartão Crédito'] !== undefined ? db.config.prazos['Cartão Crédito'] : (db.config.prazos['Cartao Credito'] !== undefined ? db.config.prazos['Cartao Credito'] : 1);
+        const elPCred = document.getElementById('prazo-credito');
+        if (elPCred) elPCred.value = pCred;
+
+        const pDeb = db.config.prazos['Cartão Débito'] !== undefined ? db.config.prazos['Cartão Débito'] : (db.config.prazos['Cartao Debito'] !== undefined ? db.config.prazos['Cartao Debito'] : 1);
+        const elPDeb = document.getElementById('prazo-debito');
+        if (elPDeb) elPDeb.value = pDeb;
     }
 
     // Carrega as 12 Taxas Separadas
     if (db.config.taxas) {
         if (document.getElementById('tx-boleto-custo')) {
-            document.getElementById('tx-boleto-custo').value = db.config.custoBoleto || 0;
+            const valBoleto = db.config.custoBoleto !== undefined ? db.config.custoBoleto : 0;
+            document.getElementById('tx-boleto-custo').value = typeof formatMoneyInput === 'function' ? formatMoneyInput(valBoleto) : valBoleto;
         }
-        if (document.getElementById('tx-deb')) {
-            document.getElementById('tx-deb').value = db.config.taxas['Cartão Débito'] || 0;
+        const txDeb = db.config.taxas['Cartão Débito'] !== undefined ? db.config.taxas['Cartão Débito'] : db.config.taxas['Cartao Debito'];
+        if (document.getElementById('tx-deb') && txDeb !== undefined) {
+            document.getElementById('tx-deb').value = typeof formatMoneyInput === 'function' ? formatMoneyInput(txDeb) : txDeb;
         }
-        if (db.config.taxas['Cartão Crédito']) {
+        const txCred = db.config.taxas['Cartão Crédito'] || db.config.taxas['Cartao Credito'];
+        if (txCred) {
             for (let i = 1; i <= 12; i++) {
                 const elTaxa = document.getElementById('tx-c' + i);
                 if (elTaxa) {
-                    elTaxa.value = db.config.taxas['Cartão Crédito'][i] || 0;
+                    const valCred = txCred[i] !== undefined ? txCred[i] : (txCred[String(i)] !== undefined ? txCred[String(i)] : 0);
+                    elTaxa.value = typeof formatMoneyInput === 'function' ? formatMoneyInput(valCred) : valCred;
                 }
             }
         }
@@ -247,6 +319,7 @@ function carregarConfiguracoesNaTela() {
         }
     }
 }
+window.carregarConfiguracoesNaTela = carregarConfiguracoesNaTela;
 
 function processarLogoEmpresa(event) {
     const file = event.target.files[0]; if(!file) return; const reader = new FileReader();
@@ -333,8 +406,13 @@ async function salvarConfiguracoes() {
 
     try {
         await firestore.collection('fc_moveis').doc('config').set(db.config, { merge: true });
-        // Tema forçado, não é necessário salvar no localStorage
-        localStorage.setItem('sistema_tema', 'escuro');
+        if (typeof window.FCCache !== 'undefined') {
+            window.FCCache.set('fc_moveis_config', db.config);
+        }
+        if (typeof aplicarIdentidadeVisualGlobal === 'function') {
+            aplicarIdentidadeVisualGlobal();
+        }
+        localStorage.setItem('fc_theme_sistema', temaEscolhido);
         showToast('Configurações salvas com sucesso!', 'success');
         setTimeout(() => { window.location.reload(); }, 800);
     } catch(err) {
@@ -347,15 +425,15 @@ async function salvarConfiguracoes() {
 // GESTÃO DE CATEGORIAS E SUBCATEGORIAS
 // ==========================================
 
-async function carregarCategorias() {
-    try {
-        const snap = await firestore.collection("categorias").get();
-        db.categorias = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+function carregarCategorias() {
+    const _listen = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb) {
+        return firestore.collection(col).onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    };
+
+    _listen('categorias', function(dados) {
+        db.categorias = dados || [];
         renderCategorias();
-    } catch (err) {
-        console.error("Erro ao carregar categorias:", err);
-        showToast("Erro ao carregar: " + (err.message || err.code || err), "error");
-    }
+    });
 }
 
 function renderCategorias() {

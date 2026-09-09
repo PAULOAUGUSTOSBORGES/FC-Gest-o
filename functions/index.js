@@ -1,4 +1,4 @@
-﻿const functions = require("firebase-functions");
+const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const axios = require("axios");
 
@@ -16,10 +16,39 @@ const FOCUS_NFE_API_URL = "https://api.focusnfe.com.br/v2/nfce";
  * Função para Emitir NFC-e (Cupom Fiscal)
  * Chamada pelo Frontend passando { vendaId: '...' }
  */
+exports.chamarGemini = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
+    
+    // Validar se tem permissão (Admin, Gestão ou Marketing)
+    const funcSnap = await db.collection("funcionarios").doc(context.auth.uid).get();
+    const isPermitido = funcSnap.exists && (funcSnap.data().isAdmin || funcSnap.data().perm_gestao);
+    if (!isPermitido) throw new functions.https.HttpsError("permission-denied", "Sem permissão para usar IA.");
+
+    const configSnap = await db.collection("fc_moveis").doc("config").get();
+    const configGemini = configSnap.data()?.geminiApiKey;
+    if (!configGemini) throw new functions.https.HttpsError("failed-precondition", "API Key não configurada.");
+
+    try {
+        const res = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${configGemini}`, {
+            contents: [{ parts: [{ text: data.prompt }] }]
+        });
+        return res.data.candidates?.[0]?.content?.parts?.[0]?.text || "Resposta indisponível.";
+    } catch (e) {
+        throw new functions.https.HttpsError("internal", "Falha ao chamar API.");
+    }
+});
+
 exports.emitirNFCe = functions.https.onCall(async (data, context) => {
     // Validação de autenticação
     if (!context.auth) {
         throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
+    }
+    
+    // Validação de permissão (Correção Crítica)
+    const funcSnap = await db.collection("funcionarios").doc(context.auth.uid).get();
+    const hasPerm = funcSnap.exists && (funcSnap.data().isAdmin || funcSnap.data().perm_pdv || funcSnap.data().perm_gestao);
+    if (!hasPerm) {
+        throw new functions.https.HttpsError("permission-denied", "Sem permissão para emitir NFC-e.");
     }
 
     try {

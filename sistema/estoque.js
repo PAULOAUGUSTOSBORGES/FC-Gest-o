@@ -33,46 +33,53 @@ function mudarVisaoLocal(viewId) {
 }
 
 function inicializarCadastro() {
-    // Liga os listeners do Firestore
-    unsubProdutos = firestore.collection('produtos').onSnapshot(snap => {
-        db.produtos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // Liga os listeners do Firestore com cache inteligente (FCCache)
+    // Se houver dados em cache, a tela carrega instantaneamente antes do Firebase responder.
+    const _listen = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb, opts) {
+        let ref = firestore.collection(col);
+        if (opts && typeof opts.query === 'function') ref = opts.query(ref);
+        return ref.onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    };
+
+    unsubProdutos = _listen('produtos', function(dados) {
+        db.produtos = dados;
         const v = document.getElementById('view-produtos');
         if (v && v.classList.contains('active')) renderProdutos();
     });
 
-    unsubClientes = firestore.collection('clientes').onSnapshot(snap => {
-        db.clientes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    unsubClientes = _listen('clientes', function(dados) {
+        db.clientes = dados;
         const v = document.getElementById('view-clientes');
         if (v && v.classList.contains('active')) renderClientes();
     });
 
-    unsubFornecedores = firestore.collection('fornecedores').onSnapshot(snap => {
-        db.fornecedores = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    unsubFornecedores = _listen('fornecedores', function(dados) {
+        db.fornecedores = dados;
         const v = document.getElementById('view-fornecedores');
         if (v && v.classList.contains('active')) renderFornecedores();
     });
 
-    firestore.collection('funcionarios').onSnapshot(snap => {
-        db.funcionarios = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('funcionarios', function(dados) {
+        db.funcionarios = dados;
         if (typeof renderFuncionarios === 'function') renderFuncionarios();
     });
 
-    unsubKardex = firestore.collection('movimentacoes').orderBy('data', 'desc').limit(50).onSnapshot(snap => {
-        db.movimentacoes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    unsubKardex = _listen('movimentacoes', function(dados) {
+        db.movimentacoes = dados;
         const v = document.getElementById('view-estoque');
         if (v && v.classList.contains('active')) renderKardex();
-    });
+    }, { query: function(ref) { return ref.orderBy('data', 'desc').limit(50); } });
 
     // Carrega vendas para exibir histórico de compras do cliente
-    firestore.collection('vendas').onSnapshot(snap => {
-        db.vendas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    _listen('vendas', function(dados) {
+        db.vendas = dados;
     });
 
     // Carrega categorias para o cadastro de produtos
-    firestore.collection('categorias').orderBy('nome').onSnapshot(snap => {
-        db.categorias = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    _listen('categorias', function(dados) {
+        db.categorias = dados;
         if (typeof renderSelectCategorias === 'function') renderSelectCategorias();
-    });
+    }, { query: function(ref) { return ref.orderBy('nome'); } });
 
     const urlParams = new URLSearchParams(window.location.search);
     const view = urlParams.get('view');
@@ -188,13 +195,13 @@ function atualizarOpcoesSubcategoria() {
 // ==========================================
 // PRODUTOS
 // ==========================================
-window.prodSortDirection = null;
+window.prodSortDirection = 'asc';
 
 function toggleSortProdutos() {
-    if (window.prodSortDirection === null || window.prodSortDirection === 'desc') {
-        window.prodSortDirection = 'asc';
-    } else {
+    if (window.prodSortDirection === 'asc') {
         window.prodSortDirection = 'desc';
+    } else {
+        window.prodSortDirection = 'asc';
     }
     renderProdutos();
     const thIcon = document.getElementById('sort-icon-produto');
@@ -221,10 +228,14 @@ function renderProdutos() {
     if (statusFiltro === 'zerado') filtrados = filtrados.filter(p => p.estoque <= 0);
     if (statusFiltro === 'ok') filtrados = filtrados.filter(p => p.estoque > p.min);
 
-    if (window.prodSortDirection === 'asc') {
-        filtrados.sort((a, b) => a.nome.replace(/\s+/g, '').localeCompare(b.nome.replace(/\s+/g, ''), undefined, { numeric: true, sensitivity: 'base' }));
-    } else if (window.prodSortDirection === 'desc') {
-        filtrados.sort((a, b) => b.nome.replace(/\s+/g, '').localeCompare(a.nome.replace(/\s+/g, ''), undefined, { numeric: true, sensitivity: 'base' }));
+    const direcao = window.prodSortDirection || 'asc';
+    if (typeof ordenarListaAlfabeticamente === 'function') {
+        filtrados = ordenarListaAlfabeticamente(filtrados, 'nome', direcao);
+    } else {
+        filtrados.sort((a, b) => {
+            const comp = (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' });
+            return direcao === 'desc' ? -comp : comp;
+        });
     }
 
 
@@ -568,7 +579,12 @@ function excluirProduto(id) {
 // ==========================================
 function renderClientes() {
     const termo = document.getElementById('busca-cliente-lista')?.value.toLowerCase() || '';
-    const filtrados = db.clientes.filter(c => c.nome.toLowerCase().includes(termo) || (c.doc && c.doc.includes(termo)));
+    let filtrados = db.clientes.filter(c => c.nome.toLowerCase().includes(termo) || (c.doc && c.doc.includes(termo)));
+    if (typeof ordenarListaAlfabeticamente === 'function') {
+        filtrados = ordenarListaAlfabeticamente(filtrados, 'nome');
+    } else {
+        filtrados.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+    }
     document.getElementById('tabela-clientes').innerHTML = filtrados.map(c => `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 font-bold text-slate-800 dark:text-slate-100">${c.nome}</td><td class="p-4 text-slate-600 dark:text-slate-300 font-mono">${c.doc || '-'}</td><td class="p-4 text-slate-800 dark:text-slate-100"><i class="fa-brands fa-whatsapp text-emerald-500 mr-1"></i> ${c.wpp || '-'}</td><td class="p-4 text-slate-600 dark:text-slate-300">${c.cidade || '-'}</td><td class="p-4 text-center"><button onclick="editarCliente('${c.id}')" class="text-blue-500 hover:text-blue-700 p-2"><i class="fa-solid fa-pen"></i></button><button onclick="excluirCliente('${c.id}')" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || '<tr><td colspan="5" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum cliente encontrado.</td></tr>';
 }
 
@@ -683,7 +699,13 @@ function excluirCliente(id) {
 // FORNECEDORES
 // ==========================================
 function renderFornecedores() {
-    const termo = document.getElementById('busca-fornecedor-lista')?.value.toLowerCase() || ''; const filtrados = db.fornecedores.filter(f => f.nome.toLowerCase().includes(termo) || (f.doc && f.doc.includes(termo)));
+    const termo = document.getElementById('busca-fornecedor-lista')?.value.toLowerCase() || ''; 
+    let filtrados = db.fornecedores.filter(f => f.nome.toLowerCase().includes(termo) || (f.doc && f.doc.includes(termo)));
+    if (typeof ordenarListaAlfabeticamente === 'function') {
+        filtrados = ordenarListaAlfabeticamente(filtrados, 'nome');
+    } else {
+        filtrados.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+    }
     document.getElementById('tabela-fornecedores').innerHTML = filtrados.map(f => `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 font-bold text-slate-800 dark:text-slate-100">${f.nome}</td><td class="p-4 text-slate-600 dark:text-slate-300 font-mono">${f.doc || f.cnpj || '-'}</td><td class="p-4 text-slate-800 dark:text-slate-100"><i class="fa-solid fa-phone text-blue-500 mr-1"></i> ${f.wpp || '-'}</td><td class="p-4 text-center"><button onclick="editarFornecedor('${f.id}')" class="text-blue-500 hover:text-blue-700 p-2"><i class="fa-solid fa-pen"></i></button><button onclick="excluirFornecedor('${f.id}')" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || '<tr><td colspan="4" class="p-6 text-center text-slate-500 dark:text-slate-400">Sem fornecedores.</td></tr>';
 }
 
