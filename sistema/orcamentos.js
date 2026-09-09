@@ -1596,6 +1596,8 @@ async function finalizarVendaMultipla() {
                 <tr style="background-color: #f1f5f9; border-bottom: 2px solid #000;">
                     <th style="padding: 8px; text-align: left;">Descrição do Item</th>
                     <th style="padding: 8px; text-align: center;">Qtd</th>
+                    <th style="padding: 8px; text-align: right;">V. Unit</th>
+                    <th style="padding: 8px; text-align: center;">Desc.</th>
                     <th style="padding: 8px; text-align: right;">Total</th>
                 </tr>
             </thead>
@@ -1612,7 +1614,9 @@ async function finalizarVendaMultipla() {
                             </div>
                         </td>
                         <td style="padding: 8px; text-align: center;">${i.qtd || 1}</td>
-                        <td style="padding: 8px; text-align: right; font-weight: bold;">${formatMoney((i.preco || 0) * (i.qtd || 1))}</td>
+                        <td style="padding: 8px; text-align: right;">${typeof formatMoney==='function'?formatMoney(i.preco || 0):(i.preco || 0)}</td>
+                        <td style="padding: 8px; text-align: center; white-space: nowrap;">${(i.desconto && i.desconto > 0) ? '- '+(typeof formatMoney==='function'?formatMoney(i.desconto):i.desconto) : '-'}</td>
+                        <td style="padding: 8px; text-align: right; font-weight: bold;">${formatMoney(((i.preco || 0) * (i.qtd || 1)) - (i.desconto || 0))}</td>
                     </tr>
                 `).join('')}
             </tbody>

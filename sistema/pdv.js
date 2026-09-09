@@ -770,15 +770,23 @@ function enviarPDFWhatsApp(id) {
                 <tr style="background-color: #f1f5f9; border-bottom: 2px solid #000;">
                     <th style="padding: 8px; text-align: left;">Descrição do Item</th>
                     <th style="padding: 8px; text-align: center;">Qtd</th>
+                    <th style="padding: 8px; text-align: right;">V. Unit</th>
+                    <th style="padding: 8px; text-align: center;">Desc.</th>
                     <th style="padding: 8px; text-align: right;">Total</th>
                 </tr>
             </thead>
             <tbody>
-                ${(v.itens || []).map(i => `
+                ${(v.itens || []).map(i => {
+                    let pFoto = i.foto;
+                    if (!pFoto && typeof db !== 'undefined' && db.produtos) {
+                        let prod = db.produtos.find(px => String(px.id) === String(i.id));
+                        if (prod && prod.foto) pFoto = prod.foto;
+                    }
+                    return `
                     <tr style="border-bottom: 1px solid #e2e8f0;">
                         <td style="padding: 8px;">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                ${i.foto ? `<img src="${i.foto}" style="width: 30px; height: 30px; object-fit: cover; border-radius: 4px; border: 1px solid #ccc; flex-shrink: 0;">` : ''}
+                                ${pFoto ? `<img src="${pFoto}" style="width: 30px; height: 30px; object-fit: cover; border-radius: 4px; border: 1px solid #ccc; flex-shrink: 0;">` : ''}
                                 <div>
                                     <strong>${i.nome || 'Produto/Serviço'}</strong>
                                     ${i.obsVenda ? `<br><span style="font-size: 11px; color: #475569; font-style: italic;">Obs: ${i.obsVenda}</span>` : ''}
@@ -786,9 +794,12 @@ function enviarPDFWhatsApp(id) {
                             </div>
                         </td>
                         <td style="padding: 8px; text-align: center;">${i.qtd || 1}</td>
-                        <td style="padding: 8px; text-align: right; font-weight: bold;">${formatMoney((i.preco || 0) * (i.qtd || 1))}</td>
+                        <td style="padding: 8px; text-align: right;">${typeof formatMoney==='function'?formatMoney(i.preco || 0):(i.preco || 0)}</td>
+                        <td style="padding: 8px; text-align: center; white-space: nowrap;">${(i.desconto && i.desconto > 0) ? '- '+(typeof formatMoney==='function'?formatMoney(i.desconto):i.desconto) : '-'}</td>
+                        <td style="padding: 8px; text-align: right; font-weight: bold;">${formatMoney(((i.preco || 0) * (i.qtd || 1)) - (i.desconto || 0))}</td>
                     </tr>
-                `).join('')}
+                    `;
+                }).join('')}
             </tbody>
         </table>
 
@@ -1610,6 +1621,8 @@ async function finalizarVendaMultipla() {
                 <tr style="background-color: #f1f5f9; border-bottom: 2px solid #000;">
                     <th style="padding: 8px; text-align: left;">Descrição do Item</th>
                     <th style="padding: 8px; text-align: center;">Qtd</th>
+                    <th style="padding: 8px; text-align: right;">V. Unit</th>
+                    <th style="padding: 8px; text-align: center;">Desc.</th>
                     <th style="padding: 8px; text-align: right;">Total</th>
                 </tr>
             </thead>
@@ -1626,7 +1639,9 @@ async function finalizarVendaMultipla() {
                             </div>
                         </td>
                         <td style="padding: 8px; text-align: center;">${i.qtd || 1}</td>
-                        <td style="padding: 8px; text-align: right; font-weight: bold;">${formatMoney((i.preco || 0) * (i.qtd || 1))}</td>
+                        <td style="padding: 8px; text-align: right;">${typeof formatMoney==='function'?formatMoney(i.preco || 0):(i.preco || 0)}</td>
+                        <td style="padding: 8px; text-align: center; white-space: nowrap;">${(i.desconto && i.desconto > 0) ? '- '+(typeof formatMoney==='function'?formatMoney(i.desconto):i.desconto) : '-'}</td>
+                        <td style="padding: 8px; text-align: right; font-weight: bold;">${formatMoney(((i.preco || 0) * (i.qtd || 1)) - (i.desconto || 0))}</td>
                     </tr>
                 `).join('')}
             </tbody>

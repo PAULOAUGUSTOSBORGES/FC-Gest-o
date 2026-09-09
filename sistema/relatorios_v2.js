@@ -54,7 +54,10 @@ function mudarVisaoLocal(viewId) {
         renderFinAbas('receber');
         atualizarCardsFluxoDeCaixa(); 
     }
-    if (viewId === 'relatorios') renderDashboard();
+    if (viewId === 'relatorios') {
+        renderDashboard();
+        if(typeof carregarHistoricoRelatoriosIA === 'function') carregarHistoricoRelatoriosIA();
+    }
     if (viewId === 'compras') renderComprasHist();
     if (viewId === 'vendas') renderVendas();
 }
@@ -3529,7 +3532,18 @@ function calcularPrecoMargin(quemMudou = 'preco') {
 function coletarDadosCompletosParaIA() {
     if (!db) return "Nenhum dado carregado no sistema.";
     
-    const periodo = obterIntervaloDatasBI();
+    let periodo = null;
+    const dataInicioIa = document.getElementById('ia-data-inicio');
+    const dataFimIa = document.getElementById('ia-data-fim');
+    
+    if (dataInicioIa && dataFimIa && dataInicioIa.value && dataFimIa.value) {
+        let inicio = new Date(dataInicioIa.value + 'T00:00:00');
+        let fim = new Date(dataFimIa.value + 'T23:59:59');
+        periodo = { inicio: inicio, fim: fim, label: 'Filtro IA' };
+    } else {
+        periodo = obterIntervaloDatasBI();
+    }
+    
     const txtPeriodo = (periodo && periodo.inicio && periodo.fim) ? 
         (periodo.inicio.toLocaleDateString('pt-BR') + ' ate ' + periodo.fim.toLocaleDateString('pt-BR')) : 'Todo o Historico';
 
