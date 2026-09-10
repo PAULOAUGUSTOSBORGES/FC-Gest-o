@@ -38,7 +38,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link rel="stylesheet" href="../style.css?v=20260909164450">
+    <link rel="stylesheet" href="../style.css?v=20260910110456">
     
     
 
@@ -62,7 +62,7 @@
         .dark .fc-daygrid-more-link { color: #60a5fa !important; font-weight: bold; }
         .fc-daygrid-more-link { color: #2563eb !important; font-weight: bold; }
     </style>
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260909164450">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260910110456">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -163,27 +163,25 @@
                             </div>
                             <div>
                                 <h2 class="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight">Gestão Financeira</h2>
-                                <p class="text-xs text-slate-500 dark:text-slate-400">Contas a Pagar/Receber, conciliaçãoo OFX e Transferências</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Contas a Pagar/Receber</p>
                             </div>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 w-full xl:w-auto">
                             <!-- Toggle View -->
                             <div class="flex bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-1 shadow-inner">
                                 <button onclick="mudarVisualizacaoFin('lista')" id="fin-view-lista" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-blue-600 text-white shadow-md hover:bg-blue-700 transition-all whitespace-nowrap"><i class="fa-solid fa-list mr-1.5"></i> Lista</button>
-                                <button onclick="mudarVisualizacaoFin('calendario')" id="fin-view-calendario" class="px-3.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all whitespace-nowrap"><i class="fa-regular fa-calendar mr-1.5"></i> Calendário</button>
+                                <button onclick="mudarVisualizacaoFin('Calend�rio')" id="fin-view-Calend�rio" class="px-3.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all whitespace-nowrap"><i class="fa-regular fa-calendar mr-1.5"></i> Calendário</button>
                             </div>
                             <!-- Abas Pagar/Receber -->
                             <div id="fin-abas-container" class="flex flex-wrap bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-1 shadow-inner">
                                 <button onclick="renderFinAbas('receber')" id="fin-tab-receber" class="px-3.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all whitespace-nowrap">Contas a Receber</button>
                                 <button onclick="renderFinAbas('pagar')" id="fin-tab-pagar" class="px-3.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all whitespace-nowrap">Contas a Pagar</button>
-                                <button onclick="renderFinAbas('conciliacao')" id="fin-tab-conciliacao" class="px-3.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all whitespace-nowrap"><i class="fa-solid fa-building-columns mr-1.5 text-blue-500"></i> Conciliaçãoo OFX</button>
-                                <button onclick="renderFinAbas('transferencias')" id="fin-tab-transferencias" class="px-3.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all whitespace-nowrap"><i class="fa-solid fa-money-bill-transfer mr-1.5 text-purple-500"></i> Transferências</button>
                             </div>
                         </div>
                     </div>
 
                     <!-- MODO CALENDÁRIO -->
-                    <div id="fin-area-calendario" class="fin-area hidden bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 md:p-6 w-full">
+                    <div id="fin-area-Calend�rio" class="fin-area hidden bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 md:p-6 w-full">
                         <div class="flex gap-4 mb-4 flex-wrap">
                             <div class="flex items-center gap-2 text-sm"><span class="w-3 h-3 rounded-full bg-emerald-500"></span><span class="text-slate-600 dark:text-slate-300">Contas a Receber</span></div>
                             <div class="flex items-center gap-2 text-sm"><span class="w-3 h-3 rounded-full bg-red-500"></span><span class="text-slate-600 dark:text-slate-300">Contas a Pagar</span></div>
@@ -1625,12 +1623,15 @@
 <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20260909164450"></script>
-    <script src="../global.js?v=20260909164450"></script>
-    <script src="fc_cache.js?v=20260909164450"></script>
-    <script src="financeiro.js?v=20260909164450"></script>
+    <script src="../sistema/config_banco.js?v=20260910110456"></script>
+    <script src="../global.js?v=20260910110456"></script>
+    <script src="fc_cache.js?v=20260910110456"></script>
+    <script src="financeiro.js?v=20260910110456"></script>
 </body>
 </html>
+
+
+
 
 
 

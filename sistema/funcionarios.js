@@ -85,7 +85,7 @@ function inicializarCadastro() {
     mudarVisaoLocal(view || 'funcionarios');
 }
 
-window.onload = () => { initGlobalData(inicializarCadastro); };
+window.addEventListener('load', () => { initGlobalData(inicializarCadastro); });
 
 // ==========================================
 // FUNÇÕES GENÉRICAS DE UI
@@ -1078,6 +1078,8 @@ function filtrarProdutosXMLBusca() {
 
 function mostrarListaProdutosXMLBusca() { filtrarProdutosXMLBusca(); }
 function ocultarListaProdutosXMLBusca() { document.getElementById('prod-vinculo-lista').classList.add('hidden'); }
+
+
 
 
 

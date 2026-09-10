@@ -1,5 +1,5 @@
-﻿// ==========================================
-// GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÃâ€¡ÕES
+// ==========================================
+// GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÃâ¡ÕES
 // ==========================================
 
 var ofxItemAtualIdx = null;
@@ -10,16 +10,16 @@ window.ofxModoAtual = 'VINCULAR';
 var ofxTituloVinculadoId = null;
 window.ofxTituloVinculadoId = null;
 
-let acaoConfirmacaoPendente = null;
+var acaoConfirmacaoPendente = typeof acaoConfirmacaoPendente !== 'undefined' ? acaoConfirmacaoPendente : null;
 window.tempXMLData = null; 
 window.xmlItemEditIndex = null;
-let compraManualItens = []; 
+var compraManualItens = typeof compraManualItens !== 'undefined' ? compraManualItens : []; 
 
-const categoriasPagar = ['Fornecedores / Compras', 'Impostos (DAS, ICMS, etc)', 'Salários / Folha', 'Aluguel', 'Água', 'Energia', 'Internet / Telefonia', 'Contabilidade', 'Sistema / Software', 'IPTU', 'Outras Despesas'];
-const categoriasReceber = ['Vendas', 'Serviços', 'Outras Receitas'];
+var categoriasPagar = typeof categoriasPagar !== 'undefined' ? categoriasPagar : ['Fornecedores / Compras', 'Impostos (DAS, ICMS, etc)', 'Salários / Folha', 'Aluguel', 'Água', 'Energia', 'Internet / Telefonia', 'Contabilidade', 'Sistema / Software', 'IPTU', 'Outras Despesas'];
+var categoriasReceber = typeof categoriasReceber !== 'undefined' ? categoriasReceber : ['Vendas', 'Serviços', 'Outras Receitas'];
 
 // ==========================================
-// FUNÃâ€¡ÕES DE TÍTULOS (DETALHES, BAIXA, RENEGOCIAÃâ€¡ÃÆ’O)
+// FUNÃâ¡ÕES DE TÍTULOS (DETALHES, BAIXA, RENEGOCIAÃâ¡ÃÆO)
 // ==========================================
 function verDetalhesTitulo(id) {
     if (!db.financeiro) return;
@@ -211,8 +211,8 @@ function refreshCurrentView() {
 
 function mudarVisualizacaoFin(tipo) {
     const listBtn = document.getElementById('fin-view-lista');
-    const calBtn = document.getElementById('fin-view-calendario');
-    const calArea = document.getElementById('fin-area-calendario');
+    const calBtn = document.getElementById('fin-view-Calend�rio');
+    const calArea = document.getElementById('fin-area-Calend�rio');
     const abasCont = document.getElementById('fin-abas-container');
     
     if (tipo === 'lista') {
@@ -221,7 +221,7 @@ function mudarVisualizacaoFin(tipo) {
         if (calArea) calArea.classList.add('hidden');
         if (abasCont) abasCont.classList.remove('hidden');
         renderFinAbas('pagar'); 
-    } else if (tipo === 'calendario') {
+    } else if (tipo === 'Calend�rio') {
         if (calBtn) calBtn.className = 'px-3.5 py-2 rounded-lg text-xs font-bold bg-blue-600 text-white shadow-md hover:bg-blue-700 transition-all whitespace-nowrap';
         if (listBtn) listBtn.className = 'px-3.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all whitespace-nowrap';
         document.querySelectorAll('.fin-area').forEach(el => el.classList.add('hidden'));
@@ -623,50 +623,50 @@ window.abrirModalNegociacao = abrirModalRenegociacao;
 // ==========================================
 async function migrarDadosSeNecessario() {
     try {
-        // Verifica se já existem dados nas coleções novas
         const comprasSnap = await firestore.collection('compras').limit(1).get();
         const finSnap = await firestore.collection('financeiro').limit(1).get();
-        
-        // Se já há dados em compras OU financeiro, não precisa migrar
         if (!comprasSnap.empty || !finSnap.empty) return;
-
-        // Coleções novas estão vazias — tenta ler do banco antigo
+        
         const bancoPrincipalSnap = await firestore.collection('fc_moveis').doc('banco_principal').get();
         if (!bancoPrincipalSnap.exists) return;
-
+        
         const dados = bancoPrincipalSnap.data();
         if (!dados) return;
-
-        // Checa se há algum dado útil no banco antigo
+        
         const temDados = (dados.compras && dados.compras.length > 0) || (dados.financeiro && dados.financeiro.length > 0);
         if (!temDados) return;
-
+        
         showToast('Importando dados do sistema anterior... Aguarde!', 'info');
-
-        const promessas = [];
+        
+        const operations = [];
         const colecoes = ['produtos', 'clientes', 'fornecedores', 'vendas', 'movimentacoes', 'financeiro', 'compras'];
-
+        
         for (let col of colecoes) {
             if (dados[col] && Array.isArray(dados[col])) {
                 for (let item of dados[col]) {
                     const id = item.id ? String(item.id) : firestore.collection(col).doc().id;
-                    promessas.push(firestore.collection(col).doc(id).set(item, { merge: true }));
+                    operations.push({ ref: firestore.collection(col).doc(id), data: item });
                 }
             }
         }
-
-        if (dados.caixa) promessas.push(firestore.collection('fc_moveis').doc('caixa').set(dados.caixa, { merge: true }));
-        if (dados.config) promessas.push(firestore.collection('fc_moveis').doc('config').set(dados.config, { merge: true }));
-
-        await Promise.all(promessas);
-        // Marca como migrado
-        try { await firestore.collection('fc_moveis').doc('banco_principal').update({ migrado: true }); } catch (e2) { console.error("Erro interno:", e2); }
-
+        
+        if (dados.caixa) operations.push({ ref: firestore.collection('fc_moveis').doc('caixa'), data: dados.caixa });
+        if (dados.config) operations.push({ ref: firestore.collection('fc_moveis').doc('config'), data: dados.config });
+        
+        const BATCH_SIZE = 400;
+        for (let i = 0; i < operations.length; i += BATCH_SIZE) {
+            const batch = firestore.batch();
+            operations.slice(i, i + BATCH_SIZE).forEach(op => {
+                batch.set(op.ref, op.data, { merge: true });
+            });
+            await batch.commit();
+        }
+        
+        try { await firestore.collection('fc_moveis').doc('banco_principal').update({ migrado: true }); } catch (e2) {}
         showToast('Dados importados com sucesso! Recarregando...', 'success');
         setTimeout(() => window.location.reload(), 2000);
-
     } catch (e) {
-        console.error('Erro na migração:', e);
+        console.error('Erro na migracao:', e);
         showToast('Aviso: Erro ao importar dados anteriores.', 'error');
     }
 }
@@ -729,7 +729,7 @@ function inicializarGestao() {
 }
 
 
-window.onload = () => { initGlobalData(inicializarGestao); };
+window.addEventListener('load', () => { initGlobalData(inicializarGestao); });
 
 function atualizarCardsFluxoDeCaixa() {
     if (!db.financeiro) return;
@@ -772,7 +772,7 @@ function atualizarCardsFluxoDeCaixa() {
 }
 
 // ==========================================
-// 2. MOTORES DE IMPRESSÃÆ’O E PDF (100% BLINDADOS E DEFINITIVOS)
+// 2. MOTORES DE IMPRESSÃÆO E PDF (100% BLINDADOS E DEFINITIVOS)
 // ==========================================
 
 function abrirConfirmacao(titulo, mensagem, acao) { 
@@ -1238,7 +1238,7 @@ function renderizarMapaCaixaHTML(m) {
             ${m.observacao ? `<div class="flex justify-between text-slate-500"><span>OBS:</span><em>${m.observacao}</em></div>` : ''}
         </div>
 
-        <!-- MOVIMENTAÃâ€¡ÃÆ’O GAVETA -->
+        <!-- MOVIMENTAÃâ¡ÃÆO GAVETA -->
         <div class="border-b border-dashed border-slate-300 dark:border-slate-700 pb-3 mb-3">
             <h4 class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[10px] mb-1.5">1. FLUXO DE GAVETA (DINHEIRO FÍSICO)</h4>
             <div class="flex justify-between text-[11px]"><span>(+) Fundo de Troco Inicial:</span><span>${formatMoney(m.apuradoSistema.fundoTroco)}</span></div>
@@ -1253,9 +1253,9 @@ function renderizarMapaCaixaHTML(m) {
             </div>
         </div>
 
-        <!-- MÃâ€°TODOS ELETRÃâ€NICOS -->
+        <!-- MÃâ°TODOS ELETRÃâNICOS -->
         <div class="border-b border-dashed border-slate-300 dark:border-slate-700 pb-3 mb-3">
-            <h4 class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[10px] mb-1.5">2. MÃâ€°TODOS ELETRÃâ€NICOS E PARCELADOS</h4>
+            <h4 class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[10px] mb-1.5">2. MÃâ°TODOS ELETRÃâNICOS E PARCELADOS</h4>
             <div class="flex justify-between text-[11px]"><span>Cartão Débito (Sistema / Declarado):</span><span>${formatMoney(m.apuradoSistema.vendasDebito)} / <strong>${formatMoney(m.declaradoOperador.debito)}</strong></span></div>
             <div class="flex justify-between text-[11px]"><span>Cartão Crédito (Sistema / Declarado):</span><span>${formatMoney(m.apuradoSistema.vendasCredito)} / <strong>${formatMoney(m.declaradoOperador.credito)}</strong></span></div>
             <div class="flex justify-between text-[11px]"><span>PIX (Sistema / Declarado):</span><span>${formatMoney(m.apuradoSistema.vendasPix)} / <strong>${formatMoney(m.declaradoOperador.pix)}</strong></span></div>
@@ -1717,7 +1717,18 @@ function renderTitulos(tipo) {
         lista.sort((a, b) => new Date(a.data) - new Date(b.data));
     }
     
-    document.getElementById(`tabela-fin-${prefix}`).innerHTML = lista.map(f => {
+    let totalExibido = 0;
+    let htmlLinhas = lista.map(f => {
+        let valorParaTotal = Number(f.valor) || 0;
+        if (f.status === 'PAGO') {
+            valorParaTotal = Number(f.valorPago) || Number(f.valor) || 0;
+        } else {
+            const c = calcularJurosMulta(f);
+            if(c.diasAtraso > 0 && (c.multa > 0 || c.juros > 0)) {
+                valorParaTotal = Number(c.valorAtualizado) || 0;
+            }
+        }
+        totalExibido += valorParaTotal;
         const isAtrasado = f.status === 'PENDENTE' && new Date(f.data).getTime() < new Date().getTime(); 
         let corStatus = 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800';
         let badgeStatus = 'PENDENTE';
@@ -1746,13 +1757,18 @@ function renderTitulos(tipo) {
         const valorAExibir = f.status === 'PAGO' ? (f.valorPago || f.valor) : f.valor;
 
         let acoesExtras = '';
-        if (f.status === 'PENDENTE') {
-            acoesExtras = `
+        if (f.status === 'PENDENTE' || f.status === 'ATRASADO') {
+            acoesExtras += `
                 <button onclick="abrirModalBaixa('${f.id}')" class="text-blue-600 bg-blue-50 dark:bg-blue-950/70 dark:text-blue-300 px-2 py-1 rounded text-[10px] font-bold hover:bg-blue-100 dark:hover:bg-blue-900 ml-1">Baixar</button>
                 <button onclick="abrirModalRenegociacao('${f.id}')" class="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 p-1.5 ml-1 print:hidden" title="Renegociar / Parcelar"><i class="fa-solid fa-handshake"></i></button>
             `;
         } else if (f.status === 'PAGO') {
-            acoesExtras = `<button onclick="estornarTitulo('${f.id}')" class="text-amber-500 hover:text-amber-700 dark:text-amber-400 p-1.5 ml-1 print:hidden" title="Estornar Pagamento"><i class="fa-solid fa-rotate-left"></i></button>`;
+            acoesExtras += `<button onclick="estornarTitulo('${f.id}')" class="text-amber-500 hover:text-amber-700 dark:text-amber-400 p-1.5 ml-1 print:hidden" title="Estornar Pagamento"><i class="fa-solid fa-rotate-left"></i></button>`;
+        }
+        
+        const vid = f.origemVendaId || f.idVenda;
+        if (vid) {
+            acoesExtras += `<button onclick="verDetalhesVenda('${vid}')" class="text-emerald-500 hover:text-emerald-700 dark:text-emerald-400 p-1.5 ml-1 print:hidden" title="Ver Venda"><i class="fa-solid fa-receipt"></i></button>`;
         }
 
         return `
@@ -1781,11 +1797,14 @@ function renderTitulos(tipo) {
                 <button onclick="excluirTitulo('${f.id}')" class="text-slate-400 hover:text-rose-500 p-1.5 ml-1" title="Excluir"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
-    }).join('') || `<tr><td colspan="6" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum título encontrado.</td></tr>`;
+    }).join('');
+    if (!htmlLinhas) htmlLinhas = `<tr><td colspan="6" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum título encontrado.</td></tr>`;
+    else htmlLinhas += `<tr class="bg-slate-50 dark:bg-slate-800/80 border-t-2 border-slate-200 dark:border-slate-700"><td colspan="3" class="p-3 text-right font-bold text-slate-600 dark:text-slate-300">Total Filtrado:</td><td class="p-3 text-right font-black ${tipo === 'RECEITA' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}">${formatMoney(totalExibido)}</td><td colspan="2"></td></tr>`;
+    document.getElementById(`tabela-fin-${prefix}`).innerHTML = htmlLinhas;
 }
 
 // ==========================================
-// 5. MODAL DE CADASTRO/EDIÃâ€¡ÃÆ’O DE CONTA (COM RECORRÃÅ NCIA)
+// 5. MODAL DE CADASTRO/EDIÃâ¡ÃÆO DE CONTA (COM RECORRÃÅ NCIA)
 // ==========================================
 
 // ===== HELPER: PESSOA SELECT DROPDOWN =====
@@ -2473,7 +2492,7 @@ async function salvarXMLConferido() {
 }
 
 // ==========================================
-// COMPRA MANUAL E EDIÃâ€¡ÃÆ’O
+// COMPRA MANUAL E EDIÃâ¡ÃÆO
 // ==========================================
 function abrirModalCompraManual() {
     compraManualItens = [];
@@ -3155,7 +3174,7 @@ async function analisarFinanceiroIA() {
     const resposta = await chamarGemini(prompt);
     
     if(resposta) {
-        divRes.innerHTML = resposta.replace(/\*\*/g, '').replace(/\*/g, '•');
+        divRes.innerHTML = resposta.replace(/\*\*/g, '').replace(/\*/g, '');
         showToast('Análise concluída com sucesso!', 'success');
     } else {
         divRes.innerHTML = 'Erro ao gerar análise. Verifique se você salvou sua chave API na aba Sistema.';
@@ -3182,11 +3201,11 @@ function exportarDadosParaIA() {
 
     let lucroBruto = receitaBruta - custoTotal;
 
-    let relatorioTexto = `=== RELATÓRIO FINANCEIRO E DE GESTÃO - FC MÃâ€œVEIS ===\nData da exportação: ${new Date().toLocaleString('pt-BR')}\n\n`;
+    let relatorioTexto = `=== RELATÓRIO FINANCEIRO E DE GESTÃO - FC MÃâVEIS ===\nData da exportação: ${new Date().toLocaleString('pt-BR')}\n\n`;
     relatorioTexto += `--- 1. DRE SIMPLIFICADA ---\n- Receita Bruta Total: R$ ${receitaBruta.toFixed(2)}\n- Custo da Mercadoria Vendida (CMV): R$ ${custoTotal.toFixed(2)}\n- Lucro Bruto Real: R$ ${lucroBruto.toFixed(2)}\n\n`;
     relatorioTexto += `--- 2. HISTÓRICO DE VENDAS RECENTES ---\n`;
     vendas.slice(-20).forEach((v, index) => { relatorioTexto += `[Venda ${index + 1}] Data: ${v.data || 'N/A'} | Total: R$ ${Number(v.total || 0).toFixed(2)} | Forma de Pagamento: ${v.pagamento || 'N/A'}\n`; });
-    relatorioTexto += `\n--- 3. MOVIMENTAÃâ€¡ÕES FINANCEIRAS / CAIXA ---\n`;
+    relatorioTexto += `\n--- 3. MOVIMENTAÃâ¡ÕES FINANCEIRAS / CAIXA ---\n`;
     financeiro.slice(-20).forEach((f, index) => { relatorioTexto += `[Movimento ${index + 1}] Tipo: ${f.tipo || 'N/A'} | Descrição: ${f.descricao || 'N/A'} | Valor: R$ ${Number(f.valor || 0).toFixed(2)} | Data: ${f.data || 'N/A'}\n`; });
 
     const blob = new Blob([relatorioTexto], { type: 'text/plain;charset=utf-8' });
@@ -3569,8 +3588,8 @@ async function confirmarTransferenciaFin() {
         tipo: 'TRANSFERENCIA',
         origem: origem,
         destino: destino,
-        pessoa: origem + ' → ' + destino,
-        ref: 'Transf: ' + origem + ' → ' + destino,
+        pessoa: origem + ' ? ' + destino,
+        ref: 'Transf: ' + origem + ' ? ' + destino,
         categoria: 'Transferência Entre Contas',
         centroCusto: 'Operacional',
         contaBancaria: destino,
@@ -4281,3 +4300,214 @@ window.confirmarConciliacaoModalOFX = confirmarConciliacaoModalOFX;
 
 window.mudarVisualizacaoFin = mudarVisualizacaoFin;
 window.renderFinAbas = renderFinAbas;
+
+
+
+
+
+// ==========================================
+// VISAO DE VENDA DETALHADA (MODAL NATIVO ROBUSTO)
+// ==========================================
+window.fecharModalDetalhesVenda = function() {
+    const modal = document.getElementById('modal-detalhes-venda');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.setProperty('display', 'none', 'important');
+    }
+};
+
+window.verDetalhesVenda = async function(id) {
+    console.log('[VerVenda] Abrindo detalhes para ID:', id);
+    if (!id || id === 'undefined' || id === 'null') {
+        if (typeof showToast === 'function') showToast('Identificador de venda inv�lido.', 'warning');
+        else alert('Identificador de venda inv�lido.');
+        return;
+    }
+
+    let modal = document.getElementById('modal-detalhes-venda');
+    if (!modal) {
+        console.error('[VerVenda] Elemento modal-detalhes-venda n�o encontrado no DOM!');
+        return;
+    }
+
+    // Garante que o modal esteja como filho direto do body para n�o ser afetado por overflow/transform
+    if (modal.parentElement !== document.body) {
+        document.body.appendChild(modal);
+    }
+
+    // Buscar venda na mem�ria local db.vendas
+    let v = null;
+    if (typeof db !== 'undefined' && Array.isArray(db.vendas)) {
+        v = db.vendas.find(x => String(x.id) === String(id) || String(x.idVenda) === String(id) || String(x.numeroPedido) === String(id));
+    }
+
+    // Se n�o achou na mem�ria, busca no Firestore direto
+    if (!v && typeof firestore !== 'undefined') {
+        try {
+            console.log('[VerVenda] Buscando venda diretamente no Firestore...');
+            const snap = await firestore.collection('vendas').doc(String(id)).get();
+            if (snap.exists) {
+                v = { id: snap.id, ...snap.data() };
+            } else {
+                const numVal = Number(id);
+                if (!isNaN(numVal)) {
+                    const q = await firestore.collection('vendas').where('numeroPedido', '==', numVal).limit(1).get();
+                    if (!q.empty) {
+                        v = { id: q.docs[0].id, ...q.docs[0].data() };
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('[VerVenda] Erro ao consultar Firestore:', err);
+        }
+    }
+
+    if (!v) {
+        console.warn('[VerVenda] Venda n�o encontrada:', id);
+        if (typeof showToast === 'function') showToast('Venda #' + id + ' n�o encontrada.', 'warning');
+        else alert('Venda #' + id + ' n�o encontrada.');
+        return;
+    }
+
+    const isGestao = window.location.href.includes('gestao') || window.location.href.includes('financeiro');
+    const subtitleEl = modal.querySelector('p.text-slate-400.uppercase');
+    if (subtitleEl) {
+        subtitleEl.innerText = isGestao ? 'Vis�o Gerencial de Custos e Lucros' : 'Vis�o Detalhada';
+    }
+
+    const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
+    const tipoTexto = v.tipo || 'VENDA';
+
+    const elCli = document.getElementById('det-venda-cliente');
+    if (elCli) elCli.innerText = v.clienteNome || 'Desconhecido';
+
+    const elData = document.getElementById('det-venda-data');
+    if (elData) {
+        const dStr = v.data ? (typeof formatData === 'function' ? formatData(v.data).split(' ')[0] : String(v.data).slice(0, 10)) : '-';
+        elData.innerText = `${dStr} | #${numPedStr}`;
+    }
+
+    const elPag = document.getElementById('det-venda-pag');
+    if (elPag) elPag.innerText = tipoTexto === 'OR�AMENTO' ? 'Or�amento' : (v.pag || '-');
+
+    let osInfoHtml = '';
+    if (tipoTexto === 'SERVI�O' && v.servicoDetalhes) {
+        let galeriaHtml = '';
+        if (v.servicoDetalhes.fotos && v.servicoDetalhes.fotos.length > 0) {
+            galeriaHtml = `<p class="mt-2"><strong>Fotos de Refer�ncia:</strong></p><div class="flex gap-2 flex-wrap mt-1">${v.servicoDetalhes.fotos.map(f => `<img src="${f}" class="h-20 rounded border border-purple-300 shadow-sm hover:opacity-80 transition" title="Foto">`).join('')}</div>`;
+        } else if (v.servicoDetalhes.foto) {
+            galeriaHtml = `<p class="mt-2"><strong>Foto de Refer�ncia:</strong></p><img src="${v.servicoDetalhes.foto}" class="mt-1 h-24 rounded border border-purple-300 shadow-sm hover:opacity-80 transition" title="Foto">`;
+        }
+        osInfoHtml = `
+            <div class="mt-4 bg-purple-50 dark:bg-purple-900/20 p-3 md:p-4 rounded-lg border border-purple-200 dark:border-purple-800/50 text-xs md:text-sm text-purple-900 dark:text-purple-200">
+                <h4 class="font-bold mb-2 uppercase text-purple-700 dark:text-purple-300 border-b border-purple-200 dark:border-purple-800/50 pb-2"><i class="fa-solid fa-clipboard-list"></i> Ficha da Ordem de Servi�o</h4>
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <p><strong>Prazo de Entrega:</strong> ${v.servicoDetalhes.prazo ? v.servicoDetalhes.prazo.split('-').reverse().join('/') : 'N�o informado'}</p>
+                    <p><strong>Garantia:</strong> ${v.servicoDetalhes.garantia || 'Nenhuma'}</p>
+                </div>
+                <p class="mb-2"><strong>Escopo / Diagn�stico:</strong><br> ${v.servicoDetalhes.desc || 'Nenhum detalhe adicional.'}</p>
+                ${galeriaHtml}
+            </div>`;
+    }
+
+    const elObs = document.getElementById('det-venda-obs');
+    if (elObs) {
+        elObs.innerHTML = (v.obs ? v.obs : '<span class="text-slate-400 italic">Nenhuma observa��o geral vinculada a esta venda.</span>') + osInfoHtml;
+    }
+
+    let totalCusto = 0;
+    const elItens = document.getElementById('det-venda-itens');
+    if (elItens) {
+        elItens.innerHTML = (v.itens || []).map(i => {
+            const preco = Number(i.preco) || 0;
+            const qtd = Number(i.qtd) || 1;
+            const custo = Number(i.custo) || 0;
+
+            const subTot = preco * qtd;
+            const subCusto = custo * qtd;
+            const lucroSub = subTot - subCusto;
+            const margemSub = subTot > 0 ? ((lucroSub / subTot) * 100) : 0;
+
+            totalCusto += subCusto;
+
+            return `
+            <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800/50 transition-colors group">
+                <td class="p-4 border-b border-slate-100 dark:border-slate-800/50">
+                    <div class="font-bold text-slate-800 dark:text-slate-200 text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">${i.nome || 'Produto/Servi�o'}</div>
+                    ${i.obsVenda ? `<div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 bg-slate-100 dark:bg-slate-800 inline-block px-2 py-0.5 rounded-md"><i class="fa-solid fa-note-sticky mr-1"></i>${i.obsVenda}</div>` : ''}
+                </td>
+                <td class="p-4 text-center border-b border-slate-100 dark:border-slate-800/50">
+                    <span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-black px-2.5 py-1 rounded-lg text-xs border border-slate-200 dark:border-slate-700">${qtd}</span>
+                </td>
+                <td class="p-4 text-right border-b border-slate-100 dark:border-slate-800/50">
+                    <div class="font-black text-slate-700 dark:text-slate-300 text-sm">${typeof formatMoney === 'function' ? formatMoney(preco) : 'R$ ' + preco.toFixed(2)}</div>
+                    ${isGestao ? `<div class="text-[10px] text-red-500/80 dark:text-red-400/80 font-bold mt-0.5 bg-red-50 dark:bg-red-900/20 inline-block px-1.5 py-0.5 rounded border border-red-100 dark:border-red-800/30">Custo: ${typeof formatMoney === 'function' ? formatMoney(custo) : 'R$ ' + custo.toFixed(2)}</div>` : ''}
+                </td>
+                <td class="p-4 text-right border-b border-slate-100 dark:border-slate-800/50">
+                    <div class="font-black text-slate-800 dark:text-white text-sm">${typeof formatMoney === 'function' ? formatMoney(subTot) : 'R$ ' + subTot.toFixed(2)}</div>
+                    ${isGestao ? `<div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5 bg-emerald-50 dark:bg-emerald-900/20 inline-block px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-800/30">Lucro: ${typeof formatMoney === 'function' ? formatMoney(lucroSub) : 'R$ ' + lucroSub.toFixed(2)} <span class="text-blue-500">(${margemSub.toFixed(1)}%)</span></div>` : ''}
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    const tot = Number(v.tot) || 0;
+    const taxaCartao = Number(v.taxaValor) || 0;
+    const taxaBoleto = Number(v.taxaBoleto) || 0;
+    const totalDespesas = taxaCartao + taxaBoleto;
+    const custoGeral = totalCusto + totalDespesas;
+    const lucroLiquido = tot - custoGeral;
+    const margemLiquidaReal = tot > 0 ? ((lucroLiquido / tot) * 100) : 0;
+    const markupReal = custoGeral > 0 ? ((lucroLiquido / custoGeral) * 100) : 0;
+
+    const tfootEl = document.getElementById('det-venda-tfoot');
+    if (tfootEl) {
+        let tfootHtml = '';
+        if (isGestao) {
+            tfootHtml += `
+                <tr>
+                    <td colspan="3" class="p-4 text-right font-bold text-slate-500 dark:text-slate-400 text-[11px] uppercase tracking-wider">Custo Total (Produtos)</td>
+                    <td class="p-4 text-right font-black text-red-500 dark:text-red-400 text-sm bg-red-50/50 dark:bg-red-900/10">- ${typeof formatMoney === 'function' ? formatMoney(totalCusto) : 'R$ ' + totalCusto.toFixed(2)}</td>
+                </tr>
+            `;
+            if (taxaCartao > 0) {
+                tfootHtml += `
+                <tr>
+                    <td colspan="3" class="p-4 text-right font-bold text-slate-500 dark:text-slate-400 text-[11px] uppercase tracking-wider">Taxa de Cart�o / Despesa</td>
+                    <td class="p-4 text-right font-black text-red-500 dark:text-red-400 text-sm bg-red-50/50 dark:bg-red-900/10">- ${typeof formatMoney === 'function' ? formatMoney(taxaCartao) : 'R$ ' + taxaCartao.toFixed(2)}</td>
+                </tr>`;
+            }
+            tfootHtml += `
+                <tr class="border-t border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-800/50">
+                    <td colspan="3" class="p-4 text-right font-black text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wide">Valor Bruto Total</td>
+                    <td class="p-4 text-right font-black text-slate-900 dark:text-white text-lg">${typeof formatMoney === 'function' ? formatMoney(tot) : 'R$ ' + tot.toFixed(2)}</td>
+                </tr>
+                <tr class="bg-gradient-to-r from-emerald-50 to-emerald-100/50 dark:from-emerald-900/30 dark:to-emerald-900/10 border-t border-emerald-200 dark:border-emerald-800/50">
+                    <td colspan="3" class="p-4 text-right font-black text-emerald-800 dark:text-emerald-400 text-sm uppercase tracking-wide">Lucro L�quido Real</td>
+                    <td class="p-4 text-right font-black text-emerald-600 dark:text-emerald-400 text-xl shadow-sm">${typeof formatMoney === 'function' ? formatMoney(lucroLiquido) : 'R$ ' + lucroLiquido.toFixed(2)}</td>
+                </tr>
+                <tr class="bg-emerald-50/40 dark:bg-emerald-950/20 border-t border-emerald-100 dark:border-emerald-800/30">
+                    <td colspan="3" class="p-3 text-right font-bold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider">Margem de Lucro Real / Markup</td>
+                    <td class="p-3 text-right font-black text-sm">
+                        <span class="bg-emerald-100 dark:bg-emerald-800/60 text-emerald-800 dark:text-emerald-200 px-2 py-0.5 rounded font-black text-xs">${margemLiquidaReal.toFixed(2)}% Margem</span>
+                        <span class="text-[11px] text-blue-600 dark:text-blue-400 font-bold ml-1">(${markupReal.toFixed(2)}% MKP)</span>
+                    </td>
+                </tr>
+            `;
+        } else {
+            tfootHtml += `
+                <tr class="border-t border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-800/50">
+                    <td colspan="3" class="p-4 text-right font-black text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wide">Total Geral</td>
+                    <td class="p-4 text-right font-black text-slate-900 dark:text-white text-lg">${typeof formatMoney === 'function' ? formatMoney(tot) : 'R$ ' + tot.toFixed(2)}</td>
+                </tr>
+            `;
+        }
+        tfootEl.innerHTML = tfootHtml;
+    }
+
+    modal.classList.remove('hidden');
+    modal.style.setProperty('display', 'flex', 'important');
+    modal.style.setProperty('z-index', '99999', 'important');
+    console.log('[VerVenda] Modal exibido com sucesso!');
+};
+

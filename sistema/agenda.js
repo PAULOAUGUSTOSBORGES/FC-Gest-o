@@ -9,7 +9,10 @@ document.addEventListener('DOMContentLoaded', function() {
         carregarEventos();
     } else {
         const authInterval = setInterval(() => {
-            if (typeof window.currentUserInfo !== 'undefined' && window.currentUserInfo !== null) {
+        if (!window.authInterval_attempts) window.authInterval_attempts = 0;
+        window.authInterval_attempts++;
+        if (window.authInterval_attempts > 100) { clearInterval(authInterval); return; }
+        if (typeof window.currentUserInfo !== 'undefined' && window.currentUserInfo !== null) {
                 clearInterval(authInterval);
                 carregarEventos();
             }
@@ -17,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-window.onload = () => { initGlobalData(carregarEventos); };
+window.addEventListener('load', () => { initGlobalData(carregarEventos); });
 
 function initCalendar() {
     var calendarEl = document.getElementById('calendar');
@@ -260,3 +263,7 @@ async function atualizarDataEvento(eventoFullCalendar) {
         eventoFullCalendar.revert();
     }
 }
+
+
+
+

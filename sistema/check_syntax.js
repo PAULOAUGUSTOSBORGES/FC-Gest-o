@@ -8,3 +8,4 @@ try {
 } catch(e) {
     WScript.Echo("Syntax error: " + e.message + " at line " + (e.line || "unknown"));
 }
+

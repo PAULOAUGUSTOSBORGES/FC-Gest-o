@@ -74,7 +74,7 @@ function inicializarGestao() {
     });
 }
 
-window.onload = () => { initGlobalData(inicializarGestao); };
+window.addEventListener('load', () => { initGlobalData(inicializarGestao); });
 
 function atualizarCardsFluxoDeCaixa() {
     if (!db.financeiro) return;
@@ -97,3 +97,5 @@ if (regexTarget.test(content)) {
     const startIdx = content.indexOf('inadimplencia = 0;');
     console.log(content.substring(startIdx - 100, startIdx + 100));
 }
+
+

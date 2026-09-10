@@ -85,7 +85,7 @@ function inicializarCadastro() {
     mudarVisaoLocal(view || 'produtos');
 }
 
-window.onload = () => { initGlobalData(inicializarCadastro); };
+window.addEventListener('load', () => { initGlobalData(inicializarCadastro); });
 
 // ==========================================
 // FUN��ES GEN�RICAS DE UI
@@ -1060,4 +1060,6 @@ function filtrarProdutosXMLBusca() {
 
 function mostrarListaProdutosXMLBusca() { filtrarProdutosXMLBusca(); }
 function ocultarListaProdutosXMLBusca() { document.getElementById('prod-vinculo-lista').classList.add('hidden'); }
+
+
 

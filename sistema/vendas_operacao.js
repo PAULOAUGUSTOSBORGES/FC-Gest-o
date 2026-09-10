@@ -158,7 +158,7 @@ function inicializarOperacao() {
     mudarVisaoLocal('vendas_operacao');
 }
 
-window.onload = () => { initGlobalData(inicializarOperacao); };
+window.addEventListener('load', () => { initGlobalData(inicializarOperacao); });
 
 // ==========================================
 // 3. FUNÇÕES GENÉRICAS E KARDEX
@@ -2559,3 +2559,5 @@ document.addEventListener('click', function(e) {
         abrirZoom(img.dataset.zoomSrc);
     }
 });
+
+

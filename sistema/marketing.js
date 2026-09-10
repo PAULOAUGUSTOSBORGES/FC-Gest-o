@@ -8,7 +8,10 @@ document.addEventListener('DOMContentLoaded', function() {
         carregarClientesELembretes();
     } else {
         const authInterval = setInterval(() => {
-            if (typeof window.currentUserInfo !== 'undefined' && window.currentUserInfo !== null) {
+        if (!window.authInterval_attempts) window.authInterval_attempts = 0;
+        window.authInterval_attempts++;
+        if (window.authInterval_attempts > 100) { clearInterval(authInterval); return; }
+        if (typeof window.currentUserInfo !== 'undefined' && window.currentUserInfo !== null) {
                 clearInterval(authInterval);
                 carregarClientesELembretes();
             }
@@ -16,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-window.onload = () => { if (typeof initGlobalData === 'function') initGlobalData(carregarClientesELembretes); };
+window.addEventListener('load', () => { if (typeof initGlobalData === 'function') initGlobalData(carregarClientesELembretes); });
 
 function carregarClientesELembretes() {
     if (unsubscribeClientes) unsubscribeClientes();
@@ -371,8 +374,8 @@ Para cada ideia, forneça:
 
 Formate a resposta em HTML limpo. Use <h3> para os títulos das ideias, <p> para os textos, <strong> para negrito e <ul><li> para listas. Não use markdown de código na saída, apenas o HTML puro.`;
 
-        // Lista de modelos recomendados pela API (começando pelo recomendado gemini-3.6-flash, e caindo para versões "lite" se os servidores estiverem cheios)
-        const modelosParaTentar = ['gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-pro-latest'];
+        // Lista de modelos recomendados pela API (começando pelo recomendado gemini-1.5-flash, e caindo para versões "lite" se os servidores estiverem cheios)
+        const modelosParaTentar = ['gemini-1.5-flash', 'gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-pro-latest'];
         let response = null;
         let lastErrorText = "";
         
@@ -613,3 +616,6 @@ window.fecharModalHistorico = function() {
         document.getElementById('modal-historico').classList.add('hidden');
     }, 300);
 };
+
+
+

@@ -73,50 +73,50 @@ function refreshCurrentView() {
 // ==========================================
 async function migrarDadosSeNecessario() {
     try {
-        // Verifica se já existem dados nas coleções novas
         const comprasSnap = await firestore.collection('compras').limit(1).get();
         const finSnap = await firestore.collection('financeiro').limit(1).get();
-        
-        // Se já há dados em compras OU financeiro, não precisa migrar
         if (!comprasSnap.empty || !finSnap.empty) return;
-
-        // Coleções novas estão vazias — tenta ler do banco antigo
+        
         const bancoPrincipalSnap = await firestore.collection('fc_moveis').doc('banco_principal').get();
         if (!bancoPrincipalSnap.exists) return;
-
+        
         const dados = bancoPrincipalSnap.data();
         if (!dados) return;
-
-        // Checa se há algum dado útil no banco antigo
+        
         const temDados = (dados.compras && dados.compras.length > 0) || (dados.financeiro && dados.financeiro.length > 0);
         if (!temDados) return;
-
+        
         showToast('Importando dados do sistema anterior... Aguarde!', 'info');
-
-        const promessas = [];
+        
+        const operations = [];
         const colecoes = ['produtos', 'clientes', 'fornecedores', 'vendas', 'movimentacoes', 'financeiro', 'compras'];
-
+        
         for (let col of colecoes) {
             if (dados[col] && Array.isArray(dados[col])) {
                 for (let item of dados[col]) {
                     const id = item.id ? String(item.id) : firestore.collection(col).doc().id;
-                    promessas.push(firestore.collection(col).doc(id).set(item, { merge: true }));
+                    operations.push({ ref: firestore.collection(col).doc(id), data: item });
                 }
             }
         }
-
-        if (dados.caixa) promessas.push(firestore.collection('fc_moveis').doc('caixa').set(dados.caixa, { merge: true }));
-        if (dados.config) promessas.push(firestore.collection('fc_moveis').doc('config').set(dados.config, { merge: true }));
-
-        await Promise.all(promessas);
-        // Marca como migrado
-        try { await firestore.collection('fc_moveis').doc('banco_principal').update({ migrado: true }); } catch (e2) { console.error("Erro interno:", e2); }
-
+        
+        if (dados.caixa) operations.push({ ref: firestore.collection('fc_moveis').doc('caixa'), data: dados.caixa });
+        if (dados.config) operations.push({ ref: firestore.collection('fc_moveis').doc('config'), data: dados.config });
+        
+        const BATCH_SIZE = 400;
+        for (let i = 0; i < operations.length; i += BATCH_SIZE) {
+            const batch = firestore.batch();
+            operations.slice(i, i + BATCH_SIZE).forEach(op => {
+                batch.set(op.ref, op.data, { merge: true });
+            });
+            await batch.commit();
+        }
+        
+        try { await firestore.collection('fc_moveis').doc('banco_principal').update({ migrado: true }); } catch (e2) {}
         showToast('Dados importados com sucesso! Recarregando...', 'success');
         setTimeout(() => window.location.reload(), 2000);
-
     } catch (e) {
-        console.error('Erro na migração:', e);
+        console.error('Erro na migracao:', e);
         showToast('Aviso: Erro ao importar dados anteriores.', 'error');
     }
 }
@@ -193,7 +193,7 @@ function inicializarGestao() {
 }
 
 
-window.onload = () => { initGlobalData(inicializarGestao); };
+window.addEventListener('load', () => { initGlobalData(inicializarGestao); });
 
 function atualizarCardsFluxoDeCaixa() {
     if (!db.financeiro) return;
@@ -3654,6 +3654,28 @@ function coletarDadosCompletosParaIA() {
     var fiados = financeiroTodos.filter(function(f){return f.tipo==='RECEITA'&&f.status==='PENDENTE'&&(f.formaPagamento==='Fiado'||(f.descricao||'').toLowerCase().includes('fiado'));});
     var totalFiado = fiados.reduce(function(a,f){return a+(Number(f.valor)||0);},0);
 
+    var contasReceberPorCliente = {};
+    financeiroTodos.filter(function(f){return f.tipo==='RECEITA'&&f.status==='PENDENTE';}).forEach(function(f){
+        var pessoa = f.pessoa || f.clienteNome || 'Desconhecido';
+        if (!contasReceberPorCliente[pessoa]) contasReceberPorCliente[pessoa] = 0;
+        contasReceberPorCliente[pessoa] += (Number(f.valor) || 0);
+    });
+    var contasReceberTexto = Object.entries(contasReceberPorCliente).sort(function(a,b){return b[1]-a[1];})
+        .map(function(e){return '  - ' + e[0] + ': R$ ' + e[1].toFixed(2);}).join('\n');
+
+    var contasPagarPorFornecedor = {};
+    financeiroTodos.filter(function(f){return f.tipo==='DESPESA'&&f.status==='PENDENTE';}).forEach(function(f){
+        var pessoa = f.pessoa || f.favorecido || 'Desconhecido';
+        if (!contasPagarPorFornecedor[pessoa]) contasPagarPorFornecedor[pessoa] = 0;
+        contasPagarPorFornecedor[pessoa] += (Number(f.valor) || 0);
+    });
+    var contasPagarTexto = Object.entries(contasPagarPorFornecedor).sort(function(a,b){return b[1]-a[1];})
+        .map(function(e){return '  - ' + e[0] + ': R$ ' + e[1].toFixed(2);}).join('\n');
+
+    var todosClientesDb = clientes.slice(0, 500).map(function(c){ return c.nome + (c.telefone ? ' ('+c.telefone+')' : ''); }).join(' | ') + (clientes.length > 500 ? ' (+'+(clientes.length-500)+' outros)' : '');
+    var todosProdutosDb = produtos.slice(0, 500).map(function(p){ return p.nome + ' (' + (p.estoque||0) + ' un - R$ ' + (Number(p.preco||0).toFixed(2)) + ')'; }).join(' | ') + (produtos.length > 500 ? ' (+'+(produtos.length-500)+' outros)' : '');
+    var todosFornecedoresDb = (db.fornecedores || []).slice(0, 200).map(function(f){ return f.nome || f.razaoSocial; }).join(' | ') + ((db.fornecedores||[]).length > 200 ? ' (+'+((db.fornecedores||[]).length-200)+' outros)' : '');
+
     return '\n=== DADOS DO SISTEMA FC GESTAO ===\nPERIODO ANALISADO: '+txtPeriodo+'\nData de hoje: '+hoje.toLocaleDateString('pt-BR')+
     '\n\n--- DRE RESUMIDA DO PERIODO ---\nReceita Bruta: R$ '+fatTotal.toFixed(2)+
     '\nDeducoes/Taxas Maquininha: R$ '+taxasTotal.toFixed(2)+
@@ -3670,11 +3692,16 @@ function coletarDadosCompletosParaIA() {
     '\n\n--- FORMAS DE PAGAMENTO NO PERIODO ---\n'+(pagamentosTexto||'Sem dados')+
     '\n\n--- VENDAS POR CATEGORIA NO PERIODO ---\n'+(categTexto||'Sem dados')+
     '\n\n--- TOP 20 PRODUTOS VENDIDOS NO PERIODO ---\n'+(topProdTexto||'Sem dados')+
-    '\n\n--- TOP 15 CLIENTES NO PERIODO ---\n'+(topClientesTexto||'Sem dados')+
-    '\n\n--- CLIENTES INATIVOS (+60 DIAS SEM COMPRAR) ---\n'+(inativos60||'Nenhum')+
+    '\n\n--- COMPRAS FORNECEDORES NO PERIODO ---\n'+(fornTexto||'Sem compras')+
     '\n\n--- DESEMPENHO VENDEDORES NO PERIODO ---\n'+(vendedoresTexto||'Sem dados')+
     '\n\n--- ESTOQUE CRITICO (GERAL) ---\n'+(estoqueBaixo||'Nenhum critico')+
-    '\n\n--- COMPRAS FORNECEDORES NO PERIODO ---\n'+(fornTexto||'Sem compras');
+    '\n\n--- COMPROMISSOS DETALHADOS A PAGAR (FORNECEDORES/DESPESAS) ---\n'+(contasPagarTexto||'Nenhuma conta a pagar pendente')+
+    '\n\n--- DIVIDAS PENDENTES POR CLIENTE (CONTAS A RECEBER) ---\n'+(contasReceberTexto||'Nenhuma divida pendente detalhada')+
+    '\n\n--- TOP 15 CLIENTES NO PERIODO ---\n'+(topClientesTexto||'Sem dados')+
+    '\n\n--- CLIENTES INATIVOS (+60 DIAS SEM COMPRAR) ---\n'+(inativos60||'Nenhum')+
+    '\n\n--- TODOS OS PRODUTOS CADASTRADOS (BASE GERAL DE ESTOQUE) ---\n'+(todosProdutosDb||'Nenhum produto cadastrado')+
+    '\n\n--- TODOS OS FORNECEDORES CADASTRADOS (BASE GERAL) ---\n'+(todosFornecedoresDb||'Nenhum fornecedor cadastrado')+
+    '\n\n--- TODOS OS CLIENTES CADASTRADOS (BASE GERAL) ---\n'+(todosClientesDb||'Nenhum cliente cadastrado');
 }
 
 async function gerarRelatorioComIA(descricaoRelatorio) {
@@ -3975,3 +4002,5 @@ window.gerarRelatorioLivre = gerarRelatorioLivre;
 window.renderizarRelatorioIA = renderizarRelatorioIA;
 window.mudarAbaRelIA = mudarAbaRelIA;
 window.coletarDadosCompletosParaIA = coletarDadosCompletosParaIA;
+
+

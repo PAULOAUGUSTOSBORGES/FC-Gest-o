@@ -45,3 +45,4 @@ if (typeof firebase !== 'undefined' && !firebase.apps.length) {
 } else if (typeof firebase === 'undefined') {
     console.error("Firebase SDK não foi carregado antes do config_banco.js");
 }
+

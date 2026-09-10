@@ -721,15 +721,16 @@ function renderizarGraficos() {
     ]);
 }
 
-window.onload = () => { 
-    initGlobalData(inicializarDashboard); 
-};
+window.addEventListener('load', () => { initGlobalData(inicializarDashboard); });
 
 // Carrega lembretes assim que o usuário estiver autenticado
 if (typeof window.currentUserInfo !== 'undefined' && window.currentUserInfo !== null) {
     carregarLembretesDashboard();
 } else {
     const authLembretesInterval = setInterval(() => {
+        if (!window.authLembretesInterval_attempts) window.authLembretesInterval_attempts = 0;
+        window.authLembretesInterval_attempts++;
+        if (window.authLembretesInterval_attempts > 100) { clearInterval(authLembretesInterval); return; }
         if (typeof window.currentUserInfo !== 'undefined' && window.currentUserInfo !== null) {
             clearInterval(authLembretesInterval);
             carregarLembretesDashboard();
@@ -858,3 +859,7 @@ function enviarWhatsApp(clienteId, link) {
         showToast('Erro ao atualizar banco de dados.', 'error');
     });
 }
+
+
+
+

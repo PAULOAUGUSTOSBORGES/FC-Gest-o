@@ -54,9 +54,7 @@ function inicializarSistema() {
     }
 }
 
-window.onload = () => {
-    initGlobalData(inicializarSistema);
-};
+window.addEventListener('load', () => { initGlobalData(inicializarSistema); });
 
 // ==========================================
 // FUNÇÕES DE UI E CORES
@@ -557,5 +555,7 @@ async function excluirSubcategoria(catId, index) {
         showToast("Erro ao excluir subcategoria", "error");
     }
 }
+
+
 
 

@@ -108,14 +108,14 @@ async function fazerCadastro() {
 }
 
 // Inicializa a escuta de sessão para redirecionar automaticamente quando logar
-window.onload = () => {
+window.addEventListener('load', () => {
     const msgExpirada = sessionStorage.getItem('fc_sessao_expirada_msg');
     if (msgExpirada) {
         showToast(msgExpirada, 'info');
         sessionStorage.removeItem('fc_sessao_expirada_msg');
     }
     initGlobalData();
-};
+});
 
 window.esqueciSenha = async function() {
     const email = document.getElementById('login-user')?.value?.trim();
@@ -125,7 +125,7 @@ window.esqueciSenha = async function() {
         return;
     }
     try {
-        await auth.sendPasswordResetEmail(email);
+        await firebase.auth().sendPasswordResetEmail(email);
         if (typeof showToast === 'function') showToast('E-mail de recuperação enviado com sucesso! Verifique sua caixa de entrada.', 'success');
         else alert('E-mail de recuperação enviado com sucesso! Verifique sua caixa de entrada.');
     } catch(err) {

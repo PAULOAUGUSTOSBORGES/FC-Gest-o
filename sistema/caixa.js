@@ -1,14 +1,14 @@
-﻿// ==========================================
-// GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÇÕES
+// ==========================================
+// GEST�O.JS - ERP FINANCEIRO, DASHBOARD E PROJE��ES
 // ==========================================
 
-let acaoConfirmacaoPendente = null;
-window.tempXMLData = null; 
-window.xmlItemEditIndex = null;
-let compraManualItens = []; 
+var acaoConfirmacaoPendente = typeof acaoConfirmacaoPendente !== 'undefined' ? acaoConfirmacaoPendente : null;
+window.tempXMLData = window.tempXMLData || null; 
+window.xmlItemEditIndex = window.xmlItemEditIndex || null;
+var compraManualItens = typeof compraManualItens !== 'undefined' ? compraManualItens : []; 
 
-const categoriasPagar = ['Fornecedores / Compras', 'Impostos (DAS, ICMS, etc)', 'Salários / Folha', 'Aluguel', 'Água', 'Energia', 'Internet / Telefonia', 'Contabilidade', 'Sistema / Software', 'IPTU', 'Outras Despesas'];
-const categoriasReceber = ['Vendas', 'Serviços', 'Outras Receitas'];
+var categoriasPagar = typeof categoriasPagar !== 'undefined' ? categoriasPagar : ['Fornecedores / Compras', 'Impostos (DAS, ICMS, etc)', 'Sal�rios / Folha', 'Aluguel', '�gua', 'Energia', 'Internet / Telefonia', 'Contabilidade', 'Sistema / Software', 'IPTU', 'Outras Despesas'];
+var categoriasReceber = typeof categoriasReceber !== 'undefined' ? categoriasReceber : ['Vendas', 'Servi�os', 'Outras Receitas'];
 
 // Evita o "piscar" da tela carregando as abas instantaneamente antes do Firebase
 document.addEventListener('DOMContentLoaded', () => {
@@ -66,50 +66,50 @@ function refreshCurrentView() {
 // ==========================================
 async function migrarDadosSeNecessario() {
     try {
-        // Verifica se já existem dados nas coleções novas
         const comprasSnap = await firestore.collection('compras').limit(1).get();
         const finSnap = await firestore.collection('financeiro').limit(1).get();
-        
-        // Se já há dados em compras OU financeiro, não precisa migrar
         if (!comprasSnap.empty || !finSnap.empty) return;
-
-        // Coleções novas estão vazias — tenta ler do banco antigo
+        
         const bancoPrincipalSnap = await firestore.collection('fc_moveis').doc('banco_principal').get();
         if (!bancoPrincipalSnap.exists) return;
-
+        
         const dados = bancoPrincipalSnap.data();
         if (!dados) return;
-
-        // Checa se há algum dado útil no banco antigo
+        
         const temDados = (dados.compras && dados.compras.length > 0) || (dados.financeiro && dados.financeiro.length > 0);
         if (!temDados) return;
-
+        
         showToast('Importando dados do sistema anterior... Aguarde!', 'info');
-
-        const promessas = [];
+        
+        const operations = [];
         const colecoes = ['produtos', 'clientes', 'fornecedores', 'vendas', 'movimentacoes', 'financeiro', 'compras'];
-
+        
         for (let col of colecoes) {
             if (dados[col] && Array.isArray(dados[col])) {
                 for (let item of dados[col]) {
                     const id = item.id ? String(item.id) : firestore.collection(col).doc().id;
-                    promessas.push(firestore.collection(col).doc(id).set(item, { merge: true }));
+                    operations.push({ ref: firestore.collection(col).doc(id), data: item });
                 }
             }
         }
-
-        if (dados.caixa) promessas.push(firestore.collection('fc_moveis').doc('caixa').set(dados.caixa, { merge: true }));
-        if (dados.config) promessas.push(firestore.collection('fc_moveis').doc('config').set(dados.config, { merge: true }));
-
-        await Promise.all(promessas);
-        // Marca como migrado
-        try { await firestore.collection('fc_moveis').doc('banco_principal').update({ migrado: true }); } catch (e2) { console.error("Erro interno:", e2); }
-
+        
+        if (dados.caixa) operations.push({ ref: firestore.collection('fc_moveis').doc('caixa'), data: dados.caixa });
+        if (dados.config) operations.push({ ref: firestore.collection('fc_moveis').doc('config'), data: dados.config });
+        
+        const BATCH_SIZE = 400;
+        for (let i = 0; i < operations.length; i += BATCH_SIZE) {
+            const batch = firestore.batch();
+            operations.slice(i, i + BATCH_SIZE).forEach(op => {
+                batch.set(op.ref, op.data, { merge: true });
+            });
+            await batch.commit();
+        }
+        
+        try { await firestore.collection('fc_moveis').doc('banco_principal').update({ migrado: true }); } catch (e2) {}
         showToast('Dados importados com sucesso! Recarregando...', 'success');
         setTimeout(() => window.location.reload(), 2000);
-
     } catch (e) {
-        console.error('Erro na migração:', e);
+        console.error('Erro na migracao:', e);
         showToast('Aviso: Erro ao importar dados anteriores.', 'error');
     }
 }
@@ -172,7 +172,7 @@ function inicializarGestao() {
 }
 
 
-window.onload = () => { initGlobalData(inicializarGestao); };
+window.addEventListener('load', () => { initGlobalData(inicializarGestao); });
 
 function atualizarCardsFluxoDeCaixa() {
     if (!db.financeiro) return;
@@ -2847,6 +2847,9 @@ window.renderCaixaDiario = renderCaixaDiario;
 window.imprimirArea = imprimirArea;
 window.baixarPDF = baixarPDF;
 window.fecharModalConfirmacao = fecharModalConfirmacao;
+
+
+
 
 
 

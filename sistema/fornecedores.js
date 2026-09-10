@@ -33,7 +33,7 @@ window.salvarFornecedor = salvarFornecedor;
 window.editarFornecedor = editarFornecedor;
 window.excluirFornecedor = excluirFornecedor;
 
-window.onload = () => { initGlobalData(inicializarFornecedores); };
+window.addEventListener('load', () => { initGlobalData(inicializarFornecedores); });
 
 function abaModal(prefix, nomeAba) {
     const modalId = `#modal-${prefix === 'cli' ? 'cliente' : (prefix === 'forn' ? 'fornecedor' : 'produto')}`;
@@ -180,4 +180,6 @@ function excluirFornecedor(id) {
         } catch (e) { showToast('Erro', 'error'); }
     });
 }
+
+
 

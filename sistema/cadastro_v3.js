@@ -86,7 +86,7 @@ function inicializarCadastro() {
     mudarVisaoLocal(view || 'produtos');
 }
 
-window.onload = () => { initGlobalData(inicializarCadastro); };
+window.addEventListener('load', () => { initGlobalData(inicializarCadastro); });
 
 // ==========================================
 // FUNÇÕES GENÉRICAS DE UI
@@ -1035,3 +1035,5 @@ document.addEventListener('click', function(e) {
         }
     }
 });
+
+

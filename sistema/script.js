@@ -1249,7 +1249,7 @@ function renderDashboard() {
     }
 }
 
-window.onload = () => { initData(); };
+window.addEventListener('load', () => { initData(); });
 
 
 
@@ -1319,4 +1319,6 @@ function filtrarProdutosXMLBusca() {
 
 function mostrarListaProdutosXMLBusca() { filtrarProdutosXMLBusca(); }
 function ocultarListaProdutosXMLBusca() { document.getElementById('prod-vinculo-lista').classList.add('hidden'); }
+
+
 

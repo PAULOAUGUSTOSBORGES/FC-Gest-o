@@ -86,7 +86,7 @@ function inicializarCadastro() {
     mudarVisaoLocal(view || 'produtos');
 }
 
-window.onload = () => { initGlobalData(inicializarCadastro); };
+window.addEventListener('load', () => { initGlobalData(inicializarCadastro); });
 
 // ==========================================
 // FUNÇÕES GENÉRICAS DE UI
@@ -1305,6 +1305,8 @@ window.selecionarProdutoVinculoXML = selecionarProdutoVinculoXML;
 window.filtrarProdutosXMLBusca = filtrarProdutosXMLBusca;
 window.mostrarListaProdutosXMLBusca = mostrarListaProdutosXMLBusca;
 window.ocultarListaProdutosXMLBusca = ocultarListaProdutosXMLBusca;
+
+
 
 
 

@@ -308,3 +308,4 @@
     console.log('[FCCache] ✅ Sistema de Cache FC-Gestão ativo. Use FCCache.stats() para diagnóstico.');
 
 })();
+

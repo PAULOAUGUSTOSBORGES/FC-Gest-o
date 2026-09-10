@@ -166,7 +166,7 @@ function inicializarOperacao() {
     mudarVisaoLocal('pdv');
 }
 
-window.onload = () => { initGlobalData(inicializarOperacao); };
+window.addEventListener('load', () => { initGlobalData(inicializarOperacao); });
 
 // ==========================================
 // 3. FUNÇÕES GENÉRICAS E KARDEX
@@ -2716,4 +2716,6 @@ window.selecionarProdutoVinculoXML = selecionarProdutoVinculoXML;
 window.filtrarProdutosXMLBusca = filtrarProdutosXMLBusca;
 window.mostrarListaProdutosXMLBusca = mostrarListaProdutosXMLBusca;
 window.ocultarListaProdutosXMLBusca = ocultarListaProdutosXMLBusca;
+
+
 

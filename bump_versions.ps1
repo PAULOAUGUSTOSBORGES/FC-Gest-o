@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-$folder = "g:\VERSOES DO SISTEMA\site sistema"
+$folder = "g:\VERSOES DO SISTEMA\site sistema\FC-Gest-o\sistema"
 
 # Helper function to bump version
 function Bump-Version($htmlFile, $jsFile) {
@@ -8,7 +8,8 @@ function Bump-Version($htmlFile, $jsFile) {
         $content = Get-Content $filePath -Raw
         # Search for .js?v=XX and replace with a random timestamp so it's always fresh
         $timestamp = (Get-Date).Ticks
-        $pattern = "\Q$jsFile\E\?v=[0-9]+"
+        $escaped = [regex]::Escape($jsFile)
+        $pattern = "$escaped\?v=[0-9]+"
         $replacement = "$jsFile`?v=$timestamp"
         $newContent = $content -replace $pattern, $replacement
         Set-Content -Path $filePath -Value $newContent -Encoding UTF8
