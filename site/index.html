@@ -21,6 +21,28 @@
         .glass-nav { backdrop-filter: blur(12px); }
         .product-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .product-card:hover { transform: translateY(-5px); }
+        .product-card-btn {
+            background-color: #f1f5f9;
+            color: #334155;
+            border-color: #e2e8f0;
+            transition: all 0.2s ease-in-out;
+        }
+        [data-theme="dark"] .product-card-btn {
+            background-color: #334155;
+            color: #e2e8f0;
+            border-color: #475569;
+        }
+        .product-card:hover .product-card-btn,
+        .group:hover .group-hover\:bg-brand {
+            background-color: var(--brand-color, #2563eb) !important;
+            color: #ffffff !important;
+            border-color: var(--brand-color, #2563eb) !important;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
+        }
+        .product-card:hover .product-card-btn *,
+        .group:hover .group-hover\:text-white {
+            color: #ffffff !important;
+        }
         img { image-rendering: -webkit-optimize-contrast; image-rendering: auto; }
 
         /* ================================================
@@ -127,7 +149,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260910143512">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260910172224">
 </head>
 <body class="bg-gray-50 dark:bg-slate-900 text-gray-800 dark:text-slate-100 antialiased selection:bg-brand selection:text-white flex flex-col min-h-screen transition-colors duration-200">
 
@@ -390,11 +412,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     
     <!-- Config Firebase (site público - sem redirecionamento de login) -->
-    <script src="../sistema/config_banco.js?v=20260910143512"></script>
-    <script src="firebase-site.js?v=20260910143512"></script>
+    <script src="../sistema/config_banco.js?v=20260910172224"></script>
+    <script src="firebase-site.js?v=20260910172224"></script>
     
     <!-- Lógica da Loja -->
-    <script src="carrinho.js?v=20260910143512"></script>
-    <script src="loja.js?v=20260910143512"></script>
+    <script src="carrinho.js?v=20260910172224"></script>
+    <script src="loja.js?v=20260910172224"></script>
 </body>
 </html>

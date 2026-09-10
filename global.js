@@ -1,4 +1,4 @@
-﻿function escapeHtml(unsafe) {
+function escapeHtml(unsafe) {
     if (!unsafe) return '';
     return String(unsafe)
         .replace(/&/g, "&amp;")
@@ -459,46 +459,47 @@ function showToast(msg, type = 'info') {
 // INICIALIZA??O E CONTROLE DE SESS?O
 // ==========================================
 function initGlobalData(funcaoDeRenderizacaoDaPagina) {
+    // Garante persistência permanente da sessão no Firebase Auth
+    try {
+        if (typeof firebase !== 'undefined' && firebase.auth) {
+            firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+        }
+    } catch (e) {}
+
     auth.onAuthStateChanged(async (user) => {
         const isLoginPage = window.location.pathname.toLowerCase().includes('login.html') || window.location.href.toLowerCase().includes('login.html');
 
         if (!user) {
             if (!isLoginPage) window.location.href = 'login.html';
-        } else {
-            const hoje = new Date().toDateString();
-            const sessaoData = localStorage.getItem('fc_sessao_data');
-            const sessaoUid = localStorage.getItem('fc_sessao_uid');
+            return;
+        }
 
-            if (isLoginPage) {
-                // Se estiver na tela de login:
-                if (window._fazendoLogin || (sessaoData === hoje && sessaoUid === user.uid)) {
-                    // Sessão válida de hoje ou acabou de clicar em entrar: valida e vai para o index
-                    localStorage.setItem('fc_sessao_data', hoje);
-                    localStorage.setItem('fc_sessao_uid', user.uid);
-                    window.location.href = 'index.html';
-                    return;
-                } else {
-                    // Sessão antiga do dia anterior ao abrir a tela de login: desloga para forçar digitar a senha
-                    try { await auth.signOut(); } catch (e) { console.error("Erro interno:", e); }
-                    localStorage.removeItem('fc_sessao_data');
-                    localStorage.removeItem('fc_sessao_uid');
-                    return;
-                }
-            }
+        // Se já está logado e abriu a tela de login, vai direto para o sistema
+        if (isLoginPage) {
+            window.location.href = 'index.html';
+            return;
+        }
 
-            // Se N?O for a tela de login, valida se a sessão é do dia de hoje
-            if (!sessaoData || sessaoData !== hoje || sessaoUid !== user.uid) {
-                console.warn("Sessão diária expirada ou inexistente para hoje. Solicitando novo login...");
-                localStorage.removeItem('fc_sessao_data');
-                localStorage.removeItem('fc_sessao_uid');
-                sessionStorage.setItem('fc_sessao_expirada_msg', 'Sua sessão diária expirou. Por favor, faça login novamente.');
-                try { await auth.signOut(); } catch (e) { console.error("Erro interno:", e); }
-                window.location.href = 'login.html';
-                return;
-            }
+        // Controle de Sessão: encerra EXCLUSIVAMENTE se passar da meia-noite
+        const hoje = new Date().toDateString();
+        const sessaoData = localStorage.getItem('fc_sessao_data');
 
-            // Inicia monitor para expirar caso o dia vire com a aba aberta
-            iniciarMonitorSessaoDiaria();
+        if (sessaoData && sessaoData !== hoje) {
+            console.log("Virada da meia-noite detectada. Encerrando sessão do dia anterior...");
+            localStorage.removeItem('fc_sessao_data');
+            localStorage.removeItem('fc_sessao_uid');
+            sessionStorage.setItem('fc_sessao_expirada_msg', 'Meia-noite atingida: sua sessão diária encerrou. Faça login para o novo dia.');
+            try { await auth.signOut(); } catch (e) {}
+            window.location.href = 'login.html';
+            return;
+        }
+
+        // Sessão do mesmo dia válida: mantém ativa sem deslogar por inatividade
+        localStorage.setItem('fc_sessao_data', hoje);
+        localStorage.setItem('fc_sessao_uid', user.uid);
+
+        // Inicia monitor para detectar quando der meia-noite
+        iniciarMonitorSessaoDiaria();
 
             // Pré-carrega Config e Permissões do cache para inicialização instantânea
             const configCache = (typeof window.FCCache !== 'undefined') && window.FCCache.get('fc_moveis_config');
@@ -632,17 +633,16 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
             } else {
                 await sincronizarFirebase();
             }
-        }
     });
 }
 
-// Monitor para encerrar a sessão caso a meia-noite seja cruzada com a aba aberta
+// Monitor de sessão: encerra a sessão SOMENTE caso dê meia-noite
 function iniciarMonitorSessaoDiaria() {
     if (window._monitorSessaoIniciado) return;
     window._monitorSessaoIniciado = true;
 
-    const checarViradaDoDia = async () => {
-        const isLoginPage = window.location.pathname.includes('login.html');
+    const checarMeiaNoite = async () => {
+        const isLoginPage = window.location.pathname.toLowerCase().includes('login.html') || window.location.href.toLowerCase().includes('login.html');
         if (isLoginPage) return;
 
         const user = auth.currentUser;
@@ -651,21 +651,20 @@ function iniciarMonitorSessaoDiaria() {
         const hoje = new Date().toDateString();
         const sessaoData = localStorage.getItem('fc_sessao_data');
 
+        // Se o dia virou (passou de meia-noite):
         if (sessaoData && sessaoData !== hoje) {
-            console.warn("Virada do dia detectada. Encerrando sessão diária...");
+            console.warn("Meia-noite atingida. Encerrando sessão diária...");
             localStorage.removeItem('fc_sessao_data');
             localStorage.removeItem('fc_sessao_uid');
-            sessionStorage.setItem('fc_sessao_expirada_msg', 'O dia virou e sua sessão diária expirou. Por favor, faça login novamente.');
-            try { await auth.signOut(); } catch (e) { console.error("Erro interno:", e); }
+            sessionStorage.setItem('fc_sessao_expirada_msg', 'Meia-noite atingida: sua sessão diária encerrou. Por favor, faça login para o novo dia.');
+            try { await auth.signOut(); } catch (e) {}
             window.location.href = 'login.html';
         }
     };
 
-    setInterval(checarViradaDoDia, 30000);
-    window.addEventListener('focus', checarViradaDoDia);
-    document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) checarViradaDoDia();
-    });
+    // Checa a cada 30 segundos e ao voltar o foco para a aba se já virou meia-noite
+    setInterval(checarMeiaNoite, 30000);
+    window.addEventListener('focus', checarMeiaNoite);
 }
 
 function aplicarControleDeAcesso() {
@@ -1266,40 +1265,4 @@ window.initResponsiveTables = initResponsiveTables;
         if (window.innerWidth <= 640) initResponsiveTables();
     });
 })();
-
-
-// ==========================================
-// CONFIGURAÇÃO DE LOGOUT AUTOMÁTICO (Inatividade)
-// ==========================================
-(function() {
-    let TEMPO_INATIVIDADE = 30 * 60 * 1000; // 30 minutos
-    let timeoutInatividade;
-
-    function resetarTimer() {
-        clearTimeout(timeoutInatividade);
-        timeoutInatividade = setTimeout(() => {
-            if (sessionStorage.getItem('erp_auth_master')) {
-                console.log('Deslogando por inatividade...');
-                if (typeof showToast === 'function') {
-                    showToast('Sessão encerrada por inatividade.', 'warning');
-                }
-                if (typeof fazerLogout === 'function') {
-                    fazerLogout();
-                }
-            }
-        }, TEMPO_INATIVIDADE);
-    }
-
-    window.addEventListener('load', () => {
-        if (!window.location.pathname.includes('login.html')) {
-            document.addEventListener('mousemove', resetarTimer, { passive: true });
-            document.addEventListener('keypress', resetarTimer, { passive: true });
-            document.addEventListener('click', resetarTimer, { passive: true });
-            document.addEventListener('scroll', resetarTimer, { passive: true });
-            document.addEventListener('touchstart', resetarTimer, { passive: true });
-            resetarTimer();
-        }
-    });
-})();
-
 

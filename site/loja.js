@@ -427,7 +427,7 @@ function criarCardProduto(p) {
             ${legendaHtml}
             <div class="flex-grow"></div>
             
-            <div class="mt-4 w-full bg-gray-50 dark:bg-slate-700/50 group-hover:bg-brand dark:group-hover:bg-brand text-gray-700 dark:text-slate-200 group-hover:text-white font-bold py-2.5 sm:py-3 px-4 rounded-xl text-center transition-all duration-200 flex items-center justify-center gap-2 border border-gray-100 dark:border-slate-700 group-hover:border-brand shadow-sm text-sm">
+            <div class="product-card-btn mt-4 w-full font-bold py-2.5 sm:py-3 px-4 rounded-xl text-center flex items-center justify-center gap-2 border shadow-sm text-sm">
                 <span>Ver Detalhes</span>
                 <i class="fa-solid fa-arrow-right text-xs group-hover:translate-x-1 transition-transform"></i>
             </div>

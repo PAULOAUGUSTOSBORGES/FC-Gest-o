@@ -43,7 +43,7 @@ service cloud.firestore {
     }
     
     match /fc_moveis/config {
-      allow read: if isAutenticado(); // REMOVIDO: leitura pública irrestrita
+      allow read: if true; // Leitura pública: necessária para a vitrine da loja virtual carregar configurações
       allow write: if isAdmin() || temPermissao('perm_config') || temPermissao('perm_gestao');
     }
 

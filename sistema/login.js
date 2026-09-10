@@ -49,6 +49,11 @@ async function fazerLogin() {
         window._fazendoLogin = true;
         const btn = document.getElementById('btn-acao');
         btn.innerText = 'Aguarde...'; btn.disabled = true;
+        try {
+            await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+        } catch (persErr) {
+            console.warn('Persistência LOCAL fallback:', persErr);
+        }
         const cred = await firebase.auth().signInWithEmailAndPassword(u, p);
         if (cred && cred.user) {
             const hoje = new Date().toDateString();
