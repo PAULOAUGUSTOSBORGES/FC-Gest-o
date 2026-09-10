@@ -113,22 +113,22 @@ function refreshCurrentView() {
 
 function mudarVisualizacaoFin(tipo) {
     if (tipo === 'lista') {
-        const cal = document.getElementById('fin-area-Calendário');
+        const cal = document.getElementById('fin-area-calendario');
         if (cal) cal.classList.add('hidden');
         const abas = document.getElementById('fin-abas-container');
         if (abas) abas.classList.remove('hidden');
         const viewLista = document.getElementById('fin-view-lista');
         if (viewLista) { viewLista.classList.add('bg-blue-600', 'text-white'); viewLista.classList.remove('text-slate-600', 'dark:text-slate-300'); }
-        const viewCal = document.getElementById('fin-view-Calendário');
+        const viewCal = document.getElementById('fin-view-calendario');
         if (viewCal) { viewCal.classList.remove('bg-blue-600', 'text-white'); viewCal.classList.add('text-slate-600', 'dark:text-slate-300'); }
         renderFinAbas('receber'); 
-    } else if (tipo === 'Calendário') {
+    } else if ((tipo === 'calendario' || tipo === 'Calendário')) {
         document.querySelectorAll('.fin-area').forEach(el => el.classList.add('hidden'));
-        const cal = document.getElementById('fin-area-Calendário');
+        const cal = document.getElementById('fin-area-calendario');
         if (cal) cal.classList.remove('hidden');
         const abas = document.getElementById('fin-abas-container');
         if (abas) abas.classList.add('hidden');
-        const viewCal = document.getElementById('fin-view-Calendário');
+        const viewCal = document.getElementById('fin-view-calendario');
         if (viewCal) { viewCal.classList.add('bg-blue-600', 'text-white'); viewCal.classList.remove('text-slate-600', 'dark:text-slate-300'); }
         const viewLista = document.getElementById('fin-view-lista');
         if (viewLista) { viewLista.classList.remove('bg-blue-600', 'text-white'); viewLista.classList.add('text-slate-600', 'dark:text-slate-300'); }

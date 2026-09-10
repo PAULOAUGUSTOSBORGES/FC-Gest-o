@@ -211,8 +211,8 @@ function refreshCurrentView() {
 
 function mudarVisualizacaoFin(tipo) {
     const listBtn = document.getElementById('fin-view-lista');
-    const calBtn = document.getElementById('fin-view-Calend�rio');
-    const calArea = document.getElementById('fin-area-Calend�rio');
+    const calBtn = document.getElementById('fin-view-calendario');
+    const calArea = document.getElementById('fin-area-calendario');
     const abasCont = document.getElementById('fin-abas-container');
     
     if (tipo === 'lista') {
@@ -221,7 +221,7 @@ function mudarVisualizacaoFin(tipo) {
         if (calArea) calArea.classList.add('hidden');
         if (abasCont) abasCont.classList.remove('hidden');
         renderFinAbas('pagar'); 
-    } else if (tipo === 'Calend�rio') {
+    } else if ((tipo === 'calendario' || tipo === 'Calend�rio')) {
         if (calBtn) calBtn.className = 'px-3.5 py-2 rounded-lg text-xs font-bold bg-blue-600 text-white shadow-md hover:bg-blue-700 transition-all whitespace-nowrap';
         if (listBtn) listBtn.className = 'px-3.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all whitespace-nowrap';
         document.querySelectorAll('.fin-area').forEach(el => el.classList.add('hidden'));
@@ -1253,9 +1253,9 @@ function renderizarMapaCaixaHTML(m) {
             </div>
         </div>
 
-        <!-- MÃâ°TODOS ELETRÃâNICOS -->
+        <!-- MÃâ°TODOS ELETRÃâNICOS -->
         <div class="border-b border-dashed border-slate-300 dark:border-slate-700 pb-3 mb-3">
-            <h4 class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[10px] mb-1.5">2. MÃâ°TODOS ELETRÃâNICOS E PARCELADOS</h4>
+            <h4 class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[10px] mb-1.5">2. MÃâ°TODOS ELETRÃâNICOS E PARCELADOS</h4>
             <div class="flex justify-between text-[11px]"><span>Cartão Débito (Sistema / Declarado):</span><span>${formatMoney(m.apuradoSistema.vendasDebito)} / <strong>${formatMoney(m.declaradoOperador.debito)}</strong></span></div>
             <div class="flex justify-between text-[11px]"><span>Cartão Crédito (Sistema / Declarado):</span><span>${formatMoney(m.apuradoSistema.vendasCredito)} / <strong>${formatMoney(m.declaradoOperador.credito)}</strong></span></div>
             <div class="flex justify-between text-[11px]"><span>PIX (Sistema / Declarado):</span><span>${formatMoney(m.apuradoSistema.vendasPix)} / <strong>${formatMoney(m.declaradoOperador.pix)}</strong></span></div>
@@ -3588,8 +3588,8 @@ async function confirmarTransferenciaFin() {
         tipo: 'TRANSFERENCIA',
         origem: origem,
         destino: destino,
-        pessoa: origem + ' ? ' + destino,
-        ref: 'Transf: ' + origem + ' ? ' + destino,
+        pessoa: origem + ' → ' + destino,
+        ref: 'Transf: ' + origem + ' → ' + destino,
         categoria: 'Transferência Entre Contas',
         centroCusto: 'Operacional',
         contaBancaria: destino,

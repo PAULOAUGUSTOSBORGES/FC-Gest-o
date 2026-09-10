@@ -37,7 +37,7 @@ window.selecionarProdutoCustoBusca = function(nomeProd) {
 };
 
 // ==========================================
-// 1. CONFIGURAÃ‡Ã•ES DO FIREBASE E SEGURANÃ‡A
+// 1. CONFIGURA??ES DO FIREBASE E SEGURAN?A
 // ==========================================
 
 // --- KILL SWITCH DO SERVICE WORKER E CACHE ---
@@ -64,8 +64,8 @@ if (window.caches && (window.location.protocol === 'http:' || window.location.pr
 
 // ==========================================
 // MOTOR DE TEMA DO SISTEMA (Dark / Light)
-// SincronizaÃ§Ã£o em tempo real entre todas as telas
-// PadrÃ£o: escuro (dark).
+// Sincronização em tempo real entre todas as telas
+// Padrão: escuro (dark).
 // ==========================================
 (function () {
     const tema = localStorage.getItem('fc_theme_sistema') || 'dark';
@@ -118,7 +118,7 @@ function aplicarTemaSistema(tema, broadcast = true) {
     localStorage.setItem('fc_theme_sistema', tema);
     _atualizarBotaoTemaSistema();
     
-    // Se a tela atual possuir cards de configuraÃ§Ã£o de tema (ex: sistema.html), atualiza-os
+    // Se a tela atual possuir cards de configuração de tema (ex: sistema.html), atualiza-os
     if (typeof window.atualizarCardsTemaTela === 'function') {
         window.atualizarCardsTemaTela(tema);
     }
@@ -163,14 +163,14 @@ function _atualizarBotaoTemaSistema() {
     });
 }
 
-// Ouvinte do evento storage: se o usuÃ¡rio mudar o tema em outra aba, esta aba se atualiza na hora!
+// Ouvinte do evento storage: se o usuário mudar o tema em outra aba, esta aba se atualiza na hora!
 window.addEventListener('storage', function (e) {
     if (e.key === 'fc_theme_sistema' && e.newValue) {
         aplicarTemaSistema(e.newValue, false);
     }
 });
 
-// Canal Broadcast para sincronizaÃ§Ã£o ultrarrÃ¡pida entre abas abertas
+// Canal Broadcast para sincronização ultrarrápida entre abas abertas
 try {
     if ('BroadcastChannel' in window) {
         const bcListen = new BroadcastChannel('fc_theme_channel');
@@ -182,9 +182,9 @@ try {
     }
 } catch (e) { console.error("Erro interno:", e); }
 
-// Injeta os botÃµes de tema (no rodapÃ© da sidebar e no topo do header)
+// Injeta os botões de tema (no rodapé da sidebar e no topo do header)
 document.addEventListener('DOMContentLoaded', function () {
-    // 1. BotÃ£o no rodapÃ© da Sidebar
+    // 1. Botão no rodapé da Sidebar
     const sidebarBottom = document.querySelector('#sidebar .p-4.border-t');
     if (sidebarBottom && !document.getElementById('btn-tema-sistema')) {
         const isDark = document.documentElement.classList.contains('dark');
@@ -200,7 +200,7 @@ document.addEventListener('DOMContentLoaded', function () {
         sidebarBottom.prepend(btn);
     }
 
-    // 2. BotÃ£o no Header (acesso instantÃ¢neo direto no celular e PC sem precisar abrir menu)
+    // 2. Botão no Header (acesso instantâneo direto no celular e PC sem precisar abrir menu)
     const headerActions = document.querySelector('header .flex.items-center.gap-2, header .flex.items-center.gap-4');
     if (headerActions && !document.getElementById('header-btn-tema')) {
         const isDark = document.documentElement.classList.contains('dark');
@@ -218,7 +218,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-// As credenciais e inicializaÃ§Ã£o do Firebase agora vÃªm de sistema/config_banco.js
+// As credenciais e inicialização do Firebase agora vêm de sistema/config_banco.js
 const firestore = firebase.firestore();
 
 // ATIVAR MODO OFFLINE (Apenas em ambiente HTTP/HTTPS com servidor)
@@ -226,23 +226,23 @@ if (window.location.protocol === 'http:' || window.location.protocol === 'https:
     firestore.enablePersistence({ synchronizeTabs: true })
         .catch(function(err) {
             if (err.code == 'failed-precondition') {
-                console.warn("MÃºltiplas abas abertas. A persistÃªncia offline funcionarÃ¡ apenas na primeira aba.");
+                console.warn("Múltiplas abas abertas. A persistência offline funcionará apenas na primeira aba.");
             } else if (err.code == 'unimplemented') {
-                console.warn("Navegador nÃ£o suporta persistÃªncia offline do Firebase.");
+                console.warn("Navegador não suporta persistência offline do Firebase.");
             }
         });
 }
 
 const auth = firebase.auth();
 
-// Stub Global do DB (para nÃ£o quebrar as outras telas enquanto sÃ£o migradas)
+// Stub Global do DB (para não quebrar as outras telas enquanto são migradas)
 let db = {
     produtos: [], categorias: [], clientes: [], fornecedores: [], vendas: [], movimentacoes: [],
     financeiro: [], compras: [], funcionarios: [], caixa: { status: 'FECHADO', saldo: 0, historico: [] },
     config: { 
-        empresa: { nome: 'FC MÃ³veis e Interiores', fantasia: 'FC MÃ³veis' },
-        taxas: { 'Dinheiro': 0, 'PIX': 0, 'CartÃ£o DÃ©bito': 1.99, 'Boleto': 0, 'Fiado': 0, 'CartÃ£o CrÃ©dito': { 1: 4.99, 2: 5.49, 3: 5.99, 4: 6.49, 5: 6.99, 6: 7.49, 7: 7.99, 8: 8.49, 9: 8.99, 10: 9.49, 11: 9.99, 12: 10.49 } },
-        prazos: { 'Fiado': 30, 'Boleto': 30, 'CartÃ£o CrÃ©dito': 1, 'CartÃ£o DÃ©bito': 1 }
+        empresa: { nome: 'FC Móveis e Interiores', fantasia: 'FC Móveis' },
+        taxas: { 'Dinheiro': 0, 'PIX': 0, 'Cartão Débito': 1.99, 'Boleto': 0, 'Fiado': 0, 'Cartão Crédito': { 1: 4.99, 2: 5.49, 3: 5.99, 4: 6.49, 5: 6.99, 6: 7.49, 7: 7.99, 8: 8.49, 9: 8.99, 10: 9.49, 11: 9.99, 12: 10.49 } },
+        prazos: { 'Fiado': 30, 'Boleto': 30, 'Cartão Crédito': 1, 'Cartão Débito': 1 }
     }
 };
 
@@ -252,8 +252,8 @@ let db = {
 // Isso faz as telas carregarem instantaneamente.
 // ==========================================
 (function _preCarregarCacheGlobal() {
-    // Aguarda o FCCache estar disponÃ­vel (carregado via <script>)
-    // Se ainda nÃ£o estiver, agenda para quando o DOM estiver pronto
+    // Aguarda o FCCache estar disponível (carregado via <script>)
+    // Se ainda não estiver, agenda para quando o DOM estiver pronto
     function tentarPreCarregar() {
         if (typeof window.FCCache === 'undefined') return;
         const colecoesPrincipais = ['produtos', 'clientes', 'fornecedores', 'funcionarios', 'vendas', 'financeiro', 'compras', 'categorias', 'movimentacoes'];
@@ -274,14 +274,14 @@ let db = {
             if (caixaCache) db.caixa = caixaCache;
         }
     }
-    // Tenta prÃ©-carregar imediatamente e tambÃ©m ao carregar o DOM
+    // Tenta pré-carregar imediatamente e também ao carregar o DOM
     tentarPreCarregar();
     document.addEventListener('DOMContentLoaded', tentarPreCarregar);
 })();
 window.currentUserInfo = null;
 
 // ==========================================
-// Monitoramento de ConexÃ£o (Online/Offline)
+// Monitoramento de Conexão (Online/Offline)
 // ==========================================
 function atualizarBadgeConexao(isOnline) {
     const titleEl = document.getElementById('menu-empresa-nome');
@@ -300,18 +300,18 @@ function atualizarBadgeConexao(isOnline) {
 }
 
 window.addEventListener('offline', () => {
-    showToast('VocÃª estÃ¡ offline! Modo de trabalho local ativado.', 'warning');
+    showToast('Você está offline! Modo de trabalho local ativado.', 'warning');
     document.body.classList.add('is-offline');
     atualizarBadgeConexao(false);
 });
 
 window.addEventListener('online', () => {
-    showToast('ConexÃ£o restabelecida! Sincronizando dados...', 'success');
+    showToast('Conexão restabelecida! Sincronizando dados...', 'success');
     document.body.classList.remove('is-offline');
     atualizarBadgeConexao(true);
 });
 
-// ForÃ§a checagem na inicializaÃ§Ã£o
+// Força checagem na inicialização
 if (!navigator.onLine) {
     setTimeout(() => { atualizarBadgeConexao(false); }, 1000);
 }
@@ -319,7 +319,7 @@ if (!navigator.onLine) {
 const formatMoney = (val) => Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 // ==========================================
-// FUNÃ‡Ã•ES DE MÃSCARA DE DINHEIRO
+// FUN??ES DE MÁSCARA DE DINHEIRO
 // ==========================================
 function applyMoneyMask(el) {
     let raw = String(el.value || '');
@@ -376,7 +376,7 @@ document.addEventListener('focusin', function(e) {
     }
 }, true);
 
-// Interceptar atribuiÃ§Ãµes de '.value' em inputs de dinheiro para auto-formatar floats
+// Interceptar atribuições de '.value' em inputs de dinheiro para auto-formatar floats
 let isMasking = false;
 const originalValueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
 Object.defineProperty(HTMLInputElement.prototype, 'value', {
@@ -456,7 +456,7 @@ function showToast(msg, type = 'info') {
 }
 
 // ==========================================
-// INICIALIZAÃ‡ÃƒO E CONTROLE DE SESSÃƒO
+// INICIALIZA??O E CONTROLE DE SESS?O
 // ==========================================
 function initGlobalData(funcaoDeRenderizacaoDaPagina) {
     auth.onAuthStateChanged(async (user) => {
@@ -472,13 +472,13 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
             if (isLoginPage) {
                 // Se estiver na tela de login:
                 if (window._fazendoLogin || (sessaoData === hoje && sessaoUid === user.uid)) {
-                    // SessÃ£o vÃ¡lida de hoje ou acabou de clicar em entrar: valida e vai para o index
+                    // Sessão válida de hoje ou acabou de clicar em entrar: valida e vai para o index
                     localStorage.setItem('fc_sessao_data', hoje);
                     localStorage.setItem('fc_sessao_uid', user.uid);
                     window.location.href = 'index.html';
                     return;
                 } else {
-                    // SessÃ£o antiga do dia anterior ao abrir a tela de login: desloga para forÃ§ar digitar a senha
+                    // Sessão antiga do dia anterior ao abrir a tela de login: desloga para forçar digitar a senha
                     try { await auth.signOut(); } catch (e) { console.error("Erro interno:", e); }
                     localStorage.removeItem('fc_sessao_data');
                     localStorage.removeItem('fc_sessao_uid');
@@ -486,12 +486,12 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                 }
             }
 
-            // Se NÃƒO for a tela de login, valida se a sessÃ£o Ã© do dia de hoje
+            // Se N?O for a tela de login, valida se a sessão é do dia de hoje
             if (!sessaoData || sessaoData !== hoje || sessaoUid !== user.uid) {
-                console.warn("SessÃ£o diÃ¡ria expirada ou inexistente para hoje. Solicitando novo login...");
+                console.warn("Sessão diária expirada ou inexistente para hoje. Solicitando novo login...");
                 localStorage.removeItem('fc_sessao_data');
                 localStorage.removeItem('fc_sessao_uid');
-                sessionStorage.setItem('fc_sessao_expirada_msg', 'Sua sessÃ£o diÃ¡ria expirou. Por favor, faÃ§a login novamente.');
+                sessionStorage.setItem('fc_sessao_expirada_msg', 'Sua sessão diária expirou. Por favor, faça login novamente.');
                 try { await auth.signOut(); } catch (e) { console.error("Erro interno:", e); }
                 window.location.href = 'login.html';
                 return;
@@ -500,7 +500,7 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
             // Inicia monitor para expirar caso o dia vire com a aba aberta
             iniciarMonitorSessaoDiaria();
 
-            // PrÃ©-carrega Config e PermissÃµes do cache para inicializaÃ§Ã£o instantÃ¢nea
+            // Pré-carrega Config e Permissões do cache para inicialização instantânea
             const configCache = (typeof window.FCCache !== 'undefined') && window.FCCache.get('fc_moveis_config');
             if (configCache) db.config = configCache;
 
@@ -511,7 +511,7 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
             let renderizouImediato = false;
             if (window.currentUserInfo) {
                 aplicarControleDeAcesso();
-                mostrarNomeUsuarioNoHeader(window.currentUserInfo.isAdmin ? 'Admin Master' : `Func.: ${window.currentUserInfo.nome || 'UsuÃ¡rio'}`);
+                mostrarNomeUsuarioNoHeader(window.currentUserInfo.isAdmin ? 'Admin Master' : `Func.: ${window.currentUserInfo.nome || 'Usuário'}`);
                 aplicarIdentidadeVisualGlobal();
                 if (funcaoDeRenderizacaoDaPagina) {
                     try {
@@ -523,12 +523,12 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                 }
             }
 
-            // SincronizaÃ§Ã£o paralela com Firebase (em background se jÃ¡ renderizou do cache)
+            // Sincronização paralela com Firebase (em background se já renderizou do cache)
             const sincronizarFirebase = async () => {
                 try {
                     const [confSnap, userSnap] = await Promise.all([
                         firestore.collection("fc_moveis").doc("config").get().catch(e => { console.error("Erro ao carregar config:", e); return null; }),
-                        firestore.collection("funcionarios").doc(user.uid).get().catch(e => { console.error("Erro de permissÃµes:", e); return null; })
+                        firestore.collection("funcionarios").doc(user.uid).get().catch(e => { console.error("Erro de permissões:", e); return null; })
                     ]);
 
                     if (confSnap && confSnap.exists) {
@@ -549,7 +549,7 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                     if (userSnap && userSnap.exists) {
                         window.currentUserInfo = userSnap.data();
                         
-                        // CORREÃ‡ÃƒO: Garante admin para o email correto
+                        // CORRE??O: Garante admin para o email correto
                         if (user.email === 'fabricadecoresgoiania@gmail.com' && !window.currentUserInfo.isAdmin) {
                             window.currentUserInfo.isAdmin = true;
                             window.currentUserInfo.perm_dashboard = true;
@@ -570,12 +570,12 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                         
                         if (typeof window.FCCache !== 'undefined') window.FCCache.set(userCacheKey, window.currentUserInfo);
                         aplicarControleDeAcesso();
-                        mostrarNomeUsuarioNoHeader(window.currentUserInfo.isAdmin ? 'Admin Master' : `Func.: ${window.currentUserInfo.nome || 'UsuÃ¡rio'}`);
+                        mostrarNomeUsuarioNoHeader(window.currentUserInfo.isAdmin ? 'Admin Master' : `Func.: ${window.currentUserInfo.nome || 'Usuário'}`);
                     } else if (userSnap && !userSnap.exists) {
-                        // UsuÃ¡rio nÃ£o cadastrado na base de funcionÃ¡rios
+                        // Usuário não cadastrado na base de funcionários
                         window.currentUserInfo = { isAdmin: false, perm_dashboard: false, perm_pdv: false, perm_cadastros: false, perm_gestao: false, perm_config: false };
                         
-                        // CORREÃ‡ÃƒO: Garante admin na criaÃ§Ã£o do cadastro
+                        // CORRE??O: Garante admin na criação do cadastro
                         if (user.email === 'fabricadecoresgoiania@gmail.com') {
                             window.currentUserInfo.isAdmin = true;
                             window.currentUserInfo.perm_dashboard = true;
@@ -611,15 +611,15 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
 
                     aplicarIdentidadeVisualGlobal();
 
-                    // Se nÃ£o pÃ´de renderizar de imediato por falta de cache, renderiza agora
+                    // Se não pôde renderizar de imediato por falta de cache, renderiza agora
                     if (!renderizouImediato && funcaoDeRenderizacaoDaPagina) {
                         funcaoDeRenderizacaoDaPagina();
                     } else if (renderizouImediato && typeof window.carregarConfiguracoesNaTela === 'function') {
-                        // Se a tela atual for a de configuraÃ§Ãµes, atualiza os campos com os dados frescos do Firestore
+                        // Se a tela atual for a de configurações, atualiza os campos com os dados frescos do Firestore
                         window.carregarConfiguracoesNaTela();
                     }
                 } catch (err) {
-                    console.error("Erro na sincronizaÃ§Ã£o Firebase:", err);
+                    console.error("Erro na sincronização Firebase:", err);
                     if (!renderizouImediato && funcaoDeRenderizacaoDaPagina) {
                         aplicarIdentidadeVisualGlobal();
                         funcaoDeRenderizacaoDaPagina();
@@ -636,7 +636,7 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
     });
 }
 
-// Monitor para encerrar a sessÃ£o caso a meia-noite seja cruzada com a aba aberta
+// Monitor para encerrar a sessão caso a meia-noite seja cruzada com a aba aberta
 function iniciarMonitorSessaoDiaria() {
     if (window._monitorSessaoIniciado) return;
     window._monitorSessaoIniciado = true;
@@ -652,10 +652,10 @@ function iniciarMonitorSessaoDiaria() {
         const sessaoData = localStorage.getItem('fc_sessao_data');
 
         if (sessaoData && sessaoData !== hoje) {
-            console.warn("Virada do dia detectada. Encerrando sessÃ£o diÃ¡ria...");
+            console.warn("Virada do dia detectada. Encerrando sessão diária...");
             localStorage.removeItem('fc_sessao_data');
             localStorage.removeItem('fc_sessao_uid');
-            sessionStorage.setItem('fc_sessao_expirada_msg', 'O dia virou e sua sessÃ£o diÃ¡ria expirou. Por favor, faÃ§a login novamente.');
+            sessionStorage.setItem('fc_sessao_expirada_msg', 'O dia virou e sua sessão diária expirou. Por favor, faça login novamente.');
             try { await auth.signOut(); } catch (e) { console.error("Erro interno:", e); }
             window.location.href = 'login.html';
         }
@@ -673,7 +673,7 @@ function aplicarControleDeAcesso() {
     const p = window.currentUserInfo;
     const path = window.location.pathname;
     
-    // Se for admin, nÃ£o bloqueia nada
+    // Se for admin, não bloqueia nada
     if (p.isAdmin) return;
 
     // 1. Bloqueio de Acesso com Alerta Visual
@@ -684,23 +684,23 @@ function aplicarControleDeAcesso() {
     
     if (isIndex && !p.perm_dashboard) {
         bloqueado = true;
-        mensagemBloqueio = 'Acesso Negado ao Dashboard (VisÃ£o Geral).';
+        mensagemBloqueio = 'Acesso Negado ao Dashboard (Visão Geral).';
     } else if ((path.includes('cadastro.html') || path.includes('produtos.html') || path.includes('clientes.html') || path.includes('fornecedores.html')) && !p.perm_cadastros) {
         bloqueado = true;
         mensagemBloqueio = 'Acesso Negado aos Cadastros.';
     } else if (path.includes('funcionarios.html')) {
-        // A aba de funcionÃ¡rios Ã© bloqueada para todos que nÃ£o sÃ£o Admin Master
+        // A aba de funcionários é bloqueada para todos que não são Admin Master
         bloqueado = true;
-        mensagemBloqueio = 'Acesso Negado: Apenas o Administrador pode gerenciar FuncionÃ¡rios.';
+        mensagemBloqueio = 'Acesso Negado: Apenas o Administrador pode gerenciar Funcionários.';
     } else if ((path.includes('vendas_gestao.html') || path.includes('financeiro.html') || path.includes('relatorios.html') || path.includes('compras.html')) && !p.perm_gestao) {
         bloqueado = true;
-        mensagemBloqueio = 'Acesso Negado Ã  GestÃ£o Financeira.';
+        mensagemBloqueio = 'Acesso Negado à Gestão Financeira.';
     } else if ((path.includes('operacao.html') || path.includes('pdv.html') || path.includes('vendas_operacao.html') || path.includes('orcamentos.html') || path.includes('caixa.html')) && !p.perm_pdv) {
         bloqueado = true;
         mensagemBloqueio = 'Acesso Negado ao PDV e Vendas.';
     } else if (path.includes('sistema.html') && !p.perm_config) {
         bloqueado = true;
-        mensagemBloqueio = 'Acesso Negado Ã s ConfiguraÃ§Ãµes do Sistema.';
+        mensagemBloqueio = 'Acesso Negado às Configurações do Sistema.';
     }
 
     if (bloqueado) {
@@ -723,11 +723,11 @@ function aplicarControleDeAcesso() {
             `;
         }
         showToast(mensagemBloqueio, 'error');
-        // Impede que os botÃµes do dashboard funcionem se ele for clicado (ex: index.html)
+        // Impede que os botões do dashboard funcionem se ele for clicado (ex: index.html)
         document.querySelectorAll('.view-section').forEach(el => el.remove());
     }
 
-    // 2. Se for admin master, mostra aba de funcionÃ¡rios. SenÃ£o, esconde SÃ“ a aba de funcionÃ¡rios do menu lateral
+    // 2. Se for admin master, mostra aba de funcionários. Senão, esconde S? a aba de funcionários do menu lateral
     if (!p.isAdmin) {
         document.querySelectorAll('a[href*="view=funcionarios"], [data-target="funcionarios"]').forEach(el => el.classList.add('hidden'));
     }
@@ -758,7 +758,7 @@ function mostrarNomeUsuarioNoHeader(nome) {
     }
 }
 
-// Intercepta cliques nos links para nÃ£o deixar a tela piscar (navegar) se nÃ£o tiver permissÃ£o
+// Intercepta cliques nos links para não deixar a tela piscar (navegar) se não tiver permissão
 document.addEventListener('click', (e) => {
     const link = e.target.closest('a');
     if (!link || !link.href) return;
@@ -775,26 +775,26 @@ document.addEventListener('click', (e) => {
     // Checa as regras do link de destino
     if (link.href.includes('cadastro.html') && link.href.includes('view=funcionarios')) {
         bloqueado = true;
-        mensagemBloqueio = 'Acesso Negado: Apenas o Administrador pode gerenciar FuncionÃ¡rios.';
+        mensagemBloqueio = 'Acesso Negado: Apenas o Administrador pode gerenciar Funcionários.';
     } else if (link.href.includes('cadastro.html') && !p.perm_cadastros) {
         bloqueado = true;
         mensagemBloqueio = 'Acesso Negado aos Cadastros.';
     } else if ((link.href.includes('vendas_gestao.html') || link.href.includes('financeiro.html') || link.href.includes('relatorios.html') || link.href.includes('compras.html')) && !p.perm_gestao) {
         bloqueado = true;
-        mensagemBloqueio = 'Acesso Negado Ã  GestÃ£o Financeira.';
+        mensagemBloqueio = 'Acesso Negado à Gestão Financeira.';
     } else if (link.href.includes('operacao.html') && !p.perm_pdv) {
         bloqueado = true;
         mensagemBloqueio = 'Acesso Negado ao PDV e Vendas.';
     } else if (link.href.includes('sistema.html') && !p.perm_config) {
         bloqueado = true;
-        mensagemBloqueio = 'Acesso Negado Ã s ConfiguraÃ§Ãµes do Sistema.';
+        mensagemBloqueio = 'Acesso Negado às Configurações do Sistema.';
     } else if ((link.href.endsWith('index.html') || link.pathname === '/') && !p.perm_dashboard) {
         bloqueado = true;
-        mensagemBloqueio = 'Acesso Negado ao Dashboard (VisÃ£o Geral).';
+        mensagemBloqueio = 'Acesso Negado ao Dashboard (Visão Geral).';
     }
     
     if (bloqueado) {
-        e.preventDefault(); // Impede o navegador de ir pra pÃ¡gina!
+        e.preventDefault(); // Impede o navegador de ir pra página!
         showToast(mensagemBloqueio, 'error');
     }
 });
@@ -810,14 +810,14 @@ async function salvarKardex(ref, prodId, prodNome, qtd, tipo) {
 }
 
 function saveDB() {
-    console.warn("saveDB obsoleto: Use salvamento direto nas coleÃ§Ãµes do Firestore");
+    console.warn("saveDB obsoleto: Use salvamento direto nas coleções do Firestore");
 }
 
 async function fazerLogout() {
     localStorage.removeItem('fc_sessao_data');
     localStorage.removeItem('fc_sessao_uid');
-    // Limpa todo o cache ao fazer logout para garantir que outro usuÃ¡rio
-    // nÃ£o veja dados em cache do usuÃ¡rio anterior
+    // Limpa todo o cache ao fazer logout para garantir que outro usuário
+    // não veja dados em cache do usuário anterior
     if (typeof window.FCCache !== 'undefined') {
         window.FCCache.invalidarTudo();
     }
@@ -844,7 +844,7 @@ function toggleMenu() {
 }
 
 // ==========================================
-// MÃ“DULO: MOTOR DE TEMA E IDENTIDADE DA EMPRESA
+// M?DULO: MOTOR DE TEMA E IDENTIDADE DA EMPRESA
 // ==========================================
 function aplicarIdentidadeVisualGlobal() {
     if (!db) return;
@@ -854,7 +854,7 @@ function aplicarIdentidadeVisualGlobal() {
     const elPlaceholder = document.getElementById('menu-logo-placeholder');
 
     const emp = (db.config && db.config.empresa) ? db.config.empresa : {};
-    const nomeEmpresa = emp.fantasia || emp.nome || 'FC MÃ³veis';
+    const nomeEmpresa = emp.fantasia || emp.nome || 'FC Móveis';
 
     if (elNome) {
         elNome.innerText = nomeEmpresa;
@@ -871,7 +871,7 @@ function aplicarIdentidadeVisualGlobal() {
         }
     }
 
-    // Aplica o tema salvo pelo usuÃ¡rio (Light ou Dark)
+    // Aplica o tema salvo pelo usuário (Light ou Dark)
     aplicarTema();
 }
 
@@ -882,7 +882,7 @@ function aplicarTema() {
 
 
 
-// ===== FUNÃ‡Ã•ES GLOBAIS DE IA, CONFIRMAÃ‡ÃƒO E VENDAS =====
+// ===== FUN??ES GLOBAIS DE IA, CONFIRMA??O E VENDAS =====
 
 window.chamarGemini = async function(prompt) {
     try {
@@ -894,11 +894,11 @@ window.chamarGemini = async function(prompt) {
                 apiKey = (config.empresa && config.empresa.geminiKey) || config.geminiApiKey || '';
             }
         } catch (e) {
-            console.warn("Aviso: NÃ£o foi possÃ­vel obter a chave do Firestore.", e);
+            console.warn("Aviso: Não foi possível obter a chave do Firestore.", e);
         }
 
         if (!apiKey) {
-            throw new Error("Chave API do Gemini nÃ£o configurada.");
+            throw new Error("Chave API do Gemini não configurada.");
         }
 
         const modelosParaTentar = ['gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-pro-latest'];
@@ -917,7 +917,7 @@ window.chamarGemini = async function(prompt) {
                     return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
                 }
             } catch (e) {
-                // Tenta o prÃ³ximo
+                // Tenta o próximo
             }
         }
         return null;
@@ -959,10 +959,10 @@ window.executarAcaoConfirmada = function() {
 
 window.reimprimirVenda = function(id) {
     const v = (window.db && window.db.vendas) ? window.db.vendas.find(x => String(x.id) === String(id)) : null; 
-    if(!v) return showToast('Venda nÃ£o encontrada.', 'error');
+    if(!v) return showToast('Venda não encontrada.', 'error');
     
     const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
-    const htmlRecibo = `<div style="text-align: center; border-bottom: 1px dashed #999; padding-bottom: 10px; margin-bottom: 10px;"><h2 style="font-weight: bold; font-size: 1.2em; margin: 0;">FC MÃ“VEIS E INTERIORES</h2><p style="font-size: 0.9em; margin: 0;">OperaÃ§Ã£o: REIMPRESSÃƒO</p></div><div style="border-bottom: 1px dashed #999; padding-bottom: 10px; margin-bottom: 10px; font-size: 0.9em;"><p style="margin: 2px 0;">Pedido: #${numPedStr}</p><p style="margin: 2px 0;">Data Original: ${new Date(v.data).toLocaleString('pt-BR')}</p><p style="margin: 2px 0;">Cliente: ${v.clienteNome || '-'}</p><p style="margin: 2px 0;">Vendedor: ${v.vendedor || '-'}</p></div><table style="width: 100%; text-align: left; font-size: 0.9em; border-collapse: collapse; margin-bottom: 10px;"><tr style="border-bottom: 1px solid #ccc;"><th style="padding-bottom: 4px;">Item</th><th style="padding-bottom: 4px; text-align: center;">Qtd</th><th style="padding-bottom: 4px; text-align: right;">Total</th></tr>${(v.itens || []).map(i => `<tr><td style="padding: 4px 0;">${i.nome}</td><td style="padding: 4px 0; text-align: center;">${i.qtd}</td><td style="padding: 4px 0; text-align: right;">${typeof formatMoney === 'function' ? formatMoney(i.preco*i.qtd) : (i.preco*i.qtd)}</td></tr>`).join('')}</table><div style="text-align: right; font-size: 0.9em;"><h3 style="font-weight: bold; font-size: 1.2em; margin: 5px 0 0 0;">Total Final: ${typeof formatMoney === 'function' ? formatMoney(v.tot || v.valorLiquido) : (v.tot || v.valorLiquido)}</h3></div><div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #999; text-align: center; font-size: 0.9em;"><p style="margin: 0; font-weight: bold; text-transform: uppercase;">PAGAMENTO: ${v.pag || 'Diversos'}</p></div>`;
+    const htmlRecibo = `<div style="text-align: center; border-bottom: 1px dashed #999; padding-bottom: 10px; margin-bottom: 10px;"><h2 style="font-weight: bold; font-size: 1.2em; margin: 0;">FC M?VEIS E INTERIORES</h2><p style="font-size: 0.9em; margin: 0;">Operação: REIMPRESS?O</p></div><div style="border-bottom: 1px dashed #999; padding-bottom: 10px; margin-bottom: 10px; font-size: 0.9em;"><p style="margin: 2px 0;">Pedido: #${numPedStr}</p><p style="margin: 2px 0;">Data Original: ${new Date(v.data).toLocaleString('pt-BR')}</p><p style="margin: 2px 0;">Cliente: ${v.clienteNome || '-'}</p><p style="margin: 2px 0;">Vendedor: ${v.vendedor || '-'}</p></div><table style="width: 100%; text-align: left; font-size: 0.9em; border-collapse: collapse; margin-bottom: 10px;"><tr style="border-bottom: 1px solid #ccc;"><th style="padding-bottom: 4px;">Item</th><th style="padding-bottom: 4px; text-align: center;">Qtd</th><th style="padding-bottom: 4px; text-align: right;">Total</th></tr>${(v.itens || []).map(i => `<tr><td style="padding: 4px 0;">${i.nome}</td><td style="padding: 4px 0; text-align: center;">${i.qtd}</td><td style="padding: 4px 0; text-align: right;">${typeof formatMoney === 'function' ? formatMoney(i.preco*i.qtd) : (i.preco*i.qtd)}</td></tr>`).join('')}</table><div style="text-align: right; font-size: 0.9em;"><h3 style="font-weight: bold; font-size: 1.2em; margin: 5px 0 0 0;">Total Final: ${typeof formatMoney === 'function' ? formatMoney(v.tot || v.valorLiquido) : (v.tot || v.valorLiquido)}</h3></div><div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #999; text-align: center; font-size: 0.9em;"><p style="margin: 0; font-weight: bold; text-transform: uppercase;">PAGAMENTO: ${v.pag || 'Diversos'}</p></div>`;
     
     const printArea = document.getElementById('print-area');
     const modalRecibo = document.getElementById('modal-opcoes-recibo');
@@ -981,14 +981,14 @@ window.reimprimirVenda = function(id) {
 
 window.excluirVenda = function(id) {
     const v = (window.db && window.db.vendas) ? window.db.vendas.find(x => String(x.id) === String(id)) : null; 
-    if(!v) return showToast('Venda nÃ£o encontrada.', 'error'); 
+    if(!v) return showToast('Venda não encontrada.', 'error'); 
 
-    const isOrcamento = v.tipo === 'ORÃ‡AMENTO'; 
+    const isOrcamento = v.tipo === 'OR?AMENTO'; 
     const msg = isOrcamento 
-        ? 'Deseja excluir este orÃ§amento?' 
-        : 'AtenÃ§Ã£o! Isso farÃ¡ a exclusÃ£o completa desta venda (devolvendo estoque e apagando as parcelas do financeiro). Deseja continuar?';
+        ? 'Deseja excluir este orçamento?' 
+        : 'Atenção! Isso fará a exclusão completa desta venda (devolvendo estoque e apagando as parcelas do financeiro). Deseja continuar?';
 
-    window.abrirConfirmacao('Excluir OperaÃ§Ã£o', msg, async () => {
+    window.abrirConfirmacao('Excluir Operação', msg, async () => {
         try {
             const batch = firestore.batch();
             const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
@@ -1004,7 +1004,7 @@ window.excluirVenda = function(id) {
                             const kardexRef = firestore.collection('movimentacoes').doc();
                             batch.set(kardexRef, {
                                 data: new Date().toISOString(),
-                                ref: 'Estorno (ExclusÃ£o) ' + (v.tipo || 'Venda') + ' #' + numPedStr,
+                                ref: 'Estorno (Exclusão) ' + (v.tipo || 'Venda') + ' #' + numPedStr,
                                 prodId: p.id,
                                 prodNome: p.nome,
                                 qtd: Number(item.qtd || 1),
@@ -1019,7 +1019,7 @@ window.excluirVenda = function(id) {
                     batch.delete(doc.ref);
                 });
                 
-                // CÃ¡lculo preciso do montante efetivamente pago em dinheiro
+                // Cálculo preciso do montante efetivamente pago em dinheiro
                 let valorDinheiroEfetivo = 0;
                 if (Array.isArray(v.pagamentos) && v.pagamentos.length > 0) {
                     const pDinheiro = v.pagamentos.find(p => p && (p.metodo === 'Dinheiro' || String(p.metodo).includes('Dinheiro')));
@@ -1038,7 +1038,7 @@ window.excluirVenda = function(id) {
                     cxHistoricoNovo.unshift({ 
                         data: new Date().toISOString(), 
                         tipo: 'SAIDA', 
-                        desc: 'Estorno (ExclusÃ£o) ' + (v.tipo || 'Venda') + ' #' + numPedStr, 
+                        desc: 'Estorno (Exclusão) ' + (v.tipo || 'Venda') + ' #' + numPedStr, 
                         valor: valorDinheiroEfetivo 
                     });
                     
@@ -1052,11 +1052,11 @@ window.excluirVenda = function(id) {
 
             await batch.commit();
             window.fecharModalConfirmacao();
-            showToast('OperaÃ§Ã£o excluÃ­da com sucesso!', 'success');
+            showToast('Operação excluída com sucesso!', 'success');
         } catch (err) {
             console.error(err);
             window.fecharModalConfirmacao();
-            showToast('Erro ao excluir a operaÃ§Ã£o.', 'error');
+            showToast('Erro ao excluir a operação.', 'error');
         }
     });
 };
@@ -1099,7 +1099,7 @@ window.buscarCNPJ = function(prefixo) {
             
             fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`)
                 .then(res => {
-                    if(!res.ok) throw new Error('CNPJ invÃ¡lido ou API indisponÃ­vel.');
+                    if(!res.ok) throw new Error('CNPJ inválido ou API indisponível.');
                     return res.json();
                 })
                 .then(data => {
@@ -1132,7 +1132,7 @@ window.buscarCNPJ = function(prefixo) {
                 });
         }
     } else {
-        showToast('Digite um CNPJ vÃ¡lido com 14 dÃ­gitos.', 'error');
+        showToast('Digite um CNPJ válido com 14 dígitos.', 'error');
     }
 };
 
@@ -1158,7 +1158,7 @@ window.formatarEBuscarDoc = function(input, prefixo) {
 };
 
 // ==========================================
-// SUPORTE A PWA & INSTALAÃ‡ÃƒO DE APLICATIVO
+// SUPORTE A PWA & INSTALA??O DE APLICATIVO
 // ==========================================
 let deferredPwaPrompt = null;
 
@@ -1175,7 +1175,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPwaPrompt = e;
     window.deferredPwaPrompt = e;
-    console.log('ðŸ“² PWA: Evento de instalaÃ§Ã£o pronto.');
+    console.log('ðŸ“² PWA: Evento de instalação pronto.');
     mostrarBotaoInstalarApp();
 });
 
@@ -1193,11 +1193,11 @@ window.addEventListener('appinstalled', () => {
 function mostrarBotaoInstalarApp() {
     if (document.getElementById('btn-instalar-pwa')) return;
     
-    // Se jÃ¡ estiver rodando instalado como App, nÃ£o precisa mostrar
+    // Se já estiver rodando instalado como App, não precisa mostrar
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
     if (isStandalone) return;
 
-    // Procura o container do botÃ£o de Sair no menu lateral
+    // Procura o container do botão de Sair no menu lateral
     const logoutBtn = document.querySelector('button[onclick*="fazerLogout"]');
     if (logoutBtn && logoutBtn.parentElement) {
         const container = logoutBtn.parentElement;
@@ -1215,7 +1215,7 @@ window.instalarPWA = async function() {
         deferredPwaPrompt.prompt();
         const choiceResult = await deferredPwaPrompt.userChoice;
         if (choiceResult && choiceResult.outcome === 'accepted') {
-            console.log('UsuÃ¡rio aceitou instalar o PWA');
+            console.log('Usuário aceitou instalar o PWA');
             deferredPwaPrompt = null;
             const btn = document.getElementById('btn-instalar-pwa');
             if (btn) btn.remove();
@@ -1223,9 +1223,9 @@ window.instalarPWA = async function() {
     } else {
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         if (isIOS) {
-            alert('ðŸ“² Como instalar no iPhone / iPad:\n\n1. Toque no botÃ£o "Compartilhar" (Ã­cone com quadrado e seta para cima na barra do Safari).\n2. Role para baixo e toque em "Adicionar Ã  Tela de InÃ­cio".\n3. Toque em "Adicionar" no topo direito.');
+            alert('ðŸ“² Como instalar no iPhone / iPad:\n\n1. Toque no botão "Compartilhar" (ícone com quadrado e seta para cima na barra do Safari).\n2. Role para baixo e toque em "Adicionar à Tela de Início".\n3. Toque em "Adicionar" no topo direito.');
         } else {
-            alert('ðŸ“² Como instalar no Computador ou Android:\n\n1. No Google Chrome ou Microsoft Edge, clique no Ã­cone "Instalar Aplicativo" na barra de endereÃ§os (ao lado da estrela de favoritos).\n2. Ou clique nos 3 pontinhos do navegador e escolha "Instalar FC GestÃ£o".');
+            alert('ðŸ“² Como instalar no Computador ou Android:\n\n1. No Google Chrome ou Microsoft Edge, clique no ícone "Instalar Aplicativo" na barra de endereços (ao lado da estrela de favoritos).\n2. Ou clique nos 3 pontinhos do navegador e escolha "Instalar FC Gestão".');
         }
     }
 };
@@ -1237,7 +1237,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 // TABELAS RESPONSIVAS MOBILE (data-label)
 // Injeta atributo data-label em cada <td> com base
-// no cabeÃ§alho correspondente da coluna, para que
+// no cabeçalho correspondente da coluna, para que
 // o CSS mobile exiba os labels sem scroll horizontal.
 // ==========================================
 function initResponsiveTables() {
@@ -1253,8 +1253,8 @@ function initResponsiveTables() {
 }
 window.initResponsiveTables = initResponsiveTables;
 
-// Observa mutaÃ§Ãµes no DOM para aplicar labels automaticamente
-// quando as tabelas sÃ£o preenchidas via JS assÃ­ncrono
+// Observa mutações no DOM para aplicar labels automaticamente
+// quando as tabelas são preenchidas via JS assíncrono
 (function() {
     const observer = new MutationObserver(() => {
         if (window.innerWidth <= 640) {

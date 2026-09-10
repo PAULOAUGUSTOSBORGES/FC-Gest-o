@@ -19,15 +19,15 @@ function mudarAbaLogin(modo) {
     const subtitulo = document.getElementById('subtitulo-form');
 
     if (modo === 'login') {
-        tabLogin.className = 'flex-1 pb-2 font-bold text-blue-600 border-b-2 border-blue-600 transition-colors';
-        tabRegister.className = 'flex-1 pb-2 font-bold text-slate-400 border-b-2 border-transparent transition-colors hover:text-slate-600 dark:hover:text-slate-300';
-        btnAcao.innerText = 'Entrar';
-        subtitulo.innerText = 'Acesso ao sistema integrado';
+        if (tabLogin) tabLogin.className = 'flex-1 pb-2 font-bold text-blue-600 border-b-2 border-blue-600 transition-colors';
+        if (tabRegister) tabRegister.className = 'flex-1 pb-2 font-bold text-slate-400 border-b-2 border-transparent transition-colors hover:text-slate-600 dark:hover:text-slate-300';
+        if (btnAcao) btnAcao.innerText = 'Entrar';
+        if (subtitulo) subtitulo.innerText = 'Acesso ao sistema integrado';
     } else {
-        tabRegister.className = 'flex-1 pb-2 font-bold text-blue-600 border-b-2 border-blue-600 transition-colors';
-        tabLogin.className = 'flex-1 pb-2 font-bold text-slate-400 border-b-2 border-transparent transition-colors hover:text-slate-600 dark:hover:text-slate-300';
-        btnAcao.innerText = 'Criar Conta';
-        subtitulo.innerText = 'Crie sua conta para solicitar acesso';
+        if (tabRegister) tabRegister.className = 'flex-1 pb-2 font-bold text-blue-600 border-b-2 border-blue-600 transition-colors';
+        if (tabLogin) tabLogin.className = 'flex-1 pb-2 font-bold text-slate-400 border-b-2 border-transparent transition-colors hover:text-slate-600 dark:hover:text-slate-300';
+        if (btnAcao) btnAcao.innerText = 'Criar Conta';
+        if (subtitulo) subtitulo.innerText = 'Crie sua conta para solicitar acesso';
     }
 }
 

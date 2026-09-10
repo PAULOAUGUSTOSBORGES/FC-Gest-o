@@ -148,7 +148,7 @@ function inicializarOperacao() {
             executarEstornoEEdicao(editId);
         }
     });
-    // Caixa: sempre ativo pois Ã© crÃ­tico (saldo em tempo real)
+    // Caixa: sempre ativo pois é crítico (saldo em tempo real)
     _listenDoc('fc_moveis', 'caixa', function(data) {
         db.caixa = data || { status: 'FECHADO', saldo: 0, historico: [] };
         const badgeCaixa = document.getElementById('pdv-status-caixa');
