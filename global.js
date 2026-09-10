@@ -260,7 +260,12 @@ let db = {
         colecoesPrincipais.forEach(function(col) {
             if (window.FCCache.isValido(col)) {
                 const dados = window.FCCache.get(col);
-                if (dados !== null) db[col] = dados;
+                if (dados !== null) {
+                    db[col] = dados;
+                    if (col === 'produtos' && Array.isArray(dados) && dados.length > 0) {
+                        window._produtosCarregados = true;
+                    }
+                }
             }
         });
         // Carrega config do cache

@@ -43,9 +43,27 @@
 
     function _salvar(colecao, dados) {
         try {
+            let dadosParaSalvar = dados;
+            // Otimização: remove fotos pesadas em base64 do cache local de produtos
+            // para evitar estourar a cota de 5MB do sessionStorage.
+            if (colecao === 'produtos' && Array.isArray(dados)) {
+                dadosParaSalvar = dados.map(p => {
+                    let copy = null;
+                    if (p.foto && typeof p.foto === 'string' && p.foto.length > 500) {
+                        copy = copy || Object.assign({}, p);
+                        delete copy.foto;
+                    }
+                    if (p.fotos && Array.isArray(p.fotos)) {
+                        copy = copy || Object.assign({}, p);
+                        delete copy.fotos;
+                    }
+                    return copy || p;
+                });
+            }
+
             const payload = JSON.stringify({
                 ts: Date.now(),
-                dados: dados
+                dados: dadosParaSalvar
             });
             // Protege contra dados muito grandes
             if (payload.length > MAX_ITEM_SIZE) {
@@ -229,7 +247,11 @@
             });
             
             // Atualiza o cache sempre que o Firebase trouxer dados
-            window.FCCache.set(colecao, dados);
+            try {
+                window.FCCache.set(colecao, dados);
+            } catch (errCache) {
+                console.warn('[FCCache] Falha ao salvar no cache para "' + colecao + '":', errCache);
+            }
             
             // Chama o callback da página com os dados frescos
             try {
@@ -282,9 +304,13 @@
             const dados = doc.exists ? doc.data() : null;
             
             if (dados !== null) {
-                window.FCCache.set(cacheKey, dados);
+                try {
+                    window.FCCache.set(cacheKey, dados);
+                } catch (e) {}
             } else {
-                window.FCCache.invalidar(cacheKey);
+                try {
+                    window.FCCache.invalidar(cacheKey);
+                } catch (e) {}
             }
             
             try {
@@ -298,6 +324,30 @@
 
         return unsub;
     };
+
+    // Se o objeto global db já existir, preenche com os dados do cache imediatamente
+    if (typeof window.db !== 'undefined') {
+        const colecoesPrincipais = ['produtos', 'clientes', 'fornecedores', 'funcionarios', 'vendas', 'financeiro', 'compras', 'categorias', 'movimentacoes'];
+        colecoesPrincipais.forEach(function(col) {
+            if (window.FCCache.isValido(col)) {
+                const dados = window.FCCache.get(col);
+                if (dados !== null) {
+                    window.db[col] = dados;
+                    if (col === 'produtos' && Array.isArray(dados) && dados.length > 0) {
+                        window._produtosCarregados = true;
+                    }
+                }
+            }
+        });
+        if (window.FCCache.isValido('fc_moveis_config')) {
+            const cfg = window.FCCache.get('fc_moveis_config');
+            if (cfg) window.db.config = cfg;
+        }
+        if (window.FCCache.isValido('fc_moveis_caixa')) {
+            const cx = window.FCCache.get('fc_moveis_caixa');
+            if (cx) window.db.caixa = cx;
+        }
+    }
 
     // ------------------------------------------
     // Diagnóstico (acessível pelo console do browser)

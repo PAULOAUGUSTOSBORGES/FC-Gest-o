@@ -17,6 +17,10 @@ function Bump-Version($htmlFile, $jsFile) {
     }
 }
 
+Get-ChildItem -Path $folder -Filter "*.html" | ForEach-Object {
+    Bump-Version $_.Name "fc_cache.js"
+}
+
 Bump-Version "gestao.html" "gestao_v2.js"
 Bump-Version "financeiro.html" "financeiro.js"
 Bump-Version "caixa.html" "caixa.js"

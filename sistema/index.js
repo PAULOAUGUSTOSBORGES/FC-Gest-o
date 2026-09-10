@@ -182,6 +182,14 @@ function executarCalculosDashboard() {
     const saldoCaixa = (db.caixa && db.caixa.saldo) ? Number(db.caixa.saldo) : 0;
 
     // 4. ESTOQUE
+    const parseNum = (v) => {
+        if (typeof v === 'number') return isNaN(v) ? 0 : v;
+        if (!v) return 0;
+        const s = String(v).replace('R$', '').replace(/\s/g, '').replace(',', '.');
+        const n = parseFloat(s);
+        return isNaN(n) ? 0 : n;
+    };
+
     const produtos = db.produtos || [];
     let valorTotalEstoqueCusto = 0;
     let valorTotalEstoqueVenda = 0;
@@ -189,10 +197,10 @@ function executarCalculosDashboard() {
     let produtosBaixo = 0;
     
     produtos.filter(p => p.ativo !== false).forEach(p => {
-        const est = Number(p.estoque) || 0;
-        const min = Number(p.min !== undefined ? p.min : p.estoqueMin) || 0;
-        const custo = Number(p.custo) || 0;
-        const preco = Number(p.preco || p.valor) || 0;
+        const est = parseNum(p.estoque);
+        const min = parseNum(p.min !== undefined ? p.min : p.estoqueMin);
+        const custo = parseNum(p.custo);
+        const preco = parseNum(p.preco || p.valor);
 
         if (est > 0) {
             valorTotalEstoqueCusto += est * custo;
@@ -260,8 +268,14 @@ function executarCalculosDashboard() {
         setHtml('dash-pagar-vencido', subP.join(' • '));
     }
     
-    setHtml('dash-valor-estoque', fM(valorTotalEstoqueCusto));
-    setHtml('dash-valor-estoque-sub', `Custo • Venda: ${fM(valorTotalEstoqueVenda)}`);
+    const temProdutos = (Array.isArray(db.produtos) && db.produtos.length > 0) || window._produtosCarregados;
+    if (temProdutos) {
+        setHtml('dash-valor-estoque', fM(valorTotalEstoqueCusto));
+        setHtml('dash-valor-estoque-sub', `Custo • Venda: ${fM(valorTotalEstoqueVenda)}`);
+    } else {
+        setHtml('dash-valor-estoque', '<i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i>');
+        setHtml('dash-valor-estoque-sub', 'Carregando estoque...');
+    }
 
     setHtml('dash-qtd-vendas', qtdVendasPeriodo);
     setHtml('dash-orcamentos', orcamentosPendentes);
@@ -490,6 +504,7 @@ function inicializarDashboard() {
     // Listeners para todas as coleções que afetam os KPIs com suporte a cache
     _listen('produtos', function(dados) {
         db.produtos = dados;
+        window._produtosCarregados = true;
         renderDashboard();
     });
     _listen('clientes', function(dados) {
@@ -512,6 +527,23 @@ function inicializarDashboard() {
         db.caixa = data || { saldo: 0 };
         renderDashboard();
     });
+
+    // Fallback ativo: se produtos demorarem para carregar via snapshot, busca diretamente
+    setTimeout(() => {
+        if (!window._produtosCarregados && (!db.produtos || db.produtos.length === 0)) {
+            console.log('[Dashboard] Buscando produtos diretamente via get()...');
+            if (typeof firestore !== 'undefined') {
+                firestore.collection('produtos').get().then(snap => {
+                    if (snap && !snap.empty) {
+                        db.produtos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                        window._produtosCarregados = true;
+                        try { window.FCCache.set('produtos', db.produtos); } catch(e) {}
+                        renderDashboard();
+                    }
+                }).catch(err => console.warn('[Dashboard] Fallback produtos falhou:', err));
+            }
+        }
+    }, 1200);
 
     inicializarGraficos();
 }
