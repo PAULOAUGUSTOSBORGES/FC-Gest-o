@@ -1,4 +1,4 @@
-// cadastro.js - LÛgica de Produtos, Clientes, Fornecedores e Estoque
+// cadastro.js - L√≥gica de Produtos, Clientes, Fornecedores e Estoque
 
 let acaoConfirmacaoPendente = null;
 
@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ==========================================
-// NAVEGA«√O E INICIALIZA«√O
+// NAVEGA√á√ÉO E INICIALIZA√á√ÉO
 // ==========================================
 function mudarVisaoLocal(viewId) {
     document.querySelectorAll('.view-section').forEach(el => { el.classList.add('hidden'); el.classList.remove('active'); });
@@ -43,6 +43,7 @@ function inicializarCadastro() {
 
     unsubProdutos = _listen('produtos', function(dados) {
         db.produtos = dados;
+        if (typeof popularFiltroCategoriasProdutos === 'function') popularFiltroCategoriasProdutos();
         const v = document.getElementById('view-produtos');
         if (v && v.classList.contains('active')) renderProdutos();
     });
@@ -78,6 +79,7 @@ function inicializarCadastro() {
     // Carrega categorias para o cadastro de produtos
     _listen('categorias', function(dados) {
         db.categorias = dados;
+        if (typeof popularFiltroCategoriasProdutos === 'function') popularFiltroCategoriasProdutos();
         if (typeof renderSelectCategorias === 'function') renderSelectCategorias();
     }, { query: function(ref) { return ref.orderBy('nome'); } });
 
@@ -89,7 +91,7 @@ function inicializarCadastro() {
 window.addEventListener('load', () => { initGlobalData(inicializarCadastro); });
 
 // ==========================================
-// FUN«’ES GEN…RICAS DE UI
+// FUN√á√ïES GEN√âRICAS DE UI
 // ==========================================
 function abaModal(prefix, nomeAba) {
     const modalId = `#modal-${prefix === 'cli' ? 'cliente' : (prefix === 'forn' ? 'fornecedor' : 'produto')}`;
@@ -126,12 +128,12 @@ async function buscarCEP(prefix) {
 }
 
 async function buscarCNPJ(prefix) {
-    const elDoc = document.getElementById(`${prefix}-doc`); if (!elDoc) return; let cnpj = elDoc.value.replace(/\D/g, ''); if (cnpj.length !== 14) return showToast('Digite os 14 n˙meros do CNPJ', 'error');
+    const elDoc = document.getElementById(`${prefix}-doc`); if (!elDoc) return; let cnpj = elDoc.value.replace(/\D/g, ''); if (cnpj.length !== 14) return showToast('Digite os 14 n√∫meros do CNPJ', 'error');
     showToast('Consultando Receita...', 'info');
     try {
         let res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`); let data = await res.json();
         if (data.razao_social) { document.getElementById(`${prefix}-nome`).value = data.razao_social || ''; document.getElementById(`${prefix}-wpp`).value = data.ddd_telefone_1 || ''; document.getElementById(`${prefix}-cep`).value = data.cep || ''; document.getElementById(`${prefix}-rua`).value = data.logradouro || ''; document.getElementById(`${prefix}-bairro`).value = data.bairro || ''; document.getElementById(`${prefix}-cidade`).value = `${data.municipio || ''} - ${data.uf || ''}`; showToast('Empresa Importada!', 'success'); }
-    } catch (e) { showToast('ServiÁo indisponÌvel.', 'error'); }
+    } catch (e) { showToast('Servi√ßo indispon√≠vel.', 'error'); }
 }
 
 // ==========================================
@@ -146,7 +148,7 @@ function renderSelectCategorias() {
     const selectCat = document.getElementById('prod-categoria');
     if (!selectCat) return;
     
-    // Guarda o valor selecionado atualmente para n„o perder ao atualizar
+    // Guarda o valor selecionado atualmente para n√£o perder ao atualizar
     const valAtual = selectCat.value;
     
     let html = '<option value="">Sem Categoria</option>';
@@ -197,57 +199,231 @@ function atualizarOpcoesSubcategoria() {
 // ==========================================
 window.prodSortDirection = 'asc';
 
-function toggleSortProdutos() {
-    if (window.prodSortDirection === 'asc') {
-        window.prodSortDirection = 'desc';
-    } else {
-        window.prodSortDirection = 'asc';
+function popularFiltroCategoriasProdutos() {
+    const selectCat = document.getElementById('filtro-prod-categoria');
+    if (!selectCat) return;
+    const valAtual = selectCat.value;
+    
+    const catsSet = new Set();
+    if (Array.isArray(db.categorias)) {
+        db.categorias.forEach(c => {
+            if (c && c.nome && String(c.nome).trim()) catsSet.add(String(c.nome).trim());
+        });
     }
-    renderProdutos();
-    const thIcon = document.getElementById('sort-icon-produto');
-    if (thIcon) {
-        if (window.prodSortDirection === 'asc') thIcon.className = 'fa-solid fa-sort-alpha-down ml-1 text-indigo-500';
-        else thIcon.className = 'fa-solid fa-sort-alpha-up-alt ml-1 text-indigo-500';
+    if (Array.isArray(db.produtos)) {
+        db.produtos.forEach(p => {
+            if (p && p.categoria && String(p.categoria).trim()) catsSet.add(String(p.categoria).trim());
+        });
+    }
+    
+    const lista = Array.from(catsSet).sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+    let html = '<option value="">Todas as Categorias</option>';
+    lista.forEach(cat => {
+        html += '<option value="' + cat.replace(/"/g, '&quot;') + '">' + cat + '</option>';
+    });
+    selectCat.innerHTML = html;
+    if (valAtual && catsSet.has(valAtual)) {
+        selectCat.value = valAtual;
     }
 }
 
-function renderProdutos() {
-    const termo = document.getElementById('busca-produto-lista')?.value.toLowerCase() || ''; const statusFiltro = document.getElementById('filtro-prod-status')?.value || 'todos';
-    let filtrados = db.produtos.filter(p => 
-        (p.nome && String(p.nome).toLowerCase().includes(termo)) || 
-        (p.ean && String(p.ean).toLowerCase().includes(termo)) || 
-        (p.marca && String(p.marca).toLowerCase().includes(termo)) ||
-        (p.categoria && String(p.categoria).toLowerCase().includes(termo)) ||
-        (p.subcategoria && String(p.subcategoria).toLowerCase().includes(termo)) ||
-        (p.ncm && String(p.ncm).toLowerCase().includes(termo)) ||
-        (p.obs && String(p.obs).toLowerCase().includes(termo)) ||
-        (p.legenda && String(p.legenda).toLowerCase().includes(termo)) ||
-        (p.id && String(p.id).toLowerCase().includes(termo))
-    );
-    if (statusFiltro === 'alerta') filtrados = filtrados.filter(p => p.estoque > 0 && p.estoque <= p.min);
-    if (statusFiltro === 'zerado') filtrados = filtrados.filter(p => p.estoque <= 0);
-    if (statusFiltro === 'ok') filtrados = filtrados.filter(p => p.estoque > p.min);
-
-    const direcao = window.prodSortDirection || 'asc';
-    if (typeof ordenarListaAlfabeticamente === 'function') {
-        filtrados = ordenarListaAlfabeticamente(filtrados, 'nome', direcao);
+function toggleSortProdutos() {
+    const selectOrdem = document.getElementById('filtro-prod-ordem');
+    if (selectOrdem) {
+        if (selectOrdem.value === 'nome-asc') {
+            selectOrdem.value = 'nome-desc';
+        } else {
+            selectOrdem.value = 'nome-asc';
+        }
     } else {
-        filtrados.sort((a, b) => {
-            const comp = (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' });
-            return direcao === 'desc' ? -comp : comp;
-        });
+        window.prodSortDirection = (window.prodSortDirection === 'asc') ? 'desc' : 'asc';
+    }
+    renderProdutos();
+}
+
+function alterarOrdemProdutos(novaOrdem) {
+    if (novaOrdem === 'nome-asc') window.prodSortDirection = 'asc';
+    if (novaOrdem === 'nome-desc') window.prodSortDirection = 'desc';
+    renderProdutos();
+}
+
+function limparFiltrosProdutos() {
+    const busca = document.getElementById('busca-produto-lista');
+    if (busca) busca.value = '';
+    const cat = document.getElementById('filtro-prod-categoria');
+    if (cat) cat.value = '';
+    const status = document.getElementById('filtro-prod-status');
+    if (status) status.value = 'todos';
+    const ordem = document.getElementById('filtro-prod-ordem');
+    if (ordem) ordem.value = 'nome-asc';
+    window.prodSortDirection = 'asc';
+    renderProdutos();
+}
+
+function renderProdutos() {
+    const inputBusca = document.getElementById('busca-produto-lista');
+    const termo = (inputBusca?.value || '').trim();
+    const statusFiltro = document.getElementById('filtro-prod-status')?.value || 'todos';
+    const categoriaFiltro = document.getElementById('filtro-prod-categoria')?.value || '';
+    const ordemFiltro = document.getElementById('filtro-prod-ordem')?.value || (window.prodSortDirection === 'desc' ? 'nome-desc' : 'nome-asc');
+
+    // Popula categorias dinamicamente se necess?rio
+    const selectCat = document.getElementById('filtro-prod-categoria');
+    if (selectCat && selectCat.options.length <= 1 && ((db.produtos && db.produtos.length > 0) || (db.categorias && db.categorias.length > 0))) {
+        popularFiltroCategoriasProdutos();
     }
 
+    // Bot?o de limpar busca r?pida
+    const btnLimparBusca = document.getElementById('btn-limpar-busca-produto');
+    if (btnLimparBusca) {
+        if (termo) btnLimparBusca.classList.remove('hidden');
+        else btnLimparBusca.classList.add('hidden');
+    }
 
-    document.getElementById('tabela-produtos').innerHTML = filtrados.map(p => {
+    // Normalizador de texto para busca sem distin??o de acentos ou mai?sculas/min?sculas
+    const normalizar = (txt) => {
+        return (txt || '').toString().toLowerCase().normalize('NFD').replace(/[ÃÄ-ÕØ]/g, '').trim();
+    };
+    const termoNorm = normalizar(termo);
+
+    const produtos = Array.isArray(db.produtos) ? db.produtos : [];
+
+    let filtrados = produtos.filter(p => {
+        if (!p) return false;
+
+        // Filtro de texto (nome, c?digo de barras EAN, c?digo interno, marca, categoria, observa??o, ID)
+        if (termoNorm) {
+            const matchNome = normalizar(p.nome).includes(termoNorm);
+            const matchEan = normalizar(p.ean).includes(termoNorm);
+            const matchCodigo = normalizar(p.codigo).includes(termoNorm);
+            const matchMarca = normalizar(p.marca).includes(termoNorm);
+            const matchCat = normalizar(p.categoria).includes(termoNorm);
+            const matchSub = normalizar(p.subcategoria).includes(termoNorm);
+            const matchNcm = normalizar(p.ncm).includes(termoNorm);
+            const matchObs = normalizar(p.obs).includes(termoNorm);
+            const matchLegenda = normalizar(p.legenda).includes(termoNorm);
+            const matchId = normalizar(p.id).includes(termoNorm);
+
+            if (!matchNome && !matchEan && !matchCodigo && !matchMarca && !matchCat && !matchSub && !matchNcm && !matchObs && !matchLegenda && !matchId) {
+                return false;
+            }
+        }
+
+        // Filtro de categoria
+        if (categoriaFiltro) {
+            const pCat = (p.categoria || '').trim().toLowerCase();
+            if (pCat !== categoriaFiltro.toLowerCase()) return false;
+        }
+
+        // Filtro de status / estoque
+        const estoque = Number(p.estoque) || 0;
+        const minimo = Number(p.min) || 0;
+        if (statusFiltro === 'ok' && !(estoque > minimo)) return false;
+        if (statusFiltro === 'alerta' && !(estoque > 0 && estoque <= minimo)) return false;
+        if (statusFiltro === 'zerado' && !(estoque <= 0)) return false;
+        if (statusFiltro === 'ativos' && p.ativo === false) return false;
+        if (statusFiltro === 'inativos' && p.ativo !== false) return false;
+
+        return true;
+    });
+
+    // Ordena??o
+    if (ordemFiltro === 'nome-asc') {
+        window.prodSortDirection = 'asc';
+        if (typeof ordenarListaAlfabeticamente === 'function') {
+            filtrados = ordenarListaAlfabeticamente(filtrados, 'nome', 'asc');
+        } else {
+            filtrados.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+        }
+    } else if (ordemFiltro === 'nome-desc') {
+        window.prodSortDirection = 'desc';
+        if (typeof ordenarListaAlfabeticamente === 'function') {
+            filtrados = ordenarListaAlfabeticamente(filtrados, 'nome', 'desc');
+        } else {
+            filtrados.sort((a, b) => (b.nome || '').localeCompare(a.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+        }
+    } else if (ordemFiltro === 'preco-asc') {
+        filtrados.sort((a, b) => (parseFloat(a.preco) || 0) - (parseFloat(b.preco) || 0));
+    } else if (ordemFiltro === 'preco-desc') {
+        filtrados.sort((a, b) => (parseFloat(b.preco) || 0) - (parseFloat(a.preco) || 0));
+    } else if (ordemFiltro === 'estoque-desc') {
+        filtrados.sort((a, b) => (parseFloat(b.estoque) || 0) - (parseFloat(a.estoque) || 0));
+    } else if (ordemFiltro === 'estoque-asc') {
+        filtrados.sort((a, b) => (parseFloat(a.estoque) || 0) - (parseFloat(b.estoque) || 0));
+    }
+
+    // Atualiza ?cone do cabe?alho da tabela e bot?o de ordem
+    const thIcon = document.getElementById('sort-icon-produto');
+    const btnOrdemIcon = document.getElementById('btn-ordem-icon');
+    const btnOrdemLabel = document.getElementById('btn-ordem-label');
+    const ordemIconeSelect = document.getElementById('filtro-prod-ordem-icone');
+
+    if (ordemFiltro === 'nome-asc') {
+        if (thIcon) thIcon.className = 'fa-solid fa-arrow-down-a-z ml-1 text-indigo-500';
+        if (btnOrdemIcon) btnOrdemIcon.className = 'fa-solid fa-arrow-down-a-z';
+        if (btnOrdemLabel) btnOrdemLabel.textContent = 'A - Z';
+        if (ordemIconeSelect) ordemIconeSelect.className = 'fa-solid fa-arrow-down-a-z absolute left-3 top-3 text-slate-400 text-xs pointer-events-none';
+    } else if (ordemFiltro === 'nome-desc') {
+        if (thIcon) thIcon.className = 'fa-solid fa-arrow-up-z-a ml-1 text-indigo-500';
+        if (btnOrdemIcon) btnOrdemIcon.className = 'fa-solid fa-arrow-up-z-a';
+        if (btnOrdemLabel) btnOrdemLabel.textContent = 'Z - A';
+        if (ordemIconeSelect) ordemIconeSelect.className = 'fa-solid fa-arrow-up-z-a absolute left-3 top-3 text-slate-400 text-xs pointer-events-none';
+    } else {
+        if (thIcon) thIcon.className = 'fa-solid fa-sort ml-1 text-slate-400';
+        if (btnOrdemIcon) btnOrdemIcon.className = 'fa-solid fa-arrow-down-wide-short';
+        if (btnOrdemLabel) btnOrdemLabel.textContent = 'Personalizada';
+        if (ordemIconeSelect) ordemIconeSelect.className = 'fa-solid fa-arrow-down-wide-short absolute left-3 top-3 text-slate-400 text-xs pointer-events-none';
+    }
+
+    // Atualiza indicador de filtros ativos e bot?o limpar
+    const temFiltroAtivo = Boolean(termo || categoriaFiltro || statusFiltro !== 'todos' || (ordemFiltro !== 'nome-asc' && ordemFiltro !== ''));
+    const badgeFiltro = document.getElementById('badge-filtro-ativo');
+    if (badgeFiltro) {
+        if (temFiltroAtivo) badgeFiltro.classList.remove('hidden');
+        else badgeFiltro.classList.add('hidden');
+    }
+    const btnLimpar = document.getElementById('btn-limpar-filtros');
+    if (btnLimpar) {
+        if (temFiltroAtivo) btnLimpar.classList.remove('hidden');
+        else btnLimpar.classList.add('hidden');
+    }
+
+    // Atualiza contador de produtos
+    const contadorEl = document.getElementById('contador-produtos');
+    if (contadorEl) {
+        const total = produtos.length;
+        if (filtrados.length === total) {
+            contadorEl.textContent = total + ' produto' + (total !== 1 ? 's' : '') + ' cadastrado' + (total !== 1 ? 's' : '');
+        } else {
+            contadorEl.textContent = 'Exibindo ' + filtrados.length + ' de ' + total + ' produto' + (total !== 1 ? 's' : '');
+        }
+    }
+
+    const tbody = document.getElementById('tabela-produtos');
+    if (!tbody) return;
+
+    if (filtrados.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="p-8 text-center text-slate-500 dark:text-slate-400">
+                    <i class="fa-solid fa-box-open text-4xl mb-3 text-slate-300 dark:text-slate-600 block"></i>
+                    <p class="font-bold text-slate-700 dark:text-slate-200">Nenhum produto encontrado</p>
+                    <p class="text-xs mt-1 text-slate-400">Tente ajustar os termos de busca ou filtros selecionados.</p>
+                    ${temFiltroAtivo ? '<button type="button" onclick="limparFiltrosProdutos()" class="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 text-xs font-bold transition-colors"><i class="fa-solid fa-rotate-left"></i> Limpar filtros</button>' : ''}
+                </td>
+            </tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtrados.map(p => {
         const isBaixo = p.estoque <= p.min; const isZerado = p.estoque <= 0;
-        const corEstoque = isZerado ? 'text-red-600 bg-red-50' : (isBaixo ? 'text-amber-600 bg-amber-50' : 'text-slate-700 dark:text-slate-200');
-        const fHtml = p.foto ? `<img src="${p.foto}" onclick="abrirZoom('${p.foto}')" class="w-10 h-10 rounded object-cover border border-slate-200 dark:border-slate-700 mx-auto cursor-zoom-in hover:opacity-80 transition">` : `<div class="w-10 h-10 mx-auto rounded bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-400 text-xs"><i class="fa-regular fa-image"></i></div>`;
-        const badgeInativo = p.ativo === false ? `<span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] ml-2 font-bold"><i class="fa-solid fa-ban"></i> INATIVO</span>` : '';
+        const corEstoque = isZerado ? 'text-red-600 bg-red-50 dark:bg-red-950/40 dark:text-red-400' : (isBaixo ? 'text-amber-600 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-400' : 'text-slate-700 dark:text-slate-200');
+        const fHtml = p.foto ? '<img src="' + p.foto + '" onclick="abrirZoom(\'' + p.foto + '\')" class="w-10 h-10 rounded object-cover border border-slate-200 dark:border-slate-700 mx-auto cursor-zoom-in hover:opacity-80 transition">' : '<div class="w-10 h-10 mx-auto rounded bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-400 text-xs"><i class="fa-regular fa-image"></i></div>';
+        const badgeInativo = p.ativo === false ? '<span class="bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300 px-2 py-0.5 rounded text-[10px] ml-2 font-bold"><i class="fa-solid fa-ban"></i> INATIVO</span>' : '';
         return `
         <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700 ${p.ativo === false ? 'opacity-60' : ''}">
             <td class="p-3 text-center">${fHtml}</td>
-            <td class="p-3"><p class="font-bold text-slate-800 dark:text-slate-100">${p.nome} ${badgeInativo}</p><p class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">EAN: ${p.ean || 'S/N'} | ${p.categoria} | Marca: ${p.marca || '-'}</p></td>
+            <td class="p-3"><p class="font-bold text-slate-800 dark:text-slate-100">${p.nome} ${badgeInativo}</p><p class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">EAN: ${p.ean || 'S/N'} | ${p.categoria || 'Sem categoria'} | Marca: ${p.marca || '-'}</p></td>
             <td class="p-3 text-right"><p class="text-slate-600 dark:text-slate-300 font-medium">${formatMoney(p.custo)}</p><p class="text-[10px] text-blue-500 font-bold">${p.custo > 0 ? (((p.preco - p.custo) / p.custo) * 100).toFixed(2) : (p.margem || 0).toFixed(2)}% MKP</p></td>
             <td class="p-3 text-right font-bold text-emerald-600">${formatMoney(p.preco)}</td>
             <td class="p-3 text-center font-bold"><span class="px-2 py-1 rounded ${corEstoque}">${p.estoque} un</span></td>
@@ -265,7 +441,7 @@ function abrirModalProduto() {
     document.getElementById('prod-ativo').value = 'true'; document.getElementById('prod-foto-base64').value = '';
     fotosGaleria = [];
     renderizarGaleriaFotos();
-    document.getElementById('prod-historico-body').innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-500 dark:text-slate-400">Cadastre para ver o histÛrico.</td></tr>';
+    document.getElementById('prod-historico-body').innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-500 dark:text-slate-400">Cadastre para ver o hist√≥rico.</td></tr>';
     const modalProd = document.getElementById('modal-produto');
     modalProd.classList.remove('hidden');
     modalProd.style.display = 'flex';
@@ -322,7 +498,7 @@ async function processarFotosGaleria(event) {
     const espacoDisponivel = limiteMax - fotosGaleria.length;
     
     if (espacoDisponivel <= 0) {
-        showToast('Limite m·ximo de 3 fotos por produto atingido!', 'warning');
+        showToast('Limite m√°ximo de 3 fotos por produto atingido!', 'warning');
         event.target.value = '';
         return;
     }
@@ -455,7 +631,7 @@ async function salvarProduto() {
     const nome = document.getElementById('prod-nome').value.trim();
     const preco = parseInputMoney(document.getElementById('prod-preco').value);
 
-    if (!nome || isNaN(preco)) return showToast('Preencha Nome e PreÁo de Venda!', 'error');
+    if (!nome || isNaN(preco)) return showToast('Preencha Nome e Pre√ßo de Venda!', 'error');
 
     const p = {
         nome, preco,
@@ -518,7 +694,7 @@ async function editarProduto(id) {
         }
     }
     
-    if (!p) return showToast('Produto n„o encontrado!', 'error');
+    if (!p) return showToast('Produto n√£o encontrado!', 'error');
 
     abrirModalProduto(); document.getElementById('modal-produto-title').innerText = 'Editar Produto';
 
@@ -541,7 +717,7 @@ async function editarProduto(id) {
         }
     }
     
-    // Atualiza opÁıes de subcategoria e seta o valor correto novamente
+    // Atualiza op√ß√µes de subcategoria e seta o valor correto novamente
     if (typeof atualizarOpcoesSubcategoria === 'function') {
         atualizarOpcoesSubcategoria();
         const elSub = document.getElementById('prod-subcategoria');
@@ -560,14 +736,14 @@ async function editarProduto(id) {
     renderizarGaleriaFotos();
 
     const hist = db.movimentacoes ? db.movimentacoes.filter(m => String(m.prodId) === idStr) : [];
-    document.getElementById('prod-historico-body').innerHTML = hist.length > 0 ? hist.map(m => `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-3">${formatData(m.data).split(' ')[0]}</td><td class="p-3 font-bold">${m.tipo}</td><td class="p-3">${m.ref}</td><td class="p-3 text-right font-bold ${m.qtd > 0 ? 'text-indigo-600' : 'text-red-500'}">${m.qtd > 0 ? '+' + m.qtd : m.qtd}</td></tr>`).join('') : '<tr><td colspan="4" class="p-6 text-center text-slate-500 dark:text-slate-400">Sem movimentaÁıes.</td></tr>';
+    document.getElementById('prod-historico-body').innerHTML = hist.length > 0 ? hist.map(m => `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-3">${formatData(m.data).split(' ')[0]}</td><td class="p-3 font-bold">${m.tipo}</td><td class="p-3">${m.ref}</td><td class="p-3 text-right font-bold ${m.qtd > 0 ? 'text-indigo-600' : 'text-red-500'}">${m.qtd > 0 ? '+' + m.qtd : m.qtd}</td></tr>`).join('') : '<tr><td colspan="4" class="p-6 text-center text-slate-500 dark:text-slate-400">Sem movimenta√ß√µes.</td></tr>';
 }
 
 function excluirProduto(id) {
     abrirConfirmacao('Excluir Produto', 'Remover produto permanentemente?', async () => {
         try {
             await firestore.collection('produtos').doc(id).delete();
-            showToast('Produto excluÌdo!');
+            showToast('Produto exclu√≠do!');
         } catch (e) {
             showToast('Erro ao excluir', 'error');
         }
@@ -595,7 +771,7 @@ function abrirModalCliente() {
         const el = document.getElementById(`cli-${campo}`);
         if (el) el.value = '';
     });
-    document.getElementById('cli-historico-body').innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-500 dark:text-slate-400">Cadastre para ver o histÛrico.</td></tr>';
+    document.getElementById('cli-historico-body').innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-500 dark:text-slate-400">Cadastre para ver o hist√≥rico.</td></tr>';
     document.getElementById('modal-cliente-title').innerText = 'Novo Cliente';
     // Fix: remover hidden E garantir display flex (conflito Tailwind)
     const modal = document.getElementById('modal-cliente');
@@ -612,7 +788,7 @@ function fecharModalCliente() {
 async function salvarCliente() {
     const id = document.getElementById('cli-id').value;
     const nome = document.getElementById('cli-nome').value.trim();
-    if (!nome) return showToast('Nome È obrigatÛrio!', 'error');
+    if (!nome) return showToast('Nome √© obrigat√≥rio!', 'error');
 
     const c = {
         nome:    nome,
@@ -655,7 +831,7 @@ async function editarCliente(id) {
     // Tenta encontrar no cache local primeiro
     let c = db.clientes.find(x => String(x.id).trim() === idStr);
 
-    // Se n„o encontrou (cache vazio), busca diretamente no Firestore
+    // Se n√£o encontrou (cache vazio), busca diretamente no Firestore
     if (!c) {
         try {
             const snap = await firestore.collection('clientes').doc(idStr).get();
@@ -668,7 +844,7 @@ async function editarCliente(id) {
         }
     }
 
-    if (!c) return showToast('Cliente n„o encontrado!', 'error');
+    if (!c) return showToast('Cliente n√£o encontrado!', 'error');
 
     abrirModalCliente();
     document.getElementById('modal-cliente-title').innerText = `Editar: ${c.nome}`;
@@ -690,7 +866,7 @@ function excluirCliente(id) {
     abrirConfirmacao('Excluir Cliente', 'Remover cliente?', async () => {
         try {
             await firestore.collection('clientes').doc(id).delete();
-            showToast('Cliente ExcluÌdo!');
+            showToast('Cliente Exclu√≠do!');
         } catch (e) { showToast('Erro', 'error'); }
     });
 }
@@ -713,7 +889,7 @@ function abrirModalFornecedor() {
     abaModal('forn', 'dados');
     document.getElementById('forn-id').value = '';
     ['nome', 'doc', 'ie', 'contato', 'wpp', 'email', 'cep', 'rua', 'numero', 'bairro', 'cidade', 'condicoes', 'produtos'].forEach(id => { const el = document.getElementById(`forn-${id}`); if (el) el.value = ''; });
-    document.getElementById('forn-historico-body').innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-500 dark:text-slate-400">Cadastre para ver histÛrico.</td></tr>';
+    document.getElementById('forn-historico-body').innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-500 dark:text-slate-400">Cadastre para ver hist√≥rico.</td></tr>';
     document.getElementById('modal-fornecedor-title').innerText = 'Novo Fornecedor';
     const modalForn = document.getElementById('modal-fornecedor');
     modalForn.classList.remove('hidden');
@@ -728,7 +904,7 @@ function fecharModalFornecedor() {
 async function salvarFornecedor() {
     const id = document.getElementById('forn-id').value;
     const nome = document.getElementById('forn-nome').value.trim();
-    if (!nome) return showToast('Raz„o Social obrigatÛria!', 'error');
+    if (!nome) return showToast('Raz√£o Social obrigat√≥ria!', 'error');
 
     const f = {
         nome: nome, doc: document.getElementById('forn-doc').value, cnpj: document.getElementById('forn-doc').value,
@@ -760,10 +936,10 @@ function editarFornecedor(id) {
 }
 
 function excluirFornecedor(id) {
-    abrirConfirmacao('Excluir', 'Isso n„o apagar· as Notas. Continuar?', async () => {
+    abrirConfirmacao('Excluir', 'Isso n√£o apagar√° as Notas. Continuar?', async () => {
         try {
             await firestore.collection('fornecedores').doc(id).delete();
-            showToast('ExcluÌdo!');
+            showToast('Exclu√≠do!');
         } catch (e) { showToast('Erro', 'error'); }
     });
 }
@@ -777,7 +953,7 @@ function renderKardex() {
         let tipoHtml = String(m.tipo || '').split('<br>').map(t => `<span class="px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 ${badgeClass}">${t}</span>`).join('<br>');
         let dataFormatada = (m.data && typeof formatData === 'function') ? formatData(m.data).replace(',', '') : (m.data || '-');
         return `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 text-xs text-slate-500 dark:text-slate-400">${dataFormatada}</td><td class="p-4 whitespace-nowrap">${tipoHtml}</td><td class="p-4 font-bold text-slate-800 dark:text-slate-100">${m.prodNome}</td><td class="p-4 text-slate-600 dark:text-slate-300 text-xs">${m.ref}</td><td class="p-4 text-right font-black ${m.qtd > 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-red-500 dark:text-red-400'}">${m.qtd > 0 ? '+' + m.qtd : m.qtd}</td></tr>`;
-    }).join('') || '<tr><td colspan="5" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhuma movimentaÁ„o de estoque.</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhuma movimenta√ß√£o de estoque.</td></tr>';
 }
 
 async function gerarDescricaoIA(event) {
@@ -787,11 +963,11 @@ async function gerarDescricaoIA(event) {
 
     if (!nome) return showToast('Preencha o Nome do Produto primeiro!', 'error');
 
-    const prompt = `Atue como um especialista em marketing de mÛveis de alto padr„o e artigos para casa. Escreva uma descriÁ„o comercial curta, elegante, atraente e persuasiva (m·ximo de 3 par·grafos curtos) para o seguinte produto pronto para entrega:
+    const prompt = `Atue como um especialista em marketing de m√≥veis de alto padr√£o e artigos para casa. Escreva uma descri√ß√£o comercial curta, elegante, atraente e persuasiva (m√°ximo de 3 par√°grafos curtos) para o seguinte produto pronto para entrega:
     Nome: ${nome}
     Categoria: ${categoria}
-    Marca/Fornecedor: ${marca || 'GenÈrica'}
-    Destaque o design, conforto e crie desejo imediato de compra no cliente. N„o use formataÁ„o em negrito.`;
+    Marca/Fornecedor: ${marca || 'Gen√©rica'}
+    Destaque o design, conforto e crie desejo imediato de compra no cliente. N√£o use formata√ß√£o em negrito.`;
 
     const btn = event.currentTarget;
     const textoOriginal = btn.innerHTML;
@@ -802,7 +978,7 @@ async function gerarDescricaoIA(event) {
 
     if (resposta) {
         document.getElementById('prod-obs').value = resposta;
-        showToast('Ficha tÈcnica gerada com sucesso!', 'success');
+        showToast('Ficha t√©cnica gerada com sucesso!', 'success');
     }
 
     btn.innerHTML = textoOriginal;
@@ -810,11 +986,11 @@ async function gerarDescricaoIA(event) {
 }
 
 // ==========================================
-// IMPORTA«√O DE PLANILHA
+// IMPORTA√á√ÉO DE PLANILHA
 // ==========================================
 function baixarPlanilhaModeloProduto() {
     const cabecalho = "Nome do Produto;EAN (Codigo de Barras);Categoria;Custo;Preco de Venda;Estoque Atual\n";
-    const exemplo1 = "Mesa de Jantar Madeira MaciÁa;78900000000;Mesas;500,00;750,00;10\n";
+    const exemplo1 = "Mesa de Jantar Madeira Maci√ßa;78900000000;Mesas;500,00;750,00;10\n";
     const exemplo2 = "Cadeira Estofada;78900000001;Cadeiras;120,50;241,00;40\n";
     const csvContent = "\uFEFF" + cabecalho + exemplo1 + exemplo2;
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -834,9 +1010,9 @@ async function processarPlanilhaProdutos(event) {
 
     showToast("Lendo planilha, aguarde...", "info");
 
-    // Verifica se n„o È csv
+    // Verifica se n√£o √© csv
     if (!file.name.toLowerCase().endsWith('.csv')) {
-        showToast("Por favor, envie um arquivo .csv (separado por vÌrgulas ou ponto e vÌrgula).", "error");
+        showToast("Por favor, envie um arquivo .csv (separado por v√≠rgulas ou ponto e v√≠rgula).", "error");
         event.target.value = '';
         return;
     }
@@ -849,7 +1025,7 @@ async function processarPlanilhaProdutos(event) {
             const linhas = text.split(/\r\n|\n|\r/).filter(linha => linha.trim() !== '');
             
             if (linhas.length <= 1) {
-                showToast("A planilha parece estar vazia ou sÛ tem o cabeÁalho.", "error");
+                showToast("A planilha parece estar vazia ou s√≥ tem o cabe√ßalho.", "error");
                 return;
             }
 
@@ -858,7 +1034,7 @@ async function processarPlanilhaProdutos(event) {
 
             const batch = firestore.batch();
             
-            // Leitura din‚mica do cabeÁalho para suportar planilha velha ou nova
+            // Leitura din√¢mica do cabe√ßalho para suportar planilha velha ou nova
             let colIndex = { nome: 0, ean: 1, categoria: 2, marca: 3, custo: 4, margem: 5, preco: 6, estoque: 7, min: 8 };
             const hCols = linhas[0].toLowerCase().split(separador).map(c => c.trim().replace(/^"|"$/g, ''));
             if (hCols[0].includes('nome')) {
@@ -868,9 +1044,9 @@ async function processarPlanilhaProdutos(event) {
                 colIndex.marca = hCols.findIndex(c => c.includes('marca'));
                 colIndex.custo = hCols.findIndex(c => c.includes('custo'));
                 colIndex.margem = hCols.findIndex(c => c.includes('margem'));
-                colIndex.preco = hCols.findIndex(c => c.includes('preco') || c.includes('preÁo') || c.includes('venda'));
+                colIndex.preco = hCols.findIndex(c => c.includes('preco') || c.includes('pre√ßo') || c.includes('venda'));
                 colIndex.estoque = hCols.findIndex(c => c.includes('estoque') || c.includes('atual') || c.includes('qtd'));
-                colIndex.min = hCols.findIndex(c => c.includes('minimo') || c.includes('mÌnimo'));
+                colIndex.min = hCols.findIndex(c => c.includes('minimo') || c.includes('m√≠nimo'));
             }
 
             for (let i = 1; i < linhas.length; i++) {
@@ -919,7 +1095,7 @@ async function processarPlanilhaProdutos(event) {
 
                     if (estoque > 0) {
                         const karRef = firestore.collection('movimentacoes').doc();
-                        batch.set(karRef, { data: new Date().toISOString(), ref: "ImportaÁ„o de Planilha", prodId: docRef.id, prodNome: nome, qtd: estoque, tipo: "INICIAL" });
+                        batch.set(karRef, { data: new Date().toISOString(), ref: "Importa√ß√£o de Planilha", prodId: docRef.id, prodNome: nome, qtd: estoque, tipo: "INICIAL" });
                     }
                     produtosAdicionados++;
                 }
@@ -941,7 +1117,7 @@ async function processarPlanilhaProdutos(event) {
 }
 
 // ==========================================
-// FUNCION¡RIOS / VENDEDORES E PERMISS’ES
+// FUNCION√ÅRIOS / VENDEDORES E PERMISS√ïES
 // ==========================================
 
 function renderFuncionarios() {
@@ -961,7 +1137,7 @@ function renderFuncionarios() {
         let permissoesStr = [];
         if (f.perm_pdv) permissoesStr.push('PDV');
         if (f.perm_cadastros) permissoesStr.push('Cadastros');
-        if (f.perm_gestao) permissoesStr.push('Gest„o');
+        if (f.perm_gestao) permissoesStr.push('Gest√£o');
         if (f.perm_config) permissoesStr.push('Config');
         
         let permissoesBadge = permissoesStr.length > 0 ? permissoesStr.join(', ') : 'Nenhum Acesso';
@@ -971,7 +1147,7 @@ function renderFuncionarios() {
         <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700 transition-colors">
             <td class="p-3">
                 <div class="font-bold text-slate-800 dark:text-slate-100 uppercase">${f.nome || 'Sem Nome'}</div>
-                <div class="text-[10px] text-slate-400 mt-0.5">Permissıes: <span class="text-blue-500 font-bold">${permissoesBadge}</span></div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Permiss√µes: <span class="text-blue-500 font-bold">${permissoesBadge}</span></div>
             </td>
             <td class="p-3 text-slate-600 dark:text-slate-300 font-medium">${f.email}</td>
             <td class="p-3 text-slate-600 dark:text-slate-300">
@@ -985,18 +1161,18 @@ function renderFuncionarios() {
                 <button onclick="excluirFuncionario('${f.id}')" class="text-slate-400 hover:text-red-500 p-2" title="Excluir"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
-    }).join('') || `<tr><td colspan="5" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum funcion·rio cadastrado.</td></tr>`;
+    }).join('') || `<tr><td colspan="5" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum funcion√°rio cadastrado.</td></tr>`;
 }
 
 function abrirModalFuncionario(id = null) {
     document.getElementById('func-id').value = id || '';
     
     if (id) {
-        document.getElementById('modal-funcionario-title').innerText = 'Editar Funcion·rio';
+        document.getElementById('modal-funcionario-title').innerText = 'Editar Funcion√°rio';
         const f = (db.funcionarios || []).find(x => x.id === id);
         if (f) {
             document.getElementById('func-email').value = f.email || '';
-            document.getElementById('func-email').disabled = true; // Email n„o muda apÛs criar
+            document.getElementById('func-email').disabled = true; // Email n√£o muda ap√≥s criar
             document.getElementById('func-senha').value = '';
             document.getElementById('func-senha-aviso').classList.remove('hidden');
             
@@ -1012,7 +1188,7 @@ function abrirModalFuncionario(id = null) {
             document.getElementById('func-perm-config').checked = !!f.perm_config;
         }
     } else {
-        document.getElementById('modal-funcionario-title').innerText = 'Novo Funcion·rio';
+        document.getElementById('modal-funcionario-title').innerText = 'Novo Funcion√°rio';
         document.getElementById('func-email').value = '';
         document.getElementById('func-email').disabled = false;
         document.getElementById('func-senha').value = '';
@@ -1039,7 +1215,7 @@ function fecharModalFuncionario() {
     document.getElementById('modal-funcionario').style.display = 'none';
 }
 
-// Inicializa a inst‚ncia secund·ria para criar contas sem deslogar o Admin
+// Inicializa a inst√¢ncia secund√°ria para criar contas sem deslogar o Admin
 let secondaryAuthApp = null;
 function getSecondaryApp() {
     if (!secondaryAuthApp) {
@@ -1073,8 +1249,8 @@ async function salvarFuncionario() {
 
     try {
         if (!id) {
-            // CRIAR NOVO FUNCION¡RIO
-            if (!senha || senha.length < 6) return showToast('Para novos funcion·rios, informe uma senha de no mÌnimo 6 caracteres.', 'error');
+            // CRIAR NOVO FUNCION√ÅRIO
+            if (!senha || senha.length < 6) return showToast('Para novos funcion√°rios, informe uma senha de no m√≠nimo 6 caracteres.', 'error');
             
             showToast('Criando conta de acesso...', 'info');
             
@@ -1082,23 +1258,23 @@ async function salvarFuncionario() {
             const userCredential = await secApp.auth().createUserWithEmailAndPassword(email, senha);
             const uid = userCredential.user.uid;
             
-            // Faz logout na inst‚ncia secund·ria para n„o afetar nada
+            // Faz logout na inst√¢ncia secund√°ria para n√£o afetar nada
             await secApp.auth().signOut();
             
             obj.id = uid;
             await firestore.collection('funcionarios').doc(uid).set(obj);
-            showToast('Funcion·rio e acesso criados com sucesso!', 'success');
+            showToast('Funcion√°rio e acesso criados com sucesso!', 'success');
             
         } else {
-            // ATUALIZAR FUNCION¡RIO EXISTENTE
+            // ATUALIZAR FUNCION√ÅRIO EXISTENTE
             if (senha) {
-                showToast('Aviso: AlteraÁ„o de senha por aqui ainda n„o est· implementada nesta vers„o.', 'info');
+                showToast('Aviso: Altera√ß√£o de senha por aqui ainda n√£o est√° implementada nesta vers√£o.', 'info');
                 // Se precisar mudar senha, teria que usar cloud functions ou Admin SDK.
-                // Como workaround, o usu·rio pode usar a recuperaÁ„o de senha na tela de login.
+                // Como workaround, o usu√°rio pode usar a recupera√ß√£o de senha na tela de login.
             }
             
             await firestore.collection('funcionarios').doc(id).set(obj, { merge: true });
-            showToast('Funcion·rio atualizado com sucesso!', 'success');
+            showToast('Funcion√°rio atualizado com sucesso!', 'success');
         }
         
         fecharModalFuncionario();
@@ -1107,7 +1283,7 @@ async function salvarFuncionario() {
     } catch (error) {
         console.error(error);
         if (error.code === 'auth/email-already-in-use') {
-            showToast('Este e-mail j· possui uma conta no sistema.', 'error');
+            showToast('Este e-mail j√° possui uma conta no sistema.', 'error');
         } else {
             showToast('Erro ao salvar: ' + error.message, 'error');
         }
@@ -1115,10 +1291,10 @@ async function salvarFuncionario() {
 }
 
 function excluirFuncionario(id) {
-    abrirConfirmacao('Excluir Funcion·rio', 'ATEN«√O: O cadastro ser· apagado do sistema, mas a conta de login continuar· ativa no Firebase (devido a restriÁıes de seguranÁa do cliente). O usu·rio n„o poder· mais acessar o sistema. Continuar?', async () => {
+    abrirConfirmacao('Excluir Funcion√°rio', 'ATEN√á√ÉO: O cadastro ser√° apagado do sistema, mas a conta de login continuar√° ativa no Firebase (devido a restri√ß√µes de seguran√ßa do cliente). O usu√°rio n√£o poder√° mais acessar o sistema. Continuar?', async () => {
         try {
             await firestore.collection('funcionarios').doc(id).delete();
-            showToast('Funcion·rio excluÌdo! Acesso revogado.', 'success');
+            showToast('Funcion√°rio exclu√≠do! Acesso revogado.', 'success');
             renderFuncionarios();
         } catch (e) {
             console.error(e);
@@ -1132,7 +1308,7 @@ window.verDetalhesVenda = function(id) {
     try {
         const v = db.vendas.find(x => String(x.id) === String(id)); 
         if(!v) { 
-            alert("Venda n„o encontrada no banco de dados local: " + id);
+            alert("Venda n√£o encontrada no banco de dados local: " + id);
             return; 
         }
         
@@ -1141,34 +1317,34 @@ window.verDetalhesVenda = function(id) {
         
         document.getElementById('det-venda-cliente').innerText = v.clienteNome || 'Desconhecido'; 
         document.getElementById('det-venda-data').innerText = `${v.data ? formatData(v.data).split(' ')[0] : '-'} | #${numPedStr}`; 
-        document.getElementById('det-venda-pag').innerText = tipoTexto === 'OR«AMENTO' ? 'OrÁamento' : (v.pag || '-'); 
+        document.getElementById('det-venda-pag').innerText = tipoTexto === 'OR√áAMENTO' ? 'Or√ßamento' : (v.pag || '-'); 
         
         let osInfoHtml = '';
-        if (tipoTexto === 'SERVI«O' && v.servicoDetalhes) {
+        if (tipoTexto === 'SERVI√áO' && v.servicoDetalhes) {
             let galeriaHtml = '';
             if (v.servicoDetalhes.fotos && v.servicoDetalhes.fotos.length > 0) { 
-                galeriaHtml = `<p class="mt-2"><strong>Fotos de ReferÍncia:</strong></p><div class="flex gap-2 flex-wrap mt-1">${v.servicoDetalhes.fotos.map(f => `<img src="${f}" onclick="abrirZoom('${f}')" class="h-20 rounded border border-purple-300 cursor-zoom-in shadow-sm hover:opacity-80 transition" title="Clique para ampliar">`).join('')}</div>`; 
+                galeriaHtml = `<p class="mt-2"><strong>Fotos de Refer√™ncia:</strong></p><div class="flex gap-2 flex-wrap mt-1">${v.servicoDetalhes.fotos.map(f => `<img src="${f}" onclick="abrirZoom('${f}')" class="h-20 rounded border border-purple-300 cursor-zoom-in shadow-sm hover:opacity-80 transition" title="Clique para ampliar">`).join('')}</div>`; 
             } else if (v.servicoDetalhes.foto) { 
-                galeriaHtml = `<p class="mt-2"><strong>Foto de ReferÍncia:</strong></p><img src="${v.servicoDetalhes.foto}" onclick="abrirZoom('${v.servicoDetalhes.foto}')" class="mt-1 h-24 rounded border border-purple-300 cursor-zoom-in shadow-sm hover:opacity-80 transition" title="Clique para ampliar">`; 
+                galeriaHtml = `<p class="mt-2"><strong>Foto de Refer√™ncia:</strong></p><img src="${v.servicoDetalhes.foto}" onclick="abrirZoom('${v.servicoDetalhes.foto}')" class="mt-1 h-24 rounded border border-purple-300 cursor-zoom-in shadow-sm hover:opacity-80 transition" title="Clique para ampliar">`; 
             }
             osInfoHtml = `
                 <div class="mt-4 bg-purple-50 p-3 md:p-4 rounded-lg border border-purple-200 text-xs md:text-sm text-purple-900">
-                    <h4 class="font-bold mb-2 uppercase text-purple-700 border-b border-purple-200 pb-2"><i class="fa-solid fa-clipboard-list"></i> Ficha da Ordem de ServiÁo</h4>
+                    <h4 class="font-bold mb-2 uppercase text-purple-700 border-b border-purple-200 pb-2"><i class="fa-solid fa-clipboard-list"></i> Ficha da Ordem de Servi√ßo</h4>
                     <div class="grid grid-cols-2 gap-2 mb-2">
-                        <p><strong>Prazo de Entrega:</strong> ${v.servicoDetalhes.prazo ? v.servicoDetalhes.prazo.split('-').reverse().join('/') : 'N„o informado'}</p>
+                        <p><strong>Prazo de Entrega:</strong> ${v.servicoDetalhes.prazo ? v.servicoDetalhes.prazo.split('-').reverse().join('/') : 'N√£o informado'}</p>
                         <p><strong>Garantia:</strong> ${v.servicoDetalhes.garantia || 'Nenhuma'}</p>
                     </div>
-                    <p class="mb-2"><strong>Escopo / DiagnÛstico:</strong><br> ${v.servicoDetalhes.desc || 'Nenhum detalhe adicional.'}</p>
+                    <p class="mb-2"><strong>Escopo / Diagn√≥stico:</strong><br> ${v.servicoDetalhes.desc || 'Nenhum detalhe adicional.'}</p>
                     ${galeriaHtml}
                 </div>`;
         }
         
-        document.getElementById('det-venda-obs').innerHTML = (v.obs ? v.obs : '<span class="text-slate-400">Nenhuma observaÁ„o geral.</span>') + osInfoHtml;
+        document.getElementById('det-venda-obs').innerHTML = (v.obs ? v.obs : '<span class="text-slate-400">Nenhuma observa√ß√£o geral.</span>') + osInfoHtml;
         document.getElementById('det-venda-total').innerText = formatMoney(v.tot || 0);
         document.getElementById('det-venda-itens').innerHTML = (v.itens || []).map(i => `
             <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-50">
                 <td class="p-3 font-medium text-slate-700 dark:text-slate-200 text-xs">
-                    ${i.nome || 'Produto/ServiÁo'} ${i.obsVenda ? `<br><span class="text-[10px] text-slate-400">Obs: ${i.obsVenda}</span>` : ''}
+                    ${i.nome || 'Produto/Servi√ßo'} ${i.obsVenda ? `<br><span class="text-[10px] text-slate-400">Obs: ${i.obsVenda}</span>` : ''}
                 </td>
                 <td class="p-3 text-center text-xs font-bold text-slate-600 dark:text-slate-300">${i.qtd || 1}</td>
                 <td class="p-3 text-right text-xs text-slate-500 dark:text-slate-400">${formatMoney(i.preco || 0)}</td>
@@ -1189,14 +1365,14 @@ window.fecharModalDetalhesVenda = function() {
     document.getElementById('modal-detalhes-venda').style.display = '';
 }
 
-// Event Delegation para clique no histÛrico (muito mais robusto que onclick inline)
+// Event Delegation para clique no hist√≥rico (muito mais robusto que onclick inline)
 document.addEventListener('click', function(e) {
     const tr = e.target.closest('tr.linha-historico');
     if (tr && tr.dataset.vendaId) {
         if (window.verDetalhesVenda) {
             window.verDetalhesVenda(tr.dataset.vendaId);
         } else {
-            alert('FunÁ„o de detalhes n„o est· carregada!');
+            alert('Fun√ß√£o de detalhes n√£o est√° carregada!');
         }
     }
 });
@@ -1204,7 +1380,7 @@ document.addEventListener('click', function(e) {
 
 
 
-// NOVO: FunÁıes auxiliares para VÌnculo de XML
+// NOVO: Fun√ß√µes auxiliares para V√≠nculo de XML
 function alternarAcaoVinculoXML() {
     const acao = document.getElementById('prod-acao-vinculo').value;
     if(acao === 'VINCULAR') {
@@ -1274,6 +1450,10 @@ window.fecharZoom = fecharZoom;
 window.renderSelectCategorias = renderSelectCategorias;
 window.atualizarOpcoesSubcategoria = atualizarOpcoesSubcategoria;
 window.renderProdutos = renderProdutos;
+window.popularFiltroCategoriasProdutos = popularFiltroCategoriasProdutos;
+window.toggleSortProdutos = toggleSortProdutos;
+window.alterarOrdemProdutos = alterarOrdemProdutos;
+window.limparFiltrosProdutos = limparFiltrosProdutos;
 window.abrirModalProduto = abrirModalProduto;
 window.fecharModalProduto = fecharModalProduto;
 window.processarFoto = processarFoto;

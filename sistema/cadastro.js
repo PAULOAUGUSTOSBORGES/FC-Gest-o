@@ -174,28 +174,233 @@ function atualizarOpcoesSubcategoria() {
 // ==========================================
 // PRODUTOS
 // ==========================================
-function renderProdutos() {
-    const termo = document.getElementById('busca-produto-lista')?.value.toLowerCase() || ''; const statusFiltro = document.getElementById('filtro-prod-status')?.value || 'todos';
-    let filtrados = db.produtos.filter(p => p.nome.toLowerCase().includes(termo) || (p.ean && p.ean.includes(termo)) || (p.marca && p.marca.toLowerCase().includes(termo)));
-    if (statusFiltro === 'alerta') filtrados = filtrados.filter(p => p.estoque > 0 && p.estoque <= p.min);
-    if (statusFiltro === 'zerado') filtrados = filtrados.filter(p => p.estoque <= 0);
-    if (statusFiltro === 'ok') filtrados = filtrados.filter(p => p.estoque > p.min);
+window.prodSortDirection = 'asc';
 
-    if (typeof ordenarListaAlfabeticamente === 'function') {
-        filtrados = ordenarListaAlfabeticamente(filtrados, 'nome');
+function popularFiltroCategoriasProdutos() {
+    const selectCat = document.getElementById('filtro-prod-categoria');
+    if (!selectCat) return;
+    const valAtual = selectCat.value;
+    
+    const catsSet = new Set();
+    if (Array.isArray(db.categorias)) {
+        db.categorias.forEach(c => {
+            if (c && c.nome && String(c.nome).trim()) catsSet.add(String(c.nome).trim());
+        });
+    }
+    if (Array.isArray(db.produtos)) {
+        db.produtos.forEach(p => {
+            if (p && p.categoria && String(p.categoria).trim()) catsSet.add(String(p.categoria).trim());
+        });
+    }
+    
+    const lista = Array.from(catsSet).sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+    let html = '<option value="">Todas as Categorias</option>';
+    lista.forEach(cat => {
+        html += '<option value="' + cat.replace(/"/g, '&quot;') + '">' + cat + '</option>';
+    });
+    selectCat.innerHTML = html;
+    if (valAtual && catsSet.has(valAtual)) {
+        selectCat.value = valAtual;
+    }
+}
+
+function toggleSortProdutos() {
+    const selectOrdem = document.getElementById('filtro-prod-ordem');
+    if (selectOrdem) {
+        if (selectOrdem.value === 'nome-asc') {
+            selectOrdem.value = 'nome-desc';
+        } else {
+            selectOrdem.value = 'nome-asc';
+        }
     } else {
-        filtrados.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+        window.prodSortDirection = (window.prodSortDirection === 'asc') ? 'desc' : 'asc';
+    }
+    renderProdutos();
+}
+
+function alterarOrdemProdutos(novaOrdem) {
+    if (novaOrdem === 'nome-asc') window.prodSortDirection = 'asc';
+    if (novaOrdem === 'nome-desc') window.prodSortDirection = 'desc';
+    renderProdutos();
+}
+
+function limparFiltrosProdutos() {
+    const busca = document.getElementById('busca-produto-lista');
+    if (busca) busca.value = '';
+    const cat = document.getElementById('filtro-prod-categoria');
+    if (cat) cat.value = '';
+    const status = document.getElementById('filtro-prod-status');
+    if (status) status.value = 'todos';
+    const ordem = document.getElementById('filtro-prod-ordem');
+    if (ordem) ordem.value = 'nome-asc';
+    window.prodSortDirection = 'asc';
+    renderProdutos();
+}
+
+function renderProdutos() {
+    const inputBusca = document.getElementById('busca-produto-lista');
+    const termo = (inputBusca?.value || '').trim();
+    const statusFiltro = document.getElementById('filtro-prod-status')?.value || 'todos';
+    const categoriaFiltro = document.getElementById('filtro-prod-categoria')?.value || '';
+    const ordemFiltro = document.getElementById('filtro-prod-ordem')?.value || (window.prodSortDirection === 'desc' ? 'nome-desc' : 'nome-asc');
+
+    // Popula categorias dinamicamente se necess?rio
+    const selectCat = document.getElementById('filtro-prod-categoria');
+    if (selectCat && selectCat.options.length <= 1 && ((db.produtos && db.produtos.length > 0) || (db.categorias && db.categorias.length > 0))) {
+        popularFiltroCategoriasProdutos();
     }
 
-    document.getElementById('tabela-produtos').innerHTML = filtrados.map(p => {
+    // Bot?o de limpar busca r?pida
+    const btnLimparBusca = document.getElementById('btn-limpar-busca-produto');
+    if (btnLimparBusca) {
+        if (termo) btnLimparBusca.classList.remove('hidden');
+        else btnLimparBusca.classList.add('hidden');
+    }
+
+    // Normalizador de texto para busca sem distin??o de acentos ou mai?sculas/min?sculas
+    const normalizar = (txt) => {
+        return (txt || '').toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+    };
+    const termoNorm = normalizar(termo);
+
+    const produtos = Array.isArray(db.produtos) ? db.produtos : [];
+
+    let filtrados = produtos.filter(p => {
+        if (!p) return false;
+
+        // Filtro de texto (nome, c?digo de barras EAN, c?digo interno, marca, categoria, observa??o, ID)
+        if (termoNorm) {
+            const matchNome = normalizar(p.nome).includes(termoNorm);
+            const matchEan = normalizar(p.ean).includes(termoNorm);
+            const matchCodigo = normalizar(p.codigo).includes(termoNorm);
+            const matchMarca = normalizar(p.marca).includes(termoNorm);
+            const matchCat = normalizar(p.categoria).includes(termoNorm);
+            const matchSub = normalizar(p.subcategoria).includes(termoNorm);
+            const matchNcm = normalizar(p.ncm).includes(termoNorm);
+            const matchObs = normalizar(p.obs).includes(termoNorm);
+            const matchLegenda = normalizar(p.legenda).includes(termoNorm);
+            const matchId = normalizar(p.id).includes(termoNorm);
+
+            if (!matchNome && !matchEan && !matchCodigo && !matchMarca && !matchCat && !matchSub && !matchNcm && !matchObs && !matchLegenda && !matchId) {
+                return false;
+            }
+        }
+
+        // Filtro de categoria
+        if (categoriaFiltro) {
+            const pCat = (p.categoria || '').trim().toLowerCase();
+            if (pCat !== categoriaFiltro.toLowerCase()) return false;
+        }
+
+        // Filtro de status / estoque
+        const estoque = Number(p.estoque) || 0;
+        const minimo = Number(p.min) || 0;
+        if (statusFiltro === 'ok' && !(estoque > minimo)) return false;
+        if (statusFiltro === 'alerta' && !(estoque > 0 && estoque <= minimo)) return false;
+        if (statusFiltro === 'zerado' && !(estoque <= 0)) return false;
+        if (statusFiltro === 'ativos' && p.ativo === false) return false;
+        if (statusFiltro === 'inativos' && p.ativo !== false) return false;
+
+        return true;
+    });
+
+    // Ordena??o
+    if (ordemFiltro === 'nome-asc') {
+        window.prodSortDirection = 'asc';
+        if (typeof ordenarListaAlfabeticamente === 'function') {
+            filtrados = ordenarListaAlfabeticamente(filtrados, 'nome', 'asc');
+        } else {
+            filtrados.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+        }
+    } else if (ordemFiltro === 'nome-desc') {
+        window.prodSortDirection = 'desc';
+        if (typeof ordenarListaAlfabeticamente === 'function') {
+            filtrados = ordenarListaAlfabeticamente(filtrados, 'nome', 'desc');
+        } else {
+            filtrados.sort((a, b) => (b.nome || '').localeCompare(a.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+        }
+    } else if (ordemFiltro === 'preco-asc') {
+        filtrados.sort((a, b) => (parseFloat(a.preco) || 0) - (parseFloat(b.preco) || 0));
+    } else if (ordemFiltro === 'preco-desc') {
+        filtrados.sort((a, b) => (parseFloat(b.preco) || 0) - (parseFloat(a.preco) || 0));
+    } else if (ordemFiltro === 'estoque-desc') {
+        filtrados.sort((a, b) => (parseFloat(b.estoque) || 0) - (parseFloat(a.estoque) || 0));
+    } else if (ordemFiltro === 'estoque-asc') {
+        filtrados.sort((a, b) => (parseFloat(a.estoque) || 0) - (parseFloat(b.estoque) || 0));
+    }
+
+    // Atualiza ?cone do cabe?alho da tabela e bot?o de ordem
+    const thIcon = document.getElementById('sort-icon-produto');
+    const btnOrdemIcon = document.getElementById('btn-ordem-icon');
+    const btnOrdemLabel = document.getElementById('btn-ordem-label');
+    const ordemIconeSelect = document.getElementById('filtro-prod-ordem-icone');
+
+    if (ordemFiltro === 'nome-asc') {
+        if (thIcon) thIcon.className = 'fa-solid fa-arrow-down-a-z ml-1 text-indigo-500';
+        if (btnOrdemIcon) btnOrdemIcon.className = 'fa-solid fa-arrow-down-a-z';
+        if (btnOrdemLabel) btnOrdemLabel.textContent = 'A - Z';
+        if (ordemIconeSelect) ordemIconeSelect.className = 'fa-solid fa-arrow-down-a-z absolute left-3 top-3 text-slate-400 text-xs pointer-events-none';
+    } else if (ordemFiltro === 'nome-desc') {
+        if (thIcon) thIcon.className = 'fa-solid fa-arrow-up-z-a ml-1 text-indigo-500';
+        if (btnOrdemIcon) btnOrdemIcon.className = 'fa-solid fa-arrow-up-z-a';
+        if (btnOrdemLabel) btnOrdemLabel.textContent = 'Z - A';
+        if (ordemIconeSelect) ordemIconeSelect.className = 'fa-solid fa-arrow-up-z-a absolute left-3 top-3 text-slate-400 text-xs pointer-events-none';
+    } else {
+        if (thIcon) thIcon.className = 'fa-solid fa-sort ml-1 text-slate-400';
+        if (btnOrdemIcon) btnOrdemIcon.className = 'fa-solid fa-arrow-down-wide-short';
+        if (btnOrdemLabel) btnOrdemLabel.textContent = 'Personalizada';
+        if (ordemIconeSelect) ordemIconeSelect.className = 'fa-solid fa-arrow-down-wide-short absolute left-3 top-3 text-slate-400 text-xs pointer-events-none';
+    }
+
+    // Atualiza indicador de filtros ativos e bot?o limpar
+    const temFiltroAtivo = Boolean(termo || categoriaFiltro || statusFiltro !== 'todos' || (ordemFiltro !== 'nome-asc' && ordemFiltro !== ''));
+    const badgeFiltro = document.getElementById('badge-filtro-ativo');
+    if (badgeFiltro) {
+        if (temFiltroAtivo) badgeFiltro.classList.remove('hidden');
+        else badgeFiltro.classList.add('hidden');
+    }
+    const btnLimpar = document.getElementById('btn-limpar-filtros');
+    if (btnLimpar) {
+        if (temFiltroAtivo) btnLimpar.classList.remove('hidden');
+        else btnLimpar.classList.add('hidden');
+    }
+
+    // Atualiza contador de produtos
+    const contadorEl = document.getElementById('contador-produtos');
+    if (contadorEl) {
+        const total = produtos.length;
+        if (filtrados.length === total) {
+            contadorEl.textContent = total + ' produto' + (total !== 1 ? 's' : '') + ' cadastrado' + (total !== 1 ? 's' : '');
+        } else {
+            contadorEl.textContent = 'Exibindo ' + filtrados.length + ' de ' + total + ' produto' + (total !== 1 ? 's' : '');
+        }
+    }
+
+    const tbody = document.getElementById('tabela-produtos');
+    if (!tbody) return;
+
+    if (filtrados.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="p-8 text-center text-slate-500 dark:text-slate-400">
+                    <i class="fa-solid fa-box-open text-4xl mb-3 text-slate-300 dark:text-slate-600 block"></i>
+                    <p class="font-bold text-slate-700 dark:text-slate-200">Nenhum produto encontrado</p>
+                    <p class="text-xs mt-1 text-slate-400">Tente ajustar os termos de busca ou filtros selecionados.</p>
+                    ${temFiltroAtivo ? '<button type="button" onclick="limparFiltrosProdutos()" class="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 text-xs font-bold transition-colors"><i class="fa-solid fa-rotate-left"></i> Limpar filtros</button>' : ''}
+                </td>
+            </tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtrados.map(p => {
         const isBaixo = p.estoque <= p.min; const isZerado = p.estoque <= 0;
-        const corEstoque = isZerado ? 'text-red-600 bg-red-50' : (isBaixo ? 'text-amber-600 bg-amber-50' : 'text-slate-700 dark:text-slate-200');
-        const fHtml = p.foto ? `<img src="${p.foto}" onclick="abrirZoom('${p.foto}')" class="w-10 h-10 rounded object-cover border border-slate-200 dark:border-slate-700 mx-auto cursor-zoom-in hover:opacity-80 transition">` : `<div class="w-10 h-10 mx-auto rounded bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-400 text-xs"><i class="fa-regular fa-image"></i></div>`;
-        const badgeInativo = p.ativo === false ? `<span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] ml-2 font-bold"><i class="fa-solid fa-ban"></i> INATIVO</span>` : '';
+        const corEstoque = isZerado ? 'text-red-600 bg-red-50 dark:bg-red-950/40 dark:text-red-400' : (isBaixo ? 'text-amber-600 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-400' : 'text-slate-700 dark:text-slate-200');
+        const fHtml = p.foto ? '<img src="' + p.foto + '" onclick="abrirZoom(\'' + p.foto + '\')" class="w-10 h-10 rounded object-cover border border-slate-200 dark:border-slate-700 mx-auto cursor-zoom-in hover:opacity-80 transition">' : '<div class="w-10 h-10 mx-auto rounded bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-400 text-xs"><i class="fa-regular fa-image"></i></div>';
+        const badgeInativo = p.ativo === false ? '<span class="bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300 px-2 py-0.5 rounded text-[10px] ml-2 font-bold"><i class="fa-solid fa-ban"></i> INATIVO</span>' : '';
         return `
         <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700 ${p.ativo === false ? 'opacity-60' : ''}">
             <td class="p-3 text-center">${fHtml}</td>
-            <td class="p-3"><p class="font-bold text-slate-800 dark:text-slate-100">${p.nome} ${badgeInativo}</p><p class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">EAN: ${p.ean || 'S/N'} | ${p.categoria} | Marca: ${p.marca || '-'}</p></td>
+            <td class="p-3"><p class="font-bold text-slate-800 dark:text-slate-100">${p.nome} ${badgeInativo}</p><p class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">EAN: ${p.ean || 'S/N'} | ${p.categoria || 'Sem categoria'} | Marca: ${p.marca || '-'}</p></td>
             <td class="p-3 text-right"><p class="text-slate-600 dark:text-slate-300 font-medium">${formatMoney(p.custo)}</p><p class="text-[10px] text-blue-500 font-bold">${p.custo > 0 ? (((p.preco - p.custo) / p.custo) * 100).toFixed(2) : (p.margem || 0).toFixed(2)}% MKP</p></td>
             <td class="p-3 text-right font-bold text-emerald-600">${formatMoney(p.preco)}</td>
             <td class="p-3 text-center font-bold"><span class="px-2 py-1 rounded ${corEstoque}">${p.estoque} un</span></td>
@@ -1063,3 +1268,8 @@ function ocultarListaProdutosXMLBusca() { document.getElementById('prod-vinculo-
 
 
 
+
+window.popularFiltroCategoriasProdutos = popularFiltroCategoriasProdutos;
+window.toggleSortProdutos = toggleSortProdutos;
+window.alterarOrdemProdutos = alterarOrdemProdutos;
+window.limparFiltrosProdutos = limparFiltrosProdutos;

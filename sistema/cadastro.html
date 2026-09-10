@@ -36,8 +36,8 @@
         
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css?v=20260910172224">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260910172224">
+    <link rel="stylesheet" href="../style.css?v=20260910205016">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260910205016">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -144,13 +144,93 @@
                         </div>
                     </div>
 
+                                        <!-- Barra de Filtros e Busca de Produtos -->
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-3 mb-4 mt-6">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
+                            <!-- Campo de Busca Textual -->
+                            <div class="lg:col-span-4 relative">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+                                <input type="text" id="busca-produto-lista" placeholder="Buscar por nome, c?digo de barras (EAN), marca, ID..." 
+                                    class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-lg pl-10 pr-9 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm" 
+                                    oninput="renderProdutos()">
+                                <button type="button" id="btn-limpar-busca-produto" onclick="document.getElementById('busca-produto-lista').value=''; renderProdutos();" 
+                                    class="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 hidden" title="Limpar busca">
+                                    <i class="fa-solid fa-xmark text-sm"></i>
+                                </button>
+                            </div>
+
+                            <!-- Filtro de Categoria -->
+                            <div class="lg:col-span-3 relative">
+                                <div class="relative">
+                                    <i class="fa-solid fa-layer-group absolute left-3 top-3 text-slate-400 text-xs pointer-events-none"></i>
+                                    <select id="filtro-prod-categoria" 
+                                        class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-lg pl-8 pr-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm cursor-pointer" 
+                                        onchange="renderProdutos()">
+                                        <option value="">Todas as Categorias</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Filtro de Estoque / Status -->
+                            <div class="lg:col-span-2 relative">
+                                <div class="relative">
+                                    <i class="fa-solid fa-boxes-stacked absolute left-3 top-3 text-slate-400 text-xs pointer-events-none"></i>
+                                    <select id="filtro-prod-status" 
+                                        class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-lg pl-8 pr-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm cursor-pointer" 
+                                        onchange="renderProdutos()">
+                                        <option value="todos">Todos os Estoques</option>
+                                        <option value="ok">Estoque OK</option>
+                                        <option value="alerta">Estoque Baixo</option>
+                                        <option value="zerado">Estoque Zerado</option>
+                                        <option value="ativos">Apenas Ativos</option>
+                                        <option value="inativos">Apenas Inativos</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Ordena??o Alfab?tica e Outros -->
+                            <div class="lg:col-span-3 relative">
+                                <div class="relative">
+                                    <i class="fa-solid fa-arrow-down-a-z absolute left-3 top-3 text-slate-400 text-xs pointer-events-none" id="filtro-prod-ordem-icone"></i>
+                                    <select id="filtro-prod-ordem" 
+                                        class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-lg pl-8 pr-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm cursor-pointer font-medium" 
+                                        onchange="alterarOrdemProdutos(this.value)">
+                                        <option value="nome-asc">Ordem: A - Z (Crescente)</option>
+                                        <option value="nome-desc">Ordem: Z - A (Decrescente)</option>
+                                        <option value="preco-asc">Menor Pre?o</option>
+                                        <option value="preco-desc">Maior Pre?o</option>
+                                        <option value="estoque-desc">Maior Estoque</option>
+                                        <option value="estoque-asc">Menor Estoque</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Barra de Informa??es / Status do Filtro -->
+                        <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-xs text-slate-500 dark:text-slate-400">
+                            <div class="flex items-center gap-2">
+                                <span id="contador-produtos" class="font-bold text-slate-700 dark:text-slate-300">Carregando produtos...</span>
+                                <span id="badge-filtro-ativo" class="hidden px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 font-semibold text-[11px] border border-indigo-200 dark:border-indigo-800">Filtros aplicados</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <button type="button" onclick="toggleSortProdutos()" class="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium cursor-pointer transition-colors" title="Alternar ordem alfab?tica r?pida (A-Z / Z-A)">
+                                    <i id="btn-ordem-icon" class="fa-solid fa-arrow-down-a-z"></i>
+                                    <span id="btn-ordem-label">A - Z</span>
+                                </button>
+                                <button type="button" id="btn-limpar-filtros" onclick="limparFiltrosProdutos()" class="hidden text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 font-medium transition-colors">
+                                    <i class="fa-solid fa-rotate-left mr-1"></i> Limpar Filtros
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                         <div class="overflow-x-auto custom-scrollbar">
                             <table class="w-full text-left border-collapse min-w-[700px]">
                                 <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold border-b border-slate-200 dark:border-slate-700">
                                     <tr>
                                         <th class="p-3 w-16 text-center"><i class="fa-regular fa-image text-lg"></i></th>
-                                        <th class="p-3">Produto & Info</th>
+                                        <th class="p-3 cursor-pointer hover:text-indigo-600 transition-colors select-none" onclick="toggleSortProdutos()" title="Clique para alternar ordem alfab?tica A-Z / Z-A">Produto & Info <i id="sort-icon-produto" class="fa-solid fa-arrow-down-a-z ml-1 text-indigo-500"></i></th>
                                         <th class="p-3 text-right">Custo / Margem</th>
                                         <th class="p-3 text-right">Preço Venda</th>
                                         <th class="p-3 text-center">Estoque</th>
@@ -748,10 +828,10 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20260910172224"></script>
-    <script src="../global.js?v=20260910172224"></script>
-    <script src="fc_cache.js?v=20260910172224"></script>
-    <script src="cadastro.js?v=20260910172224"></script>
+    <script src="../sistema/config_banco.js?v=20260910205016"></script>
+    <script src="../global.js?v=20260910205016"></script>
+    <script src="fc_cache.js?v=20260910205016"></script>
+    <script src="cadastro.js?v=20260910205016"></script>
 </body>
 </html>
 
