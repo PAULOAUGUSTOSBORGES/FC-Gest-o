@@ -206,13 +206,40 @@
                             </div>
                         </div>
 
-                        <!-- Barra de Informações / Status do Filtro -->
-                        <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-xs text-slate-500 dark:text-slate-400">
-                            <div class="flex items-center gap-2">
+                        <!-- Barra de Informações / Status do Filtro e Totais de Estoque -->
+                        <div class="flex flex-wrap items-center justify-between gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-700/60 text-xs text-slate-500 dark:text-slate-400">
+                            <!-- Esquerda: Quantidade e Totais de Estoque (Custo e Venda) -->
+                            <div class="flex flex-wrap items-center gap-2 sm:gap-3">
                                 <span id="contador-produtos" class="font-bold text-slate-700 dark:text-slate-300">Carregando produtos...</span>
+                                
+                                <span class="hidden sm:inline text-slate-300 dark:text-slate-600">•</span>
+
+                                <!-- Total Custo Estoque -->
+                                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 font-medium shadow-xs" title="Valor total de custo dos produtos filtrados em estoque">
+                                    <i class="fa-solid fa-boxes-stacked text-amber-500 text-[11px]"></i>
+                                    <span class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">Total Custo:</span>
+                                    <span id="total-estoque-custo" class="font-black text-xs md:text-sm text-amber-600 dark:text-amber-400">R$ 0,00</span>
+                                </div>
+
+                                <!-- Total Venda Estoque -->
+                                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-medium shadow-xs" title="Valor total de venda dos produtos filtrados em estoque">
+                                    <i class="fa-solid fa-tag text-emerald-500 text-[11px]"></i>
+                                    <span class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">Total Venda:</span>
+                                    <span id="total-estoque-venda" class="font-black text-xs md:text-sm text-emerald-600 dark:text-emerald-400">R$ 0,00</span>
+                                </div>
+
+                                <!-- Lucro Previsto -->
+                                <div class="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-400 font-medium shadow-xs" title="Lucro bruto potencial no estoque">
+                                    <i class="fa-solid fa-chart-line text-blue-500 text-[11px]"></i>
+                                    <span class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">Lucro Previsto:</span>
+                                    <span id="total-estoque-lucro" class="font-black text-xs md:text-sm text-blue-600 dark:text-blue-400">R$ 0,00</span>
+                                </div>
+
                                 <span id="badge-filtro-ativo" class="hidden px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 font-semibold text-[11px] border border-indigo-200 dark:border-indigo-800">Filtros aplicados</span>
                             </div>
-                            <div class="flex items-center gap-3">
+
+                            <!-- Direita: Ordenação e Limpeza -->
+                            <div class="flex items-center gap-3 shrink-0">
                                 <button type="button" onclick="toggleSortProdutos()" class="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium cursor-pointer transition-colors" title="Alternar ordem alfabética rápida (A-Z / Z-A)">
                                     <i id="btn-ordem-icon" class="fa-solid fa-arrow-down-a-z"></i>
                                     <span id="btn-ordem-label">A - Z</span>
@@ -238,6 +265,15 @@
                                     </tr>
                                 </thead>
                                 <tbody id="tabela-produtos" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
+                                <tfoot id="tfoot-produtos" class="bg-slate-50/90 dark:bg-slate-900/90 border-t-2 border-slate-200 dark:border-slate-700 font-bold text-xs">
+                                    <tr>
+                                        <td colspan="2" class="p-3 text-right text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[11px]">Total Estoque Filtrado:</td>
+                                        <td class="p-3 text-right font-black text-amber-600 dark:text-amber-400 text-sm" id="tfoot-estoque-custo">R$ 0,00</td>
+                                        <td class="p-3 text-right font-black text-emerald-600 dark:text-emerald-400 text-sm" id="tfoot-estoque-venda">R$ 0,00</td>
+                                        <td class="p-3 text-center font-black text-slate-800 dark:text-slate-100 text-sm" id="tfoot-estoque-qtd">0 un</td>
+                                        <td class="p-3"></td>
+                                    </tr>
+                                </tfoot>
                             </table>
                         </div>
                     </div>
@@ -869,7 +905,7 @@
     <script src="../sistema/config_banco.js?v=20260910205016"></script>
     <script src="../global.js?v=20260910205016"></script>
     <script src="fc_cache.js?v=20260910205016"></script>
-    <script src="produtos.js?v=20260910205016"></script>
+    <script src="produtos.js?v=639246629240260721"></script>
 </body>
 </html>
 

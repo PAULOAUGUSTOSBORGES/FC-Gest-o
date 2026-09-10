@@ -5,14 +5,14 @@ $folder = "g:\VERSOES DO SISTEMA\site sistema\FC-Gest-o\sistema"
 function Bump-Version($htmlFile, $jsFile) {
     $filePath = Join-Path $folder $htmlFile
     if (Test-Path $filePath) {
-        $content = Get-Content $filePath -Raw
-        # Search for .js?v=XX and replace with a random timestamp so it's always fresh
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        $content = [System.IO.File]::ReadAllText($filePath, [System.Text.Encoding]::UTF8)
         $timestamp = (Get-Date).Ticks
         $escaped = [regex]::Escape($jsFile)
         $pattern = "$escaped\?v=[0-9]+"
         $replacement = "$jsFile`?v=$timestamp"
         $newContent = $content -replace $pattern, $replacement
-        Set-Content -Path $filePath -Value $newContent -Encoding UTF8
+        [System.IO.File]::WriteAllText($filePath, $newContent, $utf8NoBom)
         Write-Host "Bumped $jsFile in $htmlFile to v=$timestamp"
     }
 }
@@ -23,5 +23,9 @@ Bump-Version "caixa.html" "caixa.js"
 Bump-Version "compras.html" "compras.js"
 Bump-Version "vendas_gestao.html" "vendas_gestao.js"
 Bump-Version "relatorios_v2.html" "relatorios_v2.js"
+Bump-Version "produtos.html" "produtos.js"
+Bump-Version "cadastro.html" "cadastro.js"
+Bump-Version "index.html" "index.js"
 
 Write-Output "Cache busters updated."
+

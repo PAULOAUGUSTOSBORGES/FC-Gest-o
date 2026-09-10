@@ -2,6 +2,16 @@
 
 let renderTimeout = null;
 
+function parseDataSegura(dataStr) {
+    if (!dataStr) return null;
+    if (typeof dataStr === 'string' && dataStr.length === 10 && dataStr.includes('-')) {
+        const parts = dataStr.split('-').map(Number);
+        return new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0);
+    }
+    const d = new Date(dataStr);
+    return isNaN(d.getTime()) ? null : d;
+}
+
 function atualizarDashboard() {
     renderDashboard();
 }
@@ -30,36 +40,48 @@ function executarCalculosDashboard() {
 
     switch(periodo) {
         case 'hoje':
-            dataIni = hoje;
+            dataIni = new Date(hoje);
+            dataFim = new Date(hoje);
+            dataFim.setHours(23,59,59,999);
             break;
         case 'ontem':
-            dataIni = ontem;
+            dataIni = new Date(ontem);
             dataFim = new Date(ontem);
             dataFim.setHours(23,59,59,999);
             break;
         case '7d':
             dataIni = new Date(hoje);
             dataIni.setDate(dataIni.getDate() - 7);
+            dataFim = new Date();
+            dataFim.setHours(23,59,59,999);
             break;
         case '15d':
             dataIni = new Date(hoje);
             dataIni.setDate(dataIni.getDate() - 15);
+            dataFim = new Date();
+            dataFim.setHours(23,59,59,999);
             break;
         case '30d':
             dataIni = new Date(hoje);
             dataIni.setDate(dataIni.getDate() - 30);
+            dataFim = new Date();
+            dataFim.setHours(23,59,59,999);
             break;
         case 'mes':
             dataIni = new Date(agora.getFullYear(), agora.getMonth(), 1);
+            dataFim = new Date(agora.getFullYear(), agora.getMonth() + 1, 0, 23, 59, 59, 999);
             break;
         case '3m':
             dataIni = new Date(agora.getFullYear(), agora.getMonth() - 3, 1);
+            dataFim = new Date(agora.getFullYear(), agora.getMonth() + 1, 0, 23, 59, 59, 999);
             break;
         case 'ano':
             dataIni = new Date(agora.getFullYear(), 0, 1);
+            dataFim = new Date(agora.getFullYear(), 11, 31, 23, 59, 59, 999);
             break;
         case 'tudo':
-            // dataIni já é epoch
+            dataIni = new Date(0);
+            dataFim = new Date(3000, 0, 1);
             break;
     }
 
@@ -67,27 +89,41 @@ function executarCalculosDashboard() {
     document.querySelectorAll('.periodo-label').forEach(el => el.innerText = labelPeriodo);
 
     const dentroDoPeriodo = (dataString) => {
-        if (!dataString) return false;
-        const d = new Date(dataString).getTime();
-        return d >= dataIni.getTime() && d <= dataFim.getTime();
+        const d = parseDataSegura(dataString);
+        if (!d) return false;
+        return d.getTime() >= dataIni.getTime() && d.getTime() <= dataFim.getTime();
     };
 
-    // 1. FATURAMENTO E VENDAS
-    const vendasTotais = (db.vendas || []).filter(v => v.tipo !== 'ORÇAMENTO');
-    const orcamentosTotais = (db.vendas || []).filter(v => v.tipo === 'ORÇAMENTO');
+    // 1. FATURAMENTO E VENDAS (ignora orçamentos e canceladas)
+    const vendasTotais = (db.vendas || []).filter(v => {
+        const tipo = String(v.tipo || '').toUpperCase();
+        if (tipo === 'ORÇAMENTO' || tipo === 'ORCAMENTO') return false;
+        const status = String(v.status || '').toUpperCase();
+        if (status === 'CANCELADA' || status === 'CANCELADO') return false;
+        return true;
+    });
+
+    const orcamentosTotais = (db.vendas || []).filter(v => {
+        const tipo = String(v.tipo || '').toUpperCase();
+        return tipo === 'ORÇAMENTO' || tipo === 'ORCAMENTO';
+    });
     
     const vendasPeriodo = vendasTotais.filter(v => dentroDoPeriodo(v.data));
     const vendasHoje = vendasTotais.filter(v => {
-        if(!v.data) return false;
-        const d = new Date(v.data);
-        return d >= hoje && d <= new Date(hoje.getTime() + 86399999);
+        const d = parseDataSegura(v.data);
+        if (!d) return false;
+        return d.getFullYear() === hoje.getFullYear() &&
+               d.getMonth() === hoje.getMonth() &&
+               d.getDate() === hoje.getDate();
     });
 
     const fatHoje = vendasHoje.reduce((a, b) => a + (Number(b.tot) || 0), 0);
     const fatPeriodo = vendasPeriodo.reduce((a, b) => a + (Number(b.tot) || 0), 0);
     const cmvPeriodo = vendasPeriodo.reduce((a, b) => a + (Number(b.custoTotal) || 0) + (Number(b.taxaValor) || 0), 0);
-    const lucroPeriodo = fatPeriodo - cmvPeriodo;
+    const lucroBruto = fatPeriodo - cmvPeriodo;
     const qtdVendasPeriodo = vendasPeriodo.length;
+    const ticketMedio = qtdVendasPeriodo > 0 ? (fatPeriodo / qtdVendasPeriodo) : 0;
+    const margemBrutaPerc = fatPeriodo > 0 ? ((lucroBruto / fatPeriodo) * 100).toFixed(1).replace('.', ',') + '%' : '0,0%';
 
     // 2. ORÇAMENTOS PENDENTES
     const orcamentosPendentes = orcamentosTotais.filter(v => dentroDoPeriodo(v.data)).length;
@@ -95,30 +131,72 @@ function executarCalculosDashboard() {
     // 3. FINANCEIRO
     const contas = db.financeiro || [];
     
-    // Despesas = Pago no período
-    const despesasPeriodo = contas.filter(c => c.tipo === 'DESPESA' && c.status === 'PAGO' && dentroDoPeriodo(c.dataPagamento || c.data)).reduce((a,b) => a + (Number(b.valor) || 0), 0);
-    
-    const aReceberTodas = contas.filter(c => (!c.tipo || c.tipo === 'RECEITA') && c.status === 'PENDENTE');
-    const valorReceber = aReceberTodas.reduce((a,b) => a + (Number(b.valor) || 0), 0);
-    const qtdReceberVencidas = aReceberTodas.filter(c => c.data && new Date(c.data).getTime() < hoje.getTime()).length;
+    // Despesas = Rigorosamente pagas no período
+    const despesasPeriodo = contas.filter(c => {
+        const tipo = String(c.tipo || '').toUpperCase();
+        if (tipo !== 'DESPESA') return false;
+        const status = String(c.status || '').toUpperCase();
+        if (status !== 'PAGO') return false;
+        const cat = String(c.categoria || '').toLowerCase();
+        if (cat.includes('transferência') || cat.includes('transferencia')) return false;
+        return dentroDoPeriodo(c.dataPagamento || c.data);
+    }).reduce((a, b) => a + (Number(b.valorPago || b.valor) || 0), 0);
 
-    const aPagarTodas = contas.filter(c => c.tipo === 'DESPESA' && c.status === 'PENDENTE');
-    const valorPagar = aPagarTodas.reduce((a,b) => a + (Number(b.valor) || 0), 0);
-    const qtdPagarVencidas = aPagarTodas.filter(c => c.data && new Date(c.data).getTime() < hoje.getTime()).length;
+    // Lucro Líquido Real = Lucro Bruto - Despesas Pagas no Período
+    const lucroLiquidoReal = lucroBruto - despesasPeriodo;
+
+    // Contas a Receber
+    const aReceberTodas = contas.filter(c => {
+        const tipo = String(c.tipo || 'RECEITA').toUpperCase();
+        const status = String(c.status || '').toUpperCase();
+        return tipo === 'RECEITA' && status === 'PENDENTE';
+    });
+    const valorReceberTotal = aReceberTodas.reduce((a, b) => a + (Number(b.valor) || 0), 0);
+    const aReceberVencidas = aReceberTodas.filter(c => {
+        const d = parseDataSegura(c.data);
+        return d && d.getTime() < hoje.getTime();
+    });
+    const valorReceberVencido = aReceberVencidas.reduce((a, b) => a + (Number(b.valor) || 0), 0);
+    const qtdReceberVencidas = aReceberVencidas.length;
+
+    const aReceberPeriodo = periodo === 'tudo' ? aReceberTodas : aReceberTodas.filter(c => dentroDoPeriodo(c.data));
+    const valorReceberPeriodo = aReceberPeriodo.reduce((a, b) => a + (Number(b.valor) || 0), 0);
+
+    // Contas a Pagar
+    const aPagarTodas = contas.filter(c => {
+        const tipo = String(c.tipo || '').toUpperCase();
+        const status = String(c.status || '').toUpperCase();
+        return tipo === 'DESPESA' && status === 'PENDENTE';
+    });
+    const valorPagarTotal = aPagarTodas.reduce((a, b) => a + (Number(b.valor) || 0), 0);
+    const aPagarVencidas = aPagarTodas.filter(c => {
+        const d = parseDataSegura(c.data);
+        return d && d.getTime() < hoje.getTime();
+    });
+    const valorPagarVencido = aPagarVencidas.reduce((a, b) => a + (Number(b.valor) || 0), 0);
+    const qtdPagarVencidas = aPagarVencidas.length;
+
+    const aPagarPeriodo = periodo === 'tudo' ? aPagarTodas : aPagarTodas.filter(c => dentroDoPeriodo(c.data));
+    const valorPagarPeriodo = aPagarPeriodo.reduce((a, b) => a + (Number(b.valor) || 0), 0);
 
     const saldoCaixa = (db.caixa && db.caixa.saldo) ? Number(db.caixa.saldo) : 0;
 
     // 4. ESTOQUE
     const produtos = db.produtos || [];
-    let valorTotalEstoque = 0;
+    let valorTotalEstoqueCusto = 0;
+    let valorTotalEstoqueVenda = 0;
     let produtosVazios = 0;
     let produtosBaixo = 0;
     
-    produtos.forEach(p => {
+    produtos.filter(p => p.ativo !== false).forEach(p => {
         const est = Number(p.estoque) || 0;
-        const min = Number(p.estoqueMin) || 0;
-        if(est > 0) {
-            valorTotalEstoque += est * (Number(p.custo) || 0);
+        const min = Number(p.min !== undefined ? p.min : p.estoqueMin) || 0;
+        const custo = Number(p.custo) || 0;
+        const preco = Number(p.preco || p.valor) || 0;
+
+        if (est > 0) {
+            valorTotalEstoqueCusto += est * custo;
+            valorTotalEstoqueVenda += est * preco;
         }
         
         if (est <= 0) produtosVazios++;
@@ -126,25 +204,65 @@ function executarCalculosDashboard() {
     });
 
     // 5. CADASTROS
-    const qtdClientes = (db.clientes || []).length;
-    const qtdFornecedores = (db.fornecedores || []).length;
+    const qtdClientes = (db.clientes || []).filter(c => c.ativo !== false).length || (db.clientes || []).length;
+    const qtdFornecedores = (db.fornecedores || []).filter(f => f.ativo !== false).length || (db.fornecedores || []).length;
 
     // ATUALIZAR DOM
     const fM = (val) => typeof formatMoney === 'function' ? formatMoney(val) : `R$ ${Number(val).toFixed(2).replace('.', ',')}`;
     const setHtml = (id, val) => { const el = document.getElementById(id); if(el) el.innerHTML = val; };
 
     setHtml('dash-faturamento-hoje', fM(fatHoje));
+    setHtml('dash-faturamento-hoje-sub', `${vendasHoje.length} venda${vendasHoje.length === 1 ? '' : 's'} hoje`);
+
     setHtml('dash-faturamento', fM(fatPeriodo));
-    setHtml('dash-lucro', fM(lucroPeriodo));
+    setHtml('dash-ticket-medio', `Ticket Médio: ${fM(ticketMedio)}`);
+
+    setHtml('dash-lucro-bruto', fM(lucroBruto));
+    setHtml('dash-lucro-bruto-sub', `Margem: ${margemBrutaPerc} (Vendas - CMV)`);
+
+    const elLucro = document.getElementById('dash-lucro');
+    if (elLucro) {
+        elLucro.innerHTML = fM(lucroLiquidoReal);
+        elLucro.className = `text-xl md:text-2xl font-black relative z-10 ${lucroLiquidoReal >= 0 ? 'text-emerald-500' : 'text-red-500'}`;
+    }
+    setHtml('dash-lucro-sub', `Bruto (${fM(lucroBruto)}) - Despesas (${fM(despesasPeriodo)})`);
+
     setHtml('dash-despesas', fM(despesasPeriodo));
+    setHtml('dash-despesas-sub', 'Quitadas no período');
     
     setHtml('dash-caixa', fM(saldoCaixa));
-    setHtml('dash-receber', fM(valorReceber));
-    setHtml('dash-receber-vencido', qtdReceberVencidas > 0 ? `<span class="text-red-500 font-bold dark:text-red-400"><i class="fa-solid fa-triangle-exclamation"></i> ${qtdReceberVencidas} vencidas</span>` : '0 vencidas');
-    setHtml('dash-pagar', fM(valorPagar));
-    setHtml('dash-pagar-vencido', qtdPagarVencidas > 0 ? `<span class="text-red-500 font-bold dark:text-red-400"><i class="fa-solid fa-triangle-exclamation"></i> ${qtdPagarVencidas} vencidas</span>` : '0 vencidas');
+
+    // Contas a Receber
+    const displayReceber = periodo === 'tudo' ? valorReceberTotal : valorReceberPeriodo;
+    setHtml('dash-receber', fM(displayReceber));
+    if (periodo === 'tudo') {
+        setHtml('dash-receber-vencido', qtdReceberVencidas > 0 ? `<span class="text-red-500 font-semibold dark:text-red-400"><i class="fa-solid fa-triangle-exclamation"></i> ${qtdReceberVencidas} vencida${qtdReceberVencidas === 1 ? '' : 's'} (${fM(valorReceberVencido)})</span>` : '0 vencidas');
+    } else {
+        const subR = [];
+        if (qtdReceberVencidas > 0) {
+            subR.push(`<span class="text-amber-500 font-semibold dark:text-amber-400"><i class="fa-solid fa-triangle-exclamation"></i> ${qtdReceberVencidas} vencida${qtdReceberVencidas === 1 ? '' : 's'}</span>`);
+        }
+        subR.push(`Total: ${fM(valorReceberTotal)}`);
+        setHtml('dash-receber-vencido', subR.join(' • '));
+    }
+
+    // Contas a Pagar
+    const displayPagar = periodo === 'tudo' ? valorPagarTotal : valorPagarPeriodo;
+    setHtml('dash-pagar', fM(displayPagar));
+    if (periodo === 'tudo') {
+        setHtml('dash-pagar-vencido', qtdPagarVencidas > 0 ? `<span class="text-red-500 font-semibold dark:text-red-400"><i class="fa-solid fa-triangle-exclamation"></i> ${qtdPagarVencidas} vencida${qtdPagarVencidas === 1 ? '' : 's'} (${fM(valorPagarVencido)})</span>` : '0 vencidas');
+    } else {
+        const subP = [];
+        if (qtdPagarVencidas > 0) {
+            subP.push(`<span class="text-red-500 font-semibold dark:text-red-400"><i class="fa-solid fa-triangle-exclamation"></i> ${qtdPagarVencidas} vencida${qtdPagarVencidas === 1 ? '' : 's'}</span>`);
+        }
+        subP.push(`Total pendente: ${fM(valorPagarTotal)}`);
+        setHtml('dash-pagar-vencido', subP.join(' • '));
+    }
     
-    setHtml('dash-valor-estoque', fM(valorTotalEstoque));
+    setHtml('dash-valor-estoque', fM(valorTotalEstoqueCusto));
+    setHtml('dash-valor-estoque-sub', `Custo • Venda: ${fM(valorTotalEstoqueVenda)}`);
+
     setHtml('dash-qtd-vendas', qtdVendasPeriodo);
     setHtml('dash-orcamentos', orcamentosPendentes);
     setHtml('dash-clientes', qtdClientes);
@@ -409,6 +527,26 @@ function abrirInfoDashboard(tipo) {
     let conteudo = '';
 
     switch(tipo) {
+        case 'lucro_bruto':
+            titulo = 'Lucro Bruto (Margem de Vendas)';
+            conteudo = '<p class="mb-3">O <b>Lucro Bruto</b> mede a margem obtida diretamente sobre as mercadorias vendidas no período selecionado.</p><ul class="list-disc pl-5 space-y-2"><li><b>Fórmula:</b> Faturamento Total - Custo das Mercadorias Vendidas (CMV) - Taxas de meios de pagamento (cartão, etc).</li><li><b>Margem %:</b> Percentual de sobra sobre a receita bruta de vendas.</li><li><b>Finalidade:</b> Avaliar se a precificação dos seus produtos está gerando margem saudável antes de descontar as despesas operacionais da empresa.</li></ul>';
+            break;
+        case 'lucro_liquido':
+            titulo = 'Lucro Líquido Real';
+            conteudo = '<p class="mb-3">O <b>Lucro Líquido Real</b> é o resultado final da empresa no período selecionado (o que realmente sobrou no caixa após todas as obrigações quitadas).</p><ul class="list-disc pl-5 space-y-2"><li><b>Fórmula:</b> Lucro Bruto - Despesas Operacionais Pagas no período (aluguel, salários, contas fixas, fornecedores, etc).</li><li><b>Resultado:</b> Se estiver <span class="text-emerald-500 font-bold">Verde</span>, a loja obteve lucro operacional no período. Se estiver <span class="text-red-500 font-bold">Vermelho</span>, o volume de despesas pagas superou a margem bruta de vendas no período (déficit operacional).</li></ul>';
+            break;
+        case 'contas_pagar':
+            titulo = 'Contas a Pagar';
+            conteudo = '<p class="mb-3">Mostra os compromissos financeiros a pagar da empresa.</p><ul class="list-disc pl-5 space-y-2"><li><b>Valor no Período:</b> Despesas com vencimento dentro do período selecionado (ex: neste mês).</li><li><b>Subtítulo Informativo:</b> Indica quantas contas estão vencidas e o total acumulado de todos os títulos em aberto no sistema para máxima transparência.</li></ul>';
+            break;
+        case 'contas_receber':
+            titulo = 'Contas a Receber';
+            conteudo = '<p class="mb-3">Mostra os recebimentos previstos de vendas e títulos a receber.</p><ul class="list-disc pl-5 space-y-2"><li><b>Valor no Período:</b> Recebimentos pendentes com vencimento dentro do período selecionado.</li><li><b>Subtítulo Informativo:</b> Indica títulos em atraso e o valor total acumulado pendente de clientes.</li></ul>';
+            break;
+        case 'estoque_valor':
+            titulo = 'Valor Total em Estoque';
+            conteudo = '<p class="mb-3">Patrimônio total da empresa imobilizado em mercadorias ativas.</p><ul class="list-disc pl-5 space-y-2"><li><b>Preço de Custo (Destaque):</b> Valor real investido na aquisição do estoque atual (Estoque x Custo Unitário).</li><li><b>Preço de Venda (Subtítulo):</b> Potencial bruto de faturamento caso todos os itens em estoque sejam vendidos ao preço de tabela.</li></ul>';
+            break;
         case 'desempenho':
             titulo = 'Desempenho no Período';
             conteudo = '<p class="mb-3">Mostra a evolução das suas Vendas ao longo do período selecionado.</p><ul class="list-disc pl-5 space-y-2"><li><b>Botão Vendas:</b> Exibe o volume total de vendas brutas dia a dia.</li><li><b>Botão Receita x Despesa:</b> Exibe o que efetivamente entrou no caixa (Receitas Pagas) cruzado com o que efetivamente saiu (Despesas Pagas). Ideal para entender se a operação está gerando caixa ou queimando caixa.</li></ul>';
@@ -679,7 +817,7 @@ function renderizarGraficos() {
     // ----------------------------------------------------
     const produtos = db.produtos || [];
     let categoriasMap = {};
-    produtos.forEach(p => {
+    produtos.filter(p => p.ativo !== false).forEach(p => {
         const cat = p.categoria || 'Sem Categoria';
         const qtd = Number(p.estoque) || 0;
         if (qtd > 0) {
@@ -707,12 +845,21 @@ function renderizarGraficos() {
     // ----------------------------------------------------
     // 3. GRÁFICO DE INADIMPLÊNCIA VS PAGOS (Geral PENDENTES x ATRASADOS x PAGOS)
     // ----------------------------------------------------
-    const hoje = new Date().getTime();
+    const hojeZero = new Date();
+    hojeZero.setHours(0,0,0,0);
     const receber = contas.filter(c => (!c.tipo || c.tipo === 'RECEITA'));
     
-    let totalPago = receber.filter(c => c.status === 'PAGO').reduce((a,b) => a + (Number(b.valor) || 0), 0);
-    let totalAtrasado = receber.filter(c => c.status === 'PENDENTE' && c.data && new Date(c.data).getTime() < hoje).reduce((a,b) => a + (Number(b.valor) || 0), 0);
-    let totalPendenteDia = receber.filter(c => c.status === 'PENDENTE' && c.data && new Date(c.data).getTime() >= hoje).reduce((a,b) => a + (Number(b.valor) || 0), 0);
+    let totalPago = receber.filter(c => c.status === 'PAGO').reduce((a,b) => a + (Number(b.valorPago || b.valor) || 0), 0);
+    let totalAtrasado = receber.filter(c => {
+        if (c.status !== 'PENDENTE') return false;
+        const d = parseDataSegura(c.data);
+        return d && d.getTime() < hojeZero.getTime();
+    }).reduce((a,b) => a + (Number(b.valor) || 0), 0);
+    let totalPendenteDia = receber.filter(c => {
+        if (c.status !== 'PENDENTE') return false;
+        const d = parseDataSegura(c.data);
+        return d && d.getTime() >= hojeZero.getTime();
+    }).reduce((a,b) => a + (Number(b.valor) || 0), 0);
 
     chartInadimplencia.updateSeries([
         { name: 'Recebidos', data: [totalPago] },

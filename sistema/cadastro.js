@@ -376,6 +376,49 @@ function renderProdutos() {
         }
     }
 
+    // Calcula totais de estoque (Custo, Venda, Lucro e Quantidade) com base nos produtos filtrados
+    let totalCustoEstoque = 0;
+    let totalVendaEstoque = 0;
+    let totalQtdEstoque = 0;
+
+    filtrados.forEach(p => {
+        const qtd = Number(p.estoque) || 0;
+        if (qtd > 0) {
+            const custo = Number(p.custo) || 0;
+            const preco = Number(p.preco) || 0;
+            totalCustoEstoque += (qtd * custo);
+            totalVendaEstoque += (qtd * preco);
+            totalQtdEstoque += qtd;
+        }
+    });
+
+    const lucroEstoque = totalVendaEstoque - totalCustoEstoque;
+    const margemEstoque = totalCustoEstoque > 0 ? ((lucroEstoque / totalCustoEstoque) * 100) : 0;
+
+    const elTotalCusto = document.getElementById('total-estoque-custo');
+    if (elTotalCusto) elTotalCusto.textContent = typeof formatMoney === 'function' ? formatMoney(totalCustoEstoque) : 'R$ ' + totalCustoEstoque.toFixed(2);
+
+    const elTotalVenda = document.getElementById('total-estoque-venda');
+    if (elTotalVenda) elTotalVenda.textContent = typeof formatMoney === 'function' ? formatMoney(totalVendaEstoque) : 'R$ ' + totalVendaEstoque.toFixed(2);
+
+    const elTotalLucro = document.getElementById('total-estoque-lucro');
+    if (elTotalLucro) {
+        const lucroFmt = typeof formatMoney === 'function' ? formatMoney(lucroEstoque) : 'R$ ' + lucroEstoque.toFixed(2);
+        elTotalLucro.textContent = `${lucroFmt} (${margemEstoque.toFixed(1)}%)`;
+    }
+
+    const tfootCusto = document.getElementById('tfoot-estoque-custo');
+    if (tfootCusto) tfootCusto.textContent = typeof formatMoney === 'function' ? formatMoney(totalCustoEstoque) : 'R$ ' + totalCustoEstoque.toFixed(2);
+
+    const tfootVenda = document.getElementById('tfoot-estoque-venda');
+    if (tfootVenda) tfootVenda.textContent = typeof formatMoney === 'function' ? formatMoney(totalVendaEstoque) : 'R$ ' + totalVendaEstoque.toFixed(2);
+
+    const tfootQtd = document.getElementById('tfoot-estoque-qtd');
+    if (tfootQtd) tfootQtd.textContent = totalQtdEstoque.toLocaleString('pt-BR') + ' un';
+
+    const tfootEl = document.getElementById('tfoot-produtos');
+    if (tfootEl) tfootEl.classList.toggle('hidden', filtrados.length === 0);
+
     const tbody = document.getElementById('tabela-produtos');
     if (!tbody) return;
 
