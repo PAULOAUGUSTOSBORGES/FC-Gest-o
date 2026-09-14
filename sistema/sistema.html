@@ -288,8 +288,13 @@
                                     <div class="relative">
                                         <input type="password" id="emp-cert-senha" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white pr-10" placeholder="Senha do arquivo .pfx">
                                         <button type="button" onclick="const el=document.getElementById('emp-cert-senha'); el.type=el.type==='password'?'text':'password';" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm"><i class="fa-solid fa-eye"></i></button>
+                                    <div class="flex items-center justify-between mt-2 gap-2">
+                                        <p class="text-[10px] text-slate-500 dark:text-slate-400">Sua senha é protegida e usada apenas para assinar os XMLs da sua empresa.</p>
+                                        <button type="button" id="btn-testar-cert" onclick="testarCertificadoA1()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 shrink-0 shadow-sm cursor-pointer">
+                                            <i class="fa-solid fa-key"></i> Testar Senha
+                                        </button>
                                     </div>
-                                    <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Sua senha é protegida e usada apenas para assinar os XMLs da sua empresa.</p>
+                                    <div id="emp-cert-teste-resultado" class="mt-2 text-xs font-semibold hidden"></div>
                                 </div>
                             </div>
                         </div>

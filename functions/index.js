@@ -1,7 +1,9 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const axios = require("axios");
+const forge = require("node-forge");
 const { emitirNotaDiretoSefaz, cancelarNotaDiretoSefaz } = require("./fiscal/sefaz_engine");
+const { extrairChavesDoPfx } = require("./fiscal/sefaz_signer");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -880,6 +882,32 @@ exports.cartaCorrecaoNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
             errorMsg = JSON.stringify(error.response.data);
         }
         throw new functions.https.HttpsError("internal", errorMsg);
+    }
+});
+
+// ==========================================
+// 6. VALIDAÇÃO DO CERTIFICADO A1 E SENHA
+// ==========================================
+exports.validarCertificadoA1 = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
+
+    const { pfxBase64, senha } = data;
+    if (!pfxBase64) throw new functions.https.HttpsError("invalid-argument", "Arquivo do certificado (.pfx) não informado.");
+
+    try {
+        const chaves = extrairChavesDoPfx(pfxBase64, senha || '');
+        const certForge = forge.pki.certificateFromPem(chaves.certificatePem);
+        const subjectAttrs = certForge.subject.attributes || [];
+        const cn = subjectAttrs.find(a => a.name === 'commonName')?.value || 'Certificado A1';
+        const validade = certForge.validity.notAfter;
+        return {
+            sucesso: true,
+            titular: cn,
+            validade: validade ? validade.toISOString() : null,
+            mensagem: `Certificado Válido! Titular: ${cn}`
+        };
+    } catch (err) {
+        throw new functions.https.HttpsError("invalid-argument", err.message);
     }
 });
 

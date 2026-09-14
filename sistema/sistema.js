@@ -173,6 +173,21 @@ async function formatarEBuscarCNPJ(input) {
                 if (data.uf && document.getElementById('emp-uf')) document.getElementById('emp-uf').value = data.uf;
                 if (data.codigo_municipio_ibge && document.getElementById('emp-ibge')) document.getElementById('emp-ibge').value = data.codigo_municipio_ibge;
                 
+                // Preenche Regime Tributário (CRT) automaticamente
+                if (data.opcao_pelo_simples === true && document.getElementById('emp-crt')) {
+                    document.getElementById('emp-crt').value = '1'; // Simples Nacional
+                } else if (data.opcao_pelo_simples === false && document.getElementById('emp-crt')) {
+                    document.getElementById('emp-crt').value = '3'; // Regime Normal
+                }
+
+                // Preenche Inscrição Estadual se retornada pela base
+                if (data.inscricoes_estaduais && Array.isArray(data.inscricoes_estaduais) && document.getElementById('emp-ie')) {
+                    const ieObj = data.inscricoes_estaduais.find(x => x.ativo) || data.inscricoes_estaduais[0];
+                    if (ieObj && ieObj.inscricao_estadual) {
+                        document.getElementById('emp-ie').value = String(ieObj.inscricao_estadual).replace(/\D/g, '');
+                    }
+                }
+                
                 showToast('Dados da empresa puxados com sucesso!', 'success');
             } else {
                 showToast('CNPJ não encontrado na base.', 'error');
@@ -395,6 +410,56 @@ function processarCertificadoA1(event) {
     reader.readAsDataURL(file);
 }
 window.processarCertificadoA1 = processarCertificadoA1;
+
+async function testarCertificadoA1() {
+    const b64 = document.getElementById('emp-cert-base64')?.value;
+    const senha = document.getElementById('emp-cert-senha')?.value;
+    const resDiv = document.getElementById('emp-cert-teste-resultado');
+    const btn = document.getElementById('btn-testar-cert');
+
+    if (!b64) {
+        showToast('Nenhum arquivo de certificado carregado ainda.', 'warning');
+        return;
+    }
+    if (!senha) {
+        showToast('Digite a senha do certificado para testar.', 'warning');
+        return;
+    }
+
+    if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Testando...';
+    if (resDiv) {
+        resDiv.className = 'mt-2 text-xs font-semibold p-2.5 rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 flex items-center gap-1.5';
+        resDiv.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Validando senha criptográfica do arquivo .pfx...';
+        resDiv.classList.remove('hidden');
+    }
+
+    try {
+        const func = firebase.functions().httpsCallable('validarCertificadoA1');
+        const resp = await func({ pfxBase64: b64, senha: senha });
+        const d = resp.data;
+        if (d.sucesso) {
+            if (resDiv) {
+                resDiv.className = 'mt-2 text-xs font-semibold p-2.5 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 flex items-center gap-1.5 border border-emerald-200 dark:border-emerald-800';
+                resDiv.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600 text-sm"></i> <div><strong>Senha Correta!</strong><br><span class="font-normal text-[11px]">${d.titular}</span></div>`;
+            }
+            showToast('Certificado e Senha válidos com sucesso!', 'success');
+        }
+    } catch (err) {
+        console.error("Erro ao validar certificado:", err);
+        let msg = err.message || 'Senha incorreta.';
+        if (msg.includes('Senha do Certificado Digital A1 incorreta') || msg.includes('MAC could not be verified')) {
+            msg = 'Senha incorreta para este arquivo .pfx. Verifique se o Caps Lock está ativado ou se digitou a senha de instalação do certificado.';
+        }
+        if (resDiv) {
+            resDiv.className = 'mt-2 text-xs font-semibold p-2.5 rounded-lg bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 flex items-center gap-1.5 border border-red-200 dark:border-red-800';
+            resDiv.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-red-600 text-sm"></i> <div><strong>Erro de Senha:</strong><br><span class="font-normal text-[11px]">${msg}</span></div>`;
+        }
+        showToast(msg, 'error');
+    } finally {
+        if (btn) btn.innerHTML = '<i class="fa-solid fa-key"></i> Testar Senha';
+    }
+}
+window.testarCertificadoA1 = testarCertificadoA1;
 
 async function salvarConfiguracoes() {
     if(!db.config) db.config = {};

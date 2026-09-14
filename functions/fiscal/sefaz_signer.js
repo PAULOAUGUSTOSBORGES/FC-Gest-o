@@ -13,9 +13,10 @@ const forge = require('node-forge');
  */
 function extrairChavesDoPfx(pfxBase64, senha = '') {
     try {
-        const p12Der = forge.util.decode64(pfxBase64);
+        const cleanB64 = String(pfxBase64 || '').replace(/[\r\n\s]+/g, '');
+        const p12Der = Buffer.from(cleanB64, 'base64').toString('binary');
         const p12Asn1 = forge.asn1.fromDer(p12Der);
-        const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, senha || '');
+        const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, false, String(senha || ''));
 
         let privateKeyPem = null;
         let certificatePem = null;
@@ -55,6 +56,9 @@ function extrairChavesDoPfx(pfxBase64, senha = '') {
             certLimpo
         };
     } catch (err) {
+        if (err.message && err.message.includes('MAC could not be verified')) {
+            throw new Error('Senha do Certificado Digital A1 incorreta. Verifique a senha de instalação/exportação do arquivo .pfx.');
+        }
         throw new Error(`Falha ao ler o Certificado A1: ${err.message}`);
     }
 }
