@@ -57,18 +57,34 @@ function apenasDigitos(val) {
 }
 
 /**
- * Mapeia a forma de pagamento interna para o código oficial da SEFAZ
+ * Mapeia a forma de pagamento interna para o código oficial da SEFAZ e sua respectiva descrição
+ * Conforme MOC 4.00 e Nota Técnica 2020.006 (campo xPag obrigatório para tPag=99)
  */
 function mapearFormaPagamentoSefaz(forma) {
-    const f = (forma || '').toLowerCase().trim();
-    if (f.includes('dinheiro')) return '01';
-    if (f.includes('cheque')) return '02';
-    if (f.includes('crédito') || f.includes('credito')) return '03';
-    if (f.includes('débito') || f.includes('debito')) return '04';
-    if (f.includes('boleto')) return '15';
-    if (f.includes('pix')) return '17';
-    if (f.includes('fiado') || f.includes('crediario')) return '05';
-    return '99'; // Outros
+    const f = String(forma || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+
+    if (!f || f.includes('dinheiro')) return { codigo: '01', descricao: 'Dinheiro' };
+    if (f.includes('cheque')) return { codigo: '02', descricao: 'Cheque' };
+    if (f.includes('credito') || f.includes('cartao de credito')) return { codigo: '03', descricao: 'Cartao de Credito' };
+    if (f.includes('debito') || f.includes('cartao de debito')) return { codigo: '04', descricao: 'Cartao de Debito' };
+    if (f.includes('fiado') || f.includes('crediario')) return { codigo: '05', descricao: 'Credito Loja' };
+    if (f.includes('alimentacao')) return { codigo: '10', descricao: 'Vale Alimentacao' };
+    if (f.includes('refeicao')) return { codigo: '11', descricao: 'Vale Refeicao' };
+    if (f.includes('presente')) return { codigo: '12', descricao: 'Vale Presente' };
+    if (f.includes('combustivel')) return { codigo: '13', descricao: 'Vale Combustivel' };
+    if (f.includes('duplicata')) return { codigo: '14', descricao: 'Duplicata Mercantil' };
+    if (f.includes('boleto')) return { codigo: '15', descricao: 'Boleto Bancario' };
+    if (f.includes('deposito')) return { codigo: '16', descricao: 'Deposito Bancario' };
+    if (f.includes('pix')) return { codigo: '17', descricao: 'PIX' };
+    if (f.includes('transferencia')) return { codigo: '18', descricao: 'Transferencia Bancaria' };
+    if (f.includes('sem pagamento')) return { codigo: '90', descricao: 'Sem Pagamento' };
+    
+    // Outros: retorna 99 e a descrição limpa informada
+    return { codigo: '99', descricao: limparTexto(forma) || 'Outros' };
 }
 
 /**
@@ -265,14 +281,50 @@ function construirXmlNota(dados) {
     const vProdTotal = totalProdutos.toFixed(2);
     const vDescTotal = valorDescontoTotal.toFixed(2);
 
-    // Formas de Pagamento
-    const tPag = mapearFormaPagamentoSefaz(venda.formaPagamento || venda.pagamento);
-    const tagPag = `
-    <pag>
+    // Formas de Pagamento (MOC 4.00 e NT 2020.006)
+    let detPagXml = '';
+    const listaPagamentos = (venda.pagamentos && Array.isArray(venda.pagamentos) && venda.pagamentos.length > 0)
+        ? venda.pagamentos.filter(p => (parseFloat(p.valor) || 0) > 0)
+        : [];
+
+    if (listaPagamentos.length > 0) {
+        let somaPagamentos = 0;
+        listaPagamentos.forEach((p, idx) => {
+            const met = p.metodo || p.forma || p.formaPagamento || p.nome || '';
+            const { codigo, descricao } = mapearFormaPagamentoSefaz(met);
+            let vItemPag = parseFloat(p.valor) || 0;
+            
+            // Se for o último item e houver leve diferença de arredondamento com vNF, equaliza
+            if (idx === listaPagamentos.length - 1 && listaPagamentos.length > 1) {
+                const diferenca = parseFloat(vNF) - somaPagamentos;
+                if (Math.abs(diferenca - vItemPag) <= 0.05) {
+                    vItemPag = diferenca;
+                }
+            }
+            somaPagamentos += vItemPag;
+
+            const xPagTag = codigo === '99' ? `\n            <xPag>${limparTexto(descricao || 'Outros').substring(0, 60)}</xPag>` : '';
+            detPagXml += `
         <detPag>
-            <tPag>${tPag}</tPag>
+            <tPag>${codigo}</tPag>${xPagTag}
+            <vPag>${vItemPag.toFixed(2)}</vPag>
+        </detPag>`;
+        });
+    } else {
+        // Fallback: busca em venda.pag, venda.formaPagamento, venda.forma_pagamento, venda.pagamento ou venda.metodo
+        const formaTexto = venda.pag || venda.formaPagamento || venda.forma_pagamento || venda.pagamento || venda.metodo || 'Dinheiro';
+        const { codigo, descricao } = mapearFormaPagamentoSefaz(formaTexto);
+        const xPagTag = codigo === '99' ? `\n            <xPag>${limparTexto(descricao || 'Outros').substring(0, 60)}</xPag>` : '';
+        
+        detPagXml = `
+        <detPag>
+            <tPag>${codigo}</tPag>${xPagTag}
             <vPag>${vNF}</vPag>
-        </detPag>
+        </detPag>`;
+    }
+
+    const tagPag = `
+    <pag>${detPagXml}
     </pag>`;
 
     // Informações Adicionais
