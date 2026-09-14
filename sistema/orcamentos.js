@@ -1690,7 +1690,23 @@ async function finalizarVendaMultipla() {
         }); 
     }
 
-    const itensLimpados = cart.map(i => { return { id: i.id || '', nome: i.nome || '', preco: i.preco || 0, custo: i.custo || 0, qtd: i.qtd || 1, obsVenda: i.obsVenda || '' }; });
+    const itensLimpados = cart.map(i => {
+        const p = (db.produtos || []).find(x => String(x.id) === String(i.id)) || {};
+        return {
+            id: i.id || '',
+            nome: i.nome || '',
+            preco: i.preco || 0,
+            custo: i.custo || 0,
+            qtd: i.qtd || 1,
+            obsVenda: i.obsVenda || '',
+            ncm: p.ncm || i.ncm || '',
+            cfop: p.cfop || i.cfop || '5102',
+            csosn: p.csosn || i.csosn || '102',
+            origem: p.origem || i.origem || '0',
+            unidade: p.unidade || i.unidade || 'UN',
+            cest: p.cest || i.cest || ''
+        };
+    });
 
     const novaVendaObj = { 
         id: idFinalVenda,

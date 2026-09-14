@@ -237,15 +237,24 @@ function carregarConfiguracoesNaTela() {
         { prop: 'crt', id: 'emp-crt' },
         { prop: 'cscToken', id: 'emp-csc-token' },
         { prop: 'cscId', id: 'emp-csc-id' },
+        { prop: 'focusToken', id: 'emp-focus-token' },
+        { prop: 'ambienteFiscal', id: 'emp-fiscal-ambiente', default: 'homologacao' },
+        { prop: 'serieNFe', id: 'emp-serie-nfe', default: '1' },
+        { prop: 'serieNFCe', id: 'emp-serie-nfce', default: '1' },
+        { prop: 'naturezaOperacao', id: 'emp-natureza-operacao', default: 'VENDA DE MERCADORIA' },
         { prop: 'geminiKey', id: 'emp-gemini-key' }
     ];
 
-    mapaCampos.forEach(({ prop, id }) => {
+    mapaCampos.forEach(({ prop, id, default: defVal }) => {
         const el = document.getElementById(id);
         if (el) {
-            el.value = emp[prop] || '';
+            el.value = emp[prop] !== undefined ? emp[prop] : (defVal || '');
         }
     });
+
+    if (document.getElementById('emp-fiscal-ativo')) {
+        document.getElementById('emp-fiscal-ativo').checked = emp.fiscalAtivo !== false;
+    }
 
     if (document.getElementById('emp-logo-base64')) {
         document.getElementById('emp-logo-base64').value = emp.logo || '';
@@ -360,6 +369,12 @@ async function salvarConfiguracoes() {
         crt: document.getElementById('emp-crt') ? document.getElementById('emp-crt').value.trim() : '',
         cscToken: document.getElementById('emp-csc-token') ? document.getElementById('emp-csc-token').value.trim() : '',
         cscId: document.getElementById('emp-csc-id') ? document.getElementById('emp-csc-id').value.trim() : '',
+        fiscalAtivo: document.getElementById('emp-fiscal-ativo') ? document.getElementById('emp-fiscal-ativo').checked : true,
+        ambienteFiscal: document.getElementById('emp-fiscal-ambiente') ? document.getElementById('emp-fiscal-ambiente').value : 'homologacao',
+        focusToken: document.getElementById('emp-focus-token') ? document.getElementById('emp-focus-token').value.trim() : '',
+        serieNFe: document.getElementById('emp-serie-nfe') ? document.getElementById('emp-serie-nfe').value.trim() : '1',
+        serieNFCe: document.getElementById('emp-serie-nfce') ? document.getElementById('emp-serie-nfce').value.trim() : '1',
+        naturezaOperacao: document.getElementById('emp-natureza-operacao') ? document.getElementById('emp-natureza-operacao').value.trim() : 'VENDA DE MERCADORIA',
         geminiKey: document.getElementById('emp-gemini-key') ? document.getElementById('emp-gemini-key').value.trim() : '',
         logo: document.getElementById('emp-logo-base64') ? document.getElementById('emp-logo-base64').value : ''
     };

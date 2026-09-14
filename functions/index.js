@@ -38,84 +38,232 @@ exports.chamarGemini = functions.https.onCall(async (data, context) => {
     }
 });
 
-exports.emitirNFCe = functions.https.onCall(async (data, context) => {
-    // Validação de autenticação
-    if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
-    }
+// ==========================================
+// UTILITÁRIOS AUXILIARES DO MOTOR FISCAL
+// ==========================================
+
+/**
+ * Obtém credenciais e URL base da Focus NFe com base na configuração da empresa
+ */
+function getFocusConfig(empresa) {
+    const ambiente = (empresa && empresa.ambienteFiscal) ? String(empresa.ambienteFiscal).toLowerCase() : 'homologacao';
+    const isProducao = ambiente === 'producao';
     
-    // Validação de permissão (Correção Crítica)
+    // URLs da Focus NFe v2
+    const baseUrl = isProducao 
+        ? "https://api.focusnfe.com.br/v2" 
+        : "https://homologacao.focusnfe.com.br/v2";
+
+    // Token: prioriza o configurado na empresa pelo painel, depois env/functions.config
+    const token = (empresa && empresa.focusToken) 
+        ? empresa.focusToken.trim() 
+        : (process.env.FOCUS_NFE_TOKEN || functions.config().focusnfe?.token || "");
+
+    if (!token) {
+        throw new functions.https.HttpsError(
+            "failed-precondition", 
+            "Token da Focus NFe não configurado. Acesse Configurações no sistema e informe o Token da Focus NFe."
+        );
+    }
+
+    const tokenBasic = Buffer.from(token + ":").toString("base64");
+    
+    return {
+        baseUrl,
+        isProducao,
+        token,
+        headers: {
+            "Authorization": `Basic ${tokenBasic}`,
+            "Content-Type": "application/json"
+        }
+    };
+}
+
+/**
+ * Mapeia formas de pagamento do sistema para códigos da Focus NFe / SEFAZ
+ */
+function mapearFormasPagamento(venda) {
+    const mapa = {
+        'DINHEIRO': '01',
+        'CHEQUE': '02',
+        'CARTÃO CRÉDITO': '03',
+        'CARTAO CREDITO': '03',
+        'CRÉDITO': '03',
+        'CREDITO': '03',
+        'CARTÃO DÉBITO': '04',
+        'CARTAO DEBITO': '04',
+        'DÉBITO': '04',
+        'DEBITO': '04',
+        'CRÉDITO LOJA': '05',
+        'FIADO': '05',
+        'VALE ALIMENTAÇÃO': '10',
+        'VALE REFEIÇÃO': '11',
+        'VALE PRESENTE': '12',
+        'VALE COMBUSTÍVEL': '13',
+        'DUPLICATA MERCANTIL': '14',
+        'BOLETO': '15',
+        'BOLETO BANCÁRIO': '15',
+        'DEPÓSITO BANCÁRIO': '16',
+        'PIX': '17',
+        'TRANSFERÊNCIA BANCÁRIA': '18',
+        'PROGRAMA DE FIDELIDADE': '19',
+        'SEM PAGAMENTO': '90',
+        'OUTROS': '99'
+    };
+
+    if (venda.pagamentos && Array.isArray(venda.pagamentos) && venda.pagamentos.length > 0) {
+        return venda.pagamentos.map(p => {
+            const metUpper = String(p.metodo || '').toUpperCase().trim();
+            let cod = '99';
+            for (const [chave, val] of Object.entries(mapa)) {
+                if (metUpper.includes(chave)) {
+                    cod = val;
+                    break;
+                }
+            }
+            return {
+                forma_pagamento: cod,
+                valor_pagamento: Number(p.valor || 0)
+            };
+        });
+    }
+
+    // Fallback para venda.pag texto
+    let formaPagamento = "01";
+    const pagUpper = String(venda.pag || "").toUpperCase();
+    if (pagUpper.includes("PIX")) formaPagamento = "17";
+    else if (pagUpper.includes("CRÉDITO") || pagUpper.includes("CREDITO")) formaPagamento = "03";
+    else if (pagUpper.includes("DÉBITO") || pagUpper.includes("DEBITO")) formaPagamento = "04";
+    else if (pagUpper.includes("BOLETO")) formaPagamento = "15";
+    else if (pagUpper.includes("FIADO")) formaPagamento = "05";
+
+    return [{
+        forma_pagamento: formaPagamento,
+        valor_pagamento: Number(venda.tot || venda.valorLiquido || 0)
+    }];
+}
+
+/**
+ * Monta os itens para envio fiscal, enriquecendo dados fiscais faltantes direto da coleção de produtos
+ */
+async function montarItensFocus(produtosVenda) {
+    const itensFocus = [];
+
+    for (let index = 0; index < produtosVenda.length; index++) {
+        const item = produtosVenda[index];
+        const qtd = Number(item.qtd) || 1;
+        const preco = Number(item.preco) || 0;
+
+        let ncm = item.ncm ? String(item.ncm).replace(/\D/g, "") : "";
+        let cfop = item.cfop ? String(item.cfop).replace(/\D/g, "") : "";
+        let csosn = item.csosn ? String(item.csosn).replace(/\D/g, "") : "";
+        let origem = item.origem ? String(item.origem) : "";
+        let unidade = item.unidade ? String(item.unidade).trim() : "";
+        let cest = item.cest ? String(item.cest).replace(/\D/g, "") : "";
+
+        // Se faltar NCM ou CFOP, busca o produto no banco de dados como fallback de segurança
+        if (!ncm || ncm === "00000000" || !cfop) {
+            try {
+                if (item.id) {
+                    const pSnap = await db.collection("produtos").doc(String(item.id)).get();
+                    if (pSnap.exists) {
+                        const pData = pSnap.data();
+                        if (!ncm && pData.ncm) ncm = String(pData.ncm).replace(/\D/g, "");
+                        if (!cfop && pData.cfop) cfop = String(pData.cfop).replace(/\D/g, "");
+                        if (!csosn && pData.csosn) csosn = String(pData.csosn).replace(/\D/g, "");
+                        if (!origem && pData.origem !== undefined) origem = String(pData.origem);
+                        if (!unidade && pData.unidade) unidade = String(pData.unidade).trim();
+                        if (!cest && pData.cest) cest = String(pData.cest).replace(/\D/g, "");
+                    }
+                }
+            } catch (errProd) {
+                console.warn("Aviso ao buscar produto no Firestore:", errProd.message);
+            }
+        }
+
+        // Padrões fiscais seguros caso ainda não preenchidos
+        if (!ncm || ncm.length < 8) ncm = "94036000"; // Móveis de madeira / Outros móveis
+        if (!cfop) cfop = "5102"; // Venda de mercadoria adquirida de terceiros dentro do estado
+        if (!csosn) csosn = "102"; // Tributada pelo Simples Nacional sem permissão de crédito
+        if (!origem) origem = "0"; // Nacional
+        if (!unidade) unidade = "UN"; // Unidade
+
+        const itemObj = {
+            numero_item: index + 1,
+            codigo_produto: String(item.id || `PROD-${index + 1}`),
+            descricao: item.nome || `Produto ${index + 1}`,
+            cfop: cfop,
+            codigo_ncm: ncm,
+            quantidade_comercial: qtd,
+            quantidade_tributavel: qtd,
+            valor_unitario_comercial: preco,
+            valor_unitario_tributavel: preco,
+            valor_bruto: Number((qtd * preco).toFixed(2)),
+            unidade_comercial: unidade,
+            unidade_tributavel: unidade,
+            icms_origem: origem,
+            icms_situacao_tributaria: csosn
+        };
+
+        if (cest && cest.length >= 7) {
+            itemObj.codigo_cest = cest;
+        }
+
+        if (item.desconto && Number(item.desconto) > 0) {
+            itemObj.valor_desconto = Number(Number(item.desconto).toFixed(2));
+        }
+
+        itensFocus.push(itemObj);
+    }
+
+    return itensFocus;
+}
+
+// ==========================================
+// 1. EMISSÃO DE NFC-e (CUPOM FISCAL / MOD 65)
+// ==========================================
+exports.emitirNFCe = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
+
+    // Validação de permissão
     const funcSnap = await db.collection("funcionarios").doc(context.auth.uid).get();
     const hasPerm = funcSnap.exists && (funcSnap.data().isAdmin || funcSnap.data().perm_pdv || funcSnap.data().perm_gestao);
-    if (!hasPerm) {
-        throw new functions.https.HttpsError("permission-denied", "Sem permissão para emitir NFC-e.");
-    }
+    if (!hasPerm) throw new functions.https.HttpsError("permission-denied", "Sem permissão para emitir NFC-e.");
 
     try {
         const vendaId = data.vendaId;
-        if (!vendaId) {
-            throw new functions.https.HttpsError("invalid-argument", "vendaId não informado.");
-        }
+        if (!vendaId) throw new functions.https.HttpsError("invalid-argument", "vendaId não informado.");
 
-        // 1. Buscar a Venda no Firestore
-        const vendaSnap = await db.collection("vendas").doc(vendaId).get();
-        if (!vendaSnap.exists) {
-            throw new functions.https.HttpsError("not-found", "Venda não encontrada.");
-        }
+        // 1. Buscar Venda e Configurações da Empresa
+        const vendaSnap = await db.collection("vendas").doc(String(vendaId)).get();
+        if (!vendaSnap.exists) throw new functions.https.HttpsError("not-found", "Venda não encontrada.");
         const venda = vendaSnap.data();
 
-        // 2. Buscar Configurações da Empresa
         const configSnap = await db.collection("fc_moveis").doc("config").get();
         const config = configSnap.data();
-        if (!config || !config.empresa) {
-            throw new functions.https.HttpsError("failed-precondition", "Configurações da empresa incompletas.");
-        }
+        if (!config || !config.empresa) throw new functions.https.HttpsError("failed-precondition", "Configurações da empresa incompletas.");
         const empresa = config.empresa;
 
-        // 3. Montar os itens (produtos da venda)
-        const produtos = venda.itens || venda.produtos || []; // 'itens' e o campo correto do PDV
-        const itensFocus = produtos.map((item, index) => {
-            const qtd = Number(item.qtd) || 1;
-            const preco = Number(item.preco) || 0;
-            return {
-                numero_item: index + 1,
-                codigo_produto: String(item.id || `PROD-${index + 1}`),
-                descricao: item.nome || `Produto ${index + 1}`,
-                cfop: item.cfop || "5102",
-                codigo_ncm: item.ncm ? String(item.ncm).replace(/\D/g, "") : "00000000",
-                quantidade_comercial: qtd,
-                quantidade_tributavel: qtd,
-                valor_unitario_comercial: preco,
-                valor_unitario_tributavel: preco,
-                valor_bruto: (qtd * preco),
-                unidade_comercial: item.unidade || "UN",
-                unidade_tributavel: item.unidade || "UN",
-                icms_origem: item.origem || "0",
-                icms_situacao_tributaria: item.csosn || "102"
-            };
-        });
+        // 2. Configurações da Focus NFe
+        const focusConf = getFocusConfig(empresa);
 
-        // 4. Montar as formas de pagamento (Focus NFe)
-        let formaPagamento = "01"; // Dinheiro default
-        const pagUpper = String(venda.pag || "").toUpperCase();
-        if (pagUpper.includes("PIX")) formaPagamento = "17";
-        else if (pagUpper.includes("CRÉDITO") || pagUpper.includes("CREDITO")) formaPagamento = "03";
-        else if (pagUpper.includes("DÉBITO") || pagUpper.includes("DEBITO")) formaPagamento = "04";
-        else if (pagUpper.includes("BOLETO")) formaPagamento = "15";
+        // 3. Montar Itens e Pagamentos
+        const produtos = venda.itens || venda.produtos || [];
+        if (produtos.length === 0) throw new functions.https.HttpsError("invalid-argument", "A venda não possui itens.");
+        const itensFocus = await montarItensFocus(produtos);
+        const formas_pagamento = mapearFormasPagamento(venda);
 
-        const formas_pagamento = [{
-            forma_pagamento: formaPagamento,
-            valor_pagamento: Number(venda.tot || venda.valorLiquido || 0)
-        }];
-
-        // 5. Estruturação do Payload para a API da Focus
+        // 4. Estruturação do Payload NFC-e
         const refNota = `NFCe_${vendaId}`;
-        
+        const serie = empresa.serieNFCe ? String(empresa.serieNFCe).trim() : "1";
+        const natOp = empresa.naturezaOperacao ? String(empresa.naturezaOperacao).trim() : "VENDA DE MERCADORIA";
+
         const payload = {
-            natureza_operacao: "VENDA DE MERCADORIA",
+            natureza_operacao: natOp,
             data_emissao: new Date().toISOString(),
             tipo_documento: 1, // 1 = Saída
             finalidade_emissao: 1, // 1 = Normal
+            serie: serie,
             cnpj_emitente: (empresa.cnpj || "").replace(/\D/g, ""),
             nome_emitente: empresa.nome || "",
             inscricao_estadual_emitente: empresa.ie || "",
@@ -123,75 +271,487 @@ exports.emitirNFCe = functions.https.onCall(async (data, context) => {
             numero_emitente: empresa.numero || "",
             bairro_emitente: empresa.bairro || "",
             municipio_emitente: empresa.cidade || "",
-            uf_emitente: empresa.uf || "SP",
+            uf_emitente: empresa.uf || "GO",
             cep_emitente: (empresa.cep || "").replace(/\D/g, ""),
-            
-            // Itens e Pagamento
             itens: itensFocus,
             formas_pagamento: formas_pagamento
         };
 
-        // Se a venda tem cliente vinculado com CPF/CNPJ
-        if (venda.clienteId) {
+        // Identificação opcional do cliente (CPF na nota)
+        if (venda.clienteDoc && venda.clienteDoc !== 'Não informado') {
+            const docClean = String(venda.clienteDoc).replace(/\D/g, "");
+            if (docClean.length === 11) payload.cpf_destinatario = docClean;
+            else if (docClean.length === 14) payload.cnpj_destinatario = docClean;
+            if (venda.clienteNome && venda.clienteNome !== 'Não informado') payload.nome_destinatario = venda.clienteNome;
+        } else if (venda.clienteId && venda.clienteId !== '0') {
             const cliSnap = await db.collection("clientes").doc(String(venda.clienteId)).get();
             if (cliSnap.exists) {
-                const cliente = cliSnap.data();
-                if (cliente.doc) {
-                    const docClean = String(cliente.doc).replace(/\D/g, "");
+                const cli = cliSnap.data();
+                if (cli.doc) {
+                    const docClean = String(cli.doc).replace(/\D/g, "");
                     if (docClean.length === 11) payload.cpf_destinatario = docClean;
                     else if (docClean.length === 14) payload.cnpj_destinatario = docClean;
-                    
-                    if (cliente.nome) payload.nome_destinatario = cliente.nome;
+                    if (cli.nome) payload.nome_destinatario = cli.nome;
                 }
             }
         }
 
-        console.log("Enviando NFC-e para Focus NFe:", JSON.stringify(payload));
+        console.log(`Enviando NFC-e (${focusConf.isProducao ? 'PROD' : 'HOMOLOG'}) ref=${refNota}:`, JSON.stringify(payload));
 
-        // 6. Enviar para a Focus NFe
-        const tokenBasic = Buffer.from(FOCUS_NFE_TOKEN + ":").toString("base64");
-        
+        // 5. Enviar para Focus NFe
         const response = await axios.post(
-            `${FOCUS_NFE_API_URL}?ref=${refNota}`, 
-            payload, 
-            {
-                headers: {
-                    "Authorization": `Basic ${tokenBasic}`,
-                    "Content-Type": "application/json"
-                }
-            }
+            `${focusConf.baseUrl}/nfce?ref=${refNota}`,
+            payload,
+            { headers: focusConf.headers }
         );
 
-        console.log("Resposta Focus NFe:", response.data);
+        console.log("Resposta Focus NFe (NFC-e):", response.data);
 
-        // 7. Atualizar o Firestore com os dados do retorno
+        // 6. Atualizar Firestore
+        const baseDanfeUrl = focusConf.isProducao ? "https://api.focusnfe.com.br" : "https://homologacao.focusnfe.com.br";
+        const caminhoDanfe = response.data.caminho_danfe || "";
+        const caminhoXml = response.data.caminho_xml_nota_fiscal || "";
+
         const dadosRetorno = {
-            status_sefaz: response.data.status_sefaz || "processando",
+            tipo: "NFC-e",
+            modelo: "65",
+            status_sefaz: response.data.status_sefaz || response.data.status || "processando",
             mensagem_sefaz: response.data.mensagem_sefaz || "",
-            caminho_xml_nota_fiscal: response.data.caminho_xml_nota_fiscal || "",
-            caminho_danfe: response.data.caminho_danfe || "",
-            referencia_uuid: response.data.referencia || refNota
+            caminho_xml_nota_fiscal: caminhoXml,
+            caminho_danfe: caminhoDanfe,
+            danfe_url_completa: caminhoDanfe ? `${baseDanfeUrl}${caminhoDanfe}` : "",
+            xml_url_completa: caminhoXml ? `${baseDanfeUrl}${caminhoXml}` : "",
+            chave_nfe: response.data.chave_nfe || "",
+            numero: response.data.numero || "",
+            serie: response.data.serie || serie,
+            protocolo: response.data.protocolo || "",
+            referencia_uuid: response.data.referencia || refNota,
+            ambiente: focusConf.isProducao ? "producao" : "homologacao",
+            data_emissao: new Date().toISOString()
         };
 
-        await db.collection("vendas").doc(vendaId).set({
-            nfce: dadosRetorno
+        await db.collection("vendas").doc(String(vendaId)).set({
+            nfce: dadosRetorno,
+            status_fiscal: dadosRetorno.status_sefaz,
+            tipo_fiscal: "NFC-e",
+            danfe_url: dadosRetorno.danfe_url_completa,
+            xml_url: dadosRetorno.xml_url_completa
         }, { merge: true });
 
-        return { 
-            success: true, 
-            message: "NFC-e enviada com sucesso!", 
-            data: dadosRetorno 
+        return {
+            success: true,
+            message: "NFC-e processada com sucesso!",
+            data: dadosRetorno
         };
 
     } catch (error) {
         console.error("Erro ao emitir NFC-e:", error);
-        
         let errorMsg = error.message;
         if (error.response && error.response.data) {
             errorMsg = JSON.stringify(error.response.data);
-            console.error("Erro da API Focus NFe:", errorMsg);
+            console.error("Erro retornado pela Focus NFe:", errorMsg);
+        }
+        throw new functions.https.HttpsError("internal", errorMsg);
+    }
+});
+
+// ==========================================
+// 2. EMISSÃO DE NF-e (MODELO 55 - NOTA COMPLETA)
+// ==========================================
+exports.emitirNFe = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
+
+    // Validação de permissão
+    const funcSnap = await db.collection("funcionarios").doc(context.auth.uid).get();
+    const hasPerm = funcSnap.exists && (funcSnap.data().isAdmin || funcSnap.data().perm_pdv || funcSnap.data().perm_gestao);
+    if (!hasPerm) throw new functions.https.HttpsError("permission-denied", "Sem permissão para emitir NF-e.");
+
+    try {
+        const vendaId = data.vendaId;
+        if (!vendaId) throw new functions.https.HttpsError("invalid-argument", "vendaId não informado.");
+
+        // 1. Buscar Venda e Configurações da Empresa
+        const vendaSnap = await db.collection("vendas").doc(String(vendaId)).get();
+        if (!vendaSnap.exists) throw new functions.https.HttpsError("not-found", "Venda não encontrada.");
+        const venda = vendaSnap.data();
+
+        const configSnap = await db.collection("fc_moveis").doc("config").get();
+        const config = configSnap.data();
+        if (!config || !config.empresa) throw new functions.https.HttpsError("failed-precondition", "Configurações da empresa incompletas.");
+        const empresa = config.empresa;
+
+        // 2. Configurações da Focus NFe
+        const focusConf = getFocusConfig(empresa);
+
+        // 3. Buscar Dados Completos do Cliente (Destinatário Obrigatório na NF-e)
+        let clienteData = null;
+        if (venda.clienteId && venda.clienteId !== '0') {
+            const cliSnap = await db.collection("clientes").doc(String(venda.clienteId)).get();
+            if (cliSnap.exists) clienteData = cliSnap.data();
         }
 
+        const cliDoc = (clienteData && clienteData.doc) || venda.clienteDoc || '';
+        const docClean = String(cliDoc).replace(/\D/g, '');
+        if (!docClean || (docClean.length !== 11 && docClean.length !== 14)) {
+            throw new functions.https.HttpsError("failed-precondition", "Para emitir NF-e (Modelo 55), o cliente precisa ter CPF ou CNPJ válido cadastrado.");
+        }
+
+        const cliNome = (clienteData && clienteData.nome) || venda.clienteNome || 'Cliente';
+        const cliLogradouro = (clienteData && clienteData.rua) || (venda.clienteEnd ? venda.clienteEnd.split(',')[0] : 'Rua Principal');
+        const cliNumero = (clienteData && clienteData.numero) || 'SN';
+        const cliBairro = (clienteData && clienteData.bairro) || 'Centro';
+        const cliCep = (clienteData && clienteData.cep ? String(clienteData.cep).replace(/\D/g, '') : '') || (empresa.cep ? String(empresa.cep).replace(/\D/g, '') : '74000000');
+        
+        let cliCidade = empresa.cidade || 'Goiânia';
+        let cliUf = empresa.uf || 'GO';
+        let cliIbge = (clienteData && clienteData.ibge) || empresa.ibge || '';
+
+        if (clienteData && clienteData.cidade) {
+            const parts = clienteData.cidade.split('-');
+            cliCidade = parts[0].trim();
+            if (parts[1]) cliUf = parts[1].trim();
+        }
+
+        // Indicador de Inscrição Estadual (1 = Contribuinte ICMS, 2 = Isento, 9 = Não Contribuinte)
+        let indicadorIe = "9";
+        let ieDestinatario = undefined;
+        if (clienteData && (clienteData.ie || clienteData.rg)) {
+            const ieClean = String(clienteData.ie || clienteData.rg).replace(/\D/g, '');
+            if (ieClean.length >= 6 && docClean.length === 14) {
+                indicadorIe = "1";
+                ieDestinatario = ieClean;
+            }
+        }
+
+        // 4. Montar Itens e Pagamentos
+        const produtos = venda.itens || venda.produtos || [];
+        if (produtos.length === 0) throw new functions.https.HttpsError("invalid-argument", "A venda não possui itens.");
+        const itensFocus = await montarItensFocus(produtos);
+        const formas_pagamento = mapearFormasPagamento(venda);
+
+        // 5. Estruturação do Payload NF-e (Modelo 55)
+        const refNota = `NFe_${vendaId}`;
+        const serie = empresa.serieNFe ? String(empresa.serieNFe).trim() : "1";
+        const natOp = empresa.naturezaOperacao ? String(empresa.naturezaOperacao).trim() : "VENDA DE MERCADORIA";
+
+        // Modalidade do frete: 0 = CIF (por conta do emitente), 1 = FOB (destinatário), 9 = sem frete
+        const valorFrete = Number(venda.frete || 0);
+        const modalidadeFrete = valorFrete > 0 ? 0 : 9;
+
+        const payload = {
+            natureza_operacao: natOp,
+            data_emissao: new Date().toISOString(),
+            tipo_documento: 1, // 1 = Saída
+            finalidade_emissao: 1, // 1 = Normal
+            serie: serie,
+            
+            // Dados do Emitente
+            cnpj_emitente: (empresa.cnpj || "").replace(/\D/g, ""),
+            nome_emitente: empresa.nome || "",
+            inscricao_estadual_emitente: empresa.ie || "",
+            logradouro_emitente: empresa.rua || "",
+            numero_emitente: empresa.numero || "",
+            bairro_emitente: empresa.bairro || "",
+            municipio_emitente: empresa.cidade || "",
+            uf_emitente: empresa.uf || "GO",
+            cep_emitente: (empresa.cep || "").replace(/\D/g, ""),
+            
+            // Dados do Destinatário
+            nome_destinatario: cliNome,
+            indicador_inscricao_estadual_destinatario: indicadorIe,
+            logradouro_destinatario: cliLogradouro,
+            numero_destinatario: cliNumero,
+            bairro_destinatario: cliBairro,
+            municipio_destinatario: cliCidade,
+            uf_destinatario: cliUf,
+            cep_destinatario: cliCep,
+
+            // Frete e Transporte
+            modalidade_frete: modalidadeFrete,
+            valor_frete: valorFrete > 0 ? valorFrete : undefined,
+
+            // Itens e Pagamentos
+            itens: itensFocus,
+            formas_pagamento: formas_pagamento
+        };
+
+        if (docClean.length === 11) payload.cpf_destinatario = docClean;
+        else if (docClean.length === 14) payload.cnpj_destinatario = docClean;
+
+        if (ieDestinatario) payload.inscricao_estadual_destinatario = ieDestinatario;
+        if (cliIbge) payload.codigo_municipio_destinatario = String(cliIbge).replace(/\D/g, "");
+
+        console.log(`Enviando NF-e (${focusConf.isProducao ? 'PROD' : 'HOMOLOG'}) ref=${refNota}:`, JSON.stringify(payload));
+
+        // 6. Enviar para a Focus NFe
+        const response = await axios.post(
+            `${focusConf.baseUrl}/nfe?ref=${refNota}`,
+            payload,
+            { headers: focusConf.headers }
+        );
+
+        console.log("Resposta Focus NFe (NF-e):", response.data);
+
+        // 7. Atualizar Firestore
+        const baseDanfeUrl = focusConf.isProducao ? "https://api.focusnfe.com.br" : "https://homologacao.focusnfe.com.br";
+        const caminhoDanfe = response.data.caminho_danfe || "";
+        const caminhoXml = response.data.caminho_xml_nota_fiscal || "";
+
+        const dadosRetorno = {
+            tipo: "NF-e",
+            modelo: "55",
+            status_sefaz: response.data.status_sefaz || response.data.status || "processando",
+            mensagem_sefaz: response.data.mensagem_sefaz || "",
+            caminho_xml_nota_fiscal: caminhoXml,
+            caminho_danfe: caminhoDanfe,
+            danfe_url_completa: caminhoDanfe ? `${baseDanfeUrl}${caminhoDanfe}` : "",
+            xml_url_completa: caminhoXml ? `${baseDanfeUrl}${caminhoXml}` : "",
+            chave_nfe: response.data.chave_nfe || "",
+            numero: response.data.numero || "",
+            serie: response.data.serie || serie,
+            protocolo: response.data.protocolo || "",
+            referencia_uuid: response.data.referencia || refNota,
+            ambiente: focusConf.isProducao ? "producao" : "homologacao",
+            data_emissao: new Date().toISOString()
+        };
+
+        await db.collection("vendas").doc(String(vendaId)).set({
+            nfe: dadosRetorno,
+            status_fiscal: dadosRetorno.status_sefaz,
+            tipo_fiscal: "NF-e",
+            danfe_url: dadosRetorno.danfe_url_completa,
+            xml_url: dadosRetorno.xml_url_completa
+        }, { merge: true });
+
+        return {
+            success: true,
+            message: "NF-e enviada com sucesso!",
+            data: dadosRetorno
+        };
+
+    } catch (error) {
+        console.error("Erro ao emitir NF-e:", error);
+        let errorMsg = error.message;
+        if (error.response && error.response.data) {
+            errorMsg = JSON.stringify(error.response.data);
+            console.error("Erro retornado pela Focus NFe:", errorMsg);
+        }
+        throw new functions.https.HttpsError("internal", errorMsg);
+    }
+});
+
+// ==========================================
+// 3. CANCELAMENTO DE NOTA FISCAL (NF-e OU NFC-e)
+// ==========================================
+exports.cancelarNotaFiscal = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
+
+    const funcSnap = await db.collection("funcionarios").doc(context.auth.uid).get();
+    const hasPerm = funcSnap.exists && (funcSnap.data().isAdmin || funcSnap.data().perm_gestao);
+    if (!hasPerm) throw new functions.https.HttpsError("permission-denied", "Sem permissão para cancelar notas fiscais.");
+
+    try {
+        const { vendaId, tipo, justificativa } = data;
+        if (!vendaId) throw new functions.https.HttpsError("invalid-argument", "vendaId não informado.");
+        if (!justificativa || justificativa.trim().length < 15) {
+            throw new functions.https.HttpsError("invalid-argument", "A justificativa de cancelamento deve ter pelo menos 15 caracteres (exigência da SEFAZ).");
+        }
+
+        const tipoNormalizado = (tipo && String(tipo).toLowerCase().includes("nfe") && !String(tipo).toLowerCase().includes("nfce")) ? "nfe" : "nfce";
+
+        const vendaSnap = await db.collection("vendas").doc(String(vendaId)).get();
+        if (!vendaSnap.exists) throw new functions.https.HttpsError("not-found", "Venda não encontrada.");
+        const venda = vendaSnap.data();
+
+        const configSnap = await db.collection("fc_moveis").doc("config").get();
+        const empresa = configSnap.data()?.empresa || {};
+        const focusConf = getFocusConfig(empresa);
+
+        const refNota = (tipoNormalizado === "nfe" && venda.nfe?.referencia_uuid) 
+            ? venda.nfe.referencia_uuid 
+            : (venda.nfce?.referencia_uuid || `${tipoNormalizado === 'nfe' ? 'NFe' : 'NFCe'}_${vendaId}`);
+
+        console.log(`Cancelando ${tipoNormalizado.toUpperCase()} ref=${refNota}...`);
+
+        const response = await axios.delete(
+            `${focusConf.baseUrl}/${tipoNormalizado}/${refNota}`,
+            {
+                headers: focusConf.headers,
+                data: { justificativa: justificativa.trim() }
+            }
+        );
+
+        console.log("Resposta cancelamento Focus NFe:", response.data);
+
+        const dadosCancelamento = {
+            status_sefaz: "cancelado",
+            justificativa_cancelamento: justificativa.trim(),
+            data_cancelamento: new Date().toISOString(),
+            mensagem_cancelamento: response.data.mensagem_sefaz || "Nota cancelada com sucesso"
+        };
+
+        const updatePayload = {
+            status_fiscal: "cancelado"
+        };
+        if (tipoNormalizado === "nfe") {
+            updatePayload.nfe = { ...(venda.nfe || {}), ...dadosCancelamento };
+        } else {
+            updatePayload.nfce = { ...(venda.nfce || {}), ...dadosCancelamento };
+        }
+
+        await db.collection("vendas").doc(String(vendaId)).set(updatePayload, { merge: true });
+
+        return {
+            success: true,
+            message: "Nota fiscal cancelada com sucesso na SEFAZ!",
+            data: dadosCancelamento
+        };
+
+    } catch (error) {
+        console.error("Erro ao cancelar nota:", error);
+        let errorMsg = error.message;
+        if (error.response && error.response.data) {
+            errorMsg = JSON.stringify(error.response.data);
+        }
+        throw new functions.https.HttpsError("internal", errorMsg);
+    }
+});
+
+// ==========================================
+// 4. CONSULTA DE STATUS NA SEFAZ (POLLING / REFRESH)
+// ==========================================
+exports.consultarStatusNota = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
+
+    try {
+        const { vendaId, tipo } = data;
+        if (!vendaId) throw new functions.https.HttpsError("invalid-argument", "vendaId não informado.");
+
+        const tipoNormalizado = (tipo && String(tipo).toLowerCase().includes("nfe") && !String(tipo).toLowerCase().includes("nfce")) ? "nfe" : "nfce";
+
+        const vendaSnap = await db.collection("vendas").doc(String(vendaId)).get();
+        if (!vendaSnap.exists) throw new functions.https.HttpsError("not-found", "Venda não encontrada.");
+        const venda = vendaSnap.data();
+
+        const configSnap = await db.collection("fc_moveis").doc("config").get();
+        const empresa = configSnap.data()?.empresa || {};
+        const focusConf = getFocusConfig(empresa);
+
+        const refNota = (tipoNormalizado === "nfe" && venda.nfe?.referencia_uuid) 
+            ? venda.nfe.referencia_uuid 
+            : (venda.nfce?.referencia_uuid || `${tipoNormalizado === 'nfe' ? 'NFe' : 'NFCe'}_${vendaId}`);
+
+        const response = await axios.get(
+            `${focusConf.baseUrl}/${tipoNormalizado}/${refNota}?completa=1`,
+            { headers: focusConf.headers }
+        );
+
+        const resData = response.data;
+        const baseDanfeUrl = focusConf.isProducao ? "https://api.focusnfe.com.br" : "https://homologacao.focusnfe.com.br";
+        const caminhoDanfe = resData.caminho_danfe || "";
+        const caminhoXml = resData.caminho_xml_nota_fiscal || "";
+
+        const statusSefaz = resData.status_sefaz || resData.status || "processando";
+
+        const updateObj = {
+            status_sefaz: statusSefaz,
+            mensagem_sefaz: resData.mensagem_sefaz || "",
+            caminho_danfe: caminhoDanfe,
+            caminho_xml_nota_fiscal: caminhoXml,
+            danfe_url_completa: caminhoDanfe ? `${baseDanfeUrl}${caminhoDanfe}` : "",
+            xml_url_completa: caminhoXml ? `${baseDanfeUrl}${caminhoXml}` : "",
+            chave_nfe: resData.chave_nfe || "",
+            numero: resData.numero || "",
+            protocolo: resData.protocolo || ""
+        };
+
+        const updatePayload = { status_fiscal: statusSefaz };
+        if (tipoNormalizado === "nfe") {
+            updatePayload.nfe = { ...(venda.nfe || {}), ...updateObj };
+            if (updateObj.danfe_url_completa) updatePayload.danfe_url = updateObj.danfe_url_completa;
+            if (updateObj.xml_url_completa) updatePayload.xml_url = updateObj.xml_url_completa;
+        } else {
+            updatePayload.nfce = { ...(venda.nfce || {}), ...updateObj };
+            if (updateObj.danfe_url_completa) updatePayload.danfe_url = updateObj.danfe_url_completa;
+            if (updateObj.xml_url_completa) updatePayload.xml_url = updateObj.xml_url_completa;
+        }
+
+        await db.collection("vendas").doc(String(vendaId)).set(updatePayload, { merge: true });
+
+        return {
+            success: true,
+            data: updateObj
+        };
+
+    } catch (error) {
+        console.error("Erro ao consultar status da nota:", error);
+        let errorMsg = error.message;
+        if (error.response && error.response.data) {
+            errorMsg = JSON.stringify(error.response.data);
+        }
+        throw new functions.https.HttpsError("internal", errorMsg);
+    }
+});
+
+// ==========================================
+// 5. CARTA DE CORREÇÃO ELETRÔNICA (CC-e PARA NF-e)
+// ==========================================
+exports.cartaCorrecaoNFe = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
+
+    const funcSnap = await db.collection("funcionarios").doc(context.auth.uid).get();
+    const hasPerm = funcSnap.exists && (funcSnap.data().isAdmin || funcSnap.data().perm_gestao);
+    if (!hasPerm) throw new functions.https.HttpsError("permission-denied", "Sem permissão para emitir Carta de Correção.");
+
+    try {
+        const { vendaId, correcao } = data;
+        if (!vendaId) throw new functions.https.HttpsError("invalid-argument", "vendaId não informado.");
+        if (!correcao || correcao.trim().length < 15) {
+            throw new functions.https.HttpsError("invalid-argument", "A correção deve ter pelo menos 15 caracteres.");
+        }
+
+        const vendaSnap = await db.collection("vendas").doc(String(vendaId)).get();
+        if (!vendaSnap.exists) throw new functions.https.HttpsError("not-found", "Venda não encontrada.");
+        const venda = vendaSnap.data();
+
+        const configSnap = await db.collection("fc_moveis").doc("config").get();
+        const empresa = configSnap.data()?.empresa || {};
+        const focusConf = getFocusConfig(empresa);
+
+        const refNota = venda.nfe?.referencia_uuid || `NFe_${vendaId}`;
+
+        const response = await axios.post(
+            `${focusConf.baseUrl}/nfe/${refNota}/carta_correcao`,
+            { correcao: correcao.trim() },
+            { headers: focusConf.headers }
+        );
+
+        console.log("Resposta Carta de Correção:", response.data);
+
+        await db.collection("vendas").doc(String(vendaId)).set({
+            nfe: {
+                ...(venda.nfe || {}),
+                cce: {
+                    status: response.data.status_sefaz || "autorizado",
+                    mensagem: response.data.mensagem_sefaz || "",
+                    correcao: correcao.trim(),
+                    data: new Date().toISOString()
+                }
+            }
+        }, { merge: true });
+
+        return {
+            success: true,
+            message: "Carta de Correção transmitida à SEFAZ com sucesso!",
+            data: response.data
+        };
+
+    } catch (error) {
+        console.error("Erro ao emitir Carta de Correção:", error);
+        let errorMsg = error.message;
+        if (error.response && error.response.data) {
+            errorMsg = JSON.stringify(error.response.data);
+        }
         throw new functions.https.HttpsError("internal", errorMsg);
     }
 });

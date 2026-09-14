@@ -1699,7 +1699,25 @@ async function finalizarVendaMultipla() {
         }); 
     }
 
-    const itensLimpados = cart.map(i => { return { id: i.id || '', nome: i.nome || '', preco: i.preco || 0, custo: i.custo || 0, qtd: i.qtd || 1, obsVenda: i.obsVenda || '', foto: i.foto || '', desconto: i.desconto || 0 }; });
+    const itensLimpados = cart.map(i => {
+        const p = (db.produtos || []).find(x => String(x.id) === String(i.id)) || {};
+        return {
+            id: i.id || '',
+            nome: i.nome || '',
+            preco: i.preco || 0,
+            custo: i.custo || 0,
+            qtd: i.qtd || 1,
+            obsVenda: i.obsVenda || '',
+            foto: i.foto || '',
+            desconto: i.desconto || 0,
+            ncm: p.ncm || i.ncm || '',
+            cfop: p.cfop || i.cfop || '5102',
+            csosn: p.csosn || i.csosn || '102',
+            origem: p.origem || i.origem || '0',
+            unidade: p.unidade || i.unidade || 'UN',
+            cest: p.cest || i.cest || ''
+        };
+    });
 
     const novaVendaObj = { 
         id: idFinalVenda,
@@ -1797,6 +1815,20 @@ async function finalizarVendaMultipla() {
     
     document.getElementById('print-area').innerHTML = htmlRecibo; 
     document.getElementById('modal-opcoes-recibo').classList.remove('hidden'); 
+    
+    // Configura container de emissão fiscal
+    const fContainer = document.getElementById('fiscal-container');
+    if (fContainer) {
+        if (db.config?.empresa?.fiscalAtivo !== false) {
+            fContainer.classList.remove('hidden');
+            const fStatus = document.getElementById('fiscal-status-container');
+            if (fStatus) { fStatus.classList.add('hidden'); fStatus.innerHTML = ''; }
+            const bNfce = document.getElementById('btn-emitir-nfce'); if (bNfce) bNfce.disabled = false;
+            const bNfe = document.getElementById('btn-emitir-nfe'); if (bNfe) bNfe.disabled = false;
+        } else {
+            fContainer.classList.add('hidden');
+        }
+    } 
     
     // Configurar campos do lembrete de pós-venda na agenda
     const inputLembreteData = document.getElementById('pdv-lembrete-data');
@@ -1927,50 +1959,68 @@ async function emitirNota(tipo) {
     const btnNfe = document.getElementById('btn-emitir-nfe');
     const statusContainer = document.getElementById('fiscal-status-container');
     
-    btnNfce.disabled = true;
-    btnNfe.disabled = true;
-    statusContainer.classList.remove('hidden');
-    statusContainer.classList.remove('border-red-500', 'bg-red-50', 'border-emerald-500', 'bg-emerald-50');
-    statusContainer.classList.add('border-blue-500', 'bg-blue-50');
-    statusContainer.innerHTML = `<p class="text-blue-700 font-bold animate-pulse"><i class="fa-solid fa-spinner fa-spin"></i> Emitindo ${tipo.toUpperCase()}... aguarde.</p>`;
+    if (btnNfce) btnNfce.disabled = true;
+    if (btnNfe) btnNfe.disabled = true;
+    if (statusContainer) {
+        statusContainer.classList.remove('hidden');
+        statusContainer.classList.remove('border-red-500', 'bg-red-50', 'border-emerald-500', 'bg-emerald-50', 'border-amber-500', 'bg-amber-50');
+        statusContainer.classList.add('border-blue-500', 'bg-blue-50');
+        statusContainer.innerHTML = `<p class="text-blue-700 font-bold animate-pulse text-xs"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Transmitindo ${tipo === 'nfce' ? 'NFC-e' : 'NF-e'} à SEFAZ... aguarde.</p>`;
+    }
 
     try {
-        // Chama a Cloud Function
         const emitirFunc = firebase.functions().httpsCallable(tipo === 'nfce' ? 'emitirNFCe' : 'emitirNFe');
         const response = await emitirFunc({ vendaId: window.vendaAtualImpressao.id });
-        const result = response.data;
+        const res = response.data;
+        const d = res.data || {};
         
-        statusContainer.classList.remove('border-blue-500', 'bg-blue-50');
-        statusContainer.classList.add('border-emerald-500', 'bg-emerald-50');
-        
-        let linkDanfe = result.data.caminho_danfe || result.data.caminho_xml_nota_fiscal;
-        
-        statusContainer.innerHTML = `
-            <p class="text-emerald-700 font-bold mb-2"><i class="fa-solid fa-check-circle"></i> Nota Autorizada!</p>
-            ${linkDanfe ? `<a href="https://api.focusnfe.com.br${linkDanfe}" target="_blank" class="bg-emerald-600 text-white px-4 py-2 rounded font-bold text-sm hover:bg-emerald-700 inline-block">Imprimir DANFE</a>` : ''}
-        `;
-        showToast("Nota emitida com sucesso!", "success");
+        if (statusContainer) {
+            statusContainer.classList.remove('border-blue-500', 'bg-blue-50');
+            statusContainer.classList.add('border-emerald-500', 'bg-emerald-50');
+            
+            const linkDanfe = d.danfe_url_completa || (d.caminho_danfe ? `https://api.focusnfe.com.br${d.caminho_danfe}` : '');
+            const linkXml = d.xml_url_completa || (d.caminho_xml_nota_fiscal ? `https://api.focusnfe.com.br${d.caminho_xml_nota_fiscal}` : '');
+            const numNota = d.numero ? ` Nº ${d.numero}` : '';
+            const statusTexto = (d.status_sefaz || 'autorizado').toUpperCase();
+            
+            statusContainer.innerHTML = `
+                <div class="text-center">
+                    <p class="text-emerald-700 font-bold text-xs mb-1.5"><i class="fa-solid fa-circle-check mr-1"></i> ${tipo.toUpperCase()}${numNota} (${statusTexto})</p>
+                    <div class="flex flex-wrap items-center justify-center gap-2 mt-2">
+                        ${linkDanfe ? `<a href="${linkDanfe}" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1 shadow-sm transition-colors"><i class="fa-solid fa-print"></i> Imprimir DANFE</a>` : ''}
+                        ${linkXml ? `<a href="${linkXml}" target="_blank" download class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1 shadow-sm transition-colors"><i class="fa-solid fa-download"></i> Baixar XML</a>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+        showToast(`${tipo.toUpperCase()} emitida com sucesso!`, "success");
+
+        if (window.vendaAtualImpressao) {
+            window.vendaAtualImpressao[tipo === 'nfce' ? 'nfce' : 'nfe'] = d;
+            window.vendaAtualImpressao.status_fiscal = d.status_sefaz;
+        }
 
     } catch (error) {
         console.error("Erro na emissão fiscal:", error);
-        statusContainer.classList.remove('border-blue-500', 'bg-blue-50');
-        statusContainer.classList.add('border-red-500', 'bg-red-50');
+        if (statusContainer) {
+            statusContainer.classList.remove('border-blue-500', 'bg-blue-50');
+            statusContainer.classList.add('border-red-500', 'bg-red-50');
+            
+            let errorMsg = error.message;
+            try {
+                const parsed = JSON.parse(errorMsg);
+                if(parsed.erros && parsed.erros.length > 0) {
+                    errorMsg = parsed.erros[0].mensagem || parsed.erros[0].codigo;
+                } else if (parsed.mensagem_sefaz) {
+                    errorMsg = parsed.mensagem_sefaz;
+                }
+            } catch (e) {}
+            
+            statusContainer.innerHTML = `<p class="text-red-700 font-bold text-xs text-left"><i class="fa-solid fa-circle-exclamation mr-1"></i> Falha na SEFAZ: ${errorMsg}</p>`;
+        }
         
-        let errorMsg = error.message;
-        try {
-            // Tenta parsear erros comuns da Focus NFe passados pela function
-            const parsed = JSON.parse(errorMsg);
-            if(parsed.erros && parsed.erros.length > 0) {
-                errorMsg = parsed.erros[0].mensagem || parsed.erros[0].codigo;
-            } else if (parsed.mensagem_sefaz) {
-                errorMsg = parsed.mensagem_sefaz;
-            }
-        } catch (e) { console.error("Erro interno:", e); }
-        
-        statusContainer.innerHTML = `<p class="text-red-700 font-bold text-sm"><i class="fa-solid fa-circle-exclamation"></i> Erro: ${errorMsg}</p>`;
-        
-        btnNfce.disabled = false;
-        btnNfe.disabled = false;
+        if (btnNfce) btnNfce.disabled = false;
+        if (btnNfe) btnNfe.disabled = false;
     }
 }
 

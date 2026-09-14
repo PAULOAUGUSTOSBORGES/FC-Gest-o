@@ -35,8 +35,8 @@
     <title>Configurações do Sistema</title>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css?v=20260910172224">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260910172224">
+    <link rel="stylesheet" href="../style.css?v=20260911084006">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260911084006">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -70,6 +70,7 @@
                 <a href="pdv.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-cash-register w-5 text-center"></i> Frente de Caixa (PDV)</a>
                 <a href="vendas_operacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-receipt w-5 text-center"></i> Histórico Vendas/Serviços</a>
                 <a href="orcamentos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-file-invoice w-5 text-center"></i> Meus Orçamentos</a>
+                <a href="fiscal.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-file-invoice text-emerald-400 w-5 text-center"></i> Emissor Fiscal (NF-e)</a>
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Cadastros</p>
                 <a href="produtos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-boxes-stacked w-5 text-center"></i> Produtos & Serviços</a>
@@ -241,7 +242,33 @@
 
                     <!-- CONFIGURAÇÕES FISCAIS -->
                     <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                        <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3"><i class="fa-solid fa-file-invoice text-blue-600"></i> Configurações Fiscais (NFe / NFCe)</h3>
+                        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-700 pb-3 mb-4">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 text-base"><i class="fa-solid fa-file-invoice text-blue-600"></i> Configurações Fiscais (NFe / NFCe)</h3>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="emp-fiscal-ativo" class="sr-only peer" checked>
+                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                                <span class="ml-2.5 text-xs font-bold text-slate-700 dark:text-slate-200">Emissor Fiscal Ativo</span>
+                            </label>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Ambiente de Emissão</label>
+                                <select id="emp-fiscal-ambiente" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white font-medium">
+                                    <option value="homologacao">Homologação (Testes SEFAZ - Sem Valor Fiscal)</option>
+                                    <option value="producao">Produção Oficial (SEFAZ Real)</option>
+                                </select>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Token Focus NFe (API)</label>
+                                <div class="relative">
+                                    <input type="password" id="emp-focus-token" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white pr-10" placeholder="Cole o token da sua conta Focus NFe">
+                                    <button type="button" onclick="const el=document.getElementById('emp-focus-token'); el.type=el.type==='password'?'text':'password';" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm"><i class="fa-solid fa-eye"></i></button>
+                                </div>
+                                <p class="text-[10px] text-slate-400 dark:text-slate-400 mt-1">Obtenha gratuitamente em <a href="https://focusnfe.com.br" target="_blank" class="text-blue-500 underline">focusnfe.com.br</a>.</p>
+                            </div>
+                        </div>
+
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                                 <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Inscrição Estadual (IE)</label>
@@ -260,12 +287,24 @@
                                 </select>
                             </div>
                             <div class="md:col-span-2">
-                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Token CSC (Para NFCe)</label>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Token CSC (Para NFCe no PDV)</label>
                                 <input type="text" id="emp-csc-token" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" placeholder="Código Alfanumérico do CSC">
                             </div>
                             <div>
                                 <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">ID do Token CSC</label>
                                 <input type="text" id="emp-csc-id" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" placeholder="Ex: 000001">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Série NF-e (Modelo 55)</label>
+                                <input type="number" id="emp-serie-nfe" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" value="1" placeholder="Ex: 1">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Série NFC-e (Modelo 65)</label>
+                                <input type="number" id="emp-serie-nfce" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" value="1" placeholder="Ex: 1">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Natureza da Operação Padrão</label>
+                                <input type="text" id="emp-natureza-operacao" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" value="VENDA DE MERCADORIA" placeholder="Ex: VENDA DE MERCADORIA">
                             </div>
                         </div>
                     </div>
@@ -468,9 +507,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     
-    <script src="../sistema/config_banco.js?v=20260910172224"></script>
-    <script src="../global.js?v=20260910172224"></script>
-    <script src="fc_cache.js?v=639246646312688205"></script>
-    <script src="sistema.js?v=20260910172224"></script>
+    <script src="../sistema/config_banco.js?v=20260911084006"></script>
+    <script src="../global.js?v=20260911084006"></script>
+    <script src="fc_cache.js?v=20260911084006"></script>
+    <script src="sistema.js?v=20260911084006"></script>
 </body>
 </html>
