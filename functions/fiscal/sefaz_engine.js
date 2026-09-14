@@ -55,6 +55,8 @@ async function emitirNotaDiretoSefaz(modelo, venda, empresa, itens, cliente = nu
         '1'
     );
 
+    console.log(`[SEFAZ DIRETO] Resposta bruta SEFAZ (${endpoints.autorizacaoUrl}):`, typeof respostaSoap === 'string' ? respostaSoap.substring(0, 800) : JSON.stringify(respostaSoap));
+
     // 4. Processa o retorno da SEFAZ
     const resultado = processarRespostaSefaz(respostaSoap, xmlAssinado);
 

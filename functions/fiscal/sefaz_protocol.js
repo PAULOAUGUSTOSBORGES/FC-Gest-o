@@ -27,9 +27,9 @@ function processarRespostaSefaz(respostaSoapXml, xmlAssinado) {
     }
 
     try {
-        // Extrai o bloco <protNFe>...</protNFe>
-        const matchProtNFe = respostaSoapXml.match(/<protNFe[\s\S]*?<\/protNFe>/);
-        const matchRetEnviNFe = respostaSoapXml.match(/<retEnviNFe[\s\S]*?<\/retEnviNFe>/);
+        // 1. Extrai blocos oficiais se existirem
+        const matchProtNFe = respostaSoapXml.match(/<protNFe[\s\S]*?<\/protNFe>/i);
+        const matchRetEnviNFe = respostaSoapXml.match(/<retEnviNFe[\s\S]*?<\/retEnviNFe>/i);
 
         let cStat = '';
         let xMotivo = '';
@@ -37,23 +37,53 @@ function processarRespostaSefaz(respostaSoapXml, xmlAssinado) {
         let dhRecbto = '';
 
         if (matchProtNFe) {
-            const parsedProt = parser.parse(matchProtNFe[0]);
-            const infProt = parsedProt?.protNFe?.infProt || {};
-            cStat = String(infProt.cStat || '');
-            xMotivo = String(infProt.xMotivo || '');
-            nProt = String(infProt.nProt || '');
-            dhRecbto = String(infProt.dhRecbto || '');
+            const matchCStat = matchProtNFe[0].match(/<cStat>(\d+)<\/cStat>/i);
+            const matchXMot = matchProtNFe[0].match(/<xMotivo>([\s\S]*?)<\/xMotivo>/i);
+            const matchProt = matchProtNFe[0].match(/<nProt>(\d+)<\/nProt>/i);
+            const matchDh = matchProtNFe[0].match(/<dhRecbto>([\s\S]*?)<\/dhRecbto>/i);
+            cStat = matchCStat ? matchCStat[1] : '';
+            xMotivo = matchXMot ? matchXMot[1].trim() : '';
+            nProt = matchProt ? matchProt[1] : '';
+            dhRecbto = matchDh ? matchDh[1].trim() : '';
         } else if (matchRetEnviNFe) {
-            const parsedRet = parser.parse(matchRetEnviNFe[0]);
-            const ret = parsedRet?.retEnviNFe || {};
-            cStat = String(ret.cStat || '');
-            xMotivo = String(ret.xMotivo || '');
-        } else {
-            // Busca genérica por cStat e xMotivo
-            const matchCStat = respostaSoapXml.match(/<cStat>(\d+)<\/cStat>/);
-            const matchXMotivo = respostaSoapXml.match(/<xMotivo>(.*?)<\/xMotivo>/);
-            cStat = matchCStat ? matchCStat[1] : '999';
-            xMotivo = matchXMotivo ? matchXMotivo[1] : 'Resposta não reconhecida pela SEFAZ.';
+            const matchCStat = matchRetEnviNFe[0].match(/<cStat>(\d+)<\/cStat>/i);
+            const matchXMot = matchRetEnviNFe[0].match(/<xMotivo>([\s\S]*?)<\/xMotivo>/i);
+            cStat = matchCStat ? matchCStat[1] : '';
+            xMotivo = matchXMot ? matchXMot[1].trim() : '';
+        }
+
+        // 2. Se não achou cStat ainda, faz busca no documento inteiro
+        if (!cStat) {
+            const matchCStat = respostaSoapXml.match(/<cStat>(\d+)<\/cStat>/i);
+            const matchXMot = respostaSoapXml.match(/<xMotivo>([\s\S]*?)<\/xMotivo>/i);
+            if (matchCStat) {
+                cStat = matchCStat[1];
+                xMotivo = matchXMot ? matchXMot[1].trim() : '';
+            }
+        }
+
+        // 3. Se ainda assim não achou cStat, verifica se é SOAP Fault ou resposta de erro
+        if (!cStat) {
+            const matchFaultReason = respostaSoapXml.match(/<(?:\w+:)?Text[^>]*>([\s\S]*?)<\/(?:\w+:)?Text>/i);
+            const matchFaultString = respostaSoapXml.match(/<faultstring>([\s\S]*?)<\/faultstring>/i);
+            const matchDetail = respostaSoapXml.match(/<(?:\w+:)?detail>([\s\S]*?)<\/(?:\w+:)?detail>/i);
+
+            if (matchFaultReason || matchFaultString) {
+                cStat = 'SOAP_FAULT';
+                xMotivo = (matchFaultReason ? matchFaultReason[1] : matchFaultString[1]).trim();
+                if (matchDetail) {
+                    const cleanDetail = matchDetail[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+                    if (cleanDetail) xMotivo += ` (${cleanDetail})`;
+                }
+            } else if (respostaSoapXml.includes('<html') || respostaSoapXml.includes('<!DOCTYPE html>')) {
+                const matchTitle = respostaSoapXml.match(/<title>([\s\S]*?)<\/title>/i);
+                cStat = 'HTTP_HTML';
+                xMotivo = `Servidor SEFAZ retornou bloqueio ou erro HTTP: ${matchTitle ? matchTitle[1].trim() : 'Acesso Negado'}`;
+            } else {
+                cStat = '999';
+                const textoLimpo = respostaSoapXml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+                xMotivo = textoLimpo ? `SEFAZ: ${textoLimpo.slice(0, 180)}` : 'Resposta não reconhecida pela SEFAZ.';
+            }
         }
 
         // cStat 100 = Autorizado o uso da NF-e / NFC-e

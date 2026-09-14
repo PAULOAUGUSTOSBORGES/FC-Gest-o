@@ -47,11 +47,12 @@ async function transmitirLoteSefaz(urlAutorizacao, xmlAssinado, pfxBase64, senha
 </soap12:Envelope>`.trim();
 
     try {
+        const soapActionLote = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4/nfeAutorizacaoLote';
         const response = await axios.post(urlAutorizacao, envelopeSoap, {
             httpsAgent: agente,
             headers: {
-                'Content-Type': 'application/soap+xml; charset=utf-8',
-                'SOAPAction': 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4'
+                'Content-Type': `application/soap+xml; charset=utf-8; action="${soapActionLote}"`,
+                'SOAPAction': soapActionLote
             },
             timeout: 30000 // 30 segundos
         });
@@ -88,11 +89,12 @@ async function transmitirEvento(urlEvento, eventoAssinadoXml, pfxBase64, senha, 
 </soap12:Envelope>`.trim();
 
     try {
+        const soapActionEvento = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4/nfeRecepcaoEvento';
         const response = await axios.post(urlEvento, envelopeSoap, {
             httpsAgent: agente,
             headers: {
-                'Content-Type': 'application/soap+xml; charset=utf-8',
-                'SOAPAction': 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4'
+                'Content-Type': `application/soap+xml; charset=utf-8; action="${soapActionEvento}"`,
+                'SOAPAction': soapActionEvento
             },
             timeout: 30000
         });
