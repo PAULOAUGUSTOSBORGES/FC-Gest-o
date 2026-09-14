@@ -218,7 +218,9 @@ function renderNotasFiscais() {
         } else if (n.status === 'processando') {
             badgeStatus = `<span class="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold px-2 py-0.5 rounded text-[10px]"><i class="fa-solid fa-spinner fa-spin"></i> Processando</span>`;
         } else {
-            badgeStatus = `<span class="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold px-2 py-0.5 rounded text-[10px]"><i class="fa-solid fa-triangle-exclamation"></i> ${n.status.toUpperCase()}</span>`;
+            const msgLimpa = (n.mensagemSefaz || 'Rejeição na SEFAZ').replace(/"/g, '&quot;');
+            const encMsg = encodeURIComponent(n.mensagemSefaz || 'Erro retornado pela SEFAZ durante a validação da nota.');
+            badgeStatus = `<button type="button" onclick="mostrarErroSefaz('${encMsg}')" title="${msgLimpa}" class="bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/70 font-bold px-2 py-0.5 rounded text-[10px] inline-flex items-center gap-1 cursor-pointer transition-colors shadow-sm"><i class="fa-solid fa-circle-exclamation text-red-500"></i> ${n.status === 'erro_autorizacao' ? 'Rejeitada' : n.status.toUpperCase()}</button>`;
         }
 
         const chaveAbrev = n.chave ? `${n.chave.slice(0, 6)}...${n.chave.slice(-6)}` : '-';
@@ -245,13 +247,19 @@ function renderNotasFiscais() {
                 <td class="p-3 text-center whitespace-nowrap">
                     <div class="flex items-center justify-center gap-1.5">
                         ${n.danfeUrl 
-                            ? `<a href="${n.danfeUrl}" target="_blank" class="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 px-2 py-1.5 rounded font-bold text-xs transition-colors" title="Imprimir / Visualizar DANFE (PDF)"><i class="fa-solid fa-print"></i> DANFE</a>` 
-                            : (n.status === 'autorizado' ? `<button onclick="imprimirDanfeNativo('${n.vendaId}', '${n.tipo}')" class="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 px-2 py-1.5 rounded font-bold text-xs transition-colors" title="Imprimir DANFE"><i class="fa-solid fa-print"></i> DANFE</button>` : '')}
+                            ? `<a href="${n.danfeUrl}" target="_blank" class="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 px-2 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1" title="Imprimir / Visualizar DANFE (PDF)"><i class="fa-solid fa-print"></i> DANFE</a>` 
+                            : (n.status === 'autorizado' ? `<button onclick="imprimirDanfeNativo('${n.vendaId}', '${n.tipo}')" class="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 px-2 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1" title="Imprimir DANFE"><i class="fa-solid fa-print"></i> DANFE</button>` : '')}
                         
                         ${n.xmlUrl 
-                            ? `<a href="${n.xmlUrl}" target="_blank" download class="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 px-2 py-1.5 rounded font-bold text-xs transition-colors" title="Baixar Arquivo XML"><i class="fa-solid fa-code"></i> XML</a>` 
-                            : (n.xmlConteudo || n.status === 'autorizado' ? `<button onclick="baixarXmlNativo('${n.vendaId}', '${n.tipo}')" class="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 px-2 py-1.5 rounded font-bold text-xs transition-colors" title="Baixar Arquivo XML"><i class="fa-solid fa-code"></i> XML</button>` : '')}
+                            ? `<a href="${n.xmlUrl}" target="_blank" download class="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 px-2 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1" title="Baixar Arquivo XML"><i class="fa-solid fa-code"></i> XML</a>` 
+                            : (n.xmlConteudo || n.status === 'autorizado' ? `<button onclick="baixarXmlNativo('${n.vendaId}', '${n.tipo}')" class="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 px-2 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1" title="Baixar Arquivo XML"><i class="fa-solid fa-code"></i> XML</button>` : '')}
                         
+                        ${n.status !== 'autorizado' ? `
+                            <button onclick="reemitirNota('${n.vendaId}', '${n.tipo}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1 shadow-sm" title="Reemitir com a nova numeração na SEFAZ">
+                                <i class="fa-solid fa-paper-plane"></i> Reemitir
+                            </button>
+                        ` : ''}
+
                         <button onclick="consultarSefaz('${n.vendaId}', '${n.tipo}')" class="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 p-1.5" title="Sincronizar Status SEFAZ"><i class="fa-solid fa-arrows-rotate"></i></button>
                         
                         ${isNFe && n.status === 'autorizado' ? `<button onclick="abrirModalCCe('${n.vendaId}', '${n.numero}')" class="text-indigo-500 hover:text-indigo-700 p-1.5" title="Carta de Correção (CC-e)"><i class="fa-solid fa-file-pen"></i></button>` : ''}
@@ -285,7 +293,7 @@ function atualizarKPIs(lista) {
     const nfces = lista.filter(n => n.tipo === 'NFC-e');
     const valorNfce = nfces.filter(n => n.status === 'autorizado').reduce((acc, n) => acc + n.valor, 0);
 
-    const canceladas = lista.filter(n => n.status === 'cancelado' || n.status === 'erro').length;
+    const canceladas = lista.filter(n => n.status === 'cancelado' || n.status === 'erro' || (typeof n.status === 'string' && n.status.includes('erro'))).length;
 
     const elTotal = document.getElementById('kpi-total-notas'); if (elTotal) elTotal.innerText = totalNotas;
     const elTotVal = document.getElementById('kpi-total-valor'); if (elTotVal) elTotVal.innerText = typeof formatMoney === 'function' ? formatMoney(totalValor) : `R$ ${totalValor.toFixed(2)}`;
@@ -303,6 +311,20 @@ function atualizarKPIs(lista) {
 // CONSULTA / ATUALIZAÇÃO DE STATUS SEFAZ
 // ==========================================
 async function consultarSefaz(vendaId, tipo) {
+    const nota = notasFiscaisArray.find(n => String(n.vendaId) === String(vendaId));
+    if (nota && (nota.motor === 'sefaz_direto' || !nota.danfeUrl)) {
+        if (nota.status === 'autorizado') {
+            return showToast(`Nota Nº ${nota.numero} autorizada pela SEFAZ! Chave: ${nota.chave ? nota.chave.slice(0, 8) + '...' : ''}`, 'success');
+        } else {
+            if (nota.mensagemSefaz) {
+                mostrarErroSefaz(encodeURIComponent(nota.mensagemSefaz));
+            } else {
+                showToast('Utilize o botão "Reemitir" para transmitir a nota novamente à SEFAZ.', 'info');
+            }
+            return;
+        }
+    }
+
     showToast(`Consultando SEFAZ para ${tipo}...`, 'info');
     try {
         const consultarFunc = firebase.functions().httpsCallable('consultarStatusNota');
@@ -313,6 +335,66 @@ async function consultarSefaz(vendaId, tipo) {
         showToast(`Erro na consulta: ${e.message}`, 'error');
     }
 }
+
+// ==========================================
+// REEMISSÃO DE NOTA FISCAL (SEFAZ DIRETO)
+// ==========================================
+async function reemitirNota(vendaId, tipo) {
+    const isNFe = tipo === 'NF-e' || tipo === 'nfe' || tipo === '55';
+    const tipoFuncao = isNFe ? 'emitirNFe' : 'emitirNFCe';
+    const labelTipo = isNFe ? 'NF-e (Modelo 55)' : 'NFC-e (Modelo 65)';
+
+    showToast(`Transmitindo ${labelTipo} à SEFAZ... aguarde.`, 'info');
+
+    try {
+        const emitirFunc = firebase.functions().httpsCallable(tipoFuncao);
+        const resp = await emitirFunc({ vendaId });
+        const res = resp.data;
+
+        if (res && res.success) {
+            showToast(`${labelTipo} Nº ${res.data?.numero || ''} autorizada com sucesso pela SEFAZ!`, 'success');
+        } else {
+            const motivo = res?.message || 'Nota rejeitada pela SEFAZ.';
+            showToast(`Rejeição SEFAZ: ${motivo}`, 'error');
+            mostrarErroSefaz(encodeURIComponent(motivo));
+        }
+        processarNotasFiscais();
+        renderNotasFiscais();
+    } catch (e) {
+        console.error("Erro ao reemitir nota:", e);
+        let msg = e.message || 'Erro na comunicação com a SEFAZ.';
+        try {
+            const parsed = JSON.parse(msg);
+            if (parsed.mensagem_sefaz) msg = parsed.mensagem_sefaz;
+            else if (parsed.erros && parsed.erros.length > 0) msg = parsed.erros[0].mensagem;
+        } catch(err) {}
+        showToast(`Erro na emissão: ${msg}`, 'error');
+    }
+}
+window.reemitirNota = reemitirNota;
+
+// ==========================================
+// EXIBIÇÃO DE DETALHES DE REJEIÇÃO SEFAZ
+// ==========================================
+function mostrarErroSefaz(msgEnc) {
+    const msg = decodeURIComponent(msgEnc || '');
+    const modal = document.getElementById('modal-detalhes-erro-sefaz');
+    if (modal) {
+        const p = document.getElementById('texto-erro-sefaz');
+        if (p) p.innerText = msg;
+        modal.classList.remove('hidden');
+    } else {
+        alert(`Detalhes da Rejeição SEFAZ:\n\n${msg}`);
+    }
+}
+window.mostrarErroSefaz = mostrarErroSefaz;
+
+function atualizarTabelaFiscal() {
+    processarNotasFiscais();
+    renderNotasFiscais();
+    showToast('Lista de notas fiscais sincronizada!', 'success');
+}
+window.atualizarTabelaFiscal = atualizarTabelaFiscal;
 
 // ==========================================
 // CANCELAMENTO DE NOTA FISCAL

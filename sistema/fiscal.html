@@ -188,6 +188,9 @@
 
                         <!-- Botões de Ação -->
                         <div class="flex items-center gap-2">
+                            <button onclick="atualizarTabelaFiscal()" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold px-3 py-2 rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition-colors whitespace-nowrap" title="Atualizar Lista de Notas Fiscais">
+                                <i class="fa-solid fa-arrows-rotate"></i> Atualizar Lista
+                            </button>
                             <button onclick="baixarLoteMensalXML()" id="btn-exportar-lote" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition-colors whitespace-nowrap">
                                 <i class="fa-solid fa-file-zipper text-sm"></i> Baixar Lote XML (ZIP)
                             </button>
@@ -307,14 +310,36 @@
         </div>
     </div>
 
+    <!-- MODAL DETALHES DE ERRO / REJEIÇÃO SEFAZ -->
+    <div id="modal-detalhes-erro-sefaz" class="fixed inset-0 bg-slate-900/80 z-[200] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
+            <div class="bg-red-600 p-4 text-white flex justify-between items-center">
+                <h3 class="font-bold text-base flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i> Rejeição da SEFAZ</h3>
+                <button onclick="document.getElementById('modal-detalhes-erro-sefaz').classList.add('hidden')" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="p-5 space-y-3 text-xs">
+                <p class="text-slate-600 dark:text-slate-300">A Secretaria da Fazenda retornou o seguinte motivo para esta nota:</p>
+                <div class="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 p-3.5 rounded-xl font-mono text-red-700 dark:text-red-300 break-words leading-relaxed" id="texto-erro-sefaz">
+                    -
+                </div>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                    <i class="fa-solid fa-circle-info text-blue-500 mr-1"></i> Você pode definir o próximo número correto nas Configurações e clicar no botão verde <strong>Reemitir</strong> na tabela para autorizar a nota.
+                </p>
+            </div>
+            <div class="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex justify-end">
+                <button onclick="document.getElementById('modal-detalhes-erro-sefaz').classList.add('hidden')" class="px-5 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold rounded-lg text-xs transition-colors">Fechar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- SCRIPTS -->
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20260911084006"></script>
-    <script src="../global.js?v=20260911084006"></script>
-    <script src="fc_cache.js?v=20260911084006"></script>
-    <script src="fiscal.js?v=20260911084006"></script>
+    <script src="../sistema/config_banco.js?v=20260914171500"></script>
+    <script src="../global.js?v=20260914171500"></script>
+    <script src="fc_cache.js?v=20260914171500"></script>
+    <script src="fiscal.js?v=20260914171500"></script>
 </body>
 </html>
