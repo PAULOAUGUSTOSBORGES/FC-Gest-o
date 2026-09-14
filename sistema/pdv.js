@@ -2001,13 +2001,27 @@ async function emitirNota(tipo) {
             const linkXml = d.xml_url_completa || (d.caminho_xml_nota_fiscal ? `https://api.focusnfe.com.br${d.caminho_xml_nota_fiscal}` : '');
             const numNota = d.numero ? ` Nº ${d.numero}` : '';
             const statusTexto = (d.status_sefaz || 'autorizado').toUpperCase();
+            const vendaId = window.vendaAtualImpressao ? window.vendaAtualImpressao.id : '';
+            const isSefazDireto = d.motor === 'sefaz_direto' || (!linkDanfe && (d.status_sefaz === 'autorizado' || d.chave_nfe || d.chave_nfce));
+
+            let botoesFiscais = '';
+            if (linkDanfe) {
+                botoesFiscais += `<a href="${linkDanfe}" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1 shadow-sm transition-colors"><i class="fa-solid fa-print"></i> Imprimir DANFE</a>`;
+            } else if (isSefazDireto) {
+                botoesFiscais += `<button type="button" onclick="imprimirDanfeNativo('${vendaId}', '${tipo}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1 shadow-sm transition-colors cursor-pointer"><i class="fa-solid fa-print"></i> Imprimir DANFE</button>`;
+            }
+
+            if (linkXml) {
+                botoesFiscais += `<a href="${linkXml}" target="_blank" download class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1 shadow-sm transition-colors"><i class="fa-solid fa-download"></i> Baixar XML</a>`;
+            } else if (isSefazDireto) {
+                botoesFiscais += `<button type="button" onclick="baixarXmlNativo('${vendaId}', '${tipo}')" class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1 shadow-sm transition-colors cursor-pointer"><i class="fa-solid fa-download"></i> Baixar XML</button>`;
+            }
             
             statusContainer.innerHTML = `
                 <div class="text-center">
                     <p class="text-emerald-700 font-bold text-xs mb-1.5"><i class="fa-solid fa-circle-check mr-1"></i> ${tipo.toUpperCase()}${numNota} (${statusTexto})</p>
                     <div class="flex flex-wrap items-center justify-center gap-2 mt-2">
-                        ${linkDanfe ? `<a href="${linkDanfe}" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1 shadow-sm transition-colors"><i class="fa-solid fa-print"></i> Imprimir DANFE</a>` : ''}
-                        ${linkXml ? `<a href="${linkXml}" target="_blank" download class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1 shadow-sm transition-colors"><i class="fa-solid fa-download"></i> Baixar XML</a>` : ''}
+                        ${botoesFiscais}
                     </div>
                 </div>
             `;

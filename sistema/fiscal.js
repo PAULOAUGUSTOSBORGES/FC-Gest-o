@@ -94,6 +94,9 @@ function processarNotasFiscais() {
                 mensagemSefaz: v.nfce.mensagem_sefaz || '',
                 danfeUrl: v.nfce.danfe_url_completa || (v.nfce.caminho_danfe ? `https://api.focusnfe.com.br${v.nfce.caminho_danfe}` : ''),
                 xmlUrl: v.nfce.xml_url_completa || (v.nfce.caminho_xml_nota_fiscal ? `https://api.focusnfe.com.br${v.nfce.caminho_xml_nota_fiscal}` : ''),
+                xmlConteudo: v.nfce.xml_conteudo || v.fiscal_xml || '',
+                qrCodeUrl: v.nfce.qr_code_url || v.fiscal_qrcode_url || '',
+                motor: v.nfce.motor || v.fiscal_motor || 'sefaz_direto',
                 rawVenda: v
             });
         }
@@ -117,7 +120,9 @@ function processarNotasFiscais() {
                 mensagemSefaz: v.nfe.mensagem_sefaz || '',
                 danfeUrl: v.nfe.danfe_url_completa || (v.nfe.caminho_danfe ? `https://api.focusnfe.com.br${v.nfe.caminho_danfe}` : ''),
                 xmlUrl: v.nfe.xml_url_completa || (v.nfe.caminho_xml_nota_fiscal ? `https://api.focusnfe.com.br${v.nfe.caminho_xml_nota_fiscal}` : ''),
+                xmlConteudo: v.nfe.xml_conteudo || v.fiscal_xml || '',
                 cce: v.nfe.cce || null,
+                motor: v.nfe.motor || v.fiscal_motor || 'sefaz_direto',
                 rawVenda: v
             });
         }
@@ -239,8 +244,13 @@ function renderNotasFiscais() {
                 </td>
                 <td class="p-3 text-center whitespace-nowrap">
                     <div class="flex items-center justify-center gap-1.5">
-                        ${n.danfeUrl ? `<a href="${n.danfeUrl}" target="_blank" class="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 px-2 py-1.5 rounded font-bold text-xs transition-colors" title="Imprimir / Visualizar DANFE (PDF)"><i class="fa-solid fa-print"></i> DANFE</a>` : ''}
-                        ${n.xmlUrl ? `<a href="${n.xmlUrl}" target="_blank" download class="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 px-2 py-1.5 rounded font-bold text-xs transition-colors" title="Baixar Arquivo XML"><i class="fa-solid fa-code"></i> XML</a>` : ''}
+                        ${n.danfeUrl 
+                            ? `<a href="${n.danfeUrl}" target="_blank" class="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 px-2 py-1.5 rounded font-bold text-xs transition-colors" title="Imprimir / Visualizar DANFE (PDF)"><i class="fa-solid fa-print"></i> DANFE</a>` 
+                            : (n.status === 'autorizado' ? `<button onclick="imprimirDanfeNativo('${n.vendaId}', '${n.tipo}')" class="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 px-2 py-1.5 rounded font-bold text-xs transition-colors" title="Imprimir DANFE"><i class="fa-solid fa-print"></i> DANFE</button>` : '')}
+                        
+                        ${n.xmlUrl 
+                            ? `<a href="${n.xmlUrl}" target="_blank" download class="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 px-2 py-1.5 rounded font-bold text-xs transition-colors" title="Baixar Arquivo XML"><i class="fa-solid fa-code"></i> XML</a>` 
+                            : (n.xmlConteudo || n.status === 'autorizado' ? `<button onclick="baixarXmlNativo('${n.vendaId}', '${n.tipo}')" class="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 px-2 py-1.5 rounded font-bold text-xs transition-colors" title="Baixar Arquivo XML"><i class="fa-solid fa-code"></i> XML</button>` : '')}
                         
                         <button onclick="consultarSefaz('${n.vendaId}', '${n.tipo}')" class="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 p-1.5" title="Sincronizar Status SEFAZ"><i class="fa-solid fa-arrows-rotate"></i></button>
                         
@@ -552,3 +562,165 @@ async function emitirNotaDireta(vendaId, tipo) {
         showToast(`Erro ao emitir ${tipo.toUpperCase()}: ${msg}`, 'error');
     }
 }
+
+// ==========================================
+// IMPRESSÃO E DOWNLOAD NATIVOS (SEFAZ DIRETO)
+// ==========================================
+function baixarXmlNativo(vendaId, tipo = 'NFC-e') {
+    const v = (typeof vendasGlobais !== 'undefined' ? vendasGlobais.find(x => x.id === vendaId) : null) 
+        || (typeof window.vendaAtualImpressao !== 'undefined' && window.vendaAtualImpressao?.id === vendaId ? window.vendaAtualImpressao : null);
+    if (!v) {
+        if (typeof window.baixarXmlNativo === 'function') return window.baixarXmlNativo(vendaId, tipo);
+        showToast('Venda não encontrada.', 'error');
+        return;
+    }
+    const xml = v.fiscal_xml || v.nfce?.xml_conteudo || v.nfe?.xml_conteudo || '';
+    if (!xml) {
+        showToast('Conteúdo do arquivo XML não encontrado no banco de dados.', 'warning');
+        return;
+    }
+    const chave = v.fiscal_chave || v.nfce?.chave_nfe || v.nfe?.chave_nfe || `nota_${vendaId}`;
+    const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${chave}.xml`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Download do XML concluído!', 'success');
+}
+window.baixarXmlNativo = baixarXmlNativo;
+
+function imprimirDanfeNativo(vendaId, tipo = 'NFC-e') {
+    const v = (typeof vendasGlobais !== 'undefined' ? vendasGlobais.find(x => x.id === vendaId) : null)
+        || (typeof window.vendaAtualImpressao !== 'undefined' && window.vendaAtualImpressao?.id === vendaId ? window.vendaAtualImpressao : null);
+    if (!v) {
+        if (typeof window.imprimirDanfeNativo === 'function') return window.imprimirDanfeNativo(vendaId, tipo);
+        showToast('Venda não encontrada.', 'error');
+        return;
+    }
+    const isNFe = (tipo === 'NF-e' || tipo === '55');
+    const nota = isNFe ? v.nfe : v.nfce;
+    const emp = db.config?.empresa || {};
+    const chave = nota?.chave_nfe || v.fiscal_chave || '';
+    const chaveFmt = chave.replace(/(\d{4})/g, '$1 ').trim();
+    const qrCodeUrl = nota?.qr_code_url || v.fiscal_qrcode_url || `https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx?p=${chave}`;
+    const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrCodeUrl)}`;
+
+    const printWin = window.open('', '_blank', 'width=460,height=700');
+    if (!printWin) {
+        showToast('Por favor, autorize pop-ups para imprimir o DANFE.', 'warning');
+        return;
+    }
+
+    const itensHtml = (v.itens || v.produtos || []).map((it, i) => {
+        const qtd = Number(it.quantidade || it.qtd || 1);
+        const preco = Number(it.preco || it.precoUnitario || 0);
+        return `
+        <tr>
+            <td style="font-size:10px; padding:2px 0;">${i+1} ${it.nome || it.descricao || 'Produto'}</td>
+            <td style="font-size:10px; text-align:right;">${qtd} ${it.unidade || 'UN'}</td>
+            <td style="font-size:10px; text-align:right;">${preco.toFixed(2)}</td>
+            <td style="font-size:10px; text-align:right; font-weight:bold;">${(qtd * preco).toFixed(2)}</td>
+        </tr>
+    `;
+    }).join('');
+
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>DANFE ${isNFe ? 'NF-e' : 'NFC-e'} - Nº ${nota?.numero || v.id}</title>
+        <style>
+            @page { margin: 2mm; size: ${isNFe ? 'A4 portrait' : '80mm auto'}; }
+            body { font-family: monospace, sans-serif; font-size: 11px; margin: 0; padding: 4mm; color: #000; width: ${isNFe ? '180mm' : '72mm'}; }
+            .text-center { text-align: center; }
+            .font-bold { font-weight: bold; }
+            .border-b { border-bottom: 1px dashed #000; padding-bottom: 4px; margin-bottom: 4px; }
+            .border-t { border-top: 1px dashed #000; padding-top: 4px; margin-top: 4px; }
+            table { width: 100%; border-collapse: collapse; }
+            .qr { text-align: center; margin: 8px 0; }
+            .qr img { width: 140px; height: 140px; }
+        </style>
+    </head>
+    <body>
+        <div class="text-center border-b">
+            <div class="font-bold" style="font-size: 13px;">${emp.nome || 'EMPRESA COMERCIAL'}</div>
+            <div>CNPJ: ${emp.cnpj || ''} - IE: ${emp.ie || ''}</div>
+            <div>${emp.rua || ''}, ${emp.numero || ''} - ${emp.cidade || ''}/${emp.uf || ''}</div>
+        </div>
+
+        <div class="text-center font-bold border-b" style="padding: 2px 0;">
+            DANFE ${isNFe ? 'NF-e - Documento Auxiliar da Nota Fiscal Eletrônica' : 'NFC-e - Documento Auxiliar da Nota Fiscal de Consumidor Eletrônica'}
+            <div style="font-size: 9px; font-weight: normal;">Não permite aproveitamento de crédito de ICMS</div>
+        </div>
+
+        <table>
+            <thead>
+                <tr style="border-bottom: 1px solid #000; font-size: 9px;">
+                    <th style="text-align:left;">ITEM/DESC</th>
+                    <th style="text-align:right;">QTD</th>
+                    <th style="text-align:right;">UNIT</th>
+                    <th style="text-align:right;">TOTAL</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${itensHtml}
+            </tbody>
+        </table>
+
+        <div class="border-t">
+            <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:12px;">
+                <span>VALOR TOTAL R$</span>
+                <span>${Number(v.tot || v.valorLiquido || 0).toFixed(2)}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:10px;">
+                <span>Forma de Pagamento</span>
+                <span>${v.formaPagamento || v.pagamento || 'Dinheiro'}</span>
+            </div>
+        </div>
+
+        <div class="border-t text-center" style="font-size: 10px;">
+            <div>ÁREA DE MENSAGEM FISCAL</div>
+            <div>Número: <strong>${nota?.numero || ''}</strong> - Série: <strong>${nota?.serie || '1'}</strong></div>
+            <div>Emissão: ${nota?.data_emissao ? new Date(nota.data_emissao).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR')}</div>
+            <div>Protocolo de Autorização: <strong>${nota?.protocolo || 'AUTORIZADO'}</strong></div>
+        </div>
+
+        <div class="border-t text-center" style="font-size: 9px;">
+            <div>CHAVE DE ACESSO</div>
+            <div class="font-bold" style="letter-spacing: 0.5px; word-break: break-all;">${chaveFmt}</div>
+        </div>
+
+        ${!isNFe ? `
+        <div class="qr border-t">
+            <div>Consulte pela Chave de Acesso em:</div>
+            <div style="font-size:8px; word-break:break-all;">https://www.fazenda.${(emp.uf||'sp').toLowerCase()}.gov.br/nfce/consulta</div>
+            <img src="${qrImgSrc}" alt="QR Code SEFAZ">
+            <div style="font-size: 8px;">Consulte via Leitor de QR Code</div>
+        </div>
+        ` : ''}
+
+        <div class="border-t text-center" style="font-size: 9px;">
+            <div>CONSUMIDOR: ${v.clienteNome || 'Consumidor Não Identificado'}</div>
+            ${v.clienteDoc ? `<div>CPF/CNPJ: ${v.clienteDoc}</div>` : ''}
+        </div>
+
+        <script>
+            window.onload = function() {
+                window.print();
+            };
+        </script>
+    </body>
+    </html>
+    `;
+
+    printWin.document.open();
+    printWin.document.write(html);
+    printWin.document.close();
+}
+window.imprimirDanfeNativo = imprimirDanfeNativo;
+

@@ -2229,7 +2229,12 @@ function processarXMLReal(event) {
                 let pesoValor = window.tempXMLData.totalNF > 0 ? (p.vTotalItemNaNota / window.tempXMLData.totalNF) : 0;
                 let freteRateado = window.tempXMLData.freteExtra * pesoValor;
                 p.custoFinal = p.qCom > 0 ? ((p.vTotalItemNaNota + freteRateado) / p.qCom) : 0;
-                p.precoVendaSug = p.custoFinal * (1 + (p.margemAtual / 100));
+                if(match && match.preco > 0) {
+                      p.precoVendaSug = match.preco;
+                      p.margemAtual = p.custoFinal > 0 ? ((p.precoVendaSug - p.custoFinal) / p.custoFinal) * 100 : 0;
+                  } else {
+                      p.precoVendaSug = p.custoFinal * (1 + (p.margemAtual / 100));
+                  }
             });
 
             document.getElementById('xml-frete-extra').value = 0; 
@@ -2290,7 +2295,11 @@ function recalcularRateioXML() {
     window.tempXMLData.produtosXML.forEach(p => { 
         let pesoValor = window.tempXMLData.totalNF > 0 ? (p.vTotalItemNaNota / window.tempXMLData.totalNF) : 0; 
         p.custoFinal = p.qCom > 0 ? ((p.vTotalItemNaNota + (window.tempXMLData.freteExtra * pesoValor)) / p.qCom) : 0; 
-        p.precoVendaSug = p.custoFinal * (1 + (p.margemAtual / 100)); 
+        if(p.statusDB === 'ATUALIZAR' && p.precoVendaSug > 0) {
+            p.margemAtual = p.custoFinal > 0 ? ((p.precoVendaSug - p.custoFinal) / p.custoFinal) * 100 : 0;
+        } else {
+            p.precoVendaSug = p.custoFinal * (1 + (p.margemAtual / 100)); 
+        } 
     });
     renderTelaConferenciaXML();
 }
@@ -2334,7 +2343,7 @@ function removeParcelaXML(idx) {
 
 function xmlAtualizarValores(i, campo, val) {
     const p = window.tempXMLData.produtosXML[i]; val = parseInputMoney(val) || 0;
-    if(campo === 'custo') { p.custoFinal = val; p.precoVendaSug = p.custoFinal * (1 + (p.margemAtual/100)); }
+    if(campo === 'custo') { p.custoFinal = val; if(p.statusDB === 'ATUALIZAR' && p.precoVendaSug > 0) { p.margemAtual = p.custoFinal > 0 ? ((p.precoVendaSug - p.custoFinal) / p.custoFinal) * 100 : 0; } else { p.precoVendaSug = p.custoFinal * (1 + (p.margemAtual/100)); } }
     if(campo === 'margem') { p.margemAtual = val; p.precoVendaSug = p.custoFinal * (1 + (p.margemAtual/100)); }
     if(campo === 'preco') { p.precoVendaSug = val; if(p.custoFinal>0) p.margemAtual = ((p.precoVendaSug-p.custoFinal)/p.custoFinal)*100; }
     

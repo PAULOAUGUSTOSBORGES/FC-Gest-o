@@ -1271,3 +1271,192 @@ window.initResponsiveTables = initResponsiveTables;
     });
 })();
 
+// ==========================================
+// FUNÇÕES FISCAIS UNIVERSAIS (DANFE & XML NATIVOS - SEFAZ DIRETO)
+// ==========================================
+async function obterVendaFiscal(vendaOrId) {
+    if (vendaOrId && typeof vendaOrId === 'object') return vendaOrId;
+    const vId = String(vendaOrId || '');
+    if (window.vendaAtualImpressao && String(window.vendaAtualImpressao.id) === vId) {
+        return window.vendaAtualImpressao;
+    }
+    if (typeof vendasGlobais !== 'undefined' && Array.isArray(vendasGlobais)) {
+        const found = vendasGlobais.find(x => String(x.id) === vId);
+        if (found) return found;
+    }
+    if (typeof db !== 'undefined' && Array.isArray(db.vendas)) {
+        const found = db.vendas.find(x => String(x.id) === vId);
+        if (found) return found;
+    }
+    if (typeof firebase !== 'undefined' && firebase.firestore && vId) {
+        try {
+            const snap = await firebase.firestore().collection('vendas').doc(vId).get();
+            if (snap.exists) return { id: snap.id, ...snap.data() };
+        } catch (e) {
+            console.warn('Erro ao buscar venda no Firestore:', e);
+        }
+    }
+    return null;
+}
+
+async function imprimirDanfeNativo(vendaOrId, tipo = 'NFC-e') {
+    const v = await obterVendaFiscal(vendaOrId);
+    if (!v) {
+        if (typeof showToast === 'function') showToast('Venda não encontrada para impressão fiscal.', 'error');
+        else alert('Venda não encontrada para impressão fiscal.');
+        return;
+    }
+
+    const isNFe = (tipo === 'NF-e' || tipo === 'nfe' || tipo === '55');
+    const nota = isNFe ? (v.nfe || {}) : (v.nfce || {});
+    const emp = (typeof db !== 'undefined' && db.config?.empresa) ? db.config.empresa : {};
+    const chave = nota.chave_nfe || nota.chave_nfce || v.fiscal_chave || '';
+    const chaveFmt = chave ? chave.replace(/(\d{4})/g, '$1 ').trim() : 'EM PROCESSAMENTO';
+    const qrCodeUrl = nota.qr_code_url || v.fiscal_qrcode_url || (chave ? `https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx?p=${chave}` : '');
+    const qrImgSrc = qrCodeUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrCodeUrl)}` : '';
+
+    const printWin = window.open('', '_blank', 'width=460,height=700');
+    if (!printWin) {
+        if (typeof showToast === 'function') showToast('Por favor, autorize pop-ups para imprimir o DANFE.', 'warning');
+        else alert('Por favor, autorize pop-ups para imprimir o DANFE.');
+        return;
+    }
+
+    const itensList = v.itens || v.produtos || [];
+    const itensHtml = itensList.map((it, i) => {
+        const qtd = Number(it.quantidade || it.qtd || 1);
+        const preco = Number(it.preco || it.precoUnitario || 0);
+        return `
+        <tr>
+            <td style="font-size:10px; padding:2px 0;">${i+1} ${escapeHtml(it.nome || it.descricao || 'Produto')}</td>
+            <td style="font-size:10px; text-align:right;">${qtd} ${escapeHtml(it.unidade || 'UN')}</td>
+            <td style="font-size:10px; text-align:right;">${preco.toFixed(2)}</td>
+            <td style="font-size:10px; text-align:right; font-weight:bold;">${(qtd * preco).toFixed(2)}</td>
+        </tr>
+        `;
+    }).join('');
+
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>DANFE ${isNFe ? 'NF-e' : 'NFC-e'} - Nº ${nota.numero || v.id}</title>
+        <style>
+            @page { margin: 2mm; size: ${isNFe ? 'A4 portrait' : '80mm auto'}; }
+            body { font-family: monospace, sans-serif; font-size: 11px; margin: 0; padding: 4mm; color: #000; width: ${isNFe ? '180mm' : '72mm'}; }
+            .text-center { text-align: center; }
+            .font-bold { font-weight: bold; }
+            .border-b { border-bottom: 1px dashed #000; padding-bottom: 4px; margin-bottom: 4px; }
+            .border-t { border-top: 1px dashed #000; padding-top: 4px; margin-top: 4px; }
+            table { width: 100%; border-collapse: collapse; }
+            .qr { text-align: center; margin: 8px 0; }
+            .qr img { width: 140px; height: 140px; }
+        </style>
+    </head>
+    <body>
+        <div class="text-center border-b">
+            <div class="font-bold" style="font-size: 13px;">${escapeHtml(emp.nomeFantasia || emp.razaoSocial || emp.nome || 'EMPRESA COMERCIAL')}</div>
+            <div>CNPJ: ${escapeHtml(emp.cnpj || '00.000.000/0000-00')} - IE: ${escapeHtml(emp.ie || 'ISENTO')}</div>
+            <div>${escapeHtml(emp.logradouro || emp.rua || '')}, ${escapeHtml(emp.numero || '')} - ${escapeHtml(emp.cidade || '')}/${escapeHtml(emp.uf || '')}</div>
+        </div>
+
+        <div class="text-center font-bold border-b" style="padding: 2px 0;">
+            DANFE ${isNFe ? 'NF-e - Documento Auxiliar da Nota Fiscal Eletrônica' : 'NFC-e - Documento Auxiliar da Nota Fiscal de Consumidor Eletrônica'}
+            <div style="font-size: 9px; font-weight: normal;">Não permite aproveitamento de crédito de ICMS</div>
+        </div>
+
+        <table>
+            <thead>
+                <tr style="border-bottom: 1px solid #000; font-size: 9px;">
+                    <th style="text-align:left;">ITEM/DESC</th>
+                    <th style="text-align:right;">QTD</th>
+                    <th style="text-align:right;">UNIT</th>
+                    <th style="text-align:right;">TOTAL</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${itensHtml}
+            </tbody>
+        </table>
+
+        <div class="border-t">
+            <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:12px;">
+                <span>VALOR TOTAL R$</span>
+                <span>${Number(v.totalLiquido || v.tot || v.valorLiquido || v.total || 0).toFixed(2)}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:10px;">
+                <span>Forma de Pagamento</span>
+                <span>${escapeHtml(v.formaPagamento || v.pagamento || 'Dinheiro')}</span>
+            </div>
+        </div>
+
+        <div class="border-t text-center" style="font-size: 10px;">
+            <div>EMISSÃO NORMAL | AMBIENTE: ${(nota.ambiente || emp.ambienteFiscal || 'homologacao').toUpperCase()}</div>
+            <div>Número: <strong>${nota.numero || '1'}</strong> - Série: <strong>${nota.serie || '1'}</strong></div>
+            <div>Emissão: ${nota.data_emissao ? new Date(nota.data_emissao).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR')}</div>
+            <div>Protocolo: <strong>${nota.protocolo || 'AUTORIZADO'}</strong></div>
+        </div>
+
+        <div class="border-t text-center" style="font-size: 9px;">
+            <div>CHAVE DE ACESSO</div>
+            <div class="font-bold" style="letter-spacing: 0.5px; word-break: break-all;">${chaveFmt}</div>
+        </div>
+
+        ${(!isNFe && qrImgSrc) ? `
+        <div class="qr border-t">
+            <div>Consulte pela Chave de Acesso em:</div>
+            <div style="font-size:8px; word-break:break-all;">https://www.fazenda.${(emp.uf||'sp').toLowerCase()}.gov.br/nfce/consulta</div>
+            <img src="${qrImgSrc}" alt="QR Code SEFAZ">
+            <div style="font-size: 8px;">Consulte via Leitor de QR Code</div>
+        </div>` : ''}
+
+        <div class="text-center" style="font-size: 9px; margin-top: 4px;">
+            Tributos Totais Incidentes (Lei Federal 12.741/2012)
+        </div>
+
+        <script>
+            window.onload = function() {
+                window.print();
+            };
+        </script>
+    </body>
+    </html>
+    `;
+
+    printWin.document.open();
+    printWin.document.write(html);
+    printWin.document.close();
+}
+
+async function baixarXmlNativo(vendaOrId, tipo = 'NFC-e') {
+    const v = await obterVendaFiscal(vendaOrId);
+    if (!v) {
+        if (typeof showToast === 'function') showToast('Venda não encontrada para baixar XML.', 'error');
+        else alert('Venda não encontrada para baixar XML.');
+        return;
+    }
+    const isNFe = (tipo === 'NF-e' || tipo === 'nfe' || tipo === '55');
+    const nota = isNFe ? (v.nfe || {}) : (v.nfce || {});
+    const xml = nota.xml_conteudo || v.fiscal_xml || (v.nfce?.xml_conteudo) || (v.nfe?.xml_conteudo);
+    if (!xml) {
+        if (typeof showToast === 'function') showToast('Conteúdo do arquivo XML não encontrado no banco de dados.', 'warning');
+        else alert('Conteúdo do arquivo XML não encontrado no banco de dados.');
+        return;
+    }
+    const chave = nota.chave_nfe || nota.chave_nfce || v.fiscal_chave || (isNFe ? v.nfe?.chave_nfe : v.nfce?.chave_nfe) || `nota_${v.id}`;
+    const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${chave}.xml`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    if (typeof showToast === 'function') showToast('Download do XML concluído!', 'success');
+}
+
+window.imprimirDanfeNativo = imprimirDanfeNativo;
+window.baixarXmlNativo = baixarXmlNativo;
+

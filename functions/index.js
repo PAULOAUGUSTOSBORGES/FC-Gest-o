@@ -1,6 +1,7 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const axios = require("axios");
+const { emitirNotaDiretoSefaz, cancelarNotaDiretoSefaz } = require("./fiscal/sefaz_engine");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -16,7 +17,7 @@ const FOCUS_NFE_API_URL = "https://api.focusnfe.com.br/v2/nfce";
  * Função para Emitir NFC-e (Cupom Fiscal)
  * Chamada pelo Frontend passando { vendaId: '...' }
  */
-exports.chamarGemini = functions.https.onCall(async (data, context) => {
+exports.chamarGemini = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
     
     // Validar se tem permissão (Admin, Gestão ou Marketing)
@@ -222,7 +223,7 @@ async function montarItensFocus(produtosVenda) {
 // ==========================================
 // 1. EMISSÃO DE NFC-e (CUPOM FISCAL / MOD 65)
 // ==========================================
-exports.emitirNFCe = functions.https.onCall(async (data, context) => {
+exports.emitirNFCe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
 
     // Validação de permissão
@@ -244,12 +245,59 @@ exports.emitirNFCe = functions.https.onCall(async (data, context) => {
         if (!config || !config.empresa) throw new functions.https.HttpsError("failed-precondition", "Configurações da empresa incompletas.");
         const empresa = config.empresa;
 
-        // 2. Configurações da Focus NFe
+        const produtos = venda.itens || venda.produtos || [];
+        if (produtos.length === 0) throw new functions.https.HttpsError("invalid-argument", "A venda não possui itens.");
+
+        // VERIFICA SE DEVE EMITIR VIA SEFAZ DIRETO (GRÁTIS) OU VIA FOCUS NFE
+        const motorFiscal = empresa.motorFiscal || (empresa.certificadoBase64 ? 'sefaz_direto' : 'focus');
+
+        if (motorFiscal === 'sefaz_direto') {
+            console.log(`Emitindo NFC-e via SEFAZ Direto para a venda ${vendaId}...`);
+            let clienteData = null;
+            if (venda.clienteId && venda.clienteId !== '0') {
+                const cliSnap = await db.collection("clientes").doc(String(venda.clienteId)).get();
+                if (cliSnap.exists) clienteData = cliSnap.data();
+            }
+
+            const resultadoSefaz = await emitirNotaDiretoSefaz('65', venda, empresa, produtos, clienteData);
+
+            const dadosRetorno = {
+                tipo: "NFC-e",
+                modelo: "65",
+                status_sefaz: resultadoSefaz.sucesso ? "autorizado" : "erro_autorizacao",
+                mensagem_sefaz: resultadoSefaz.mensagemSefaz || "",
+                chave_nfe: resultadoSefaz.chave || "",
+                numero: resultadoSefaz.numero || "",
+                serie: resultadoSefaz.serie || (empresa.serieNFCe || "1"),
+                protocolo: resultadoSefaz.protocolo || "",
+                ambiente: resultadoSefaz.ambiente || empresa.ambienteFiscal || "homologacao",
+                data_emissao: resultadoSefaz.dataAutorizacao || new Date().toISOString(),
+                qr_code_url: resultadoSefaz.qrCodeUrl || "",
+                xml_conteudo: resultadoSefaz.xml || "",
+                motor: "sefaz_direto"
+            };
+
+            await db.collection("vendas").doc(String(vendaId)).set({
+                nfce: dadosRetorno,
+                status_fiscal: dadosRetorno.status_sefaz,
+                tipo_fiscal: "NFC-e",
+                fiscal_chave: dadosRetorno.chave_nfe,
+                fiscal_xml: dadosRetorno.xml_conteudo,
+                fiscal_qrcode_url: dadosRetorno.qr_code_url,
+                fiscal_motor: "sefaz_direto"
+            }, { merge: true });
+
+            return {
+                success: resultadoSefaz.sucesso,
+                message: resultadoSefaz.sucesso ? "NFC-e autorizada com sucesso via SEFAZ Direto!" : resultadoSefaz.mensagemSefaz,
+                data: dadosRetorno
+            };
+        }
+
+        // 2. Configurações da Focus NFe (Fallback)
         const focusConf = getFocusConfig(empresa);
 
         // 3. Montar Itens e Pagamentos
-        const produtos = venda.itens || venda.produtos || [];
-        if (produtos.length === 0) throw new functions.https.HttpsError("invalid-argument", "A venda não possui itens.");
         const itensFocus = await montarItensFocus(produtos);
         const formas_pagamento = mapearFormasPagamento(venda);
 
@@ -358,7 +406,7 @@ exports.emitirNFCe = functions.https.onCall(async (data, context) => {
 // ==========================================
 // 2. EMISSÃO DE NF-e (MODELO 55 - NOTA COMPLETA)
 // ==========================================
-exports.emitirNFe = functions.https.onCall(async (data, context) => {
+exports.emitirNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
 
     // Validação de permissão
@@ -426,6 +474,45 @@ exports.emitirNFe = functions.https.onCall(async (data, context) => {
         // 4. Montar Itens e Pagamentos
         const produtos = venda.itens || venda.produtos || [];
         if (produtos.length === 0) throw new functions.https.HttpsError("invalid-argument", "A venda não possui itens.");
+
+        // VERIFICA SE DEVE EMITIR VIA SEFAZ DIRETO (GRÁTIS) OU VIA FOCUS NFE
+        const motorFiscal = empresa.motorFiscal || (empresa.certificadoBase64 ? 'sefaz_direto' : 'focus');
+
+        if (motorFiscal === 'sefaz_direto') {
+            console.log(`Emitindo NF-e (Mod 55) via SEFAZ Direto para a venda ${vendaId}...`);
+            const resultadoSefaz = await emitirNotaDiretoSefaz('55', venda, empresa, produtos, clienteData);
+
+            const dadosRetorno = {
+                tipo: "NF-e",
+                modelo: "55",
+                status_sefaz: resultadoSefaz.sucesso ? "autorizado" : "erro_autorizacao",
+                mensagem_sefaz: resultadoSefaz.mensagemSefaz || "",
+                chave_nfe: resultadoSefaz.chave || "",
+                numero: resultadoSefaz.numero || "",
+                serie: resultadoSefaz.serie || (empresa.serieNFe || "1"),
+                protocolo: resultadoSefaz.protocolo || "",
+                ambiente: resultadoSefaz.ambiente || empresa.ambienteFiscal || "homologacao",
+                data_emissao: resultadoSefaz.dataAutorizacao || new Date().toISOString(),
+                xml_conteudo: resultadoSefaz.xml || "",
+                motor: "sefaz_direto"
+            };
+
+            await db.collection("vendas").doc(String(vendaId)).set({
+                nfe: dadosRetorno,
+                status_fiscal: dadosRetorno.status_sefaz,
+                tipo_fiscal: "NF-e",
+                fiscal_chave: dadosRetorno.chave_nfe,
+                fiscal_xml: dadosRetorno.xml_conteudo,
+                fiscal_motor: "sefaz_direto"
+            }, { merge: true });
+
+            return {
+                success: resultadoSefaz.sucesso,
+                message: resultadoSefaz.sucesso ? "NF-e autorizada com sucesso via SEFAZ Direto!" : resultadoSefaz.mensagemSefaz,
+                data: dadosRetorno
+            };
+        }
+
         const itensFocus = await montarItensFocus(produtos);
         const formas_pagamento = mapearFormasPagamento(venda);
 
@@ -543,7 +630,7 @@ exports.emitirNFe = functions.https.onCall(async (data, context) => {
 // ==========================================
 // 3. CANCELAMENTO DE NOTA FISCAL (NF-e OU NFC-e)
 // ==========================================
-exports.cancelarNotaFiscal = functions.https.onCall(async (data, context) => {
+exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
 
     const funcSnap = await db.collection("funcionarios").doc(context.auth.uid).get();
@@ -565,6 +652,46 @@ exports.cancelarNotaFiscal = functions.https.onCall(async (data, context) => {
 
         const configSnap = await db.collection("fc_moveis").doc("config").get();
         const empresa = configSnap.data()?.empresa || {};
+
+        // VERIFICA SE DEVE CANCELAR VIA SEFAZ DIRETO OU VIA FOCUS NFE
+        const motorFiscal = empresa.motorFiscal || (empresa.certificadoBase64 ? 'sefaz_direto' : 'focus');
+        const chave = (tipoNormalizado === "nfe" ? venda.nfe?.chave_nfe : venda.nfce?.chave_nfe) || venda.fiscal_chave;
+        const protocolo = (tipoNormalizado === "nfe" ? venda.nfe?.protocolo : venda.nfce?.protocolo) || "";
+
+        if (motorFiscal === 'sefaz_direto' && chave) {
+            console.log(`Cancelando ${tipoNormalizado.toUpperCase()} via SEFAZ Direto (chave: ${chave})...`);
+            const resCanc = await cancelarNotaDiretoSefaz(chave, protocolo, justificativa.trim(), empresa, tipoNormalizado === "nfe" ? "55" : "65");
+            if (resCanc.sucesso) {
+                const dadosCancelamento = {
+                    status_sefaz: "cancelado",
+                    justificativa_cancelamento: justificativa.trim(),
+                    data_cancelamento: new Date().toISOString(),
+                    mensagem_cancelamento: resCanc.xMotivo || "Nota cancelada com sucesso na SEFAZ",
+                    protocolo_cancelamento: resCanc.nProt || ""
+                };
+
+                const updatePayload = {
+                    status_fiscal: "cancelado"
+                };
+                if (tipoNormalizado === "nfe") {
+                    updatePayload["nfe.status_sefaz"] = "cancelado";
+                    updatePayload["nfe.cancelamento"] = dadosCancelamento;
+                } else {
+                    updatePayload["nfce.status_sefaz"] = "cancelado";
+                    updatePayload["nfce.cancelamento"] = dadosCancelamento;
+                }
+
+                await db.collection("vendas").doc(String(vendaId)).update(updatePayload);
+                return {
+                    success: true,
+                    message: "Nota Fiscal cancelada com sucesso diretamente na SEFAZ!",
+                    data: dadosCancelamento
+                };
+            } else {
+                throw new functions.https.HttpsError("failed-precondition", `Rejeição SEFAZ no cancelamento (${resCanc.cStat}): ${resCanc.xMotivo}`);
+            }
+        }
+
         const focusConf = getFocusConfig(empresa);
 
         const refNota = (tipoNormalizado === "nfe" && venda.nfe?.referencia_uuid) 
@@ -620,7 +747,7 @@ exports.cancelarNotaFiscal = functions.https.onCall(async (data, context) => {
 // ==========================================
 // 4. CONSULTA DE STATUS NA SEFAZ (POLLING / REFRESH)
 // ==========================================
-exports.consultarStatusNota = functions.https.onCall(async (data, context) => {
+exports.consultarStatusNota = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
 
     try {
@@ -696,7 +823,7 @@ exports.consultarStatusNota = functions.https.onCall(async (data, context) => {
 // ==========================================
 // 5. CARTA DE CORREÇÃO ELETRÔNICA (CC-e PARA NF-e)
 // ==========================================
-exports.cartaCorrecaoNFe = functions.https.onCall(async (data, context) => {
+exports.cartaCorrecaoNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
 
     const funcSnap = await db.collection("funcionarios").doc(context.auth.uid).get();

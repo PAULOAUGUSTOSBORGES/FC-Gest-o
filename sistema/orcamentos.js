@@ -1950,11 +1950,30 @@ async function emitirNota(tipo) {
         statusContainer.classList.remove('border-blue-500', 'bg-blue-50');
         statusContainer.classList.add('border-emerald-500', 'bg-emerald-50');
         
-        let linkDanfe = result.data.caminho_danfe || result.data.caminho_xml_nota_fiscal;
+        const d = result.data || {};
+        const linkDanfe = d.danfe_url_completa || (d.caminho_danfe ? `https://api.focusnfe.com.br${d.caminho_danfe}` : '');
+        const linkXml = d.xml_url_completa || (d.caminho_xml_nota_fiscal ? `https://api.focusnfe.com.br${d.caminho_xml_nota_fiscal}` : '');
+        const vendaId = window.vendaAtualImpressao ? window.vendaAtualImpressao.id : '';
+        const isSefazDireto = d.motor === 'sefaz_direto' || (!linkDanfe && (d.status_sefaz === 'autorizado' || d.chave_nfe || d.chave_nfce));
+
+        let botoesFiscais = '';
+        if (linkDanfe) {
+            botoesFiscais += `<a href="${linkDanfe}" target="_blank" class="bg-emerald-600 text-white px-4 py-2 rounded font-bold text-sm hover:bg-emerald-700 inline-block">Imprimir DANFE</a>`;
+        } else if (isSefazDireto) {
+            botoesFiscais += `<button type="button" onclick="imprimirDanfeNativo('${vendaId}', '${tipo}')" class="bg-emerald-600 text-white px-4 py-2 rounded font-bold text-sm hover:bg-emerald-700 inline-block cursor-pointer"><i class="fa-solid fa-print"></i> Imprimir DANFE</button>`;
+        }
+
+        if (linkXml) {
+            botoesFiscais += `<a href="${linkXml}" target="_blank" download class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded font-bold text-sm inline-block"><i class="fa-solid fa-download"></i> Baixar XML</a>`;
+        } else if (isSefazDireto) {
+            botoesFiscais += `<button type="button" onclick="baixarXmlNativo('${vendaId}', '${tipo}')" class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded font-bold text-sm inline-block cursor-pointer"><i class="fa-solid fa-download"></i> Baixar XML</button>`;
+        }
         
         statusContainer.innerHTML = `
             <p class="text-emerald-700 font-bold mb-2"><i class="fa-solid fa-check-circle"></i> Nota Autorizada!</p>
-            ${linkDanfe ? `<a href="https://api.focusnfe.com.br${linkDanfe}" target="_blank" class="bg-emerald-600 text-white px-4 py-2 rounded font-bold text-sm hover:bg-emerald-700 inline-block">Imprimir DANFE</a>` : ''}
+            <div class="flex flex-wrap items-center justify-center gap-2 mt-2">
+                ${botoesFiscais}
+            </div>
         `;
         showToast("Nota emitida com sucesso!", "success");
 

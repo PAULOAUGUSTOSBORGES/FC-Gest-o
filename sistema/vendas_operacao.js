@@ -1958,13 +1958,27 @@ async function emitirNota(tipo) {
             const linkXml = d.xml_url_completa || (d.caminho_xml_nota_fiscal ? `https://api.focusnfe.com.br${d.caminho_xml_nota_fiscal}` : '');
             const numNota = d.numero ? ` Nº ${d.numero}` : '';
             const statusTexto = (d.status_sefaz || 'autorizado').toUpperCase();
+            const vendaId = window.vendaAtualImpressao ? window.vendaAtualImpressao.id : '';
+            const isSefazDireto = d.motor === 'sefaz_direto' || (!linkDanfe && (d.status_sefaz === 'autorizado' || d.chave_nfe || d.chave_nfce));
+
+            let botoesFiscais = '';
+            if (linkDanfe) {
+                botoesFiscais += `<a href="${linkDanfe}" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1 shadow-sm transition-colors"><i class="fa-solid fa-print"></i> Imprimir DANFE</a>`;
+            } else if (isSefazDireto) {
+                botoesFiscais += `<button type="button" onclick="imprimirDanfeNativo('${vendaId}', '${tipo}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1 shadow-sm transition-colors cursor-pointer"><i class="fa-solid fa-print"></i> Imprimir DANFE</button>`;
+            }
+
+            if (linkXml) {
+                botoesFiscais += `<a href="${linkXml}" target="_blank" download class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1 shadow-sm transition-colors"><i class="fa-solid fa-download"></i> Baixar XML</a>`;
+            } else if (isSefazDireto) {
+                botoesFiscais += `<button type="button" onclick="baixarXmlNativo('${vendaId}', '${tipo}')" class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1 shadow-sm transition-colors cursor-pointer"><i class="fa-solid fa-download"></i> Baixar XML</button>`;
+            }
             
             statusContainer.innerHTML = `
                 <div class="text-center">
                     <p class="text-emerald-700 font-bold text-xs mb-1.5"><i class="fa-solid fa-circle-check mr-1"></i> ${tipo.toUpperCase()}${numNota} (${statusTexto})</p>
                     <div class="flex flex-wrap items-center justify-center gap-2 mt-2">
-                        ${linkDanfe ? `<a href="${linkDanfe}" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1 shadow-sm transition-colors"><i class="fa-solid fa-print"></i> Imprimir DANFE</a>` : ''}
-                        ${linkXml ? `<a href="${linkXml}" target="_blank" download class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1 shadow-sm transition-colors"><i class="fa-solid fa-download"></i> Baixar XML</a>` : ''}
+                        ${botoesFiscais}
                     </div>
                 </div>
             `;
@@ -2624,20 +2638,35 @@ window.reimprimirVenda = function(id) {
                     const bNfe = document.getElementById('btn-emitir-nfe');
                     
                     const docFisc = v.nfe || v.nfce;
-                    if (docFisc && (docFisc.danfe_url_completa || docFisc.caminho_danfe)) {
+                    const chaveFisc = docFisc?.chave_nfe || docFisc?.chave_nfce || v.fiscal_chave;
+                    if (docFisc && (docFisc.danfe_url_completa || docFisc.caminho_danfe || docFisc.status_sefaz === 'autorizado' || chaveFisc)) {
                         if (fStatus) {
                             fStatus.classList.remove('hidden', 'border-red-500', 'bg-red-50', 'border-blue-500', 'bg-blue-50');
                             fStatus.classList.add('border-emerald-500', 'bg-emerald-50');
-                            const linkDanfe = docFisc.danfe_url_completa || `https://api.focusnfe.com.br${docFisc.caminho_danfe}`;
+                            const linkDanfe = docFisc.danfe_url_completa || (docFisc.caminho_danfe ? `https://api.focusnfe.com.br${docFisc.caminho_danfe}` : '');
                             const linkXml = docFisc.xml_url_completa || (docFisc.caminho_xml_nota_fiscal ? `https://api.focusnfe.com.br${docFisc.caminho_xml_nota_fiscal}` : '');
                             const numNota = docFisc.numero ? ` Nº ${docFisc.numero}` : '';
                             const statusTexto = (docFisc.status_sefaz || 'autorizado').toUpperCase();
+                            const isSefazDireto = docFisc.motor === 'sefaz_direto' || (!linkDanfe && (docFisc.status_sefaz === 'autorizado' || chaveFisc));
+
+                            let botoesFiscais = '';
+                            if (linkDanfe) {
+                                botoesFiscais += `<a href="${linkDanfe}" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1 shadow-sm transition-colors"><i class="fa-solid fa-print"></i> Imprimir DANFE</a>`;
+                            } else if (isSefazDireto) {
+                                botoesFiscais += `<button type="button" onclick="imprimirDanfeNativo('${v.id}', '${docFisc.tipo || (v.nfe ? 'nfe' : 'nfce')}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1 shadow-sm transition-colors cursor-pointer"><i class="fa-solid fa-print"></i> Imprimir DANFE</button>`;
+                            }
+
+                            if (linkXml) {
+                                botoesFiscais += `<a href="${linkXml}" target="_blank" download class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1 shadow-sm transition-colors"><i class="fa-solid fa-download"></i> Baixar XML</a>`;
+                            } else if (isSefazDireto) {
+                                botoesFiscais += `<button type="button" onclick="baixarXmlNativo('${v.id}', '${docFisc.tipo || (v.nfe ? 'nfe' : 'nfce')}')" class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1 shadow-sm transition-colors cursor-pointer"><i class="fa-solid fa-download"></i> Baixar XML</button>`;
+                            }
+
                             fStatus.innerHTML = `
                                 <div class="text-center">
                                     <p class="text-emerald-700 font-bold text-xs mb-1.5"><i class="fa-solid fa-circle-check mr-1"></i> ${docFisc.tipo || 'NOTA'}${numNota} (${statusTexto})</p>
                                     <div class="flex flex-wrap items-center justify-center gap-2 mt-2">
-                                        <a href="${linkDanfe}" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1 shadow-sm transition-colors"><i class="fa-solid fa-print"></i> Imprimir DANFE</a>
-                                        ${linkXml ? `<a href="${linkXml}" target="_blank" download class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1 shadow-sm transition-colors"><i class="fa-solid fa-download"></i> Baixar XML</a>` : ''}
+                                        ${botoesFiscais}
                                     </div>
                                 </div>
                             `;

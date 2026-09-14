@@ -237,6 +237,8 @@ function carregarConfiguracoesNaTela() {
         { prop: 'crt', id: 'emp-crt' },
         { prop: 'cscToken', id: 'emp-csc-token' },
         { prop: 'cscId', id: 'emp-csc-id' },
+        { prop: 'motorFiscal', id: 'emp-fiscal-motor', default: 'sefaz_direto' },
+        { prop: 'certificadoSenha', id: 'emp-cert-senha' },
         { prop: 'focusToken', id: 'emp-focus-token' },
         { prop: 'ambienteFiscal', id: 'emp-fiscal-ambiente', default: 'homologacao' },
         { prop: 'serieNFe', id: 'emp-serie-nfe', default: '1' },
@@ -251,6 +253,23 @@ function carregarConfiguracoesNaTela() {
             el.value = emp[prop] !== undefined ? emp[prop] : (defVal || '');
         }
     });
+
+    if (document.getElementById('emp-fiscal-motor')) {
+        const m = emp.motorFiscal || 'sefaz_direto';
+        document.getElementById('emp-fiscal-motor').value = m;
+        alternarCamposMotorFiscal(m);
+    }
+
+    if (emp.certificadoBase64 && document.getElementById('emp-cert-base64')) {
+        document.getElementById('emp-cert-base64').value = emp.certificadoBase64;
+        if (document.getElementById('emp-cert-nome')) {
+            document.getElementById('emp-cert-nome').value = emp.certificadoNome || 'certificado.pfx';
+        }
+        const statusEl = document.getElementById('emp-cert-status');
+        if (statusEl) {
+            statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> Certificado A1 ativo: <strong>${emp.certificadoNome || 'Arquivo .pfx salvo'}</strong>`;
+        }
+    }
 
     if (document.getElementById('emp-fiscal-ativo')) {
         document.getElementById('emp-fiscal-ativo').checked = emp.fiscalAtivo !== false;
@@ -345,6 +364,38 @@ function processarLogoEmpresa(event) {
     }; reader.readAsDataURL(file);
 }
 
+function alternarCamposMotorFiscal(motor) {
+    const secaoSefaz = document.getElementById('secao-sefaz-direto');
+    const secaoFocus = document.getElementById('secao-focus-api');
+    if (motor === 'focus') {
+        if (secaoSefaz) secaoSefaz.classList.add('hidden');
+        if (secaoFocus) secaoFocus.classList.remove('hidden');
+    } else {
+        if (secaoSefaz) secaoSefaz.classList.remove('hidden');
+        if (secaoFocus) secaoFocus.classList.add('hidden');
+    }
+}
+window.alternarCamposMotorFiscal = alternarCamposMotorFiscal;
+
+function processarCertificadoA1(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const base64 = e.target.result.split(',')[1];
+        const elBase = document.getElementById('emp-cert-base64');
+        const elNome = document.getElementById('emp-cert-nome');
+        if (elBase) elBase.value = base64;
+        if (elNome) elNome.value = file.name;
+        const statusEl = document.getElementById('emp-cert-status');
+        if (statusEl) {
+            statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> Certificado A1 pronto para salvar: <strong>${file.name}</strong> (${(file.size / 1024).toFixed(1)} KB)`;
+        }
+    };
+    reader.readAsDataURL(file);
+}
+window.processarCertificadoA1 = processarCertificadoA1;
+
 async function salvarConfiguracoes() {
     if(!db.config) db.config = {};
     
@@ -370,6 +421,10 @@ async function salvarConfiguracoes() {
         cscToken: document.getElementById('emp-csc-token') ? document.getElementById('emp-csc-token').value.trim() : '',
         cscId: document.getElementById('emp-csc-id') ? document.getElementById('emp-csc-id').value.trim() : '',
         fiscalAtivo: document.getElementById('emp-fiscal-ativo') ? document.getElementById('emp-fiscal-ativo').checked : true,
+        motorFiscal: document.getElementById('emp-fiscal-motor') ? document.getElementById('emp-fiscal-motor').value : 'sefaz_direto',
+        certificadoBase64: document.getElementById('emp-cert-base64') ? document.getElementById('emp-cert-base64').value : '',
+        certificadoNome: document.getElementById('emp-cert-nome') ? document.getElementById('emp-cert-nome').value : '',
+        certificadoSenha: document.getElementById('emp-cert-senha') ? document.getElementById('emp-cert-senha').value.trim() : '',
         ambienteFiscal: document.getElementById('emp-fiscal-ambiente') ? document.getElementById('emp-fiscal-ambiente').value : 'homologacao',
         focusToken: document.getElementById('emp-focus-token') ? document.getElementById('emp-focus-token').value.trim() : '',
         serieNFe: document.getElementById('emp-serie-nfe') ? document.getElementById('emp-serie-nfe').value.trim() : '1',
