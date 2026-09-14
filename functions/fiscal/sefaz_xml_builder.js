@@ -4,6 +4,7 @@
 // ==============================================================
 
 const { CODIGOS_UF } = require('./sefaz_urls');
+const { gerarUrlQrCodeNFCe } = require('./sefaz_protocol');
 
 /**
  * Calcula o Dígito Verificador (DV) da Chave de Acesso usando Módulo 11 (pesos 2 a 9)
@@ -22,17 +23,33 @@ function calcularDV(chave43) {
 }
 
 /**
- * Formata data no padrão ISO com timezone brasileiro (-03:00)
+ * Formata data no padrão ISO com timezone brasileiro de Brasília (-03:00)
+ * Independente do fuso do servidor onde a função executa (ex: us-central1 em UTC)
  */
 function formatarDataHoraSefaz(data = new Date()) {
     const d = new Date(data);
-    const pad = (n) => String(n).padStart(2, '0');
-    const yyyy = d.getFullYear();
-    const mm = pad(d.getMonth() + 1);
-    const dd = pad(d.getDate());
-    const hh = pad(d.getHours());
-    const mi = pad(d.getMinutes());
-    const ss = pad(d.getSeconds());
+    const formatter = new Intl.DateTimeFormat('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    });
+
+    const parts = formatter.formatToParts(d);
+    const getPart = (type) => parts.find(p => p.type === type)?.value || '00';
+
+    const yyyy = getPart('year');
+    const mm = getPart('month');
+    const dd = getPart('day');
+    let hh = getPart('hour');
+    if (hh === '24') hh = '00';
+    const mi = getPart('minute');
+    const ss = getPart('second');
+
     return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}-03:00`;
 }
 
@@ -57,8 +74,37 @@ function apenasDigitos(val) {
 }
 
 /**
+ * Extrai o código oficial da bandeira do cartão conforme tabela da SEFAZ
+ * 01=Visa, 02=Mastercard, 03=Amex, 04=Sorocred, 05=Diners, 06=Elo, 07=Hipercard, 99=Outros
+ */
+function extrairBandeira(metodo = '') {
+    const m = String(metodo || '').toUpperCase();
+    if (m.includes('VISA')) return '01';
+    if (m.includes('MASTER')) return '02';
+    if (m.includes('AMEX') || m.includes('AMERICAN')) return '03';
+    if (m.includes('SORO')) return '04';
+    if (m.includes('DINERS')) return '05';
+    if (m.includes('ELO')) return '06';
+    if (m.includes('HIPER')) return '07';
+    return '99'; // Outros
+}
+
+/**
+ * Gera a tag <card> para operações eletrônicas de cartão
+ * Conforme MOC 4.00 e Regra YA04-10: se não integrado (POS avulso), exige tpIntegra=2 e tBand
+ */
+function gerarCardTag(codigo, metodo = '') {
+    if (codigo === '03' || codigo === '04') {
+        const tBand = extrairBandeira(metodo);
+        return `\n            <card>\n                <tpIntegra>2</tpIntegra>\n                <tBand>${tBand}</tBand>\n            </card>`;
+    }
+    return '';
+}
+
+/**
  * Mapeia a forma de pagamento interna para o código oficial da SEFAZ e sua respectiva descrição
  * Conforme MOC 4.00 e Nota Técnica 2020.006 (campo xPag obrigatório para tPag=99)
+ * Para PIX no varejo (POS/QR Code estático de balcão), código oficial é 20 (evita grupo de cartões)
  */
 function mapearFormaPagamentoSefaz(forma) {
     const f = String(forma || '')
@@ -79,7 +125,7 @@ function mapearFormaPagamentoSefaz(forma) {
     if (f.includes('duplicata')) return { codigo: '14', descricao: 'Duplicata Mercantil' };
     if (f.includes('boleto')) return { codigo: '15', descricao: 'Boleto Bancario' };
     if (f.includes('deposito')) return { codigo: '16', descricao: 'Deposito Bancario' };
-    if (f.includes('pix')) return { codigo: '17', descricao: 'PIX' };
+    if (f === '17' || f === '20' || f.includes('pix')) return { codigo: '20', descricao: 'Pagamento Instantaneo (PIX)' };
     if (f.includes('transferencia')) return { codigo: '18', descricao: 'Transferencia Bancaria' };
     if (f.includes('sem pagamento')) return { codigo: '90', descricao: 'Sem Pagamento' };
     
@@ -100,6 +146,7 @@ function construirXmlNota(dados) {
         cliente,
         modelo = '65', // '65' = NFC-e, '55' = NF-e
         ambiente = 'homologacao',
+        endpoints = {},
         numeroNota = null,
         serie = null
     } = dados;
@@ -109,7 +156,8 @@ function construirXmlNota(dados) {
     const tpAmb = ambiente === 'producao' ? '1' : '2';
     const nNF = numeroNota || (modelo === '65' ? (parseInt(empresa.proximoNumeroNFCe) || 1) : (parseInt(empresa.proximoNumeroNFe) || 1));
     const serieNF = serie || (modelo === '65' ? (parseInt(empresa.serieNFCe) || 1) : (parseInt(empresa.serieNFe) || 1));
-    const dhEmi = formatarDataHoraSefaz(venda.data || new Date());
+    // A data-hora de emissão da NFC-e deve ser o momento exato do envio (tolerância máxima de 5 minutos pela SEFAZ)
+    const dhEmi = formatarDataHoraSefaz(new Date());
     
     // Ano e Mês para chave
     const anoMes = dhEmi.substring(2, 4) + dhEmi.substring(5, 7);
@@ -304,10 +352,11 @@ function construirXmlNota(dados) {
             somaPagamentos += vItemPag;
 
             const xPagTag = codigo === '99' ? `\n            <xPag>${limparTexto(descricao || 'Outros').substring(0, 60)}</xPag>` : '';
+            const cardTag = gerarCardTag(codigo, met);
             detPagXml += `
         <detPag>
             <tPag>${codigo}</tPag>${xPagTag}
-            <vPag>${vItemPag.toFixed(2)}</vPag>
+            <vPag>${vItemPag.toFixed(2)}</vPag>${cardTag}
         </detPag>`;
         });
     } else {
@@ -315,11 +364,12 @@ function construirXmlNota(dados) {
         const formaTexto = venda.pag || venda.formaPagamento || venda.forma_pagamento || venda.pagamento || venda.metodo || 'Dinheiro';
         const { codigo, descricao } = mapearFormaPagamentoSefaz(formaTexto);
         const xPagTag = codigo === '99' ? `\n            <xPag>${limparTexto(descricao || 'Outros').substring(0, 60)}</xPag>` : '';
+        const cardTag = gerarCardTag(codigo, formaTexto);
         
         detPagXml = `
         <detPag>
             <tPag>${codigo}</tPag>${xPagTag}
-            <vPag>${vNF}</vPag>
+            <vPag>${vNF}</vPag>${cardTag}
         </detPag>`;
     }
 
@@ -333,8 +383,7 @@ function construirXmlNota(dados) {
     const infCpl = `${msgSimples} ${obsVenda}`.trim();
 
     // Montagem completa do XML
-    const xml = `<NFe xmlns="http://www.portalfiscal.inf.br/nfe">
-<infNFe Id="NFe${chaveAcesso}" versao="4.00">
+    const infNFeInner = `<infNFe Id="NFe${chaveAcesso}" versao="4.00">
     <ide>
         <cUF>${cUF}</cUF>
         <cNF>${cNF}</cNF>
@@ -403,8 +452,33 @@ function construirXmlNota(dados) {
     <infAdic>
         <infCpl>${infCpl}</infCpl>
     </infAdic>
-</infNFe>
-</NFe>`.trim();
+</infNFe>`;
+
+    let infNFeSupl = '';
+    if (modelo === '65') {
+        const qrCodeUrl = gerarUrlQrCodeNFCe({
+            chaveAcesso: chaveAcesso,
+            tpAmb: tpAmb,
+            cscId: empresa.cscId || '000001',
+            cscToken: empresa.cscToken || '',
+            qrCodeBaseUrl: endpoints.qrCodeUrl || 'https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx'
+        });
+        
+        // MOC 4.00 exige qrCode escapado (<![CDATA[ ... ]]>) e urlChave 
+        // A urlChave é a mesma do qrCode mas sem os parâmetros
+        const urlChave = (endpoints.qrCodeUrl || 'https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx').split('?')[0];
+
+        infNFeSupl = `
+<infNFeSupl>
+    <qrCode><![CDATA[${qrCodeUrl}]]></qrCode>
+    <urlChave>${urlChave}</urlChave>
+</infNFeSupl>`;
+    }
+
+    const xml = `<NFe xmlns="http://www.portalfiscal.inf.br/nfe">
+${infNFeInner}
+${infNFeSupl.trim()}
+</NFe>`.trim().replace(/\n+/g, '\n');
 
     return {
         xml,

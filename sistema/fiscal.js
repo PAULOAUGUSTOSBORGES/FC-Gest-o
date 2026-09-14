@@ -19,6 +19,16 @@ function inicializarFiscal() {
         if (dados && dados.empresa) {
             db.config = { ...db.config, empresa: { ...(db.config?.empresa || {}), ...dados.empresa } };
             atualizarBadgeAmbiente();
+            
+            // Atualiza os inputs de numeração manual
+            const elNFCe = document.getElementById('input-prox-nfce');
+            if (elNFCe && document.activeElement !== elNFCe) {
+                elNFCe.value = dados.empresa.proximoNumeroNFCe || 1;
+            }
+            const elNFe = document.getElementById('input-prox-nfe');
+            if (elNFe && document.activeElement !== elNFe) {
+                elNFe.value = dados.empresa.proximoNumeroNFe || 1;
+            }
         }
     });
 
@@ -64,6 +74,32 @@ function atualizarBadgeAmbiente() {
     } else {
         el.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1';
         el.innerHTML = '<i class="fa-solid fa-vial text-amber-600"></i> Homologação (Testes)';
+    }
+}
+
+// ==========================================
+// CONFIGURAÇÃO MANUAL DE NÚMEROS DE NOTA
+// ==========================================
+async function salvarProxNumero(tipo) {
+    const campo = tipo === 'NFCe' ? 'proximoNumeroNFCe' : 'proximoNumeroNFe';
+    const inputId = tipo === 'NFCe' ? 'input-prox-nfce' : 'input-prox-nfe';
+    const val = parseInt(document.getElementById(inputId)?.value);
+    
+    if (isNaN(val) || val <= 0) {
+        toast('Número inválido!', 'red');
+        return;
+    }
+
+    try {
+        await firestore.collection('fc_moveis').doc('config').set({
+            empresa: {
+                [campo]: val
+            }
+        }, { merge: true });
+        toast(`Próximo número ${tipo} atualizado para ${val}!`, 'green');
+    } catch (err) {
+        console.error('Erro ao salvar número:', err);
+        toast('Erro ao atualizar número.', 'red');
     }
 }
 
@@ -345,6 +381,9 @@ async function reemitirNota(vendaId, tipo) {
     const labelTipo = isNFe ? 'NF-e (Modelo 55)' : 'NFC-e (Modelo 65)';
 
     showToast(`Transmitindo ${labelTipo} à SEFAZ... aguarde.`, 'info');
+    const overlay = document.getElementById('overlay-comunicando-sefaz');
+    if (overlay) overlay.classList.remove('hidden');
+    if (overlay) overlay.classList.add('flex');
 
     try {
         const emitirFunc = firebase.functions().httpsCallable(tipoFuncao);
@@ -369,6 +408,9 @@ async function reemitirNota(vendaId, tipo) {
             else if (parsed.erros && parsed.erros.length > 0) msg = parsed.erros[0].mensagem;
         } catch(err) {}
         showToast(`Erro na emissão: ${msg}`, 'error');
+    } finally {
+        if (overlay) overlay.classList.add('hidden');
+        if (overlay) overlay.classList.remove('flex');
     }
 }
 window.reemitirNota = reemitirNota;
@@ -628,6 +670,10 @@ function renderVendasParaFaturar() {
 
 async function emitirNotaDireta(vendaId, tipo) {
     showToast(`Transmitindo ${tipo.toUpperCase()} à SEFAZ...`, 'info');
+    const overlay = document.getElementById('overlay-comunicando-sefaz');
+    if (overlay) overlay.classList.remove('hidden');
+    if (overlay) overlay.classList.add('flex');
+
     try {
         const func = firebase.functions().httpsCallable(tipo === 'nfce' ? 'emitirNFCe' : 'emitirNFe');
         const res = await func({ vendaId });
@@ -642,6 +688,9 @@ async function emitirNotaDireta(vendaId, tipo) {
             else if (parsed.erros && parsed.erros.length > 0) msg = parsed.erros[0].mensagem;
         } catch(err) {}
         showToast(`Erro ao emitir ${tipo.toUpperCase()}: ${msg}`, 'error');
+    } finally {
+        if (overlay) overlay.classList.add('hidden');
+        if (overlay) overlay.classList.remove('flex');
     }
 }
 

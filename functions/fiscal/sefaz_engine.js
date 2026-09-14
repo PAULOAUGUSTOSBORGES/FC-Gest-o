@@ -34,6 +34,7 @@ async function emitirNotaDiretoSefaz(modelo, venda, empresa, itens, cliente = nu
         cliente,
         modelo,
         ambiente,
+        endpoints,
         numeroNota: venda.numeroNotaFiscal || (modelo === '65' ? (parseInt(empresa.proximoNumeroNFCe) || 1) : (parseInt(empresa.proximoNumeroNFe) || 1)),
         serie: modelo === '65' ? (parseInt(empresa.serieNFCe) || 1) : (parseInt(empresa.serieNFe) || 1)
     });
@@ -45,6 +46,8 @@ async function emitirNotaDiretoSefaz(modelo, venda, empresa, itens, cliente = nu
         empresa.certificadoSenha || '',
         xmlGerado.chave
     );
+
+    console.log(`[SEFAZ DIRETO] Transmitindo nota ${xmlGerado.nNF} serie ${xmlGerado.serie}. Pagamento:`, xmlGerado.xml.match(/<pag>[\s\S]*?<\/pag>/)?.[0]);
 
     // 3. Transmite para a SEFAZ via mTLS
     const respostaSoap = await transmitirLoteSefaz(
