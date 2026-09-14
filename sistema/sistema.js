@@ -257,7 +257,9 @@ function carregarConfiguracoesNaTela() {
         { prop: 'focusToken', id: 'emp-focus-token' },
         { prop: 'ambienteFiscal', id: 'emp-fiscal-ambiente', default: 'homologacao' },
         { prop: 'serieNFe', id: 'emp-serie-nfe', default: '1' },
+        { prop: 'proximoNumeroNFe', id: 'emp-numero-nfe', default: 1 },
         { prop: 'serieNFCe', id: 'emp-serie-nfce', default: '1' },
+        { prop: 'proximoNumeroNFCe', id: 'emp-numero-nfce', default: 1 },
         { prop: 'naturezaOperacao', id: 'emp-natureza-operacao', default: 'VENDA DE MERCADORIA' },
         { prop: 'geminiKey', id: 'emp-gemini-key' }
     ];
@@ -493,7 +495,9 @@ async function salvarConfiguracoes() {
         ambienteFiscal: document.getElementById('emp-fiscal-ambiente') ? document.getElementById('emp-fiscal-ambiente').value : 'homologacao',
         focusToken: document.getElementById('emp-focus-token') ? document.getElementById('emp-focus-token').value.trim() : '',
         serieNFe: document.getElementById('emp-serie-nfe') ? document.getElementById('emp-serie-nfe').value.trim() : '1',
+        proximoNumeroNFe: document.getElementById('emp-numero-nfe') ? (parseInt(document.getElementById('emp-numero-nfe').value.trim(), 10) || 1) : 1,
         serieNFCe: document.getElementById('emp-serie-nfce') ? document.getElementById('emp-serie-nfce').value.trim() : '1',
+        proximoNumeroNFCe: document.getElementById('emp-numero-nfce') ? (parseInt(document.getElementById('emp-numero-nfce').value.trim(), 10) || 1) : 1,
         naturezaOperacao: document.getElementById('emp-natureza-operacao') ? document.getElementById('emp-natureza-operacao').value.trim() : 'VENDA DE MERCADORIA',
         geminiKey: document.getElementById('emp-gemini-key') ? document.getElementById('emp-gemini-key').value.trim() : '',
         logo: document.getElementById('emp-logo-base64') ? document.getElementById('emp-logo-base64').value : ''

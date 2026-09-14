@@ -289,6 +289,13 @@ exports.emitirNFCe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
                 fiscal_motor: "sefaz_direto"
             }, { merge: true });
 
+            if (resultadoSefaz.sucesso && resultadoSefaz.numero) {
+                const proxNum = parseInt(resultadoSefaz.numero, 10) + 1;
+                await db.collection("fc_moveis").doc("config").set({
+                    empresa: { proximoNumeroNFCe: proxNum }
+                }, { merge: true });
+            }
+
             return {
                 success: resultadoSefaz.sucesso,
                 message: resultadoSefaz.sucesso ? "NFC-e autorizada com sucesso via SEFAZ Direto!" : resultadoSefaz.mensagemSefaz,
@@ -507,6 +514,13 @@ exports.emitirNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gs
                 fiscal_xml: dadosRetorno.xml_conteudo,
                 fiscal_motor: "sefaz_direto"
             }, { merge: true });
+
+            if (resultadoSefaz.sucesso && resultadoSefaz.numero) {
+                const proxNum = parseInt(resultadoSefaz.numero, 10) + 1;
+                await db.collection("fc_moveis").doc("config").set({
+                    empresa: { proximoNumeroNFe: proxNum }
+                }, { merge: true });
+            }
 
             return {
                 success: resultadoSefaz.sucesso,

@@ -34,7 +34,7 @@ async function emitirNotaDiretoSefaz(modelo, venda, empresa, itens, cliente = nu
         cliente,
         modelo,
         ambiente,
-        numeroNota: venda.numeroNotaFiscal || null,
+        numeroNota: venda.numeroNotaFiscal || (modelo === '65' ? (parseInt(empresa.proximoNumeroNFCe) || 1) : (parseInt(empresa.proximoNumeroNFe) || 1)),
         serie: modelo === '65' ? (parseInt(empresa.serieNFCe) || 1) : (parseInt(empresa.serieNFe) || 1)
     });
 

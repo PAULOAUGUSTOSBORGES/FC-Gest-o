@@ -91,7 +91,7 @@ function construirXmlNota(dados) {
     const ufSigla = (empresa.uf || 'SP').toUpperCase().trim();
     const cUF = CODIGOS_UF[ufSigla] || '35';
     const tpAmb = ambiente === 'producao' ? '1' : '2';
-    const nNF = numeroNota || Math.floor(Math.random() * 899999 + 100000);
+    const nNF = numeroNota || (modelo === '65' ? (parseInt(empresa.proximoNumeroNFCe) || 1) : (parseInt(empresa.proximoNumeroNFe) || 1));
     const serieNF = serie || (modelo === '65' ? (parseInt(empresa.serieNFCe) || 1) : (parseInt(empresa.serieNFe) || 1));
     const dhEmi = formatarDataHoraSefaz(venda.data || new Date());
     
