@@ -6,7 +6,7 @@
 const crypto = require('crypto');
 const { obterEndpointsSefaz } = require('./sefaz_urls');
 const { construirXmlNota, formatarDataHoraSefaz, limparTexto, apenasDigitos } = require('./sefaz_xml_builder');
-const { assinarXmlNota, extrairChavesDoPfx } = require('./sefaz_signer');
+const { assinarXmlNota, assinarXmlEvento, extrairChavesDoPfx } = require('./sefaz_signer');
 const { transmitirLoteSefaz, transmitirEvento } = require('./sefaz_client');
 const { processarRespostaSefaz, gerarUrlQrCodeNFCe, processarRespostaEvento } = require('./sefaz_protocol');
 
@@ -153,32 +153,13 @@ async function cancelarNotaDiretoSefaz(chave, protocolo, justificativa, empresa,
     </infEvento>
 </evento>`.trim();
 
-    // Assina o evento
-    const { privateKeyPem, certLimpo } = extrairChavesDoPfx(empresa.certificadoBase64, empresa.certificadoSenha || '');
-    
-    // Canonicalização C14N da tag <infEvento>
-    const matchInfEvento = xmlEvento.match(/<infEvento[\s\S]*?<\/infEvento>/);
-    const infEventoC14N = matchInfEvento[0].replace(/>\s+</g, '><').trim();
-    const digestValue = crypto.createHash('sha1').update(infEventoC14N, 'utf8').digest('base64');
-
-    const signedInfo = `<SignedInfo xmlns="http://www.w3.org/2000/09/xmldsig#"><CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"></CanonicalizationMethod><SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"></SignatureMethod><Reference URI="#${idEvento}"><Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"></Transform><Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"></Transform></Transforms><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"></DigestMethod><DigestValue>${digestValue}</DigestValue></Reference></SignedInfo>`;
-
-    const signer = crypto.createSign('RSA-SHA1');
-    signer.update(signedInfo, 'utf8');
-    const signatureValue = signer.sign(privateKeyPem, 'base64');
-
-    const signatureXml = `
-<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
-    ${signedInfo}
-    <SignatureValue>${signatureValue}</SignatureValue>
-    <KeyInfo>
-        <X509Data>
-            <X509Certificate>${certLimpo}</X509Certificate>
-        </X509Data>
-    </KeyInfo>
-</Signature>`;
-
-    const eventoAssinadoXml = xmlEvento.replace('</evento>', `${signatureXml}\n</evento>`);
+    // Assina o evento conforme o padrão W3C XML-DSig C14N
+    const eventoAssinadoXml = assinarXmlEvento(
+        xmlEvento,
+        empresa.certificadoBase64,
+        empresa.certificadoSenha || '',
+        idEvento
+    );
 
     // Transmite para o Web Service de Evento
     const respostaSoap = await transmitirEvento(

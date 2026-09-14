@@ -1,10 +1,11 @@
 // ==============================================================
 // ASSINADOR DIGITAL ICP-BRASIL PARA NF-e / NFC-e (XML-DSig)
 // Padrão W3C Enveloped Signature com Certificado Digital A1 (.pfx)
+// Canonicalização W3C C14N (REC-xml-c14n-20010315) e RSA-SHA1
 // ==============================================================
 
-const crypto = require('crypto');
 const forge = require('node-forge');
+const { SignedXml } = require('xml-crypto');
 
 /**
  * Extrai a chave privada RSA e o certificado X.509 em formato PEM a partir do PFX (Base64)
@@ -43,7 +44,7 @@ function extrairChavesDoPfx(pfxBase64, senha = '') {
             throw new Error('Certificado X.509 não encontrado no arquivo .pfx.');
         }
 
-        // Certificado limpo sem headers para a tag <X509Certificate>
+        // Certificado limpo sem cabeçalhos para inclusão ou conferência
         const certLimpo = certificatePem
             .replace(/-----BEGIN CERTIFICATE-----/g, '')
             .replace(/-----END CERTIFICATE-----/g, '')
@@ -64,67 +65,86 @@ function extrairChavesDoPfx(pfxBase64, senha = '') {
 }
 
 /**
- * Aplica canonicalização C14N simples no trecho XML (remoção de espaços supérfluos entre tags)
- */
-function canonicalizarXml(xml) {
-    return xml
-        .replace(/>\s+</g, '><')
-        .replace(/\r\n/g, '\n')
-        .replace(/\r/g, '\n')
-        .trim();
-}
-
-/**
- * Assina digitalmente o XML da NF-e ou NFC-e conforme a especificação do MOC SEFAZ
+ * Assina digitalmente o XML da NF-e ou NFC-e conforme a especificação do MOC SEFAZ (W3C XML-DSig C14N)
  * @param {string} xmlString XML gerado da NF-e / NFC-e
  * @param {string} pfxBase64 Arquivo .pfx em Base64
  * @param {string} senha Senha do certificado
- * @param {string} chaveAcesso Chave de 44 dígitos da nota
+ * @param {string} chaveAcesso Chave de 44 dígitos da nota (opcional, Id extraído automaticamente)
  * @returns {string} XML completo assinado com a tag <Signature>
  */
-function assinarXmlNota(xmlString, pfxBase64, senha, chaveAcesso) {
-    const { privateKeyPem, certLimpo } = extrairChavesDoPfx(pfxBase64, senha);
+function assinarXmlNota(xmlString, pfxBase64, senha, chaveAcesso = null) {
+    const { privateKeyPem, certificatePem } = extrairChavesDoPfx(pfxBase64, senha);
 
-    // 1. Localiza a tag <infNFe ...>...</infNFe>
-    const matchInfNFe = xmlString.match(/<infNFe[\s\S]*?<\/infNFe>/);
-    if (!matchInfNFe) {
-        throw new Error('Elemento <infNFe> não encontrado no XML da nota fiscal.');
-    }
-    const infNFeConteudo = matchInfNFe[0];
+    // Minifica o XML removendo espaços e quebras supérfluos entre tags estruturais
+    const xmlLimpo = String(xmlString || '').replace(/>\s+</g, '><').trim();
 
-    // 2. Canonicalização C14N da tag <infNFe>
-    const infNFeC14N = canonicalizarXml(infNFeConteudo);
+    const sig = new SignedXml({
+        privateKey: privateKeyPem,
+        publicCert: certificatePem,
+        signatureAlgorithm: "http://www.w3.org/2000/09/xmldsig#rsa-sha1",
+        canonicalizationAlgorithm: "http://www.w3.org/TR/2001/REC-xml-c14n-20010315"
+    });
 
-    // 3. Cálculo do DigestValue (SHA-1)
-    const digestValue = crypto.createHash('sha1').update(infNFeC14N, 'utf8').digest('base64');
+    sig.addReference({
+        xpath: "//*[local-name(.)='infNFe']",
+        transforms: [
+            "http://www.w3.org/2000/09/xmldsig#enveloped-signature",
+            "http://www.w3.org/TR/2001/REC-xml-c14n-20010315"
+        ],
+        digestAlgorithm: "http://www.w3.org/2000/09/xmldsig#sha1"
+    });
 
-    // 4. Construção da tag <SignedInfo> (conforme W3C XML-DSig)
-    const signedInfo = `<SignedInfo xmlns="http://www.w3.org/2000/09/xmldsig#"><CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"></CanonicalizationMethod><SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"></SignatureMethod><Reference URI="#NFe${chaveAcesso}"><Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"></Transform><Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"></Transform></Transforms><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"></DigestMethod><DigestValue>${digestValue}</DigestValue></Reference></SignedInfo>`;
+    sig.computeSignature(xmlLimpo, {
+        location: {
+            reference: "//*[local-name(.)='infNFe']",
+            action: "after"
+        }
+    });
 
-    // 5. Assinatura do <SignedInfo> usando RSA-SHA1 com a chave privada do certificado A1
-    const signer = crypto.createSign('RSA-SHA1');
-    signer.update(signedInfo, 'utf8');
-    const signatureValue = signer.sign(privateKeyPem, 'base64');
+    return sig.getSignedXml();
+}
 
-    // 6. Montagem do bloco <Signature>
-    const signatureXml = `
-<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
-    ${signedInfo}
-    <SignatureValue>${signatureValue}</SignatureValue>
-    <KeyInfo>
-        <X509Data>
-            <X509Certificate>${certLimpo}</X509Certificate>
-        </X509Data>
-    </KeyInfo>
-</Signature>`;
+/**
+ * Assina digitalmente o XML de um Evento (ex: Cancelamento 110111 ou Carta de Correção)
+ * @param {string} xmlEventoString XML do evento
+ * @param {string} pfxBase64 Arquivo .pfx em Base64
+ * @param {string} senha Senha do certificado
+ * @param {string} idEvento Identificador do evento (ex: ID110111...)
+ * @returns {string} XML do evento assinado com a tag <Signature>
+ */
+function assinarXmlEvento(xmlEventoString, pfxBase64, senha, idEvento = null) {
+    const { privateKeyPem, certificatePem } = extrairChavesDoPfx(pfxBase64, senha);
 
-    // 7. Inserção da <Signature> antes do fechamento de </NFe>
-    const xmlAssinado = xmlString.replace('</NFe>', `${signatureXml}\n</NFe>`);
+    const xmlLimpo = String(xmlEventoString || '').replace(/>\s+</g, '><').trim();
 
-    return xmlAssinado;
+    const sig = new SignedXml({
+        privateKey: privateKeyPem,
+        publicCert: certificatePem,
+        signatureAlgorithm: "http://www.w3.org/2000/09/xmldsig#rsa-sha1",
+        canonicalizationAlgorithm: "http://www.w3.org/TR/2001/REC-xml-c14n-20010315"
+    });
+
+    sig.addReference({
+        xpath: "//*[local-name(.)='infEvento']",
+        transforms: [
+            "http://www.w3.org/2000/09/xmldsig#enveloped-signature",
+            "http://www.w3.org/TR/2001/REC-xml-c14n-20010315"
+        ],
+        digestAlgorithm: "http://www.w3.org/2000/09/xmldsig#sha1"
+    });
+
+    sig.computeSignature(xmlLimpo, {
+        location: {
+            reference: "//*[local-name(.)='infEvento']",
+            action: "after"
+        }
+    });
+
+    return sig.getSignedXml();
 }
 
 module.exports = {
     extrairChavesDoPfx,
-    assinarXmlNota
+    assinarXmlNota,
+    assinarXmlEvento
 };
