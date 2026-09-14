@@ -32,6 +32,9 @@ function criarAgenteMtls(pfxBase64, senha = '') {
 async function transmitirLoteSefaz(urlAutorizacao, xmlAssinado, pfxBase64, senha, idLote = '1') {
     const agente = criarAgenteMtls(pfxBase64, senha);
 
+    // Remove qualquer declaração <?xml ... ?> interna para que o XML do lote SOAP seja 100% válido
+    const xmlNFeLimpo = String(xmlAssinado || '').replace(/<\?xml.*?\?>/gi, '').trim();
+
     // Envelope SOAP 1.2 oficial do MOC 4.00 com indSinc=1 (Processamento Síncrono Imediato)
     const envelopeSoap = `<?xml version="1.0" encoding="utf-8"?>
 <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
@@ -40,7 +43,7 @@ async function transmitirLoteSefaz(urlAutorizacao, xmlAssinado, pfxBase64, senha
             <enviNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
                 <idLote>${idLote}</idLote>
                 <indSinc>1</indSinc>
-                ${xmlAssinado}
+                ${xmlNFeLimpo}
             </enviNFe>
         </nfeDadosMsg>
     </soap12:Body>
@@ -76,13 +79,15 @@ async function transmitirLoteSefaz(urlAutorizacao, xmlAssinado, pfxBase64, senha
 async function transmitirEvento(urlEvento, eventoAssinadoXml, pfxBase64, senha, idLote = '1') {
     const agente = criarAgenteMtls(pfxBase64, senha);
 
+    const eventoLimpo = String(eventoAssinadoXml || '').replace(/<\?xml.*?\?>/gi, '').trim();
+
     const envelopeSoap = `<?xml version="1.0" encoding="utf-8"?>
 <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
     <soap12:Body>
         <nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4">
             <envEvento xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00">
                 <idLote>${idLote}</idLote>
-                ${eventoAssinadoXml}
+                ${eventoLimpo}
             </envEvento>
         </nfeDadosMsg>
     </soap12:Body>

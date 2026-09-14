@@ -281,8 +281,7 @@ function construirXmlNota(dados) {
     const infCpl = `${msgSimples} ${obsVenda}`.trim();
 
     // Montagem completa do XML
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<NFe xmlns="http://www.portalfiscal.inf.br/nfe">
+    const xml = `<NFe xmlns="http://www.portalfiscal.inf.br/nfe">
 <infNFe Id="NFe${chaveAcesso}" versao="4.00">
     <ide>
         <cUF>${cUF}</cUF>
