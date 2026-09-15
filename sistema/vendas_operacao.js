@@ -1959,7 +1959,7 @@ async function emitirNota(tipo) {
             const numNota = d.numero ? ` Nº ${d.numero}` : '';
             const statusTexto = (d.status_sefaz || 'autorizado').toUpperCase();
             const vendaId = window.vendaAtualImpressao ? window.vendaAtualImpressao.id : '';
-            const isSefazDireto = d.motor === 'sefaz_direto' || (!linkDanfe && (d.status_sefaz === 'autorizado' || d.chave_nfe || d.chave_nfce));
+            const isSefazDireto = d.motor === 'sefaz_direto' || (!linkDanfe && (d.status_sefaz === 'autorizado' || d.status_sefaz === 'contingencia' || d.chave_nfe || d.chave_nfce));
 
             let botoesFiscais = '';
             if (linkDanfe) {

@@ -252,10 +252,8 @@ function carregarConfiguracoesNaTela() {
         { prop: 'crt', id: 'emp-crt' },
         { prop: 'cscToken', id: 'emp-csc-token' },
         { prop: 'cscId', id: 'emp-csc-id' },
-        { prop: 'motorFiscal', id: 'emp-fiscal-motor', default: 'sefaz_direto' },
         { prop: 'certificadoSenha', id: 'emp-cert-senha' },
-        { prop: 'focusToken', id: 'emp-focus-token' },
-        { prop: 'ambienteFiscal', id: 'emp-fiscal-ambiente', default: 'homologacao' },
+        { prop: 'ambienteFiscal', id: 'emp-fiscal-ambiente', default: 'producao' },
         { prop: 'serieNFe', id: 'emp-serie-nfe', default: '1' },
         { prop: 'proximoNumeroNFe', id: 'emp-numero-nfe', default: 1 },
         { prop: 'serieNFCe', id: 'emp-serie-nfce', default: '1' },
@@ -270,12 +268,6 @@ function carregarConfiguracoesNaTela() {
             el.value = emp[prop] !== undefined ? emp[prop] : (defVal || '');
         }
     });
-
-    if (document.getElementById('emp-fiscal-motor')) {
-        const m = emp.motorFiscal || 'sefaz_direto';
-        document.getElementById('emp-fiscal-motor').value = m;
-        alternarCamposMotorFiscal(m);
-    }
 
     if (emp.certificadoBase64 && document.getElementById('emp-cert-base64')) {
         document.getElementById('emp-cert-base64').value = emp.certificadoBase64;
@@ -381,18 +373,7 @@ function processarLogoEmpresa(event) {
     }; reader.readAsDataURL(file);
 }
 
-function alternarCamposMotorFiscal(motor) {
-    const secaoSefaz = document.getElementById('secao-sefaz-direto');
-    const secaoFocus = document.getElementById('secao-focus-api');
-    if (motor === 'focus') {
-        if (secaoSefaz) secaoSefaz.classList.add('hidden');
-        if (secaoFocus) secaoFocus.classList.remove('hidden');
-    } else {
-        if (secaoSefaz) secaoSefaz.classList.remove('hidden');
-        if (secaoFocus) secaoFocus.classList.add('hidden');
-    }
-}
-window.alternarCamposMotorFiscal = alternarCamposMotorFiscal;
+
 
 function processarCertificadoA1(event) {
     const file = event.target.files[0];
@@ -488,19 +469,18 @@ async function salvarConfiguracoes() {
         cscToken: document.getElementById('emp-csc-token') ? document.getElementById('emp-csc-token').value.trim() : '',
         cscId: document.getElementById('emp-csc-id') ? document.getElementById('emp-csc-id').value.trim() : '',
         fiscalAtivo: document.getElementById('emp-fiscal-ativo') ? document.getElementById('emp-fiscal-ativo').checked : true,
-        motorFiscal: document.getElementById('emp-fiscal-motor') ? document.getElementById('emp-fiscal-motor').value : 'sefaz_direto',
+        motorFiscal: 'sefaz_direto',
         certificadoBase64: document.getElementById('emp-cert-base64') ? document.getElementById('emp-cert-base64').value : '',
         certificadoNome: document.getElementById('emp-cert-nome') ? document.getElementById('emp-cert-nome').value : '',
         certificadoSenha: document.getElementById('emp-cert-senha') ? document.getElementById('emp-cert-senha').value.trim() : '',
-        ambienteFiscal: document.getElementById('emp-fiscal-ambiente') ? document.getElementById('emp-fiscal-ambiente').value : 'homologacao',
-        focusToken: document.getElementById('emp-focus-token') ? document.getElementById('emp-focus-token').value.trim() : '',
+        ambienteFiscal: document.getElementById('emp-fiscal-ambiente') ? document.getElementById('emp-fiscal-ambiente').value : 'producao',
         serieNFe: document.getElementById('emp-serie-nfe') ? document.getElementById('emp-serie-nfe').value.trim() : '1',
         proximoNumeroNFe: document.getElementById('emp-numero-nfe') ? (parseInt(document.getElementById('emp-numero-nfe').value.trim(), 10) || 1) : 1,
         serieNFCe: document.getElementById('emp-serie-nfce') ? document.getElementById('emp-serie-nfce').value.trim() : '1',
         proximoNumeroNFCe: document.getElementById('emp-numero-nfce') ? (parseInt(document.getElementById('emp-numero-nfce').value.trim(), 10) || 1) : 1,
         naturezaOperacao: document.getElementById('emp-natureza-operacao') ? document.getElementById('emp-natureza-operacao').value.trim() : 'VENDA DE MERCADORIA',
         geminiKey: document.getElementById('emp-gemini-key') ? document.getElementById('emp-gemini-key').value.trim() : '',
-        logo: document.getElementById('emp-logo-base64') ? document.getElementById('emp-logo-base64').value : ''
+        logo: (document.getElementById('emp-logo-base64') && document.getElementById('emp-logo-base64').value) ? document.getElementById('emp-logo-base64').value : (db.config?.empresa?.logo || '')
     };
 
     // Salva as 12 Taxas Separadas

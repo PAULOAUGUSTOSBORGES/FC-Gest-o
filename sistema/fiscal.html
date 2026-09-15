@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR" class="dark" data-theme="dark">
 <head>
     <meta charset="UTF-8">
@@ -30,8 +30,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <link rel="stylesheet" href="../style.css?v=20260911084006">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260911084006">
+    <link rel="stylesheet" href="../style.css?v=20260914182734">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260914182734">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -46,28 +46,47 @@
                 <div class="flex items-center gap-3 pointer-events-none">
                     <img id="menu-logo" src="" class="w-10 h-10 rounded-lg object-cover hidden bg-white dark:bg-slate-800 shadow-lg">
                     <div id="menu-logo-placeholder" class="w-10 h-10 bg-slate-800 border border-slate-600 rounded-lg flex items-center justify-center text-slate-400 text-xl shadow-lg"><i class="fa-solid fa-store"></i></div>
+
                     <div>
                         <h1 id="menu-empresa-nome" class="font-bold text-white text-lg tracking-wide leading-tight truncate w-32">Carregando...</h1>
                         <p class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Sistema Ativo</p>
                     </div>
                 </div>
+                <button onclick="event.stopPropagation(); toggleMenu()" class="md:hidden text-slate-400 hover:text-white text-2xl"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
-            <nav class="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto custom-scrollbar">
-                <a href="index.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-chart-pie w-5 text-center"></i> Início</a>
-                <a href="pdv.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-cash-register w-5 text-center"></i> PDV (Balcão)</a>
-                <a href="vendas_operacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-cart-shopping w-5 text-center"></i> Vendas</a>
-                <a href="fiscal.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-colors bg-blue-600 text-white shadow-md"><i class="fa-solid fa-file-invoice text-emerald-400 w-5 text-center"></i> Emissor Fiscal</a>
-                <a href="produtos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-box-open w-5 text-center"></i> Produtos</a>
-                <a href="clientes.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-users w-5 text-center"></i> Clientes</a>
-                <a href="compras.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras XML</a>
-                <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-money-bill-wave w-5 text-center"></i> Financeiro</a>
-                <a href="estoque.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-pallet w-5 text-center"></i> Estoque</a>
-                <a href="sistema.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-gear w-5 text-center"></i> Configurações</a>
+            <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1 custom-scrollbar">
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-2 mb-1">Visão Geral</p>
+                <a href="index.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="dashboard"><i class="fa-solid fa-chart-pie w-5 text-center"></i> Dashboard</a>
+
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Operação</p>
+                <a href="pdv.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="pdv"><i class="fa-solid fa-cash-register w-5 text-center"></i> Frente de Caixa (PDV)</a>
+                <a href="vendas_operacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_operacao"><i class="fa-solid fa-receipt w-5 text-center"></i> Histórico Vendas/Serviços</a>
+                <a href="orcamentos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="orcamentos"><i class="fa-solid fa-file-invoice w-5 text-center"></i> Meus Orçamentos</a>
+                <a href="fiscal.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-colors bg-blue-600 text-white shadow-md" data-target="fiscal"><i class="fa-solid fa-file-invoice text-emerald-400 w-5 text-center"></i> Emissor Fiscal (NF-e)</a>
+
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Cadastros</p>
+                <a href="produtos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="produtos"><i class="fa-solid fa-boxes-stacked w-5 text-center"></i> Produtos & Serviços</a>
+                <a href="clientes.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="clientes"><i class="fa-solid fa-users w-5 text-center"></i> Clientes</a>
+                <a href="fornecedores.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="fornecedores"><i class="fa-solid fa-truck w-5 text-center"></i> Fornecedores</a>
+                <a href="funcionarios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="funcionarios"><i class="fa-solid fa-user-tie w-5 text-center"></i> Funcionários / Vendedores</a>
+
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
+                <a href="vendas_gestao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_gestao"><i class="fa-solid fa-chart-line w-5 text-center"></i> Histórico Vendas (Gestão)</a>
+                <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
+                <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
+                <a href="compras.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & NF-e XML</a>
+                <a href="relatorios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
+                <a href="estoque.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="estoque"><i class="fa-solid fa-pallet w-5 text-center"></i> Estoque & Kardex</a>
+                <a href="agenda.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="agenda"><i class="fa-regular fa-calendar w-5 text-center"></i> Agenda</a>
+                <a href="marketing.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="marketing"><i class="fa-solid fa-bullhorn w-5 text-center"></i> Marketing & Lembretes</a>
+
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Sistema</p>
+                <a href="sistema.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="config"><i class="fa-solid fa-gear w-5 text-center"></i> Configurações</a>
             </nav>
 
-            <div class="p-3 border-t border-slate-800">
-                <button onclick="logout()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 transition-colors"><i class="fa-solid fa-right-from-bracket w-5 text-center"></i> Sair do Sistema</button>
+            <div class="p-4 border-t border-slate-800">
+                <button onclick="fazerLogout()" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-white text-sm font-medium transition-colors"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair do Sistema</button>
             </div>
         </aside>
 
@@ -89,6 +108,14 @@
                     <span id="badge-ambiente-fiscal" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                         <i class="fa-solid fa-vial mr-1"></i> Homologação
                     </span>
+
+                    <!-- TOGGLE MODO CONTINGÊNCIA -->
+                    <button id="btn-toggle-contingencia" onclick="toggleModoContingencia()"
+                        class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all duration-200 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600"
+                        title="Ativar/Desativar modo contingência para novas emissões de NFC-e">
+                        <i class="fa-solid fa-wifi-slash"></i>
+                        <span id="label-contingencia" class="hidden sm:inline">Contingência: OFF</span>
+                    </button>
 
                     <button onclick="alternarTemaSistema()" class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 dark:text-slate-400" title="Alternar Tema">
                         <i class="fa-solid fa-moon dark:hidden"></i>
@@ -180,6 +207,7 @@
                             <select id="filtro-status-fiscal" onchange="filtrarNotasFiscais()" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-lg text-xs font-medium outline-none">
                                 <option value="TODOS">Todos os Status</option>
                                 <option value="AUTORIZADO">Autorizadas</option>
+                                <option value="CONTINGENCIA">Em Contingência</option>
                                 <option value="PROCESSANDO">Processando</option>
                                 <option value="CANCELADO">Canceladas</option>
                                 <option value="ERRO">Com Rejeição/Erro</option>
@@ -259,8 +287,11 @@
             </div>
             <div class="p-5 space-y-4 text-xs">
                 <div class="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 p-3 rounded-lg text-red-700 dark:text-red-300">
-                    <p class="font-bold mb-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Atenção:</p>
-                    <p>O cancelamento perante a SEFAZ é irreversível e exige um motivo claro de cancelamento com no mínimo 15 caracteres.</p>
+                    <p class="font-bold mb-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Atenção ao Cancelamento:</p>
+                    <p>O cancelamento fiscal na SEFAZ exige justificativa clara (mín. 15 caracteres) e obedece aos prazos regulamentares da Receita Estadual.</p>
+                    <p class="mt-2 pt-2 border-t border-red-200 dark:border-red-900/60 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                        <i class="fa-solid fa-clock mr-1"></i> <strong>Prazos Legais SEFAZ:</strong> NFC-e até 30 minutos | NF-e até 24 horas da autorização.
+                    </p>
                 </div>
 
                 <div id="cancelar-info-nota" class="font-mono text-slate-700 dark:text-slate-300 text-xs bg-slate-50 dark:bg-slate-900 p-3 rounded-lg"></div>
@@ -271,11 +302,16 @@
                     <p class="text-[10px] text-slate-400 mt-1" id="cancelar-char-count">0 / 15 caracteres</p>
                 </div>
             </div>
-            <div class="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex justify-end gap-2">
+            <div class="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex flex-wrap items-center justify-between gap-2">
                 <button onclick="fecharModalCancelamento()" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold rounded-lg text-xs transition-colors">Voltar</button>
-                <button onclick="confirmarCancelamentoNota()" id="btn-confirmar-cancelar" class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-xs transition-colors flex items-center gap-1.5 shadow-md">
-                    <i class="fa-solid fa-ban"></i> Transmitir Cancelamento
-                </button>
+                <div class="flex items-center gap-2">
+                    <button onclick="confirmarCancelamentoNota(true)" id="btn-cancelar-interno" type="button" class="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer" title="Registra cancelamento interno caso o prazo da SEFAZ já tenha expirado">
+                        <i class="fa-solid fa-file-excel"></i> Cancelar no Sistema
+                    </button>
+                    <button onclick="confirmarCancelamentoNota(false)" id="btn-confirmar-cancelar" class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-xs transition-colors flex items-center gap-1.5 shadow-md cursor-pointer">
+                        <i class="fa-solid fa-ban"></i> Transmitir SEFAZ
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -370,9 +406,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20260914171500"></script>
-    <script src="../global.js?v=20260914171500"></script>
-    <script src="fc_cache.js?v=20260914171500"></script>
-    <script src="fiscal.js?v=20260914171500"></script>
+    <script src="../sistema/config_banco.js?v=20260915110900"></script>
+    <script src="../global.js?v=20260915155000"></script>
+    <script src="fc_cache.js?v=20260915110900"></script>
+    <script src="fiscal.js?v=20260915154620"></script>
 </body>
 </html>

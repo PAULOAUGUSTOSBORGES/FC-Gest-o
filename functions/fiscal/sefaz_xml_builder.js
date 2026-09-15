@@ -165,7 +165,11 @@ function construirXmlNota(dados) {
     const mod = String(modelo).padStart(2, '0');
     const serieStr = String(serieNF).padStart(3, '0');
     const nNFStr = String(nNF).padStart(9, '0');
-    const tpEmis = '1'; // 1 = Normal
+    const isContingencia = Boolean(dados.contingencia || dados.tpEmis === '9');
+    const tpEmis = isContingencia ? '9' : (dados.tpEmis || '1'); // 1 = Normal, 9 = Contingência Off-line NFC-e
+    const dhCont = isContingencia ? formatarDataHoraSefaz(dados.dhCont || new Date()) : null;
+    const rawJust = dados.justificativaContingencia || dados.xJust || 'Instabilidade momentanea na comunicacao com a SEFAZ';
+    const xJust = isContingencia ? limparTexto(rawJust).padEnd(15, ' ') : null;
     const cNF = String(Math.floor(Math.random() * 89999999 + 10000000)); // Código numérico aleatório de 8 dígitos
 
     // Chave de 43 dígitos
@@ -191,8 +195,12 @@ function construirXmlNota(dados) {
 
     // Destinatário
     let tagDest = '';
-    const docCliente = apenasDigitos(cliente?.cpf || cliente?.cnpj || venda.clienteCpf || '');
-    const nomeCliente = limparTexto(cliente?.nome || cliente?.razaoSocial || venda.clienteNome || '');
+    const docCliente = apenasDigitos(
+        cliente?.cpf || cliente?.cnpj || cliente?.cpfCnpj || cliente?.cpf_cnpj ||
+        cliente?.doc || cliente?.documento || venda.clienteCpf || venda.clienteDoc ||
+        venda.clienteCpfCnpj || ''
+    );
+    const nomeCliente = limparTexto(cliente?.nome || cliente?.razaoSocial || cliente?.xNome || venda.clienteNome || '');
 
     if (docCliente || modelo === '55') {
         const isCnpj = docCliente.length > 11;
@@ -200,15 +208,15 @@ function construirXmlNota(dados) {
         const nomeDest = tpAmb === '2' ? 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL' : (nomeCliente || 'CONSUMIDOR FINAL');
         
         let enderDestTag = '';
-        if (modelo === '55' || cliente?.rua) {
-            const destLgr = limparTexto(cliente?.rua || 'RUA');
-            const destNro = limparTexto(cliente?.numero || 'S/N');
-            const destBairro = limparTexto(cliente?.bairro || 'CENTRO');
-            const destMun = limparTexto(cliente?.cidade || emitMun);
-            const destIbge = apenasDigitos(cliente?.ibge || cMunFG);
-            const destUf = (cliente?.uf || ufSigla).toUpperCase().trim();
-            const destCep = apenasDigitos(cliente?.cep || emitCep).padStart(8, '0');
+        const destLgr = limparTexto(cliente?.rua || cliente?.logradouro || cliente?.endereco || 'RUA');
+        const destNro = limparTexto(cliente?.numero || 'S/N');
+        const destBairro = limparTexto(cliente?.bairro || 'CENTRO');
+        const destMun = limparTexto(cliente?.cidade || cliente?.municipio || emitMun);
+        const destIbge = apenasDigitos(cliente?.ibge || cliente?.codigoMunicipio || cliente?.codigoMunicipioIBGE || cMunFG);
+        const destUf = (cliente?.uf || ufSigla).toUpperCase().trim();
+        const destCep = apenasDigitos(cliente?.cep || emitCep).padStart(8, '0');
 
+        if (modelo === '55' || cliente?.rua || cliente?.logradouro) {
             enderDestTag = `
         <enderDest>
             <xLgr>${destLgr}</xLgr>
@@ -223,11 +231,19 @@ function construirXmlNota(dados) {
         </enderDest>`;
         }
 
+        const indIEDest = String(cliente?.indicadorIe || cliente?.indIEDest || (cliente?.ie && apenasDigitos(cliente.ie).length >= 6 ? '1' : '9')).trim();
+        let ieTag = '';
+        if (indIEDest === '1' && cliente?.ie) {
+            ieTag = `\n        <IE>${apenasDigitos(cliente.ie)}</IE>`;
+        } else if (indIEDest === '2') {
+            ieTag = `\n        <IE>ISENTO</IE>`;
+        }
+
         tagDest = `
     <dest>
         ${tagDoc}
         <xNome>${nomeDest}</xNome>${enderDestTag}
-        <indIEDest>9</indIEDest>
+        <indIEDest>${indIEDest}</indIEDest>${ieTag}
     </dest>`;
     }
 
@@ -238,7 +254,8 @@ function construirXmlNota(dados) {
 
     itens.forEach((item, index) => {
         const nItem = index + 1;
-        const cProd = apenasDigitos(item.id || item.codigo || nItem).substring(0, 15) || String(nItem);
+        const cProdRaw = item.ean || item.codigo || item.codigoProduto || item.sku || item.codProduto || item.cod || apenasDigitos(item.id || '') || String(nItem);
+        const cProd = apenasDigitos(cProdRaw).substring(0, 15) || String(nItem).padStart(7, '0');
         const xProd = tpAmb === '2' && nItem === 1 
             ? 'NOTA FISCAL EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL' 
             : limparTexto(item.nome || item.descricao || `PRODUTO ${nItem}`);
@@ -246,9 +263,11 @@ function construirXmlNota(dados) {
         const ncm = apenasDigitos(item.ncm || '21069090').padStart(8, '0');
         const cfop = apenasDigitos(item.cfop || '5102').padStart(4, '0');
         const uCom = limparTexto(item.unidade || 'UN').toUpperCase();
-        const qCom = (parseFloat(item.quantidade) || 1).toFixed(4);
-        const vUnCom = (parseFloat(item.preco) || parseFloat(item.precoUnitario) || 0).toFixed(4);
-        const subtotalItem = (parseFloat(item.quantidade || 1) * parseFloat(item.preco || item.precoUnitario || 0));
+        const qtdVal = parseFloat(item.quantidade !== undefined ? item.quantidade : (item.qtd !== undefined ? item.qtd : 1)) || 1;
+        const precoVal = parseFloat(item.preco !== undefined ? item.preco : (item.precoUnitario !== undefined ? item.precoUnitario : 0)) || 0;
+        const qCom = qtdVal.toFixed(4);
+        const vUnCom = precoVal.toFixed(4);
+        const subtotalItem = qtdVal * precoVal;
         const vProd = subtotalItem.toFixed(2);
         
         totalProdutos += subtotalItem;
@@ -382,6 +401,9 @@ function construirXmlNota(dados) {
     const obsVenda = limparTexto(venda.observacoes || '');
     const infCpl = `${msgSimples} ${obsVenda}`.trim();
 
+    const destUfCli = (cliente?.uf || ufSigla).toUpperCase().trim();
+    const idDest = (modelo === '55' && tagDest && destUfCli && destUfCli !== ufSigla) ? '2' : '1';
+
     // Montagem completa do XML
     const infNFeInner = `<infNFe Id="NFe${chaveAcesso}" versao="4.00">
     <ide>
@@ -393,7 +415,7 @@ function construirXmlNota(dados) {
         <nNF>${nNF}</nNF>
         <dhEmi>${dhEmi}</dhEmi>
         <tpNF>1</tpNF>
-        <idDest>1</idDest>
+        <idDest>${idDest}</idDest>
         <cMunFG>${cMunFG}</cMunFG>
         <tpImp>${tpImp}</tpImp>
         <tpEmis>${tpEmis}</tpEmis>
@@ -403,7 +425,9 @@ function construirXmlNota(dados) {
         <indFinal>1</indFinal>
         <indPres>1</indPres>
         <procEmi>0</procEmi>
-        <verProc>1.0</verProc>
+        <verProc>1.0</verProc>${isContingencia ? `
+        <dhCont>${dhCont}</dhCont>
+        <xJust>${xJust}</xJust>` : ''}
     </ide>
     <emit>
         <CNPJ>${emitCnpj}</CNPJ>
@@ -489,7 +513,9 @@ ${infNFeSupl.trim()}
         cUF,
         dhEmi,
         vNF,
-        tpAmb
+        tpAmb,
+        contingencia: isContingencia,
+        tpEmis
     };
 }
 

@@ -94,9 +94,12 @@ function assinarXmlNota(xmlString, pfxBase64, senha, chaveAcesso = null) {
         digestAlgorithm: "http://www.w3.org/2000/09/xmldsig#sha1"
     });
 
+    // No schema da SEFAZ (leiauteNFe_v4.00.xsd), a tag <Signature> deve vir após <infNFeSupl> (NFC-e)
+    // ou após <infNFe> (NF-e). Colocar <Signature> antes de <infNFeSupl> gera Rejeição 225 (Falha no Schema XML).
+    const hasSupl = xmlLimpo.includes('infNFeSupl');
     sig.computeSignature(xmlLimpo, {
         location: {
-            reference: "//*[local-name(.)='infNFe']",
+            reference: hasSupl ? "//*[local-name(.)='infNFeSupl']" : "//*[local-name(.)='infNFe']",
             action: "after"
         }
     });

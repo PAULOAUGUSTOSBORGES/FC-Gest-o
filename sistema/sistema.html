@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR" class="dark" data-theme="dark">
 <head>
     <meta charset="UTF-8">
@@ -35,8 +35,8 @@
     <title>Configurações do Sistema</title>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css?v=20260911084006">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260911084006">
+    <link rel="stylesheet" href="../style.css?v=20260914182734">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260914182734">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -254,24 +254,23 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Motor de Emissão Fiscal</label>
-                                <select id="emp-fiscal-motor" onchange="alternarCamposMotorFiscal(this.value)" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white font-bold text-blue-600 dark:text-blue-400">
-                                    <option value="sefaz_direto" selected>🟢 SEFAZ Direto (Próprio e Gratuito - Sem Custo de API)</option>
-                                    <option value="focus">Focus NFe (API Terceirizada)</option>
-                                </select>
+                                <div class="w-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 p-2.5 rounded-lg text-sm font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
+                                    <i class="fa-solid fa-circle-check text-emerald-500 text-base"></i>
+                                    <span>Emissor Fiscal Próprio (SEFAZ Direto)</span>
+                                </div>
                             </div>
                             <div>
                                 <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Ambiente de Emissão</label>
                                 <select id="emp-fiscal-ambiente" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white font-medium">
-                                    <option value="homologacao">Homologação (Testes SEFAZ - Sem Valor Fiscal)</option>
-                                    <option value="producao">Produção Oficial (SEFAZ Real)</option>
+                                    <option value="producao" selected>Produção Oficial (Com Valor Legal)</option>
                                 </select>
                             </div>
                         </div>
 
-                        <!-- SEÇÃO: CERTIFICADO DIGITAL A1 (SEFAZ DIRETO - GRATUITO) -->
+                        <!-- SEÇÃO: CERTIFICADO DIGITAL A1 (SEFAZ DIRETO) -->
                         <div id="secao-sefaz-direto" class="bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/60 rounded-xl p-4 mb-4">
                             <h4 class="text-xs font-bold text-blue-700 dark:text-blue-400 mb-2 flex items-center gap-2">
-                                <i class="fa-solid fa-shield-halved"></i> Certificado Digital A1 (.pfx / .p12) — Autonomia Total SEFAZ (Grátis)
+                                <i class="fa-solid fa-shield-halved"></i> Certificado Digital A1 (.pfx / .p12) — Autonomia Total SEFAZ
                             </h4>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
@@ -288,6 +287,7 @@
                                     <div class="relative">
                                         <input type="password" id="emp-cert-senha" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white pr-10" placeholder="Senha do arquivo .pfx">
                                         <button type="button" onclick="const el=document.getElementById('emp-cert-senha'); el.type=el.type==='password'?'text':'password';" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm"><i class="fa-solid fa-eye"></i></button>
+                                    </div>
                                     <div class="flex items-center justify-between mt-2 gap-2">
                                         <p class="text-[10px] text-slate-500 dark:text-slate-400">Sua senha é protegida e usada apenas para assinar os XMLs da sua empresa.</p>
                                         <button type="button" id="btn-testar-cert" onclick="testarCertificadoA1()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 shrink-0 shadow-sm cursor-pointer">
@@ -297,16 +297,6 @@
                                     <div id="emp-cert-teste-resultado" class="mt-2 text-xs font-semibold hidden"></div>
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- SEÇÃO: FOCUS NFE (API ALTERNATIVA) -->
-                        <div id="secao-focus-api" class="hidden mb-4 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
-                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Token Focus NFe (API Terceirizada)</label>
-                            <div class="relative">
-                                <input type="password" id="emp-focus-token" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white pr-10" placeholder="Cole o token da sua conta Focus NFe">
-                                <button type="button" onclick="const el=document.getElementById('emp-focus-token'); el.type=el.type==='password'?'text':'password';" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm"><i class="fa-solid fa-eye"></i></button>
-                            </div>
-                            <p class="text-[10px] text-slate-400 dark:text-slate-400 mt-1">Obtenha em <a href="https://focusnfe.com.br" target="_blank" class="text-blue-500 underline">focusnfe.com.br</a>.</p>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -556,9 +546,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
     
-    <script src="../sistema/config_banco.js?v=202609141605"></script>
-    <script src="../global.js?v=202609141605"></script>
-    <script src="fc_cache.js?v=202609141605"></script>
-    <script src="sistema.js?v=202609141642"></script>
+    <script src="../sistema/config_banco.js?v=20260914182734"></script>
+    <script src="../global.js?v=20260915155000"></script>
+    <script src="fc_cache.js?v=20260914182734"></script>
+    <script src="sistema.js?v=20260915150150"></script>
 </body>
 </html>

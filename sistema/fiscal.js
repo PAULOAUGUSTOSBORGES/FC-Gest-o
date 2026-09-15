@@ -67,7 +67,7 @@ window.addEventListener('load', () => {
 function atualizarBadgeAmbiente() {
     const el = document.getElementById('badge-ambiente-fiscal');
     if (!el) return;
-    const amb = (db.config?.empresa?.ambienteFiscal || 'homologacao').toLowerCase();
+    const amb = (db.config?.empresa?.ambienteFiscal || 'producao').toLowerCase();
     if (amb === 'producao') {
         el.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1';
         el.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-600"></i> Produção SEFAZ';
@@ -126,10 +126,10 @@ function processarNotasFiscais() {
                 clienteNome: v.clienteNome || 'Consumidor Final',
                 clienteDoc: v.clienteDoc || '',
                 valor: Number(v.tot || v.valorLiquido || 0),
-                status: (v.nfce.status_sefaz || v.status_fiscal || 'autorizado').toLowerCase(),
+                status: (v.status_fiscal === 'cancelado_interno' || v.nfce.status_sefaz === 'cancelado_interno' ? 'cancelado_interno' : (v.nfce.status_sefaz || v.status_fiscal || 'autorizado')).toLowerCase(),
                 mensagemSefaz: v.nfce.mensagem_sefaz || '',
-                danfeUrl: v.nfce.danfe_url_completa || (v.nfce.caminho_danfe ? `https://api.focusnfe.com.br${v.nfce.caminho_danfe}` : ''),
-                xmlUrl: v.nfce.xml_url_completa || (v.nfce.caminho_xml_nota_fiscal ? `https://api.focusnfe.com.br${v.nfce.caminho_xml_nota_fiscal}` : ''),
+                danfeUrl: v.nfce.danfe_url_completa || '',
+                xmlUrl: v.nfce.xml_url_completa || '',
                 xmlConteudo: v.nfce.xml_conteudo || v.fiscal_xml || '',
                 qrCodeUrl: v.nfce.qr_code_url || v.fiscal_qrcode_url || '',
                 motor: v.nfce.motor || v.fiscal_motor || 'sefaz_direto',
@@ -152,10 +152,10 @@ function processarNotasFiscais() {
                 clienteNome: v.clienteNome || 'Cliente',
                 clienteDoc: v.clienteDoc || '',
                 valor: Number(v.tot || v.valorLiquido || 0),
-                status: (v.nfe.status_sefaz || v.status_fiscal || 'autorizado').toLowerCase(),
+                status: (v.status_fiscal === 'cancelado_interno' || v.nfe.status_sefaz === 'cancelado_interno' ? 'cancelado_interno' : (v.nfe.status_sefaz || v.status_fiscal || 'autorizado')).toLowerCase(),
                 mensagemSefaz: v.nfe.mensagem_sefaz || '',
-                danfeUrl: v.nfe.danfe_url_completa || (v.nfe.caminho_danfe ? `https://api.focusnfe.com.br${v.nfe.caminho_danfe}` : ''),
-                xmlUrl: v.nfe.xml_url_completa || (v.nfe.caminho_xml_nota_fiscal ? `https://api.focusnfe.com.br${v.nfe.caminho_xml_nota_fiscal}` : ''),
+                danfeUrl: v.nfe.danfe_url_completa || '',
+                xmlUrl: v.nfe.xml_url_completa || '',
                 xmlConteudo: v.nfe.xml_conteudo || v.fiscal_xml || '',
                 cce: v.nfe.cce || null,
                 motor: v.nfe.motor || v.fiscal_motor || 'sefaz_direto',
@@ -208,9 +208,10 @@ function renderNotasFiscais() {
 
         // Filtro de status
         if (filtroStatus === 'AUTORIZADO' && n.status !== 'autorizado') return false;
-        if (filtroStatus === 'CANCELADO' && n.status !== 'cancelado') return false;
+        if (filtroStatus === 'CONTINGENCIA' && n.status !== 'contingencia') return false;
+        if (filtroStatus === 'CANCELADO' && (n.status !== 'cancelado' && n.status !== 'cancelado_interno')) return false;
         if (filtroStatus === 'PROCESSANDO' && n.status !== 'processando') return false;
-        if (filtroStatus === 'ERRO' && (n.status === 'autorizado' || n.status === 'cancelado' || n.status === 'processando')) return false;
+        if (filtroStatus === 'ERRO' && (n.status === 'autorizado' || n.status === 'contingencia' || n.status === 'cancelado' || n.status === 'cancelado_interno' || n.status === 'processando')) return false;
 
         // Filtro de texto
         if (termo) {
@@ -249,8 +250,12 @@ function renderNotasFiscais() {
         let badgeStatus = '';
         if (n.status === 'autorizado') {
             badgeStatus = `<span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold px-2 py-0.5 rounded text-[10px]"><i class="fa-solid fa-circle-check"></i> Autorizada</span>`;
+        } else if (n.status === 'contingencia') {
+            badgeStatus = `<span class="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold px-2 py-0.5 rounded text-[10px]" title="NFC-e emitida em contingência off-line. Pendente de autorização pela SEFAZ."><i class="fa-solid fa-triangle-exclamation"></i> Contingência</span>`;
         } else if (n.status === 'cancelado') {
-            badgeStatus = `<span class="bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-bold px-2 py-0.5 rounded text-[10px]"><i class="fa-solid fa-ban"></i> Cancelada</span>`;
+            badgeStatus = `<span class="bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-bold px-2 py-0.5 rounded text-[10px]"><i class="fa-solid fa-ban"></i> Cancelada (SEFAZ)</span>`;
+        } else if (n.status === 'cancelado_interno') {
+            badgeStatus = `<span class="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold px-2 py-0.5 rounded text-[10px]" title="Cancelada administrativamente no sistema (Prazo SEFAZ expirado)"><i class="fa-solid fa-file-excel"></i> Cancelada (Interno)</span>`;
         } else if (n.status === 'processando') {
             badgeStatus = `<span class="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold px-2 py-0.5 rounded text-[10px]"><i class="fa-solid fa-spinner fa-spin"></i> Processando</span>`;
         } else {
@@ -284,13 +289,19 @@ function renderNotasFiscais() {
                     <div class="flex items-center justify-center gap-1.5">
                         ${n.danfeUrl 
                             ? `<a href="${n.danfeUrl}" target="_blank" class="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 px-2 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1" title="Imprimir / Visualizar DANFE (PDF)"><i class="fa-solid fa-print"></i> DANFE</a>` 
-                            : (n.status === 'autorizado' ? `<button onclick="imprimirDanfeNativo('${n.vendaId}', '${n.tipo}')" class="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 px-2 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1" title="Imprimir DANFE"><i class="fa-solid fa-print"></i> DANFE</button>` : '')}
+                            : (n.status === 'autorizado' || n.status === 'contingencia' ? `<button onclick="imprimirDanfeNativo('${n.vendaId}', '${n.tipo}')" class="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 px-2 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1" title="Imprimir DANFE"><i class="fa-solid fa-print"></i> DANFE</button>` : '')}
                         
                         ${n.xmlUrl 
                             ? `<a href="${n.xmlUrl}" target="_blank" download class="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 px-2 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1" title="Baixar Arquivo XML"><i class="fa-solid fa-code"></i> XML</a>` 
-                            : (n.xmlConteudo || n.status === 'autorizado' ? `<button onclick="baixarXmlNativo('${n.vendaId}', '${n.tipo}')" class="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 px-2 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1" title="Baixar Arquivo XML"><i class="fa-solid fa-code"></i> XML</button>` : '')}
+                            : (n.xmlConteudo || n.status === 'autorizado' || n.status === 'contingencia' ? `<button onclick="baixarXmlNativo('${n.vendaId}', '${n.tipo}')" class="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 px-2 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1" title="Baixar Arquivo XML"><i class="fa-solid fa-code"></i> XML</button>` : '')}
                         
-                        ${n.status !== 'autorizado' ? `
+                        ${n.status === 'contingencia' ? `
+                            <button onclick="transmitirNotaContingencia('${n.vendaId}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1 shadow-sm" title="Transmitir NFC-e em Contingência para a SEFAZ">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Transmitir
+                            </button>
+                        ` : ''}
+
+                        ${n.status !== 'autorizado' && n.status !== 'contingencia' ? `
                             <button onclick="reemitirNota('${n.vendaId}', '${n.tipo}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1 shadow-sm" title="Reemitir com a nova numeração na SEFAZ">
                                 <i class="fa-solid fa-paper-plane"></i> Reemitir
                             </button>
@@ -301,9 +312,14 @@ function renderNotasFiscais() {
                         ${isNFe && n.status === 'autorizado' ? `<button onclick="abrirModalCCe('${n.vendaId}', '${n.numero}')" class="text-indigo-500 hover:text-indigo-700 p-1.5" title="Carta de Correção (CC-e)"><i class="fa-solid fa-file-pen"></i></button>` : ''}
                         
                         ${n.status === 'autorizado' ? `<button onclick="abrirModalCancelamento('${n.vendaId}', '${n.tipo}', '${n.numero}')" class="text-red-500 hover:text-red-700 p-1.5" title="Cancelar Nota na SEFAZ"><i class="fa-solid fa-ban"></i></button>` : ''}
+
+                        ${(n.status !== 'autorizado' && n.status !== 'contingencia' && n.status !== 'cancelado') ? `
+                            <button onclick="excluirNotaFiscal('${n.vendaId}', '${n.tipo}')" class="text-red-400 hover:text-red-600 p-1.5" title="Excluir registro desta nota do sistema">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        ` : ''}
                     </div>
                 </td>
-            </tr>
         `;
     }).join('');
 }
@@ -415,6 +431,51 @@ async function reemitirNota(vendaId, tipo) {
 }
 window.reemitirNota = reemitirNota;
 
+async function transmitirNotaContingencia(vendaId) {
+    showToast('Transmitindo NFC-e em contingência à SEFAZ... aguarde.', 'info');
+    const overlay = document.getElementById('overlay-comunicando-sefaz');
+    if (overlay) overlay.classList.remove('hidden');
+    if (overlay) overlay.classList.add('flex');
+
+    try {
+        const func = firebase.functions().httpsCallable('transmitirNFCeContingencia');
+        const resp = await func({ vendaId });
+        const res = resp.data;
+
+        if (res && res.success) {
+            showToast(res.message || 'NFC-e autorizada com sucesso pela SEFAZ!', 'success');
+            if (typeof db !== 'undefined' && Array.isArray(db.vendas)) {
+                const v = db.vendas.find(x => String(x.id) === String(vendaId));
+                if (v) {
+                    v.status_fiscal = 'autorizado';
+                    if (v.nfce) {
+                        v.nfce.status_sefaz = 'autorizado';
+                        if (res.protocolo) v.nfce.protocolo = res.protocolo;
+                    }
+                }
+            }
+        } else {
+            showToast(res?.message || 'Falha ao autorizar nota na SEFAZ.', 'error');
+        }
+        processarNotasFiscais();
+        renderNotasFiscais();
+    } catch (e) {
+        console.error("Erro ao transmitir contingência:", e);
+        let msg = e.message || 'Erro na comunicação com a SEFAZ.';
+        try {
+            const parsed = JSON.parse(msg);
+            if (parsed.mensagem_sefaz) msg = parsed.mensagem_sefaz;
+            else if (parsed.erros && parsed.erros.length > 0) msg = parsed.erros[0].mensagem;
+        } catch(err) {}
+        showToast(`Erro na autorização: ${msg}`, 'error');
+        mostrarErroSefaz(encodeURIComponent(msg));
+    } finally {
+        if (overlay) overlay.classList.add('hidden');
+        if (overlay) overlay.classList.remove('flex');
+    }
+}
+window.transmitirNotaContingencia = transmitirNotaContingencia;
+
 // ==========================================
 // EXIBIÇÃO DE DETALHES DE REJEIÇÃO SEFAZ
 // ==========================================
@@ -459,38 +520,64 @@ function fecharModalCancelamento() {
     notaEmCancelamento = null;
 }
 
-async function confirmarCancelamentoNota() {
+async function confirmarCancelamentoNota(forcarInterno = false) {
     if (!notaEmCancelamento) return;
     const just = document.getElementById('cancelar-justificativa')?.value.trim();
     if (!just || just.length < 15) {
         return showToast('A justificativa deve ter no mínimo 15 caracteres!', 'error');
     }
 
-    const btn = document.getElementById('btn-confirmar-cancelar');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Cancelando...';
+    const btn = document.getElementById(forcarInterno ? 'btn-cancelar-interno' : 'btn-confirmar-cancelar');
+    const origHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processando...';
+    }
 
     try {
         const cancelarFunc = firebase.functions().httpsCallable('cancelarNotaFiscal');
-        await cancelarFunc({
+        const res = await cancelarFunc({
             vendaId: notaEmCancelamento.vendaId,
             tipo: notaEmCancelamento.tipo.toLowerCase().replace('-', ''),
-            justificativa: just
+            justificativa: just,
+            forcarInterno: forcarInterno
         });
-        showToast('Nota fiscal cancelada com sucesso na SEFAZ!', 'success');
+
+        if (res.data?.canceladoInterno || forcarInterno) {
+            showToast('Nota cancelada administrativamente no sistema!', 'success');
+        } else {
+            showToast('Nota fiscal cancelada com sucesso na SEFAZ!', 'success');
+        }
         fecharModalCancelamento();
+        if (typeof carregarNotasFiscais === 'function') {
+            await carregarNotasFiscais();
+        }
     } catch (e) {
-        console.error(e);
-        let msg = e.message;
+        console.error('Erro no cancelamento:', e);
+        let msg = e.message || '';
         try {
             const parsed = JSON.parse(msg);
             if (parsed.mensagem_sefaz) msg = parsed.mensagem_sefaz;
             else if (parsed.erros && parsed.erros.length > 0) msg = parsed.erros[0].mensagem;
         } catch(err) {}
+
+        const isPrazoExpirado = msg.includes('501') || msg.toLowerCase().includes('prazo de cancelamento superior');
+        if (isPrazoExpirado && !forcarInterno) {
+            const confirmaInterno = confirm(
+                `A SEFAZ rejeitou o cancelamento pois o prazo regulamentar expirou (30 minutos para NFC-e / 24h para NF-e perante a Receita Estadual).\n\n` +
+                `Deseja registrar o cancelamento administrativamente no sistema para estornar o financeiro e atualizar o estoque?`
+            );
+            if (confirmaInterno) {
+                return confirmarCancelamentoNota(true);
+            }
+        }
+
         showToast(`Erro ao cancelar: ${msg}`, 'error');
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-ban"></i> Transmitir Cancelamento';
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+        }
     }
 }
 
@@ -656,10 +743,13 @@ function renderVendasParaFaturar() {
                     <span class="text-[11px] font-black text-emerald-600">${valorFmt}</span>
                 </div>
                 <div class="flex items-center gap-1.5">
-                    <button onclick="emitirNotaDireta('${v.id}', 'nfce')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded text-[11px] transition-colors flex items-center gap-1">
+                    <button onclick="emitirNotaDireta('${v.id}', 'nfce', false)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded text-[11px] transition-colors flex items-center gap-1" title="Emitir NFC-e Online">
                         <i class="fa-solid fa-store"></i> NFC-e
                     </button>
-                    <button onclick="emitirNotaDireta('${v.id}', 'nfe')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-2.5 py-1.5 rounded text-[11px] transition-colors flex items-center gap-1">
+                    <button onclick="emitirNotaDireta('${v.id}', 'nfce', true)" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-2 py-1.5 rounded text-[11px] transition-colors flex items-center gap-1" title="Emitir NFC-e em Contingência Off-line">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Contingência
+                    </button>
+                    <button onclick="emitirNotaDireta('${v.id}', 'nfe')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-2.5 py-1.5 rounded text-[11px] transition-colors flex items-center gap-1" title="Emitir NF-e Completa (Mod 55)">
                         <i class="fa-solid fa-file-invoice"></i> NF-e
                     </button>
                 </div>
@@ -668,17 +758,24 @@ function renderVendasParaFaturar() {
     }).join('');
 }
 
-async function emitirNotaDireta(vendaId, tipo) {
-    showToast(`Transmitindo ${tipo.toUpperCase()} à SEFAZ...`, 'info');
+async function emitirNotaDireta(vendaId, tipo, contingencia = false) {
+    // Se modo contingência estiver ativado no toggle, força contingência em NFC-e
+    if (tipo === 'nfce' && !contingencia) {
+        contingencia = localStorage.getItem('fc_modo_contingencia') === 'true';
+    }
+    const label = contingencia ? 'NFC-e em CONTINGÊNCIA' : tipo.toUpperCase();
+    showToast(`Processando ${label}...`, 'info');
     const overlay = document.getElementById('overlay-comunicando-sefaz');
     if (overlay) overlay.classList.remove('hidden');
     if (overlay) overlay.classList.add('flex');
 
     try {
         const func = firebase.functions().httpsCallable(tipo === 'nfce' ? 'emitirNFCe' : 'emitirNFe');
-        const res = await func({ vendaId });
-        showToast(`${tipo.toUpperCase()} transmitida com sucesso!`, 'success');
+        const res = await func({ vendaId, contingencia: Boolean(contingencia) });
+        showToast(res.data?.message || `${label} emitida com sucesso!`, 'success');
         document.getElementById('modal-selecionar-venda').classList.add('hidden');
+        processarNotasFiscais();
+        renderNotasFiscais();
     } catch (e) {
         console.error(e);
         let msg = e.message;
@@ -687,7 +784,7 @@ async function emitirNotaDireta(vendaId, tipo) {
             if (parsed.mensagem_sefaz) msg = parsed.mensagem_sefaz;
             else if (parsed.erros && parsed.erros.length > 0) msg = parsed.erros[0].mensagem;
         } catch(err) {}
-        showToast(`Erro ao emitir ${tipo.toUpperCase()}: ${msg}`, 'error');
+        showToast(`Erro ao emitir ${label}: ${msg}`, 'error');
     } finally {
         if (overlay) overlay.classList.add('hidden');
         if (overlay) overlay.classList.remove('flex');
@@ -697,11 +794,36 @@ async function emitirNotaDireta(vendaId, tipo) {
 // ==========================================
 // IMPRESSÃO E DOWNLOAD NATIVOS (SEFAZ DIRETO)
 // ==========================================
-function baixarXmlNativo(vendaId, tipo = 'NFC-e') {
-    const v = (typeof vendasGlobais !== 'undefined' ? vendasGlobais.find(x => x.id === vendaId) : null) 
-        || (typeof window.vendaAtualImpressao !== 'undefined' && window.vendaAtualImpressao?.id === vendaId ? window.vendaAtualImpressao : null);
+async function obterVendaParaImpressao(vendaId) {
+    let v = null;
+    if (typeof db !== 'undefined' && Array.isArray(db.vendas)) {
+        v = db.vendas.find(x => String(x.id) === String(vendaId));
+    }
+    if (!v && typeof notasFiscaisArray !== 'undefined' && Array.isArray(notasFiscaisArray)) {
+        v = notasFiscaisArray.find(x => String(x.vendaId) === String(vendaId))?.rawVenda;
+    }
+    if (!v && typeof vendasGlobais !== 'undefined' && Array.isArray(vendasGlobais)) {
+        v = vendasGlobais.find(x => String(x.id) === String(vendaId));
+    }
+    if (!v && typeof window.vendaAtualImpressao !== 'undefined' && window.vendaAtualImpressao?.id === vendaId) {
+        v = window.vendaAtualImpressao;
+    }
+    if (!v && typeof firestore !== 'undefined') {
+        try {
+            const doc = await firestore.collection('vendas').doc(String(vendaId)).get();
+            if (doc.exists) {
+                v = { id: doc.id, ...doc.data() };
+            }
+        } catch (err) {
+            console.warn('Erro ao buscar venda no Firestore:', err);
+        }
+    }
+    return v;
+}
+
+async function baixarXmlNativo(vendaId, tipo = 'NFC-e') {
+    const v = await obterVendaParaImpressao(vendaId);
     if (!v) {
-        if (typeof window.baixarXmlNativo === 'function') return window.baixarXmlNativo(vendaId, tipo);
         showToast('Venda não encontrada.', 'error');
         return;
     }
@@ -724,134 +846,169 @@ function baixarXmlNativo(vendaId, tipo = 'NFC-e') {
 }
 window.baixarXmlNativo = baixarXmlNativo;
 
-function imprimirDanfeNativo(vendaId, tipo = 'NFC-e') {
-    const v = (typeof vendasGlobais !== 'undefined' ? vendasGlobais.find(x => x.id === vendaId) : null)
-        || (typeof window.vendaAtualImpressao !== 'undefined' && window.vendaAtualImpressao?.id === vendaId ? window.vendaAtualImpressao : null);
+async function imprimirDanfeNativo(vendaId, tipo = 'NFC-e') {
+    const v = await obterVendaParaImpressao(vendaId);
     if (!v) {
-        if (typeof window.imprimirDanfeNativo === 'function') return window.imprimirDanfeNativo(vendaId, tipo);
         showToast('Venda não encontrada.', 'error');
         return;
     }
-    const isNFe = (tipo === 'NF-e' || tipo === '55');
-    const nota = isNFe ? v.nfe : v.nfce;
+    const isNFe = (tipo === 'NF-e' || tipo === 'nfe' || tipo === '55');
+    const nota = isNFe ? (v.nfe || {}) : (v.nfce || {});
     const emp = db.config?.empresa || {};
     const chave = nota?.chave_nfe || v.fiscal_chave || '';
-    const chaveFmt = chave.replace(/(\d{4})/g, '$1 ').trim();
-    const qrCodeUrl = nota?.qr_code_url || v.fiscal_qrcode_url || `https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx?p=${chave}`;
-    const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrCodeUrl)}`;
+    const qrCodeUrl = nota?.qr_code_url || v.fiscal_qrcode_url || (chave ? `https://nfeweb.sefaz.go.gov.br/nfeweb/sites/nfce/danfeNFCe?p=${chave}` : '');
+    const qrImgSrc = qrCodeUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrCodeUrl)}` : '';
 
-    const printWin = window.open('', '_blank', 'width=460,height=700');
-    if (!printWin) {
-        showToast('Por favor, autorize pop-ups para imprimir o DANFE.', 'warning');
+    let html = '';
+    if (isNFe && typeof window.gerarHtmlDanfeNFeA4 === 'function') {
+        html = window.gerarHtmlDanfeNFeA4(v, nota, emp);
+    } else if (typeof window.gerarHtmlDanfeNFCe80mm === 'function') {
+        html = window.gerarHtmlDanfeNFCe80mm(v, nota, emp, qrImgSrc);
+    } else if (typeof gerarHtmlDanfeNFeA4 === 'function' && isNFe) {
+        html = gerarHtmlDanfeNFeA4(v, nota, emp);
+    } else if (typeof gerarHtmlDanfeNFCe80mm === 'function') {
+        html = gerarHtmlDanfeNFCe80mm(v, nota, emp, qrImgSrc);
+    }
+
+    if (!html) {
+        showToast('Erro ao gerar layout de impressão.', 'error');
         return;
     }
 
-    const itensHtml = (v.itens || v.produtos || []).map((it, i) => {
-        const qtd = Number(it.quantidade || it.qtd || 1);
-        const preco = Number(it.preco || it.precoUnitario || 0);
-        return `
-        <tr>
-            <td style="font-size:10px; padding:2px 0;">${i+1} ${it.nome || it.descricao || 'Produto'}</td>
-            <td style="font-size:10px; text-align:right;">${qtd} ${it.unidade || 'UN'}</td>
-            <td style="font-size:10px; text-align:right;">${preco.toFixed(2)}</td>
-            <td style="font-size:10px; text-align:right; font-weight:bold;">${(qtd * preco).toFixed(2)}</td>
-        </tr>
-    `;
-    }).join('');
+    // Cria Blob URL para compatibilidade total com o protocolo file:// e HTTP
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const blobUrl = URL.createObjectURL(blob);
 
-    const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <title>DANFE ${isNFe ? 'NF-e' : 'NFC-e'} - Nº ${nota?.numero || v.id}</title>
-        <style>
-            @page { margin: 2mm; size: ${isNFe ? 'A4 portrait' : '80mm auto'}; }
-            body { font-family: monospace, sans-serif; font-size: 11px; margin: 0; padding: 4mm; color: #000; width: ${isNFe ? '180mm' : '72mm'}; }
-            .text-center { text-align: center; }
-            .font-bold { font-weight: bold; }
-            .border-b { border-bottom: 1px dashed #000; padding-bottom: 4px; margin-bottom: 4px; }
-            .border-t { border-top: 1px dashed #000; padding-top: 4px; margin-top: 4px; }
-            table { width: 100%; border-collapse: collapse; }
-            .qr { text-align: center; margin: 8px 0; }
-            .qr img { width: 140px; height: 140px; }
-        </style>
-    </head>
-    <body>
-        <div class="text-center border-b">
-            <div class="font-bold" style="font-size: 13px;">${emp.nome || 'EMPRESA COMERCIAL'}</div>
-            <div>CNPJ: ${emp.cnpj || ''} - IE: ${emp.ie || ''}</div>
-            <div>${emp.rua || ''}, ${emp.numero || ''} - ${emp.cidade || ''}/${emp.uf || ''}</div>
-        </div>
+    // Abre janela popup de impressão com a URL do Blob
+    let printWin = null;
+    try {
+        const winW = isNFe ? 850 : 450;
+        const winH = isNFe ? 950 : 700;
+        printWin = window.open(blobUrl, '_blank', `width=${winW},height=${winH}`);
+    } catch (e) {
+        console.warn('Popup bloqueado ou não suportado:', e);
+    }
 
-        <div class="text-center font-bold border-b" style="padding: 2px 0;">
-            DANFE ${isNFe ? 'NF-e - Documento Auxiliar da Nota Fiscal Eletrônica' : 'NFC-e - Documento Auxiliar da Nota Fiscal de Consumidor Eletrônica'}
-            <div style="font-size: 9px; font-weight: normal;">Não permite aproveitamento de crédito de ICMS</div>
-        </div>
+    if (printWin) {
+        return;
+    }
 
-        <table>
-            <thead>
-                <tr style="border-bottom: 1px solid #000; font-size: 9px;">
-                    <th style="text-align:left;">ITEM/DESC</th>
-                    <th style="text-align:right;">QTD</th>
-                    <th style="text-align:right;">UNIT</th>
-                    <th style="text-align:right;">TOTAL</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${itensHtml}
-            </tbody>
-        </table>
-
-        <div class="border-t">
-            <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:12px;">
-                <span>VALOR TOTAL R$</span>
-                <span>${Number(v.tot || v.valorLiquido || 0).toFixed(2)}</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; font-size:10px;">
-                <span>Forma de Pagamento</span>
-                <span>${v.formaPagamento || v.pagamento || 'Dinheiro'}</span>
-            </div>
-        </div>
-
-        <div class="border-t text-center" style="font-size: 10px;">
-            <div>ÁREA DE MENSAGEM FISCAL</div>
-            <div>Número: <strong>${nota?.numero || ''}</strong> - Série: <strong>${nota?.serie || '1'}</strong></div>
-            <div>Emissão: ${nota?.data_emissao ? new Date(nota.data_emissao).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR')}</div>
-            <div>Protocolo de Autorização: <strong>${nota?.protocolo || 'AUTORIZADO'}</strong></div>
-        </div>
-
-        <div class="border-t text-center" style="font-size: 9px;">
-            <div>CHAVE DE ACESSO</div>
-            <div class="font-bold" style="letter-spacing: 0.5px; word-break: break-all;">${chaveFmt}</div>
-        </div>
-
-        ${!isNFe ? `
-        <div class="qr border-t">
-            <div>Consulte pela Chave de Acesso em:</div>
-            <div style="font-size:8px; word-break:break-all;">https://www.fazenda.${(emp.uf||'sp').toLowerCase()}.gov.br/nfce/consulta</div>
-            <img src="${qrImgSrc}" alt="QR Code SEFAZ">
-            <div style="font-size: 8px;">Consulte via Leitor de QR Code</div>
-        </div>
-        ` : ''}
-
-        <div class="border-t text-center" style="font-size: 9px;">
-            <div>CONSUMIDOR: ${v.clienteNome || 'Consumidor Não Identificado'}</div>
-            ${v.clienteDoc ? `<div>CPF/CNPJ: ${v.clienteDoc}</div>` : ''}
-        </div>
-
-        <script>
-            window.onload = function() {
-                window.print();
-            };
-        </script>
-    </body>
-    </html>
-    `;
-
-    printWin.document.open();
-    printWin.document.write(html);
-    printWin.document.close();
+    // Fallback caso popups estejam bloqueados: imprime usando iframe invisível com srcdoc
+    let iframe = document.getElementById('iframe-impressao-fiscal');
+    if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'iframe-impressao-fiscal';
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
+    }
+    
+    iframe.srcdoc = html;
+    iframe.onload = () => {
+        setTimeout(() => {
+            try {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            } catch (e) {
+                showToast('Erro ao imprimir. Por favor, autorize pop-ups no navegador.', 'warning');
+            }
+        }, 300);
+    };
 }
 window.imprimirDanfeNativo = imprimirDanfeNativo;
 
+// ==========================================
+// TOGGLE MODO CONTINGÊNCIA
+// ==========================================
+function toggleModoContingencia() {
+    const atual = localStorage.getItem('fc_modo_contingencia') === 'true';
+    const novo = !atual;
+    localStorage.setItem('fc_modo_contingencia', String(novo));
+    atualizarBotaoContingencia();
+    if (novo) {
+        showToast('⚠️ Modo Contingência ATIVADO — NFC-e serão emitidas off-line.', 'warning');
+    } else {
+        showToast('✅ Modo Contingência DESATIVADO — NFC-e serão transmitidas normalmente.', 'success');
+    }
+}
+
+function atualizarBotaoContingencia() {
+    const btn = document.getElementById('btn-toggle-contingencia');
+    const label = document.getElementById('label-contingencia');
+    if (!btn) return;
+    const ativo = localStorage.getItem('fc_modo_contingencia') === 'true';
+    if (ativo) {
+        btn.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all duration-200 bg-amber-500 text-white border-amber-600 hover:bg-amber-600 shadow-md';
+        if (label) label.textContent = 'Contingência: ON';
+    } else {
+        btn.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all duration-200 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600';
+        if (label) label.textContent = 'Contingência: OFF';
+    }
+}
+
+window.toggleModoContingencia = toggleModoContingencia;
+window.atualizarBotaoContingencia = atualizarBotaoContingencia;
+
+// Inicializa o botão ao carregar a página
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(atualizarBotaoContingencia, 300);
+});
+
+// ==========================================
+// EXCLUIR NOTA FISCAL (REJEITADAS / ERRO)
+// ==========================================
+async function excluirNotaFiscal(vendaId, tipo) {
+    const confirmar = confirm(`Deseja excluir o registro desta ${tipo || 'nota'} rejeitada do sistema?\n\nEssa ação remove apenas o registro fiscal — a venda continua ativa.`);
+    if (!confirmar) return;
+
+    try {
+        const vendaRef = firestore.collection('vendas').doc(String(vendaId));
+        const snap = await vendaRef.get();
+
+        if (!snap.exists) {
+            showToast('Venda não encontrada no banco de dados.', 'error');
+            return;
+        }
+
+        const venda = snap.data();
+        const updates = {};
+
+        // Remove campos fiscais NFC-e
+        if (venda.nfce) {
+            updates.nfce = firebase.firestore.FieldValue.delete();
+        }
+        // Remove campos fiscais NF-e
+        if (venda.nfe) {
+            updates.nfe = firebase.firestore.FieldValue.delete();
+        }
+        // Limpa status fiscal
+        updates.status_fiscal = firebase.firestore.FieldValue.delete();
+        updates.fiscal_numero = firebase.firestore.FieldValue.delete();
+        updates.fiscal_chave = firebase.firestore.FieldValue.delete();
+        updates.fiscal_xml = firebase.firestore.FieldValue.delete();
+        updates.fiscal_contingencia = firebase.firestore.FieldValue.delete();
+
+        await vendaRef.update(updates);
+
+        // Atualiza cache local
+        if (typeof db !== 'undefined' && Array.isArray(db.vendas)) {
+            const idx = db.vendas.findIndex(x => String(x.id) === String(vendaId));
+            if (idx !== -1) {
+                db.vendas.splice(idx, 1);
+            }
+        }
+
+        showToast('Registro fiscal excluído. A venda continua ativa.', 'success');
+        processarNotasFiscais();
+        renderNotasFiscais();
+    } catch (e) {
+        console.error('Erro ao excluir nota fiscal:', e);
+        showToast('Erro ao excluir: ' + (e.message || 'Tente novamente.'), 'error');
+    }
+}
+
+window.excluirNotaFiscal = excluirNotaFiscal;

@@ -108,8 +108,8 @@ const SERVIDORES_NFCE = {
         homologacao: 'https://homolog.sefaz.go.gov.br/nfe/services/NFeAutorizacao4',
         evento_prod: 'https://nfe.sefaz.go.gov.br/nfe/services/NFeRecepcaoEvento4',
         evento_homol: 'https://homolog.sefaz.go.gov.br/nfe/services/NFeRecepcaoEvento4',
-        qrcode_prod: 'https://nfe.sefaz.go.gov.br/nfeweb/sites/nfce/danfeNFCe',
-        qrcode_homol: 'https://homolog.sefaz.go.gov.br/nfeweb/sites/nfce/danfeNFCe'
+        qrcode_prod: 'https://nfeweb.sefaz.go.gov.br/nfeweb/sites/nfce/danfeNFCe',
+        qrcode_homol: 'https://nfewebhomolog.sefaz.go.gov.br/nfeweb/sites/nfce/danfeNFCe'
     },
     'MT': {
         producao: 'https://nfce.sefaz.mt.gov.br/nfcews/services/NfeAutorizacao4',
