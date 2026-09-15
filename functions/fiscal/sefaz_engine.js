@@ -23,7 +23,8 @@ async function emitirNotaDiretoSefaz(modelo, venda, empresa, itens, cliente = nu
         throw new Error('Certificado Digital A1 (.pfx) não configurado. Acesse Configurações > Emissor Fiscal para fazer o upload do seu certificado.');
     }
 
-    const ambiente = empresa.ambienteFiscal === 'producao' ? 'producao' : 'homologacao';
+    // Modalidade exclusiva: Produção Oficial (Com Valor Legal)
+    const ambiente = (opcoes.ambiente === 'homologacao' && opcoes.forcarHomologacao) ? 'homologacao' : 'producao';
     const endpoints = obterEndpointsSefaz(modelo, empresa.uf, ambiente);
     const isContingencia = Boolean(opcoes.contingencia || venda.contingencia || opcoes.tpEmis === '9');
 
@@ -85,6 +86,9 @@ async function emitirNotaDiretoSefaz(modelo, venda, empresa, itens, cliente = nu
     }
 
     console.log(`[SEFAZ DIRETO] Transmitindo nota ${xmlGerado.nNF} serie ${xmlGerado.serie}. Pagamento:`, xmlGerado.xml.match(/<pag>[\s\S]*?<\/pag>/)?.[0]);
+    if (modelo === '65') {
+        console.log(`[SEFAZ DIRETO] QR-Code gerado:`, xmlGerado.xml.match(/<qrCode>[\s\S]*?<\/qrCode>/)?.[0]);
+    }
 
     // 3. Transmite para a SEFAZ via mTLS
     let respostaSoap = null;

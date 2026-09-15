@@ -17,7 +17,10 @@ function inicializarFiscal() {
 
     _listenDoc('fc_moveis', 'config', function(dados) {
         if (dados && dados.empresa) {
-            db.config = { ...db.config, empresa: { ...(db.config?.empresa || {}), ...dados.empresa } };
+            db.config = { ...db.config, empresa: { ...(db.config?.empresa || {}), ...dados.empresa, ambienteFiscal: 'producao' } };
+            if (dados.empresa.ambienteFiscal !== 'producao') {
+                firestore.collection('fc_moveis').doc('config').set({ empresa: { ambienteFiscal: 'producao' } }, { merge: true }).catch(console.error);
+            }
             atualizarBadgeAmbiente();
             
             // Atualiza os inputs de numeração manual
@@ -132,6 +135,7 @@ function processarNotasFiscais() {
                 xmlUrl: v.nfce.xml_url_completa || '',
                 xmlConteudo: v.nfce.xml_conteudo || v.fiscal_xml || '',
                 qrCodeUrl: v.nfce.qr_code_url || v.fiscal_qrcode_url || '',
+                ambiente: v.nfce.ambiente || (String(v.fiscal_xml || v.nfce.xml_conteudo || '').includes('<tpAmb>2</tpAmb>') ? 'homologacao' : 'producao'),
                 motor: v.nfce.motor || v.fiscal_motor || 'sefaz_direto',
                 rawVenda: v
             });
@@ -158,6 +162,7 @@ function processarNotasFiscais() {
                 xmlUrl: v.nfe.xml_url_completa || '',
                 xmlConteudo: v.nfe.xml_conteudo || v.fiscal_xml || '',
                 cce: v.nfe.cce || null,
+                ambiente: v.nfe.ambiente || (String(v.fiscal_xml || v.nfe.xml_conteudo || '').includes('<tpAmb>2</tpAmb>') ? 'homologacao' : 'producao'),
                 motor: v.nfe.motor || v.fiscal_motor || 'sefaz_direto',
                 rawVenda: v
             });
@@ -247,9 +252,12 @@ function renderNotasFiscais() {
             ? `<span class="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 font-bold px-2 py-0.5 rounded text-[10px] whitespace-nowrap"><i class="fa-solid fa-file-invoice"></i> NF-e (55)</span>`
             : `<span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 font-bold px-2 py-0.5 rounded text-[10px] whitespace-nowrap"><i class="fa-solid fa-store"></i> NFC-e (65)</span>`;
 
+        const isHomol = n.ambiente === 'homologacao';
         let badgeStatus = '';
         if (n.status === 'autorizado') {
-            badgeStatus = `<span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold px-2 py-0.5 rounded text-[10px]"><i class="fa-solid fa-circle-check"></i> Autorizada</span>`;
+            badgeStatus = isHomol 
+                ? `<span class="bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-bold px-2 py-0.5 rounded text-[10px]" title="Nota emitida em ambiente de Homologação (Testes SEFAZ) - Sem valor legal na base nacional."><i class="fa-solid fa-flask"></i> Teste (Homologação)</span>`
+                : `<span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold px-2 py-0.5 rounded text-[10px]"><i class="fa-solid fa-circle-check"></i> Autorizada</span>`;
         } else if (n.status === 'contingencia') {
             badgeStatus = `<span class="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold px-2 py-0.5 rounded text-[10px]" title="NFC-e emitida em contingência off-line. Pendente de autorização pela SEFAZ."><i class="fa-solid fa-triangle-exclamation"></i> Contingência</span>`;
         } else if (n.status === 'cancelado') {
@@ -301,19 +309,19 @@ function renderNotasFiscais() {
                             </button>
                         ` : ''}
 
-                        ${n.status !== 'autorizado' && n.status !== 'contingencia' ? `
-                            <button onclick="reemitirNota('${n.vendaId}', '${n.tipo}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1 shadow-sm" title="Reemitir com a nova numeração na SEFAZ">
-                                <i class="fa-solid fa-paper-plane"></i> Reemitir
+                        ${((n.status !== 'autorizado' && n.status !== 'contingencia') || isHomol) ? `
+                            <button onclick="reemitirNota('${n.vendaId}', '${n.tipo}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1 shadow-sm" title="${isHomol ? 'Emitir esta nota agora na SEFAZ Oficial (Produção com Valor Legal)' : 'Reemitir com a nova numeração na SEFAZ'}">
+                                <i class="fa-solid fa-paper-plane"></i> ${isHomol ? 'Emitir Oficial' : 'Reemitir'}
                             </button>
                         ` : ''}
 
                         <button onclick="consultarSefaz('${n.vendaId}', '${n.tipo}')" class="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 p-1.5" title="Sincronizar Status SEFAZ"><i class="fa-solid fa-arrows-rotate"></i></button>
                         
-                        ${isNFe && n.status === 'autorizado' ? `<button onclick="abrirModalCCe('${n.vendaId}', '${n.numero}')" class="text-indigo-500 hover:text-indigo-700 p-1.5" title="Carta de Correção (CC-e)"><i class="fa-solid fa-file-pen"></i></button>` : ''}
+                        ${isNFe && n.status === 'autorizado' && !isHomol ? `<button onclick="abrirModalCCe('${n.vendaId}', '${n.numero}')" class="text-indigo-500 hover:text-indigo-700 p-1.5" title="Carta de Correção (CC-e)"><i class="fa-solid fa-file-pen"></i></button>` : ''}
                         
-                        ${n.status === 'autorizado' ? `<button onclick="abrirModalCancelamento('${n.vendaId}', '${n.tipo}', '${n.numero}')" class="text-red-500 hover:text-red-700 p-1.5" title="Cancelar Nota na SEFAZ"><i class="fa-solid fa-ban"></i></button>` : ''}
+                        ${n.status === 'autorizado' && !isHomol ? `<button onclick="abrirModalCancelamento('${n.vendaId}', '${n.tipo}', '${n.numero}')" class="text-red-500 hover:text-red-700 p-1.5" title="Cancelar Nota na SEFAZ"><i class="fa-solid fa-ban"></i></button>` : ''}
 
-                        ${(n.status !== 'autorizado' && n.status !== 'contingencia' && n.status !== 'cancelado') ? `
+                        ${((n.status !== 'autorizado' && n.status !== 'contingencia' && n.status !== 'cancelado') || isHomol) ? `
                             <button onclick="excluirNotaFiscal('${n.vendaId}', '${n.tipo}')" class="text-red-400 hover:text-red-600 p-1.5" title="Excluir registro desta nota do sistema">
                                 <i class="fa-solid fa-trash-can"></i>
                             </button>

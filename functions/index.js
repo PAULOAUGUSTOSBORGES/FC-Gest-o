@@ -203,12 +203,26 @@ exports.emitirNFCe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
         if (!config || !config.empresa) throw new functions.https.HttpsError("failed-precondition", "Configurações da empresa incompletas.");
         const empresa = config.empresa;
 
+        if (!empresa.ambienteFiscal || empresa.ambienteFiscal !== 'producao') {
+            empresa.ambienteFiscal = 'producao';
+            db.collection("fc_moveis").doc("config").set({ empresa: { ambienteFiscal: 'producao' } }, { merge: true }).catch(console.error);
+        }
+
         if (!empresa.certificadoBase64) {
             throw new functions.https.HttpsError(
                 "failed-precondition",
                 "Certificado Digital A1 (.pfx) não configurado. Acesse Configurações > Emissor Fiscal para fazer o upload do certificado e salvar a senha."
             );
         }
+
+        if (!empresa.cscToken || !empresa.cscToken.trim()) {
+            throw new functions.https.HttpsError(
+                "failed-precondition",
+                "Token CSC não configurado! Acesse Configurações > Emissor Fiscal e preencha o Token CSC e o ID do Token para emitir NFC-e."
+            );
+        }
+
+        console.log(`[SEFAZ NFC-e] Configuração CSC da Empresa: cscId="${empresa.cscId}", cscToken="${empresa.cscToken ? (empresa.cscToken.trim().substring(0, 4) + '...' + empresa.cscToken.trim().slice(-4)) : 'VAZIO'}", tamanho=${empresa.cscToken ? empresa.cscToken.trim().length : 0}`);
 
         const produtos = venda.itens || venda.produtos || [];
         if (produtos.length === 0) throw new functions.https.HttpsError("invalid-argument", "A venda não possui itens.");
@@ -379,6 +393,11 @@ exports.emitirNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gs
         if (!config || !config.empresa) throw new functions.https.HttpsError("failed-precondition", "Configurações da empresa incompletas.");
         const empresa = config.empresa;
 
+        if (!empresa.ambienteFiscal || empresa.ambienteFiscal !== 'producao') {
+            empresa.ambienteFiscal = 'producao';
+            db.collection("fc_moveis").doc("config").set({ empresa: { ambienteFiscal: 'producao' } }, { merge: true }).catch(console.error);
+        }
+
         if (!empresa.certificadoBase64) {
             throw new functions.https.HttpsError(
                 "failed-precondition",
@@ -414,7 +433,7 @@ exports.emitirNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gs
             numero: resultadoSefaz.numero || "",
             serie: resultadoSefaz.serie || (empresa.serieNFe || "1"),
             protocolo: resultadoSefaz.protocolo || "",
-            ambiente: resultadoSefaz.ambiente || empresa.ambienteFiscal || "homologacao",
+            ambiente: resultadoSefaz.ambiente || empresa.ambienteFiscal || "producao",
             data_emissao: resultadoSefaz.dataAutorizacao || new Date().toISOString(),
             xml_conteudo: resultadoSefaz.xml || "",
             motor: "sefaz_direto"

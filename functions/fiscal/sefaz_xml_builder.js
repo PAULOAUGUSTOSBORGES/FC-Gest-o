@@ -98,6 +98,10 @@ function gerarCardTag(codigo, metodo = '') {
         const tBand = extrairBandeira(metodo);
         return `\n            <card>\n                <tpIntegra>2</tpIntegra>\n                <tBand>${tBand}</tBand>\n            </card>`;
     }
+    if (codigo === '17') {
+        // Conforme NT 2025.001 e Regra YA04-10 da SEFAZ, PIX (17) exige o grupo <card> com tpIntegra=2 (não integrado / manual)
+        return `\n            <card>\n                <tpIntegra>2</tpIntegra>\n            </card>`;
+    }
     return '';
 }
 
@@ -125,7 +129,7 @@ function mapearFormaPagamentoSefaz(forma) {
     if (f.includes('duplicata')) return { codigo: '14', descricao: 'Duplicata Mercantil' };
     if (f.includes('boleto')) return { codigo: '15', descricao: 'Boleto Bancario' };
     if (f.includes('deposito')) return { codigo: '16', descricao: 'Deposito Bancario' };
-    if (f === '17' || f === '20' || f.includes('pix')) return { codigo: '20', descricao: 'Pagamento Instantaneo (PIX)' };
+    if (f === '17' || f === '20' || f.includes('pix')) return { codigo: '17', descricao: 'Pagamento Instantaneo (PIX)' };
     if (f.includes('transferencia')) return { codigo: '18', descricao: 'Transferencia Bancaria' };
     if (f.includes('sem pagamento')) return { codigo: '90', descricao: 'Sem Pagamento' };
     
@@ -354,6 +358,8 @@ function construirXmlNota(dados) {
         ? venda.pagamentos.filter(p => (parseFloat(p.valor) || 0) > 0)
         : [];
 
+    let vTrocoStr = '0.00';
+
     if (listaPagamentos.length > 0) {
         let somaPagamentos = 0;
         listaPagamentos.forEach((p, idx) => {
@@ -361,11 +367,11 @@ function construirXmlNota(dados) {
             const { codigo, descricao } = mapearFormaPagamentoSefaz(met);
             let vItemPag = parseFloat(p.valor) || 0;
             
-            // Se for o último item e houver leve diferença de arredondamento com vNF, equaliza
-            if (idx === listaPagamentos.length - 1 && listaPagamentos.length > 1) {
-                const diferenca = parseFloat(vNF) - somaPagamentos;
-                if (Math.abs(diferenca - vItemPag) <= 0.05) {
-                    vItemPag = diferenca;
+            // Se for o último item e a soma ainda não atingiu vNF, força o valor para não rejeitar (Rejeição 865)
+            if (idx === listaPagamentos.length - 1) {
+                const restante = parseFloat(vNF) - somaPagamentos;
+                if (vItemPag < restante) {
+                    vItemPag = restante;
                 }
             }
             somaPagamentos += vItemPag;
@@ -378,6 +384,11 @@ function construirXmlNota(dados) {
             <vPag>${vItemPag.toFixed(2)}</vPag>${cardTag}
         </detPag>`;
         });
+        
+        const troco = somaPagamentos - parseFloat(vNF);
+        if (troco > 0.001) {
+            vTrocoStr = troco.toFixed(2);
+        }
     } else {
         // Fallback: busca em venda.pag, venda.formaPagamento, venda.forma_pagamento, venda.pagamento ou venda.metodo
         const formaTexto = venda.pag || venda.formaPagamento || venda.forma_pagamento || venda.pagamento || venda.metodo || 'Dinheiro';
@@ -392,8 +403,9 @@ function construirXmlNota(dados) {
         </detPag>`;
     }
 
+    const vTrocoTag = vTrocoStr !== '0.00' ? `\n        <vTroco>${vTrocoStr}</vTroco>` : '';
     const tagPag = `
-    <pag>${detPagXml}
+    <pag>${detPagXml}${vTrocoTag}
     </pag>`;
 
     // Informações Adicionais
@@ -488,9 +500,8 @@ function construirXmlNota(dados) {
             qrCodeBaseUrl: endpoints.qrCodeUrl || 'https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx'
         });
         
-        // MOC 4.00 exige qrCode escapado (<![CDATA[ ... ]]>) e urlChave 
-        // A urlChave é a mesma do qrCode mas sem os parâmetros
-        const urlChave = (endpoints.qrCodeUrl || 'https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx').split('?')[0];
+        // MOC 4.00 exige qrCode escapado (<![CDATA[ ... ]]>) e urlChave oficial de consulta por chave da UF
+        const urlChave = endpoints.urlChave || (endpoints.qrCodeUrl || 'https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx').split('?')[0];
 
         infNFeSupl = `
 <infNFeSupl>

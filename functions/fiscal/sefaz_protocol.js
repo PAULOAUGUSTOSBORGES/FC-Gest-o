@@ -131,16 +131,16 @@ function gerarUrlQrCodeNFCe(params) {
     const cscToken = params.cscToken || '';
     const qrCodeBaseUrl = params.qrCodeBaseUrl || 'https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx';
 
-    // Remove zeros à esquerda do cscId para a composição
-    const idToken = String(parseInt(cscId, 10) || 1).padStart(6, '0');
+    // cIdToken deve ser sem os zeros não significativos (ex: '1') conforme leiauteNFe_v4.00.xsd pattern (0|[1-9]{1}([0-9]{1,5})?)
+    const idToken = String(parseInt(cscId, 10) || 1);
     const tokenCscLimpo = String(cscToken || '').trim();
 
     // Composição para o Hash SHA-1: chNFe + | + 2 + | + tpAmb + | + cIdToken + cscToken
-    const textoParaHash = `${chaveAcesso}|2|${tpAmb}|${parseInt(idToken, 10)}${tokenCscLimpo}`;
+    const textoParaHash = `${chaveAcesso}|2|${tpAmb}|${idToken}${tokenCscLimpo}`;
     const hashHex = crypto.createHash('sha1').update(textoParaHash, 'utf8').digest('hex').toLowerCase();
 
-    // Parâmetro 'p': chNFe|2|tpAmb|cIdToken|hash
-    const paramP = `${chaveAcesso}|2|${tpAmb}|${parseInt(idToken, 10)}|${hashHex}`;
+    // Parâmetro 'p': chNFe|2|tpAmb|cIdToken|hashHexadecimal
+    const paramP = `${chaveAcesso}|2|${tpAmb}|${idToken}|${hashHex}`;
 
     const separador = qrCodeBaseUrl.includes('?') ? '&' : '?';
     return `${qrCodeBaseUrl}${separador}p=${paramP}`;

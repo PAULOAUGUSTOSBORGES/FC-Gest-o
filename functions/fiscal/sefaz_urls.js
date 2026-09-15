@@ -77,7 +77,9 @@ const SERVIDORES_NFCE = {
         evento_prod: 'https://nfce.fazenda.sp.gov.br/ws/NFeRecepcaoEvento4.asmx',
         evento_homol: 'https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeRecepcaoEvento4.asmx',
         qrcode_prod: 'https://www.nfce.fazenda.sp.gov.br/qrcode',
-        qrcode_homol: 'https://www.homologacao.nfce.fazenda.sp.gov.br/qrcode'
+        qrcode_homol: 'https://www.homologacao.nfce.fazenda.sp.gov.br/qrcode',
+        urlChave_prod: 'https://www.nfce.fazenda.sp.gov.br/consulta',
+        urlChave_homol: 'https://www.homologacao.nfce.fazenda.sp.gov.br/consulta'
     },
     'MG': {
         producao: 'https://nfce.fazenda.mg.gov.br/portalnfce/services/NFeAutorizacao4',
@@ -85,7 +87,9 @@ const SERVIDORES_NFCE = {
         evento_prod: 'https://nfce.fazenda.mg.gov.br/portalnfce/services/NFeRecepcaoEvento4',
         evento_homol: 'https://hnfce.fazenda.mg.gov.br/portalnfce/services/NFeRecepcaoEvento4',
         qrcode_prod: 'https://nfce.fazenda.mg.gov.br/portalnfce/sistema/qrcode.xhtml',
-        qrcode_homol: 'https://hnfce.fazenda.mg.gov.br/portalnfce/sistema/qrcode.xhtml'
+        qrcode_homol: 'https://hnfce.fazenda.mg.gov.br/portalnfce/sistema/qrcode.xhtml',
+        urlChave_prod: 'http://nfce.fazenda.mg.gov.br/portalnfce',
+        urlChave_homol: 'http://hnfce.fazenda.mg.gov.br/portalnfce'
     },
     'PR': {
         producao: 'https://nfce.fazenda.pr.gov.br/nfce/NFeAutorizacao4',
@@ -93,7 +97,9 @@ const SERVIDORES_NFCE = {
         evento_prod: 'https://nfce.fazenda.pr.gov.br/nfce/NFeRecepcaoEvento4',
         evento_homol: 'https://homologacao.nfce.fazenda.pr.gov.br/nfce/NFeRecepcaoEvento4',
         qrcode_prod: 'http://www.fazenda.pr.gov.br/nfce/qrcode',
-        qrcode_homol: 'http://www.fazenda.pr.gov.br/nfce/qrcode'
+        qrcode_homol: 'http://www.fazenda.pr.gov.br/nfce/qrcode',
+        urlChave_prod: 'http://www.fazenda.pr.gov.br/nfce/consulta',
+        urlChave_homol: 'http://www.fazenda.pr.gov.br/nfce/consulta'
     },
     'RS': {
         producao: 'https://nfce.sefaz.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx',
@@ -101,7 +107,9 @@ const SERVIDORES_NFCE = {
         evento_prod: 'https://nfce.sefaz.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx',
         evento_homol: 'https://nfce-homologacao.sefaz.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx',
         qrcode_prod: 'https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx',
-        qrcode_homol: 'https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx'
+        qrcode_homol: 'https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx',
+        urlChave_prod: 'https://www.sefaz.rs.gov.br/nfce/consulta',
+        urlChave_homol: 'https://www.sefaz.rs.gov.br/nfce/consulta'
     },
     'GO': {
         producao: 'https://nfe.sefaz.go.gov.br/nfe/services/NFeAutorizacao4',
@@ -109,7 +117,9 @@ const SERVIDORES_NFCE = {
         evento_prod: 'https://nfe.sefaz.go.gov.br/nfe/services/NFeRecepcaoEvento4',
         evento_homol: 'https://homolog.sefaz.go.gov.br/nfe/services/NFeRecepcaoEvento4',
         qrcode_prod: 'https://nfeweb.sefaz.go.gov.br/nfeweb/sites/nfce/danfeNFCe',
-        qrcode_homol: 'https://nfewebhomolog.sefaz.go.gov.br/nfeweb/sites/nfce/danfeNFCe'
+        qrcode_homol: 'https://nfewebhomolog.sefaz.go.gov.br/nfeweb/sites/nfce/danfeNFCe',
+        urlChave_prod: 'http://www.sefaz.go.gov.br/nfce/consulta',
+        urlChave_homol: 'http://www.sefaz.go.gov.br/nfce/consulta'
     },
     'MT': {
         producao: 'https://nfce.sefaz.mt.gov.br/nfcews/services/NfeAutorizacao4',
@@ -117,7 +127,9 @@ const SERVIDORES_NFCE = {
         evento_prod: 'https://nfce.sefaz.mt.gov.br/nfcews/services/NfeRecepcaoEvento4',
         evento_homol: 'https://homologacao.sefaz.mt.gov.br/nfcews/services/NfeRecepcaoEvento4',
         qrcode_prod: 'http://www.sefaz.mt.gov.br/nfce/consultanfce',
-        qrcode_homol: 'http://homologacao.sefaz.mt.gov.br/nfce/consultanfce'
+        qrcode_homol: 'http://homologacao.sefaz.mt.gov.br/nfce/consultanfce',
+        urlChave_prod: 'http://www.sefaz.mt.gov.br/nfce/consultanfce',
+        urlChave_homol: 'http://homologacao.sefaz.mt.gov.br/nfce/consultanfce'
     },
     'BA': {
         producao: 'https://nfce.sefaz.ba.gov.br/webservices/NFeAutorizacao4/NFeAutorizacao4.asmx',
@@ -125,7 +137,9 @@ const SERVIDORES_NFCE = {
         evento_prod: 'https://nfce.sefaz.ba.gov.br/webservices/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx',
         evento_homol: 'https://hnfce.sefaz.ba.gov.br/webservices/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx',
         qrcode_prod: 'http://nfe.sefaz.ba.gov.br/servicos/nfce/qrcode.aspx',
-        qrcode_homol: 'http://hnfe.sefaz.ba.gov.br/servicos/nfce/qrcode.aspx'
+        qrcode_homol: 'http://hnfe.sefaz.ba.gov.br/servicos/nfce/qrcode.aspx',
+        urlChave_prod: 'http://nfe.sefaz.ba.gov.br/servicos/nfce/Modulos/Geral/NFCEC_consulta_chave_acesso.aspx',
+        urlChave_homol: 'http://hnfe.sefaz.ba.gov.br/servicos/nfce/Modulos/Geral/NFCEC_consulta_chave_acesso.aspx'
     },
     'SVRS': {
         producao: 'https://nfce.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx',
@@ -133,7 +147,9 @@ const SERVIDORES_NFCE = {
         evento_prod: 'https://nfce.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx',
         evento_homol: 'https://nfce-homologacao.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx',
         qrcode_prod: 'https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx',
-        qrcode_homol: 'https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx'
+        qrcode_homol: 'https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx',
+        urlChave_prod: 'https://www.sefaz.rs.gov.br/nfce/consulta',
+        urlChave_homol: 'https://www.sefaz.rs.gov.br/nfce/consulta'
     }
 };
 
@@ -148,6 +164,7 @@ function obterEndpointsSefaz(modelo, uf, ambiente = 'homologacao') {
     const amb = ambiente === 'producao' ? 'producao' : 'homologacao';
     const ambEvt = ambiente === 'producao' ? 'evento_prod' : 'evento_homol';
     const ambQr = ambiente === 'producao' ? 'qrcode_prod' : 'qrcode_homol';
+    const ambChave = ambiente === 'producao' ? 'urlChave_prod' : 'urlChave_homol';
 
     if (modelo === '65') {
         const configNFCe = SERVIDORES_NFCE[estado] || SERVIDORES_NFCE['SVRS'];
@@ -155,6 +172,7 @@ function obterEndpointsSefaz(modelo, uf, ambiente = 'homologacao') {
             autorizacaoUrl: configNFCe[amb],
             eventoUrl: configNFCe[ambEvt],
             qrCodeUrl: configNFCe[ambQr] || SERVIDORES_NFCE['SVRS'][ambQr],
+            urlChave: configNFCe[ambChave] || SERVIDORES_NFCE['SVRS'][ambChave] || (configNFCe[ambQr] || SERVIDORES_NFCE['SVRS'][ambQr]).split('?')[0],
             cUF: CODIGOS_UF[estado] || '35'
         };
     } else {
