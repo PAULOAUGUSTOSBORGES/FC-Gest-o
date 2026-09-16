@@ -131,6 +131,11 @@ service cloud.firestore {
       allow write: if isAdmin() || temPermissao('perm_gestao');
     }
 
+    match /notas_avulsas/{docId} {
+      allow read: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_gestao'));
+      allow write: if isAdmin() || temPermissao('perm_gestao');
+    }
+
     // ==========================================
     // 5. Funcionários e Controle de Acesso
     // ==========================================

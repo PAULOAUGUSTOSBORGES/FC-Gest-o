@@ -210,6 +210,93 @@
         html:not(.dark) #modal-devolucao-compra tr.dev-compra-tr.is-selected {
             background-color: #fef3c7 !important;
         }
+
+        /* Estilos Dark Mode e Estruturais para Modal de Nota Avulsa */
+        html.dark #modal-nota-avulsa .modal-card-avulsa,
+        html.dark #modal-nota-avulsa > div {
+            background-color: #0f172a !important;
+            border: 1px solid #334155 !important;
+            color: #f8fafc !important;
+        }
+        html.dark #modal-nota-avulsa .modal-header-avulsa,
+        html.dark #modal-nota-avulsa .modal-footer-avulsa {
+            background-color: #0f172a !important;
+            border-color: #334155 !important;
+        }
+        html.dark #modal-nota-avulsa .avulsa-box-section {
+            background-color: #1e293b !important;
+            border: 1px solid #334155 !important;
+        }
+        html.dark #modal-nota-avulsa .avulsa-table-container {
+            background-color: #0f172a !important;
+            border: 1px solid #334155 !important;
+        }
+        html.dark #modal-nota-avulsa table thead {
+            background-color: #0f172a !important;
+        }
+        html.dark #modal-nota-avulsa table thead th {
+            background-color: #0f172a !important;
+            color: #94a3b8 !important;
+            border-bottom: 1px solid #334155 !important;
+        }
+        html.dark #modal-nota-avulsa table tbody tr {
+            background-color: #0f172a !important;
+            border-color: #334155 !important;
+            color: #f8fafc !important;
+        }
+        html.dark #modal-nota-avulsa table tbody tr:hover {
+            background-color: #1e293b !important;
+        }
+        html.dark #modal-nota-avulsa input:not([type="checkbox"]):not([type="file"]),
+        html.dark #modal-nota-avulsa textarea,
+        html.dark #modal-nota-avulsa select {
+            background-color: #0f172a !important;
+            border: 1px solid #334155 !important;
+            color: #f8fafc !important;
+        }
+        html.dark #modal-nota-avulsa input::placeholder,
+        html.dark #modal-nota-avulsa textarea::placeholder {
+            color: #64748b !important;
+        }
+        html.dark #modal-nota-avulsa button.btn-cancelar-avulsa {
+            background-color: #1e293b !important;
+            border: 1px solid #334155 !important;
+            color: #94a3b8 !important;
+        }
+        html.dark #modal-nota-avulsa button.btn-cancelar-avulsa:hover {
+            background-color: #334155 !important;
+            color: #f8fafc !important;
+        }
+        html.dark #modal-nota-avulsa .avulsa-summary-box {
+            background-color: #1e293b !important;
+            border: 1px solid #334155 !important;
+        }
+        html.dark #modal-nota-avulsa #avulsa-busca-cliente,
+        html.dark #modal-nota-avulsa #avulsa-busca-produto {
+            background-color: #1e293b !important;
+            border-color: #334155 !important;
+            color: #f8fafc !important;
+        }
+        html.dark #modal-nota-avulsa #avulsa-item-desconto {
+            background-color: rgba(244, 63, 94, 0.1) !important;
+            border-color: rgba(244, 63, 94, 0.4) !important;
+            color: #fda4af !important;
+        }
+
+        html:not(.dark) #modal-nota-avulsa .modal-card-avulsa,
+        html:not(.dark) #modal-nota-avulsa > div {
+            background-color: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            color: #1e293b !important;
+        }
+        html:not(.dark) #modal-nota-avulsa .avulsa-box-section {
+            background-color: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+        }
+        html:not(.dark) #modal-nota-avulsa .avulsa-summary-box {
+            background-color: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+        }
     </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0f172a">
@@ -893,13 +980,13 @@
     <!-- ========================================== -->
     <!-- MODAL — NOTA AVULSA COMPLETA              -->
     <!-- ========================================== -->
-    <div id="modal-nota-avulsa" class="fixed inset-0 bg-slate-900/80 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[95vh]">
-            <div class="p-5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0">
+    <div id="modal-nota-avulsa" class="fixed inset-0 bg-slate-950/80 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="modal-card-avulsa bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[95vh]">
+            <div class="modal-header-avulsa p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
                 <h2 class="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                    <i class="fa-solid fa-file-invoice text-emerald-500"></i> Emitir Nota Avulsa
+                    <i class="fa-solid fa-file-invoice text-emerald-500"></i> Emitir Nota Avulsa (NF-e / NFC-e)
                 </h2>
-                <button onclick="fecharModalNotaAvulsa()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+                <button onclick="fecharModalNotaAvulsa()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
@@ -908,20 +995,20 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">Tipo de Nota</label>
-                        <select id="avulsa-tipo" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
-                            <option value="nfe">NF-e (Modelo 55)</option>
-                            <option value="nfce">NFC-e (Modelo 65)</option>
+                        <select id="avulsa-tipo" class="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                            <option value="nfe">NF-e (Modelo 55 - Grande Porte / Danfe A4)</option>
+                            <option value="nfce">NFC-e (Modelo 65 - Cupom Consumidor)</option>
                         </select>
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">Natureza da Operação</label>
-                        <input id="avulsa-nat-op" type="text" value="VENDA DE MERCADORIA" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                        <input id="avulsa-nat-op" type="text" value="VENDA DE MERCADORIA" class="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
                     </div>
                 </div>
 
                 <!-- Destinatário -->
                 <div>
-                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2 border-b border-slate-100 dark:border-slate-700 pb-1.5">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2 border-b border-slate-100 dark:border-slate-800 pb-1.5">
                         <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                             <i class="fa-solid fa-user text-blue-500"></i> Destinatário
                         </h3>
@@ -936,38 +1023,38 @@
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">CPF / CNPJ</label>
-                            <input id="avulsa-dest-doc" type="text" placeholder="000.000.000-00" maxlength="18" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                            <input id="avulsa-dest-doc" type="text" placeholder="000.000.000-00" maxlength="18" class="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
                         </div>
                         <div>
                             <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Nome / Razão Social</label>
-                            <input id="avulsa-dest-nome" type="text" placeholder="CONSUMIDOR FINAL" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                            <input id="avulsa-dest-nome" type="text" placeholder="CONSUMIDOR FINAL" class="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
                         </div>
                         <div>
                             <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Logradouro</label>
-                            <input id="avulsa-dest-rua" type="text" placeholder="Rua, Av..." class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                            <input id="avulsa-dest-rua" type="text" placeholder="Rua, Av..." class="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
                         </div>
                         <div class="grid grid-cols-2 gap-2">
                             <div>
                                 <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Número</label>
-                                <input id="avulsa-dest-numero" type="text" placeholder="S/N" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                                <input id="avulsa-dest-numero" type="text" placeholder="S/N" class="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
                             </div>
                             <div>
                                 <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">UF</label>
-                                <input id="avulsa-dest-uf" type="text" placeholder="GO" maxlength="2" value="GO" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 uppercase">
+                                <input id="avulsa-dest-uf" type="text" placeholder="GO" maxlength="2" value="GO" class="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 uppercase">
                             </div>
                         </div>
                         <div class="grid grid-cols-3 gap-2">
                             <div>
                                 <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Bairro</label>
-                                <input id="avulsa-dest-bairro" type="text" placeholder="Centro" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                                <input id="avulsa-dest-bairro" type="text" placeholder="Centro" class="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
                             </div>
                             <div>
                                 <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Cidade</label>
-                                <input id="avulsa-dest-cidade" type="text" placeholder="Goiânia" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                                <input id="avulsa-dest-cidade" type="text" placeholder="Goiânia" class="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
                             </div>
                             <div>
                                 <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">CEP</label>
-                                <input id="avulsa-dest-cep" type="text" placeholder="74000-000" maxlength="9" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                                <input id="avulsa-dest-cep" type="text" placeholder="74000-000" maxlength="9" class="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
                             </div>
                         </div>
                     </div>
@@ -975,7 +1062,7 @@
 
                 <!-- Itens -->
                 <div>
-                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2 border-b border-slate-100 dark:border-slate-700 pb-1.5">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2 border-b border-slate-100 dark:border-slate-800 pb-1.5">
                         <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                             <i class="fa-solid fa-boxes-stacked text-emerald-500"></i> Itens da Nota
                         </h3>
@@ -987,35 +1074,50 @@
                             </div>
                         </div>
                     </div>
-                    <div class="grid grid-cols-12 gap-2 mb-2">
-                        <div class="col-span-4">
-                            <input id="avulsa-item-nome" type="text" placeholder="Descrição do produto" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400" onkeydown="if(event.key==='Enter') adicionarAvulsaItem()">
+
+                    <!-- Formulário de Entrada do Item -->
+                    <div class="avulsa-box-section grid grid-cols-12 gap-2 mb-2 p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80">
+                        <div class="col-span-12 sm:col-span-3">
+                            <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Descrição do Produto</label>
+                            <input id="avulsa-item-nome" type="text" placeholder="Nome do produto" class="w-full border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400" onkeydown="if(event.key==='Enter') adicionarAvulsaItem()">
                         </div>
-                        <div class="col-span-2">
-                            <input id="avulsa-item-qtd" type="number" placeholder="Qtd" min="0.01" step="0.01" value="1" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                        <div class="col-span-4 sm:col-span-1">
+                            <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Qtd</label>
+                            <input id="avulsa-item-qtd" type="number" placeholder="1" min="0.01" step="0.01" value="1" class="w-full border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 text-right">
                         </div>
-                        <div class="col-span-2">
-                            <input id="avulsa-item-preco" type="number" placeholder="Valor unit." min="0.01" step="0.01" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                        <div class="col-span-4 sm:col-span-2">
+                            <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Valor Unit. (R$)</label>
+                            <input id="avulsa-item-preco" type="number" placeholder="0.00" min="0.01" step="0.01" class="w-full border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 text-right">
                         </div>
-                        <div class="col-span-2">
-                            <input id="avulsa-item-ncm" type="text" placeholder="NCM" maxlength="8" value="94036000" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 font-mono">
+                        <div class="col-span-4 sm:col-span-2">
+                            <label class="block text-[10px] font-bold text-rose-500 dark:text-rose-400 uppercase mb-0.5">Desconto (R$)</label>
+                            <input id="avulsa-item-desconto" type="number" placeholder="0.00" min="0" step="0.01" value="0.00" class="w-full border border-rose-300 dark:border-rose-900/60 rounded-lg px-2 py-1.5 text-xs bg-rose-50/50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300 font-bold focus:outline-none focus:ring-2 focus:ring-rose-400 text-right">
                         </div>
-                        <div class="col-span-1">
-                            <input id="avulsa-item-cfop" type="text" placeholder="CFOP" maxlength="4" value="5102" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 font-mono">
+                        <div class="col-span-5 sm:col-span-2">
+                            <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">NCM</label>
+                            <input id="avulsa-item-ncm" type="text" placeholder="NCM" maxlength="8" value="94036000" class="w-full border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 font-mono text-center">
                         </div>
-                        <div class="col-span-1">
-                            <button onclick="adicionarAvulsaItem()" class="w-full h-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-colors flex items-center justify-center" title="Adicionar Item">
+                        <div class="col-span-4 sm:col-span-1">
+                            <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">CFOP</label>
+                            <input id="avulsa-item-cfop" type="text" placeholder="CFOP" maxlength="4" value="5102" class="w-full border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 font-mono text-center">
+                        </div>
+                        <div class="col-span-3 sm:col-span-1 flex items-end">
+                            <button onclick="adicionarAvulsaItem()" class="w-full h-[32px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition-colors flex items-center justify-center shadow-sm" title="Adicionar Item">
                                 <i class="fa-solid fa-plus"></i>
                             </button>
                         </div>
                     </div>
-                    <div class="overflow-auto max-h-40 rounded-xl border border-slate-200 dark:border-slate-700">
+
+                    <!-- Tabela de Itens Adicionados -->
+                    <div class="avulsa-table-container overflow-auto max-h-52 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
                         <table class="w-full text-sm">
-                            <thead class="bg-slate-50 dark:bg-slate-900 sticky top-0">
+                            <thead class="bg-slate-50 dark:bg-slate-900 sticky top-0 border-b border-slate-200 dark:border-slate-800">
                                 <tr class="text-left text-xs text-slate-500 dark:text-slate-400">
                                     <th class="p-2">Produto</th>
                                     <th class="p-2 text-right">Qtd</th>
                                     <th class="p-2 text-right">Valor Unit.</th>
+                                    <th class="p-2 text-right text-rose-500 dark:text-rose-400">Desconto</th>
+                                    <th class="p-2 text-right text-emerald-600 dark:text-emerald-400">Subtotal Líq.</th>
                                     <th class="p-2 text-center">NCM</th>
                                     <th class="p-2 text-center">CFOP</th>
                                     <th class="p-2 w-8"></th>
@@ -1024,9 +1126,23 @@
                             <tbody id="avulsa-itens-lista"></tbody>
                         </table>
                     </div>
-                    <div class="mt-2 text-right">
-                        <span class="text-sm font-bold text-slate-500 dark:text-slate-400">Total: </span>
-                        <span id="avulsa-total" class="text-base font-black text-emerald-600">R$ 0,00</span>
+
+                    <!-- Resumo Financeiro da Nota -->
+                    <div class="avulsa-summary-box mt-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex items-center gap-4 text-xs">
+                            <div>
+                                <span class="text-slate-400 font-medium">Subtotal Bruto:</span>
+                                <span id="avulsa-subtotal-bruto" class="ml-1 font-bold text-slate-700 dark:text-slate-200">R$ 0,00</span>
+                            </div>
+                            <div class="border-l border-slate-300 dark:border-slate-700 pl-4">
+                                <span class="text-slate-400 font-medium">Desconto Total:</span>
+                                <span id="avulsa-total-desconto" class="ml-1 font-bold text-rose-600 dark:text-rose-400">- R$ 0,00</span>
+                            </div>
+                        </div>
+                        <div class="text-right flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total da Nota:</span>
+                            <span id="avulsa-total" class="text-lg font-black text-emerald-600 dark:text-emerald-400">R$ 0,00</span>
+                        </div>
                     </div>
                 </div>
 
@@ -1034,7 +1150,7 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">Forma de Pagamento</label>
-                        <select id="avulsa-forma-pag" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                        <select id="avulsa-forma-pag" class="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
                             <option value="Dinheiro">Dinheiro</option>
                             <option value="PIX">PIX</option>
                             <option value="Cartão Crédito">Cartão de Crédito</option>
@@ -1045,15 +1161,15 @@
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">Observações</label>
-                        <input id="avulsa-obs" type="text" placeholder="Info. complementares..." class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                        <input id="avulsa-obs" type="text" placeholder="Info. complementares..." class="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
                     </div>
                 </div>
             </div>
-            <div class="p-5 border-t border-slate-200 dark:border-slate-700 flex items-center gap-3 shrink-0">
-                <button onclick="fecharModalNotaAvulsa()" class="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+            <div class="modal-footer-avulsa p-5 border-t border-slate-200 dark:border-slate-800 flex items-center gap-3 shrink-0">
+                <button onclick="fecharModalNotaAvulsa()" class="btn-cancelar-avulsa flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                     Cancelar
                 </button>
-                <button id="btn-emitir-nota-avulsa" onclick="emitirNotaAvulsaModal()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+                <button id="btn-emitir-nota-avulsa" onclick="emitirNotaAvulsaModal()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 shadow-sm">
                     <i class="fa-solid fa-paper-plane"></i> Emitir Nota
                 </button>
             </div>
@@ -1183,6 +1299,6 @@
     <script src="../sistema/config_banco.js?v=20260916140952"></script>
     <script src="../global.js?v=20260916140952"></script>
     <script src="fc_cache.js?v=20260916140952"></script>
-    <script src="fiscal.js?v=20260916140952"></script>
+    <script src="fiscal.js?v=20260916154500"></script>
 </body>
 </html>

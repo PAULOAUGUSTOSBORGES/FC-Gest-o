@@ -274,7 +274,39 @@ function construirXmlNota(dados) {
     </dest>`;
     }
 
-    // Itens da Venda
+    // Itens da Venda e Tratamento de Descontos
+    let totalProdutosBruto = 0;
+    itens.forEach(it => {
+        const q = parseFloat(it.quantidade !== undefined ? it.quantidade : (it.qtd !== undefined ? it.qtd : 1)) || 1;
+        const p = parseFloat(it.preco !== undefined ? it.preco : (it.precoUnitario !== undefined ? it.precoUnitario : 0)) || 0;
+        totalProdutosBruto += (q * p);
+    });
+
+    const valorDescontoVenda = parseFloat(venda.desconto || 0) || 0;
+    const somaDescontosItens = itens.reduce((acc, it) => acc + (parseFloat(it.desconto !== undefined ? it.desconto : (it.vDesc || it.valorDesconto || 0)) || 0), 0);
+
+    // Mapeamento dos descontos por item (rateio proporcional se desconto global na venda)
+    let descontosPorItem = [];
+    if (somaDescontosItens > 0.001) {
+        descontosPorItem = itens.map(it => parseFloat(it.desconto !== undefined ? it.desconto : (it.vDesc || it.valorDesconto || 0)) || 0);
+    } else if (valorDescontoVenda > 0.001 && totalProdutosBruto > 0) {
+        let restoDesc = valorDescontoVenda;
+        descontosPorItem = itens.map((it, idx) => {
+            if (idx === itens.length - 1) {
+                return Math.max(0, Math.round(restoDesc * 100) / 100);
+            }
+            const q = parseFloat(it.quantidade !== undefined ? it.quantidade : (it.qtd !== undefined ? it.qtd : 1)) || 1;
+            const p = parseFloat(it.preco !== undefined ? it.preco : (it.precoUnitario !== undefined ? it.precoUnitario : 0)) || 0;
+            const sub = q * p;
+            const proporcao = sub / totalProdutosBruto;
+            const parcela = Math.round(valorDescontoVenda * proporcao * 100) / 100;
+            restoDesc -= parcela;
+            return parcela;
+        });
+    } else {
+        descontosPorItem = itens.map(() => 0);
+    }
+
     let itensXml = '';
     let totalProdutos = 0;
     let totalDesconto = 0;
@@ -297,7 +329,12 @@ function construirXmlNota(dados) {
         const subtotalItem = qtdVal * precoVal;
         const vProd = subtotalItem.toFixed(2);
         
+        const itemDesconto = Math.min(subtotalItem, Math.max(0, descontosPorItem[index] || 0));
+        const subtotalLiquidoItem = Math.max(0, subtotalItem - itemDesconto);
+        const tagVDesc = itemDesconto > 0.001 ? `\n            <vDesc>${itemDesconto.toFixed(2)}</vDesc>` : '';
+        
         totalProdutos += subtotalItem;
+        totalDesconto += itemDesconto;
         const csosn = apenasDigitos(item.csosn || '102');
         const origem = String(item.origem || '0').trim();
 
@@ -327,9 +364,9 @@ function construirXmlNota(dados) {
                 <orig>${origem}</orig>
                 <CST>00</CST>
                 <modBC>3</modBC>
-                <vBC>${vProd}</vBC>
+                <vBC>${subtotalLiquidoItem.toFixed(2)}</vBC>
                 <pICMS>18.00</pICMS>
-                <vICMS>${(subtotalItem * 0.18).toFixed(2)}</vICMS>
+                <vICMS>${(subtotalLiquidoItem * 0.18).toFixed(2)}</vICMS>
             </ICMS00>`;
         }
 
@@ -348,7 +385,7 @@ function construirXmlNota(dados) {
             <cEANTrib>SEM GTIN</cEANTrib>
             <uTrib>${uCom}</uTrib>
             <qTrib>${qCom}</qTrib>
-            <vUnTrib>${vUnCom}</vUnTrib>
+            <vUnTrib>${vUnCom}</vUnTrib>${tagVDesc}
             <indTot>1</indTot>
         </prod>
         <imposto>
@@ -369,7 +406,7 @@ function construirXmlNota(dados) {
     </det>`;
     });
 
-    const valorDescontoTotal = parseFloat(venda.desconto || 0) || 0;
+    const valorDescontoTotal = totalDesconto;
     const valorFinalNota = Math.max(0, totalProdutos - valorDescontoTotal);
     const vNF = valorFinalNota.toFixed(2);
     const vProdTotal = totalProdutos.toFixed(2);

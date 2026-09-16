@@ -1210,20 +1210,43 @@ exports.emitirNotaAvulsa = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
         if (!empresa?.certificadoBase64) throw new functions.https.HttpsError('failed-precondition', 'Certificado A1 não configurado.');
         empresa.ambienteFiscal = 'producao';
 
-        // Calcula total
-        const totalNota = itens.reduce((acc, it) => {
-            const qty = parseFloat(it.quantidade || it.qtd || 1);
-            const preco = parseFloat(it.preco || it.precoUnitario || 0);
-            return acc + qty * preco;
-        }, 0);
+        // Calcula total bruto, descontos dos itens e total líquido
+        let totalBruto = 0;
+        let totalDescontoItens = 0;
 
-        const pagamentosNota = pagamentos && pagamentos.length > 0
-            ? pagamentos
-            : [{ metodo: 'Dinheiro', valor: totalNota }];
+        const itensFormatados = itens.map(it => {
+            const qty = parseFloat(it.quantidade !== undefined ? it.quantidade : (it.qtd !== undefined ? it.qtd : 1)) || 1;
+            const preco = parseFloat(it.preco !== undefined ? it.preco : (it.precoUnitario !== undefined ? it.precoUnitario : 0)) || 0;
+            const desc = parseFloat(it.desconto !== undefined ? it.desconto : (it.vDesc !== undefined ? it.vDesc : 0)) || 0;
+            const sub = qty * preco;
+            const descVal = Math.min(sub, Math.max(0, desc));
+            totalBruto += sub;
+            totalDescontoItens += descVal;
+            return {
+                ...it,
+                quantidade: qty,
+                preco,
+                desconto: descVal,
+                vDesc: descVal
+            };
+        });
+
+        const totalDesconto = totalDescontoItens > 0 ? totalDescontoItens : Math.max(0, parseFloat(data.desconto || 0) || 0);
+        const totalLiquido = Math.max(0, totalBruto - totalDesconto);
+
+        // Se houver pagamentos informados, garante que o valor seja o líquido
+        let pagamentosNota = pagamentos && pagamentos.length > 0
+            ? pagamentos.map(p => ({ ...p, valor: parseFloat(p.valor) || 0 }))
+            : [{ metodo: 'Dinheiro', valor: totalLiquido }];
+
+        if (pagamentosNota.length === 1) {
+            pagamentosNota[0].valor = totalLiquido;
+        }
 
         const vendaAvulsa = {
-            tot: totalNota,
-            desconto: 0,
+            tot: totalLiquido,
+            totalBruto,
+            desconto: totalDesconto,
             pagamentos: pagamentosNota,
             observacoes: observacoes || '',
             clienteNome: destinatario?.nome || destinatario?.razaoSocial || 'CONSUMIDOR FINAL'
@@ -1246,8 +1269,8 @@ exports.emitirNotaAvulsa = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
 
         const isContingencia = Boolean(contingencia);
 
-        console.log(`[NOTA AVULSA] Emitindo ${modelo === '65' ? 'NFC-e' : 'NF-e'} avulsa para ${vendaAvulsa.clienteNome}`);
-        const resultadoSefaz = await emitirNotaDiretoSefaz(modelo, vendaAvulsa, empresa, itens, clienteAvulso, {
+        console.log(`[NOTA AVULSA] Emitindo ${modelo === '65' ? 'NFC-e' : 'NF-e'} avulsa para ${vendaAvulsa.clienteNome}. Bruto: R$ ${totalBruto.toFixed(2)}, Desconto: R$ ${totalDesconto.toFixed(2)}, Líquido: R$ ${totalLiquido.toFixed(2)}`);
+        const resultadoSefaz = await emitirNotaDiretoSefaz(modelo, vendaAvulsa, empresa, itensFormatados, clienteAvulso, {
             naturezaOperacao: naturezaOperacao || 'VENDA DE MERCADORIA',
             contingencia: isContingencia
         });
@@ -1263,6 +1286,11 @@ exports.emitirNotaAvulsa = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
             protocolo: resultadoSefaz.protocolo || '',
             data_emissao: resultadoSefaz.dataAutorizacao || new Date().toISOString(),
             xml_conteudo: resultadoSefaz.xml || '',
+            totalBruto,
+            totalDesconto,
+            totalLiquido,
+            valor: totalLiquido,
+            itens: itensFormatados,
             destinatario: destinatario || null,
             motor: 'sefaz_direto'
         };

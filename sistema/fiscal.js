@@ -57,6 +57,13 @@ function inicializarFiscal() {
         renderNotasFiscais();
     });
 
+    // Listener para notas avulsas (NF-e / NFC-e)
+    _listenCol('notas_avulsas', function(avulsas) {
+        db.notasAvulsas = avulsas || [];
+        processarNotasFiscais();
+        renderNotasFiscais();
+    });
+
     // Listener para clientes (puxar dados cadastrados em notas avulsas)
     _listenCol('clientes', function(clientes) {
         db.clientes = clientes || [];
@@ -342,6 +349,42 @@ function processarNotasFiscais() {
         });
     });
 
+    // Notas avulsas registradas na coleção notas_avulsas
+    (db.notasAvulsas || []).forEach(na => {
+        // Se já existe uma nota com essa chave no array, pula
+        if (na.chave_nfe && notasFiscaisArray.some(x => x.chave === na.chave_nfe)) return;
+        const isMod55 = String(na.modelo) === '55' || String(na.tipo || '').toLowerCase().includes('nf-e');
+        const tipoNota = isMod55 ? 'NF-e' : 'NFC-e';
+        const destNome = na.destinatario?.nome || na.destinatario?.razaoSocial || na.clienteNome || 'Consumidor Final';
+        const destDoc = na.destinatario?.cnpj || na.destinatario?.cpf || na.destinatario?.doc || na.clienteDoc || '';
+        const valorNota = Number(na.totalLiquido !== undefined ? na.totalLiquido : (na.valor !== undefined ? na.valor : (na.tot || 0)));
+
+        notasFiscaisArray.push({
+            vendaId: na.id || na.chave_nfe,
+            id: na.id,
+            numeroPedido: na.numero || 'Avulsa',
+            tipo: tipoNota,
+            modelo: isMod55 ? '55' : '65',
+            data: na.data_emissao || na.criadoEm,
+            numero: na.numero || '-',
+            serie: na.serie || '1',
+            chave: na.chave_nfe || '',
+            protocolo: na.protocolo || '',
+            clienteNome: destNome,
+            clienteDoc: destDoc,
+            valor: valorNota,
+            status: (na.status_sefaz || na.status || 'autorizado').toLowerCase(),
+            mensagemSefaz: na.mensagem_sefaz || (na.status_sefaz === 'cancelado' ? 'Nota Cancelada na SEFAZ' : 'Nota Avulsa Autorizada na SEFAZ'),
+            danfeUrl: na.danfe_url_completa || na.danfeUrl || '',
+            xmlUrl: na.xml_url_completa || na.xmlUrl || '',
+            xmlConteudo: na.xml_conteudo || '',
+            ambiente: na.ambiente || 'producao',
+            motor: na.motor || 'sefaz_direto',
+            isAvulsa: true,
+            rawAvulsa: na
+        });
+    });
+
     // Ordenar pelas mais recentes
     notasFiscaisArray.sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0));
 }
@@ -431,8 +474,8 @@ function renderNotasFiscais() {
             : (isDev
                 ? `<span class="bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-bold px-2 py-0.5 rounded text-[10px] whitespace-nowrap"><i class="fa-solid fa-rotate-left"></i> Devolução (55)</span>`
                 : (isNFe 
-                    ? `<span class="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 font-bold px-2 py-0.5 rounded text-[10px] whitespace-nowrap"><i class="fa-solid fa-file-invoice"></i> NF-e (55)</span>`
-                    : `<span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 font-bold px-2 py-0.5 rounded text-[10px] whitespace-nowrap"><i class="fa-solid fa-store"></i> NFC-e (65)</span>`));
+                    ? `<span class="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 font-bold px-2 py-0.5 rounded text-[10px] whitespace-nowrap"><i class="fa-solid fa-file-invoice"></i> NF-e (55)${n.isAvulsa ? ' <span class="text-[9px] opacity-80">(Avulsa)</span>' : ''}</span>`
+                    : `<span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 font-bold px-2 py-0.5 rounded text-[10px] whitespace-nowrap"><i class="fa-solid fa-store"></i> NFC-e (65)${n.isAvulsa ? ' <span class="text-[9px] opacity-80">(Avulsa)</span>' : ''}</span>`));
 
         const isHomol = n.ambiente === 'homologacao';
         let badgeStatus = '';
@@ -464,7 +507,9 @@ function renderNotasFiscais() {
         const btnCopiarChave = n.chave ? `<button onclick="navigator.clipboard.writeText('${n.chave}'); showToast('Chave copiada!', 'success');" class="text-slate-400 hover:text-blue-500 ml-1" title="Copiar Chave Completa"><i class="fa-regular fa-copy"></i></button>` : '';
 
         const vRaw = n.rawVenda || (db.vendas || []).find(x => String(x.id) === String(n.vendaId));
-        const numPedFmt = vRaw?.numeroPedido ? `#${String(vRaw.numeroPedido).padStart(4, '0')}` : (vRaw?.numero ? `#${String(vRaw.numero).padStart(4, '0')}` : (n.numeroPedido ? `#${String(n.numeroPedido).padStart(4, '0')}` : `#${String(n.vendaId || '0').slice(-6)}`));
+        const numPedFmt = n.isAvulsa
+            ? `<div class="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-center gap-1"><i class="fa-solid fa-bolt text-[10px]"></i> Nota Avulsa</div>`
+            : `<div class="text-[11px] font-semibold text-blue-600 dark:text-blue-400 mt-0.5 flex items-center gap-1"><i class="fa-solid fa-receipt text-[10px]"></i> Pedido ${vRaw?.numeroPedido ? `#${String(vRaw.numeroPedido).padStart(4, '0')}` : (vRaw?.numero ? `#${String(vRaw.numero).padStart(4, '0')}` : (n.numeroPedido ? `#${String(n.numeroPedido).padStart(4, '0')}` : `#${String(n.vendaId || '0').slice(-6)}`))}</div>`;
 
         return `
             <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">
@@ -472,7 +517,7 @@ function renderNotasFiscais() {
                 <td class="p-3">${badgeMod}</td>
                 <td class="p-3 font-mono text-slate-800 dark:text-slate-100 whitespace-nowrap">
                     <div class="font-bold">Nº ${n.numero} <span class="text-[10px] text-slate-400 font-normal">(Série ${n.serie})</span></div>
-                    <div class="text-[11px] font-semibold text-blue-600 dark:text-blue-400 mt-0.5 flex items-center gap-1"><i class="fa-solid fa-receipt text-[10px]"></i> Pedido ${numPedFmt}</div>
+                    ${numPedFmt}
                 </td>
                 <td class="p-3">
                     <strong class="text-slate-800 dark:text-slate-100 block max-w-[180px] truncate">${n.clienteNome}</strong>
@@ -924,6 +969,10 @@ function extrairXmlString(n) {
     if (nd && nd.xml_conteudo && nd.xml_conteudo.trim().startsWith('<')) {
         return nd.xml_conteudo.trim();
     }
+    const na = n.rawAvulsa || (db.notasAvulsas || []).find(x => String(x.id) === String(n.vendaId) || (x.chave_nfe && x.chave_nfe === n.chave));
+    if (na && na.xml_conteudo && na.xml_conteudo.trim().startsWith('<')) {
+        return na.xml_conteudo.trim();
+    }
     if (n.rawServico?.xml_conteudo && n.rawServico.xml_conteudo.trim().startsWith('<')) {
         return n.rawServico.xml_conteudo.trim();
     }
@@ -1148,6 +1197,37 @@ async function obterVendaParaImpressao(vendaId) {
             v.nfe_devolucao = notaDev;
         }
     }
+
+    // Suporte adicional para notas avulsas da coleção notas_avulsas
+    const notaAvulsa = (db.notasAvulsas || []).find(na => String(na.id) === String(vendaId) || na.chave_nfe === String(vendaId) || String(na.numero) === String(vendaId));
+    if (notaAvulsa) {
+        if (!v) {
+            v = {
+                id: vendaId,
+                clienteNome: notaAvulsa.destinatario?.nome || 'Consumidor Final',
+                clienteDoc: notaAvulsa.destinatario?.cpf || notaAvulsa.destinatario?.cnpj || notaAvulsa.destinatario?.doc || '',
+                clienteRua: notaAvulsa.destinatario?.rua || '',
+                clienteNumero: notaAvulsa.destinatario?.numero || '',
+                clienteBairro: notaAvulsa.destinatario?.bairro || '',
+                clienteCidade: notaAvulsa.destinatario?.cidade || '',
+                clienteUf: notaAvulsa.destinatario?.uf || '',
+                clienteCep: notaAvulsa.destinatario?.cep || '',
+                tot: Number(notaAvulsa.totalLiquido !== undefined ? notaAvulsa.totalLiquido : (notaAvulsa.valor || 0)),
+                nfe: (notaAvulsa.modelo === '55' || String(notaAvulsa.tipo || '').includes('NF-e')) ? notaAvulsa : null,
+                nfce: (notaAvulsa.modelo === '65' || String(notaAvulsa.tipo || '').includes('NFC-e')) ? notaAvulsa : null,
+                fiscal_xml: notaAvulsa.xml_conteudo || '',
+                fiscal_chave: notaAvulsa.chave_nfe || '',
+                itens: notaAvulsa.itens || [],
+                produtos: notaAvulsa.itens || [],
+                rawAvulsa: notaAvulsa
+            };
+        } else {
+            if (notaAvulsa.modelo === '55' && !v.nfe) v.nfe = notaAvulsa;
+            if (notaAvulsa.modelo === '65' && !v.nfce) v.nfce = notaAvulsa;
+            if (!v.fiscal_xml) v.fiscal_xml = notaAvulsa.xml_conteudo;
+        }
+    }
+
     return v;
 }
 
@@ -1987,6 +2067,9 @@ function selecionarProdutoAvulsa(valor) {
         const preco = Number(prod.preco || prod.precoVenda || prod.valor || 0);
         document.getElementById('avulsa-item-preco').value = preco > 0 ? preco.toFixed(2) : '';
     }
+    if (document.getElementById('avulsa-item-desconto')) {
+        document.getElementById('avulsa-item-desconto').value = '0.00';
+    }
     if (document.getElementById('avulsa-item-ncm') && prod.ncm) {
         document.getElementById('avulsa-item-ncm').value = String(prod.ncm).replace(/\D/g, '');
     }
@@ -2003,6 +2086,12 @@ function abrirModalNotaAvulsa() {
 
     // Limpar campos
     modal.querySelectorAll('input, textarea').forEach(el => { el.value = ''; });
+    if (document.getElementById('avulsa-item-qtd')) document.getElementById('avulsa-item-qtd').value = '1';
+    if (document.getElementById('avulsa-item-desconto')) document.getElementById('avulsa-item-desconto').value = '0.00';
+    if (document.getElementById('avulsa-item-ncm')) document.getElementById('avulsa-item-ncm').value = '94036000';
+    if (document.getElementById('avulsa-item-cfop')) document.getElementById('avulsa-item-cfop').value = '5102';
+    if (document.getElementById('avulsa-nat-op')) document.getElementById('avulsa-nat-op').value = 'VENDA DE MERCADORIA';
+
     renderAvulsaItens();
     popularDatalistsAvulsa();
     modal.classList.remove('hidden');
@@ -2018,29 +2107,81 @@ function renderAvulsaItens() {
     const tbody = document.getElementById('avulsa-itens-lista');
     if (!tbody) return;
     if (_avulsaItens.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-slate-400 py-4 text-sm">Nenhum item adicionado.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-slate-400 py-4 text-sm">Nenhum item adicionado.</td></tr>';
+        if (document.getElementById('avulsa-subtotal-bruto')) document.getElementById('avulsa-subtotal-bruto').textContent = 'R$ 0,00';
+        if (document.getElementById('avulsa-total-desconto')) document.getElementById('avulsa-total-desconto').textContent = '- R$ 0,00';
+        if (document.getElementById('avulsa-total')) document.getElementById('avulsa-total').textContent = 'R$ 0,00';
         return;
     }
-    tbody.innerHTML = _avulsaItens.map((it, i) => `
-        <tr class="border-b border-slate-200 dark:border-slate-700 text-sm">
-            <td class="p-2">${it.nome}</td>
-            <td class="p-2 text-right">${parseFloat(it.quantidade).toFixed(2)}</td>
-            <td class="p-2 text-right">R$ ${parseFloat(it.preco).toFixed(2)}</td>
-            <td class="p-2 text-center font-mono text-xs">${it.ncm || '-'}</td>
-            <td class="p-2 text-center font-mono text-xs">${it.cfop || '5102'}</td>
-            <td class="p-2 text-center"><button onclick="removerAvulsaItem(${i})" class="text-red-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash-can text-xs"></i></button></td>
-        </tr>
-    `).join('');
-    // Atualizar total
-    const total = _avulsaItens.reduce((acc, it) => acc + parseFloat(it.quantidade) * parseFloat(it.preco), 0);
+
+    let subtotalBrutoTotal = 0;
+    let descontoTotal = 0;
+
+    tbody.innerHTML = _avulsaItens.map((it, i) => {
+        const qtd = parseFloat(it.quantidade) || 1;
+        const preco = parseFloat(it.preco) || 0;
+        const subBruto = qtd * preco;
+        const desc = Math.min(subBruto, Math.max(0, parseFloat(it.desconto) || 0));
+        const subLiq = Math.max(0, subBruto - desc);
+
+        subtotalBrutoTotal += subBruto;
+        descontoTotal += desc;
+
+        return `
+        <tr class="border-b border-slate-200 dark:border-slate-800 text-sm hover:bg-slate-50/50 dark:hover:bg-slate-900/40 transition-colors">
+            <td class="p-2 font-medium text-slate-800 dark:text-slate-200">${it.nome}</td>
+            <td class="p-2 text-right text-slate-700 dark:text-slate-300 font-mono">${qtd.toFixed(2)}</td>
+            <td class="p-2 text-right text-slate-700 dark:text-slate-300 font-mono">R$ ${preco.toFixed(2)}</td>
+            <td class="p-2 text-right">
+                <div class="inline-flex items-center justify-end gap-1">
+                    <span class="text-[10px] text-rose-500 font-bold">-R$</span>
+                    <input type="number" min="0" step="0.01" value="${desc > 0 ? desc.toFixed(2) : ''}" placeholder="0.00"
+                        onchange="atualizarDescontoItem(${i}, this.value)"
+                        onkeydown="if(event.key==='Enter') this.blur()"
+                        class="w-20 text-right text-xs py-1 px-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 font-bold focus:ring-1 focus:ring-rose-400 outline-none">
+                </div>
+            </td>
+            <td class="p-2 text-right font-bold text-emerald-600 dark:text-emerald-400 font-mono">R$ ${subLiq.toFixed(2)}</td>
+            <td class="p-2 text-center font-mono text-xs text-slate-400">${it.ncm || '-'}</td>
+            <td class="p-2 text-center font-mono text-xs text-slate-400">${it.cfop || '5102'}</td>
+            <td class="p-2 text-center">
+                <button onclick="removerAvulsaItem(${i})" class="text-slate-400 hover:text-red-500 p-1 transition-colors" title="Remover item">
+                    <i class="fa-solid fa-trash-can text-xs"></i>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    const totalFinal = Math.max(0, subtotalBrutoTotal - descontoTotal);
+    if (document.getElementById('avulsa-subtotal-bruto')) {
+        document.getElementById('avulsa-subtotal-bruto').textContent = `R$ ${subtotalBrutoTotal.toFixed(2)}`;
+    }
+    if (document.getElementById('avulsa-total-desconto')) {
+        document.getElementById('avulsa-total-desconto').textContent = `- R$ ${descontoTotal.toFixed(2)}`;
+    }
     const elTotal = document.getElementById('avulsa-total');
-    if (elTotal) elTotal.textContent = `R$ ${total.toFixed(2)}`;
+    if (elTotal) elTotal.textContent = `R$ ${totalFinal.toFixed(2)}`;
+}
+
+function atualizarDescontoItem(idx, novoValor) {
+    if (!_avulsaItens[idx]) return;
+    let desc = parseFloat(novoValor) || 0;
+    if (desc < 0) desc = 0;
+    const item = _avulsaItens[idx];
+    const subtotalBruto = (parseFloat(item.quantidade) || 1) * (parseFloat(item.preco) || 0);
+    if (desc >= subtotalBruto) {
+        showToast('O desconto deve ser menor que o total bruto do item (R$ ' + subtotalBruto.toFixed(2) + ').', 'warning');
+        desc = Math.max(0, subtotalBruto - 0.01);
+    }
+    _avulsaItens[idx].desconto = desc;
+    renderAvulsaItens();
 }
 
 function adicionarAvulsaItem() {
     const nome = document.getElementById('avulsa-item-nome')?.value?.trim();
     const quantidade = parseFloat(document.getElementById('avulsa-item-qtd')?.value || '1');
     const preco = parseFloat(document.getElementById('avulsa-item-preco')?.value || '0');
+    const desconto = Math.max(0, parseFloat(document.getElementById('avulsa-item-desconto')?.value || '0') || 0);
     const ncm = document.getElementById('avulsa-item-ncm')?.value?.trim() || '94036000';
     const cfop = document.getElementById('avulsa-item-cfop')?.value?.trim() || '5102';
 
@@ -2048,7 +2189,22 @@ function adicionarAvulsaItem() {
     if (!preco || preco <= 0) return showToast('Informe o valor unitário.', 'error');
     if (!quantidade || quantidade <= 0) return showToast('Informe a quantidade.', 'error');
 
-    _avulsaItens.push({ nome, quantidade, preco, ncm, cfop, csosn: '102', origem: '0', unidade: 'UN' });
+    const subtotalBruto = quantidade * preco;
+    if (desconto >= subtotalBruto) {
+        return showToast('O desconto não pode ser maior ou igual ao valor total do item.', 'error');
+    }
+
+    _avulsaItens.push({
+        nome,
+        quantidade,
+        preco,
+        desconto,
+        ncm,
+        cfop,
+        csosn: '102',
+        origem: '0',
+        unidade: 'UN'
+    });
     renderAvulsaItens();
 
     // Limpar campos de item
@@ -2058,6 +2214,8 @@ function adicionarAvulsaItem() {
     });
     const elQtd = document.getElementById('avulsa-item-qtd');
     if (elQtd) elQtd.value = '1';
+    const elDesc = document.getElementById('avulsa-item-desconto');
+    if (elDesc) elDesc.value = '0.00';
     document.getElementById('avulsa-item-nome')?.focus();
 }
 
@@ -2086,7 +2244,9 @@ async function emitirNotaAvulsaModal() {
         return showToast('NF-e exige destinatário com CPF (11 dígitos) ou CNPJ (14 dígitos).', 'error');
     }
 
-    const totalNota = _avulsaItens.reduce((acc, it) => acc + parseFloat(it.quantidade) * parseFloat(it.preco), 0);
+    const totalBruto = _avulsaItens.reduce((acc, it) => acc + (parseFloat(it.quantidade) || 1) * (parseFloat(it.preco) || 0), 0);
+    const totalDesconto = _avulsaItens.reduce((acc, it) => acc + (parseFloat(it.desconto) || 0), 0);
+    const totalLiquido = Math.max(0, totalBruto - totalDesconto);
 
     const destinatario = {
         nome,
@@ -2106,12 +2266,22 @@ async function emitirNotaAvulsaModal() {
             tipo,
             destinatario,
             itens: _avulsaItens,
-            pagamentos: [{ metodo: formaPag, valor: totalNota }],
+            desconto: totalDesconto,
+            pagamentos: [{ metodo: formaPag, valor: totalLiquido }],
             naturezaOperacao,
             observacoes
         });
         showToast(res.data?.message || 'Nota avulsa emitida com sucesso!', 'success');
         fecharModalNotaAvulsa();
+
+        if (res.data?.data) {
+            db.notasAvulsas = db.notasAvulsas || [];
+            if (!db.notasAvulsas.some(x => x.chave_nfe === res.data.data.chave_nfe)) {
+                db.notasAvulsas.unshift(res.data.data);
+            }
+            processarNotasFiscais();
+            renderNotasFiscais();
+        }
     } catch (e) {
         console.error(e);
         showToast('Erro ao emitir nota avulsa: ' + (e.message || 'Tente novamente.'), 'error');
