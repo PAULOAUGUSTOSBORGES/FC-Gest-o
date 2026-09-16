@@ -2,6 +2,7 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const axios = require("axios");
 const forge = require("node-forge");
+const crypto = require("crypto");
 const { emitirNotaDiretoSefaz, cancelarNotaDiretoSefaz, cartaCorrecaoDiretoSefaz, transmitirNotaContingenciaSefaz } = require("./fiscal/sefaz_engine");
 const { extrairChavesDoPfx } = require("./fiscal/sefaz_signer");
 
@@ -557,8 +558,79 @@ exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@a
             }
         }
 
+        // 4. Tenta buscar na coleção 'notas_servico' (NFS-e de competência municipal)
+        if (!targetDoc) {
+            if (vendaId) {
+                const nsSnap = await db.collection("notas_servico").doc(String(vendaId)).get();
+                if (nsSnap.exists) {
+                    targetDoc = nsSnap.data();
+                    targetRef = nsSnap.ref;
+                    targetCollection = "notas_servico";
+                }
+            }
+            if (!targetDoc && chaveParam) {
+                const qSnap = await db.collection("notas_servico").where("codigo_verificacao", "==", String(chaveParam).trim()).limit(1).get();
+                if (!qSnap.empty) {
+                    targetDoc = qSnap.docs[0].data();
+                    targetRef = qSnap.docs[0].ref;
+                    targetCollection = "notas_servico";
+                }
+            }
+            if (!targetDoc && numeroParam) {
+                const qSnap = await db.collection("notas_servico").where("numero", "==", String(numeroParam).trim()).limit(1).get();
+                if (!qSnap.empty) {
+                    targetDoc = qSnap.docs[0].data();
+                    targetRef = qSnap.docs[0].ref;
+                    targetCollection = "notas_servico";
+                }
+            }
+        }
+
         if (!targetDoc) {
             throw new functions.https.HttpsError("not-found", "Registro da nota fiscal não encontrado no sistema.");
+        }
+
+        // Cancelamento específico para NFS-e (Competência Municipal / Padrão ABRASF - sem SEFAZ)
+        if (targetCollection === "notas_servico" || tipoNormalizado === "nfse" || targetDoc.tipo === "NFS-e") {
+            const dadosCancelamento = {
+                status: "cancelado",
+                status_sefaz: "cancelado",
+                status_fiscal: "cancelado",
+                justificativa_cancelamento: justificativa.trim(),
+                data_cancelamento: new Date().toISOString(),
+                canceladoPor: context.auth.uid,
+                mensagem_cancelamento: "NFS-e cancelada com sucesso no sistema"
+            };
+
+            if (targetRef) {
+                await targetRef.set(dadosCancelamento, { merge: true });
+            }
+
+            const refVendaId = targetDoc.vendaId || (targetCollection === "vendas" ? vendaId : null);
+            if (refVendaId) {
+                await db.collection("vendas").doc(String(refVendaId)).set({
+                    status_fiscal_nfse: "cancelado",
+                    "nfse.status": "cancelado",
+                    "nfse.status_sefaz": "cancelado",
+                    "nfse.justificativa_cancelamento": justificativa.trim(),
+                    "nfse.data_cancelamento": dadosCancelamento.data_cancelamento
+                }, { merge: true });
+            }
+
+            if (targetCollection === "vendas" && targetDoc.nfse?.codigo_verificacao) {
+                const qSnap = await db.collection("notas_servico").where("codigo_verificacao", "==", targetDoc.nfse.codigo_verificacao).limit(1).get();
+                if (!qSnap.empty) {
+                    await qSnap.docs[0].ref.set(dadosCancelamento, { merge: true });
+                }
+            }
+
+            console.log(`[NFS-e] Nota Nº ${targetDoc.numero || targetDoc.nfse?.numero || numeroParam || ''} cancelada com sucesso! Justificativa: ${justificativa}`);
+
+            return {
+                success: true,
+                message: `NFS-e Nº ${targetDoc.numero || targetDoc.nfse?.numero || numeroParam || ''} cancelada com sucesso!`,
+                data: dadosCancelamento
+            };
         }
 
         const configSnap = await db.collection("fc_moveis").doc("config").get();
@@ -1248,6 +1320,8 @@ exports.emitirNotaAvulsa = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
             totalBruto,
             desconto: totalDesconto,
             pagamentos: pagamentosNota,
+            pag: pagamentosNota.map(p => p.metodo).join(', ') || 'Dinheiro',
+            formaPagamento: pagamentosNota[0]?.metodo || 'Dinheiro',
             observacoes: observacoes || '',
             clienteNome: destinatario?.nome || destinatario?.razaoSocial || 'CONSUMIDOR FINAL'
         };
@@ -1290,6 +1364,9 @@ exports.emitirNotaAvulsa = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
             totalDesconto,
             totalLiquido,
             valor: totalLiquido,
+            pagamentos: pagamentosNota,
+            pag: pagamentosNota.map(p => p.metodo).join(', ') || 'Dinheiro',
+            formaPagamento: pagamentosNota[0]?.metodo || 'Dinheiro',
             itens: itensFormatados,
             destinatario: destinatario || null,
             motor: 'sefaz_direto'

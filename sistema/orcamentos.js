@@ -1951,9 +1951,17 @@ async function emitirNota(tipo) {
         statusContainer.classList.add('border-emerald-500', 'bg-emerald-50');
         
         const d = result.data || {};
+        if (window.vendaAtualImpressao) {
+            window.vendaAtualImpressao[tipo === 'nfce' ? 'nfce' : 'nfe'] = d;
+            window.vendaAtualImpressao.status_fiscal = d.status_sefaz;
+            if (d.chave_nfe || d.chave_nfce) window.vendaAtualImpressao.fiscal_chave = d.chave_nfe || d.chave_nfce;
+            if (d.xml_conteudo) window.vendaAtualImpressao.fiscal_xml = d.xml_conteudo;
+            if (d.qr_code_url) window.vendaAtualImpressao.fiscal_qrcode_url = d.qr_code_url;
+        }
+
         const linkDanfe = d.danfe_url_completa || (d.caminho_danfe ? `https://api.focusnfe.com.br${d.caminho_danfe}` : '');
         const linkXml = d.xml_url_completa || (d.caminho_xml_nota_fiscal ? `https://api.focusnfe.com.br${d.caminho_xml_nota_fiscal}` : '');
-        const vendaId = window.vendaAtualImpressao ? window.vendaAtualImpressao.id : '';
+        const vendaId = window.vendaAtualImpressao ? (window.vendaAtualImpressao.id || '') : '';
         const isSefazDireto = d.motor === 'sefaz_direto' || (!linkDanfe && (d.status_sefaz === 'autorizado' || d.chave_nfe || d.chave_nfce));
 
         let botoesFiscais = '';

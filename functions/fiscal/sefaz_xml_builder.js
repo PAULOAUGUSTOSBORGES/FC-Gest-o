@@ -101,14 +101,17 @@ function extrairBandeira(metodo = '') {
 /**
  * Gera a tag <card> para operações eletrônicas de cartão
  * Conforme MOC 4.00 e Regra YA04-10: se não integrado (POS avulso), exige tpIntegra=2 e tBand
+ * PIX (tPag=20 — balcão estático / sem TEF) NÃO usa tag <card>
+ * PIX integrado (tPag=17 — POS com TEF) usa <card><tpIntegra>2</tpIntegra></card>
  */
 function gerarCardTag(codigo, metodo = '') {
     if (codigo === '03' || codigo === '04') {
         const tBand = extrairBandeira(metodo);
         return `\n            <card>\n                <tpIntegra>2</tpIntegra>\n                <tBand>${tBand}</tBand>\n            </card>`;
     }
+    // tPag=20 (PIX estático / QR Code de balcão) — sem tag <card>
+    // tPag=17 (PIX integrado via TEF/POS) — com <card><tpIntegra>2</tpIntegra></card>
     if (codigo === '17') {
-        // Conforme NT 2025.001 e Regra YA04-10 da SEFAZ, PIX (17) exige o grupo <card> com tpIntegra=2 (não integrado / manual)
         return `\n            <card>\n                <tpIntegra>2</tpIntegra>\n            </card>`;
     }
     return '';
@@ -117,33 +120,58 @@ function gerarCardTag(codigo, metodo = '') {
 /**
  * Mapeia a forma de pagamento interna para o código oficial da SEFAZ e sua respectiva descrição
  * Conforme MOC 4.00 e Nota Técnica 2020.006 (campo xPag obrigatório para tPag=99)
- * Para PIX no varejo (POS/QR Code estático de balcão), código oficial é 20 (evita grupo de cartões)
+ * PIX de balcão (QR Code estático, sem TEF/POS): tPag=20, sem tag <card>
+ * PIX via POS integrado (TEF): tPag=17, com <card>
  */
 function mapearFormaPagamentoSefaz(forma) {
-    const f = String(forma || '')
+    const raw = String(forma || '').trim();
+    const f = raw
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .toLowerCase()
         .trim();
 
-    if (!f || f.includes('dinheiro')) return { codigo: '01', descricao: 'Dinheiro' };
+    // 1. Códigos diretos da SEFAZ
+    if (f === '01' || f === '1') return { codigo: '01', descricao: 'Dinheiro' };
+    if (f === '02' || f === '2') return { codigo: '02', descricao: 'Cheque' };
+    if (f === '03' || f === '3') return { codigo: '03', descricao: 'Cartao de Credito' };
+    if (f === '04' || f === '4') return { codigo: '04', descricao: 'Cartao de Debito' };
+    if (f === '05' || f === '5') return { codigo: '05', descricao: 'Credito Loja' };
+    if (f === '10') return { codigo: '10', descricao: 'Vale Alimentacao' };
+    if (f === '11') return { codigo: '11', descricao: 'Vale Refeicao' };
+    if (f === '12') return { codigo: '12', descricao: 'Vale Presente' };
+    if (f === '13') return { codigo: '13', descricao: 'Vale Combustivel' };
+    if (f === '14') return { codigo: '14', descricao: 'Duplicata Mercantil' };
+    if (f === '15') return { codigo: '15', descricao: 'Boleto Bancario' };
+    if (f === '16') return { codigo: '16', descricao: 'Deposito Bancario' };
+    if (f === '17') return { codigo: '17', descricao: 'Pagamento Instantaneo (PIX)' };
+    if (f === '20') return { codigo: '20', descricao: 'Pagamento Instantaneo (PIX)' };
+    if (f === '18') return { codigo: '18', descricao: 'Transferencia Bancaria' };
+    if (f === '90') return { codigo: '90', descricao: 'Sem Pagamento' };
+    if (f === '99') return { codigo: '99', descricao: 'Outros' };
+
+    // 2. Mapeamento por palavras-chave (Ordem estrita: termos específicos antes dos genéricos)
+    // PIX usa tPag=20 (QR Code estático de balcão, sem integração TEF/POS) — sem tag <card>
+    // Isso resolve a exibição correta no portal da SEFAZ GO e demais estados
+    if (f.includes('pix')) return { codigo: '20', descricao: 'Pagamento Instantaneo (PIX)' };
+    if (f.includes('credito') || f.includes('cred') || f.includes('credit')) return { codigo: '03', descricao: 'Cartao de Credito' };
+    if (f.includes('debito') || f.includes('deb') || f.includes('debit')) return { codigo: '04', descricao: 'Cartao de Debito' };
+    if (f.includes('boleto')) return { codigo: '15', descricao: 'Boleto Bancario' };
+    if (f.includes('fiado') || f.includes('crediario') || f.includes('carne') || f.includes('loja')) return { codigo: '05', descricao: 'Credito Loja' };
     if (f.includes('cheque')) return { codigo: '02', descricao: 'Cheque' };
-    if (f.includes('credito') || f.includes('cartao de credito')) return { codigo: '03', descricao: 'Cartao de Credito' };
-    if (f.includes('debito') || f.includes('cartao de debito')) return { codigo: '04', descricao: 'Cartao de Debito' };
-    if (f.includes('fiado') || f.includes('crediario')) return { codigo: '05', descricao: 'Credito Loja' };
+    if (f.includes('transferencia') || f.includes('ted') || f.includes('doc')) return { codigo: '18', descricao: 'Transferencia Bancaria' };
+    if (f.includes('deposito')) return { codigo: '16', descricao: 'Deposito Bancario' };
     if (f.includes('alimentacao')) return { codigo: '10', descricao: 'Vale Alimentacao' };
     if (f.includes('refeicao')) return { codigo: '11', descricao: 'Vale Refeicao' };
     if (f.includes('presente')) return { codigo: '12', descricao: 'Vale Presente' };
     if (f.includes('combustivel')) return { codigo: '13', descricao: 'Vale Combustivel' };
     if (f.includes('duplicata')) return { codigo: '14', descricao: 'Duplicata Mercantil' };
-    if (f.includes('boleto')) return { codigo: '15', descricao: 'Boleto Bancario' };
-    if (f.includes('deposito')) return { codigo: '16', descricao: 'Deposito Bancario' };
-    if (f === '17' || f === '20' || f.includes('pix')) return { codigo: '17', descricao: 'Pagamento Instantaneo (PIX)' };
-    if (f.includes('transferencia')) return { codigo: '18', descricao: 'Transferencia Bancaria' };
     if (f.includes('sem pagamento')) return { codigo: '90', descricao: 'Sem Pagamento' };
-    
-    // Outros: retorna 99 e a descrição limpa informada
-    return { codigo: '99', descricao: limparTexto(forma) || 'Outros' };
+    if (f.includes('dinheiro') || f.includes('especie')) return { codigo: '01', descricao: 'Dinheiro' };
+
+    if (!f) return { codigo: '01', descricao: 'Dinheiro' };
+
+    return { codigo: '99', descricao: limparTexto(raw).substring(0, 60) || 'Outros' };
 }
 
 /**
@@ -425,9 +453,26 @@ function construirXmlNota(dados) {
             <vPag>0.00</vPag>
         </detPag>`;
     } else {
-        const listaPagamentos = (venda.pagamentos && Array.isArray(venda.pagamentos) && venda.pagamentos.length > 0)
+        let listaPagamentos = (venda.pagamentos && Array.isArray(venda.pagamentos) && venda.pagamentos.length > 0)
             ? venda.pagamentos.filter(p => (parseFloat(p.valor) || 0) > 0)
             : [];
+
+        // Se não houver array estruturado de pagamentos mas houver string com '+' (ex: "Dinheiro (R$ 50,00) + PIX (R$ 50,00)")
+        if (listaPagamentos.length === 0 && venda.pag && typeof venda.pag === 'string' && venda.pag.includes('+')) {
+            const partes = venda.pag.split('+').map(s => s.trim()).filter(Boolean);
+            partes.forEach(pt => {
+                const matchVal = pt.match(/\(R\$\s*([\d\.,]+)\)/i);
+                let valor = 0;
+                let metodo = pt;
+                if (matchVal) {
+                    valor = parseFloat(matchVal[1].replace(/\./g, '').replace(',', '.')) || 0;
+                    metodo = pt.replace(matchVal[0], '').trim();
+                }
+                if (valor > 0 || partes.length === 1) {
+                    listaPagamentos.push({ metodo, valor });
+                }
+            });
+        }
 
         if (listaPagamentos.length > 0) {
             let somaPagamentos = 0;
@@ -460,10 +505,13 @@ function construirXmlNota(dados) {
             }
         } else {
             // Fallback: busca em venda.pag, venda.formaPagamento, venda.forma_pagamento, venda.pagamento ou venda.metodo
-            const formaTexto = venda.pag || venda.formaPagamento || venda.forma_pagamento || venda.pagamento || venda.metodo || 'Dinheiro';
-            const { codigo, descricao } = mapearFormaPagamentoSefaz(formaTexto);
+            let formaTexto = venda.pag || venda.formaPagamento || venda.forma_pagamento || venda.pagamento || venda.metodo || 'Dinheiro';
+            // Se tiver texto com parênteses, extrai a parte do método (ex: "PIX (R$ 50,00)" -> "PIX")
+            const matchClean = formaTexto.match(/^([^(]+)/);
+            const formaLimpa = matchClean ? matchClean[1].trim() : formaTexto;
+            const { codigo, descricao } = mapearFormaPagamentoSefaz(formaLimpa);
             const xPagTag = codigo === '99' ? `\n            <xPag>${limparTexto(descricao || 'Outros').substring(0, 60)}</xPag>` : '';
-            const cardTag = gerarCardTag(codigo, formaTexto);
+            const cardTag = gerarCardTag(codigo, formaLimpa);
             
             detPagXml += `
         <detPag>

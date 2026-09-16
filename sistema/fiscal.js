@@ -798,9 +798,26 @@ window.atualizarTabelaFiscal = atualizarTabelaFiscal;
 // ==========================================
 function abrirModalCancelamento(vendaId, tipo, numero, chave = '') {
     notaEmCancelamento = { vendaId, tipo, numero, chave };
+    const isNFSe = String(tipo || '').toLowerCase().includes('nfs');
     const elInfo = document.getElementById('cancelar-info-nota');
-    if (elInfo) elInfo.innerHTML = `<strong>${tipo.toUpperCase()} Nº ${numero}</strong> ${chave ? `<span class="block text-[10px] font-mono text-slate-400 truncate">Chave: ${chave}</span>` : `(Ref ID: ${vendaId})`}`;
+    if (elInfo) elInfo.innerHTML = `<strong>${tipo.toUpperCase()} Nº ${numero}</strong> ${chave ? `<span class="block text-[10px] font-mono text-slate-400 truncate">${isNFSe ? 'Cód. Verificação' : 'Chave'}: ${chave}</span>` : `(Ref ID: ${vendaId})`}`;
     
+    const pTexto = document.getElementById('cancelar-aviso-texto');
+    const pPrazos = document.getElementById('cancelar-aviso-prazos');
+    const lblBtn = document.getElementById('btn-cancelar-label');
+
+    if (pTexto) {
+        pTexto.textContent = isNFSe
+            ? 'O cancelamento da NFS-e (Serviços) anula o registro municipal da prestação de serviços com justificativa formal registrada no sistema.'
+            : 'O cancelamento fiscal na SEFAZ exige justificativa clara (mín. 15 caracteres) e obedece aos prazos regulamentares da Receita Estadual.';
+    }
+    if (pPrazos) {
+        pPrazos.style.display = isNFSe ? 'none' : 'block';
+    }
+    if (lblBtn) {
+        lblBtn.textContent = isNFSe ? 'Confirmar Cancelamento da NFS-e' : 'Transmitir Cancelamento à SEFAZ';
+    }
+
     const txt = document.getElementById('cancelar-justificativa');
     if (txt) txt.value = '';
     const elCount = document.getElementById('cancelar-char-count');
@@ -816,6 +833,7 @@ function fecharModalCancelamento() {
 
 async function confirmarCancelamentoNota() {
     if (!notaEmCancelamento) return;
+    const isNFSe = String(notaEmCancelamento.tipo || '').toLowerCase().includes('nfs');
     const just = document.getElementById('cancelar-justificativa')?.value.trim();
     if (!just || just.length < 15) {
         return showToast('A justificativa deve ter no mínimo 15 caracteres!', 'error');
@@ -825,7 +843,7 @@ async function confirmarCancelamentoNota() {
     const origHtml = btn ? btn.innerHTML : '';
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Cancelando na SEFAZ...';
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${isNFSe ? 'Cancelando NFS-e...' : 'Cancelando na SEFAZ...'}`;
     }
 
     try {
@@ -838,7 +856,7 @@ async function confirmarCancelamentoNota() {
             justificativa: just
         });
 
-        showToast('Nota fiscal cancelada com sucesso na SEFAZ!', 'success');
+        showToast(isNFSe ? 'NFS-e cancelada com sucesso no sistema!' : 'Nota fiscal cancelada com sucesso na SEFAZ!', 'success');
         fecharModalCancelamento();
         if (typeof carregarNotasFiscais === 'function') {
             await carregarNotasFiscais();
@@ -1191,16 +1209,27 @@ async function obterVendaParaImpressao(vendaId) {
                 clienteNome: notaDev.clienteNome || 'Consumidor Final',
                 clienteDoc: notaDev.clienteDoc || '',
                 tot: Number(notaDev.valor || 0),
+                pag: 'Sem Pagamento',
+                formaPagamento: 'Sem Pagamento',
+                pagamentos: [{ metodo: 'Sem Pagamento', valor: 0 }],
                 nfe_devolucao: notaDev
             };
-        } else if (!v.nfe_devolucao) {
-            v.nfe_devolucao = notaDev;
+        } else {
+            if (!v.nfe_devolucao) v.nfe_devolucao = notaDev;
+            v.pag = 'Sem Pagamento';
+            v.formaPagamento = 'Sem Pagamento';
+            v.pagamentos = [{ metodo: 'Sem Pagamento', valor: 0 }];
         }
     }
 
     // Suporte adicional para notas avulsas da coleção notas_avulsas
     const notaAvulsa = (db.notasAvulsas || []).find(na => String(na.id) === String(vendaId) || na.chave_nfe === String(vendaId) || String(na.numero) === String(vendaId));
     if (notaAvulsa) {
+        const pagMetodo = notaAvulsa.formaPagamento || notaAvulsa.pag || (notaAvulsa.pagamentos && notaAvulsa.pagamentos[0]?.metodo) || 'Dinheiro';
+        const pags = (notaAvulsa.pagamentos && notaAvulsa.pagamentos.length > 0)
+            ? notaAvulsa.pagamentos
+            : [{ metodo: pagMetodo, valor: Number(notaAvulsa.totalLiquido !== undefined ? notaAvulsa.totalLiquido : (notaAvulsa.valor || 0)) }];
+
         if (!v) {
             v = {
                 id: vendaId,
@@ -1213,6 +1242,9 @@ async function obterVendaParaImpressao(vendaId) {
                 clienteUf: notaAvulsa.destinatario?.uf || '',
                 clienteCep: notaAvulsa.destinatario?.cep || '',
                 tot: Number(notaAvulsa.totalLiquido !== undefined ? notaAvulsa.totalLiquido : (notaAvulsa.valor || 0)),
+                pag: pagMetodo,
+                formaPagamento: pagMetodo,
+                pagamentos: pags,
                 nfe: (notaAvulsa.modelo === '55' || String(notaAvulsa.tipo || '').includes('NF-e')) ? notaAvulsa : null,
                 nfce: (notaAvulsa.modelo === '65' || String(notaAvulsa.tipo || '').includes('NFC-e')) ? notaAvulsa : null,
                 fiscal_xml: notaAvulsa.xml_conteudo || '',
@@ -1225,6 +1257,18 @@ async function obterVendaParaImpressao(vendaId) {
             if (notaAvulsa.modelo === '55' && !v.nfe) v.nfe = notaAvulsa;
             if (notaAvulsa.modelo === '65' && !v.nfce) v.nfce = notaAvulsa;
             if (!v.fiscal_xml) v.fiscal_xml = notaAvulsa.xml_conteudo;
+            if (!v.pagamentos || v.pagamentos.length === 0) v.pagamentos = pags;
+            if (!v.pag) v.pag = pagMetodo;
+            if (!v.formaPagamento) v.formaPagamento = pagMetodo;
+        }
+    }
+
+    if (v) {
+        if (!v.formaPagamento && v.pagamentos && v.pagamentos.length > 0) {
+            v.formaPagamento = v.pagamentos[0]?.metodo || 'Dinheiro';
+        }
+        if (!v.pag && v.pagamentos && v.pagamentos.length > 0) {
+            v.pag = v.pagamentos.map(p => p.metodo).join(', ');
         }
     }
 
@@ -1232,6 +1276,9 @@ async function obterVendaParaImpressao(vendaId) {
 }
 
 async function baixarXmlNativo(vendaId, tipo = 'NFC-e') {
+    if (typeof window.baixarXmlNativoGlobal === 'function') {
+        return window.baixarXmlNativoGlobal(vendaId, tipo);
+    }
     const v = await obterVendaParaImpressao(vendaId);
     if (!v) {
         showToast('Venda não encontrada.', 'error');
@@ -1262,6 +1309,11 @@ async function baixarXmlNativo(vendaId, tipo = 'NFC-e') {
 window.baixarXmlNativo = baixarXmlNativo;
 
 async function imprimirDanfeNativo(vendaId, tipo = 'NFC-e') {
+    if (typeof window.imprimirDanfeNativoGlobal === 'function') {
+        return window.imprimirDanfeNativoGlobal(vendaId, tipo);
+    }
+
+    showToast('Preparando DANFE para impressão...', 'info');
     const v = await obterVendaParaImpressao(vendaId);
     if (!v) {
         showToast('Venda não encontrada.', 'error');
@@ -1291,25 +1343,35 @@ async function imprimirDanfeNativo(vendaId, tipo = 'NFC-e') {
         return;
     }
 
-    // Cria Blob URL para compatibilidade total com o protocolo file:// e HTTP
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const blobUrl = URL.createObjectURL(blob);
+    const winW = isNFe ? 850 : 450;
+    const winH = isNFe ? 950 : 700;
 
-    // Abre janela popup de impressão com a URL do Blob
     let printWin = null;
     try {
-        const winW = isNFe ? 850 : 450;
-        const winH = isNFe ? 950 : 700;
-        printWin = window.open(blobUrl, '_blank', `width=${winW},height=${winH}`);
+        printWin = window.open('', '_blank', `width=${winW},height=${winH},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`);
     } catch (e) {
         console.warn('Popup bloqueado ou não suportado:', e);
     }
 
-    if (printWin) {
-        return;
+    if (printWin && !printWin.closed) {
+        try {
+            printWin.document.open();
+            printWin.document.write(html);
+            printWin.document.close();
+            setTimeout(() => {
+                try {
+                    printWin.focus();
+                    printWin.print();
+                } catch (err) {
+                    console.warn(err);
+                }
+            }, 300);
+            return;
+        } catch (e) {
+            console.warn(e);
+        }
     }
 
-    // Fallback caso popups estejam bloqueados: imprime usando iframe invisível com srcdoc
     let iframe = document.getElementById('iframe-impressao-fiscal');
     if (!iframe) {
         iframe = document.createElement('iframe');
@@ -1320,9 +1382,30 @@ async function imprimirDanfeNativo(vendaId, tipo = 'NFC-e') {
         iframe.style.width = '0';
         iframe.style.height = '0';
         iframe.style.border = '0';
+        iframe.style.visibility = 'hidden';
         document.body.appendChild(iframe);
     }
     
+    const docIframe = iframe.contentWindow?.document || iframe.contentDocument;
+    if (docIframe) {
+        try {
+            docIframe.open();
+            docIframe.write(html);
+            docIframe.close();
+            setTimeout(() => {
+                try {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                } catch (err) {
+                    console.warn(err);
+                }
+            }, 350);
+            return;
+        } catch (err) {
+            console.warn(err);
+        }
+    }
+
     iframe.srcdoc = html;
     iframe.onload = () => {
         setTimeout(() => {
@@ -1332,7 +1415,7 @@ async function imprimirDanfeNativo(vendaId, tipo = 'NFC-e') {
             } catch (e) {
                 showToast('Erro ao imprimir. Por favor, autorize pop-ups no navegador.', 'warning');
             }
-        }, 300);
+        }, 350);
     };
 }
 window.imprimirDanfeNativo = imprimirDanfeNativo;
@@ -1386,7 +1469,40 @@ async function excluirNotaFiscal(vendaId, tipo) {
         const snap = await vendaRef.get();
 
         if (!snap.exists) {
-            showToast('Venda não encontrada no banco de dados.', 'error');
+            // Tenta achar em notas_servico
+            const nsRef = firestore.collection('notas_servico').doc(String(vendaId));
+            const nsSnap = await nsRef.get();
+            if (nsSnap.exists) {
+                await nsRef.delete();
+                showToast('NFS-e excluída com sucesso.', 'success');
+                processarNotasFiscais();
+                renderNotasFiscais();
+                return;
+            }
+
+            // Tenta achar em notas_avulsas
+            const avRef = firestore.collection('notas_avulsas').doc(String(vendaId));
+            const avSnap = await avRef.get();
+            if (avSnap.exists) {
+                await avRef.delete();
+                showToast('Nota avulsa excluída com sucesso.', 'success');
+                processarNotasFiscais();
+                renderNotasFiscais();
+                return;
+            }
+
+            // Tenta achar em notas_devolucao
+            const devRef = firestore.collection('notas_devolucao').doc(String(vendaId));
+            const devSnap = await devRef.get();
+            if (devSnap.exists) {
+                await devRef.delete();
+                showToast('Nota de devolução excluída com sucesso.', 'success');
+                processarNotasFiscais();
+                renderNotasFiscais();
+                return;
+            }
+
+            showToast('Registro da nota não encontrado no banco de dados.', 'error');
             return;
         }
 

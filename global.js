@@ -1280,7 +1280,7 @@ window.initResponsiveTables = initResponsiveTables;
 async function obterVendaFiscal(vendaOrId) {
     if (vendaOrId && typeof vendaOrId === 'object') return vendaOrId;
     const vId = String(vendaOrId || '');
-    if (window.vendaAtualImpressao && String(window.vendaAtualImpressao.id) === vId) {
+    if (window.vendaAtualImpressao && (!vId || String(window.vendaAtualImpressao.id) === vId)) {
         return window.vendaAtualImpressao;
     }
     if (typeof vendasGlobais !== 'undefined' && Array.isArray(vendasGlobais)) {
@@ -1291,16 +1291,219 @@ async function obterVendaFiscal(vendaOrId) {
         const found = db.vendas.find(x => String(x.id) === vId);
         if (found) return found;
     }
+    // Verifica notas de devolução
+    if (typeof db !== 'undefined' && Array.isArray(db.notasDevolucao)) {
+        const found = db.notasDevolucao.find(x => String(x.id) === vId || String(x.vendaId) === vId || x.chave_nfe === vId);
+        if (found) {
+            return {
+                id: vId,
+                clienteNome: found.clienteNome || 'Consumidor Final',
+                clienteDoc: found.clienteDoc || '',
+                tot: Number(found.valor || 0),
+                pag: 'Sem Pagamento',
+                formaPagamento: 'Sem Pagamento',
+                pagamentos: [{ metodo: 'Sem Pagamento', valor: 0 }],
+                nfe_devolucao: found
+            };
+        }
+    }
+    // Verifica notas avulsas
+    if (typeof db !== 'undefined' && Array.isArray(db.notasAvulsas)) {
+        const found = db.notasAvulsas.find(x => String(x.id) === vId || x.chave_nfe === vId || String(x.numero) === vId);
+        if (found) {
+            const formaP = found.formaPagamento || found.pag || (found.pagamentos && found.pagamentos[0]?.metodo) || 'Dinheiro';
+            return {
+                id: vId,
+                clienteNome: found.destinatario?.nome || 'Consumidor Final',
+                clienteDoc: found.destinatario?.cpf || found.destinatario?.cnpj || found.destinatario?.doc || '',
+                tot: Number(found.totalLiquido !== undefined ? found.totalLiquido : (found.valor || 0)),
+                pag: formaP,
+                formaPagamento: formaP,
+                pagamentos: found.pagamentos || [{ metodo: formaP, valor: Number(found.valor || 0) }],
+                nfe: (found.modelo === '55' || String(found.tipo || '').includes('NF-e')) ? found : null,
+                nfce: (found.modelo === '65' || String(found.tipo || '').includes('NFC-e')) ? found : null,
+                fiscal_xml: found.xml_conteudo || '',
+                fiscal_chave: found.chave_nfe || '',
+                itens: found.itens || [],
+                produtos: found.itens || [],
+                rawAvulsa: found
+            };
+        }
+    }
     if (typeof firebase !== 'undefined' && firebase.firestore && vId) {
         try {
             const snap = await firebase.firestore().collection('vendas').doc(vId).get();
             if (snap.exists) return { id: snap.id, ...snap.data() };
+            const snapAv = await firebase.firestore().collection('notas_avulsas').doc(vId).get();
+            if (snapAv.exists) {
+                const found = snapAv.data();
+                const formaP = found.formaPagamento || found.pag || (found.pagamentos && found.pagamentos[0]?.metodo) || 'Dinheiro';
+                return {
+                    id: snapAv.id,
+                    clienteNome: found.destinatario?.nome || 'Consumidor Final',
+                    clienteDoc: found.destinatario?.cpf || found.destinatario?.cnpj || found.destinatario?.doc || '',
+                    tot: Number(found.totalLiquido !== undefined ? found.totalLiquido : (found.valor || 0)),
+                    pag: formaP,
+                    formaPagamento: formaP,
+                    pagamentos: found.pagamentos || [{ metodo: formaP, valor: Number(found.valor || 0) }],
+                    nfe: (found.modelo === '55' || String(found.tipo || '').includes('NF-e')) ? found : null,
+                    nfce: (found.modelo === '65' || String(found.tipo || '').includes('NFC-e')) ? found : null,
+                    fiscal_xml: found.xml_conteudo || '',
+                    fiscal_chave: found.chave_nfe || '',
+                    itens: found.itens || [],
+                    produtos: found.itens || [],
+                    rawAvulsa: found
+                };
+            }
         } catch (e) {
             console.warn('Erro ao buscar venda no Firestore:', e);
         }
     }
     return null;
 }
+
+/**
+ * Extrai a lista detalhada de pagamentos de uma nota fiscal.
+ * Prioridades:
+ * 1) Do XML oficial autorizado (tags <detPag> e <vTroco>), garantindo fidelidade 100% à SEFAZ
+ * 2) Do array `v.pagamentos` ou `nota.pagamentos`
+ * 3) Da string `v.pag` ou `nota.pag` (inclusive com múltiplos pagamentos separados por '+')
+ * 4) Dos campos `v.formaPagamento` / `v.pagamento` / `v.metodo`
+ * 5) Fallback padrão 'Dinheiro'
+ */
+function extrairPagamentosNota(v, nota) {
+    const xml = nota?.xml_conteudo || v?.fiscal_xml || v?.nfce?.xml_conteudo || v?.nfe?.xml_conteudo || v?.rawAvulsa?.xml_conteudo || '';
+    const totalNota = Number(v?.totalLiquido || v?.tot || v?.valorLiquido || v?.total || nota?.valor || 0);
+
+    // 1. Tentar extrair do XML da SEFAZ
+    if (xml && xml.includes('<detPag>')) {
+        const detPags = [];
+        const regexDetPag = /<detPag>([\s\S]*?)<\/detPag>/g;
+        let match;
+        const nomesSefaz = {
+            '01': 'Dinheiro',
+            '02': 'Cheque',
+            '03': 'Cartão de Crédito',
+            '04': 'Cartão de Débito',
+            '05': 'Crédito Loja',
+            '10': 'Vale Alimentação',
+            '11': 'Vale Refeição',
+            '12': 'Vale Presente',
+            '13': 'Vale Combustível',
+            '14': 'Duplicata Mercantil',
+            '15': 'Boleto Bancário',
+            '16': 'Depósito Bancário',
+            '17': 'Pagamento Instantâneo (PIX)',
+            '18': 'Transferência Bancária',
+            '19': 'Programa de Fidelidade',
+            '20': 'PIX',
+            '90': 'Sem Pagamento',
+            '99': 'Outros'
+        };
+
+        while ((match = regexDetPag.exec(xml)) !== null) {
+            const bloco = match[1];
+            const tPagMatch = bloco.match(/<tPag>(\d+)<\/tPag>/);
+            const vPagMatch = bloco.match(/<vPag>([\d\.]+)<\/vPag>/);
+            const xPagMatch = bloco.match(/<xPag>([\s\S]*?)<\/xPag>/);
+            
+            if (tPagMatch && vPagMatch) {
+                const cod = tPagMatch[1].padStart(2, '0');
+                const val = parseFloat(vPagMatch[1]) || 0;
+                let nome = nomesSefaz[cod] || `Outros (${cod})`;
+                if (cod === '99' && xPagMatch && xPagMatch[1].trim()) {
+                    nome = xPagMatch[1].trim();
+                } else if (cod === '17' || cod === '20') {
+                    nome = 'PIX';
+                }
+                detPags.push({ codigo: cod, nome, valor: val });
+            }
+        }
+
+        let troco = 0;
+        const trocoMatch = xml.match(/<vTroco>([\d\.]+)<\/vTroco>/);
+        if (trocoMatch) {
+            troco = parseFloat(trocoMatch[1]) || 0;
+        }
+
+        if (detPags.length > 0) {
+            return {
+                pagamentos: detPags,
+                troco,
+                textoResumo: detPags.map(p => p.nome).join(' + ')
+            };
+        }
+    }
+
+    // 2. Tentar extrair do array de pagamentos (v.pagamentos ou nota.pagamentos)
+    const listaArr = (v?.pagamentos && Array.isArray(v?.pagamentos) && v.pagamentos.length > 0)
+        ? v.pagamentos
+        : (nota?.pagamentos && Array.isArray(nota?.pagamentos) && nota.pagamentos.length > 0 ? nota.pagamentos : []);
+
+    if (listaArr.length > 0) {
+        const pagamentos = listaArr.map((p, idx) => {
+            const metodo = p.metodo || p.forma || p.formaPagamento || p.nome || 'Dinheiro';
+            const parcelas = parseInt(p.parcelas) || 1;
+            const parcTxt = parcelas > 1 ? ` (${parcelas}x)` : '';
+            const valor = (parseFloat(p.valor) || 0) || (listaArr.length === 1 ? totalNota : 0);
+            return {
+                codigo: '',
+                nome: `${metodo}${parcTxt}`,
+                valor,
+                parcelas,
+                vencimentoBase: p.vencimentoBase || ''
+            };
+        });
+        const soma = pagamentos.reduce((acc, p) => acc + p.valor, 0);
+        const troco = soma > totalNota ? (soma - totalNota) : 0;
+        return {
+            pagamentos,
+            troco,
+            textoResumo: pagamentos.map(p => p.nome).join(' + ')
+        };
+    }
+
+    // 3. Tentar extrair da string v.pag ou nota.pag
+    const pagStr = v?.pag || nota?.pag || '';
+    if (pagStr && typeof pagStr === 'string' && pagStr.trim()) {
+        if (pagStr.includes('+')) {
+            const partes = pagStr.split('+').map(s => s.trim()).filter(Boolean);
+            const pagamentos = partes.map(pt => {
+                const matchVal = pt.match(/\(R\$\s*([\d\.,]+)\)/i);
+                let valor = 0;
+                let nome = pt;
+                if (matchVal) {
+                    valor = parseFloat(matchVal[1].replace(/\./g, '').replace(',', '.')) || 0;
+                    nome = pt.replace(matchVal[0], '').trim();
+                }
+                return { codigo: '', nome: nome || pt, valor };
+            });
+            const soma = pagamentos.reduce((acc, p) => acc + p.valor, 0);
+            const troco = soma > totalNota ? (soma - totalNota) : 0;
+            return { pagamentos, troco, textoResumo: pagStr };
+        } else {
+            const matchVal = pagStr.match(/\(R\$\s*([\d\.,]+)\)/i);
+            let valor = totalNota;
+            let nome = pagStr;
+            if (matchVal) {
+                const vParsed = parseFloat(matchVal[1].replace(/\./g, '').replace(',', '.'));
+                if (vParsed > 0) valor = vParsed;
+                nome = pagStr.replace(matchVal[0], '').trim();
+            }
+            return { pagamentos: [{ codigo: '', nome: nome || pagStr, valor }], troco: 0, textoResumo: nome || pagStr };
+        }
+    }
+
+    // 4. Campos avulsos
+    const formaAvulsa = v?.formaPagamento || v?.pagamento || v?.metodo || nota?.formaPagamento || nota?.metodo || '';
+    if (formaAvulsa) {
+        return { pagamentos: [{ codigo: '', nome: formaAvulsa, valor: totalNota }], troco: 0, textoResumo: formaAvulsa };
+    }
+
+    // 5. Fallback final
+    return { pagamentos: [{ codigo: '01', nome: 'Dinheiro', valor: totalNota }], troco: 0, textoResumo: 'Dinheiro' };
+}
+window.extrairPagamentosNota = extrairPagamentosNota;
 
 // ==============================================================
 // GERADOR DE CÓDIGO DE BARRAS CODE 128C PARA CHAVE DA NF-e
@@ -1461,7 +1664,48 @@ function gerarHtmlDanfeNFeA4(v, nota, emp) {
     const totalNota = Number(v?.totalLiquido || v?.tot || v?.valorLiquido || v?.total || totalItens || 0).toFixed(2);
     const totalDesc = Number(v?.desconto || 0).toFixed(2);
     const totalProdFmt = Number(totalItens || totalNota).toFixed(2);
-    const formaPag = escapeHtml(v?.formaPagamento || v?.pagamento || 'Dinheiro');
+    const infoPag = extrairPagamentosNota(v, nota);
+    const formaPag = escapeHtml(infoPag.textoResumo || 'Dinheiro');
+
+    let linhasFatura = '';
+    if (infoPag.pagamentos && infoPag.pagamentos.length > 0) {
+        linhasFatura = infoPag.pagamentos.map((p, idx) => {
+            const numParc = String(idx + 1).padStart(3, '0');
+            const venc = p.vencimentoBase ? new Date(p.vencimentoBase + 'T12:00:00').toLocaleDateString('pt-BR') : dataApenas;
+            const valFmt = Number(p.valor || totalNota).toFixed(2);
+            return `
+    <div class="row" style="${idx > 0 ? 'border-top: none;' : ''}">
+        <div class="box ${idx > 0 ? 'border-t-0' : ''}" style="flex: 1.2;">
+            <span class="box-title">FORMA DE PAGAMENTO</span>
+            <div class="box-val">${escapeHtml(p.nome || 'Dinheiro')}</div>
+        </div>
+        <div class="box ${idx > 0 ? 'border-t-0' : ''} border-l-0" style="flex: 1;">
+            <span class="box-title">PARCELA / VENCIMENTO</span>
+            <div class="box-val">${numParc} - ${venc}</div>
+        </div>
+        <div class="box ${idx > 0 ? 'border-t-0' : ''} border-l-0" style="flex: 1;">
+            <span class="box-title">VALOR DA PARCELA</span>
+            <div class="box-val">R$ ${valFmt}</div>
+        </div>
+    </div>`;
+        }).join('');
+    } else {
+        linhasFatura = `
+    <div class="row">
+        <div class="box" style="flex: 1.2;">
+            <span class="box-title">FORMA DE PAGAMENTO</span>
+            <div class="box-val">${formaPag}</div>
+        </div>
+        <div class="box border-l-0" style="flex: 1;">
+            <span class="box-title">PARCELA / VENCIMENTO</span>
+            <div class="box-val">001 - ${dataApenas}</div>
+        </div>
+        <div class="box border-l-0" style="flex: 1;">
+            <span class="box-title">VALOR DA PARCELA</span>
+            <div class="box-val">R$ ${totalNota}</div>
+        </div>
+    </div>`;
+    }
 
     return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -1628,21 +1872,8 @@ function gerarHtmlDanfeNFeA4(v, nota, emp) {
         </div>
     </div>
 
-    <div class="section-header">FATURA / FORMA DE PAGAMENTO</div>
-    <div class="row">
-        <div class="box" style="flex: 1;">
-            <span class="box-title">FORMA DE PAGAMENTO</span>
-            <div class="box-val">${formaPag}</div>
-        </div>
-        <div class="box border-l-0" style="flex: 1;">
-            <span class="box-title">PARCELA / VENCIMENTO</span>
-            <div class="box-val">001 - ${dataApenas}</div>
-        </div>
-        <div class="box border-l-0" style="flex: 1;">
-            <span class="box-title">VALOR DA PARCELA</span>
-            <div class="box-val">R$ ${totalNota}</div>
-        </div>
-    </div>
+    <div class="section-header">FATURA / DUPLICATA / FORMA DE PAGAMENTO</div>
+    ${linhasFatura}
 
     <div class="section-header">CÁLCULO DO IMPOSTO</div>
     <div class="row">
@@ -1765,9 +1996,14 @@ function gerarHtmlDanfeNFeA4(v, nota, emp) {
     </div>
 
     <script>
-        window.onload = function() {
+        function dispararImpressao() {
             setTimeout(function() { window.print(); }, 250);
-        };
+        }
+        if (document.readyState === 'complete') {
+            dispararImpressao();
+        } else {
+            window.addEventListener('load', dispararImpressao);
+        }
     </script>
 </body>
 </html>`;
@@ -1797,6 +2033,27 @@ function gerarHtmlDanfeNFCe80mm(v, nota, emp, qrImgSrc) {
         `;
     }).join('');
 
+    const infoPagNFCe = extrairPagamentosNota(v, nota);
+    const totalNotaNFCe = Number(v?.totalLiquido || v?.tot || v?.valorLiquido || v?.total || 0).toFixed(2);
+
+    const linhasPagamentosNFCe = (infoPagNFCe.pagamentos && infoPagNFCe.pagamentos.length > 0)
+        ? infoPagNFCe.pagamentos.map(p => `
+        <div style="display:flex; justify-content:space-between; font-size:10px; padding: 1px 0;">
+            <span>${escapeHtml(p.nome)}</span>
+            <span>${Number(p.valor || totalNotaNFCe).toFixed(2)}</span>
+        </div>`).join('')
+        : `
+        <div style="display:flex; justify-content:space-between; font-size:10px; padding: 1px 0;">
+            <span>${escapeHtml(infoPagNFCe.textoResumo || 'Dinheiro')}</span>
+            <span>${totalNotaNFCe}</span>
+        </div>`;
+
+    const trocoHtmlNFCe = (infoPagNFCe.troco > 0.001) ? `
+        <div style="display:flex; justify-content:space-between; font-size:10px; font-weight:bold; padding: 1px 0; border-top: 1px dotted #000; margin-top: 2px;">
+            <span>Troco R$</span>
+            <span>${Number(infoPagNFCe.troco).toFixed(2)}</span>
+        </div>` : '';
+
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -1817,9 +2074,10 @@ function gerarHtmlDanfeNFCe80mm(v, nota, emp, qrImgSrc) {
 <body>
     <div class="text-center border-b">
         ${logoSrc ? `<div style="margin-bottom: 6px;"><img src="${logoSrc}" style="max-height: 52px; max-width: 140px; object-fit: contain;"></div>` : ''}
-        <div class="font-bold" style="font-size: 13px;">${escapeHtml(emp?.nomeFantasia || emp?.razaoSocial || emp?.nome || 'EMPRESA COMERCIAL')}</div>
-        <div>CNPJ: ${escapeHtml(emp?.cnpj || '00.000.000/0000-00')} - IE: ${escapeHtml(emp?.ie || 'ISENTO')}</div>
-        <div>${escapeHtml(emp?.logradouro || emp?.rua || '')}, ${escapeHtml(emp?.numero || '')} - ${escapeHtml(emp?.cidade || '')}/${escapeHtml(emp?.uf || '')}</div>
+        <div class="font-bold" style="font-size: 13px;">${escapeHtml(emp?.razaoSocial || emp?.nome || 'EMPRESA EMISSORA')}</div>
+        ${emp?.nomeFantasia ? `<div style="font-size: 10px;">${escapeHtml(emp.nomeFantasia)}</div>` : ''}
+        <div style="font-size: 10px;">CNPJ: ${emp?.cnpj || ''} - IE: ${emp?.ie || 'ISENTO'}</div>
+        <div style="font-size: 9px;">${escapeHtml(emp?.logradouro || emp?.rua || '')}, ${escapeHtml(emp?.numero || 'S/N')} - ${escapeHtml(emp?.bairro || '')}, ${escapeHtml(emp?.cidade || '')} - ${(emp?.uf || 'GO').toUpperCase()}</div>
     </div>
 
     ${isContingencia ? `
@@ -1848,14 +2106,16 @@ function gerarHtmlDanfeNFCe80mm(v, nota, emp, qrImgSrc) {
     </table>
 
     <div class="border-t">
-        <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:12px;">
+        <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:12px; margin-bottom: 4px;">
             <span>VALOR TOTAL R$</span>
-            <span>${Number(v?.totalLiquido || v?.tot || v?.valorLiquido || v?.total || 0).toFixed(2)}</span>
+            <span>${totalNotaNFCe}</span>
         </div>
-        <div style="display:flex; justify-content:space-between; font-size:10px;">
-            <span>Forma de Pagamento</span>
-            <span>${escapeHtml(v?.formaPagamento || v?.pagamento || 'Dinheiro')}</span>
+        <div style="font-size:10px; font-weight:bold; border-bottom: 1px dashed #000; padding-bottom: 2px; margin-bottom: 3px; display:flex; justify-content:space-between;">
+            <span>FORMA DE PAGAMENTO</span>
+            <span>VALOR PAGO R$</span>
         </div>
+        ${linhasPagamentosNFCe}
+        ${trocoHtmlNFCe}
     </div>
 
     <div class="border-t text-center" style="font-size: 10px;">
@@ -1885,9 +2145,14 @@ function gerarHtmlDanfeNFCe80mm(v, nota, emp, qrImgSrc) {
     </div>
 
     <script>
-        window.onload = function() {
+        function dispararImpressao() {
             setTimeout(function() { window.print(); }, 250);
-        };
+        }
+        if (document.readyState === 'complete') {
+            dispararImpressao();
+        } else {
+            window.addEventListener('load', dispararImpressao);
+        }
     </script>
 </body>
 </html>`;
@@ -1895,6 +2160,8 @@ function gerarHtmlDanfeNFCe80mm(v, nota, emp, qrImgSrc) {
 window.gerarHtmlDanfeNFCe80mm = gerarHtmlDanfeNFCe80mm;
 
 async function imprimirDanfeNativo(vendaOrId, tipo = 'NFC-e') {
+    if (typeof showToast === 'function') showToast('Preparando DANFE para impressão...', 'info');
+
     const v = await obterVendaFiscal(vendaOrId);
     if (!v) {
         if (typeof showToast === 'function') showToast('Venda não encontrada para impressão fiscal.', 'error');
@@ -1902,8 +2169,9 @@ async function imprimirDanfeNativo(vendaOrId, tipo = 'NFC-e') {
         return;
     }
 
-    const isNFe = (tipo === 'NF-e' || tipo === 'nfe' || tipo === '55');
-    const nota = isNFe ? (v.nfe || {}) : (v.nfce || {});
+    const isDev = (tipo === 'NF-e Devolução' || tipo === 'devolucao');
+    const isNFe = isDev || (tipo === 'NF-e' || tipo === 'nfe' || tipo === '55');
+    const nota = isDev ? (v.nfe_devolucao || v.nfe || {}) : (isNFe ? (v.nfe || {}) : (v.nfce || {}));
     const emp = (typeof db !== 'undefined' && db.config?.empresa) ? db.config.empresa : {};
     const chave = nota.chave_nfe || nota.chave_nfce || v.fiscal_chave || '';
     const qrCodeUrl = nota.qr_code_url || v.fiscal_qrcode_url || (chave ? `https://nfeweb.sefaz.go.gov.br/nfeweb/sites/nfce/danfeNFCe?p=${chave}` : '');
@@ -1916,25 +2184,43 @@ async function imprimirDanfeNativo(vendaOrId, tipo = 'NFC-e') {
         html = gerarHtmlDanfeNFCe80mm(v, nota, emp, qrImgSrc);
     }
 
-    // Cria Blob URL para compatibilidade total com o protocolo file:// e HTTP
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const blobUrl = URL.createObjectURL(blob);
-
-    // Abre janela popup de impressão com a URL do Blob
-    let printWin = null;
-    try {
-        const winW = isNFe ? 850 : 450;
-        const winH = isNFe ? 950 : 700;
-        printWin = window.open(blobUrl, '_blank', `width=${winW},height=${winH}`);
-    } catch (e) {
-        console.warn('Popup bloqueado ou não suportado:', e);
-    }
-
-    if (printWin) {
+    if (!html) {
+        if (typeof showToast === 'function') showToast('Erro ao gerar layout da DANFE.', 'error');
+        else alert('Erro ao gerar layout da DANFE.');
         return;
     }
 
-    // Fallback caso popups estejam bloqueados: imprime usando iframe invisível com srcdoc
+    const winW = isNFe ? 850 : 450;
+    const winH = isNFe ? 950 : 700;
+
+    // 1. Tenta abrir janela popup
+    let printWin = null;
+    try {
+        printWin = window.open('', '_blank', `width=${winW},height=${winH},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`);
+    } catch (e) {
+        console.warn('Falha ao abrir popup de impressão:', e);
+    }
+
+    if (printWin && !printWin.closed) {
+        try {
+            printWin.document.open();
+            printWin.document.write(html);
+            printWin.document.close();
+            setTimeout(() => {
+                try {
+                    printWin.focus();
+                    printWin.print();
+                } catch (err) {
+                    console.warn('Erro ao disparar print na janela popup:', err);
+                }
+            }, 300);
+            return;
+        } catch (e) {
+            console.warn('Erro ao manipular popup de impressão fiscal:', e);
+        }
+    }
+
+    // 2. Fallback Iframe se popup foi bloqueada pelo navegador
     let iframe = document.getElementById('iframe-impressao-fiscal-global');
     if (!iframe) {
         iframe = document.createElement('iframe');
@@ -1945,9 +2231,30 @@ async function imprimirDanfeNativo(vendaOrId, tipo = 'NFC-e') {
         iframe.style.width = '0';
         iframe.style.height = '0';
         iframe.style.border = '0';
+        iframe.style.visibility = 'hidden';
         document.body.appendChild(iframe);
     }
-    
+
+    const docIframe = iframe.contentWindow?.document || iframe.contentDocument;
+    if (docIframe) {
+        try {
+            docIframe.open();
+            docIframe.write(html);
+            docIframe.close();
+            setTimeout(() => {
+                try {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                } catch (err) {
+                    console.warn('Erro ao disparar print no iframe:', err);
+                }
+            }, 350);
+            return;
+        } catch (err) {
+            console.warn('Falha no doc.write do iframe, usando srcdoc:', err);
+        }
+    }
+
     iframe.srcdoc = html;
     iframe.onload = () => {
         setTimeout(() => {
@@ -1958,7 +2265,7 @@ async function imprimirDanfeNativo(vendaOrId, tipo = 'NFC-e') {
                 if (typeof showToast === 'function') showToast('Erro ao imprimir. Por favor, autorize pop-ups no navegador.', 'warning');
                 else alert('Erro ao imprimir. Por favor, autorize pop-ups no navegador.');
             }
-        }, 300);
+        }, 350);
     };
 }
 
@@ -1991,5 +2298,7 @@ async function baixarXmlNativo(vendaOrId, tipo = 'NFC-e') {
 }
 
 window.imprimirDanfeNativo = imprimirDanfeNativo;
+window.imprimirDanfeNativoGlobal = imprimirDanfeNativo;
 window.baixarXmlNativo = baixarXmlNativo;
+window.baixarXmlNativoGlobal = baixarXmlNativo;
 
