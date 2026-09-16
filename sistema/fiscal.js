@@ -57,6 +57,25 @@ function inicializarFiscal() {
         renderNotasFiscais();
     });
 
+    // Listener para clientes (puxar dados cadastrados em notas avulsas)
+    _listenCol('clientes', function(clientes) {
+        db.clientes = clientes || [];
+        if (typeof popularDatalistsAvulsa === 'function') popularDatalistsAvulsa();
+    });
+
+    // Listener para produtos / estoque (puxar dados cadastrados em notas avulsas)
+    _listenCol('produtos', function(produtos) {
+        db.produtos = produtos || [];
+        if (typeof popularDatalistsAvulsa === 'function') popularDatalistsAvulsa();
+        if (typeof popularDatalistsDevolucaoCompra === 'function') popularDatalistsDevolucaoCompra();
+    });
+
+    // Listener para fornecedores (puxar dados para devolução de compra à indústria)
+    _listenCol('fornecedores', function(fornecedores) {
+        db.fornecedores = fornecedores || [];
+        if (typeof popularDatalistsDevolucaoCompra === 'function') popularDatalistsDevolucaoCompra();
+    });
+
     // Auto-limpeza silenciosa de tentativas rejeitadas do banco
     try {
         if (typeof firebase !== 'undefined' && firebase.functions) {
@@ -534,15 +553,42 @@ function mudarPeriodoFiscal() {
 // ==========================================
 function atualizarKPIs(lista) {
     const totalNotas = lista.length;
-    const totalValor = lista.filter(n => n.status === 'autorizado').reduce((acc, n) => acc + n.valor, 0);
 
-    const nfes = lista.filter(n => n.tipo === 'NF-e');
-    const valorNfe = nfes.filter(n => n.status === 'autorizado').reduce((acc, n) => acc + n.valor, 0);
+    const nfes = lista.filter(n => (n.tipo === 'NF-e' || n.modelo === '55') && !n.isDevolucao);
+    const valorNfe = nfes.filter(n => n.status === 'autorizado' || n.status === 'devolvido' || n.estornadaPorDevolucao).reduce((acc, n) => acc + (n.valor || 0), 0);
 
-    const nfces = lista.filter(n => n.tipo === 'NFC-e');
-    const valorNfce = nfces.filter(n => n.status === 'autorizado').reduce((acc, n) => acc + n.valor, 0);
+    const nfces = lista.filter(n => (n.tipo === 'NFC-e' || n.modelo === '65') && !n.isDevolucao);
+    const valorNfce = nfces.filter(n => n.status === 'autorizado' || n.status === 'devolvido' || n.estornadaPorDevolucao || n.status === 'contingencia').reduce((acc, n) => acc + (n.valor || 0), 0);
 
-    const canceladas = lista.filter(n => n.status === 'cancelado' || n.status === 'erro' || (typeof n.status === 'string' && n.status.includes('erro'))).length;
+    const nfses = lista.filter(n => n.tipo === 'NFS-e');
+    const valorNfse = nfses.filter(n => n.status === 'autorizado').reduce((acc, n) => acc + (n.valor || 0), 0);
+
+    // Contagem e valor de Devoluções / Estornos
+    const devEmitidas = lista.filter(n => n.isDevolucao || n.tipo === 'NF-e Devolução');
+    const devOriginais = lista.filter(n => (n.status === 'devolvido' || n.estornadaPorDevolucao) && !n.isDevolucao && n.tipo !== 'NF-e Devolução');
+
+    const chavesDev = new Set();
+    let countDev = 0;
+    let valDev = 0;
+
+    devEmitidas.forEach(n => {
+        countDev++;
+        valDev += (n.valor || 0);
+        if (n.vendaId) chavesDev.add(String(n.vendaId));
+        if (n.chaveOriginal) chavesDev.add(String(n.chaveOriginal));
+    });
+
+    devOriginais.forEach(n => {
+        if (!chavesDev.has(String(n.vendaId)) && !chavesDev.has(String(n.chave))) {
+            countDev++;
+            valDev += (n.valor || 0);
+        }
+    });
+
+    const totalValorVendas = valorNfe + valorNfce + valorNfse;
+    const totalValor = totalValorVendas > 0 ? totalValorVendas : valDev;
+
+    const canceladas = lista.filter(n => n.status === 'cancelado' || n.status === 'cancelado_interno' || n.status === 'erro' || (typeof n.status === 'string' && n.status.includes('erro'))).length;
 
     const elTotal = document.getElementById('kpi-total-notas'); if (elTotal) elTotal.innerText = totalNotas;
     const elTotVal = document.getElementById('kpi-total-valor'); if (elTotVal) elTotVal.innerText = typeof formatMoney === 'function' ? formatMoney(totalValor) : `R$ ${totalValor.toFixed(2)}`;
@@ -552,6 +598,9 @@ function atualizarKPIs(lista) {
 
     const elNfce = document.getElementById('kpi-total-nfce'); if (elNfce) elNfce.innerText = nfces.length;
     const elNfceVal = document.getElementById('kpi-nfce-valor'); if (elNfceVal) elNfceVal.innerText = typeof formatMoney === 'function' ? formatMoney(valorNfce) : `R$ ${valorNfce.toFixed(2)}`;
+
+    const elDev = document.getElementById('kpi-total-devolucoes'); if (elDev) elDev.innerText = countDev;
+    const elDevVal = document.getElementById('kpi-devolucoes-valor'); if (elDevVal) elDevVal.innerText = typeof formatMoney === 'function' ? formatMoney(valDev) : `R$ ${valDev.toFixed(2)}`;
 
     const elCanc = document.getElementById('kpi-total-canceladas'); if (elCanc) elCanc.innerText = canceladas;
 }
@@ -847,67 +896,111 @@ async function confirmarCartaCorrecao() {
 // ==========================================
 // EXPORTAÇÃO EM LOTE DOS XMLS (ZIP PARA CONTADOR)
 // ==========================================
+function extrairXmlString(n) {
+    if (n.xmlConteudo && typeof n.xmlConteudo === 'string' && n.xmlConteudo.trim().startsWith('<')) {
+        return n.xmlConteudo.trim();
+    }
+    const v = n.rawVenda || (db.vendas || []).find(x => String(x.id) === String(n.vendaId));
+    if (v) {
+        if (n.isDevolucao && v.nfe_devolucao?.xml_conteudo && v.nfe_devolucao.xml_conteudo.trim().startsWith('<')) {
+            return v.nfe_devolucao.xml_conteudo.trim();
+        }
+        if (v.nfe?.xml_conteudo && v.nfe.xml_conteudo.trim().startsWith('<')) {
+            return v.nfe.xml_conteudo.trim();
+        }
+        if (v.nfce?.xml_conteudo && v.nfce.xml_conteudo.trim().startsWith('<')) {
+            return v.nfce.xml_conteudo.trim();
+        }
+        if (v.fiscal_xml && typeof v.fiscal_xml === 'string' && v.fiscal_xml.trim().startsWith('<')) {
+            return v.fiscal_xml.trim();
+        }
+    }
+    const nd = n.rawDevolucao || (db.notasDevolucao || []).find(x => String(x.vendaId) === String(n.vendaId) || (x.chave_nfe && x.chave_nfe === n.chave));
+    if (nd && nd.xml_conteudo && nd.xml_conteudo.trim().startsWith('<')) {
+        return nd.xml_conteudo.trim();
+    }
+    if (n.rawServico?.xml_conteudo && n.rawServico.xml_conteudo.trim().startsWith('<')) {
+        return n.rawServico.xml_conteudo.trim();
+    }
+    return null;
+}
+
 async function baixarLoteMensalXML() {
     if (typeof JSZip === 'undefined') {
-        return showToast('Biblioteca de compactação não carregada.', 'error');
+        return showToast('Biblioteca de compactação (JSZip) não carregada.', 'error');
     }
 
-    const notasComXml = notasFiscaisArray.filter(n => n.xmlUrl && (n.status === 'autorizado' || n.status === 'cancelado'));
-    if (notasComXml.length === 0) {
-        return showToast('Nenhuma nota fiscal com XML disponível para exportação.', 'info');
-    }
+    const lista = (typeof notasFiscaisArray !== 'undefined' && notasFiscaisArray.length > 0)
+        ? notasFiscaisArray
+        : [];
 
     const btn = document.getElementById('btn-exportar-lote');
+    const origHtml = btn ? btn.innerHTML : '';
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Gerando ZIP...';
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Compactando XMLs...';
     }
-
-    showToast(`Baixando ${notasComXml.length} arquivo(s) XML...`, 'info');
 
     try {
         const zip = new JSZip();
         let baixados = 0;
+        const processadas = new Set();
 
-        for (const n of notasComXml) {
-            try {
-                const resp = await fetch(n.xmlUrl);
-                if (resp.ok) {
-                    const xmlText = await resp.text();
-                    const nomeArquivo = `${n.tipo}_${n.numero}_${n.chave || n.vendaId}.xml`;
+        for (const n of lista) {
+            // Ignora apenas cancelamentos internos e erros sem autorização SEFAZ
+            if (n.status === 'cancelado_interno' || n.status === 'erro' || n.status === 'erro_autorizacao') continue;
+
+            let xmlText = extrairXmlString(n);
+
+            if (!xmlText && n.xmlUrl) {
+                try {
+                    const resp = await fetch(n.xmlUrl);
+                    if (resp.ok) xmlText = await resp.text();
+                } catch (err) {
+                    console.warn(`Erro ao buscar XML remoto da nota ${n.numero}:`, err);
+                }
+            }
+
+            if (xmlText && xmlText.trim().startsWith('<')) {
+                const tipoLimpo = (n.tipo || 'Nota').replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
+                const numLimpo = String(n.numero || 'SN').replace(/[^0-9]/g, '');
+                const chaveOuId = n.chave ? n.chave : `venda_${n.vendaId || '0'}`;
+                const nomeArquivo = `${tipoLimpo}_N${numLimpo}_${chaveOuId}.xml`;
+
+                if (!processadas.has(nomeArquivo)) {
+                    processadas.add(nomeArquivo);
                     zip.file(nomeArquivo, xmlText);
                     baixados++;
                 }
-            } catch (err) {
-                console.warn(`Erro ao baixar XML da nota ${n.numero}:`, err);
             }
         }
 
         if (baixados === 0) {
-            throw new Error('Não foi possível fazer download dos arquivos XML da SEFAZ.');
+            return showToast('Nenhuma nota fiscal com XML disponível para exportação.', 'info');
         }
 
+        showToast(`Gerando pacote ZIP com ${baixados} arquivo(s) XML...`, 'info');
         const content = await zip.generateAsync({ type: 'blob' });
         const urlBlob = URL.createObjectURL(content);
 
         const a = document.createElement('a');
         a.href = urlBlob;
         const dataHoje = new Date().toISOString().split('T')[0];
-        a.download = `Notas_Fiscais_FC_Moveis_${dataHoje}.zip`;
+        a.download = `Lote_XML_Notas_Fiscais_${dataHoje}.zip`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(urlBlob);
 
-        showToast(`Pacote com ${baixados} XML(s) gerado com sucesso!`, 'success');
+        showToast(`Download concluído: ${baixados} XML(s) empacotados com sucesso!`, 'success');
 
     } catch (e) {
-        console.error(e);
+        console.error('Erro ao gerar ZIP de XMLs:', e);
         showToast(`Erro ao gerar ZIP de XMLs: ${e.message}`, 'error');
     } finally {
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-file-zipper text-sm"></i> Baixar Lote XML (ZIP)';
+            btn.innerHTML = origHtml || '<i class="fa-solid fa-file-zipper text-sm"></i> Baixar Lote XML (ZIP)';
         }
     }
 }
@@ -1362,9 +1455,535 @@ async function confirmarDevolucaoVenda() {
 }
 
 // ==========================================
+// MODAL — DEVOLUÇÃO DE COMPRA AO FORNECEDOR / INDÚSTRIA
+// Suporta Leitura de XML ou Preenchimento Manual
+// ==========================================
+let _devCompraItens = [];
+
+function abrirModalDevolucaoCompra() {
+    const modal = document.getElementById('modal-devolucao-compra');
+    if (!modal) return showToast('Modal de devolução de compra não encontrado.', 'error');
+
+    _devCompraItens = [];
+    renderItensDevolucaoCompra();
+    popularDatalistsDevolucaoCompra();
+
+    // Limpar campos de fornecedor e chave
+    ['dev-compra-chave', 'dev-compra-forn-doc', 'dev-compra-forn-nome', 'dev-compra-forn-rua', 'dev-compra-forn-numero', 'dev-compra-forn-bairro', 'dev-compra-forn-cidade', 'dev-compra-forn-cep', 'dev-compra-forn-ie', 'dev-compra-obs', 'dev-compra-busca-forn', 'dev-compra-busca-prod'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+
+    const elUf = document.getElementById('dev-compra-forn-uf');
+    if (elUf) elUf.value = (db.config?.empresa?.uf || 'GO').toUpperCase();
+
+    const elNat = document.getElementById('dev-compra-nat-op');
+    if (elNat) elNat.value = 'DEVOLUCAO DE COMPRA PARA COMERCIALIZACAO';
+
+    const inputXml = document.getElementById('dev-compra-input-xml');
+    if (inputXml) inputXml.value = '';
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function fecharModalDevolucaoCompra() {
+    const modal = document.getElementById('modal-devolucao-compra');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+function popularDatalistsDevolucaoCompra() {
+    const esc = (typeof escapeHtml === 'function') ? escapeHtml : (s => String(s || ''));
+
+    // Datalist de Fornecedores
+    const dlForn = document.getElementById('lista-fornecedores-datalist');
+    if (dlForn && Array.isArray(db.fornecedores)) {
+        dlForn.innerHTML = db.fornecedores.map(f => {
+            const doc = f.cnpj || f.cpf || f.doc || '';
+            const sub = [doc, f.cidade, f.uf].filter(Boolean).join(' - ');
+            return `<option value="${esc(f.nome || f.razaoSocial || '')}">${esc(sub)}</option>`;
+        }).join('');
+    }
+
+    // Datalist de Produtos
+    const dlProd = document.getElementById('lista-produtos-devolucao-datalist');
+    if (dlProd && Array.isArray(db.produtos)) {
+        dlProd.innerHTML = db.produtos.map(p => {
+            const preco = Number(p.custo || p.precoCusto || p.preco || 0);
+            const sub = [p.ncm ? 'NCM ' + p.ncm : '', preco > 0 ? `Custo: R$ ${preco.toFixed(2)}` : ''].filter(Boolean).join(' - ');
+            return `<option value="${esc(p.nome || '')}">${esc(sub)}</option>`;
+        }).join('');
+    }
+}
+
+function selecionarFornecedorDevolucao(valor) {
+    if (!valor || !Array.isArray(db.fornecedores) || db.fornecedores.length === 0) return;
+    const termo = valor.trim().toLowerCase();
+    const limpoDoc = termo.replace(/\D/g, '');
+
+    const f = db.fornecedores.find(item => {
+        const fNome = (item.nome || item.razaoSocial || '').trim().toLowerCase();
+        const fDoc = (item.cnpj || item.cpf || item.doc || '').replace(/\D/g, '');
+        return fNome === termo || (limpoDoc.length >= 11 && fDoc === limpoDoc);
+    });
+
+    if (!f) return;
+
+    if (document.getElementById('dev-compra-forn-nome')) document.getElementById('dev-compra-forn-nome').value = f.nome || f.razaoSocial || '';
+    if (document.getElementById('dev-compra-forn-doc')) document.getElementById('dev-compra-forn-doc').value = f.cnpj || f.cpf || f.doc || '';
+    if (document.getElementById('dev-compra-forn-rua')) document.getElementById('dev-compra-forn-rua').value = f.rua || f.endereco || f.logradouro || '';
+    if (document.getElementById('dev-compra-forn-numero')) document.getElementById('dev-compra-forn-numero').value = f.numero || 'S/N';
+    if (document.getElementById('dev-compra-forn-bairro')) document.getElementById('dev-compra-forn-bairro').value = f.bairro || '';
+    if (document.getElementById('dev-compra-forn-cidade')) document.getElementById('dev-compra-forn-cidade').value = f.cidade || '';
+    if (document.getElementById('dev-compra-forn-uf')) document.getElementById('dev-compra-forn-uf').value = (f.uf || 'GO').toUpperCase();
+    if (document.getElementById('dev-compra-forn-cep')) document.getElementById('dev-compra-forn-cep').value = f.cep || '';
+    if (document.getElementById('dev-compra-forn-ie')) document.getElementById('dev-compra-forn-ie').value = f.ie || f.inscricaoEstadual || '';
+
+    showToast(`Fornecedor "${f.nome || f.razaoSocial}" selecionado!`, 'success');
+}
+
+function selecionarProdutoDevolucaoCompra(valor) {
+    if (!valor || !Array.isArray(db.produtos) || db.produtos.length === 0) return;
+    const termo = valor.trim().toLowerCase();
+
+    const prod = db.produtos.find(p => {
+        const pNome = (p.nome || '').trim().toLowerCase();
+        const pEan = (p.ean || '').trim().toLowerCase();
+        return pNome === termo || (termo.length >= 6 && pEan === termo);
+    });
+
+    if (!prod) return;
+
+    if (document.getElementById('dev-compra-item-nome')) document.getElementById('dev-compra-item-nome').value = prod.nome || '';
+    if (document.getElementById('dev-compra-item-preco')) {
+        const custo = Number(prod.custo || prod.precoCusto || prod.preco || 0);
+        document.getElementById('dev-compra-item-preco').value = custo > 0 ? custo.toFixed(2) : '';
+    }
+    if (document.getElementById('dev-compra-item-ncm') && prod.ncm) {
+        document.getElementById('dev-compra-item-ncm').value = String(prod.ncm).replace(/\D/g, '');
+    }
+}
+
+// Leitura e extração do XML de NF-e da Indústria / Fornecedor
+function processarXMLDevolucaoCompra(event) {
+    const file = event.target?.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(e.target.result, "text/xml");
+
+            const getStringSafe = (context, tag) => {
+                const node = context ? context.getElementsByTagName(tag)[0] : null;
+                return node ? node.textContent.trim() : '';
+            };
+            const getFloatSafe = (context, tag) => {
+                const node = context ? context.getElementsByTagName(tag)[0] : null;
+                if (!node || !node.textContent) return 0;
+                const v = parseFloat(node.textContent.replace(',', '.'));
+                return isNaN(v) ? 0 : v;
+            };
+
+            // 1. Chave de Acesso Original da NF-e
+            const infNFe = xmlDoc.getElementsByTagName("infNFe")[0];
+            let chave = '';
+            if (infNFe && infNFe.getAttribute("Id")) {
+                chave = infNFe.getAttribute("Id").replace(/\D/g, '');
+            }
+            if (!chave) {
+                const chNFeNode = xmlDoc.getElementsByTagName("chNFe")[0];
+                if (chNFeNode) chave = chNFeNode.textContent.replace(/\D/g, '');
+            }
+            if (chave && document.getElementById('dev-compra-chave')) {
+                document.getElementById('dev-compra-chave').value = chave;
+            }
+
+            // 2. Dados do Fornecedor / Indústria (Emitente da nota de origem)
+            const emit = xmlDoc.getElementsByTagName("emit")[0];
+            if (emit) {
+                const nome = getStringSafe(emit, "xNome");
+                const cnpj = getStringSafe(emit, "CNPJ") || getStringSafe(emit, "CPF");
+                const ie = getStringSafe(emit, "IE");
+
+                const enderEmit = emit.getElementsByTagName("enderEmit")[0];
+                const rua = getStringSafe(enderEmit, "xLgr");
+                const numero = getStringSafe(enderEmit, "nro") || "S/N";
+                const bairro = getStringSafe(enderEmit, "xBairro");
+                const cidade = getStringSafe(enderEmit, "xMun");
+                const uf = (getStringSafe(enderEmit, "UF") || "GO").toUpperCase();
+                const cep = getStringSafe(enderEmit, "CEP");
+
+                if (document.getElementById('dev-compra-forn-nome')) document.getElementById('dev-compra-forn-nome').value = nome;
+                if (document.getElementById('dev-compra-forn-doc')) document.getElementById('dev-compra-forn-doc').value = cnpj;
+                if (document.getElementById('dev-compra-forn-rua')) document.getElementById('dev-compra-forn-rua').value = rua;
+                if (document.getElementById('dev-compra-forn-numero')) document.getElementById('dev-compra-forn-numero').value = numero;
+                if (document.getElementById('dev-compra-forn-bairro')) document.getElementById('dev-compra-forn-bairro').value = bairro;
+                if (document.getElementById('dev-compra-forn-cidade')) document.getElementById('dev-compra-forn-cidade').value = cidade;
+                if (document.getElementById('dev-compra-forn-uf')) document.getElementById('dev-compra-forn-uf').value = uf;
+                if (document.getElementById('dev-compra-forn-cep')) document.getElementById('dev-compra-forn-cep').value = cep;
+                if (document.getElementById('dev-compra-forn-ie')) document.getElementById('dev-compra-forn-ie').value = ie;
+            }
+
+            // 3. Extrair lista de produtos da nota
+            const detNodes = xmlDoc.getElementsByTagName("det");
+            _devCompraItens = [];
+
+            for (let i = 0; i < detNodes.length; i++) {
+                const prod = detNodes[i].getElementsByTagName("prod")[0];
+                if (!prod) continue;
+                const nome = getStringSafe(prod, "xProd");
+                const cEAN = getStringSafe(prod, "cEAN");
+                const cProd = getStringSafe(prod, "cProd");
+                const ncm = getStringSafe(prod, "NCM") || "94036000";
+                const qCom = getFloatSafe(prod, "qCom") || 1;
+                const vUnCom = getFloatSafe(prod, "vUnCom") || (getFloatSafe(prod, "vProd") / qCom);
+                const uCom = getStringSafe(prod, "uCom") || "UN";
+
+                _devCompraItens.push({
+                    selecionado: true,
+                    nome: nome,
+                    quantidadeOriginal: qCom,
+                    quantidade: qCom,
+                    preco: vUnCom,
+                    ncm: ncm,
+                    unidade: uCom,
+                    codigo: cProd || cEAN || ''
+                });
+            }
+
+            renderItensDevolucaoCompra();
+            showToast(`XML processado com sucesso! ${_devCompraItens.length} produtos carregados.`, 'success');
+
+        } catch (err) {
+            console.error("Erro ao processar XML de devolução:", err);
+            showToast("Erro ao ler o arquivo XML da NF-e. Verifique se é um XML válido.", "error");
+        }
+    };
+    reader.readAsText(file);
+}
+
+function adicionarItemDevolucaoCompraManual() {
+    const nome = document.getElementById('dev-compra-item-nome')?.value?.trim();
+    const quantidade = parseFloat(document.getElementById('dev-compra-item-qtd')?.value || '1');
+    const preco = parseFloat(document.getElementById('dev-compra-item-preco')?.value || '0');
+    const ncm = (document.getElementById('dev-compra-item-ncm')?.value?.trim() || '94036000').replace(/\D/g, '');
+
+    if (!nome) return showToast('Informe o nome do produto a devolver.', 'error');
+    if (!preco || preco <= 0) return showToast('Informe o valor unitário.', 'error');
+    if (!quantidade || quantidade <= 0) return showToast('Informe a quantidade.', 'error');
+
+    _devCompraItens.push({
+        selecionado: true,
+        nome,
+        quantidadeOriginal: quantidade,
+        quantidade,
+        preco,
+        ncm: ncm || '94036000',
+        unidade: 'UN',
+        codigo: ''
+    });
+
+    renderItensDevolucaoCompra();
+
+    ['dev-compra-item-nome', 'dev-compra-item-preco', 'dev-compra-busca-prod'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    const elQtd = document.getElementById('dev-compra-item-qtd');
+    if (elQtd) elQtd.value = '1';
+    document.getElementById('dev-compra-item-nome')?.focus();
+}
+
+function toggleItemDevolucaoCompra(idx, selecionado) {
+    if (_devCompraItens[idx]) {
+        _devCompraItens[idx].selecionado = selecionado;
+        atualizarTotalDevolucaoCompra();
+    }
+}
+
+function toggleAllItensDevolucaoCompra(selecionado) {
+    _devCompraItens.forEach(it => it.selecionado = selecionado);
+    renderItensDevolucaoCompra();
+}
+
+function alterarQtdItemDevolucaoCompra(idx, novaQtd) {
+    const qtd = parseFloat(novaQtd);
+    if (!isNaN(qtd) && qtd > 0 && _devCompraItens[idx]) {
+        _devCompraItens[idx].quantidade = qtd;
+        atualizarTotalDevolucaoCompra();
+    }
+}
+
+function removerItemDevolucaoCompra(idx) {
+    _devCompraItens.splice(idx, 1);
+    renderItensDevolucaoCompra();
+}
+
+function atualizarTotalDevolucaoCompra() {
+    const itensAtivos = _devCompraItens.filter(it => it.selecionado);
+    const total = itensAtivos.reduce((acc, it) => acc + (parseFloat(it.quantidade) * parseFloat(it.preco)), 0);
+
+    const elTotal = document.getElementById('dev-compra-total');
+    if (elTotal) elTotal.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+
+    const elCount = document.getElementById('dev-compra-itens-count');
+    if (elCount) elCount.textContent = `${itensAtivos.length} de ${_devCompraItens.length} itens selecionados`;
+}
+
+function renderItensDevolucaoCompra() {
+    const tbody = document.getElementById('dev-compra-itens-tbody');
+    if (!tbody) return;
+
+    if (_devCompraItens.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-slate-400 py-4">Nenhum produto adicionado. Carregue o XML ou adicione manualmente acima.</td></tr>`;
+        atualizarTotalDevolucaoCompra();
+        return;
+    }
+
+    const esc = (typeof escapeHtml === 'function') ? escapeHtml : (s => String(s || ''));
+
+    tbody.innerHTML = _devCompraItens.map((it, idx) => {
+        const subtotal = (parseFloat(it.quantidade) * parseFloat(it.preco)).toFixed(2);
+        return `
+            <tr class="border-b border-slate-100 dark:border-slate-700/60 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                <td class="p-2 text-center">
+                    <input type="checkbox" class="w-4 h-4 accent-amber-500 rounded cursor-pointer" ${it.selecionado ? 'checked' : ''} onchange="toggleItemDevolucaoCompra(${idx}, this.checked)">
+                </td>
+                <td class="p-2 font-medium text-slate-800 dark:text-slate-200">
+                    <div class="font-bold text-xs">${esc(it.nome)}</div>
+                    <span class="text-[10px] text-slate-400">${it.unidade ? 'UNID: ' + esc(it.unidade) : ''} ${it.quantidadeOriginal ? '| Orig: ' + it.quantidadeOriginal : ''}</span>
+                </td>
+                <td class="p-2 text-right">
+                    <input type="number" step="0.01" min="0.01" value="${parseFloat(it.quantidade).toFixed(2)}" class="w-20 text-right border border-slate-300 dark:border-slate-600 rounded px-1.5 py-0.5 text-xs bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-bold" onchange="alterarQtdItemDevolucaoCompra(${idx}, this.value)">
+                </td>
+                <td class="p-2 text-right font-mono text-slate-600 dark:text-slate-300">
+                    R$ ${parseFloat(it.preco).toFixed(2).replace('.', ',')}
+                </td>
+                <td class="p-2 text-right font-bold font-mono text-amber-600 dark:text-amber-400">
+                    R$ ${subtotal.replace('.', ',')}
+                </td>
+                <td class="p-2 text-center font-mono text-[11px] text-slate-400">
+                    ${esc(it.ncm || '94036000')}
+                </td>
+                <td class="p-2 text-center">
+                    <button type="button" onclick="removerItemDevolucaoCompra(${idx})" class="text-rose-500 hover:text-rose-700 p-1" title="Remover Item">
+                        <i class="fa-solid fa-trash text-xs"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    atualizarTotalDevolucaoCompra();
+}
+
+async function emitirDevolucaoCompraModal() {
+    const itensSelecionados = _devCompraItens.filter(it => it.selecionado);
+    if (itensSelecionados.length === 0) {
+        return showToast('Selecione ao menos 1 item para devolução.', 'error');
+    }
+
+    const fornNome = document.getElementById('dev-compra-forn-nome')?.value?.trim();
+    const fornDoc = (document.getElementById('dev-compra-forn-doc')?.value || '').replace(/\D/g, '');
+    const chaveOriginal = (document.getElementById('dev-compra-chave')?.value || '').replace(/\D/g, '');
+    const natOp = document.getElementById('dev-compra-nat-op')?.value?.trim() || 'DEVOLUCAO DE COMPRA PARA COMERCIALIZACAO';
+    const obs = document.getElementById('dev-compra-obs')?.value?.trim() || '';
+
+    if (!fornNome) return showToast('Informe a Razão Social ou Nome do Fornecedor / Indústria.', 'error');
+    if (!fornDoc || (fornDoc.length !== 14 && fornDoc.length !== 11)) {
+        return showToast('Informe um CNPJ (14 dígitos) ou CPF válido para o Fornecedor.', 'error');
+    }
+
+    const fornecedorDados = {
+        nome: fornNome,
+        razaoSocial: fornNome,
+        cnpj: fornDoc.length === 14 ? fornDoc : '',
+        cpf: fornDoc.length === 11 ? fornDoc : '',
+        doc: fornDoc,
+        rua: document.getElementById('dev-compra-forn-rua')?.value?.trim() || '',
+        numero: document.getElementById('dev-compra-forn-numero')?.value?.trim() || 'S/N',
+        bairro: document.getElementById('dev-compra-forn-bairro')?.value?.trim() || '',
+        cidade: document.getElementById('dev-compra-forn-cidade')?.value?.trim() || '',
+        uf: (document.getElementById('dev-compra-forn-uf')?.value?.trim() || 'GO').toUpperCase(),
+        cep: (document.getElementById('dev-compra-forn-cep')?.value || '').replace(/\D/g, ''),
+        ie: document.getElementById('dev-compra-forn-ie')?.value?.trim() || ''
+    };
+
+    const itensParaEnvio = itensSelecionados.map(it => ({
+        nome: it.nome,
+        descricao: it.nome,
+        quantidade: parseFloat(it.quantidade),
+        qtd: parseFloat(it.quantidade),
+        preco: parseFloat(it.preco),
+        precoUnitario: parseFloat(it.preco),
+        ncm: String(it.ncm || '94036000').replace(/\D/g, ''),
+        unidade: it.unidade || 'UN',
+        csosn: '102',
+        origem: '0'
+    }));
+
+    const btn = document.getElementById('btn-confirmar-devolucao-compra');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Transmitindo à SEFAZ...';
+    }
+
+    const overlay = document.getElementById('overlay-comunicando-sefaz');
+    if (overlay) { overlay.classList.remove('hidden'); overlay.classList.add('flex'); }
+
+    showToast('Transmitindo NF-e de Devolução de Compra à SEFAZ...', 'info');
+
+    try {
+        const fn = firebase.functions().httpsCallable('emitirDevolucaoCompra');
+        const res = await fn({
+            chaveOriginal: chaveOriginal || null,
+            destinatarioDados: fornecedorDados,
+            itensParaDevolucao: itensParaEnvio,
+            observacoes: obs,
+            naturezaOperacao: natOp
+        });
+
+        const dataRet = res.data?.data;
+        showToast(res.data?.message || 'NF-e de Devolução de Compra autorizada na SEFAZ!', 'success');
+        fecharModalDevolucaoCompra();
+
+        if (dataRet) {
+            if (!db.notasDevolucao) db.notasDevolucao = [];
+            db.notasDevolucao.unshift({
+                ...dataRet,
+                tipo_devolucao: 'compra',
+                clienteNome: `${fornecedorDados.nome} (Devolução Compra)`,
+                clienteDoc: fornecedorDados.doc,
+                valor: itensParaEnvio.reduce((acc, it) => acc + it.quantidade * it.preco, 0),
+                criadoEm: new Date().toISOString()
+            });
+        }
+
+        processarNotasFiscais();
+        renderNotasFiscais();
+
+    } catch (e) {
+        console.error("Erro ao emitir devolução de compra:", e);
+        let msg = e.message || 'Erro na comunicação com a SEFAZ.';
+        showToast('Falha na emissão: ' + msg, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Emitir NF-e de Devolução (SEFAZ)';
+        }
+        if (overlay) { overlay.classList.add('hidden'); overlay.classList.remove('flex'); }
+    }
+}
+
+// ==========================================
 // MODAL — NOTA AVULSA COMPLETA (SEM VENDA NO SISTEMA)
 // ==========================================
 let _avulsaItens = [];
+
+function popularDatalistsAvulsa() {
+    const esc = (typeof escapeHtml === 'function') ? escapeHtml : (s => String(s || ''));
+
+    // Datalist de Clientes
+    const dlCli = document.getElementById('lista-clientes-datalist');
+    if (dlCli && Array.isArray(db.clientes)) {
+        dlCli.innerHTML = db.clientes.map(c => {
+            const docLimpo = c.doc || c.cpf || c.cnpj || '';
+            const sub = [docLimpo, c.cidade].filter(Boolean).join(' - ');
+            return `<option value="${esc(c.nome || '')}">${esc(sub)}</option>`;
+        }).join('');
+    }
+
+    // Datalist de Produtos
+    const dlProd = document.getElementById('lista-produtos-datalist');
+    if (dlProd && Array.isArray(db.produtos)) {
+        dlProd.innerHTML = db.produtos.map(p => {
+            const preco = Number(p.preco || p.precoVenda || p.valor || 0);
+            const sub = [p.ncm ? 'NCM ' + p.ncm : '', preco > 0 ? `R$ ${preco.toFixed(2)}` : ''].filter(Boolean).join(' - ');
+            return `<option value="${esc(p.nome || '')}">${esc(sub)}</option>`;
+        }).join('');
+    }
+}
+
+function selecionarClienteAvulsa(valor) {
+    if (!valor || !Array.isArray(db.clientes) || db.clientes.length === 0) return;
+    const termo = valor.trim().toLowerCase();
+    const limpoDoc = termo.replace(/\D/g, '');
+
+    const cli = db.clientes.find(c => {
+        const cNome = (c.nome || '').trim().toLowerCase();
+        const cDoc = (c.doc || c.cpf || c.cnpj || '').replace(/\D/g, '');
+        return cNome === termo || (limpoDoc.length >= 11 && cDoc === limpoDoc);
+    });
+
+    if (!cli) return;
+
+    if (document.getElementById('avulsa-dest-nome')) {
+        document.getElementById('avulsa-dest-nome').value = cli.nome || '';
+    }
+    if (document.getElementById('avulsa-dest-doc')) {
+        document.getElementById('avulsa-dest-doc').value = cli.doc || cli.cpf || cli.cnpj || '';
+    }
+    if (document.getElementById('avulsa-dest-rua')) {
+        document.getElementById('avulsa-dest-rua').value = cli.rua || cli.endereco || cli.logradouro || '';
+    }
+    if (document.getElementById('avulsa-dest-numero')) {
+        document.getElementById('avulsa-dest-numero').value = cli.numero || 'S/N';
+    }
+    if (document.getElementById('avulsa-dest-bairro')) {
+        document.getElementById('avulsa-dest-bairro').value = cli.bairro || '';
+    }
+
+    let cid = cli.cidade || '';
+    let uf = cli.uf || '';
+    if (cid.includes(' - ')) {
+        const parts = cid.split(' - ');
+        cid = parts[0].trim();
+        if (!uf && parts[1]) uf = parts[1].trim();
+    }
+    if (document.getElementById('avulsa-dest-cidade')) {
+        document.getElementById('avulsa-dest-cidade').value = cid || 'Goiânia';
+    }
+    if (document.getElementById('avulsa-dest-uf')) {
+        document.getElementById('avulsa-dest-uf').value = (uf || 'GO').toUpperCase();
+    }
+    if (document.getElementById('avulsa-dest-cep') && cli.cep) {
+        document.getElementById('avulsa-dest-cep').value = cli.cep;
+    }
+    showToast(`Cliente "${cli.nome}" selecionado!`, 'success');
+}
+
+function selecionarProdutoAvulsa(valor) {
+    if (!valor || !Array.isArray(db.produtos) || db.produtos.length === 0) return;
+    const termo = valor.trim().toLowerCase();
+
+    const prod = db.produtos.find(p => {
+        const pNome = (p.nome || '').trim().toLowerCase();
+        const pEan = (p.ean || '').trim().toLowerCase();
+        return pNome === termo || (termo.length >= 6 && pEan === termo);
+    });
+
+    if (!prod) return;
+
+    if (document.getElementById('avulsa-item-nome')) {
+        document.getElementById('avulsa-item-nome').value = prod.nome || '';
+    }
+    if (document.getElementById('avulsa-item-preco')) {
+        const preco = Number(prod.preco || prod.precoVenda || prod.valor || 0);
+        document.getElementById('avulsa-item-preco').value = preco > 0 ? preco.toFixed(2) : '';
+    }
+    if (document.getElementById('avulsa-item-ncm') && prod.ncm) {
+        document.getElementById('avulsa-item-ncm').value = String(prod.ncm).replace(/\D/g, '');
+    }
+    if (document.getElementById('avulsa-item-cfop') && prod.cfop) {
+        document.getElementById('avulsa-item-cfop').value = String(prod.cfop).replace(/\D/g, '');
+    }
+    showToast(`Produto "${prod.nome}" carregado!`, 'success');
+}
 
 function abrirModalNotaAvulsa() {
     _avulsaItens = [];
@@ -1374,6 +1993,7 @@ function abrirModalNotaAvulsa() {
     // Limpar campos
     modal.querySelectorAll('input, textarea').forEach(el => { el.value = ''; });
     renderAvulsaItens();
+    popularDatalistsAvulsa();
     modal.classList.remove('hidden');
     modal.classList.add('flex');
 }
@@ -1421,10 +2041,12 @@ function adicionarAvulsaItem() {
     renderAvulsaItens();
 
     // Limpar campos de item
-    ['avulsa-item-nome', 'avulsa-item-qtd', 'avulsa-item-preco'].forEach(id => {
+    ['avulsa-item-nome', 'avulsa-item-preco', 'avulsa-busca-produto'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
+    const elQtd = document.getElementById('avulsa-item-qtd');
+    if (elQtd) elQtd.value = '1';
     document.getElementById('avulsa-item-nome')?.focus();
 }
 
@@ -1673,6 +2295,13 @@ function imprimirDanfse(numero, vendaId) {
 }
 
 // Expor funções para os botões HTML (onclick)
+window.abrirModalEmitirAvulsa = abrirModalEmitirAvulsa;
+window.renderVendasParaFaturar = renderVendasParaFaturar;
+window.emitirNotaDireta = emitirNotaDireta;
+window.baixarLoteMensalXML = baixarLoteMensalXML;
+window.popularDatalistsAvulsa = popularDatalistsAvulsa;
+window.selecionarClienteAvulsa = selecionarClienteAvulsa;
+window.selecionarProdutoAvulsa = selecionarProdutoAvulsa;
 window.abrirModalDevolucaoVenda = abrirModalDevolucaoVenda;
 window.fecharModalDevolucaoVenda = fecharModalDevolucaoVenda;
 window.confirmarDevolucaoVenda = confirmarDevolucaoVenda;
@@ -1685,4 +2314,19 @@ window.abrirModalNFSe = abrirModalNFSe;
 window.fecharModalNFSe = fecharModalNFSe;
 window.emitirNFSeModal = emitirNFSeModal;
 window.imprimirDanfse = imprimirDanfse;
+window.filtrarNotasFiscais = filtrarNotasFiscais;
+window.mudarPeriodoFiscal = mudarPeriodoFiscal;
+window.salvarProxNumero = salvarProxNumero;
+window.atualizarTabelaFiscal = atualizarTabelaFiscal;
+window.abrirModalDevolucaoCompra = abrirModalDevolucaoCompra;
+window.fecharModalDevolucaoCompra = fecharModalDevolucaoCompra;
+window.selecionarFornecedorDevolucao = selecionarFornecedorDevolucao;
+window.selecionarProdutoDevolucaoCompra = selecionarProdutoDevolucaoCompra;
+window.processarXMLDevolucaoCompra = processarXMLDevolucaoCompra;
+window.adicionarItemDevolucaoCompraManual = adicionarItemDevolucaoCompraManual;
+window.toggleItemDevolucaoCompra = toggleItemDevolucaoCompra;
+window.toggleAllItensDevolucaoCompra = toggleAllItensDevolucaoCompra;
+window.alterarQtdItemDevolucaoCompra = alterarQtdItemDevolucaoCompra;
+window.removerItemDevolucaoCompra = removerItemDevolucaoCompra;
+window.emitirDevolucaoCompraModal = emitirDevolucaoCompraModal;
 

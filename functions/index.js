@@ -929,7 +929,7 @@ exports.emitirDevolucaoCompra = functions.runWith({ serviceAccount: 'lojafc-a31f
     if (!hasPerm) throw new functions.https.HttpsError('permission-denied', 'Sem permissão para emitir devoluções.');
 
     try {
-        const { compraId, fornecedorId, chaveOriginal, itensParaDevolucao, observacoes } = data;
+        const { compraId, fornecedorId, chaveOriginal, itensParaDevolucao, observacoes, destinatarioDados } = data;
 
         const configSnap = await db.collection('fc_moveis').doc('config').get();
         const empresa = configSnap.data()?.empresa;
@@ -937,13 +937,13 @@ exports.emitirDevolucaoCompra = functions.runWith({ serviceAccount: 'lojafc-a31f
         empresa.ambienteFiscal = 'producao';
 
         // Buscar dados do fornecedor (destinatário neste caso)
-        let fornecedorData = null;
+        let fornecedorData = destinatarioDados || null;
         const fId = fornecedorId || (compraId ? (await db.collection('compras').doc(String(compraId)).get()).data()?.fornecedorId : null);
-        if (fId) {
+        if (!fornecedorData && fId) {
             const fSnap = await db.collection('fornecedores').doc(String(fId)).get();
             if (fSnap.exists) fornecedorData = fSnap.data();
         }
-        if (!fornecedorData) throw new functions.https.HttpsError('failed-precondition', 'Fornecedor não encontrado. Informe fornecedorId.');
+        if (!fornecedorData) throw new functions.https.HttpsError('failed-precondition', 'Dados do fornecedor/indústria não encontrados. Informe o fornecedor ou preencha os dados.');
 
         // Buscar itens da compra original se não fornecidos
         let itens = itensParaDevolucao || [];

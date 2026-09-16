@@ -21,6 +21,113 @@
         :root { color-scheme: dark; background-color: #0f172a; }
         html, body { background-color: #0f172a; }
         html.light, html.light body, html[data-theme="light"], html[data-theme="light"] body { background-color: #f1f5f9; color-scheme: light; }
+
+        /* Grid Responsiva e Equilibrada para os 5 Cards de KPIs */
+        .fiscal-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 0.875rem;
+        }
+        @media (max-width: 1200px) {
+            .fiscal-kpi-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+        @media (max-width: 768px) {
+            .fiscal-kpi-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+        @media (max-width: 480px) {
+            .fiscal-kpi-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Ícones dos Cards de KPI com suporte escuro nativo */
+        .kpi-icon-box {
+            width: 2.75rem;
+            height: 2.75rem;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.125rem;
+            flex-shrink: 0;
+            transition: all 0.2s ease;
+        }
+        html.dark .kpi-icon-box.icon-blue {
+            background-color: rgba(37, 99, 235, 0.15) !important;
+            color: #60a5fa !important;
+            border: 1px solid rgba(59, 130, 246, 0.25) !important;
+        }
+        html.dark .kpi-icon-box.icon-emerald {
+            background-color: rgba(16, 185, 129, 0.15) !important;
+            color: #34d399 !important;
+            border: 1px solid rgba(16, 185, 129, 0.25) !important;
+        }
+        html.dark .kpi-icon-box.icon-amber {
+            background-color: rgba(245, 158, 11, 0.15) !important;
+            color: #fbbf24 !important;
+            border: 1px solid rgba(245, 158, 11, 0.25) !important;
+        }
+        html.dark .kpi-icon-box.icon-rose {
+            background-color: rgba(239, 68, 68, 0.15) !important;
+            color: #f87171 !important;
+            border: 1px solid rgba(239, 68, 68, 0.25) !important;
+        }
+
+        html:not(.dark) .kpi-icon-box.icon-blue {
+            background-color: #eff6ff !important;
+            color: #2563eb !important;
+            border: 1px solid #dbeafe !important;
+        }
+        html:not(.dark) .kpi-icon-box.icon-emerald {
+            background-color: #ecfdf5 !important;
+            color: #059669 !important;
+            border: 1px solid #d1fae5 !important;
+        }
+        html:not(.dark) .kpi-icon-box.icon-amber {
+            background-color: #fffbeb !important;
+            color: #d97706 !important;
+            border: 1px solid #fde68a !important;
+        }
+        html:not(.dark) .kpi-icon-box.icon-rose {
+            background-color: #fff1f2 !important;
+            color: #e11d48 !important;
+            border: 1px solid #fecdd3 !important;
+        }
+
+        /* Caixa de Numeração */
+        .fiscal-num-box {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.75rem;
+            font-size: 0.75rem;
+        }
+        html.dark .fiscal-num-box {
+            background-color: #0f172a !important;
+            border: 1px solid #334155 !important;
+            color: #cbd5e1 !important;
+        }
+        html:not(.dark) .fiscal-num-box {
+            background-color: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+            color: #475569 !important;
+        }
+
+        html.dark .fiscal-num-input {
+            background-color: #1e293b !important;
+            border: 1px solid #475569 !important;
+            color: #f8fafc !important;
+        }
+        html:not(.dark) .fiscal-num-input {
+            background-color: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            color: #0f172a !important;
+        }
     </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0f172a">
@@ -130,130 +237,172 @@
             <!-- CONTEÚDO SCROLLÁVEL -->
             <div class="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 custom-scrollbar">
                 
-                <!-- CARDS RESUMO / KPIS -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
-                        <div>
-                            <p class="text-xs font-bold text-slate-400 uppercase">Total de Notas</p>
-                            <h3 class="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1" id="kpi-total-notas">0</h3>
-                            <span class="text-[11px] text-slate-500" id="kpi-total-valor">R$ 0,00</span>
+                <!-- CARDS RESUMO / KPIS (5 CARDS EM GRADE RESPONSIVA) -->
+                <div class="fiscal-kpi-grid">
+                    <!-- CARD 1: TOTAL DE NOTAS -->
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:border-blue-400 dark:hover:border-blue-500/50 transition-all flex items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total de Notas</span>
+                            <h3 class="text-2xl font-black text-slate-800 dark:text-slate-100 mt-0.5 tracking-tight" id="kpi-total-notas">0</h3>
+                            <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate" id="kpi-total-valor">R$ 0,00</span>
                         </div>
-                        <div class="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center text-xl">
+                        <div class="kpi-icon-box icon-blue">
                             <i class="fa-solid fa-receipt"></i>
                         </div>
                     </div>
 
-                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
-                        <div>
-                            <p class="text-xs font-bold text-slate-400 uppercase">NF-e (Modelo 55)</p>
-                            <h3 class="text-2xl font-black text-blue-600 mt-1" id="kpi-total-nfe">0</h3>
-                            <span class="text-[11px] text-slate-500" id="kpi-nfe-valor">R$ 0,00</span>
+                    <!-- CARD 2: NF-e (MOD 55) -->
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:border-blue-400 dark:hover:border-blue-500/50 transition-all flex items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">NF-e (Mod 55)</span>
+                            <h3 class="text-2xl font-black text-blue-600 dark:text-blue-400 mt-0.5 tracking-tight" id="kpi-total-nfe">0</h3>
+                            <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate" id="kpi-nfe-valor">R$ 0,00</span>
                         </div>
-                        <div class="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center text-xl">
+                        <div class="kpi-icon-box icon-blue">
                             <i class="fa-solid fa-file-invoice"></i>
                         </div>
                     </div>
 
-                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
-                        <div>
-                            <p class="text-xs font-bold text-slate-400 uppercase">NFC-e (Modelo 65)</p>
-                            <h3 class="text-2xl font-black text-emerald-600 mt-1" id="kpi-total-nfce">0</h3>
-                            <span class="text-[11px] text-slate-500" id="kpi-nfce-valor">R$ 0,00</span>
+                    <!-- CARD 3: NFC-e (MOD 65) -->
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:border-emerald-400 dark:hover:border-emerald-500/50 transition-all flex items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">NFC-e (Mod 65)</span>
+                            <h3 class="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5 tracking-tight" id="kpi-total-nfce">0</h3>
+                            <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate" id="kpi-nfce-valor">R$ 0,00</span>
                         </div>
-                        <div class="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center text-xl">
+                        <div class="kpi-icon-box icon-emerald">
                             <i class="fa-solid fa-store"></i>
                         </div>
                     </div>
 
-                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
-                        <div>
-                            <p class="text-xs font-bold text-slate-400 uppercase">Canceladas / Erros</p>
-                            <h3 class="text-2xl font-black text-red-500 mt-1" id="kpi-total-canceladas">0</h3>
-                            <span class="text-[11px] text-slate-500">Invalidadas SEFAZ</span>
+                    <!-- CARD 4: DEVOLUÇÕES / ESTORNOS -->
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:border-amber-400 dark:hover:border-amber-500/50 transition-all flex items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <span class="text-[10px] font-bold text-amber-500 dark:text-amber-400 uppercase tracking-wider block">Devoluções / Estornos</span>
+                            <h3 class="text-2xl font-black text-amber-600 dark:text-amber-400 mt-0.5 tracking-tight" id="kpi-total-devolucoes">0</h3>
+                            <span class="text-xs font-semibold text-amber-600/90 dark:text-amber-400/90 block truncate" id="kpi-devolucoes-valor">R$ 0,00</span>
                         </div>
-                        <div class="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-500 flex items-center justify-center text-xl">
+                        <div class="kpi-icon-box icon-amber">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </div>
+                    </div>
+
+                    <!-- CARD 5: CANCELADAS / ERROS -->
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:border-rose-400 dark:hover:border-rose-500/50 transition-all flex items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <span class="text-[10px] font-bold text-rose-500 dark:text-rose-400 uppercase tracking-wider block">Canceladas / Erros</span>
+                            <h3 class="text-2xl font-black text-rose-500 mt-0.5 tracking-tight" id="kpi-total-canceladas">0</h3>
+                            <span class="text-xs font-semibold text-slate-400 dark:text-slate-500 block truncate">Invalidadas SEFAZ</span>
+                        </div>
+                        <div class="kpi-icon-box icon-rose">
                             <i class="fa-solid fa-ban"></i>
                         </div>
                     </div>
                 </div>
 
-                <!-- BARRA DE FILTROS E AÇÕES EM LOTE -->
-                <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
-                    <div class="flex flex-wrap items-center justify-between gap-3">
-                        <div class="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
-                            <!-- Busca rápida -->
-                            <div class="relative flex-1 min-w-[200px]">
-                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
-                                <input type="text" id="busca-fiscal" oninput="filtrarNotasFiscais()" placeholder="Buscar por Nº, Chave, Cliente ou CPF/CNPJ..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 pl-9 pr-3 py-2 rounded-lg text-xs outline-none focus:border-blue-500">
+                <!-- PAINEL DE CONTROLE: AÇÕES PRINCIPAIS & FILTROS INTELIGENTES -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 space-y-3.5">
+                    
+                    <!-- LINHA 1: AÇÕES FISCAIS & NUMERAÇÃO -->
+                    <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-700/60">
+                        <!-- Botões de Ação Rápida -->
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button onclick="abrirModalEmitirAvulsa()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all hover:shadow hover:-translate-y-0.5 active:translate-y-0 whitespace-nowrap" title="Faturar Venda do Histórico que ainda não possui nota">
+                                <i class="fa-solid fa-file-circle-plus"></i> Faturar do Histórico
+                            </button>
+                            <button onclick="abrirModalNotaAvulsa()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all hover:shadow hover:-translate-y-0.5 active:translate-y-0 whitespace-nowrap" title="Emitir NF-e ou NFC-e avulsa para qualquer cliente">
+                                <i class="fa-solid fa-file-invoice"></i> Emitir Nota Avulsa
+                            </button>
+                            <button onclick="abrirModalDevolucaoCompra()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all hover:shadow hover:-translate-y-0.5 active:translate-y-0 whitespace-nowrap" title="Emitir NF-e de Devolução de Mercadoria para Fornecedor / Indústria (via XML ou Manual)">
+                                <i class="fa-solid fa-truck-ramp-box"></i> Devolver ao Fornecedor
+                            </button>
+                            <button onclick="abrirModalNFSe()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all hover:shadow hover:-translate-y-0.5 active:translate-y-0 whitespace-nowrap" title="Emitir Nota Fiscal de Serviços (NFS-e Municipal)">
+                                <i class="fa-solid fa-screwdriver-wrench"></i> Emitir NFS-e
+                            </button>
+                            <button onclick="baixarLoteMensalXML()" id="btn-exportar-lote" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all hover:shadow hover:-translate-y-0.5 active:translate-y-0 whitespace-nowrap" title="Baixar todos os arquivos XML em pacote ZIP para contabilidade">
+                                <i class="fa-solid fa-file-zipper"></i> Baixar Lote XML (ZIP)
+                            </button>
+                        </div>
+
+                        <!-- Lado Direito: Próxima Numeração Manual e Botão Atualizar -->
+                        <div class="flex flex-wrap items-center gap-2.5">
+                            <div class="fiscal-num-box">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase hidden sm:inline"><i class="fa-solid fa-hashtag mr-1"></i>Próx. Nº:</span>
+                                <div class="flex items-center gap-1">
+                                    <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">NFC-e</span>
+                                    <input type="number" id="input-prox-nfce" class="w-14 fiscal-num-input rounded px-1.5 py-0.5 text-xs text-center font-bold outline-none focus:border-blue-500" title="Próximo número da NFC-e (Mod 65)">
+                                    <button onclick="salvarProxNumero('NFCe')" class="text-blue-600 hover:text-blue-700 dark:text-blue-400 p-0.5" title="Salvar próximo número NFC-e"><i class="fa-solid fa-check"></i></button>
+                                </div>
+                                <span class="text-slate-300 dark:text-slate-700">|</span>
+                                <div class="flex items-center gap-1">
+                                    <span class="text-[10px] font-bold text-blue-600 dark:text-blue-400">NF-e</span>
+                                    <input type="number" id="input-prox-nfe" class="w-14 fiscal-num-input rounded px-1.5 py-0.5 text-xs text-center font-bold outline-none focus:border-blue-500" title="Próximo número da NF-e (Mod 55)">
+                                    <button onclick="salvarProxNumero('NFe')" class="text-blue-600 hover:text-blue-700 dark:text-blue-400 p-0.5" title="Salvar próximo número NF-e"><i class="fa-solid fa-check"></i></button>
+                                </div>
                             </div>
 
-                            <!-- Filtro de Período -->
-                            <select id="filtro-periodo-fiscal" onchange="mudarPeriodoFiscal()" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-lg text-xs font-medium outline-none">
-                                <option value="este_mes" selected>Este Mês</option>
-                                <option value="mes_passado">Mês Passado</option>
-                                <option value="ultimos_30">Últimos 30 dias</option>
-                                <option value="todos">Todo o Histórico</option>
-                            </select>
+                            <button onclick="atualizarTabelaFiscal()" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-colors whitespace-nowrap" title="Atualizar Lista de Notas Fiscais">
+                                <i class="fa-solid fa-arrows-rotate"></i> <span class="hidden sm:inline">Atualizar</span>
+                            </button>
+                        </div>
+                    </div>
 
-                            <!-- Filtro de Tipo -->
-                            <select id="filtro-tipo-fiscal" onchange="filtrarNotasFiscais()" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-lg text-xs font-medium outline-none">
-                                <option value="TODOS">Todos os Modelos</option>
-                                <option value="NFE">Apenas NF-e (Mod 55)</option>
-                                <option value="NFCE">Apenas NFC-e (Mod 65)</option>
-                                <option value="DEVOLUCAO">Apenas Devoluções / Estornos</option>
-                                <option value="NFSE">Apenas NFS-e (Serviço)</option>
-                            </select>
+                    <!-- LINHA 2: BUSCA RÁPIDA & FILTROS INTEGRADOS -->
+                    <div class="flex flex-wrap items-center gap-2.5">
+                        <!-- Campo de Busca Amplo -->
+                        <div class="relative flex-1 min-w-[260px]">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                            <input type="text" id="busca-fiscal" oninput="filtrarNotasFiscais()" placeholder="Buscar por Nº da nota, chave de acesso, cliente ou CPF/CNPJ..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 pl-9 pr-8 py-2 rounded-xl text-xs outline-none focus:border-blue-500 transition-colors">
+                            <button type="button" onclick="document.getElementById('busca-fiscal').value = ''; filtrarNotasFiscais();" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs" title="Limpar busca">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
 
-                            <!-- Filtro de Status -->
-                            <select id="filtro-status-fiscal" onchange="filtrarNotasFiscais()" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-lg text-xs font-medium outline-none">
-                                <option value="TODOS">Todos os Status</option>
-                                <option value="AUTORIZADO">Autorizadas</option>
-                                <option value="DEVOLVIDO">Devolvidas / Estornadas</option>
-                                <option value="CONTINGENCIA">Em Contingência</option>
-                                <option value="PROCESSANDO">Processando</option>
-                                <option value="CANCELADO">Canceladas</option>
-                                <option value="ERRO">Com Rejeição/Erro</option>
+                        <!-- Filtro de Período -->
+                        <div class="relative">
+                            <select id="filtro-periodo-fiscal" onchange="mudarPeriodoFiscal()" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl text-xs font-semibold outline-none focus:border-blue-500 cursor-pointer">
+                                <option value="este_mes" selected>📅 Este Mês</option>
+                                <option value="mes_passado">📅 Mês Passado</option>
+                                <option value="ultimos_30">📅 Últimos 30 dias</option>
+                                <option value="todos">📅 Todo o Histórico</option>
                             </select>
                         </div>
 
-                        <!-- Botões de Ação e Config Numeração -->
-                        <div class="flex items-center gap-2">
-                            <!-- Numeração Manual -->
-                            <div class="flex items-center gap-2 mr-2 border-r border-slate-200 dark:border-slate-700 pr-3">
-                                <div class="flex flex-col">
-                                    <label class="text-[9px] text-slate-500 uppercase font-bold mb-0.5">Nº NFC-e (65)</label>
-                                    <div class="flex">
-                                        <input type="number" id="input-prox-nfce" class="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs px-1.5 py-1 rounded-l text-center outline-none">
-                                        <button onclick="salvarProxNumero('NFCe')" class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded-r text-xs transition-colors"><i class="fa-solid fa-check"></i></button>
-                                    </div>
-                                </div>
-                                <div class="flex flex-col">
-                                    <label class="text-[9px] text-slate-500 uppercase font-bold mb-0.5">Nº NF-e (55)</label>
-                                    <div class="flex">
-                                        <input type="number" id="input-prox-nfe" class="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs px-1.5 py-1 rounded-l text-center outline-none">
-                                        <button onclick="salvarProxNumero('NFe')" class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded-r text-xs transition-colors"><i class="fa-solid fa-check"></i></button>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <button onclick="atualizarTabelaFiscal()" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold px-3 py-2 rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition-colors whitespace-nowrap" title="Atualizar Lista de Notas Fiscais">
-                                <i class="fa-solid fa-arrows-rotate"></i> Atualizar Lista
-                            </button>
-                            <button onclick="baixarLoteMensalXML()" id="btn-exportar-lote" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition-colors whitespace-nowrap">
-                                <i class="fa-solid fa-file-zipper text-sm"></i> Baixar Lote XML (ZIP)
-                            </button>
-                            <button onclick="abrirModalNotaAvulsa()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition-colors whitespace-nowrap">
-                                <i class="fa-solid fa-file-invoice text-sm"></i> Emitir Nota Avulsa
-                            </button>
-                            <button onclick="abrirModalNFSe()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition-colors whitespace-nowrap" title="Emitir Nota Fiscal de Serviços Eletrônica">
-                                <i class="fa-solid fa-screwdriver-wrench text-sm"></i> Emitir NFS-e
-                            </button>
+                        <!-- Filtro de Modelo -->
+                        <div class="relative">
+                            <select id="filtro-tipo-fiscal" onchange="filtrarNotasFiscais()" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl text-xs font-semibold outline-none focus:border-blue-500 cursor-pointer">
+                                <option value="TODOS">📄 Todos os Modelos</option>
+                                <option value="NFE">🔹 NF-e (Mod 55)</option>
+                                <option value="NFCE">🟢 NFC-e (Mod 65)</option>
+                                <option value="DEVOLUCAO">🟠 Devoluções / Estornos</option>
+                                <option value="NFSE">🟣 NFS-e (Serviço)</option>
+                            </select>
+                        </div>
+
+                        <!-- Filtro de Status -->
+                        <div class="relative">
+                            <select id="filtro-status-fiscal" onchange="filtrarNotasFiscais()" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl text-xs font-semibold outline-none focus:border-blue-500 cursor-pointer">
+                                <option value="TODOS">⚡ Todos os Status</option>
+                                <option value="AUTORIZADO">✅ Autorizadas</option>
+                                <option value="DEVOLVIDO">↩️ Devolvidas / Estornadas</option>
+                                <option value="CONTINGENCIA">⚠️ Em Contingência</option>
+                                <option value="PROCESSANDO">⏳ Processando</option>
+                                <option value="CANCELADO">🚫 Canceladas</option>
+                                <option value="ERRO">❌ Com Rejeição/Erro</option>
+                            </select>
                         </div>
                     </div>
                 </div>
 
                 <!-- TABELA DE NOTAS FISCAIS -->
-                <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col">
+                <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col">
+                    <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-700/60 bg-slate-50/50 dark:bg-slate-900/40 flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-blue-500"></i>
+                            <h3 class="text-xs font-bold text-slate-700 dark:text-slate-200">Histórico de Documentos Fiscais</h3>
+                        </div>
+                        <span class="text-[11px] font-medium text-slate-400">Transmissão em tempo real — SEFAZ Goiás</span>
+                    </div>
                     <div class="overflow-x-auto custom-scrollbar">
                         <table class="w-full text-left border-collapse text-xs">
                             <thead class="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 uppercase font-bold tracking-wider">
@@ -455,6 +604,210 @@
     </div>
 
     <!-- ========================================== -->
+    <!-- MODAL — DEVOLUÇÃO DE COMPRA AO FORNECEDOR / INDÚSTRIA -->
+    <!-- ========================================== -->
+    <div id="modal-devolucao-compra" class="fixed inset-0 bg-slate-900/80 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[95vh]">
+            <div class="p-5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0">
+                <div>
+                    <h2 class="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                        <i class="fa-solid fa-truck-ramp-box text-amber-500"></i> NF-e de Devolução ao Fornecedor / Indústria
+                    </h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Emissão de NF-e Mod 55 (finNFe=4 - Devolução de Compra) com ou sem arquivo XML</p>
+                </div>
+                <button onclick="fecharModalDevolucaoCompra()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="overflow-y-auto p-5 space-y-4 custom-scrollbar">
+                
+                <!-- BOX DE IMPORTAÇÃO RÁPIDA DE XML -->
+                <div class="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-2 border-dashed border-amber-400/50 dark:border-amber-600/50 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg shrink-0">
+                            <i class="fa-solid fa-file-code"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200">Tem o arquivo XML da nota da indústria?</h4>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Puxe a nota e preencha fornecedor, chave e produtos automaticamente!</p>
+                        </div>
+                    </div>
+                    <div class="shrink-0 flex items-center gap-2 w-full sm:w-auto">
+                        <input type="file" id="dev-compra-input-xml" accept=".xml" class="hidden" onchange="processarXMLDevolucaoCompra(event)">
+                        <button type="button" onclick="document.getElementById('dev-compra-input-xml').click()" class="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Carregar XML da Nota
+                        </button>
+                    </div>
+                </div>
+
+                <!-- CHAVE ORIGINAL & MOTIVO -->
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+                    <div class="md:col-span-8">
+                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wide">
+                            Chave de Acesso da NF-e Original (44 Dígitos)
+                        </label>
+                        <div class="relative">
+                            <input type="text" id="dev-compra-chave" maxlength="44" placeholder="522609... (Chave da nota emitida pelo fornecedor)" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-xs font-mono bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        </div>
+                    </div>
+                    <div class="md:col-span-4">
+                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wide">
+                            Natureza da Operação
+                        </label>
+                        <input type="text" id="dev-compra-nat-op" value="DEVOLUCAO DE COMPRA PARA COMERCIALIZACAO" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    </div>
+                </div>
+
+                <!-- DADOS DO DESTINATÁRIO (FORNECEDOR / INDÚSTRIA) -->
+                <div class="border border-slate-200 dark:border-slate-700 rounded-2xl p-3.5 space-y-3 bg-slate-50/50 dark:bg-slate-900/30">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
+                        <h3 class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 uppercase tracking-wide">
+                            <i class="fa-solid fa-industry text-amber-500"></i> Fornecedor / Indústria (Destinatário)
+                        </h3>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[10px] text-slate-400 font-medium">Puxar do Cadastro:</span>
+                            <div class="relative w-44 sm:w-56">
+                                <input list="lista-fornecedores-datalist" id="dev-compra-busca-forn" oninput="selecionarFornecedorDevolucao(this.value)" placeholder="Buscar fornecedor..." class="w-full border border-amber-300 dark:border-amber-700 rounded-lg px-2.5 py-1 text-xs bg-amber-50/60 dark:bg-amber-950/30 text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-amber-400">
+                                <datalist id="lista-fornecedores-datalist"></datalist>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">CNPJ / CPF *</label>
+                            <input type="text" id="dev-compra-forn-doc" placeholder="00.000.000/0000-00" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">Razão Social / Nome da Indústria *</label>
+                            <input type="text" id="dev-compra-forn-nome" placeholder="Razão social da indústria fornecedora" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-6 gap-2.5">
+                        <div class="col-span-2 sm:col-span-3">
+                            <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">Logradouro / Endereço</label>
+                            <input type="text" id="dev-compra-forn-rua" placeholder="Av / Rua..." class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">Número</label>
+                            <input type="text" id="dev-compra-forn-numero" placeholder="S/N" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                        </div>
+                        <div class="col-span-2 sm:col-span-2">
+                            <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">Bairro</label>
+                            <input type="text" id="dev-compra-forn-bairro" placeholder="Bairro" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">Cidade</label>
+                            <input type="text" id="dev-compra-forn-cidade" placeholder="Cidade" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">UF</label>
+                            <input type="text" id="dev-compra-forn-uf" maxlength="2" placeholder="GO" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 uppercase">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">CEP</label>
+                            <input type="text" id="dev-compra-forn-cep" placeholder="00000-000" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">Inscrição Estadual (IE)</label>
+                            <input type="text" id="dev-compra-forn-ie" placeholder="Isento ou Nº" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ITENS A DEVOLVER -->
+                <div class="border border-slate-200 dark:border-slate-700 rounded-2xl p-3.5 space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700 pb-1.5">
+                        <h3 class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 uppercase tracking-wide">
+                            <i class="fa-solid fa-box-open text-amber-500"></i> Produtos para Devolução
+                        </h3>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[10px] text-slate-400 font-medium">Puxar do Estoque:</span>
+                            <div class="relative w-44 sm:w-56">
+                                <input list="lista-produtos-devolucao-datalist" id="dev-compra-busca-prod" oninput="selecionarProdutoDevolucaoCompra(this.value)" placeholder="Buscar no estoque..." class="w-full border border-emerald-300 dark:border-emerald-700 rounded-lg px-2.5 py-1 text-xs bg-emerald-50/60 dark:bg-emerald-950/30 text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-emerald-400">
+                                <datalist id="lista-produtos-devolucao-datalist"></datalist>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formulário Adicionar Item Manual -->
+                    <div class="grid grid-cols-12 gap-2">
+                        <div class="col-span-12 sm:col-span-4">
+                            <input id="dev-compra-item-nome" type="text" placeholder="Descrição do produto a devolver" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                        </div>
+                        <div class="col-span-4 sm:col-span-2">
+                            <input id="dev-compra-item-qtd" type="number" placeholder="Qtd" min="0.01" step="0.01" value="1" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                        </div>
+                        <div class="col-span-4 sm:col-span-2">
+                            <input id="dev-compra-item-preco" type="number" placeholder="Preço unit." min="0.01" step="0.01" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                        </div>
+                        <div class="col-span-4 sm:col-span-2">
+                            <input id="dev-compra-item-ncm" type="text" placeholder="NCM" maxlength="8" value="94036000" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 text-xs font-mono bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                        </div>
+                        <div class="col-span-12 sm:col-span-2">
+                            <button type="button" onclick="adicionarItemDevolucaoCompraManual()" class="w-full h-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-1.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1 transition-colors">
+                                <i class="fa-solid fa-plus"></i> Adicionar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tabela de Itens Selecionados -->
+                    <div class="overflow-auto max-h-48 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <table class="w-full text-xs">
+                            <thead class="bg-slate-50 dark:bg-slate-900 sticky top-0">
+                                <tr class="text-left text-[11px] text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                                    <th class="p-2 w-8 text-center"><input type="checkbox" id="dev-compra-check-all" onchange="toggleAllItensDevolucaoCompra(this.checked)" checked></th>
+                                    <th class="p-2">Produto</th>
+                                    <th class="p-2 text-right">Qtd</th>
+                                    <th class="p-2 text-right">Preço Unit.</th>
+                                    <th class="p-2 text-right">Subtotal</th>
+                                    <th class="p-2 text-center">NCM</th>
+                                    <th class="p-2 w-8"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="dev-compra-itens-tbody" class="divide-y divide-slate-100 dark:divide-slate-700">
+                                <tr>
+                                    <td colspan="7" class="text-center text-slate-400 py-4">Nenhum produto adicionado. Carregue o XML ou adicione manualmente acima.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-1">
+                        <span class="text-[11px] text-slate-400" id="dev-compra-itens-count">0 itens selecionados</span>
+                        <div class="text-right">
+                            <span class="text-xs font-bold text-slate-500 dark:text-slate-400">Total a Devolver: </span>
+                            <span id="dev-compra-total" class="text-sm font-black text-amber-600 dark:text-amber-400">R$ 0,00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MOTIVO / OBSERVAÇÕES -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wide">
+                        Motivo da Devolução / Observações do Fisco
+                    </label>
+                    <textarea id="dev-compra-obs" rows="2" placeholder="Mercadoria avariada / estragada durante o transporte, recusa parcial de lote..." class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 resize-none focus:outline-none focus:ring-2 focus:ring-amber-500"></textarea>
+                </div>
+            </div>
+
+            <div class="p-5 border-t border-slate-200 dark:border-slate-700 flex items-center gap-3 shrink-0">
+                <button type="button" onclick="fecharModalDevolucaoCompra()" class="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                    Cancelar
+                </button>
+                <button type="button" id="btn-confirmar-devolucao-compra" onclick="emitirDevolucaoCompraModal()" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-paper-plane"></i> Emitir NF-e de Devolução (SEFAZ)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
     <!-- MODAL — NOTA AVULSA COMPLETA              -->
     <!-- ========================================== -->
     <div id="modal-nota-avulsa" class="fixed inset-0 bg-slate-900/80 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
@@ -485,7 +838,18 @@
 
                 <!-- Destinatário -->
                 <div>
-                    <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 border-b border-slate-100 dark:border-slate-700 pb-1.5">Destinatário</h3>
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2 border-b border-slate-100 dark:border-slate-700 pb-1.5">
+                        <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-user text-blue-500"></i> Destinatário
+                        </h3>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[10px] text-slate-400 font-medium">Puxar Cliente:</span>
+                            <div class="relative w-44 sm:w-60">
+                                <input list="lista-clientes-datalist" id="avulsa-busca-cliente" oninput="selecionarClienteAvulsa(this.value)" placeholder="Buscar no cadastro..." class="w-full border border-blue-300 dark:border-blue-700 rounded-lg px-2.5 py-1 text-xs bg-blue-50/60 dark:bg-blue-950/30 text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-blue-400">
+                                <datalist id="lista-clientes-datalist"></datalist>
+                            </div>
+                        </div>
+                    </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">CPF / CNPJ</label>
@@ -509,20 +873,37 @@
                                 <input id="avulsa-dest-uf" type="text" placeholder="GO" maxlength="2" value="GO" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 uppercase">
                             </div>
                         </div>
-                        <div>
-                            <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Bairro</label>
-                            <input id="avulsa-dest-bairro" type="text" placeholder="Centro" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Cidade</label>
-                            <input id="avulsa-dest-cidade" type="text" placeholder="Goiânia" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Bairro</label>
+                                <input id="avulsa-dest-bairro" type="text" placeholder="Centro" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Cidade</label>
+                                <input id="avulsa-dest-cidade" type="text" placeholder="Goiânia" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">CEP</label>
+                                <input id="avulsa-dest-cep" type="text" placeholder="74000-000" maxlength="9" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Itens -->
                 <div>
-                    <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 border-b border-slate-100 dark:border-slate-700 pb-1.5">Itens da Nota</h3>
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2 border-b border-slate-100 dark:border-slate-700 pb-1.5">
+                        <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-boxes-stacked text-emerald-500"></i> Itens da Nota
+                        </h3>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[10px] text-slate-400 font-medium">Puxar Produto:</span>
+                            <div class="relative w-44 sm:w-60">
+                                <input list="lista-produtos-datalist" id="avulsa-busca-produto" oninput="selecionarProdutoAvulsa(this.value)" placeholder="Buscar no estoque..." class="w-full border border-emerald-300 dark:border-emerald-700 rounded-lg px-2.5 py-1 text-xs bg-emerald-50/60 dark:bg-emerald-950/30 text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-emerald-400">
+                                <datalist id="lista-produtos-datalist"></datalist>
+                            </div>
+                        </div>
+                    </div>
                     <div class="grid grid-cols-12 gap-2 mb-2">
                         <div class="col-span-4">
                             <input id="avulsa-item-nome" type="text" placeholder="Descrição do produto" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400" onkeydown="if(event.key==='Enter') adicionarAvulsaItem()">
@@ -719,6 +1100,6 @@
     <script src="../sistema/config_banco.js?v=20260916100000"></script>
     <script src="../global.js?v=20260916100000"></script>
     <script src="fc_cache.js?v=20260916100000"></script>
-    <script src="fiscal.js?v=20260916100000"></script>
+    <script src="fiscal.js?v=20260916113000"></script>
 </body>
 </html>
