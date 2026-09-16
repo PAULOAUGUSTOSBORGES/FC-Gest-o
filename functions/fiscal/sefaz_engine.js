@@ -40,7 +40,12 @@ async function emitirNotaDiretoSefaz(modelo, venda, empresa, itens, cliente = nu
         contingencia: isContingencia,
         justificativaContingencia: opcoes.justificativaContingencia || venda.justificativaContingencia || 'Instabilidade momentanea na comunicacao com a SEFAZ',
         numeroNota: venda.numeroNotaFiscal || (modelo === '65' ? (parseInt(empresa.proximoNumeroNFCe) || 1) : (parseInt(empresa.proximoNumeroNFe) || 1)),
-        serie: modelo === '65' ? (parseInt(empresa.serieNFCe) || 1) : (parseInt(empresa.serieNFe) || 1)
+        serie: modelo === '65' ? (parseInt(empresa.serieNFCe) || 1) : (parseInt(empresa.serieNFe) || 1),
+        // Parâmetros para devoluções e notas especiais
+        tpNF: opcoes.tpNF || '1',
+        finNFe: opcoes.finNFe || '1',
+        nfRef: opcoes.nfRef || null,
+        naturezaOperacao: opcoes.naturezaOperacao || null
     });
 
     // 2. Assina digitalmente o XML com o Certificado Digital A1

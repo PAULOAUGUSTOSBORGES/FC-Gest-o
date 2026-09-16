@@ -21,6 +21,21 @@ body {
 }
 
 /* =============================================
+   TOGGLE SWITCHES (Fundo Verde Ativo em Dark e Light)
+   ============================================= */
+input[type="checkbox"].peer:checked + div,
+input[type="checkbox"].peer:checked ~ div,
+.peer:checked ~ div.peer-checked\:bg-emerald-600 {
+    background-color: #059669 !important;
+}
+
+input[type="checkbox"].peer:checked + div::after,
+input[type="checkbox"].peer:checked ~ div::after {
+    transform: translateX(100%) !important;
+    border-color: #ffffff !important;
+}
+
+/* =============================================
    TEMA CLARO DO SISTEMA DE GESTÃO (ALTO CONTRASTE)
    Suporte a: html.light, html[data-theme="light"], body.light
    ============================================= */

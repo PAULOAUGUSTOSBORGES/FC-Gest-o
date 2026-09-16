@@ -1381,6 +1381,10 @@ window.gerarSvgCode128 = gerarSvgCode128;
 // LAYOUT OFICIAL DO DANFE NF-e (MOD 55) - PADRÃO A4 RETRATO
 // ==============================================================
 function gerarHtmlDanfeNFeA4(v, nota, emp) {
+    const isDevolucao = Boolean(nota?.isDevolucao || nota?.tipo_devolucao || nota?.chave_original || v?.nfe_devolucao === nota || (typeof nota?.tipo === 'string' && nota.tipo.includes('Devolução')));
+    const tpNF = isDevolucao ? '0' : '1';
+    const naturezaOp = isDevolucao ? 'DEVOLUÇÃO DE MERCADORIA' : (emp?.naturezaOperacao || 'VENDA DE MERCADORIA');
+
     const chave = String(nota?.chave_nfe || v?.fiscal_chave || '').replace(/\D/g, '');
     const chaveFmt = chave ? chave.replace(/(\d{4})/g, '$1 ').trim() : '-';
     const barcodeSvg = gerarSvgCode128(chave);
@@ -1524,7 +1528,7 @@ function gerarHtmlDanfeNFeA4(v, nota, emp) {
             <div style="font-size: 6.5px; line-height: 1;">Documento Auxiliar da<br>Nota Fiscal Eletrônica</div>
             <div class="row" style="margin: 4px auto 2px auto; justify-content: center; align-items: center; gap: 4px;">
                 <div style="font-size: 7px; text-align: left; line-height: 1.1;">0 - ENTRADA<br>1 - SAÍDA</div>
-                <div style="border: 1px solid #000; font-size: 11px; font-weight: bold; width: 18px; height: 18px; line-height: 18px; text-align: center;">1</div>
+                <div style="border: 1px solid #000; font-size: 11px; font-weight: bold; width: 18px; height: 18px; line-height: 18px; text-align: center;">${tpNF}</div>
             </div>
             <div style="font-size: 8.5px; font-weight: bold; margin-top: 2px;">Nº ${numeroNota}</div>
             <div style="font-size: 8px; font-weight: bold;">SÉRIE: ${serie}</div>
@@ -1545,7 +1549,7 @@ function gerarHtmlDanfeNFeA4(v, nota, emp) {
     <div class="row">
         <div class="box border-t-0" style="flex: 2;">
             <span class="box-title">NATUREZA DA OPERAÇÃO</span>
-            <div class="box-val">${escapeHtml(emp?.naturezaOperacao || 'VENDA DE MERCADORIA')}</div>
+            <div class="box-val">${escapeHtml(naturezaOp)}</div>
         </div>
         <div class="box border-t-0 border-l-0" style="flex: 1.8;">
             <span class="box-title">PROTOCOLO DE AUTORIZAÇÃO DE USO</span>
@@ -1748,6 +1752,7 @@ function gerarHtmlDanfeNFeA4(v, nota, emp) {
             <div class="box-val-normal" style="line-height: 1.2; font-size: 7px;">
                 DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.<br>
                 NÃO GERA DIREITO A CRÉDITO FISCAL DE IPI/ICMS.<br>
+                ${isDevolucao ? `<strong>NF-E DE DEVOLUÇÃO / ENTRADA</strong> - Emitida em estorno de operação comercial.<br>Ref. Chave de Acesso Original: <strong>${escapeHtml(nota?.chave_original || v?.nfce?.chave_nfe || v?.nfe?.chave_nfe || '')}</strong><br>` : ''}
                 ${v?.id ? `Identificador da Venda: ${v.id} | ` : ''}Vendedor: ${escapeHtml(v?.vendedor || 'BALCÃO')}<br>
                 ${v?.observacoes ? `Observações: ${escapeHtml(v.observacoes)}<br>` : ''}
                 Documento emitido através do sistema FC-Gestão - SEFAZ Direto.

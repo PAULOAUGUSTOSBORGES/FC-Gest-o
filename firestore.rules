@@ -121,6 +121,16 @@ service cloud.firestore {
       allow read, write: if isAdmin() || temPermissao('perm_gestao');
     }
 
+    match /notas_servico/{docId} {
+      allow read: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_gestao'));
+      allow write: if isAdmin() || temPermissao('perm_gestao');
+    }
+
+    match /notas_devolucao/{docId} {
+      allow read: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_gestao'));
+      allow write: if isAdmin() || temPermissao('perm_gestao');
+    }
+
     // ==========================================
     // 5. Funcionários e Controle de Acesso
     // ==========================================

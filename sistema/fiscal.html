@@ -23,7 +23,6 @@
         html.light, html.light body, html[data-theme="light"], html[data-theme="light"] body { background-color: #f1f5f9; color-scheme: light; }
     </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="manifest" href="../manifest.json">
     <meta name="theme-color" content="#0f172a">
     <title>FC Gestão - Painel de Notas Fiscais (NF-e & NFC-e)</title>
 
@@ -201,12 +200,15 @@
                                 <option value="TODOS">Todos os Modelos</option>
                                 <option value="NFE">Apenas NF-e (Mod 55)</option>
                                 <option value="NFCE">Apenas NFC-e (Mod 65)</option>
+                                <option value="DEVOLUCAO">Apenas Devoluções / Estornos</option>
+                                <option value="NFSE">Apenas NFS-e (Serviço)</option>
                             </select>
 
                             <!-- Filtro de Status -->
                             <select id="filtro-status-fiscal" onchange="filtrarNotasFiscais()" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-lg text-xs font-medium outline-none">
                                 <option value="TODOS">Todos os Status</option>
                                 <option value="AUTORIZADO">Autorizadas</option>
+                                <option value="DEVOLVIDO">Devolvidas / Estornadas</option>
                                 <option value="CONTINGENCIA">Em Contingência</option>
                                 <option value="PROCESSANDO">Processando</option>
                                 <option value="CANCELADO">Canceladas</option>
@@ -240,8 +242,11 @@
                             <button onclick="baixarLoteMensalXML()" id="btn-exportar-lote" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition-colors whitespace-nowrap">
                                 <i class="fa-solid fa-file-zipper text-sm"></i> Baixar Lote XML (ZIP)
                             </button>
-                            <button onclick="abrirModalEmitirAvulsa()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition-colors whitespace-nowrap">
-                                <i class="fa-solid fa-plus-circle text-sm"></i> Faturar Venda Pendente
+                            <button onclick="abrirModalNotaAvulsa()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition-colors whitespace-nowrap">
+                                <i class="fa-solid fa-file-invoice text-sm"></i> Emitir Nota Avulsa
+                            </button>
+                            <button onclick="abrirModalNFSe()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition-colors whitespace-nowrap" title="Emitir Nota Fiscal de Serviços Eletrônica">
+                                <i class="fa-solid fa-screwdriver-wrench text-sm"></i> Emitir NFS-e
                             </button>
                         </div>
                     </div>
@@ -290,7 +295,7 @@
                     <p class="font-bold mb-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Atenção ao Cancelamento:</p>
                     <p>O cancelamento fiscal na SEFAZ exige justificativa clara (mín. 15 caracteres) e obedece aos prazos regulamentares da Receita Estadual.</p>
                     <p class="mt-2 pt-2 border-t border-red-200 dark:border-red-900/60 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
-                        <i class="fa-solid fa-clock mr-1"></i> <strong>Prazos Legais SEFAZ:</strong> NFC-e até 30 minutos | NF-e até 24 horas da autorização.
+                        <i class="fa-solid fa-clock mr-1"></i> <strong>Prazos Legais SEFAZ:</strong> NFC-e até 30 minutos | NF-e até 24 horas. Para notas cujo prazo tenha expirado, a legislação exige o estorno oficial via <strong>NF-e de Devolução</strong>.
                     </p>
                 </div>
 
@@ -298,20 +303,15 @@
 
                 <div>
                     <label class="block font-bold text-slate-600 dark:text-slate-300 mb-1">Justificativa do Cancelamento (Mín. 15 caracteres):</label>
-                    <textarea id="cancelar-justificativa" rows="3" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-red-500 dark:text-white" placeholder="Ex: Cancelamento por erro no preenchimento de endereço ou desistência do comprador"></textarea>
+                    <textarea id="cancelar-justificativa" rows="3" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-red-500 dark:text-white" placeholder="Ex: Cancelamento por desistência do comprador ou erro de dados"></textarea>
                     <p class="text-[10px] text-slate-400 mt-1" id="cancelar-char-count">0 / 15 caracteres</p>
                 </div>
             </div>
             <div class="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex flex-wrap items-center justify-between gap-2">
                 <button onclick="fecharModalCancelamento()" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold rounded-lg text-xs transition-colors">Voltar</button>
-                <div class="flex items-center gap-2">
-                    <button onclick="confirmarCancelamentoNota(true)" id="btn-cancelar-interno" type="button" class="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer" title="Registra cancelamento interno caso o prazo da SEFAZ já tenha expirado">
-                        <i class="fa-solid fa-file-excel"></i> Cancelar no Sistema
-                    </button>
-                    <button onclick="confirmarCancelamentoNota(false)" id="btn-confirmar-cancelar" class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-xs transition-colors flex items-center gap-1.5 shadow-md cursor-pointer">
-                        <i class="fa-solid fa-ban"></i> Transmitir SEFAZ
-                    </button>
-                </div>
+                <button onclick="confirmarCancelamentoNota()" id="btn-confirmar-cancelar" class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-xs transition-colors flex items-center gap-1.5 shadow-md cursor-pointer">
+                    <i class="fa-solid fa-ban"></i> Transmitir Cancelamento à SEFAZ
+                </button>
             </div>
         </div>
     </div>
@@ -401,14 +401,324 @@
         </p>
     </div>
 
+    <!-- ========================================== -->
+    <!-- MODAL — DEVOLUÇÃO DE VENDA                -->
+    <!-- ========================================== -->
+    <div id="modal-devolucao-venda" class="fixed inset-0 bg-slate-900/80 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
+            <div class="p-5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0">
+                <div>
+                    <h2 class="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                        <i class="fa-solid fa-rotate-left text-orange-500"></i> NF-e de Devolução de Venda
+                    </h2>
+                    <p id="dev-venda-info-nota" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5"></p>
+                </div>
+                <button onclick="fecharModalDevolucaoVenda()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="overflow-y-auto p-5 space-y-4 custom-scrollbar">
+                <p class="text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-xl p-3">
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                    Será emitida uma <strong>NF-e de Entrada (finNFe=4 — Devolução)</strong> referenciando a NF-e original. Isso registra a entrada das mercadorias de volta no seu estoque fiscal.
+                </p>
+                <div>
+                    <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Selecione os itens a devolver:</h3>
+                    <div class="overflow-auto max-h-48 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <table class="w-full text-sm">
+                            <thead class="bg-slate-50 dark:bg-slate-900 sticky top-0">
+                                <tr class="text-left text-xs text-slate-500 dark:text-slate-400">
+                                    <th class="p-2 w-8"></th>
+                                    <th class="p-2">Produto</th>
+                                    <th class="p-2 text-right">Qtd Original</th>
+                                    <th class="p-2 text-right">Qtd Devolver</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dev-venda-itens" class="divide-y divide-slate-100 dark:divide-slate-700"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">Observação / Motivo</label>
+                    <textarea id="dev-venda-obs" rows="2" placeholder="Produto com defeito, arrependimento do cliente..." class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 resize-none focus:outline-none focus:ring-2 focus:ring-orange-400"></textarea>
+                </div>
+            </div>
+            <div class="p-5 border-t border-slate-200 dark:border-slate-700 flex items-center gap-3 shrink-0">
+                <button onclick="fecharModalDevolucaoVenda()" class="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                    Cancelar
+                </button>
+                <button id="btn-confirmar-devolucao-venda" onclick="confirmarDevolucaoVenda()" class="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-rotate-left"></i> Emitir Devolução
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL — NOTA AVULSA COMPLETA              -->
+    <!-- ========================================== -->
+    <div id="modal-nota-avulsa" class="fixed inset-0 bg-slate-900/80 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[95vh]">
+            <div class="p-5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0">
+                <h2 class="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-file-invoice text-emerald-500"></i> Emitir Nota Avulsa
+                </h2>
+                <button onclick="fecharModalNotaAvulsa()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="overflow-y-auto p-5 space-y-5 custom-scrollbar">
+                <!-- Tipo e Natureza -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">Tipo de Nota</label>
+                        <select id="avulsa-tipo" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                            <option value="nfe">NF-e (Modelo 55)</option>
+                            <option value="nfce">NFC-e (Modelo 65)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">Natureza da Operação</label>
+                        <input id="avulsa-nat-op" type="text" value="VENDA DE MERCADORIA" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                    </div>
+                </div>
+
+                <!-- Destinatário -->
+                <div>
+                    <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 border-b border-slate-100 dark:border-slate-700 pb-1.5">Destinatário</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">CPF / CNPJ</label>
+                            <input id="avulsa-dest-doc" type="text" placeholder="000.000.000-00" maxlength="18" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Nome / Razão Social</label>
+                            <input id="avulsa-dest-nome" type="text" placeholder="CONSUMIDOR FINAL" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Logradouro</label>
+                            <input id="avulsa-dest-rua" type="text" placeholder="Rua, Av..." class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Número</label>
+                                <input id="avulsa-dest-numero" type="text" placeholder="S/N" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">UF</label>
+                                <input id="avulsa-dest-uf" type="text" placeholder="GO" maxlength="2" value="GO" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 uppercase">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Bairro</label>
+                            <input id="avulsa-dest-bairro" type="text" placeholder="Centro" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Cidade</label>
+                            <input id="avulsa-dest-cidade" type="text" placeholder="Goiânia" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Itens -->
+                <div>
+                    <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 border-b border-slate-100 dark:border-slate-700 pb-1.5">Itens da Nota</h3>
+                    <div class="grid grid-cols-12 gap-2 mb-2">
+                        <div class="col-span-4">
+                            <input id="avulsa-item-nome" type="text" placeholder="Descrição do produto" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400" onkeydown="if(event.key==='Enter') adicionarAvulsaItem()">
+                        </div>
+                        <div class="col-span-2">
+                            <input id="avulsa-item-qtd" type="number" placeholder="Qtd" min="0.01" step="0.01" value="1" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                        </div>
+                        <div class="col-span-2">
+                            <input id="avulsa-item-preco" type="number" placeholder="Valor unit." min="0.01" step="0.01" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                        </div>
+                        <div class="col-span-2">
+                            <input id="avulsa-item-ncm" type="text" placeholder="NCM" maxlength="8" value="94036000" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 font-mono">
+                        </div>
+                        <div class="col-span-1">
+                            <input id="avulsa-item-cfop" type="text" placeholder="CFOP" maxlength="4" value="5102" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 font-mono">
+                        </div>
+                        <div class="col-span-1">
+                            <button onclick="adicionarAvulsaItem()" class="w-full h-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-colors flex items-center justify-center" title="Adicionar Item">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-auto max-h-40 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <table class="w-full text-sm">
+                            <thead class="bg-slate-50 dark:bg-slate-900 sticky top-0">
+                                <tr class="text-left text-xs text-slate-500 dark:text-slate-400">
+                                    <th class="p-2">Produto</th>
+                                    <th class="p-2 text-right">Qtd</th>
+                                    <th class="p-2 text-right">Valor Unit.</th>
+                                    <th class="p-2 text-center">NCM</th>
+                                    <th class="p-2 text-center">CFOP</th>
+                                    <th class="p-2 w-8"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="avulsa-itens-lista"></tbody>
+                        </table>
+                    </div>
+                    <div class="mt-2 text-right">
+                        <span class="text-sm font-bold text-slate-500 dark:text-slate-400">Total: </span>
+                        <span id="avulsa-total" class="text-base font-black text-emerald-600">R$ 0,00</span>
+                    </div>
+                </div>
+
+                <!-- Pagamento e Obs -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">Forma de Pagamento</label>
+                        <select id="avulsa-forma-pag" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                            <option value="Dinheiro">Dinheiro</option>
+                            <option value="PIX">PIX</option>
+                            <option value="Cartão Crédito">Cartão de Crédito</option>
+                            <option value="Cartão Débito">Cartão de Débito</option>
+                            <option value="Boleto">Boleto</option>
+                            <option value="Sem Pagamento">Sem Pagamento / Cortesia</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">Observações</label>
+                        <input id="avulsa-obs" type="text" placeholder="Info. complementares..." class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                    </div>
+                </div>
+            </div>
+            <div class="p-5 border-t border-slate-200 dark:border-slate-700 flex items-center gap-3 shrink-0">
+                <button onclick="fecharModalNotaAvulsa()" class="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                    Cancelar
+                </button>
+                <button id="btn-emitir-nota-avulsa" onclick="emitirNotaAvulsaModal()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-paper-plane"></i> Emitir Nota
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL — EMISSÃO DE NFS-e (SERVIÇOS)       -->
+    <!-- ========================================== -->
+    <div id="modal-emitir-nfse" class="fixed inset-0 bg-slate-900/80 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[95vh]">
+            <div class="p-5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0">
+                <div>
+                    <h2 class="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                        <i class="fa-solid fa-screwdriver-wrench text-purple-500"></i> Emitir NFS-e (Nota Fiscal de Serviços)
+                    </h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Competência Municipal — Padrão ABRASF / RPS Nacional</p>
+                </div>
+                <button onclick="fecharModalNFSe()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="overflow-y-auto p-5 space-y-5 custom-scrollbar">
+                <!-- Tomador do Serviço -->
+                <div>
+                    <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 border-b border-slate-100 dark:border-slate-700 pb-1.5 flex items-center gap-2">
+                        <i class="fa-solid fa-user text-purple-500 text-xs"></i> Tomador do Serviço (Cliente)
+                    </h3>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">CPF ou CNPJ</label>
+                            <input id="nfse-tomador-doc" type="text" placeholder="000.000.000-00" maxlength="18" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Nome / Razão Social</label>
+                            <input id="nfse-tomador-nome" type="text" placeholder="Nome do cliente ou empresa" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">E-mail</label>
+                            <input id="nfse-tomador-email" type="email" placeholder="cliente@email.com" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Telefone / Celular</label>
+                            <input id="nfse-tomador-tel" type="text" placeholder="(62) 99999-9999" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Logradouro e Número</label>
+                            <input id="nfse-tomador-rua" type="text" placeholder="Rua, Av, Número" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Cidade</label>
+                                <input id="nfse-tomador-cidade" type="text" placeholder="Goiânia" value="Goiânia" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">UF</label>
+                                <input id="nfse-tomador-uf" type="text" placeholder="GO" maxlength="2" value="GO" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-400 uppercase">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detalhes do Serviço -->
+                <div>
+                    <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 border-b border-slate-100 dark:border-slate-700 pb-1.5 flex items-center gap-2">
+                        <i class="fa-solid fa-briefcase text-purple-500 text-xs"></i> Dados do Serviço Prestado
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Item da LC 116 / Atividade</label>
+                                <select id="nfse-servico-item" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                                    <option value="14.01">14.01 - Manutenção, conserto e restauração</option>
+                                    <option value="14.06">14.06 - Instalação e montagem de móveis / equipamentos</option>
+                                    <option value="31.01">31.01 - Tapeçaria e reforma de móveis e estofados</option>
+                                    <option value="14.02">14.02 - Assistência técnica</option>
+                                    <option value="99.01">99.01 - Outros serviços</option>
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Valor do Serviço (R$)</label>
+                                    <input id="nfse-servico-valor" type="number" step="0.01" min="0.01" placeholder="0,00" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-bold focus:outline-none focus:ring-2 focus:ring-purple-400">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Alíquota ISS (%)</label>
+                                    <input id="nfse-servico-aliq" type="number" step="0.01" min="0" value="2.00" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Discriminação dos Serviços Prestados</label>
+                            <textarea id="nfse-servico-desc" rows="3" placeholder="Descreva os serviços prestados de forma clara e detalhada..." class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 resize-none focus:outline-none focus:ring-2 focus:ring-purple-400"></textarea>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">ISS Retido pelo Tomador?</label>
+                                <select id="nfse-servico-iss-retido" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                                    <option value="nao" selected>Não - ISS devido pelo Prestador</option>
+                                    <option value="sim">Sim - ISS Retido na Fonte</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Observações Adicionais</label>
+                                <input id="nfse-obs" type="text" placeholder="Garantia, dados de pagamento..." class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-5 border-t border-slate-200 dark:border-slate-700 flex items-center gap-3 shrink-0">
+                <button onclick="fecharModalNFSe()" class="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                    Cancelar
+                </button>
+                <button id="btn-emitir-nfse-modal" onclick="emitirNFSeModal()" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-paper-plane"></i> Emitir NFS-e
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- SCRIPTS -->
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20260915181522"></script>
-    <script src="../global.js?v=20260915181522"></script>
-    <script src="fc_cache.js?v=20260915181522"></script>
-    <script src="fiscal.js?v=20260915181522"></script>
+    <script src="../sistema/config_banco.js?v=20260916100000"></script>
+    <script src="../global.js?v=20260916100000"></script>
+    <script src="fc_cache.js?v=20260916100000"></script>
+    <script src="fiscal.js?v=20260916100000"></script>
 </body>
 </html>

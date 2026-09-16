@@ -152,7 +152,12 @@ function construirXmlNota(dados) {
         ambiente = 'homologacao',
         endpoints = {},
         numeroNota = null,
-        serie = null
+        serie = null,
+        // Parâmetros para devoluções e notas especiais
+        tpNF = '1',              // '0' = Entrada, '1' = Saída (padrão)
+        finNFe = '1',            // '1' = Normal, '4' = Devolução, '3' = Ajuste
+        nfRef = null,            // Chave de acesso da NF-e referenciada (devolução)
+        naturezaOperacao = null  // Sobrescreve empresa.naturezaOperacao
     } = dados;
 
     const ufSigla = (empresa.uf || 'SP').toUpperCase().trim();
@@ -182,7 +187,7 @@ function construirXmlNota(dados) {
     const chaveAcesso = `${chave43}${cDV}`;
 
     const tpImp = modelo === '65' ? '4' : '1'; // 4 = DANFE NFC-e, 1 = DANFE normal retrato
-    const natOp = limparTexto(empresa.naturezaOperacao || 'VENDA DE MERCADORIA');
+    const natOp = limparTexto(naturezaOperacao || empresa.naturezaOperacao || 'VENDA DE MERCADORIA');
     const cMunFG = apenasDigitos(empresa.ibge || '3550308'); // Código IBGE do município
 
     // Emitente
@@ -353,54 +358,64 @@ function construirXmlNota(dados) {
     const vDescTotal = valorDescontoTotal.toFixed(2);
 
     // Formas de Pagamento (MOC 4.00 e NT 2020.006)
+    // Conforme Regra YA01-20 da SEFAZ (Rejeição 871):
+    // Se finNFe=4 (Devolução) ou finNFe=3 (Ajuste), DEVE ser informado exclusivamente tPag=90 (Sem Pagamento) e vPag=0.00
     let detPagXml = '';
-    const listaPagamentos = (venda.pagamentos && Array.isArray(venda.pagamentos) && venda.pagamentos.length > 0)
-        ? venda.pagamentos.filter(p => (parseFloat(p.valor) || 0) > 0)
-        : [];
-
     let vTrocoStr = '0.00';
 
-    if (listaPagamentos.length > 0) {
-        let somaPagamentos = 0;
-        listaPagamentos.forEach((p, idx) => {
-            const met = p.metodo || p.forma || p.formaPagamento || p.nome || '';
-            const { codigo, descricao } = mapearFormaPagamentoSefaz(met);
-            let vItemPag = parseFloat(p.valor) || 0;
-            
-            // Se for o último item e a soma ainda não atingiu vNF, força o valor para não rejeitar (Rejeição 865)
-            if (idx === listaPagamentos.length - 1) {
-                const restante = parseFloat(vNF) - somaPagamentos;
-                if (vItemPag < restante) {
-                    vItemPag = restante;
-                }
-            }
-            somaPagamentos += vItemPag;
+    if (String(finNFe) === '4' || String(finNFe) === '3') {
+        detPagXml = `
+        <detPag>
+            <tPag>90</tPag>
+            <vPag>0.00</vPag>
+        </detPag>`;
+    } else {
+        const listaPagamentos = (venda.pagamentos && Array.isArray(venda.pagamentos) && venda.pagamentos.length > 0)
+            ? venda.pagamentos.filter(p => (parseFloat(p.valor) || 0) > 0)
+            : [];
 
-            const xPagTag = codigo === '99' ? `\n            <xPag>${limparTexto(descricao || 'Outros').substring(0, 60)}</xPag>` : '';
-            const cardTag = gerarCardTag(codigo, met);
-            detPagXml += `
+        if (listaPagamentos.length > 0) {
+            let somaPagamentos = 0;
+            listaPagamentos.forEach((p, idx) => {
+                const met = p.metodo || p.forma || p.formaPagamento || p.nome || '';
+                const { codigo, descricao } = mapearFormaPagamentoSefaz(met);
+                let vItemPag = parseFloat(p.valor) || 0;
+                
+                // Se for o último item e a soma ainda não atingiu vNF, força o valor para não rejeitar (Rejeição 865)
+                if (idx === listaPagamentos.length - 1) {
+                    const restante = parseFloat(vNF) - somaPagamentos;
+                    if (vItemPag < restante) {
+                        vItemPag = restante;
+                    }
+                }
+                somaPagamentos += vItemPag;
+
+                const xPagTag = codigo === '99' ? `\n            <xPag>${limparTexto(descricao || 'Outros').substring(0, 60)}</xPag>` : '';
+                const cardTag = gerarCardTag(codigo, met);
+                detPagXml += `
         <detPag>
             <tPag>${codigo}</tPag>${xPagTag}
             <vPag>${vItemPag.toFixed(2)}</vPag>${cardTag}
         </detPag>`;
-        });
-        
-        const troco = somaPagamentos - parseFloat(vNF);
-        if (troco > 0.001) {
-            vTrocoStr = troco.toFixed(2);
-        }
-    } else {
-        // Fallback: busca em venda.pag, venda.formaPagamento, venda.forma_pagamento, venda.pagamento ou venda.metodo
-        const formaTexto = venda.pag || venda.formaPagamento || venda.forma_pagamento || venda.pagamento || venda.metodo || 'Dinheiro';
-        const { codigo, descricao } = mapearFormaPagamentoSefaz(formaTexto);
-        const xPagTag = codigo === '99' ? `\n            <xPag>${limparTexto(descricao || 'Outros').substring(0, 60)}</xPag>` : '';
-        const cardTag = gerarCardTag(codigo, formaTexto);
-        
-        detPagXml = `
+            });
+            
+            const troco = somaPagamentos - parseFloat(vNF);
+            if (troco > 0.001) {
+                vTrocoStr = troco.toFixed(2);
+            }
+        } else {
+            // Fallback: busca em venda.pag, venda.formaPagamento, venda.forma_pagamento, venda.pagamento ou venda.metodo
+            const formaTexto = venda.pag || venda.formaPagamento || venda.forma_pagamento || venda.pagamento || venda.metodo || 'Dinheiro';
+            const { codigo, descricao } = mapearFormaPagamentoSefaz(formaTexto);
+            const xPagTag = codigo === '99' ? `\n            <xPag>${limparTexto(descricao || 'Outros').substring(0, 60)}</xPag>` : '';
+            const cardTag = gerarCardTag(codigo, formaTexto);
+            
+            detPagXml += `
         <detPag>
             <tPag>${codigo}</tPag>${xPagTag}
             <vPag>${vNF}</vPag>${cardTag}
         </detPag>`;
+        }
     }
 
     const vTrocoTag = vTrocoStr !== '0.00' ? `\n        <vTroco>${vTrocoStr}</vTroco>` : '';
@@ -417,6 +432,9 @@ function construirXmlNota(dados) {
     const idDest = (modelo === '55' && tagDest && destUfCli && destUfCli !== ufSigla) ? '2' : '1';
 
     // Montagem completa do XML
+    // Referência à NF-e original (para devoluções, complementares, etc.)
+    const nfRefTag = nfRef ? `\n        <NFref>\n            <refNFe>${apenasDigitos(nfRef).padStart(44, '0')}</refNFe>\n        </NFref>` : '';
+
     const infNFeInner = `<infNFe Id="NFe${chaveAcesso}" versao="4.00">
     <ide>
         <cUF>${cUF}</cUF>
@@ -426,20 +444,20 @@ function construirXmlNota(dados) {
         <serie>${serieNF}</serie>
         <nNF>${nNF}</nNF>
         <dhEmi>${dhEmi}</dhEmi>
-        <tpNF>1</tpNF>
+        <tpNF>${String(tpNF)}</tpNF>
         <idDest>${idDest}</idDest>
         <cMunFG>${cMunFG}</cMunFG>
         <tpImp>${tpImp}</tpImp>
         <tpEmis>${tpEmis}</tpEmis>
         <cDV>${cDV}</cDV>
         <tpAmb>${tpAmb}</tpAmb>
-        <finNFe>1</finNFe>
+        <finNFe>${String(finNFe)}</finNFe>
         <indFinal>1</indFinal>
         <indPres>1</indPres>
         <procEmi>0</procEmi>
         <verProc>1.0</verProc>${isContingencia ? `
         <dhCont>${dhCont}</dhCont>
-        <xJust>${xJust}</xJust>` : ''}
+        <xJust>${xJust}</xJust>` : ''}${nfRefTag}
     </ide>
     <emit>
         <CNPJ>${emitCnpj}</CNPJ>
