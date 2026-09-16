@@ -483,51 +483,122 @@ exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@a
     if (!hasPerm) throw new functions.https.HttpsError("permission-denied", "Sem permissão para cancelar notas fiscais.");
 
     try {
-        const { vendaId, tipo, justificativa } = data;
-        if (!vendaId) throw new functions.https.HttpsError("invalid-argument", "vendaId não informado.");
+        const { vendaId, tipo, justificativa, chave: chaveParam, numero: numeroParam } = data;
+        if (!vendaId && !chaveParam && !numeroParam) {
+            throw new functions.https.HttpsError("invalid-argument", "Identificador da nota fiscal não informado.");
+        }
         if (!justificativa || justificativa.trim().length < 15) {
             throw new functions.https.HttpsError("invalid-argument", "A justificativa deve ter pelo menos 15 caracteres (exigência da SEFAZ).");
         }
 
         const tipoNormalizado = (tipo || "nfce").toLowerCase().replace('-', '');
 
-        const vendaSnap = await db.collection("vendas").doc(String(vendaId)).get();
-        if (!vendaSnap.exists) throw new functions.https.HttpsError("not-found", "Venda não encontrada.");
-        const venda = vendaSnap.data();
+        let targetDoc = null;
+        let targetRef = null;
+        let targetCollection = null;
+
+        // 1. Tenta buscar na coleção 'vendas'
+        if (vendaId) {
+            const vendaSnap = await db.collection("vendas").doc(String(vendaId)).get();
+            if (vendaSnap.exists) {
+                targetDoc = vendaSnap.data();
+                targetRef = vendaSnap.ref;
+                targetCollection = "vendas";
+            }
+        }
+
+        // 2. Tenta buscar na coleção 'notas_devolucao'
+        if (!targetDoc) {
+            if (vendaId) {
+                const devSnap = await db.collection("notas_devolucao").doc(String(vendaId)).get();
+                if (devSnap.exists) {
+                    targetDoc = devSnap.data();
+                    targetRef = devSnap.ref;
+                    targetCollection = "notas_devolucao";
+                }
+            }
+            if (!targetDoc && chaveParam) {
+                const limpaChave = String(chaveParam).replace(/\D/g, '');
+                const qSnap = await db.collection("notas_devolucao").where("chave_nfe", "==", limpaChave).limit(1).get();
+                if (!qSnap.empty) {
+                    targetDoc = qSnap.docs[0].data();
+                    targetRef = qSnap.docs[0].ref;
+                    targetCollection = "notas_devolucao";
+                }
+            }
+            if (!targetDoc && numeroParam) {
+                const qSnap = await db.collection("notas_devolucao").where("numero", "==", String(numeroParam).trim()).limit(1).get();
+                if (!qSnap.empty) {
+                    targetDoc = qSnap.docs[0].data();
+                    targetRef = qSnap.docs[0].ref;
+                    targetCollection = "notas_devolucao";
+                }
+            }
+        }
+
+        // 3. Tenta buscar na coleção 'notas_avulsas'
+        if (!targetDoc) {
+            if (vendaId) {
+                const avSnap = await db.collection("notas_avulsas").doc(String(vendaId)).get();
+                if (avSnap.exists) {
+                    targetDoc = avSnap.data();
+                    targetRef = avSnap.ref;
+                    targetCollection = "notas_avulsas";
+                }
+            }
+            if (!targetDoc && chaveParam) {
+                const limpaChave = String(chaveParam).replace(/\D/g, '');
+                const qSnap = await db.collection("notas_avulsas").where("chave_nfe", "==", limpaChave).limit(1).get();
+                if (!qSnap.empty) {
+                    targetDoc = qSnap.docs[0].data();
+                    targetRef = qSnap.docs[0].ref;
+                    targetCollection = "notas_avulsas";
+                }
+            }
+        }
+
+        if (!targetDoc) {
+            throw new functions.https.HttpsError("not-found", "Registro da nota fiscal não encontrado no sistema.");
+        }
 
         const configSnap = await db.collection("fc_moveis").doc("config").get();
         const empresa = configSnap.data()?.empresa || {};
 
+        if (!empresa.certificadoBase64) {
+            throw new functions.https.HttpsError("failed-precondition", "Certificado Digital A1 (.pfx) não configurado para realizar o cancelamento na SEFAZ. Acesse Configurações > Emissor Fiscal.");
+        }
+
         // 1. Sanitização da Chave de Acesso (44 dígitos numéricos, sem prefixo 'NFe')
-        const rawChave = (tipoNormalizado === "nfe" ? (venda.nfe?.chave_nfe || venda.nfe?.chave) : (venda.nfce?.chave_nfe || venda.nfce?.chave)) 
-            || venda.fiscal_chave 
-            || venda.chave_nfe 
-            || "";
+        let rawChave = chaveParam || targetDoc.chave_nfe || targetDoc.chave || "";
+        if (!rawChave && targetCollection === "vendas") {
+            rawChave = (tipoNormalizado === "nfe" ? (targetDoc.nfe?.chave_nfe || targetDoc.nfe?.chave) : (targetDoc.nfce?.chave_nfe || targetDoc.nfce?.chave)) 
+                || targetDoc.fiscal_chave 
+                || "";
+        }
         const chave = String(rawChave).replace(/^NFe/i, '').replace(/\D/g, '').trim();
 
         // 2. Extração e validação do Protocolo de Autorização (<nProt>)
-        let protocolo = String((tipoNormalizado === "nfe" ? venda.nfe?.protocolo : venda.nfce?.protocolo) 
-            || venda.fiscal_protocolo 
-            || venda.protocolo 
-            || "").replace(/\D/g, '').trim();
+        let protocolo = String(
+            targetDoc.protocolo 
+            || (tipoNormalizado === "nfe" ? targetDoc.nfe?.protocolo : targetDoc.nfce?.protocolo) 
+            || targetDoc.fiscal_protocolo 
+            || ""
+        ).replace(/\D/g, '').trim();
 
-        // Se o protocolo estiver ausente ou não numérico, extrai do XML gravado na venda
+        // Se o protocolo estiver ausente ou não numérico, extrai do XML gravado
         if (!protocolo || protocolo.length < 15) {
-            const xml = venda.fiscal_xml 
-                || (tipoNormalizado === "nfe" ? (venda.nfe?.xml_conteudo || venda.nfe?.xml) : (venda.nfce?.xml_conteudo || venda.nfce?.xml)) 
-                || venda.xml 
+            const xml = targetDoc.xml_conteudo 
+                || targetDoc.fiscal_xml 
+                || (tipoNormalizado === "nfe" ? (targetDoc.nfe?.xml_conteudo || targetDoc.nfe?.xml) : (targetDoc.nfce?.xml_conteudo || targetDoc.nfce?.xml)) 
+                || targetDoc.xml 
                 || "";
             if (xml) {
                 const matchProt = xml.match(/<nProt>(\d{15})<\/nProt>/i) || xml.match(/<nProt>(\d+)<\/nProt>/i);
                 if (matchProt && matchProt[1]) {
                     protocolo = matchProt[1].trim();
-                    console.log(`[CANCELAMENTO] Protocolo recuperado com sucesso do XML da venda: ${protocolo}`);
+                    console.log(`[CANCELAMENTO] Protocolo recuperado com sucesso do XML: ${protocolo}`);
                 }
             }
-        }
-
-        if (!empresa.certificadoBase64) {
-            throw new functions.https.HttpsError("failed-precondition", "Certificado Digital A1 (.pfx) não configurado para realizar o cancelamento na SEFAZ. Acesse Configurações > Emissor Fiscal.");
         }
 
         if (!chave || chave.length !== 44) {
@@ -537,27 +608,50 @@ exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@a
             throw new functions.https.HttpsError("failed-precondition", "Protocolo de autorização da nota fiscal não encontrado. A SEFAZ exige o número do protocolo de autorização (<nProt>) para homologar o cancelamento.");
         }
 
-        console.log(`Cancelando ${tipoNormalizado.toUpperCase()} via SEFAZ Direto (chave: ${chave}, protocolo: ${protocolo})...`);
-        const resCanc = await cancelarNotaDiretoSefaz(chave, protocolo, justificativa.trim(), empresa, tipoNormalizado === "nfe" ? "55" : "65");
+        const modeloNota = targetDoc.modelo || (chave.substring(20, 22) === '65' ? '65' : '55');
+
+        console.log(`Cancelando ${modeloNota === '65' ? 'NFC-e' : 'NF-e'} via SEFAZ Direto (chave: ${chave}, protocolo: ${protocolo})...`);
+        const resCanc = await cancelarNotaDiretoSefaz(chave, protocolo, justificativa.trim(), empresa, modeloNota);
         if (resCanc.sucesso) {
             const dadosCancelamento = {
                 status_sefaz: "cancelado",
+                status_fiscal: "cancelado",
                 justificativa_cancelamento: justificativa.trim(),
                 data_cancelamento: new Date().toISOString(),
                 mensagem_cancelamento: resCanc.xMotivo || "Nota cancelada com sucesso na SEFAZ",
                 protocolo_cancelamento: resCanc.nProt || ""
             };
 
-            const updatePayload = {
-                status_fiscal: "cancelado"
-            };
-            if (tipoNormalizado === "nfe") {
-                updatePayload.nfe = { ...(venda.nfe || {}), ...dadosCancelamento };
-            } else {
-                updatePayload.nfce = { ...(venda.nfce || {}), ...dadosCancelamento };
+            if (targetCollection === "vendas") {
+                const updatePayload = {
+                    status_fiscal: "cancelado"
+                };
+                if (modeloNota === "55") {
+                    updatePayload.nfe = { ...(targetDoc.nfe || {}), ...dadosCancelamento };
+                } else {
+                    updatePayload.nfce = { ...(targetDoc.nfce || {}), ...dadosCancelamento };
+                }
+                await targetRef.set(updatePayload, { merge: true });
+            } else if (targetCollection === "notas_devolucao") {
+                await targetRef.set({
+                    ...dadosCancelamento,
+                    status_sefaz: "cancelado"
+                }, { merge: true });
+
+                if (targetDoc.compraId) {
+                    await db.collection("compras").doc(String(targetDoc.compraId)).set({
+                        nfe_devolucao: { status_sefaz: "cancelado" }
+                    }, { merge: true });
+                }
+                if (targetDoc.vendaId) {
+                    await db.collection("vendas").doc(String(targetDoc.vendaId)).set({
+                        nfe_devolucao: { status_sefaz: "cancelado" }
+                    }, { merge: true });
+                }
+            } else if (targetCollection === "notas_avulsas") {
+                await targetRef.set(dadosCancelamento, { merge: true });
             }
 
-            await db.collection("vendas").doc(String(vendaId)).set(updatePayload, { merge: true });
             return {
                 success: true,
                 message: "Nota Fiscal cancelada com sucesso diretamente na SEFAZ!",

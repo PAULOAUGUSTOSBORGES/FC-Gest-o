@@ -282,13 +282,16 @@ function processarNotasFiscais() {
 
     // Notas de devolução registradas na coleção notas_devolucao
     (db.notasDevolucao || []).forEach(nd => {
-        // Ignorar tentativas rejeitadas ou sem autorização SEFAZ
-        if (nd.status_sefaz !== 'autorizado') return;
+        // Ignorar tentativas rejeitadas ou com erro
+        if (nd.status_sefaz !== 'autorizado' && nd.status_sefaz !== 'cancelado') return;
         if (nd.chave_nfe && notasFiscaisArray.some(x => x.chave === nd.chave_nfe)) return;
         if (nd.vendaId && notasFiscaisArray.some(x => String(x.vendaId) === String(nd.vendaId) && x.isDevolucao)) return;
+        const destNome = nd.destinatario?.nome || nd.destinatario?.razaoSocial || nd.fornecedorNome || nd.clienteNome || (nd.tipo_devolucao === 'compra' ? 'Devolução a Fornecedor' : 'Devolução de Venda');
+        const destDoc = nd.destinatario?.cnpj || nd.destinatario?.cpf || nd.destinatario?.doc || nd.clienteDoc || '';
         notasFiscaisArray.push({
             vendaId: nd.vendaId || nd.id,
-            numeroPedido: nd.vendaId,
+            id: nd.id,
+            numeroPedido: nd.vendaId || nd.numero,
             tipo: 'NF-e Devolução',
             modelo: '55',
             data: nd.data_emissao || nd.criadoEm,
@@ -296,11 +299,11 @@ function processarNotasFiscais() {
             serie: nd.serie || '1',
             chave: nd.chave_nfe || '',
             protocolo: nd.protocolo || '',
-            clienteNome: nd.clienteNome || `Devolução (${nd.tipo_devolucao || 'Operação'})`,
-            clienteDoc: nd.clienteDoc || '',
+            clienteNome: destNome,
+            clienteDoc: destDoc,
             valor: Number(nd.valor || 0),
-            status: 'autorizado',
-            mensagemSefaz: nd.mensagem_sefaz || 'NF-e de Devolução Autorizada na SEFAZ',
+            status: (nd.status_sefaz || 'autorizado').toLowerCase(),
+            mensagemSefaz: nd.mensagem_sefaz || (nd.status_sefaz === 'cancelado' ? 'NF-e Cancelada na SEFAZ' : 'NF-e de Devolução Autorizada na SEFAZ'),
             danfeUrl: nd.danfe_url_completa || nd.danfeUrl || '',
             xmlUrl: nd.xml_url_completa || nd.xmlUrl || '',
             xmlConteudo: nd.xml_conteudo || '',
@@ -527,7 +530,7 @@ function renderNotasFiscais() {
 
                         ${n.status === 'cancelado_interno' ? `<button onclick="reverterCancelamentoInterno('${n.vendaId}', '${n.tipo}')" class="text-emerald-500 hover:text-emerald-700 p-1.5" title="Restaurar para Autorizada (Vincular à SEFAZ via Devolução)"><i class="fa-solid fa-arrow-rotate-left"></i></button>` : ''}
 
-                        ${n.status === 'autorizado' && !isDev && !n.estornadaPorDevolucao && !isHomol ? `<button onclick="abrirModalCancelamento('${n.vendaId}', '${n.tipo}', '${n.numero}')" class="text-red-500 hover:text-red-700 p-1.5" title="Cancelar Nota na SEFAZ"><i class="fa-solid fa-ban"></i></button>` : ''}
+                        ${n.status === 'autorizado' && !n.estornadaPorDevolucao && !isHomol ? `<button onclick="abrirModalCancelamento('${n.vendaId}', '${n.tipo}', '${n.numero}', '${n.chave || ''}')" class="text-red-500 hover:text-red-700 p-1.5" title="Cancelar Nota na SEFAZ"><i class="fa-solid fa-ban"></i></button>` : ''}
 
                         ${((n.status !== 'autorizado' && n.status !== 'contingencia' && n.status !== 'cancelado' && n.status !== 'devolvido') || isHomol) && !isDev ? `
                             <button onclick="excluirNotaFiscal('${n.vendaId}', '${n.tipo}')" class="text-red-400 hover:text-red-600 p-1.5" title="Excluir registro desta nota do sistema">
@@ -748,10 +751,10 @@ window.atualizarTabelaFiscal = atualizarTabelaFiscal;
 // ==========================================
 // CANCELAMENTO DE NOTA FISCAL
 // ==========================================
-function abrirModalCancelamento(vendaId, tipo, numero) {
-    notaEmCancelamento = { vendaId, tipo, numero };
+function abrirModalCancelamento(vendaId, tipo, numero, chave = '') {
+    notaEmCancelamento = { vendaId, tipo, numero, chave };
     const elInfo = document.getElementById('cancelar-info-nota');
-    if (elInfo) elInfo.innerHTML = `<strong>${tipo.toUpperCase()} Nº ${numero}</strong> (Venda ID: ${vendaId})`;
+    if (elInfo) elInfo.innerHTML = `<strong>${tipo.toUpperCase()} Nº ${numero}</strong> ${chave ? `<span class="block text-[10px] font-mono text-slate-400 truncate">Chave: ${chave}</span>` : `(Ref ID: ${vendaId})`}`;
     
     const txt = document.getElementById('cancelar-justificativa');
     if (txt) txt.value = '';
@@ -784,6 +787,8 @@ async function confirmarCancelamentoNota() {
         const cancelarFunc = firebase.functions().httpsCallable('cancelarNotaFiscal');
         await cancelarFunc({
             vendaId: notaEmCancelamento.vendaId,
+            chave: notaEmCancelamento.chave || '',
+            numero: notaEmCancelamento.numero || '',
             tipo: notaEmCancelamento.tipo.toLowerCase().replace('-', ''),
             justificativa: just
         });
@@ -1541,6 +1546,8 @@ function selecionarFornecedorDevolucao(valor) {
     if (document.getElementById('dev-compra-forn-uf')) document.getElementById('dev-compra-forn-uf').value = (f.uf || 'GO').toUpperCase();
     if (document.getElementById('dev-compra-forn-cep')) document.getElementById('dev-compra-forn-cep').value = f.cep || '';
     if (document.getElementById('dev-compra-forn-ie')) document.getElementById('dev-compra-forn-ie').value = f.ie || f.inscricaoEstadual || '';
+    const ibgeVal = f.ibge || f.codigoMunicipio || f.cMun || '';
+    if (document.getElementById('dev-compra-forn-ibge')) document.getElementById('dev-compra-forn-ibge').value = ibgeVal;
 
     showToast(`Fornecedor "${f.nome || f.razaoSocial}" selecionado!`, 'success');
 }
@@ -1617,6 +1624,7 @@ function processarXMLDevolucaoCompra(event) {
                 const cidade = getStringSafe(enderEmit, "xMun");
                 const uf = (getStringSafe(enderEmit, "UF") || "GO").toUpperCase();
                 const cep = getStringSafe(enderEmit, "CEP");
+                const cMun = getStringSafe(enderEmit, "cMun");
 
                 if (document.getElementById('dev-compra-forn-nome')) document.getElementById('dev-compra-forn-nome').value = nome;
                 if (document.getElementById('dev-compra-forn-doc')) document.getElementById('dev-compra-forn-doc').value = cnpj;
@@ -1627,6 +1635,7 @@ function processarXMLDevolucaoCompra(event) {
                 if (document.getElementById('dev-compra-forn-uf')) document.getElementById('dev-compra-forn-uf').value = uf;
                 if (document.getElementById('dev-compra-forn-cep')) document.getElementById('dev-compra-forn-cep').value = cep;
                 if (document.getElementById('dev-compra-forn-ie')) document.getElementById('dev-compra-forn-ie').value = ie;
+                if (document.getElementById('dev-compra-forn-ibge')) document.getElementById('dev-compra-forn-ibge').value = cMun;
             }
 
             // 3. Extrair lista de produtos da nota
@@ -1702,7 +1711,7 @@ function adicionarItemDevolucaoCompraManual() {
 function toggleItemDevolucaoCompra(idx, selecionado) {
     if (_devCompraItens[idx]) {
         _devCompraItens[idx].selecionado = selecionado;
-        atualizarTotalDevolucaoCompra();
+        renderItensDevolucaoCompra();
     }
 }
 
@@ -1750,24 +1759,24 @@ function renderItensDevolucaoCompra() {
     tbody.innerHTML = _devCompraItens.map((it, idx) => {
         const subtotal = (parseFloat(it.quantidade) * parseFloat(it.preco)).toFixed(2);
         return `
-            <tr class="border-b border-slate-100 dark:border-slate-700/60 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+            <tr class="dev-compra-tr ${it.selecionado ? 'is-selected' : ''} border-b transition-colors">
                 <td class="p-2 text-center">
                     <input type="checkbox" class="w-4 h-4 accent-amber-500 rounded cursor-pointer" ${it.selecionado ? 'checked' : ''} onchange="toggleItemDevolucaoCompra(${idx}, this.checked)">
                 </td>
-                <td class="p-2 font-medium text-slate-800 dark:text-slate-200">
+                <td class="p-2 font-medium">
                     <div class="font-bold text-xs">${esc(it.nome)}</div>
-                    <span class="text-[10px] text-slate-400">${it.unidade ? 'UNID: ' + esc(it.unidade) : ''} ${it.quantidadeOriginal ? '| Orig: ' + it.quantidadeOriginal : ''}</span>
+                    <span class="text-[10px] opacity-75">${it.unidade ? 'UNID: ' + esc(it.unidade) : ''} ${it.quantidadeOriginal ? '| Orig: ' + it.quantidadeOriginal : ''}</span>
                 </td>
                 <td class="p-2 text-right">
-                    <input type="number" step="0.01" min="0.01" value="${parseFloat(it.quantidade).toFixed(2)}" class="w-20 text-right border border-slate-300 dark:border-slate-600 rounded px-1.5 py-0.5 text-xs bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-bold" onchange="alterarQtdItemDevolucaoCompra(${idx}, this.value)">
+                    <input type="number" step="0.01" min="0.01" value="${parseFloat(it.quantidade).toFixed(2)}" class="w-20 text-right border rounded px-1.5 py-0.5 text-xs font-bold" onchange="alterarQtdItemDevolucaoCompra(${idx}, this.value)">
                 </td>
-                <td class="p-2 text-right font-mono text-slate-600 dark:text-slate-300">
+                <td class="p-2 text-right font-mono">
                     R$ ${parseFloat(it.preco).toFixed(2).replace('.', ',')}
                 </td>
-                <td class="p-2 text-right font-bold font-mono text-amber-600 dark:text-amber-400">
+                <td class="p-2 text-right font-bold font-mono text-amber-500 dark:text-amber-400">
                     R$ ${subtotal.replace('.', ',')}
                 </td>
-                <td class="p-2 text-center font-mono text-[11px] text-slate-400">
+                <td class="p-2 text-center font-mono text-[11px] opacity-75">
                     ${esc(it.ncm || '94036000')}
                 </td>
                 <td class="p-2 text-center">
@@ -1811,7 +1820,9 @@ async function emitirDevolucaoCompraModal() {
         cidade: document.getElementById('dev-compra-forn-cidade')?.value?.trim() || '',
         uf: (document.getElementById('dev-compra-forn-uf')?.value?.trim() || 'GO').toUpperCase(),
         cep: (document.getElementById('dev-compra-forn-cep')?.value || '').replace(/\D/g, ''),
-        ie: document.getElementById('dev-compra-forn-ie')?.value?.trim() || ''
+        ie: document.getElementById('dev-compra-forn-ie')?.value?.trim() || '',
+        ibge: document.getElementById('dev-compra-forn-ibge')?.value?.trim() || '',
+        cMun: document.getElementById('dev-compra-forn-ibge')?.value?.trim() || ''
     };
 
     const itensParaEnvio = itensSelecionados.map(it => ({

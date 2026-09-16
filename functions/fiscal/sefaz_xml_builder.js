@@ -6,6 +6,15 @@
 const { CODIGOS_UF } = require('./sefaz_urls');
 const { gerarUrlQrCodeNFCe } = require('./sefaz_protocol');
 
+// Códigos IBGE oficiais das capitais dos 27 estados brasileiros
+// Usados como fallback seguro quando o código do município não é informado, evitando Rejeição 275 SEFAZ
+const CAPITAIS_IBGE = {
+    'RO': '1100205', 'AC': '1200401', 'AM': '1302603', 'RR': '1400100', 'PA': '1501402', 'AP': '1600303', 'TO': '1721000',
+    'MA': '2111300', 'PI': '2211001', 'CE': '2304400', 'RN': '2408102', 'PB': '2507507', 'PE': '2611606', 'AL': '2704302',
+    'SE': '2800308', 'BA': '2927408', 'MG': '3106200', 'ES': '3205309', 'RJ': '3304557', 'SP': '3550308',
+    'PR': '4106902', 'SC': '4205407', 'RS': '4314902', 'MS': '5002704', 'MT': '5103403', 'GO': '5208707', 'DF': '5300108'
+};
+
 /**
  * Calcula o Dígito Verificador (DV) da Chave de Acesso usando Módulo 11 (pesos 2 a 9)
  * @param {string} chave43 Chave de acesso com 43 dígitos (sem o DV)
@@ -221,9 +230,18 @@ function construirXmlNota(dados) {
         const destNro = limparTexto(cliente?.numero || 'S/N');
         const destBairro = limparTexto(cliente?.bairro || 'CENTRO');
         const destMun = limparTexto(cliente?.cidade || cliente?.municipio || emitMun);
-        const destIbge = apenasDigitos(cliente?.ibge || cliente?.codigoMunicipio || cliente?.codigoMunicipioIBGE || cMunFG);
         const destUf = (cliente?.uf || ufSigla).toUpperCase().trim();
         const destCep = apenasDigitos(cliente?.cep || emitCep).padStart(8, '0');
+
+        const ufCod = CODIGOS_UF[destUf] || (destUf === ufSigla ? cUF : '35');
+        let destIbge = apenasDigitos(cliente?.ibge || cliente?.cMun || cliente?.codigoMunicipio || cliente?.codigoMunicipioIBGE || '');
+        if (!destIbge || destIbge.length < 7 || !destIbge.startsWith(ufCod)) {
+            if (destUf === ufSigla && cMunFG && cMunFG.startsWith(ufCod)) {
+                destIbge = cMunFG;
+            } else {
+                destIbge = CAPITAIS_IBGE[destUf] || (ufCod + '00000');
+            }
+        }
 
         if (modelo === '55' || cliente?.rua || cliente?.logradouro) {
             enderDestTag = `

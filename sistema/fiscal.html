@@ -128,6 +128,88 @@
             border: 1px solid #cbd5e1 !important;
             color: #0f172a !important;
         }
+
+        /* ==============================================================
+           MODAL DE DEVOLUÇÃO AO FORNECEDOR / INDÚSTRIA (DARK MODE & LIGHT)
+           ============================================================== */
+        html.dark #modal-devolucao-compra .modal-inner-card {
+            background-color: #1e293b !important;
+            border: 1px solid #334155 !important;
+            color: #f8fafc !important;
+        }
+        html.dark #modal-devolucao-compra .dev-box-section {
+            background-color: #0f172a !important;
+            border: 1px solid #334155 !important;
+        }
+        html.dark #modal-devolucao-compra .dev-compra-upload-box {
+            background-color: #0f172a !important;
+            border: 1.5px dashed #d97706 !important;
+        }
+        html.dark #modal-devolucao-compra .dev-table-container {
+            background-color: #0f172a !important;
+            border: 1px solid #334155 !important;
+        }
+        html.dark #modal-devolucao-compra table thead {
+            background-color: #0f172a !important;
+        }
+        html.dark #modal-devolucao-compra table thead th {
+            background-color: #0f172a !important;
+            color: #94a3b8 !important;
+            border-bottom: 1px solid #334155 !important;
+        }
+        html.dark #modal-devolucao-compra tr.dev-compra-tr {
+            background-color: #0f172a !important;
+            border-color: #1e293b !important;
+            color: #f8fafc !important;
+        }
+        html.dark #modal-devolucao-compra tr.dev-compra-tr:hover {
+            background-color: #1e293b !important;
+        }
+        html.dark #modal-devolucao-compra tr.dev-compra-tr.is-selected {
+            background-color: rgba(245, 158, 11, 0.12) !important;
+            border-color: rgba(245, 158, 11, 0.3) !important;
+        }
+        html.dark #modal-devolucao-compra tr.dev-compra-tr.is-selected td {
+            color: #fef08a !important;
+        }
+        html.dark #modal-devolucao-compra input:not([type="checkbox"]):not([type="file"]),
+        html.dark #modal-devolucao-compra textarea,
+        html.dark #modal-devolucao-compra select {
+            background-color: #0f172a !important;
+            border: 1px solid #334155 !important;
+            color: #f8fafc !important;
+        }
+        html.dark #modal-devolucao-compra input::placeholder,
+        html.dark #modal-devolucao-compra textarea::placeholder {
+            color: #64748b !important;
+        }
+
+        html:not(.dark) #modal-devolucao-compra .dev-box-section {
+            background-color: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+        }
+        html:not(.dark) #modal-devolucao-compra .dev-compra-upload-box {
+            background-color: #fffbeb !important;
+            border: 1.5px dashed #f59e0b !important;
+        }
+        html:not(.dark) #modal-devolucao-compra .dev-table-container {
+            background-color: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+        }
+        html:not(.dark) #modal-devolucao-compra table thead {
+            background-color: #f8fafc !important;
+        }
+        html:not(.dark) #modal-devolucao-compra tr.dev-compra-tr {
+            background-color: #ffffff !important;
+            border-color: #f1f5f9 !important;
+            color: #1e293b !important;
+        }
+        html:not(.dark) #modal-devolucao-compra tr.dev-compra-tr:hover {
+            background-color: #f8fafc !important;
+        }
+        html:not(.dark) #modal-devolucao-compra tr.dev-compra-tr.is-selected {
+            background-color: #fef3c7 !important;
+        }
     </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0f172a">
@@ -136,8 +218,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <link rel="stylesheet" href="../style.css?v=20260915181522">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260915181522">
+    <link rel="stylesheet" href="../style.css?v=20260916131643">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260916131643">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -607,7 +689,7 @@
     <!-- MODAL — DEVOLUÇÃO DE COMPRA AO FORNECEDOR / INDÚSTRIA -->
     <!-- ========================================== -->
     <div id="modal-devolucao-compra" class="fixed inset-0 bg-slate-900/80 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[95vh]">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[95vh] modal-inner-card border border-slate-200 dark:border-slate-700">
             <div class="p-5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0">
                 <div>
                     <h2 class="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -623,9 +705,9 @@
             <div class="overflow-y-auto p-5 space-y-4 custom-scrollbar">
                 
                 <!-- BOX DE IMPORTAÇÃO RÁPIDA DE XML -->
-                <div class="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-2 border-dashed border-amber-400/50 dark:border-amber-600/50 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div class="dev-compra-upload-box rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
                     <div class="flex items-center gap-3 min-w-0">
-                        <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg shrink-0">
+                        <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-500 dark:text-amber-400 flex items-center justify-center text-lg shrink-0">
                             <i class="fa-solid fa-file-code"></i>
                         </div>
                         <div class="min-w-0">
@@ -660,7 +742,8 @@
                 </div>
 
                 <!-- DADOS DO DESTINATÁRIO (FORNECEDOR / INDÚSTRIA) -->
-                <div class="border border-slate-200 dark:border-slate-700 rounded-2xl p-3.5 space-y-3 bg-slate-50/50 dark:bg-slate-900/30">
+                <input type="hidden" id="dev-compra-forn-ibge">
+                <div class="dev-box-section rounded-2xl p-3.5 space-y-3">
                     <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
                         <h3 class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 uppercase tracking-wide">
                             <i class="fa-solid fa-industry text-amber-500"></i> Fornecedor / Indústria (Destinatário)
@@ -668,7 +751,7 @@
                         <div class="flex items-center gap-1.5">
                             <span class="text-[10px] text-slate-400 font-medium">Puxar do Cadastro:</span>
                             <div class="relative w-44 sm:w-56">
-                                <input list="lista-fornecedores-datalist" id="dev-compra-busca-forn" oninput="selecionarFornecedorDevolucao(this.value)" placeholder="Buscar fornecedor..." class="w-full border border-amber-300 dark:border-amber-700 rounded-lg px-2.5 py-1 text-xs bg-amber-50/60 dark:bg-amber-950/30 text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-amber-400">
+                                <input list="lista-fornecedores-datalist" id="dev-compra-busca-forn" oninput="selecionarFornecedorDevolucao(this.value)" placeholder="Buscar fornecedor..." class="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1 text-xs outline-none focus:ring-1 focus:ring-amber-400">
                                 <datalist id="lista-fornecedores-datalist"></datalist>
                             </div>
                         </div>
@@ -721,7 +804,7 @@
                 </div>
 
                 <!-- ITENS A DEVOLVER -->
-                <div class="border border-slate-200 dark:border-slate-700 rounded-2xl p-3.5 space-y-3">
+                <div class="dev-box-section rounded-2xl p-3.5 space-y-3">
                     <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700 pb-1.5">
                         <h3 class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 uppercase tracking-wide">
                             <i class="fa-solid fa-box-open text-amber-500"></i> Produtos para Devolução
@@ -729,7 +812,7 @@
                         <div class="flex items-center gap-1.5">
                             <span class="text-[10px] text-slate-400 font-medium">Puxar do Estoque:</span>
                             <div class="relative w-44 sm:w-56">
-                                <input list="lista-produtos-devolucao-datalist" id="dev-compra-busca-prod" oninput="selecionarProdutoDevolucaoCompra(this.value)" placeholder="Buscar no estoque..." class="w-full border border-emerald-300 dark:border-emerald-700 rounded-lg px-2.5 py-1 text-xs bg-emerald-50/60 dark:bg-emerald-950/30 text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-emerald-400">
+                                <input list="lista-produtos-devolucao-datalist" id="dev-compra-busca-prod" oninput="selecionarProdutoDevolucaoCompra(this.value)" placeholder="Buscar no estoque..." class="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1 text-xs outline-none focus:ring-1 focus:ring-emerald-400">
                                 <datalist id="lista-produtos-devolucao-datalist"></datalist>
                             </div>
                         </div>
@@ -757,9 +840,9 @@
                     </div>
 
                     <!-- Tabela de Itens Selecionados -->
-                    <div class="overflow-auto max-h-48 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <div class="dev-table-container overflow-auto max-h-48 rounded-xl border border-slate-200 dark:border-slate-700">
                         <table class="w-full text-xs">
-                            <thead class="bg-slate-50 dark:bg-slate-900 sticky top-0">
+                            <thead class="sticky top-0">
                                 <tr class="text-left text-[11px] text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
                                     <th class="p-2 w-8 text-center"><input type="checkbox" id="dev-compra-check-all" onchange="toggleAllItensDevolucaoCompra(this.checked)" checked></th>
                                     <th class="p-2">Produto</th>
@@ -1097,9 +1180,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20260916100000"></script>
-    <script src="../global.js?v=20260916100000"></script>
-    <script src="fc_cache.js?v=20260916100000"></script>
-    <script src="fiscal.js?v=20260916113000"></script>
+    <script src="../sistema/config_banco.js?v=20260916131643"></script>
+    <script src="../global.js?v=20260916131643"></script>
+    <script src="fc_cache.js?v=20260916131643"></script>
+    <script src="fiscal.js?v=20260916140600"></script>
 </body>
 </html>
