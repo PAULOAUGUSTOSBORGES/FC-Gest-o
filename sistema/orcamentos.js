@@ -1792,11 +1792,33 @@ async function finalizarVendaMultipla() {
         batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
     }
 
+    // Registra imediatamente no repositório local para carregamento instantâneo e idempotência
+    if (typeof window.db !== 'undefined') {
+        if (!Array.isArray(window.db.vendas)) window.db.vendas = [];
+        const idxExistente = window.db.vendas.findIndex(v => String(v.id) === String(idFinalVenda));
+        if (idxExistente >= 0) {
+            window.db.vendas[idxExistente] = novaVendaObj;
+        } else {
+            window.db.vendas.unshift(novaVendaObj);
+        }
+    }
+    if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+        window.FCCache.set('vendas', window.db ? window.db.vendas : [novaVendaObj]);
+        if (typeof window.FCCache.enfileirarOperacao === 'function') {
+            window.FCCache.enfileirarOperacao('vendas', idFinalVenda, 'set', novaVendaObj);
+        }
+    }
+
     try {
         await batch.commit();
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.removerDaFila === 'function') {
+            window.FCCache.removerDaFila('vendas', idFinalVenda);
+        }
     } catch(err) {
-        console.error("Erro ao salvar no firestore: ", err);
-        return showToast("Erro ao salvar operação no banco de dados.", "error");
+        console.warn("Aviso: Operação salva no repositório local do dispositivo (pendente de sincronização com Firebase): ", err);
+        if (typeof showToast === 'function') {
+            showToast("Operação salva no dispositivo! Será sincronizada assim que você clicar em SINCRONIZAR.", "info");
+        }
     } 
     
     window.vendaEmEdicao = null;
@@ -1944,7 +1966,11 @@ async function emitirNota(tipo) {
     try {
         // Chama a Cloud Function
         const emitirFunc = firebase.functions().httpsCallable(tipo === 'nfce' ? 'emitirNFCe' : 'emitirNFe');
-        const response = await emitirFunc({ vendaId: window.vendaAtualImpressao.id });
+        const empIdAtual = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+        const response = await emitirFunc({ 
+            vendaId: window.vendaAtualImpressao.id,
+            empId: empIdAtual
+        });
         const result = response.data;
         
         statusContainer.classList.remove('border-blue-500', 'bg-blue-50');

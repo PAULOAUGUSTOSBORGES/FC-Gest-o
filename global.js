@@ -214,6 +214,30 @@ document.addEventListener('DOMContentLoaded', function () {
         headerActions.prepend(headerBtn);
     }
 
+    // 3. Botão SINCRONIZAR no Header (Repositório Local com Firebase)
+    if (headerActions && !document.getElementById('header-btn-sync')) {
+        const syncBtn = document.createElement('button');
+        syncBtn.id = 'header-btn-sync';
+        syncBtn.type = 'button';
+        syncBtn.onclick = function() {
+            if (window.FCCache && typeof window.FCCache.sincronizarComFirebase === 'function') {
+                window.FCCache.sincronizarComFirebase();
+            } else if (typeof window.showToast === 'function') {
+                window.showToast('Repositório local já atualizado.', 'info');
+            }
+        };
+        syncBtn.className = 'h-9 px-2.5 sm:px-3 flex items-center gap-1.5 sm:gap-2 rounded-lg bg-slate-700 hover:bg-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-[11px] sm:text-xs font-bold tracking-wider transition-all cursor-pointer shadow-sm select-none border border-slate-600 shrink-0';
+        syncBtn.title = 'Sincronizar banco de dados local com o Firebase';
+        syncBtn.innerHTML = `
+            <span id="header-btn-sync-text">SINCRONIZAR</span>
+            <span id="header-btn-sync-box" class="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded bg-white/10 text-white text-xs">
+                <i id="header-btn-sync-icon" class="fa-solid fa-arrows-rotate"></i>
+            </span>
+            <span id="header-btn-sync-badge" class="hidden px-1.5 py-0.2 text-[10px] font-bold bg-amber-500 text-slate-900 rounded-full">0</span>
+        `;
+        headerActions.prepend(syncBtn);
+    }
+
     _atualizarBotaoTemaSistema();
 });
 

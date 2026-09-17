@@ -1779,11 +1779,33 @@ async function finalizarVendaMultipla() {
         batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
     }
 
+    // Registra imediatamente no repositório local para carregamento instantâneo e idempotência
+    if (typeof window.db !== 'undefined') {
+        if (!Array.isArray(window.db.vendas)) window.db.vendas = [];
+        const idxExistente = window.db.vendas.findIndex(v => String(v.id) === String(idFinalVenda));
+        if (idxExistente >= 0) {
+            window.db.vendas[idxExistente] = novaVendaObj;
+        } else {
+            window.db.vendas.unshift(novaVendaObj);
+        }
+    }
+    if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+        window.FCCache.set('vendas', window.db ? window.db.vendas : [novaVendaObj]);
+        if (typeof window.FCCache.enfileirarOperacao === 'function') {
+            window.FCCache.enfileirarOperacao('vendas', idFinalVenda, 'set', novaVendaObj);
+        }
+    }
+
     try {
         await batch.commit();
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.removerDaFila === 'function') {
+            window.FCCache.removerDaFila('vendas', idFinalVenda);
+        }
     } catch(err) {
-        console.error("Erro ao salvar no firestore: ", err);
-        return showToast("Erro ao salvar operação no banco de dados.", "error");
+        console.warn("Aviso: Operação salva no repositório local do dispositivo (pendente de sincronização com Firebase): ", err);
+        if (typeof showToast === 'function') {
+            showToast("Operação salva no dispositivo! Será sincronizada assim que você clicar em SINCRONIZAR.", "info");
+        }
     } 
     
     window.vendaEmEdicao = null;
@@ -1946,7 +1968,11 @@ async function emitirNota(tipo) {
 
     try {
         const emitirFunc = firebase.functions().httpsCallable(tipo === 'nfce' ? 'emitirNFCe' : 'emitirNFe');
-        const response = await emitirFunc({ vendaId: window.vendaAtualImpressao.id });
+        const empIdAtual = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+        const response = await emitirFunc({ 
+            vendaId: window.vendaAtualImpressao.id,
+            empId: empIdAtual
+        });
         const res = response.data;
         const d = res.data || {};
         
@@ -2450,7 +2476,25 @@ window.excluirVenda = function(id) {
             const vendaRef = window.getEmpresaRef().collection('vendas').doc(String(id));
             batch.delete(vendaRef);
             
-            await batch.commit(); 
+            // Atualiza repositório local imediatamente
+            if (typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) {
+                window.db.vendas = window.db.vendas.filter(x => String(x.id) !== String(id));
+            }
+            if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+                window.FCCache.set('vendas', window.db ? window.db.vendas : []);
+                if (typeof window.FCCache.enfileirarOperacao === 'function') {
+                    window.FCCache.enfileirarOperacao('vendas', id, 'delete', null);
+                }
+            }
+
+            try {
+                await batch.commit();
+                if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.removerDaFila === 'function') {
+                    window.FCCache.removerDaFila('vendas', id);
+                }
+            } catch (commitErr) {
+                console.warn("Aviso: Exclusão gravada localmente no dispositivo (pendente de sincronização):", commitErr);
+            }
             
             showToast('Operação excluída com sucesso!', 'success');
             
