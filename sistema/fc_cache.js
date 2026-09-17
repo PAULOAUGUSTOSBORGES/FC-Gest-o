@@ -38,7 +38,8 @@
     // ------------------------------------------
 
     function _chave(colecao) {
-        return PREFIX + colecao;
+        let empId = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+        return PREFIX + empId + '_' + colecao;
     }
 
     function _salvar(colecao, dados) {

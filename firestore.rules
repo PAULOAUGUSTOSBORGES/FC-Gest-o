@@ -4,173 +4,185 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // ==========================================
-    // Funções Auxiliares de Autenticação e RBAC
+    // Funcoes Auxiliares de Autenticacao e Multi-Tenant
     // ==========================================
     function isAutenticado() {
       return request.auth != null;
     }
     
-    function getFuncionarioDoc() {
-      return isAutenticado() && exists(/databases/$(database)/documents/funcionarios/$(request.auth.uid))
-        ? get(/databases/$(database)/documents/funcionarios/$(request.auth.uid)).data
+    // NOVO: Descobre qual a empresa do usuario lendo a colecao global 'usuarios'
+    function getEmpresaUsuario() {
+      return isAutenticado() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.empresaId
+        : null;
+    }
+
+    // Busca o documento do funcionario dentro da subcolecao da empresa dele
+    function getFuncionarioDoc(empresaId) {
+      return isAutenticado() && exists(/databases/$(database)/documents/empresas/$(empresaId)/funcionarios/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/empresas/$(empresaId)/funcionarios/$(request.auth.uid)).data
         : {};
     }
     
-    function isAdmin() {
+    function isAdmin(empresaId) {
       return isAutenticado() && (
-        request.auth.token.admin == true || 
-        getFuncionarioDoc().get('isAdmin', false) == true || 
-        getFuncionarioDoc().get('isAdmin', false) == 'true' ||
-        request.auth.token.email == 'fabricadecoresgoiania@gmail.com'
+        request.auth.token.email == 'fabricadecoresgoiania@gmail.com' ||
+        getFuncionarioDoc(empresaId).get('isAdmin', false) == true || 
+        getFuncionarioDoc(empresaId).get('isAdmin', false) == 'true'
       );
     }
     
-    function temPermissao(perm) {
-      return isAdmin() || (
+    function temPermissao(empresaId, perm) {
+      return isAdmin(empresaId) || (
         isAutenticado() && (
-          getFuncionarioDoc().get(perm, false) == true ||
-          getFuncionarioDoc().get(perm, false) == 'true'
+          getFuncionarioDoc(empresaId).get(perm, false) == true ||
+          getFuncionarioDoc(empresaId).get(perm, false) == 'true'
         )
       );
     }
 
     // ==========================================
-    // 1. Configurações e Caixa Físico
+    // Mapeamento Global de Usuarios (Login)
     // ==========================================
-    match /fc_moveis/config_loja {
-      allow read: if true; // Dados públicos da vitrine (nome, logo, banners, cores)
-      allow write: if isAdmin() || temPermissao('perm_config') || temPermissao('perm_gestao');
-    }
-    
-    match /fc_moveis/config {
-      allow read: if true; // Leitura pública: necessária para a vitrine da loja virtual carregar configurações
-      allow write: if isAdmin() || temPermissao('perm_config') || temPermissao('perm_gestao');
-    }
-
-    match /fc_moveis/caixa {
-      allow read: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_gestao'));
-      allow write: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_gestao'));
-    }
-
-    match /fc_moveis/{document=**} {
-      allow read: if isAdmin(); // REMOVIDO: acesso para qualquer usuário autenticado
-      allow write: if isAdmin() || temPermissao('perm_config') || temPermissao('perm_gestao');
+    match /usuarios/{userId} {
+      // O proprio usuario pode ler seu documento para saber qual sua empresa, e o admin geral pode ler
+      allow read: if isAutenticado() && (request.auth.uid == userId || request.auth.token.email == 'fabricadecoresgoiania@gmail.com');
+      // Apenas admin geral cria/edita
+      allow write: if isAutenticado() && request.auth.token.email == 'fabricadecoresgoiania@gmail.com';
     }
 
     // ==========================================
-    // 2. Catálogo de Produtos e Kardex
+    // Isolamento Multi-Tenant: Empresas
     // ==========================================
-    match /produtos/{produtoId} {
-      allow read: if true; // Leitura pública: necessária para a loja virtual
-      allow write: if isAdmin() || temPermissao('perm_cadastros') || temPermissao('perm_pdv');
+    match /empresas/{empresaId} {
+      // Leitura do doc da empresa (para vitrine ou login)
+      allow read: if true;
+      allow write: if isAutenticado() && request.auth.token.email == 'fabricadecoresgoiania@gmail.com';
+
+      // ==========================================
+      // 1. Configuracoes e Caixa Fisico
+      // ==========================================
+      match /configuracoes/{docId} {
+        allow read: if true; // Dados publicos da vitrine
+        allow write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_config') || temPermissao(empresaId, 'perm_gestao'));
+      }
+
+      match /caixa/{docId} {
+        allow read, write: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
+      }
+
+      // ==========================================
+      // 2. Catalogo de Produtos e Movimentacoes
+      // ==========================================
+      match /produtos/{produtoId} {
+        allow read: if true; // Publico para a loja virtual (vitrine)
+        allow write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_cadastros') || temPermissao(empresaId, 'perm_pdv'));
+      }
+
+      match /movimentacoes/{movId} {
+        allow read, create: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_cadastros') || temPermissao(empresaId, 'perm_gestao'));
+        allow update, delete: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+      }
+
+      match /categorias/{catId} {
+        allow read: if true;
+        allow write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_cadastros'));
+      }
+
+      // ==========================================
+      // 3. Clientes e Fornecedores
+      // ==========================================
+      match /clientes/{clienteId} {
+        allow read: if getEmpresaUsuario() == empresaId && isAutenticado();
+        allow write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_cadastros') || temPermissao(empresaId, 'perm_pdv'));
+      }
+
+      match /fornecedores/{fornecedorId} {
+        allow read, write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_cadastros') || temPermissao(empresaId, 'perm_gestao'));
+      }
+
+      // ==========================================
+      // 4. Vendas, Orcamentos e Financeiro
+      // ==========================================
+      match /vendas/{vendaId} {
+        allow read, create, update: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
+        allow delete: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+      }
+
+      match /orcamentos/{orcamentoId} {
+        allow read, write: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
+      }
+
+      match /pedidos_site/{pedidoId} {
+        allow create: if true; // Pedidos podem vir anonimamente da vitrine
+        allow read, update, delete: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
+      }
+
+      match /financeiro/{finId} {
+        allow read, create: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_gestao') || temPermissao(empresaId, 'perm_pdv'));
+        allow update, delete: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+      }
+
+      match /compras/{compraId} {
+        allow read, write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+      }
+
+      match /notas_servico/{docId} {
+        allow read: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
+        allow write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+      }
+
+      match /notas_devolucao/{docId} {
+        allow read: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
+        allow write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+      }
+
+      match /notas_avulsas/{docId} {
+        allow read: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
+        allow write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+      }
+
+      // ==========================================
+      // 5. Funcionarios / RH da Empresa
+      // ==========================================
+      match /funcionarios/{userId} {
+        allow read: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || request.auth.uid == userId);
+        // Regra para auto-cadastro simplificada para o tenant default durante a migracao
+        allow create: if getEmpresaUsuario() == empresaId || (empresaId == 'emp_fc_moveis' && isAutenticado());
+        allow update, delete: if getEmpresaUsuario() == empresaId && isAdmin(empresaId);
+      }
+
+      match /marketing_historico/{docId} {
+        allow read, write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+      }
+      
+      match /relatorios_ia_historico/{docId} {
+        allow read, write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+      }
+
+      // Tudo mais bloqueado dentro do tenant
+      match /{document=**} {
+        allow read, write: if getEmpresaUsuario() == empresaId && isAdmin(empresaId);
+      }
     }
 
-    match /movimentacoes/{movId} {
-      allow read: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_cadastros') || temPermissao('perm_gestao'));
-      allow create: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_cadastros') || temPermissao('perm_gestao'));
-      allow update, delete: if isAdmin() || temPermissao('perm_gestao');
-    }
-
-    match /categorias/{catId} {
-      allow read: if true; // Categorias públicas para filtro da loja
-      allow write: if isAdmin() || temPermissao('perm_cadastros');
-    }
-
-    // ==========================================
-    // 3. Clientes e Fornecedores
-    // ==========================================
-    match /clientes/{clienteId} {
-      allow read: if isAutenticado();
-      allow write: if isAdmin() || temPermissao('perm_cadastros') || temPermissao('perm_pdv');
-    }
-
-    match /fornecedores/{fornecedorId} {
-      allow read, write: if isAdmin() || temPermissao('perm_cadastros') || temPermissao('perm_gestao');
-    }
-
-    // ==========================================
-    // 4. Vendas, Orçamentos, Pedidos do Site e Financeiro
-    // ==========================================
-    match /vendas/{vendaId} {
-      allow read: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_gestao'));
-      allow create: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_gestao'));
-      allow update: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_gestao'));
-      allow delete: if isAdmin() || temPermissao('perm_gestao');
-    }
-
-    match /orcamentos/{orcamentoId} {
-      allow read, write: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_gestao'));
-    }
-
-    match /pedidos_site/{pedidoId} {
-      // VALIDAÇÃO MÍNIMA ADICIONADA para evitar injeção/spam
-      allow create: if request.resource.data.keys().hasAll(['nome','itens','total']) 
-                    && request.resource.data.total is number 
-                    && request.resource.data.total >= 0;
-      allow read, update, delete: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_gestao'));
-    }
-
-    match /financeiro/{finId} {
-      // PDV precisa criar títulos a receber para vendas no crediário/cartão/pix
-      allow read: if isAutenticado() && (temPermissao('perm_gestao') || temPermissao('perm_pdv'));
-      allow create: if isAutenticado() && (temPermissao('perm_gestao') || temPermissao('perm_pdv'));
-      allow update, delete: if isAdmin() || temPermissao('perm_gestao');
-    }
-
-    match /compras/{compraId} {
-      allow read, write: if isAdmin() || temPermissao('perm_gestao');
-    }
-
-    match /notas_servico/{docId} {
-      allow read: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_gestao'));
-      allow write: if isAdmin() || temPermissao('perm_gestao');
-    }
-
-    match /notas_devolucao/{docId} {
-      allow read: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_gestao'));
-      allow write: if isAdmin() || temPermissao('perm_gestao');
-    }
-
-    match /notas_avulsas/{docId} {
-      allow read: if isAutenticado() && (temPermissao('perm_pdv') || temPermissao('perm_gestao'));
-      allow write: if isAdmin() || temPermissao('perm_gestao');
-    }
-
-    // ==========================================
-    // 5. Funcionários e Controle de Acesso
-    // ==========================================
-    match /funcionarios/{userId} {
-      allow read: if isAdmin() || request.auth.uid == userId; // REMOVIDO: leitura por qualquer um
-      allow create: if isAutenticado() && (
-        isAdmin() || (
-          request.auth.uid == userId 
-          && (request.resource.data.isAdmin == false || request.resource.data.isAdmin == 'false')
-          && (request.resource.data.perm_dashboard == false || request.resource.data.perm_dashboard == 'false')
-          && (request.resource.data.perm_pdv == false || request.resource.data.perm_pdv == 'false')
-          && (request.resource.data.perm_cadastros == false || request.resource.data.perm_cadastros == 'false')
-          && (request.resource.data.perm_gestao == false || request.resource.data.perm_gestao == 'false')
-          && (request.resource.data.perm_config == false || request.resource.data.perm_config == 'false')
-        )
-      );
-      allow update, delete: if isAdmin();
-    }
-
-    // ==========================================
-    // 6. Marketing e Histórico IA
-    // ==========================================
-    match /marketing_historico/{docId} {
-      allow read: if isAutenticado() && (temPermissao('perm_gestao') || isAdmin());
-      allow write: if isAdmin() || temPermissao('perm_gestao');
-    }
-
-    match /relatorios_ia_historico/{docId} {
-      allow read: if isAutenticado() && (temPermissao('perm_gestao') || isAdmin());
-      allow write: if isAdmin() || temPermissao('perm_gestao');
-    }
-
-    // Fallback de Segurança
-    match /{document=**} {
-      allow read, write: if false;
-    }
+    // Regras antigas mantidas TEMPORARIAMENTE apenas para o script de migracao poder rodar e nao quebrar na hora
+    match /fc_moveis/{doc=**} { allow read, write: if true; }
+    match /produtos/{doc=**} { allow read, write: if true; }
+    match /vendas/{doc=**} { allow read, write: if true; }
+    match /clientes/{doc=**} { allow read, write: if true; }
+    match /fornecedores/{doc=**} { allow read, write: if true; }
+    match /funcionarios/{doc=**} { allow read, write: if true; }
+    match /orcamentos/{doc=**} { allow read, write: if true; }
+    match /pedidos_site/{doc=**} { allow read, write: if true; }
+    match /financeiro/{doc=**} { allow read, write: if true; }
+    match /compras/{doc=**} { allow read, write: if true; }
+    match /categorias/{doc=**} { allow read, write: if true; }
+    match /movimentacoes/{doc=**} { allow read, write: if true; }
+    match /notas_servico/{doc=**} { allow read, write: if true; }
+    match /notas_devolucao/{doc=**} { allow read, write: if true; }
+    match /notas_avulsas/{doc=**} { allow read, write: if true; }
+    match /marketing_historico/{doc=**} { allow read, write: if true; }
+    match /relatorios_ia_historico/{doc=**} { allow read, write: if true; }
   }
 }

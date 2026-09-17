@@ -11,8 +11,8 @@ const replacement = `                }
             }
         }
 
-        if (dados.caixa) promessas.push(firestore.collection('fc_moveis').doc('caixa').set(dados.caixa, { merge: true }));
-        if (dados.config) promessas.push(firestore.collection('fc_moveis').doc('config').set(dados.config, { merge: true }));
+        if (dados.caixa) promessas.push(window.getEmpresaRef().collection('caixa').doc('caixa_atual').set(dados.caixa, { merge: true }));
+        if (dados.config) promessas.push(window.getEmpresaRef().collection('configuracoes').doc('config').set(dados.config, { merge: true }));
 
         await Promise.all(promessas);
         // Marca como migrado
@@ -39,35 +39,35 @@ function inicializarGestao() {
         if (colecoesProntas >= totalColecoes) refreshCurrentView();
     }
 
-    firestore.collection('vendas').onSnapshot(snap => {
+    window.getEmpresaRef().collection('vendas').onSnapshot(snap => {
         db.vendas = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         tentarRefresh();
     });
-    firestore.collection('financeiro').onSnapshot(snap => {
+    window.getEmpresaRef().collection('financeiro').onSnapshot(snap => {
         db.financeiro = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         tentarRefresh();
     });
-    firestore.collection('compras').onSnapshot(snap => {
+    window.getEmpresaRef().collection('compras').onSnapshot(snap => {
         db.compras = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         tentarRefresh();
     });
-    firestore.collection('produtos').onSnapshot(snap => {
+    window.getEmpresaRef().collection('produtos').onSnapshot(snap => {
         db.produtos = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         tentarRefresh();
     });
-    firestore.collection('clientes').onSnapshot(snap => {
+    window.getEmpresaRef().collection('clientes').onSnapshot(snap => {
         db.clientes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         tentarRefresh();
     });
-    firestore.collection('fornecedores').onSnapshot(snap => {
+    window.getEmpresaRef().collection('fornecedores').onSnapshot(snap => {
         db.fornecedores = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         tentarRefresh();
     });
-    firestore.collection('funcionarios').onSnapshot(snap => {
+    window.getEmpresaRef().collection('funcionarios').onSnapshot(snap => {
         db.funcionarios = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         tentarRefresh();
     });
-    firestore.collection('fc_moveis').doc('caixa').onSnapshot(doc => {
+    window.getEmpresaRef().collection('caixa').doc('caixa_atual').onSnapshot(doc => {
         if(doc.exists) db.caixa = doc.data();
         else db.caixa = { status: 'FECHADO', saldo: 0, historico: [] };
         if (colecoesProntas >= totalColecoes) refreshCurrentView();

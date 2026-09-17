@@ -47,7 +47,7 @@ function inicializarSistema() {
     // Auto-fix for string booleans in the database that break Firestore rules
     if (window.currentUserInfo && typeof window.currentUserInfo.isAdmin === 'string') {
         const uid = firebase.auth().currentUser.uid;
-        firestore.collection("funcionarios").doc(uid).update({
+        window.getEmpresaRef().collection("funcionarios").doc(uid).update({
             isAdmin: window.currentUserInfo.isAdmin === 'true',
             perm_cadastros: window.currentUserInfo.perm_cadastros === 'true' || window.currentUserInfo.perm_cadastros === true
         }).catch(console.error);
@@ -522,7 +522,7 @@ async function salvarConfiguracoes() {
     });
 
     try {
-        await firestore.collection('fc_moveis').doc('config').set(db.config, { merge: true });
+        await window.getEmpresaRef().collection('configuracoes').doc('config').set(db.config, { merge: true });
         if (typeof window.FCCache !== 'undefined') {
             window.FCCache.set('fc_moveis_config', db.config);
         }
@@ -606,7 +606,7 @@ async function adicionarCategoria() {
     
     try {
         const nova = { nome: nome, subcategorias: [] };
-        const docRef = await firestore.collection("categorias").add(nova);
+        const docRef = await window.getEmpresaRef().collection("categorias").add(nova);
         db.categorias.push({ id: docRef.id, ...nova });
         input.value = '';
         renderCategorias();
@@ -621,7 +621,7 @@ async function excluirCategoria(id) {
     if (!confirm("Tem certeza que deseja excluir esta categoria inteira? Todos os produtos nela ficarão 'Sem Categoria'.")) return;
     
     try {
-        await firestore.collection("categorias").doc(id).delete();
+        await window.getEmpresaRef().collection("categorias").doc(id).delete();
         db.categorias = db.categorias.filter(c => c.id !== id);
         renderCategorias();
         showToast("Categoria excluída", "success");
@@ -647,7 +647,7 @@ async function adicionarSubcategoria(catId) {
     cat.subcategorias.push(nome);
     
     try {
-        await firestore.collection("categorias").doc(catId).update({ subcategorias: cat.subcategorias });
+        await window.getEmpresaRef().collection("categorias").doc(catId).update({ subcategorias: cat.subcategorias });
         input.value = '';
         renderCategorias();
         showToast("Subcategoria adicionada", "success");
@@ -666,7 +666,7 @@ async function excluirSubcategoria(catId, index) {
     cat.subcategorias.splice(index, 1);
     
     try {
-        await firestore.collection("categorias").doc(catId).update({ subcategorias: cat.subcategorias });
+        await window.getEmpresaRef().collection("categorias").doc(catId).update({ subcategorias: cat.subcategorias });
         renderCategorias();
         showToast("Subcategoria excluída", "success");
     } catch (err) {

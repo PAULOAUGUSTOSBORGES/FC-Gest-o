@@ -196,7 +196,7 @@ async function salvarEvento() {
     
     try {
         if (id) {
-            await firestore.collection('fc_moveis').doc('config').set({
+            await window.getEmpresaRef().collection('configuracoes').doc('config').set({
                 agenda_eventos: {
                     [id]: eventoData
                 }
@@ -205,7 +205,7 @@ async function salvarEvento() {
         } else {
             const newId = String(Date.now());
             eventoData.criadoEm = new Date().toISOString();
-            await firestore.collection('fc_moveis').doc('config').set({
+            await window.getEmpresaRef().collection('configuracoes').doc('config').set({
                 agenda_eventos: {
                     [newId]: eventoData
                 }
@@ -227,7 +227,7 @@ async function excluirEvento() {
     fecharModalEvento();
     
     try {
-        await firestore.collection('fc_moveis').doc('config').update({
+        await window.getEmpresaRef().collection('configuracoes').doc('config').update({
             [`agenda_eventos.${id}`]: firebase.firestore.FieldValue.delete()
         });
         showToast("Lembrete excluído.", "success");
@@ -251,7 +251,7 @@ async function atualizarDataEvento(eventoFullCalendar) {
     };
     
     try {
-        await firestore.collection('fc_moveis').doc('config').set({
+        await window.getEmpresaRef().collection('configuracoes').doc('config').set({
             agenda_eventos: {
                 [id]: eventoData
             }

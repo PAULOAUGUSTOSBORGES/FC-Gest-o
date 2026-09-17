@@ -471,8 +471,8 @@ async function migrarBancoAntigo() {
                 }
             }
             
-            if (dados.caixa) promessas.push(firestore.collection("fc_moveis").doc("caixa").set(dados.caixa));
-            if (dados.config) promessas.push(firestore.collection("fc_moveis").doc("config").set(dados.config, {merge: true}));
+            if (dados.caixa) promessas.push(window.getEmpresaRef().collection('caixa').doc('caixa_atual').set(dados.caixa));
+            if (dados.config) promessas.push(window.getEmpresaRef().collection('configuracoes').doc('config').set(dados.config, {merge: true}));
             
             await Promise.all(promessas);
             await docRef.update({ migrado: true });
@@ -533,7 +533,7 @@ function inicializarDashboard() {
         if (!window._produtosCarregados && (!db.produtos || db.produtos.length === 0)) {
             console.log('[Dashboard] Buscando produtos diretamente via get()...');
             if (typeof firestore !== 'undefined') {
-                firestore.collection('produtos').get().then(snap => {
+                window.getEmpresaRef().collection('produtos').get().then(snap => {
                     if (snap && !snap.empty) {
                         db.produtos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                         window._produtosCarregados = true;
@@ -1026,7 +1026,7 @@ function enviarWhatsApp(clienteId, link) {
     const hj = new Date();
     const hojeStr = `${hj.getFullYear()}-${String(hj.getMonth() + 1).padStart(2, '0')}-${String(hj.getDate()).padStart(2, '0')}`;
     
-    firestore.collection('clientes').doc(clienteId).set({
+    window.getEmpresaRef().collection('clientes').doc(clienteId).set({
         lembrete_last_sent: hojeStr
     }, { merge: true }).then(() => {
         const c = db.clientes.find(x => x.id === clienteId);

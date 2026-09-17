@@ -59,6 +59,20 @@ async function fazerLogin() {
             const hoje = new Date().toDateString();
             localStorage.setItem('fc_sessao_data', hoje);
             localStorage.setItem('fc_sessao_uid', cred.user.uid);
+            
+            // Buscar empresa do usuario
+            try {
+                const userDoc = await firebase.firestore().collection('usuarios').doc(cred.user.uid).get();
+                if (userDoc.exists && userDoc.data().empresaId) {
+                    localStorage.setItem('fc_empresa_ativa', userDoc.data().empresaId);
+                } else {
+                    // Fallback
+                    localStorage.setItem('fc_empresa_ativa', 'emp_fc_moveis');
+                }
+            } catch(e) {
+                console.error("Erro ao buscar empresa do usuario", e);
+                localStorage.setItem('fc_empresa_ativa', 'emp_fc_moveis');
+            }
         }
         showToast('Acesso liberado! Entrando...', 'success');
         window.location.href = 'index.html';
@@ -97,6 +111,20 @@ async function fazerCadastro() {
             const hoje = new Date().toDateString();
             localStorage.setItem('fc_sessao_data', hoje);
             localStorage.setItem('fc_sessao_uid', cred.user.uid);
+            
+            // Buscar empresa do usuario
+            try {
+                const userDoc = await firebase.firestore().collection('usuarios').doc(cred.user.uid).get();
+                if (userDoc.exists && userDoc.data().empresaId) {
+                    localStorage.setItem('fc_empresa_ativa', userDoc.data().empresaId);
+                } else {
+                    // Fallback
+                    localStorage.setItem('fc_empresa_ativa', 'emp_fc_moveis');
+                }
+            } catch(e) {
+                console.error("Erro ao buscar empresa do usuario", e);
+                localStorage.setItem('fc_empresa_ativa', 'emp_fc_moveis');
+            }
         }
         showToast('Conta criada com sucesso! Entrando...', 'success');
         window.location.href = 'index.html';

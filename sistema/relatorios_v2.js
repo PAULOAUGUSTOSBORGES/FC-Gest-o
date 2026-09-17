@@ -73,8 +73,8 @@ function refreshCurrentView() {
 // ==========================================
 async function migrarDadosSeNecessario() {
     try {
-        const comprasSnap = await firestore.collection('compras').limit(1).get();
-        const finSnap = await firestore.collection('financeiro').limit(1).get();
+        const comprasSnap = await window.getEmpresaRef().collection('compras').limit(1).get();
+        const finSnap = await window.getEmpresaRef().collection('financeiro').limit(1).get();
         if (!comprasSnap.empty || !finSnap.empty) return;
         
         const bancoPrincipalSnap = await firestore.collection('fc_moveis').doc('banco_principal').get();
@@ -100,8 +100,8 @@ async function migrarDadosSeNecessario() {
             }
         }
         
-        if (dados.caixa) operations.push({ ref: firestore.collection('fc_moveis').doc('caixa'), data: dados.caixa });
-        if (dados.config) operations.push({ ref: firestore.collection('fc_moveis').doc('config'), data: dados.config });
+        if (dados.caixa) operations.push({ ref: window.getEmpresaRef().collection('caixa').doc('caixa_atual'), data: dados.caixa });
+        if (dados.config) operations.push({ ref: window.getEmpresaRef().collection('configuracoes').doc('config'), data: dados.config });
         
         const BATCH_SIZE = 400;
         for (let i = 0; i < operations.length; i += BATCH_SIZE) {
@@ -436,7 +436,7 @@ async function confirmarMovCaixa() {
     else if(op === 'SUPRIMENTO') { novoSaldo += val; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `SUPRIMENTO: ${desc}`, valor: val }); }
     
     try {
-        await firestore.collection('fc_moveis').doc('caixa').set({ ...cxAtual, status: novoStatus, saldo: novoSaldo, historico: cxHistoricoNovo }, { merge: true });
+        await window.getEmpresaRef().collection('caixa').doc('caixa_atual').set({ ...cxAtual, status: novoStatus, saldo: novoSaldo, historico: cxHistoricoNovo }, { merge: true });
         fecharModalCaixa(); renderCaixaDiario(); showToast('Operação realizada com sucesso!', 'success');
     } catch(err) { console.error(err); showToast('Erro ao registrar caixa.', 'error'); }
 }
@@ -830,10 +830,10 @@ function salvarConta() {
         };
 
         if (isEdicao) {
-            const ref = firestore.collection('financeiro').doc(String(idExistente));
+            const ref = window.getEmpresaRef().collection('financeiro').doc(String(idExistente));
             batch.set(ref, contaObj, { merge: true });
         } else {
-            const ref = firestore.collection('financeiro').doc();
+            const ref = window.getEmpresaRef().collection('financeiro').doc();
             batch.set(ref, contaObj);
             contasGeradas++;
         }
@@ -848,12 +848,12 @@ function salvarConta() {
     if (_selValFinal === '__novo__' && _inpValFinal) {
         if (tipoContaFinal === 'DESPESA') {
             if (!(db.fornecedores || []).find(f => f.nome && f.nome.toLowerCase() === _inpValFinal.toLowerCase())) {
-                const _fRef = firestore.collection('fornecedores').doc();
+                const _fRef = window.getEmpresaRef().collection('fornecedores').doc();
                 batch.set(_fRef, { nome: _inpValFinal, doc: '', cnpj: '', telefone: '' });
             }
         } else {
             if (!(db.clientes || []).find(c => (c.nome||c.razaoSocial||'').toLowerCase() === _inpValFinal.toLowerCase())) {
-                const _cRef = firestore.collection('clientes').doc();
+                const _cRef = window.getEmpresaRef().collection('clientes').doc();
                 batch.set(_cRef, { nome: _inpValFinal, telefone: '', email: '', doc: '' });
             }
         }
@@ -878,7 +878,7 @@ function salvarConta() {
 function excluirTitulo(id) { 
     abrirConfirmacao('Excluir Título', 'Deseja apagar permanentemente?', () => { 
         const tit = db.financeiro.find(f => String(f.id) === String(id)); 
-        firestore.collection('financeiro').doc(String(id)).delete().then(() => {
+        window.getEmpresaRef().collection('financeiro').doc(String(id)).delete().then(() => {
             if(tit) renderFinAbas(tit.tipo === 'RECEITA' ? 'receber' : 'pagar'); 
             showToast('Excluído!'); 
         }).catch(e => { console.error(e); showToast('Erro', 'error'); });
@@ -903,10 +903,10 @@ async function estornarTitulo(id) {
                 cxSaldoNovo += f.valorPago;
                 cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Estorno: ${f.pessoa}`, valor: f.valorPago });
             }
-            batch.set(firestore.collection('fc_moveis').doc('caixa'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+            batch.set(window.getEmpresaRef().collection('caixa').doc('caixa_atual'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
         }
         
-        const finRef = firestore.collection('financeiro').doc(String(id));
+        const finRef = window.getEmpresaRef().collection('financeiro').doc(String(id));
         batch.update(finRef, { status: 'PENDENTE', dataPagamento: '', metodoPagamento: '', ultimaAlteracao: Date.now() });
         
         try {
@@ -1194,7 +1194,7 @@ async function confirmarRenegociacaoAvancada() {
         const tipoOriginal = fOriginal.tipo || 'DESPESA';
         const pessoaOriginal = fOriginal.pessoa || fOriginal.clienteNome || 'Sem Favorecido';
 
-        const refOriginalDoc = firestore.collection('financeiro').doc(String(idOriginal));
+        const refOriginalDoc = window.getEmpresaRef().collection('financeiro').doc(String(idOriginal));
         const historicoTexto = `\n[Renegociado em ${hojeBr}: ${entrada > 0 ? `Entrada ${formatMoney(entrada)} + ` : ''}${parcelas.length}x. Acordo: ${obsAcordo || 'N/A'}]`;
 
         batch.update(refOriginalDoc, {
@@ -1209,7 +1209,7 @@ async function confirmarRenegociacaoAvancada() {
         });
 
         if (entrada > 0) {
-            const refEntrada = firestore.collection('financeiro').doc();
+            const refEntrada = window.getEmpresaRef().collection('financeiro').doc();
             batch.set(refEntrada, {
                 tipo: tipoOriginal,
                 pessoa: pessoaOriginal,
@@ -1234,7 +1234,7 @@ async function confirmarRenegociacaoAvancada() {
         }
 
         parcelas.forEach(p => {
-            const refParcela = firestore.collection('financeiro').doc();
+            const refParcela = window.getEmpresaRef().collection('financeiro').doc();
             const dataParcelaIso = new Date(p.dataVencimento + 'T12:00:00').toISOString();
 
             batch.set(refParcela, {
@@ -1313,10 +1313,10 @@ async function confirmarBaixa() {
         if(f.tipo === 'RECEITA') { cxSaldoNovo += vf; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Recbto. Título: ${f.pessoa}`, valor: vf }); } 
         else { if(vf > cxSaldoNovo) return showToast('Saldo do Caixa insuficiente!', 'error'); cxSaldoNovo -= vf; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Pgto. Título: ${f.pessoa}`, valor: vf }); }
         
-        batch.set(firestore.collection('fc_moveis').doc('caixa'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+        batch.set(window.getEmpresaRef().collection('caixa').doc('caixa_atual'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
     }
     
-    const finRef = firestore.collection('financeiro').doc(String(id));
+    const finRef = window.getEmpresaRef().collection('financeiro').doc(String(id));
     batch.update(finRef, { status: 'PAGO', valorPago: vf, metodoPagamento: metodo, dataPagamento: new Date().toISOString(), ultimaAlteracao: Date.now() });
     
     try {
@@ -1592,7 +1592,7 @@ async function salvarXMLConferido() {
 
     let forn = db.fornecedores.find(f => f.doc === data.fornCNPJ || f.cnpj === data.fornCNPJ);
     if(!forn) { 
-        const fornRef = firestore.collection('fornecedores').doc();
+        const fornRef = window.getEmpresaRef().collection('fornecedores').doc();
         batch.set(fornRef, { nome: data.fornNome, doc: data.fornCNPJ, cnpj: data.fornCNPJ, ie: '', wpp: '', email: '', contato: '', cep: '', rua: '', numero: '', bairro: '', cidade: '', condicoes: '', produtos: '' });
     }
     
@@ -1602,25 +1602,25 @@ async function salvarXMLConferido() {
         if ((p.statusDB === 'NOVO' || p.statusDB.includes('CADASTRADO')) && !idProd) {
             idProd = String(Date.now() + Math.floor(Math.random() * 1000));
             pDB = { id: idProd, ean: p.cEAN, nome: p.nome, categoria: 'Geral', marca: data.fornNome, custo: p.custoFinal, margem: p.margemAtual, preco: p.precoVendaSug, estoque: p.qCom, min: 5, foto: '', ativo: true };
-            const prodRef = firestore.collection('produtos').doc(idProd);
+            const prodRef = window.getEmpresaRef().collection('produtos').doc(idProd);
             batch.set(prodRef, pDB);
         } else { 
             pDB = db.produtos.find(x => String(x.id) === String(idProd)); 
             if (pDB) { 
                 pDB.estoque += p.qCom; pDB.custo = p.custoFinal; pDB.margem = p.margemAtual; pDB.preco = p.precoVendaSug; pDB.nome = p.nome; pDB.ativo = true;
-                const prodRef = firestore.collection('produtos').doc(String(idProd));
+                const prodRef = window.getEmpresaRef().collection('produtos').doc(String(idProd));
                 batch.update(prodRef, { estoque: pDB.estoque, custo: pDB.custo, margem: pDB.margem, preco: pDB.preco, nome: pDB.nome, ativo: true });
             } 
         }
         p.idMatch = idProd; // Garante a rastreabilidade pro Relatório de Evolução
         totalQtd += p.qCom; 
-        const kRef = firestore.collection('movimentacoes').doc();
+        const kRef = window.getEmpresaRef().collection('movimentacoes').doc();
         batch.set(kRef, { data: new Date().toISOString(), ref: `NF-e ${data.numNF} ${data.fornNome}`, produtoId: idProd, produtoNome: p.nome, qtd: p.qCom, tipo: 'ENTRADA XML' });
         
         p.custoUnitOriginal = p.qCom > 0 ? (p.vTotalItemNaNota / p.qCom) : 0;
     });
 
-    const compraRef = firestore.collection('compras').doc();
+    const compraRef = window.getEmpresaRef().collection('compras').doc();
     batch.set(compraRef, { 
         numeroNF: data.numNF, 
         data: new Date().toISOString(), 
@@ -1635,7 +1635,7 @@ async function salvarXMLConferido() {
     
     data.financeiroXML.forEach((f, idx) => {
         if(f.valor > 0) {
-            const finRef = firestore.collection('financeiro').doc();
+            const finRef = window.getEmpresaRef().collection('financeiro').doc();
             batch.set(finRef, { ref: f.desc, data: new Date(f.venc + 'T12:00:00').toISOString(), pessoa: data.fornNome, wpp: '', valor: f.valor, status: 'PENDENTE', tipo: 'DESPESA', categoria: 'Fornecedores / Compras' });
         }
     });
@@ -1805,15 +1805,15 @@ async function salvarCompraManual() {
                         const pDB = db.produtos.find(x => String(x.id) === String(item.idMatch));
                         if (pDB) {
                             pDB.estoque -= item.qCom;
-                            batch.update(firestore.collection('produtos').doc(String(pDB.id)), { estoque: pDB.estoque });
-                            const kRef = firestore.collection('movimentacoes').doc();
+                            batch.update(window.getEmpresaRef().collection('produtos').doc(String(pDB.id)), { estoque: pDB.estoque });
+                            const kRef = window.getEmpresaRef().collection('movimentacoes').doc();
                             batch.set(kRef, { data: new Date().toISOString(), ref: `Estorno Edição Compra ${cAntiga.numeroNF}`, produtoId: pDB.id, produtoNome: pDB.nome, qtd: -item.qCom, tipo: 'ESTORNO COMPRA' });
                         }
                     }
                 });
             }
             try {
-                const snapFin = await firestore.collection('financeiro').where('tipo', '==', 'DESPESA').get();
+                const snapFin = await window.getEmpresaRef().collection('financeiro').where('tipo', '==', 'DESPESA').get();
                 snapFin.docs.forEach(doc => {
                     const finData = doc.data();
                     if (finData.ref && String(finData.ref).includes(cAntiga.numeroNF) && cAntiga.numeroNF !== 'S/N') {
@@ -1841,11 +1841,11 @@ async function salvarCompraManual() {
         
         totalQtd += item.qtd;
         
-        batch.update(firestore.collection('produtos').doc(String(pDB.id)), {
+        batch.update(window.getEmpresaRef().collection('produtos').doc(String(pDB.id)), {
             estoque: pDB.estoque, custo: pDB.custo, preco: pDB.preco
         });
         
-        const kRef = firestore.collection('movimentacoes').doc();
+        const kRef = window.getEmpresaRef().collection('movimentacoes').doc();
         batch.set(kRef, { data: new Date().toISOString(), ref: `Compra Man. ${refPed} (${fornecedorFinal})`, produtoId: pDB.id, produtoNome: pDB.nome, qtd: item.qtd, tipo: 'ENTRADA COMPRA' });
         
         itensRateadosParaSalvar.push({
@@ -1854,19 +1854,19 @@ async function salvarCompraManual() {
     });
 
     const idCompra = isEdicao ? idEdit : Date.now();
-    const compraRef = firestore.collection('compras').doc(String(idCompra));
+    const compraRef = window.getEmpresaRef().collection('compras').doc(String(idCompra));
     batch.set(compraRef, { 
         id: idCompra, numeroNF: refPed, data: new Date(dataCompra + 'T12:00:00').toISOString(), fornecedor: fornecedorFinal, cnpj: '', 
         totalNF: totais.totalGeral, freteExtra: totais.frete, qtdTotal: totalQtd, itens: itensRateadosParaSalvar 
     }, { merge: true });
 
     if(document.getElementById('compra-manual-gerar-financeiro').checked && !isEdicao) {
-        const finRef = firestore.collection('financeiro').doc();
+        const finRef = window.getEmpresaRef().collection('financeiro').doc();
         batch.set(finRef, { ref: `Compra: ${refPed}`, data: new Date(dataCompra + 'T12:00:00').toISOString(), pessoa: fornecedorFinal, valor: totais.totalGeral, status: 'PENDENTE', tipo: 'DESPESA', categoria: 'Fornecedores / Compras' });
     }
 
     if(fornAvulso && !db.fornecedores.find(f => f.nome.toLowerCase() === fornAvulso.toLowerCase())) {
-        const fornRef = firestore.collection('fornecedores').doc();
+        const fornRef = window.getEmpresaRef().collection('fornecedores').doc();
         batch.set(fornRef, { nome: fornAvulso, doc: '', cnpj: '', telefone: '' });
     }
 
@@ -1945,7 +1945,7 @@ function renderComprasHist() {
 
 function excluirNF(id) { 
     abrirConfirmacao('Excluir Nota / Compra', 'Atenção: Não reverte o estoque nem o financeiro.', () => { 
-        firestore.collection('compras').doc(String(id)).delete().then(() => {
+        window.getEmpresaRef().collection('compras').doc(String(id)).delete().then(() => {
             renderComprasHist(); showToast('Compra excluída!'); 
         }).catch(e => { console.error(e); showToast('Erro ao excluir NF.', 'error'); });
     }); 
@@ -3731,7 +3731,7 @@ async function gerarRelatorioComIA(descricaoRelatorio) {
             
             // Salvar no Historico
             if (typeof firestore !== 'undefined') {
-                firestore.collection('relatorios_ia_historico').add({
+                window.getEmpresaRef().collection('relatorios_ia_historico').add({
                     pergunta: descricaoRelatorio,
                     resposta: resposta,
                     dataGeracao: new Date().toISOString()
@@ -3930,7 +3930,7 @@ async function carregarHistoricoRelatoriosIA() {
         var trintaDiasAtras = new Date();
         trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
         
-        var snap = await firestore.collection('relatorios_ia_historico')
+        var snap = await window.getEmpresaRef().collection('relatorios_ia_historico')
             .where('dataGeracao', '>=', trintaDiasAtras.toISOString())
             .orderBy('dataGeracao', 'desc')
             .get();

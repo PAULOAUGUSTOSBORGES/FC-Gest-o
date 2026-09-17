@@ -146,7 +146,7 @@ async function salvarProxNumero(tipo) {
     }
 
     try {
-        await firestore.collection('fc_moveis').doc('config').set({
+        await window.getEmpresaRef().collection('configuracoes').doc('config').set({
             empresa: {
                 [campo]: val
             }
@@ -1191,7 +1191,7 @@ async function obterVendaParaImpressao(vendaId) {
     }
     if (!v && typeof firestore !== 'undefined') {
         try {
-            const doc = await firestore.collection('vendas').doc(String(vendaId)).get();
+            const doc = await window.getEmpresaRef().collection('vendas').doc(String(vendaId)).get();
             if (doc.exists) {
                 v = { id: doc.id, ...doc.data() };
             }
@@ -1465,12 +1465,12 @@ async function excluirNotaFiscal(vendaId, tipo) {
     if (!confirmar) return;
 
     try {
-        const vendaRef = firestore.collection('vendas').doc(String(vendaId));
+        const vendaRef = window.getEmpresaRef().collection('vendas').doc(String(vendaId));
         const snap = await vendaRef.get();
 
         if (!snap.exists) {
             // Tenta achar em notas_servico
-            const nsRef = firestore.collection('notas_servico').doc(String(vendaId));
+            const nsRef = window.getEmpresaRef().collection('notas_servico').doc(String(vendaId));
             const nsSnap = await nsRef.get();
             if (nsSnap.exists) {
                 await nsRef.delete();
@@ -1481,7 +1481,7 @@ async function excluirNotaFiscal(vendaId, tipo) {
             }
 
             // Tenta achar em notas_avulsas
-            const avRef = firestore.collection('notas_avulsas').doc(String(vendaId));
+            const avRef = window.getEmpresaRef().collection('notas_avulsas').doc(String(vendaId));
             const avSnap = await avRef.get();
             if (avSnap.exists) {
                 await avRef.delete();
@@ -1492,7 +1492,7 @@ async function excluirNotaFiscal(vendaId, tipo) {
             }
 
             // Tenta achar em notas_devolucao
-            const devRef = firestore.collection('notas_devolucao').doc(String(vendaId));
+            const devRef = window.getEmpresaRef().collection('notas_devolucao').doc(String(vendaId));
             const devSnap = await devRef.get();
             if (devSnap.exists) {
                 await devRef.delete();

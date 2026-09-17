@@ -220,7 +220,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 // As credenciais e inicialização do Firebase agora vêm de sistema/config_banco.js
+
 const firestore = firebase.firestore();
+
+// --- INICIO MULTI-TENANT ---
+window.getEmpresaRef = function() {
+    const empId = localStorage.getItem('fc_empresa_ativa');
+    if (!empId) {
+        console.error("Nenhuma empresa ativa encontrada no login!");
+        // Fallback temporario para nao quebrar em sessoes antigas
+        return firestore.collection('empresas').doc('emp_fc_moveis');
+    }
+    return firestore.collection('empresas').doc(empId);
+};
+// --- FIM MULTI-TENANT ---
+
 
 // ATIVAR MODO OFFLINE (Apenas em ambiente HTTP/HTTPS com servidor)
 if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
@@ -534,8 +548,8 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
             const sincronizarFirebase = async () => {
                 try {
                     const [confSnap, userSnap] = await Promise.all([
-                        firestore.collection("fc_moveis").doc("config").get().catch(e => { console.error("Erro ao carregar config:", e); return null; }),
-                        firestore.collection("funcionarios").doc(user.uid).get().catch(e => { console.error("Erro de permissões:", e); return null; })
+                        window.getEmpresaRef().collection('configuracoes').doc('config').get().catch(e => { console.error("Erro ao carregar config:", e); return null; }),
+                        window.getEmpresaRef().collection("funcionarios").doc(user.uid).get().catch(e => { console.error("Erro de permissões:", e); return null; })
                     ]);
 
                     if (confSnap && confSnap.exists) {
@@ -550,7 +564,7 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                         };
                         if (typeof window.FCCache !== 'undefined') window.FCCache.set('fc_moveis_config', db.config);
                     } else if (confSnap && !confSnap.exists) {
-                        await firestore.collection("fc_moveis").doc("config").set(db.config).catch(() => {});
+                        await window.getEmpresaRef().collection('configuracoes').doc('config').set(db.config).catch(() => {});
                     }
 
                     if (userSnap && userSnap.exists) {
@@ -565,7 +579,7 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                             window.currentUserInfo.perm_gestao = true;
                             window.currentUserInfo.perm_config = true;
                             
-                            firestore.collection("funcionarios").doc(user.uid).update({
+                            window.getEmpresaRef().collection("funcionarios").doc(user.uid).update({
                                 isAdmin: true,
                                 perm_dashboard: true,
                                 perm_pdv: true,
@@ -593,7 +607,7 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                         }
 
                         try {
-                            await firestore.collection('funcionarios').doc(user.uid).set({
+                            await window.getEmpresaRef().collection('funcionarios').doc(user.uid).set({
                                 nome: window.currentUserInfo.isAdmin ? "Administrador" : "NOVO CADASTRO", 
                                 email: user.email || '', 
                                 isAdmin: window.currentUserInfo.isAdmin,
@@ -806,7 +820,7 @@ document.addEventListener('click', (e) => {
 
 async function salvarKardex(ref, prodId, prodNome, qtd, tipo) {
     try {
-        await firestore.collection('movimentacoes').add({
+        await window.getEmpresaRef().collection('movimentacoes').add({
             data: new Date().toISOString(), ref, prodId, prodNome, qtd, tipo
         });
     } catch (e) {
@@ -1005,10 +1019,10 @@ window.excluirVenda = function(id) {
                     v.itens.forEach(item => { 
                         const p = (window.db.produtos || []).find(prod => String(prod.id) === String(item.id)); 
                         if(p) { 
-                            const pRef = firestore.collection('produtos').doc(String(p.id));
+                            const pRef = window.getEmpresaRef().collection('produtos').doc(String(p.id));
                             batch.update(pRef, { estoque: firebase.firestore.FieldValue.increment(Number(item.qtd || 1)) });
                             
-                            const kardexRef = firestore.collection('movimentacoes').doc();
+                            const kardexRef = window.getEmpresaRef().collection('movimentacoes').doc();
                             batch.set(kardexRef, {
                                 data: new Date().toISOString(),
                                 ref: 'Estorno (Exclusão) ' + (v.tipo || 'Venda') + ' #' + numPedStr,
@@ -1021,7 +1035,7 @@ window.excluirVenda = function(id) {
                     }); 
                 }
                 
-                const finQuery = await firestore.collection('financeiro').where('origemVendaId', '==', String(id)).get();
+                const finQuery = await window.getEmpresaRef().collection('financeiro').where('origemVendaId', '==', String(id)).get();
                 finQuery.docs.forEach(doc => {
                     batch.delete(doc.ref);
                 });
@@ -1049,12 +1063,12 @@ window.excluirVenda = function(id) {
                         valor: valorDinheiroEfetivo 
                     });
                     
-                    const caixaRef = firestore.collection('fc_moveis').doc('caixa');
+                    const caixaRef = window.getEmpresaRef().collection('caixa').doc('caixa_atual');
                     batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
                 }
             }
 
-            const vendaRef = firestore.collection('vendas').doc(String(id));
+            const vendaRef = window.getEmpresaRef().collection('vendas').doc(String(id));
             batch.delete(vendaRef);
 
             await batch.commit();

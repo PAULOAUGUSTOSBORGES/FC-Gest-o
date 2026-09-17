@@ -173,7 +173,7 @@ function enviarWhatsAppMarketing(clienteId, link) {
     
     const hojeStr = formatarDataHoje();
     
-    firestore.collection('clientes').doc(clienteId).set({
+    window.getEmpresaRef().collection('clientes').doc(clienteId).set({
         lembrete_last_sent: hojeStr
     }, { merge: true }).then(() => {
         // Atualiza cache local e força re-render para ver o check "Enviado Hoje"
@@ -231,7 +231,7 @@ async function salvarLembrete() {
     const ativo = document.getElementById('lemb-ativo').checked;
     
     try {
-        await firestore.collection('clientes').doc(id).set({
+        await window.getEmpresaRef().collection('clientes').doc(id).set({
             lembrete_wpp: ativo,
             lembrete_msg: msg
         }, { merge: true });
@@ -248,7 +248,7 @@ async function removerLembrete(id) {
     if (!confirm('Deseja excluir este lembrete? O cliente não será excluído, apenas o lembrete diário será desativado.')) return;
     
     try {
-        await firestore.collection('clientes').doc(id).set({
+        await window.getEmpresaRef().collection('clientes').doc(id).set({
             lembrete_wpp: false,
             lembrete_msg: ''
         }, { merge: true });
@@ -340,7 +340,7 @@ window.gerarMarketingIA = async function() {
 
     try {
         // 1. Busca a chave da API no banco de dados
-        const docSnap = await firestore.collection('fc_moveis').doc('config').get();
+        const docSnap = await window.getEmpresaRef().collection('configuracoes').doc('config').get();
         let apiKey = '';
         if (docSnap.exists) {
             const config = docSnap.data();
@@ -450,7 +450,7 @@ Formate a resposta em HTML limpo. Use <h3> para os títulos das ideias, <p> para
         
         // --- 5. Salva no Banco de Dados para Histórico ---
         try {
-            await firestore.collection('marketing_historico').add({
+            await window.getEmpresaRef().collection('marketing_historico').add({
                 nicho: nicho,
                 objetivo: objetivo,
                 resultado_html: textResult,
@@ -516,7 +516,7 @@ async function carregarHistoricoMarketing() {
         dataLimite.setDate(dataLimite.getDate() - 30); // 30 dias atrás
         
         // Busca todos
-        const snapshot = await firestore.collection('marketing_historico')
+        const snapshot = await window.getEmpresaRef().collection('marketing_historico')
             .orderBy('data_geracao', 'desc')
             .get();
             

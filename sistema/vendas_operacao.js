@@ -346,7 +346,7 @@ async function salvarCliente() {
     };
 
     try {
-        const docRef = await firestore.collection('clientes').add(dados);
+        const docRef = await window.getEmpresaRef().collection('clientes').add(dados);
         fecharModalCliente();
         atualizarListaClientesPDV(docRef.id);
         showToast('Cliente cadastrado e selecionado!', 'success');
@@ -475,7 +475,7 @@ async function salvarProdutoRapido() {
     try {
         if (pId) {
             const p = { nome: nome, preco: preco, ean: ean, marca: marca, custo: custo || 0, estoque: estoque || 0, foto: foto, ncm: ncm, cfop: cfop, csosn: csosn, origem: origem, cest: cest };
-            await firestore.collection('produtos').doc(pId).update(p);
+            await window.getEmpresaRef().collection('produtos').doc(pId).update(p);
             p.id = pId;
             const dbIndex = db.produtos.findIndex(x => String(x.id) === String(pId));
             if (dbIndex >= 0) db.produtos[dbIndex] = { ...db.produtos[dbIndex], ...p };
@@ -495,7 +495,7 @@ async function salvarProdutoRapido() {
                 nome: nome, preco: preco, ean: ean, marca: marca, categoria: 'Geral', unidade: 'Un', custo: custo || 0, margem: 0, estoque: estoque || 0, min: 1, ativo: true, obs: '', foto: foto,
                 ncm: ncm, cfop: cfop, csosn: csosn, origem: origem, cest: cest
             };
-            const docRef = await firestore.collection('produtos').add(p);
+            const docRef = await window.getEmpresaRef().collection('produtos').add(p);
             p.id = docRef.id;
             if(p.estoque > 0) salvarKardex('Estoque Inicial PDV', p.id, p.nome, p.estoque, 'INICIAL'); 
             fecharModalProduto(); 
@@ -1652,17 +1652,17 @@ async function finalizarVendaMultipla() {
     const batch = firestore.batch();
     
     // Preparar Venda
-    const vendaRef = isEdicao ? firestore.collection('vendas').doc(String(vendaId)) : firestore.collection('vendas').doc();
+    const vendaRef = isEdicao ? window.getEmpresaRef().collection('vendas').doc(String(vendaId)) : window.getEmpresaRef().collection('vendas').doc();
     const idFinalVenda = vendaRef.id;
 
     if (!isOrcamento) { 
         cart.forEach(item => { 
             const p = (db.produtos || []).find(x => String(x.id) === String(item.id)); 
             if(p) { 
-                const pRef = firestore.collection('produtos').doc(String(p.id));
+                const pRef = window.getEmpresaRef().collection('produtos').doc(String(p.id));
                 batch.update(pRef, { estoque: (p.estoque || 0) - item.qtd });
                 
-                const kardexRef = firestore.collection('movimentacoes').doc();
+                const kardexRef = window.getEmpresaRef().collection('movimentacoes').doc();
                 batch.set(kardexRef, {
                     data: new Date().toISOString(),
                     ref: `${tipoVenda} #${numPedStr}`,
@@ -1751,7 +1751,7 @@ async function finalizarVendaMultipla() {
                             dataVencParc.setDate(dataVencParc.getDate() + (prazoMetodo * (i - 1))); 
                         }
                         
-                        const finRef = firestore.collection('financeiro').doc();
+                        const finRef = window.getEmpresaRef().collection('financeiro').doc();
                         batch.set(finRef, { ref: ` [/]`, data: dataVencParc.toISOString(), pessoa: cliInfo.nome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas', origemVendaId: idFinalVenda }); 
                     } 
                 } else if (p.metodo && (String(p.metodo).includes('Crédito') || String(p.metodo).includes('Débito'))) { 
@@ -1760,11 +1760,11 @@ async function finalizarVendaMultipla() {
                     dataAmanha.setDate(dataAmanha.getDate() + prazoCartao); 
                     const valParc = valorParaCaixa / (p.parcelas || 1); 
                     for(let i=1; i<=(p.parcelas || 1); i++) { 
-                        const finRef = firestore.collection('financeiro').doc();
+                        const finRef = window.getEmpresaRef().collection('financeiro').doc();
                         batch.set(finRef, { ref: `${pRef} [${i}/${p.parcelas}]`, data: dataAmanha.toISOString(), pessoa: cliInfo.nome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas', metodoPagamento: p.metodo, origemVendaId: idFinalVenda }); 
                     } 
                 } else if (p.metodo === 'Dinheiro' || p.metodo === 'PIX') { 
-                    const finRef = firestore.collection('financeiro').doc();
+                    const finRef = window.getEmpresaRef().collection('financeiro').doc();
                     batch.set(finRef, { ref: pRef, data: dataIso, pessoa: cliInfo.nome, wpp: '', valor: valorParaCaixa, status: 'PAGO', tipo: 'RECEITA', categoria: 'Vendas', metodoPagamento: p.metodo, dataPagamento: dataIso, origemVendaId: idFinalVenda }); 
                     
                     if(p.metodo === 'Dinheiro') { 
@@ -1775,7 +1775,7 @@ async function finalizarVendaMultipla() {
             }
         });
         
-        const caixaRef = firestore.collection('fc_moveis').doc('caixa');
+        const caixaRef = window.getEmpresaRef().collection('caixa').doc('caixa_atual');
         batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
     }
 
@@ -1894,7 +1894,7 @@ async function salvarLembretePDV() {
     }
 
     try {
-        await firestore.collection('fc_moveis').doc('config').set({
+        await window.getEmpresaRef().collection('configuracoes').doc('config').set({
             agenda_eventos: {
                 [newId]: eventoData
             }
@@ -2415,10 +2415,10 @@ window.excluirVenda = function(id) {
                     v.itens.forEach(item => { 
                         const p = (db.produtos || []).find(prod => String(prod.id) === String(item.id)); 
                         if(p) { 
-                            const pRef = firestore.collection('produtos').doc(String(p.id));
+                            const pRef = window.getEmpresaRef().collection('produtos').doc(String(p.id));
                             batch.update(pRef, { estoque: (p.estoque || 0) + Number(item.qtd || 1) });
                             
-                            const kardexRef = firestore.collection('movimentacoes').doc();
+                            const kardexRef = window.getEmpresaRef().collection('movimentacoes').doc();
                             batch.set(kardexRef, {
                                 data: new Date().toISOString(),
                                 ref: `Estorno de Exclusão ${v.tipo || 'VENDA'} #${numPedStr}`,
@@ -2431,7 +2431,7 @@ window.excluirVenda = function(id) {
                     }); 
                 }
                 
-                const finQuery = await firestore.collection('financeiro').where('origemVendaId', '==', String(id)).get();
+                const finQuery = await window.getEmpresaRef().collection('financeiro').where('origemVendaId', '==', String(id)).get();
                 finQuery.docs.forEach(doc => {
                     batch.delete(doc.ref);
                 });
@@ -2442,12 +2442,12 @@ window.excluirVenda = function(id) {
                     let cxSaldoNovo = (cxAtual.saldo || 0) - (Number(v.valorLiquido || v.tot) || 0);
                     cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno (Exclusão) ${v.tipo || 'VENDA'} #${numPedStr}`, valor: (Number(v.valorLiquido || v.tot) || 0) });
                     
-                    const caixaRef = firestore.collection('fc_moveis').doc('caixa');
+                    const caixaRef = window.getEmpresaRef().collection('caixa').doc('caixa_atual');
                     batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
                 }
             }
 
-            const vendaRef = firestore.collection('vendas').doc(String(id));
+            const vendaRef = window.getEmpresaRef().collection('vendas').doc(String(id));
             batch.delete(vendaRef);
             
             await batch.commit(); 

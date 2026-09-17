@@ -1,5 +1,5 @@
 // ==========================================
-// GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÇÕES
+// GESTO.JS - ERP FINANCEIRO, DASHBOARD E PROJEES
 // ==========================================
 
 var acaoConfirmacaoPendente = typeof acaoConfirmacaoPendente !== 'undefined' ? acaoConfirmacaoPendente : null;
@@ -7,8 +7,8 @@ window.tempXMLData = window.tempXMLData || null;
 window.xmlItemEditIndex = window.xmlItemEditIndex || null;
 var compraManualItens = typeof compraManualItens !== 'undefined' ? compraManualItens : []; 
 
-var categoriasPagar = typeof categoriasPagar !== 'undefined' ? categoriasPagar : ['Fornecedores / Compras', 'Impostos (DAS, ICMS, etc)', 'Salários / Folha', 'Aluguel', 'Água', 'Energia', 'Internet / Telefonia', 'Contabilidade', 'Sistema / Software', 'IPTU', 'Outras Despesas'];
-var categoriasReceber = typeof categoriasReceber !== 'undefined' ? categoriasReceber : ['Vendas', 'Serviços', 'Outras Receitas'];
+var categoriasPagar = typeof categoriasPagar !== 'undefined' ? categoriasPagar : ['Fornecedores / Compras', 'Impostos (DAS, ICMS, etc)', 'Salrios / Folha', 'Aluguel', 'gua', 'Energia', 'Internet / Telefonia', 'Contabilidade', 'Sistema / Software', 'IPTU', 'Outras Despesas'];
+var categoriasReceber = typeof categoriasReceber !== 'undefined' ? categoriasReceber : ['Vendas', 'Servios', 'Outras Receitas'];
 
 // Evita o "piscar" da tela carregando as abas instantaneamente antes do Firebase
 document.addEventListener('DOMContentLoaded', () => {
@@ -66,8 +66,8 @@ function refreshCurrentView() {
 // ==========================================
 async function migrarDadosSeNecessario() {
     try {
-        const comprasSnap = await firestore.collection('compras').limit(1).get();
-        const finSnap = await firestore.collection('financeiro').limit(1).get();
+        const comprasSnap = await window.getEmpresaRef().collection('compras').limit(1).get();
+        const finSnap = await window.getEmpresaRef().collection('financeiro').limit(1).get();
         if (!comprasSnap.empty || !finSnap.empty) return;
         
         const bancoPrincipalSnap = await firestore.collection('fc_moveis').doc('banco_principal').get();
@@ -93,8 +93,8 @@ async function migrarDadosSeNecessario() {
             }
         }
         
-        if (dados.caixa) operations.push({ ref: firestore.collection('fc_moveis').doc('caixa'), data: dados.caixa });
-        if (dados.config) operations.push({ ref: firestore.collection('fc_moveis').doc('config'), data: dados.config });
+        if (dados.caixa) operations.push({ ref: window.getEmpresaRef().collection('caixa').doc('caixa_atual'), data: dados.caixa });
+        if (dados.config) operations.push({ ref: window.getEmpresaRef().collection('configuracoes').doc('config'), data: dados.config });
         
         const BATCH_SIZE = 400;
         for (let i = 0; i < operations.length; i += BATCH_SIZE) {
@@ -449,7 +449,7 @@ async function confirmarMovCaixa() {
     }
     
     try {
-        await firestore.collection('fc_moveis').doc('caixa').set({
+        await window.getEmpresaRef().collection('caixa').doc('caixa_atual').set({
             ...cxAtual,
             status: novoStatus,
             saldo: novoSaldo,
@@ -602,7 +602,7 @@ async function confirmarFechamentoCego() {
         });
 
         const batch = firestore.batch();
-        const caixaRef = firestore.collection('fc_moveis').doc('caixa');
+        const caixaRef = window.getEmpresaRef().collection('caixa').doc('caixa_atual');
         batch.set(caixaRef, {
             ...cxAtual,
             status: 'FECHADO',
@@ -753,11 +753,11 @@ async function confirmarTransferenciaCaixa() {
     });
 
     const batch = firestore.batch();
-    const caixaRef = firestore.collection('fc_moveis').doc('caixa');
+    const caixaRef = window.getEmpresaRef().collection('caixa').doc('caixa_atual');
     batch.set(caixaRef, { ...cxAtual, saldo: novoSaldo, historico: cxHistoricoNovo }, { merge: true });
 
     // Registra entrada na conta destino no financeiro
-    const finRef = firestore.collection('financeiro').doc();
+    const finRef = window.getEmpresaRef().collection('financeiro').doc();
     batch.set(finRef, {
         ref: `TRANSF. ENTRADA (${destino})`,
         data: dataIso,
@@ -1428,10 +1428,10 @@ function salvarConta() {
         };
 
         if (isEdicao) {
-            const ref = firestore.collection('financeiro').doc(String(idExistente));
+            const ref = window.getEmpresaRef().collection('financeiro').doc(String(idExistente));
             batch.set(ref, contaObj, { merge: true });
         } else {
-            const ref = firestore.collection('financeiro').doc();
+            const ref = window.getEmpresaRef().collection('financeiro').doc();
             batch.set(ref, contaObj);
             contasGeradas++;
         }
@@ -1456,7 +1456,7 @@ function salvarConta() {
 function excluirTitulo(id) { 
     abrirConfirmacao('Excluir TÃ­tulo', 'Deseja apagar permanentemente?', () => { 
         const tit = db.financeiro.find(f => String(f.id) === String(id)); 
-        firestore.collection('financeiro').doc(String(id)).delete().then(() => {
+        window.getEmpresaRef().collection('financeiro').doc(String(id)).delete().then(() => {
             if(tit) renderFinAbas(tit.tipo === 'RECEITA' ? 'receber' : 'pagar'); 
             showToast('ExcluÃ­do!'); 
         }).catch(e => { console.error(e); showToast('Erro', 'error'); });
@@ -1481,10 +1481,10 @@ async function estornarTitulo(id) {
                 cxSaldoNovo += f.valorPago;
                 cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Estorno: ${f.pessoa}`, valor: f.valorPago });
             }
-            batch.set(firestore.collection('fc_moveis').doc('caixa'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+            batch.set(window.getEmpresaRef().collection('caixa').doc('caixa_atual'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
         }
         
-        const finRef = firestore.collection('financeiro').doc(String(id));
+        const finRef = window.getEmpresaRef().collection('financeiro').doc(String(id));
         batch.update(finRef, { status: 'PENDENTE', dataPagamento: '', metodoPagamento: '', ultimaAlteracao: Date.now() });
         
         try {
@@ -1763,7 +1763,7 @@ async function salvarXMLConferido() {
 
     let forn = db.fornecedores.find(f => f.doc === data.fornCNPJ || f.cnpj === data.fornCNPJ);
     if(!forn) { 
-        const fornRef = firestore.collection('fornecedores').doc();
+        const fornRef = window.getEmpresaRef().collection('fornecedores').doc();
         batch.set(fornRef, { nome: data.fornNome, doc: data.fornCNPJ, cnpj: data.fornCNPJ, ie: '', wpp: '', email: '', contato: '', cep: '', rua: '', numero: '', bairro: '', cidade: '', condicoes: '', produtos: '' });
     }
     
@@ -1773,25 +1773,25 @@ async function salvarXMLConferido() {
         if ((p.statusDB === 'NOVO' || p.statusDB.includes('CADASTRADO')) && !idProd) {
             idProd = String(Date.now() + Math.floor(Math.random() * 1000));
             pDB = { id: idProd, ean: p.cEAN, nome: p.nome, categoria: 'Geral', marca: data.fornNome, custo: p.custoFinal, margem: p.margemAtual, preco: p.precoVendaSug, estoque: p.qCom, min: 5, foto: '', ativo: true };
-            const prodRef = firestore.collection('produtos').doc(idProd);
+            const prodRef = window.getEmpresaRef().collection('produtos').doc(idProd);
             batch.set(prodRef, pDB);
         } else { 
             pDB = db.produtos.find(x => String(x.id) === String(idProd)); 
             if (pDB) { 
                 pDB.estoque += p.qCom; pDB.custo = p.custoFinal; pDB.margem = p.margemAtual; pDB.preco = p.precoVendaSug; pDB.nome = p.nome; pDB.ativo = true;
-                const prodRef = firestore.collection('produtos').doc(String(idProd));
+                const prodRef = window.getEmpresaRef().collection('produtos').doc(String(idProd));
                 batch.update(prodRef, { estoque: pDB.estoque, custo: pDB.custo, margem: pDB.margem, preco: pDB.preco, nome: pDB.nome, ativo: true });
             } 
         }
         p.idMatch = idProd; // Garante a rastreabilidade pro RelatÃ³rio de EvoluÃ§Ã£o
         totalQtd += p.qCom; 
-        const kRef = firestore.collection('movimentacoes').doc();
+        const kRef = window.getEmpresaRef().collection('movimentacoes').doc();
         batch.set(kRef, { data: new Date().toISOString(), ref: `NF-e ${data.numNF} ${data.fornNome}`, produtoId: idProd, produtoNome: p.nome, qtd: p.qCom, tipo: 'ENTRADA XML' });
         
         p.custoUnitOriginal = p.qCom > 0 ? (p.vTotalItemNaNota / p.qCom) : 0;
     });
 
-    const compraRef = firestore.collection('compras').doc();
+    const compraRef = window.getEmpresaRef().collection('compras').doc();
     batch.set(compraRef, { 
         numeroNF: data.numNF, 
         data: new Date().toISOString(), 
@@ -1806,7 +1806,7 @@ async function salvarXMLConferido() {
     
     data.financeiroXML.forEach((f, idx) => {
         if(f.valor > 0) {
-            const finRef = firestore.collection('financeiro').doc();
+            const finRef = window.getEmpresaRef().collection('financeiro').doc();
             batch.set(finRef, { ref: f.desc, data: new Date(f.venc + 'T12:00:00').toISOString(), pessoa: data.fornNome, wpp: '', valor: f.valor, status: 'PENDENTE', tipo: 'DESPESA', categoria: 'Fornecedores / Compras' });
         }
     });
@@ -1976,15 +1976,15 @@ async function salvarCompraManual() {
                         const pDB = db.produtos.find(x => String(x.id) === String(item.idMatch));
                         if (pDB) {
                             pDB.estoque -= item.qCom;
-                            batch.update(firestore.collection('produtos').doc(String(pDB.id)), { estoque: pDB.estoque });
-                            const kRef = firestore.collection('movimentacoes').doc();
+                            batch.update(window.getEmpresaRef().collection('produtos').doc(String(pDB.id)), { estoque: pDB.estoque });
+                            const kRef = window.getEmpresaRef().collection('movimentacoes').doc();
                             batch.set(kRef, { data: new Date().toISOString(), ref: `Estorno EdiÃ§Ã£o Compra ${cAntiga.numeroNF}`, produtoId: pDB.id, produtoNome: pDB.nome, qtd: -item.qCom, tipo: 'ESTORNO COMPRA' });
                         }
                     }
                 });
             }
             try {
-                const snapFin = await firestore.collection('financeiro').where('tipo', '==', 'DESPESA').get();
+                const snapFin = await window.getEmpresaRef().collection('financeiro').where('tipo', '==', 'DESPESA').get();
                 snapFin.docs.forEach(doc => {
                     const finData = doc.data();
                     if (finData.ref && String(finData.ref).includes(cAntiga.numeroNF) && cAntiga.numeroNF !== 'S/N') {
@@ -2012,11 +2012,11 @@ async function salvarCompraManual() {
         
         totalQtd += item.qtd;
         
-        batch.update(firestore.collection('produtos').doc(String(pDB.id)), {
+        batch.update(window.getEmpresaRef().collection('produtos').doc(String(pDB.id)), {
             estoque: pDB.estoque, custo: pDB.custo, preco: pDB.preco
         });
         
-        const kRef = firestore.collection('movimentacoes').doc();
+        const kRef = window.getEmpresaRef().collection('movimentacoes').doc();
         batch.set(kRef, { data: new Date().toISOString(), ref: `Compra Man. ${refPed} (${fornecedorFinal})`, produtoId: pDB.id, produtoNome: pDB.nome, qtd: item.qtd, tipo: 'ENTRADA COMPRA' });
         
         itensRateadosParaSalvar.push({
@@ -2025,19 +2025,19 @@ async function salvarCompraManual() {
     });
 
     const idCompra = isEdicao ? idEdit : Date.now();
-    const compraRef = firestore.collection('compras').doc(String(idCompra));
+    const compraRef = window.getEmpresaRef().collection('compras').doc(String(idCompra));
     batch.set(compraRef, { 
         id: idCompra, numeroNF: refPed, data: new Date(dataCompra + 'T12:00:00').toISOString(), fornecedor: fornecedorFinal, cnpj: '', 
         totalNF: totais.totalGeral, freteExtra: totais.frete, qtdTotal: totalQtd, itens: itensRateadosParaSalvar 
     }, { merge: true });
 
     if(document.getElementById('compra-manual-gerar-financeiro').checked && !isEdicao) {
-        const finRef = firestore.collection('financeiro').doc();
+        const finRef = window.getEmpresaRef().collection('financeiro').doc();
         batch.set(finRef, { ref: `Compra: ${refPed}`, data: new Date(dataCompra + 'T12:00:00').toISOString(), pessoa: fornecedorFinal, valor: totais.totalGeral, status: 'PENDENTE', tipo: 'DESPESA', categoria: 'Fornecedores / Compras' });
     }
 
     if(fornAvulso && !db.fornecedores.find(f => f.nome.toLowerCase() === fornAvulso.toLowerCase())) {
-        const fornRef = firestore.collection('fornecedores').doc();
+        const fornRef = window.getEmpresaRef().collection('fornecedores').doc();
         batch.set(fornRef, { nome: fornAvulso, doc: '', cnpj: '', telefone: '' });
     }
 
@@ -2116,7 +2116,7 @@ function renderComprasHist() {
 
 function excluirNF(id) { 
     abrirConfirmacao('Excluir Nota / Compra', 'AtenÃ§Ã£o: NÃ£o reverte o estoque nem o financeiro.', () => { 
-        firestore.collection('compras').doc(String(id)).delete().then(() => {
+        window.getEmpresaRef().collection('compras').doc(String(id)).delete().then(() => {
             renderComprasHist(); showToast('Compra excluÃ­da!'); 
         }).catch(e => { console.error(e); showToast('Erro ao excluir NF.', 'error'); });
     }); 
