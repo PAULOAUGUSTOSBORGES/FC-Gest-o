@@ -548,6 +548,36 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
             }
         }
 
+        // 3. Verificação de Bloqueio por Inadimplência
+        if (empId && user.email !== 'fabricadecoresgoiania@gmail.com') {
+            try {
+                const empDoc = await firestore.collection('empresas').doc(empId).get();
+                if (empDoc.exists && empDoc.data().status === 'BLOQUEADO') {
+                    sessionStorage.clear();
+                    localStorage.removeItem('fc_empresa_ativa');
+                    alert('O acesso da sua empresa está suspenso temporariamente por pendência financeira. Entre em contato com o suporte.');
+                    await auth.signOut();
+                    window.location.href = 'login.html';
+                    return;
+                }
+            } catch (errBloq) {
+                console.warn("Aviso ao checar bloqueio de empresa:", errBloq);
+            }
+        }
+
+        // Se for o dono geral do SaaS, adiciona o atalho para o Painel Master no menu
+        if (user.email === 'fabricadecoresgoiania@gmail.com') {
+            const sidebarNav = document.querySelector('#sidebar nav');
+            if (sidebarNav && !document.getElementById('btn-menu-saas-master')) {
+                const linkMaster = document.createElement('a');
+                linkMaster.id = 'btn-menu-saas-master';
+                linkMaster.href = 'admin_saas.html';
+                linkMaster.className = 'nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-extrabold transition-all bg-gradient-to-r from-amber-500/20 to-yellow-500/10 text-amber-400 border border-amber-500/30 hover:scale-[1.02] shadow-sm mb-2';
+                linkMaster.innerHTML = '<i class="fa-solid fa-crown text-amber-400 w-5 text-center"></i> Painel SaaS Master';
+                sidebarNav.insertBefore(linkMaster, sidebarNav.firstChild);
+            }
+        }
+
         // Inicia monitor para detectar quando der meia-noite
         iniciarMonitorSessaoDiaria();
 

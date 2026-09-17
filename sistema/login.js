@@ -98,6 +98,25 @@ async function fazerLogin() {
                     return;
                 }
             }
+
+            // Verificar se a empresa está com acesso bloqueado
+            const empAtivaFinal = localStorage.getItem('fc_empresa_ativa');
+            if (empAtivaFinal && cred.user.email !== 'fabricadecoresgoiania@gmail.com') {
+                try {
+                    const empDoc = await firebase.firestore().collection('empresas').doc(empAtivaFinal).get();
+                    if (empDoc.exists && empDoc.data().status === 'BLOQUEADO') {
+                        await firebase.auth().signOut();
+                        localStorage.removeItem('fc_empresa_ativa');
+                        sessionStorage.clear();
+                        window._fazendoLogin = false;
+                        btn.innerText = 'Entrar'; btn.disabled = false;
+                        showToast('O acesso desta empresa está temporariamente bloqueado por pendência financeira. Contate o suporte.', 'error');
+                        return;
+                    }
+                } catch (errCheck) {
+                    console.warn("Falha na checagem de status da empresa:", errCheck);
+                }
+            }
         }
         showToast('Acesso liberado! Entrando...', 'success');
         window.location.href = 'index.html';
