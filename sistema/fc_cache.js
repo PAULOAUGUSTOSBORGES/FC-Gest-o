@@ -552,6 +552,37 @@
                         if (item.operacao === 'delete') {
                             await refDoc.delete();
                         } else {
+                            // Prevenção de conflito de numeração de venda na subida para a nuvem
+                            if (item.colecao === 'vendas' && item.dados && item.dados.numeroPedido) {
+                                try {
+                                    const conflitoSnap = await empRef.collection('vendas')
+                                        .where('numeroPedido', '==', item.dados.numeroPedido)
+                                        .get();
+                                    const outroDoc = conflitoSnap.docs.find(d => d.id !== String(item.docId));
+                                    if (outroDoc) {
+                                        // Conflito detectado! Renumera para o próximo número livre
+                                        const topoSnap = await empRef.collection('vendas').orderBy('numeroPedido', 'desc').limit(1).get();
+                                        const topoNum = topoSnap.empty ? 1 : (Number(topoSnap.docs[0].data().numeroPedido) || 0);
+                                        const novoNum = topoNum + 1;
+                                        const velhoStr = String(item.dados.numeroPedido).padStart(4, '0');
+                                        const novoStr = String(novoNum).padStart(4, '0');
+
+                                        console.warn(`[FCRepo] ⚠️ Conflito de numeração evitado na nuvem: Pedido #${velhoStr} readequado para #${novoNumStr}`);
+
+                                        item.dados.numeroPedido = novoNum;
+                                        if (item.dados.ref) {
+                                            item.dados.ref = item.dados.ref.replace(new RegExp('#' + velhoStr, 'g'), '#' + novoStr);
+                                        }
+                                        if (typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) {
+                                            const vLocal = window.db.vendas.find(x => String(x.id) === String(item.docId));
+                                            if (vLocal) vLocal.numeroPedido = novoNum;
+                                        }
+                                    }
+                                } catch (confErr) {
+                                    console.warn('[FCRepo] Verificação de conflito de numeração ignorada:', confErr);
+                                }
+                            }
+
                             // IDEMPOTÊNCIA TOTAL: .set com { merge: true } garante que o mesmo docId
                             // jamais será duplicado, mesmo que a sincronização seja disparada repetidamente.
                             await refDoc.set(item.dados, { merge: true });
@@ -585,7 +616,21 @@
                             mapa.set(String(doc.id), doc);
                         }
                     });
+
+                    // Preserva mutações pendentes locais que ainda não foram sincronizadas
+                    const filaAtual = await _idbListarFila();
+                    filaAtual.filter(f => f.colecao === col).forEach(function (f) {
+                        if (f.operacao === 'delete') {
+                            mapa.delete(String(f.docId));
+                        } else if (f.dados) {
+                            mapa.set(String(f.docId), Object.assign({ id: f.docId }, f.dados));
+                        }
+                    });
+
                     const deduplicado = Array.from(mapa.values());
+                    if (col === 'vendas') {
+                        deduplicado.sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0));
+                    }
 
                     // Salva nas 3 camadas: Memória, Session e IndexedDB
                     _memoria[col] = deduplicado;
@@ -816,13 +861,116 @@
     };
 
     // ----------------------------------------------------------------------
-    // 7. fcListenCollection — Wrapper Otimizado para Leitura do Repositório
+    // 7. Numeração de Pedido Segura (Prevenção Total de Conflito de Numeração)
     // ----------------------------------------------------------------------
-    /**
-     * Entrega dados INSTANTANEAMENTE do repositório local (< 10ms).
-     * Não abre listeners redundantes de rede a cada navegação de página,
-     * economizando leituras no Firestore e eliminando tempo de espera.
-     */
+    window.obterProximoNumeroPedidoSeguro = async function () {
+        let maxLocal = 0;
+        if (typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) {
+            maxLocal = window.db.vendas.reduce((max, v) => Math.max(max, Number(v.numeroPedido) || 0), 0);
+        }
+        if (Array.isArray(_memoria['vendas'])) {
+            const maxMem = _memoria['vendas'].reduce((max, v) => Math.max(max, Number(v.numeroPedido) || 0), 0);
+            maxLocal = Math.max(maxLocal, maxMem);
+        }
+
+        // Verifica na fila pendente local
+        let maxFila = 0;
+        try {
+            const fila = await _idbListarFila();
+            fila.forEach(item => {
+                if (item.colecao === 'vendas' && item.dados && item.dados.numeroPedido) {
+                    maxFila = Math.max(maxFila, Number(item.dados.numeroPedido) || 0);
+                }
+            });
+        } catch (e) {}
+
+        // Se estiver online, consulta o maior número real no Firestore
+        let maxRemoto = 0;
+        if (navigator.onLine && typeof firestore !== 'undefined') {
+            try {
+                let empRef = (typeof window.getEmpresaRef === 'function') ? window.getEmpresaRef() : firestore.collection('empresas').doc(_obterEmpresaId());
+                const snap = await empRef.collection('vendas').orderBy('numeroPedido', 'desc').limit(1).get();
+                if (!snap.empty) {
+                    maxRemoto = Number(snap.docs[0].data().numeroPedido) || 0;
+                }
+            } catch (err) {
+                console.warn('[FCRepo] Maior número do Firestore indisponível offline:', err);
+            }
+        }
+
+        const proximo = Math.max(maxLocal, maxFila, maxRemoto) + 1;
+        console.log(`[FCRepo] 🔢 Próximo Pedido Calculado: #${proximo} (Local: ${maxLocal}, Fila: ${maxFila}, Nuvem: ${maxRemoto})`);
+        return proximo;
+    };
+    window.FCCache.obterProximoNumeroPedido = window.obterProximoNumeroPedidoSeguro;
+
+    // ----------------------------------------------------------------------
+    // 8. Revalidação e Atualização Remota em Segundo Plano (Stale-While-Revalidate)
+    // ----------------------------------------------------------------------
+    const _ultimaAtualizacaoRemota = {};
+
+    function _buscarAtualizacaoRemota(colecao, opcoes) {
+        if (typeof firestore === 'undefined' || !navigator.onLine) return;
+
+        // Throttle de 2 segundos para evitar rajadas na mesma coleção
+        const agora = Date.now();
+        if (_ultimaAtualizacaoRemota[colecao] && (agora - _ultimaAtualizacaoRemota[colecao]) < 2000) {
+            return;
+        }
+        _ultimaAtualizacaoRemota[colecao] = agora;
+
+        let ref;
+        if (typeof window.getEmpresaRef === 'function') {
+            ref = window.getEmpresaRef().collection(colecao);
+        } else {
+            ref = firestore.collection(colecao);
+        }
+        if (opcoes && typeof opcoes.query === 'function') {
+            ref = opcoes.query(ref);
+        }
+
+        ref.get().then(async function (snap) {
+            const docsRemotos = snap.docs.map(doc => Object.assign({ id: doc.id }, doc.data()));
+
+            // Mescla com itens locais pendentes para NUNCA perder vendas feitas offline
+            const fila = await _idbListarFila();
+            const pendentesDestaCol = fila.filter(item => item.colecao === colecao);
+
+            const mapa = new Map();
+            // 1. Dados remotos da nuvem
+            docsRemotos.forEach(d => { if (d && d.id) mapa.set(String(d.id), d); });
+            // 2. Mescla pendências locais (têm prioridade visual)
+            pendentesDestaCol.forEach(p => {
+                if (p.operacao === 'delete') {
+                    mapa.delete(String(p.docId));
+                } else if (p.dados) {
+                    mapa.set(String(p.docId), Object.assign({ id: p.docId }, p.dados));
+                }
+            });
+
+            const dadosCompletos = Array.from(mapa.values());
+            if (colecao === 'vendas') {
+                dadosCompletos.sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0));
+            }
+
+            _memoria[colecao] = dadosCompletos;
+            _salvarSession(colecao, dadosCompletos);
+            _idbSalvarColecao(colecao, dadosCompletos);
+            if (typeof window.db !== 'undefined') {
+                window.db[colecao] = dadosCompletos;
+                if (colecao === 'produtos') window._produtosCarregados = true;
+            }
+
+            // Notifica listeners com a lista COMPLETA de vendas/produtos
+            _notificarListeners(colecao, dadosCompletos);
+        }).catch(function (err) {
+            console.warn(`[FCRepo] Não foi possível atualizar "${colecao}" da nuvem (modo offline mantido):`, err);
+        });
+    }
+
+    // ----------------------------------------------------------------------
+    // 9. fcListenCollection — Wrapper com Entrega Instantânea e Lista Completa
+    // ----------------------------------------------------------------------
     window.fcListenCollection = function (colecao, callback, opcoes) {
         opcoes = opcoes || {};
 
@@ -844,6 +992,8 @@
             } catch (e) {
                 console.error('[FCRepo] Erro ao servir da memória para "' + colecao + '":', e);
             }
+            // Dispara revalidação em background para sempre garantir que a lista completa venha da nuvem
+            _buscarAtualizacaoRemota(colecao, opcoes);
         } else {
             // 2. Tenta ler do IndexedDB (assíncrono, ~15ms)
             _idbLerColecao(colecao).then(function (dadosIdb) {
@@ -854,32 +1004,9 @@
                     } catch (e) {
                         console.error('[FCRepo] Erro ao servir do IndexedDB para "' + colecao + '":', e);
                     }
-                } else if (typeof firestore !== 'undefined') {
-                    // 3. Primeira vez no dispositivo (repositório vazio): busca do Firebase uma vez para popular
-                    let ref;
-                    if (typeof window.getEmpresaRef === 'function') {
-                        ref = window.getEmpresaRef().collection(colecao);
-                    } else {
-                        ref = firestore.collection(colecao);
-                    }
-                    if (typeof opcoes.query === 'function') {
-                        ref = opcoes.query(ref);
-                    }
-
-                    ref.get().then(function (snap) {
-                        const dados = snap.docs.map(doc => Object.assign({ id: doc.id }, doc.data()));
-                        _memoria[colecao] = dados;
-                        _salvarSession(colecao, dados);
-                        _idbSalvarColecao(colecao, dados);
-                        if (typeof window.db !== 'undefined') {
-                            window.db[colecao] = dados;
-                        }
-                        try {
-                            callback(dados);
-                        } catch (e) {}
-                    }).catch(function (err) {
-                        console.warn('[FCRepo] Falha ao popular primeira carga de "' + colecao + '":', err);
-                    });
+                    _buscarAtualizacaoRemota(colecao, opcoes);
+                } else {
+                    _buscarAtualizacaoRemota(colecao, opcoes);
                 }
             });
         }

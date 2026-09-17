@@ -1527,8 +1527,10 @@ async function finalizarVendaMultipla() {
     const dataIso = (isEdicao && window.vendaEmEdicao && window.vendaEmEdicao.data) ? window.vendaEmEdicao.data : new Date().toISOString();
     
     let numeroPedido = 1;
-    if (isEdicao && window.vendaEmEdicao.numeroPedido) {
+    if (isEdicao && window.vendaEmEdicao && window.vendaEmEdicao.numeroPedido) {
         numeroPedido = window.vendaEmEdicao.numeroPedido;
+    } else if (typeof window.obterProximoNumeroPedidoSeguro === 'function') {
+        numeroPedido = await window.obterProximoNumeroPedidoSeguro();
     } else {
         numeroPedido = (db.vendas || []).length > 0 ? Math.max(...db.vendas.map(v => v.numeroPedido || 0)) + 1 : 1;
     }
@@ -1779,18 +1781,21 @@ async function finalizarVendaMultipla() {
         batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
     }
 
-    // Registra imediatamente no repositório local para carregamento instantâneo e idempotência
+    // Registra imediatamente no repositório local preservando todas as vendas já existentes
+    const vendasExistentes = (window.FCCache && window.FCCache.get('vendas')) || (window.db && window.db.vendas) || [];
+    const mapaVendas = new Map();
+    if (Array.isArray(vendasExistentes)) {
+        vendasExistentes.forEach(v => { if (v && v.id) mapaVendas.set(String(v.id), v); });
+    }
+    mapaVendas.set(String(idFinalVenda), novaVendaObj);
+    const listaCompletaVendas = Array.from(mapaVendas.values());
+    listaCompletaVendas.sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0));
+
     if (typeof window.db !== 'undefined') {
-        if (!Array.isArray(window.db.vendas)) window.db.vendas = [];
-        const idxExistente = window.db.vendas.findIndex(v => String(v.id) === String(idFinalVenda));
-        if (idxExistente >= 0) {
-            window.db.vendas[idxExistente] = novaVendaObj;
-        } else {
-            window.db.vendas.unshift(novaVendaObj);
-        }
+        window.db.vendas = listaCompletaVendas;
     }
     if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
-        window.FCCache.set('vendas', window.db ? window.db.vendas : [novaVendaObj]);
+        window.FCCache.set('vendas', listaCompletaVendas);
         if (typeof window.FCCache.enfileirarOperacao === 'function') {
             window.FCCache.enfileirarOperacao('vendas', idFinalVenda, 'set', novaVendaObj);
         }
