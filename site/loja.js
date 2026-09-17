@@ -1,3 +1,8 @@
+// Roteamento Multi-Tenant da Loja Virtual
+const urlParamsSite = new URLSearchParams(window.location.search);
+const empresaAtivaSite = urlParamsSite.get('loja') || urlParamsSite.get('empresa') || 'emp_fc_moveis';
+window.empresaAtivaSite = empresaAtivaSite;
+
 document.addEventListener('DOMContentLoaded', () => {
     initLoja();
     atualizarIconesTema();
@@ -137,9 +142,18 @@ window.atualizarIconesTema = atualizarIconesTema;
 
 async function initLoja() {
     try {
-        // 1. Carregar Configurações da Loja
-        const configSnap = await firebase.firestore().collection('fc_moveis').doc('config').get();
-        if (configSnap.exists) {
+        // 1. Carregar Configurações da Loja Multi-Tenant
+        let configSnap;
+        if (empresaAtivaSite === 'emp_fc_moveis') {
+            configSnap = await firebase.firestore().collection('empresas').doc('emp_fc_moveis').collection('configuracoes').doc('config').get();
+            if (!configSnap.exists) {
+                configSnap = await firebase.firestore().collection('fc_moveis').doc('config').get();
+            }
+        } else {
+            configSnap = await firebase.firestore().collection('empresas').doc(empresaAtivaSite).collection('configuracoes').doc('config').get();
+        }
+
+        if (configSnap && configSnap.exists) {
             const data = configSnap.data();
             lojaConfig = data.loja || {};
             
@@ -153,7 +167,7 @@ async function initLoja() {
 
             aplicarConfiguracoes(data.empresa);
         } else {
-            console.warn("Configurações não encontradas.");
+            console.warn("Configurações não encontradas para:", empresaAtivaSite);
         }
 
         // 2. Carregar Produtos
@@ -306,9 +320,17 @@ function setupContatos(empresaConfig) {
 
 async function carregarProdutos() {
     try {
-        const snap = await firebase.firestore().collection('produtos').get();
+        let snap;
+        if (empresaAtivaSite === 'emp_fc_moveis') {
+            snap = await firebase.firestore().collection('empresas').doc('emp_fc_moveis').collection('produtos').get();
+            if (snap.empty) {
+                snap = await firebase.firestore().collection('produtos').get();
+            }
+        } else {
+            snap = await firebase.firestore().collection('empresas').doc(empresaAtivaSite).collection('produtos').get();
+        }
+
         produtos = [];
-        
         snap.forEach(doc => {
             const p = doc.data();
             p.id = doc.id;
@@ -411,8 +433,10 @@ function criarCardProduto(p) {
 
     const rotuloCategoria = p.subcategoria && p.subcategoria.trim() !== '' ? p.subcategoria.trim() : (p.categoria || 'Geral');
 
+    const paramLoja = (empresaAtivaSite && empresaAtivaSite !== 'emp_fc_moveis') ? `&loja=${encodeURIComponent(empresaAtivaSite)}` : '';
+
     return `
-    <a href="produto.html?id=${p.id}" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm hover:shadow-xl dark:hover:shadow-slate-950/50 border border-gray-100 dark:border-slate-700/80 overflow-hidden product-card flex flex-col h-full relative group transition-all duration-300 block">
+    <a href="produto.html?id=${p.id}${paramLoja}" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm hover:shadow-xl dark:hover:shadow-slate-950/50 border border-gray-100 dark:border-slate-700/80 overflow-hidden product-card flex flex-col h-full relative group transition-all duration-300 block">
         ${destaqueHtml}
         ${estoqueBadge}
         

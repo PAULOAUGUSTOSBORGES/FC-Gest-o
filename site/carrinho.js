@@ -4,24 +4,33 @@
 
 let carrinho = [];
 
-// Carrega carrinho do LocalStorage
-try {
-    const saved = localStorage.getItem('fc_carrinho');
-    if (saved) {
-        carrinho = JSON.parse(saved);
+function _chaveCarrinho() {
+    const emp = window.empresaAtivaSite || 'emp_fc_moveis';
+    return 'fc_carrinho_' + emp;
+}
+
+function carregarCarrinhoLocal() {
+    try {
+        const saved = localStorage.getItem(_chaveCarrinho());
+        if (saved) {
+            carrinho = JSON.parse(saved);
+        } else {
+            carrinho = [];
+        }
+    } catch (e) {
+        console.error("Erro ao carregar carrinho:", e);
+        carrinho = [];
     }
-} catch (e) {
-    console.error("Erro ao carregar carrinho:", e);
-    carrinho = [];
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    carregarCarrinhoLocal();
     atualizarBadgeCarrinho();
 });
 
 function salvarCarrinho() {
     try {
-        localStorage.setItem('fc_carrinho', JSON.stringify(carrinho));
+        localStorage.setItem(_chaveCarrinho(), JSON.stringify(carrinho));
     } catch (e) {
         console.error("Erro ao salvar carrinho:", e);
     }

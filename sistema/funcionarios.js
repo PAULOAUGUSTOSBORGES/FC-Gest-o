@@ -903,7 +903,20 @@ async function salvarFuncionario() {
             await secApp.auth().signOut();
             
             obj.id = uid;
+            // 1. Salva na gaveta da empresa ativa
             await window.getEmpresaRef().collection('funcionarios').doc(uid).set(obj);
+            
+            // 2. Salva no índice global de usuários para o login identificar a empresa dele
+            const empAtiva = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+            await firestore.collection('usuarios').doc(uid).set({
+                email: email,
+                empresaId: empAtiva,
+                role: obj.isAdmin ? 'admin' : 'operador',
+                nome: obj.nome,
+                criadoPor: firebase.auth().currentUser ? firebase.auth().currentUser.uid : null,
+                dataCriacao: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
             showToast('Funcionário e acesso criados com sucesso!', 'success');
             
         } else {

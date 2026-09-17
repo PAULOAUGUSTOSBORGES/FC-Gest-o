@@ -882,6 +882,32 @@ async function fazerLogout() {
 window.fazerLogout = fazerLogout;
 window.logout = fazerLogout;
 
+// Funções da Loja Virtual Multi-Tenant
+window.gerarLinkLojaVirtual = function() {
+    const empId = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+    const baseUrl = window.location.href.split('/sistema/')[0] + '/site/index.html';
+    return `${baseUrl}?loja=${encodeURIComponent(empId)}`;
+};
+
+window.copiarLinkLojaVirtual = function() {
+    const link = window.gerarLinkLojaVirtual();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link).then(() => {
+            if (typeof showToast === 'function') showToast('Link da sua loja virtual copiado com sucesso!', 'success');
+            else alert('Link copiado: ' + link);
+        }).catch(() => {
+            prompt('Copie o link da sua loja:', link);
+        });
+    } else {
+        prompt('Copie o link da sua loja:', link);
+    }
+};
+
+window.abrirMinhaLojaVirtual = function() {
+    const link = window.gerarLinkLojaVirtual();
+    window.open(link, '_blank');
+};
+
 function toggleMenu() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebar-overlay');

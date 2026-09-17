@@ -233,6 +233,12 @@ function carregarConfiguracoesNaTela() {
     const temaSalvo = localStorage.getItem('fc_theme_sistema') || (db.config && db.config.tema) || 'dark';
     atualizarCardsTemaTela(temaSalvo);
 
+    // Atualiza Link da Loja Virtual Multi-Tenant
+    const elLinkLoja = document.getElementById('link-loja-virtual');
+    if (elLinkLoja && typeof window.gerarLinkLojaVirtual === 'function') {
+        elLinkLoja.value = window.gerarLinkLojaVirtual();
+    }
+
     // Carrega Dados da Empresa
     const emp = db.config.empresa;
     const mapaCampos = [

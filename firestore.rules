@@ -45,11 +45,21 @@ service cloud.firestore {
     // Mapeamento Global de Usuarios (Login)
     // ==========================================
     match /usuarios/{userId} {
-      allow read: if isAutenticado() && (request.auth.uid == userId || request.auth.token.email == 'fabricadecoresgoiania@gmail.com');
-      // Permite o proprio usuario criar seu vinculo no onboarding
-      allow create: if isAutenticado() && request.auth.uid == userId;
-      // Apenas admin geral edita/deleta depois de criado
-      allow update, delete: if isAutenticado() && request.auth.token.email == 'fabricadecoresgoiania@gmail.com';
+      allow read: if isAutenticado() && (
+        request.auth.uid == userId || 
+        request.auth.token.email == 'fabricadecoresgoiania@gmail.com' ||
+        getEmpresaUsuario() == resource.data.empresaId
+      );
+      // Permite o proprio usuario no onboarding OU o admin da empresa cadastrando funcionario
+      allow create: if isAutenticado() && (
+        request.auth.uid == userId ||
+        (getEmpresaUsuario() != null && getEmpresaUsuario() == request.resource.data.empresaId && isAdmin(getEmpresaUsuario()))
+      );
+      // Apenas admin geral ou admin da empresa pode atualizar/deletar seus funcionarios
+      allow update, delete: if isAutenticado() && (
+        request.auth.token.email == 'fabricadecoresgoiania@gmail.com' ||
+        (getEmpresaUsuario() != null && getEmpresaUsuario() == resource.data.empresaId && isAdmin(getEmpresaUsuario()))
+      );
     }
 
     // Função auxiliar para validar criação em lote (onboarding)
