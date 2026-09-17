@@ -5,12 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel do Fundador - SaaS Manager</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css?v=20260917145522">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260917145522">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css?v=20260917150000">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260917150000">
     <style>
         :root { color-scheme: dark; background-color: #0b0f19; }
-        body { background-color: #0b0f19; }
+        body { background-color: #0b0f19; font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(51, 65, 85, 0.8); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(245, 158, 11, 0.6); }
+
+        @media print {
+            body * { visibility: hidden !important; }
+            #area-impressao-contrato, #area-impressao-contrato * { visibility: visible !important; }
+            #area-impressao-contrato {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                padding: 15mm !important;
+                background: #ffffff !important;
+                color: #111827 !important;
+                font-size: 11pt !important;
+                line-height: 1.5 !important;
+            }
+            .no-print { display: none !important; }
+        }
     </style>
 </head>
 <body class="flex h-screen text-slate-100 overflow-hidden bg-[#0b0f19]">
@@ -20,13 +41,13 @@
     <div class="flex w-full h-full relative">
         
         <!-- SIDEBAR MASTER -->
-        <aside class="w-64 bg-[#0f172a] border-r border-slate-800 flex flex-col h-full shrink-0 shadow-2xl z-40">
+        <aside class="w-64 bg-[#0f172a] border-r border-slate-800 flex flex-col h-full shrink-0 shadow-2xl z-40 no-print">
             <div class="p-5 flex items-center gap-3 border-b border-slate-800">
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 flex items-center justify-center text-xl font-bold shadow-lg shadow-amber-500/20">
                     <i class="fa-solid fa-crown"></i>
                 </div>
                 <div>
-                    <h1 class="font-extrabold text-white text-base leading-tight">SaaS Master</h1>
+                    <h1 class="font-extrabold text-white text-base leading-tight tracking-wide">SaaS Master</h1>
                     <p class="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Fundador do Sistema</p>
                 </div>
             </div>
@@ -43,21 +64,25 @@
             </div>
 
             <nav class="flex-1 overflow-y-auto px-3 space-y-1.5 custom-scrollbar">
-                <p class="px-3 text-[10px] font-bold text-slate-400 uppercase mt-2 mb-1">Módulos do Negócio</p>
-                <a href="index.html" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                    <i class="fa-solid fa-chart-pie w-5 text-center"></i> Visão Geral & Lojas
-                </a>
-                <button onclick="abrirModalNovaLoja()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-800 text-slate-300 transition-colors">
-                    <i class="fa-solid fa-plus-circle w-5 text-center text-emerald-400"></i> Cadastrar Nova Loja
-                </button>
+                <p class="px-3 text-[10px] font-bold text-slate-400 uppercase mt-2 mb-1">Módulos de Gestão</p>
                 
-                <p class="px-3 text-[10px] font-bold text-slate-400 uppercase mt-6 mb-1">Atalhos Externos</p>
-                <a href="../sistema/index.html" target="_blank" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-800 text-slate-300 transition-colors">
-                    <i class="fa-solid fa-store w-5 text-center text-blue-400"></i> Abrir Loja FC Móveis
-                </a>
-                <a href="../site/index.html" target="_blank" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-800 text-slate-300 transition-colors">
-                    <i class="fa-solid fa-globe w-5 text-center text-purple-400"></i> Catálogo Público
-                </a>
+                <button id="nav-btn-lojas" onclick="navegarMaster('lojas')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                    <i class="fa-solid fa-chart-pie w-5 text-center"></i> Visão Geral & Lojas
+                </button>
+
+                <button id="nav-btn-planos" onclick="navegarMaster('planos')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-800 text-slate-300 transition-colors">
+                    <i class="fa-solid fa-layer-group w-5 text-center text-blue-400"></i> Gestão de Planos
+                </button>
+
+                <button id="nav-btn-contratos" onclick="navegarMaster('contratos')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-800 text-slate-300 transition-colors">
+                    <i class="fa-solid fa-file-contract w-5 text-center text-purple-400"></i> Contratos & Termos
+                </button>
+
+                <p class="px-3 text-[10px] font-bold text-slate-400 uppercase mt-5 mb-1">Ações do SaaS</p>
+                
+                <button onclick="abrirModalNovaLoja()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 transition-colors">
+                    <i class="fa-solid fa-plus-circle w-5 text-center"></i> Cadastrar Nova Loja
+                </button>
             </nav>
 
             <div class="p-4 border-t border-slate-800">
@@ -69,111 +94,175 @@
 
         <!-- CONTEÚDO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
-            <header class="h-16 border-b border-slate-800/80 bg-[#0f172a]/60 backdrop-blur-md flex items-center justify-between px-6 shrink-0">
+            
+            <!-- HEADER GLOBAL -->
+            <header class="h-16 border-b border-slate-800/80 bg-[#0f172a]/60 backdrop-blur-md flex items-center justify-between px-6 shrink-0 no-print">
                 <div class="flex items-center gap-3">
-                    <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
-                        <i class="fa-solid fa-users-gear text-amber-400"></i> Gestão de Assinaturas & Clientes
+                    <h2 class="text-xl font-extrabold text-white flex items-center gap-2" id="header-titulo-view">
+                        <i class="fa-solid fa-users-gear text-amber-400"></i> Gestão de Assinaturas & Lojas
                     </h2>
                 </div>
-                <div class="flex items-center gap-3">
-                    <button onclick="carregarTodasAsLojasMaster()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border border-slate-700 flex items-center gap-2">
-                        <i class="fa-solid fa-arrows-rotate" id="btn-icon-refresh"></i> Atualizar
-                    </button>
-                    <button onclick="abrirModalNovaLoja()" class="bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-600 hover:to-yellow-500 text-slate-950 px-4 py-2 rounded-xl text-xs font-black transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2">
-                        <i class="fa-solid fa-plus"></i> Nova Loja
-                    </button>
+                <div class="flex items-center gap-3" id="header-acoes-view">
+                    <!-- Ações da View -->
                 </div>
             </header>
 
-            <div class="flex-1 overflow-y-auto p-6 scroll-smooth custom-scrollbar w-full space-y-6">
+            <!-- CONTAINER DE TELAS / VIEWS -->
+            <div class="flex-1 overflow-y-auto p-6 scroll-smooth custom-scrollbar w-full">
                 
-                <!-- CARDS DE METRICAS (KPIs DO SAAS) -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="bg-[#0f172a] p-5 rounded-2xl border border-slate-800 shadow-lg flex items-center justify-between">
-                        <div>
-                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total de Lojas</p>
-                            <h3 class="text-3xl font-black text-white mt-1" id="kpi-total-lojas">0</h3>
-                            <p class="text-[11px] text-slate-400 mt-0.5">Empresas no ecossistema</p>
+                <!-- ==================================================== -->
+                <!-- VIEW 1: VISÃO GERAL & LOJAS                          -->
+                <!-- ==================================================== -->
+                <div id="view-lojas" class="space-y-6">
+                    <!-- CARDS DE METRICAS (KPIs DO SAAS) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="bg-[#0f172a] p-5 rounded-2xl border border-slate-800 shadow-lg flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total de Lojas</p>
+                                <h3 class="text-3xl font-black text-white mt-1" id="kpi-total-lojas">0</h3>
+                                <p class="text-[11px] text-slate-400 mt-0.5">Empresas cadastradas</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center text-xl">
+                                <i class="fa-solid fa-store"></i>
+                            </div>
                         </div>
-                        <div class="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center text-xl">
-                            <i class="fa-solid fa-store"></i>
+
+                        <div class="bg-[#0f172a] p-5 rounded-2xl border border-slate-800 shadow-lg flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Assinaturas Ativas</p>
+                                <h3 class="text-3xl font-black text-emerald-400 mt-1" id="kpi-lojas-ativas">0</h3>
+                                <p class="text-[11px] text-slate-400 mt-0.5">Acesso 100% liberado</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl">
+                                <i class="fa-solid fa-circle-check"></i>
+                            </div>
+                        </div>
+
+                        <div class="bg-[#0f172a] p-5 rounded-2xl border border-slate-800 shadow-lg flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Em Atraso / Pendentes</p>
+                                <h3 class="text-3xl font-black text-red-400 mt-1" id="kpi-lojas-atrasadas">0</h3>
+                                <p class="text-[11px] text-slate-400 mt-0.5">Cobrança necessária</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center text-xl">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                            </div>
+                        </div>
+
+                        <div class="bg-[#0f172a] p-5 rounded-2xl border border-slate-800 shadow-lg flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Faturamento (MRR)</p>
+                                <h3 class="text-3xl font-black text-amber-400 mt-1" id="kpi-faturamento-mrr">R$ 0,00</h3>
+                                <p class="text-[11px] text-slate-400 mt-0.5">Receita mensal recorrente</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-xl">
+                                <i class="fa-solid fa-hand-holding-dollar"></i>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="bg-[#0f172a] p-5 rounded-2xl border border-slate-800 shadow-lg flex items-center justify-between">
-                        <div>
-                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Assinaturas Ativas</p>
-                            <h3 class="text-3xl font-black text-emerald-400 mt-1" id="kpi-lojas-ativas">0</h3>
-                            <p class="text-[11px] text-slate-400 mt-0.5">Acesso 100% liberado</p>
+                    <!-- FILTROS E BUSCA -->
+                    <div class="bg-[#0f172a] p-4 rounded-2xl border border-slate-800 shadow-lg flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                        <div class="relative flex-1">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-500"></i>
+                            <input type="text" id="filtro-busca" oninput="filtrarLojasMaster()" placeholder="Buscar por nome da loja, CNPJ, dono, e-mail ou WhatsApp..." class="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-sm outline-none focus:border-amber-400 text-white font-medium placeholder-slate-500">
                         </div>
-                        <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl">
-                            <i class="fa-solid fa-circle-check"></i>
-                        </div>
-                    </div>
-
-                    <div class="bg-[#0f172a] p-5 rounded-2xl border border-slate-800 shadow-lg flex items-center justify-between">
-                        <div>
-                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Em Atraso / Pendentes</p>
-                            <h3 class="text-3xl font-black text-red-400 mt-1" id="kpi-lojas-atrasadas">0</h3>
-                            <p class="text-[11px] text-slate-400 mt-0.5">Cobrança necessária</p>
-                        </div>
-                        <div class="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center text-xl">
-                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        <div class="flex items-center gap-2">
+                            <select id="filtro-status" onchange="filtrarLojasMaster()" class="bg-slate-900 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-amber-400 text-white font-medium">
+                                <option value="todos">Todos os Status</option>
+                                <option value="ATIVO">🟢 Ativos</option>
+                                <option value="TRIAL">🟡 Em Teste (Trial)</option>
+                                <option value="PENDENTE">🟠 Em Atraso / Pendente</option>
+                                <option value="BLOQUEADO">⛔ Bloqueados</option>
+                            </select>
                         </div>
                     </div>
 
-                    <div class="bg-[#0f172a] p-5 rounded-2xl border border-slate-800 shadow-lg flex items-center justify-between">
-                        <div>
-                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Faturamento (MRR)</p>
-                            <h3 class="text-3xl font-black text-amber-400 mt-1" id="kpi-faturamento-mrr">R$ 0,00</h3>
-                            <p class="text-[11px] text-slate-400 mt-0.5">Receita mensal recorrente</p>
-                        </div>
-                        <div class="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-xl">
-                            <i class="fa-solid fa-hand-holding-dollar"></i>
+                    <!-- TABELA DE LOJAS CADASTRADAS -->
+                    <div class="bg-[#0f172a] rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-900/80 border-b border-slate-800 text-slate-400 text-xs uppercase font-bold tracking-wider">
+                                        <th class="py-3.5 px-4">Loja / Empresa</th>
+                                        <th class="py-3.5 px-4">Dono / Contato</th>
+                                        <th class="py-3.5 px-4">Plano & Valor</th>
+                                        <th class="py-3.5 px-4">Vencimento</th>
+                                        <th class="py-3.5 px-4 text-center">Status</th>
+                                        <th class="py-3.5 px-4 text-right">Ações & Dossiê</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabela-lojas-corpo" class="divide-y divide-slate-800/80 text-sm">
+                                    <tr>
+                                        <td colspan="6" class="text-center py-12 text-slate-400">
+                                            <i class="fa-solid fa-spinner fa-spin text-3xl mb-3 text-amber-400"></i>
+                                            <p class="font-medium">Carregando dados das lojas...</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
 
-                <!-- FILTROS E BUSCA -->
-                <div class="bg-[#0f172a] p-4 rounded-2xl border border-slate-800 shadow-lg flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-                    <div class="relative flex-1">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-500"></i>
-                        <input type="text" id="filtro-busca" oninput="filtrarLojasMaster()" placeholder="Buscar por nome da loja, e-mail do dono ou WhatsApp..." class="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-sm outline-none focus:border-amber-400 text-white font-medium placeholder-slate-500">
+                <!-- ==================================================== -->
+                <!-- VIEW 2: GESTÃO DE PLANOS                             -->
+                <!-- ==================================================== -->
+                <div id="view-planos" class="space-y-6 hidden">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0f172a] p-5 rounded-2xl border border-slate-800 shadow-lg">
+                        <div>
+                            <h3 class="text-lg font-black text-white flex items-center gap-2">
+                                <i class="fa-solid fa-layer-group text-blue-400"></i> Catálogo de Planos do SaaS
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-1">Crie, personalize preços, limites de usuários e módulos inclusos para cada plano ofertado.</p>
+                        </div>
+                        <button onclick="abrirModalPlano()" class="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 transition-all shadow-lg shadow-blue-500/20 shrink-0">
+                            <i class="fa-solid fa-plus"></i> Novo Plano
+                        </button>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <select id="filtro-status" onchange="filtrarLojasMaster()" class="bg-slate-900 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-amber-400 text-white font-medium">
-                            <option value="todos">Todos os Status</option>
-                            <option value="ATIVO">🟢 Ativos</option>
-                            <option value="TRIAL">🟡 Em Teste (Trial)</option>
-                            <option value="PENDENTE">🟠 Em Atraso / Pendente</option>
-                            <option value="BLOQUEADO">⛔ Bloqueados</option>
-                        </select>
+
+                    <!-- GRID DE CARDS DOS PLANOS -->
+                    <div id="grid-planos" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Renderizado via JavaScript -->
                     </div>
                 </div>
 
-                <!-- TABELA DE LOJAS CADASTRADAS -->
-                <div class="bg-[#0f172a] rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-slate-900/80 border-b border-slate-800 text-slate-400 text-xs uppercase font-bold tracking-wider">
-                                    <th class="py-3.5 px-4">Loja / Empresa</th>
-                                    <th class="py-3.5 px-4">Dono / Responsável</th>
-                                    <th class="py-3.5 px-4">Plano & Valor</th>
-                                    <th class="py-3.5 px-4">Vencimento</th>
-                                    <th class="py-3.5 px-4 text-center">Status</th>
-                                    <th class="py-3.5 px-4 text-right">Ações Rápidas</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tabela-lojas-corpo" class="divide-y divide-slate-800/80 text-sm">
-                                <tr>
-                                    <td colspan="6" class="text-center py-12 text-slate-400">
-                                        <i class="fa-solid fa-spinner fa-spin text-3xl mb-3 text-amber-400"></i>
-                                        <p class="font-medium">Carregando dados das lojas...</p>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                <!-- ==================================================== -->
+                <!-- VIEW 3: CONTRATOS & TERMOS                           -->
+                <!-- ==================================================== -->
+                <div id="view-contratos" class="space-y-6 hidden">
+                    <!-- CONTROLES DO CONTRATO -->
+                    <div class="bg-[#0f172a] p-5 rounded-2xl border border-slate-800 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4 no-print">
+                        <div class="flex-1 w-full md:w-auto">
+                            <label class="text-xs font-bold text-slate-300 block mb-1.5 flex items-center gap-1.5">
+                                <i class="fa-solid fa-building text-purple-400"></i> Selecione a Empresa para Gerar o Contrato:
+                            </label>
+                            <select id="contrato-select-empresa" onchange="selecionarEmpresaParaContrato()" class="w-full max-w-md bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-bold text-white outline-none focus:border-purple-400">
+                                <option value="">Selecione uma empresa...</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2.5 w-full md:w-auto justify-end flex-wrap">
+                            <button onclick="copiarTextoContrato()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all border border-slate-700 flex items-center gap-2">
+                                <i class="fa-solid fa-copy"></i> Copiar Texto
+                            </button>
+                            <button onclick="enviarContratoWhatsApp()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-lg shadow-emerald-600/20">
+                                <i class="fa-brands fa-whatsapp text-sm"></i> Enviar no WhatsApp
+                            </button>
+                            <button onclick="imprimirContratoA4()" class="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 shadow-lg shadow-purple-500/20">
+                                <i class="fa-solid fa-print"></i> Imprimir / Salvar PDF
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- FOLHA DO CONTRATO FORMATADA A4 (PREVIEW NA TELA) -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl flex justify-center">
+                        <div id="area-impressao-contrato" class="bg-white text-slate-900 max-w-4xl w-full p-8 md:p-14 rounded-xl shadow-2xl space-y-6 text-sm leading-relaxed" style="font-family: 'Times New Roman', serif;">
+                            <!-- O JavaScript vai renderizar o contrato completo aqui -->
+                            <div class="text-center py-16 text-slate-400">
+                                <i class="fa-solid fa-file-contract text-4xl text-slate-300 mb-3"></i>
+                                <p class="text-base font-sans font-medium text-slate-600">Selecione uma empresa acima para visualizar e gerar o contrato formal de prestação de serviços SaaS.</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -181,82 +270,343 @@
         </main>
     </div>
 
-    <!-- MODAL DE EDIÇÃO DE EMPRESA / ASSINATURA -->
-    <div id="modal-edicao" class="fixed inset-0 bg-slate-950/80 z-50 hidden backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-[#0f172a] rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-700 space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-                <h3 class="font-bold text-lg text-white flex items-center gap-2">
-                    <i class="fa-solid fa-pen-to-square text-amber-400"></i> Gerenciar Assinatura da Loja
-                </h3>
-                <button onclick="fecharModalEdicao()" class="text-slate-400 hover:text-white text-xl"><i class="fa-solid fa-xmark"></i></button>
+    <!-- ==================================================== -->
+    <!-- MODAL DE DOSSIÊ COMPLETO DA EMPRESA                  -->
+    <!-- ==================================================== -->
+    <div id="modal-dossie-empresa" class="fixed inset-0 bg-slate-950/85 z-50 hidden backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto no-print">
+        <div class="bg-[#0f172a] rounded-3xl max-w-4xl w-full p-6 shadow-2xl border border-slate-700 my-auto flex flex-col max-h-[92vh]">
+            
+            <!-- CABEÇALHO DO DOSSIÊ -->
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4 shrink-0">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center text-2xl font-bold">
+                        <i class="fa-solid fa-building-circle-check"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2.5">
+                            <h3 class="font-extrabold text-xl text-white tracking-wide" id="dossie-empresa-titulo">Nome da Empresa</h3>
+                            <span id="dossie-empresa-status-badge" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">ATIVO</span>
+                        </div>
+                        <p class="text-xs text-slate-400 font-mono mt-0.5" id="dossie-empresa-id">ID: loja_0000</p>
+                    </div>
+                </div>
+                <button onclick="fecharModalDossie()" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
             </div>
 
-            <input type="hidden" id="edit-empresa-id">
+            <!-- NAVEGAÇÃO DE ABAS DO DOSSIÊ -->
+            <div class="flex items-center gap-2 border-b border-slate-800 pt-3 pb-2 shrink-0 overflow-x-auto custom-scrollbar">
+                <button onclick="trocarAbaDossie('cadastral')" id="tab-btn-cadastral" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-amber-500 text-slate-950 shadow-sm">
+                    <i class="fa-solid fa-id-card mr-1.5"></i> Dados Cadastrais & Fiscais
+                </button>
+                <button onclick="trocarAbaDossie('assinatura')" id="tab-btn-assinatura" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+                    <i class="fa-solid fa-receipt mr-1.5"></i> Assinatura & Plano
+                </button>
+                <button onclick="trocarAbaDossie('usuarios')" id="tab-btn-usuarios" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+                    <i class="fa-solid fa-users mr-1.5"></i> Usuários / Equipe (<span id="dossie-qtd-usuarios">0</span>)
+                </button>
+                <button onclick="trocarAbaDossie('contrato')" id="tab-btn-contrato" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+                    <i class="fa-solid fa-file-contract mr-1.5"></i> Emitir Contrato
+                </button>
+            </div>
 
-            <div class="space-y-3.5 text-sm">
+            <!-- CONTEÚDO DAS ABAS (COM SCROLL INTERNO) -->
+            <div class="flex-1 overflow-y-auto py-4 custom-scrollbar text-sm space-y-4">
+                
+                <!-- ABA 1: DADOS CADASTRAIS & FISCAIS -->
+                <div id="dossie-aba-cadastral" class="space-y-4">
+                    <form onsubmit="salvarDadosCadastraisEmpresa(event)" class="space-y-4">
+                        <input type="hidden" id="dossie-input-empresa-id">
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="font-bold text-xs text-slate-300 block mb-1">Razão Social *</label>
+                                <input type="text" id="dossie-cad-razao" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-amber-400 text-white">
+                            </div>
+                            <div>
+                                <label class="font-bold text-xs text-slate-300 block mb-1">Nome Fantasia</label>
+                                <input type="text" id="dossie-cad-fantasia" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-amber-400 text-white">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label class="font-bold text-xs text-slate-300 block mb-1">CNPJ / CPF</label>
+                                <input type="text" id="dossie-cad-cnpj" placeholder="00.000.000/0000-00" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-amber-400 text-white">
+                            </div>
+                            <div>
+                                <label class="font-bold text-xs text-slate-300 block mb-1">Inscrição Estadual (IE)</label>
+                                <input type="text" id="dossie-cad-ie" placeholder="ISENTO ou número" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-amber-400 text-white">
+                            </div>
+                            <div>
+                                <label class="font-bold text-xs text-slate-300 block mb-1">Regime Tributário (CRT)</label>
+                                <select id="dossie-cad-crt" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-amber-400 text-white">
+                                    <option value="1">1 - Simples Nacional (MEI / ME)</option>
+                                    <option value="2">2 - Simples - Excesso de Sublimite</option>
+                                    <option value="3">3 - Regime Normal (Lucro Presumido/Real)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="border-t border-slate-800 pt-3">
+                            <p class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2.5">Endereço Completo</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                                <div>
+                                    <label class="font-bold text-[11px] text-slate-400 block mb-1">CEP</label>
+                                    <input type="text" id="dossie-cad-cep" placeholder="00000-000" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-amber-400 text-white">
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <label class="font-bold text-[11px] text-slate-400 block mb-1">Logradouro / Rua</label>
+                                    <input type="text" id="dossie-cad-rua" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-amber-400 text-white">
+                                </div>
+                                <div>
+                                    <label class="font-bold text-[11px] text-slate-400 block mb-1">Número</label>
+                                    <input type="text" id="dossie-cad-numero" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-amber-400 text-white">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+                                <div>
+                                    <label class="font-bold text-[11px] text-slate-400 block mb-1">Bairro</label>
+                                    <input type="text" id="dossie-cad-bairro" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-amber-400 text-white">
+                                </div>
+                                <div>
+                                    <label class="font-bold text-[11px] text-slate-400 block mb-1">Cidade</label>
+                                    <input type="text" id="dossie-cad-cidade" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-amber-400 text-white">
+                                </div>
+                                <div>
+                                    <label class="font-bold text-[11px] text-slate-400 block mb-1">UF (Estado)</label>
+                                    <input type="text" id="dossie-cad-uf" placeholder="GO" maxlength="2" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-bold uppercase outline-none focus:border-amber-400 text-white">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="border-t border-slate-800 pt-3">
+                            <p class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2.5">Contatos Comerciais</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="font-bold text-[11px] text-slate-400 block mb-1">WhatsApp de Cobrança / Notificações</label>
+                                    <input type="text" id="dossie-cad-whatsapp" placeholder="(62) 99999-9999" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-amber-400 text-white">
+                                </div>
+                                <div>
+                                    <label class="font-bold text-[11px] text-slate-400 block mb-1">Telefone Comercial Fixo</label>
+                                    <input type="text" id="dossie-cad-telefone" placeholder="(62) 3333-3333" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-amber-400 text-white">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                            <button type="submit" class="px-5 py-2.5 rounded-xl text-xs font-black bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 hover:from-amber-600 hover:to-yellow-500 transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2">
+                                <i class="fa-solid fa-floppy-disk"></i> Salvar Dados Cadastrais
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- ABA 2: ASSINATURA & PLANO -->
+                <div id="dossie-aba-assinatura" class="space-y-4 hidden">
+                    <form onsubmit="salvarAssinaturaPeloDossie(event)" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="font-bold text-xs text-slate-300 block mb-1">Plano Contratado *</label>
+                                <select id="dossie-ass-plano" onchange="atualizarValorPorPlanoSelecionado(this.value, 'dossie-ass-valor')" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-bold outline-none focus:border-amber-400 text-white">
+                                    <!-- Preenchido dinamicamente com os planos do SaaS -->
+                                </select>
+                            </div>
+                            <div>
+                                <label class="font-bold text-xs text-slate-300 block mb-1">Valor Mensal (R$) *</label>
+                                <input type="number" step="0.01" id="dossie-ass-valor" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-black text-emerald-400 outline-none focus:border-amber-400 text-lg">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="font-bold text-xs text-slate-300 block mb-1">Data de Vencimento</label>
+                                <input type="date" id="dossie-ass-vencimento" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-amber-400 text-white">
+                            </div>
+                            <div>
+                                <label class="font-bold text-xs text-slate-300 block mb-1">Status do Acesso</label>
+                                <select id="dossie-ass-status" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-bold outline-none focus:border-amber-400 text-white">
+                                    <option value="ATIVO">🟢 ATIVO (Acesso Completo Liberado)</option>
+                                    <option value="TRIAL">🟡 TRIAL (Em Período de Avaliação)</option>
+                                    <option value="PENDENTE">🟠 PENDENTE (Em Atraso - Com Aviso)</option>
+                                    <option value="BLOQUEADO">⛔ BLOQUEADO (Acesso Bloqueado para Todos)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="p-4 rounded-xl bg-slate-800/40 border border-slate-700/60 space-y-2 text-xs text-slate-300">
+                            <p class="font-bold text-amber-400"><i class="fa-solid fa-circle-info"></i> Informações do Sistema Master:</p>
+                            <p>• <strong>Chave PIX de Cobrança:</strong> <code class="font-mono bg-slate-900 px-1.5 py-0.5 rounded text-amber-300">pauloaugusto.silvaborges@gmail.com</code></p>
+                            <p>• Ao salvar como <strong>BLOQUEADO</strong>, o dono e todos os colaboradores da loja serão impedidos de efetuar login imediatamente.</p>
+                        </div>
+
+                        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                            <button type="submit" class="px-5 py-2.5 rounded-xl text-xs font-black bg-emerald-500 hover:bg-emerald-600 text-slate-950 transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2">
+                                <i class="fa-solid fa-check"></i> Atualizar Assinatura
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- ABA 3: USUÁRIOS & EQUIPE -->
+                <div id="dossie-aba-usuarios" class="space-y-4 hidden">
+                    <div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-800/60 border-b border-slate-800 text-slate-400 font-bold uppercase">
+                                    <th class="py-2.5 px-3">Nome / Usuário</th>
+                                    <th class="py-2.5 px-3">E-mail de Acesso</th>
+                                    <th class="py-2.5 px-3">Cargo / Perfil</th>
+                                    <th class="py-2.5 px-3 text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dossie-lista-usuarios-corpo" class="divide-y divide-slate-800 text-slate-300">
+                                <tr>
+                                    <td colspan="4" class="py-6 text-center text-slate-500">
+                                        <i class="fa-solid fa-spinner fa-spin text-xl mb-1 text-amber-400"></i>
+                                        <p>Carregando equipe da empresa...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ABA 4: EMISSÃO DIRETA DE CONTRATO -->
+                <div id="dossie-aba-contrato" class="space-y-4 hidden">
+                    <div class="p-5 bg-purple-500/10 border border-purple-500/20 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div>
+                            <h4 class="font-bold text-white text-base flex items-center gap-2">
+                                <i class="fa-solid fa-file-contract text-purple-400"></i> Contrato de Licença de Uso SaaS
+                            </h4>
+                            <p class="text-xs text-slate-400 mt-1">Emita e imprima em formato formal A4 ou envie diretamente no WhatsApp com os dados desta empresa preenchidos.</p>
+                        </div>
+                        <button onclick="irParaContratosDaEmpresa()" class="px-5 py-2.5 rounded-xl text-xs font-black bg-purple-600 hover:bg-purple-500 text-white flex items-center gap-2 transition-all shadow-lg shadow-purple-600/20 shrink-0">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir Contrato da Empresa
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================================================== -->
+    <!-- MODAL DE CRIAÇÃO / EDIÇÃO DE PLANO SAAS              -->
+    <!-- ==================================================== -->
+    <div id="modal-plano" class="fixed inset-0 bg-slate-950/80 z-50 hidden backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto no-print">
+        <div class="bg-[#0f172a] rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-700 space-y-4 my-auto">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="font-bold text-lg text-white flex items-center gap-2" id="modal-plano-titulo">
+                    <i class="fa-solid fa-layer-group text-blue-400"></i> Cadastrar Novo Plano
+                </h3>
+                <button onclick="fecharModalPlano()" class="text-slate-400 hover:text-white text-xl"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form onsubmit="salvarPlanoMaster(event)" class="space-y-3.5 text-sm">
+                <input type="hidden" id="plano-form-id">
+
                 <div>
-                    <label class="font-bold text-xs text-slate-300 block mb-1">Nome da Loja</label>
-                    <input type="text" id="edit-nome-empresa" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-amber-400 text-white">
+                    <label class="font-bold text-xs text-slate-300 block mb-1">Nome do Plano *</label>
+                    <input type="text" id="plano-form-nome" required placeholder="Ex: Profissional (Gestão Completa)" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-bold outline-none focus:border-blue-400 text-white">
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="font-bold text-xs text-slate-300 block mb-1">WhatsApp de Cobrança</label>
-                        <input type="text" id="edit-whatsapp" placeholder="(62) 99999-9999" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-amber-400 text-white">
+                        <label class="font-bold text-xs text-slate-300 block mb-1">Preço Mensal (R$) *</label>
+                        <input type="number" step="0.01" id="plano-form-preco" required placeholder="99.00" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-black text-emerald-400 outline-none focus:border-blue-400">
                     </div>
                     <div>
-                        <label class="font-bold text-xs text-slate-300 block mb-1">Plano</label>
-                        <select id="edit-plano" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-amber-400 text-white">
-                            <option value="FREE">Gratuito / Teste</option>
-                            <option value="BASICO">Básico (R$ 59)</option>
-                            <option value="PRO">Profissional (R$ 99)</option>
-                            <option value="ILIMITADO">Ilimitado (R$ 149)</option>
+                        <label class="font-bold text-xs text-slate-300 block mb-1">Ciclo de Cobrança</label>
+                        <select id="plano-form-ciclo" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-blue-400 text-white">
+                            <option value="mensal">Mensal</option>
+                            <option value="trimestral">Trimestral</option>
+                            <option value="semestral">Semestral</option>
+                            <option value="anual">Anual</option>
                         </select>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="font-bold text-xs text-slate-300 block mb-1">Valor Mensal (R$)</label>
-                        <input type="number" step="0.01" id="edit-valor" placeholder="99.00" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-extrabold text-emerald-400 outline-none focus:border-amber-400">
+                        <label class="font-bold text-xs text-slate-300 block mb-1">Limite de Usuários</label>
+                        <input type="text" id="plano-form-usuarios" placeholder="Ex: 3 ou Ilimitado" value="5 Usuários" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-blue-400 text-white">
                     </div>
                     <div>
-                        <label class="font-bold text-xs text-slate-300 block mb-1">Data de Vencimento</label>
-                        <input type="date" id="edit-vencimento" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-amber-400 text-white">
+                        <label class="font-bold text-xs text-slate-300 block mb-1">Limite de Produtos</label>
+                        <input type="text" id="plano-form-produtos" placeholder="Ex: 1000 ou Ilimitado" value="Ilimitado" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-blue-400 text-white">
                     </div>
                 </div>
 
                 <div>
-                    <label class="font-bold text-xs text-slate-300 block mb-1">Status da Assinatura</label>
-                    <select id="edit-status" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-bold outline-none focus:border-amber-400 text-white">
-                        <option value="ATIVO">🟢 ATIVO (Acesso Liberado)</option>
-                        <option value="TRIAL">🟡 TRIAL (Período de Teste)</option>
-                        <option value="PENDENTE">🟠 PENDENTE (Em Atraso - Com Aviso)</option>
-                        <option value="BLOQUEADO">⛔ BLOQUEADO (Acesso Travado)</option>
-                    </select>
+                    <label class="font-bold text-xs text-slate-300 block mb-1">Breve Descrição do Público</label>
+                    <input type="text" id="plano-form-desc" placeholder="Ex: Ideal para lojas em crescimento e comércio em geral" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-blue-400 text-white text-xs">
                 </div>
-            </div>
 
-            <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-                <button type="button" onclick="fecharModalEdicao()" class="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-white transition-colors">Cancelar</button>
-                <button type="button" onclick="salvarEdicaoEmpresaMaster()" class="px-5 py-2.5 rounded-xl text-sm font-extrabold bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 hover:from-amber-600 hover:to-yellow-500 transition-all shadow-lg shadow-amber-500/20">Salvar Alterações</button>
-            </div>
+                <div>
+                    <label class="font-bold text-xs text-slate-300 block mb-2">Módulos Inclusos no Plano:</label>
+                    <div class="grid grid-cols-2 gap-2 text-xs text-slate-300">
+                        <label class="flex items-center gap-2 p-2 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" id="mod-pdv" class="rounded accent-blue-500" checked> Frente de Caixa (PDV)
+                        </label>
+                        <label class="flex items-center gap-2 p-2 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" id="mod-vendas" class="rounded accent-blue-500" checked> Vendas & Orçamentos
+                        </label>
+                        <label class="flex items-center gap-2 p-2 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" id="mod-fiscal" class="rounded accent-blue-500" checked> Emissor NF-e & NFC-e
+                        </label>
+                        <label class="flex items-center gap-2 p-2 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" id="mod-estoque" class="rounded accent-blue-500" checked> Controle de Estoque
+                        </label>
+                        <label class="flex items-center gap-2 p-2 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" id="mod-financeiro" class="rounded accent-blue-500" checked> Financeiro & Fluxo Caixa
+                        </label>
+                        <label class="flex items-center gap-2 p-2 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" id="mod-site" class="rounded accent-blue-500" checked> Catálogo / Loja Online
+                        </label>
+                        <label class="flex items-center gap-2 p-2 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" id="mod-ia" class="rounded accent-blue-500" checked> Relatórios IA Gemini
+                        </label>
+                        <label class="flex items-center gap-2 p-2 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" id="mod-suporte" class="rounded accent-blue-500" checked> Suporte WhatsApp VIP
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-2">
+                    <label class="flex items-center gap-2 text-xs font-bold text-amber-400 cursor-pointer">
+                        <input type="checkbox" id="plano-form-destaque" class="rounded accent-amber-500"> Destacar como "Mais Popular"
+                    </label>
+                    <label class="flex items-center gap-2 text-xs font-bold text-emerald-400 cursor-pointer">
+                        <input type="checkbox" id="plano-form-ativo" class="rounded accent-emerald-500" checked> Plano Ativo
+                    </label>
+                </div>
+
+                <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                    <button type="button" onclick="fecharModalPlano()" class="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-white transition-colors">Cancelar</button>
+                    <button type="submit" id="btn-salvar-plano" class="px-5 py-2.5 rounded-xl text-sm font-black bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-lg shadow-blue-500/20">Salvar Plano</button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- MODAL DE CADASTRO MANUAL DE NOVA LOJA -->
-    <div id="modal-nova-loja" class="fixed inset-0 bg-slate-950/80 z-50 hidden backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-[#0f172a] rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-700 space-y-4">
+    <!-- ==================================================== -->
+    <!-- MODAL DE CADASTRO MANUAL DE NOVA LOJA                -->
+    <!-- ==================================================== -->
+    <div id="modal-nova-loja" class="fixed inset-0 bg-slate-950/80 z-50 hidden backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto no-print">
+        <div class="bg-[#0f172a] rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-700 space-y-4 my-auto">
             <div class="flex items-center justify-between border-b border-slate-800 pb-3">
                 <h3 class="font-bold text-lg text-white flex items-center gap-2">
-                    <i class="fa-solid fa-store text-emerald-400"></i> Cadastrar Nova Loja Manualmente
+                    <i class="fa-solid fa-store text-emerald-400"></i> Cadastrar Nova Loja
                 </h3>
                 <button onclick="fecharModalNovaLoja()" class="text-slate-400 hover:text-white text-xl"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
             <form onsubmit="cadastrarLojaManual(event)" class="space-y-3.5 text-sm">
                 <div>
-                    <label class="font-bold text-xs text-slate-300 block mb-1">Nome da Loja *</label>
+                    <label class="font-bold text-xs text-slate-300 block mb-1">Nome da Loja / Razão Social *</label>
                     <input type="text" id="nova-loja-nome" required placeholder="Ex: Móveis São Paulo" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-amber-400 text-white">
                 </div>
 
@@ -273,12 +623,25 @@
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="font-bold text-xs text-slate-300 block mb-1">WhatsApp</label>
+                        <label class="font-bold text-xs text-slate-300 block mb-1">WhatsApp de Contato</label>
                         <input type="text" id="nova-loja-whatsapp" placeholder="(62) 99999-9999" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-amber-400 text-white">
                     </div>
                     <div>
+                        <label class="font-bold text-xs text-slate-300 block mb-1">Plano Inicial</label>
+                        <select id="nova-loja-plano" onchange="atualizarValorPorPlanoSelecionado(this.value, 'nova-loja-valor')" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-bold outline-none focus:border-amber-400 text-white">
+                            <!-- Preenchido dinamicamente com os planos -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
                         <label class="font-bold text-xs text-slate-300 block mb-1">Valor Mensalidade (R$)</label>
                         <input type="number" step="0.01" id="nova-loja-valor" value="99.00" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-bold text-emerald-400 outline-none focus:border-amber-400">
+                    </div>
+                    <div>
+                        <label class="font-bold text-xs text-slate-300 block mb-1">CNPJ (Opcional)</label>
+                        <input type="text" id="nova-loja-cnpj" placeholder="00.000.000/0000-00" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 font-medium outline-none focus:border-amber-400 text-white">
                     </div>
                 </div>
 
@@ -295,7 +658,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     
-    <script src="../sistema/config_banco.js?v=20260917145522"></script>
-    <script src="master.js?v=20260917145522"></script>
+    <script src="../sistema/config_banco.js?v=20260917150000"></script>
+    <script src="master.js?v=20260917150000"></script>
 </body>
 </html>

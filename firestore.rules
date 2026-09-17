@@ -91,8 +91,8 @@ service cloud.firestore {
       // ==========================================
       match /configuracoes/{docId} {
         allow read: if true;
-        allow write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_config') || temPermissao(empresaId, 'perm_gestao'));
-        allow create: if isDonoNoOnboarding(empresaId); // Permite no batch de criacao
+        allow write: if (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_config') || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
+        allow create: if isDonoNoOnboarding(empresaId) || isSuperAdmin(); // Permite no batch de criacao
       }
 
       match /caixa/{docId} {
@@ -143,8 +143,9 @@ service cloud.firestore {
       }
 
       match /pedidos_site/{pedidoId} {
+        allow read: if (getEmpresaUsuario() == empresaId && isAutenticado()) || isSuperAdmin();
         allow create: if true; // Pedidos podem vir anonimamente da vitrine
-        allow read, update, delete: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
+        allow update, delete: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
       }
 
       match /financeiro/{finId} {
@@ -175,10 +176,10 @@ service cloud.firestore {
       // 5. Funcionarios / RH da Empresa
       // ==========================================
       match /funcionarios/{userId} {
-        allow read: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || request.auth.uid == userId);
+        allow read: if (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || request.auth.uid == userId)) || isSuperAdmin();
         // Regra para auto-cadastro simplificada para o tenant default durante a migracao, ou para o dono no onboarding
-        allow create: if getEmpresaUsuario() == empresaId || isDonoNoOnboarding(empresaId) || (empresaId == 'emp_fc_moveis' && isAutenticado());
-        allow update, delete: if getEmpresaUsuario() == empresaId && isAdmin(empresaId);
+        allow create: if getEmpresaUsuario() == empresaId || isDonoNoOnboarding(empresaId) || (empresaId == 'emp_fc_moveis' && isAutenticado()) || isSuperAdmin();
+        allow update, delete: if (getEmpresaUsuario() == empresaId && isAdmin(empresaId)) || isSuperAdmin();
       }
 
       match /marketing_historico/{docId} {
@@ -193,6 +194,18 @@ service cloud.firestore {
       match /{document=**} {
         allow read, write: if getEmpresaUsuario() == empresaId && isAdmin(empresaId);
       }
+    }
+
+    // ==========================================
+    // Gestão de Planos e Contratos do SaaS Master
+    // ==========================================
+    match /planos_saas/{planoId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    match /contratos_saas/{contratoId} {
+      allow read, write: if isSuperAdmin();
     }
 
     // Regras antigas mantidas TEMPORARIAMENTE apenas para o script de migracao poder rodar e nao quebrar na hora

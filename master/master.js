@@ -1,7 +1,8 @@
-// ==========================================
-// MASTER.JS - Lógica Exclusiva do Portal do Fundador SaaS
+// ==========================================================================
+// MASTER.JS - Painel do Fundador SaaS (Sistema Master Independente)
+// Gestão de Lojas, Dossiê Completo, Catálogo de Planos e Emissor de Contratos
 // Fundador: pauloaugusto.silvaborges@gmail.com
-// ==========================================
+// ==========================================================================
 
 const EMAILS_MASTER = [
     'pauloaugusto.silvaborges@gmail.com',
@@ -9,10 +10,15 @@ const EMAILS_MASTER = [
 ];
 
 let listaLojas = [];
+let listaPlanos = [];
 let buscaAtual = '';
 let filtroStatusAtual = 'todos';
+let viewAtual = 'lojas';
+let lojaDossieAtual = null;
 
-// Toast do Portal Master
+// ==========================================
+// TOAST NOTIFICATIONS
+// ==========================================
 function showToast(msg, tipo = 'info') {
     const container = document.getElementById('toast-container');
     if (!container) return;
@@ -30,7 +36,7 @@ function showToast(msg, tipo = 'info') {
         info: 'fa-circle-info'
     };
 
-    toast.className = `flex items-center gap-2.5 px-4 py-3 rounded-xl border shadow-xl text-xs font-bold transition-all transform duration-300 translate-y-2 opacity-0 ${cores[tipo] || cores.info}`;
+    toast.className = `flex items-center gap-2.5 px-4 py-3 rounded-xl border shadow-2xl text-xs font-bold transition-all transform duration-300 translate-y-2 opacity-0 ${cores[tipo] || cores.info}`;
     toast.innerHTML = `<i class="fa-solid ${icones[tipo] || icones.info} text-sm"></i> <span>${msg}</span>`;
 
     container.appendChild(toast);
@@ -40,8 +46,11 @@ function showToast(msg, tipo = 'info') {
         setTimeout(() => toast.remove(), 300);
     }, 4000);
 }
+window.showToast = showToast;
 
-// Inicialização e Verificação de Sessão
+// ==========================================
+// INICIALIZAÇÃO E SESSÃO DO FUNDADOR
+// ==========================================
 window.addEventListener('load', () => {
     const isLoginPage = window.location.pathname.includes('login.html');
 
@@ -63,23 +72,25 @@ window.addEventListener('load', () => {
             return;
         }
 
-        // Se estiver no login e já for master, entra no painel
         if (isLoginPage) {
             window.location.href = 'index.html';
             return;
         }
 
-        // Exibe nome e email no painel
+        // Exibe nome e e-mail
         const elNome = document.getElementById('master-nome-display');
         const elEmail = document.getElementById('master-email-display');
         if (elNome) elNome.innerText = user.displayName || 'Paulo Augusto';
         if (elEmail) elEmail.innerText = email;
 
+        // Carrega dados iniciais do SaaS
+        await carregarPlanosMaster();
         await carregarTodasAsLojasMaster();
+        navegarMaster('lojas');
     });
 });
 
-// Ação de Login no Portal
+// Ação de Login
 async function fazerLoginMaster(e) {
     if (e) e.preventDefault();
 
@@ -97,7 +108,7 @@ async function fazerLoginMaster(e) {
         btn.disabled = true;
 
         await firebase.auth().signInWithEmailAndPassword(email, pass);
-        showToast('Login autorizado! Entrando...', 'success');
+        showToast('Login autorizado! Entrando no portal...', 'success');
         setTimeout(() => { window.location.href = 'index.html'; }, 800);
 
     } catch (err) {
@@ -122,7 +133,74 @@ async function fazerLogoutMaster() {
 }
 window.fazerLogoutMaster = fazerLogoutMaster;
 
-// Carregar Lojas do Banco
+// ==========================================
+// NAVEGAÇÃO ENTRE MÓDULOS (SPA MASTER)
+// ==========================================
+function navegarMaster(view) {
+    viewAtual = view;
+
+    const views = ['lojas', 'planos', 'contratos'];
+    views.forEach(v => {
+        const elView = document.getElementById(`view-${v}`);
+        const elBtn = document.getElementById(`nav-btn-${v}`);
+        if (elView) elView.classList.add('hidden');
+        if (elBtn) {
+            elBtn.className = 'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-800 text-slate-300 transition-colors';
+        }
+    });
+
+    const activeView = document.getElementById(`view-${view}`);
+    const activeBtn = document.getElementById(`nav-btn-${view}`);
+    if (activeView) activeView.classList.remove('hidden');
+    if (activeBtn) {
+        activeBtn.className = 'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all bg-amber-500/15 text-amber-400 border border-amber-500/30';
+    }
+
+    // Atualiza cabeçalho
+    const elTitulo = document.getElementById('header-titulo-view');
+    const elAcoes = document.getElementById('header-acoes-view');
+
+    if (view === 'lojas') {
+        if (elTitulo) elTitulo.innerHTML = '<i class="fa-solid fa-chart-pie text-amber-400"></i> Gestão de Lojas & Assinaturas';
+        if (elAcoes) {
+            elAcoes.innerHTML = `
+                <button onclick="carregarTodasAsLojasMaster()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border border-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-arrows-rotate" id="btn-icon-refresh"></i> Atualizar
+                </button>
+                <button onclick="abrirModalNovaLoja()" class="bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-600 hover:to-yellow-500 text-slate-950 px-4 py-2 rounded-xl text-xs font-black transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i> Nova Loja
+                </button>
+            `;
+        }
+    } else if (view === 'planos') {
+        if (elTitulo) elTitulo.innerHTML = '<i class="fa-solid fa-layer-group text-blue-400"></i> Catálogo de Planos do SaaS';
+        if (elAcoes) {
+            elAcoes.innerHTML = `
+                <button onclick="carregarPlanosMaster()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border border-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-arrows-rotate"></i> Atualizar
+                </button>
+                <button onclick="abrirModalPlano()" class="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-black transition-all shadow-lg shadow-blue-500/20 flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i> Novo Plano
+                </button>
+            `;
+        }
+    } else if (view === 'contratos') {
+        if (elTitulo) elTitulo.innerHTML = '<i class="fa-solid fa-file-contract text-purple-400"></i> Emissor de Contratos SaaS (A4)';
+        if (elAcoes) {
+            elAcoes.innerHTML = `
+                <button onclick="imprimirContratoA4()" class="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-xs font-black transition-all shadow-lg shadow-purple-600/20 flex items-center gap-2">
+                    <i class="fa-solid fa-print"></i> Imprimir / PDF
+                </button>
+            `;
+        }
+        popularSelectEmpresasContrato();
+    }
+}
+window.navegarMaster = navegarMaster;
+
+// ==========================================
+// MÓDULO 1: GESTÃO DE LOJAS & ASSINATURAS
+// ==========================================
 async function carregarTodasAsLojasMaster() {
     const corpo = document.getElementById('tabela-lojas-corpo');
     if (!corpo) return;
@@ -136,7 +214,17 @@ async function carregarTodasAsLojasMaster() {
             const data = doc.data();
             data.id = doc.id;
 
-            // Busca dados do dono
+            // Busca dados cadastrais da empresa
+            let configEmpresa = {};
+            try {
+                const cfgDoc = await firebase.firestore().collection('empresas').doc(doc.id).collection('configuracoes').doc('config').get();
+                if (cfgDoc.exists && cfgDoc.data().empresa) {
+                    configEmpresa = cfgDoc.data().empresa;
+                }
+            } catch(e) {}
+            data.configEmpresa = configEmpresa;
+
+            // Busca dados do responsável / dono
             let donoInfo = { nome: 'Não informado', email: 'Não informado', telefone: '' };
             if (data.donoUid) {
                 try {
@@ -146,7 +234,7 @@ async function carregarTodasAsLojasMaster() {
             }
             data.donoInfo = donoInfo;
 
-            // Se não tiver data de vencimento, define 30 dias após a criação
+            // Validação de Vencimento e Valores
             if (!data.dataVencimento) {
                 const base = data.dataCriacao && data.dataCriacao.toDate ? data.dataCriacao.toDate() : new Date();
                 const v = new Date(base);
@@ -158,8 +246,8 @@ async function carregarTodasAsLojasMaster() {
                 data.valorMensalidade = 99.00;
             }
 
-            if (!data.whatsapp && donoInfo.telefone) {
-                data.whatsapp = donoInfo.telefone;
+            if (!data.whatsapp) {
+                data.whatsapp = configEmpresa.telefone || donoInfo.telefone || '';
             }
 
             return data;
@@ -168,6 +256,7 @@ async function carregarTodasAsLojasMaster() {
         listaLojas = await Promise.all(promessas);
         atualizarKPIsMaster();
         renderizarTabelaLojasMaster();
+        popularSelectEmpresasContrato();
 
     } catch (err) {
         console.error("Erro ao listar lojas:", err);
@@ -239,11 +328,13 @@ function renderizarTabelaLojasMaster() {
 
     const filtradas = listaLojas.filter(l => {
         const nome = (l.nomeEmpresa || l.nome || '').toLowerCase();
+        const razao = (l.configEmpresa?.nome || '').toLowerCase();
+        const cnpj = (l.configEmpresa?.cnpj || l.cnpj || '').toLowerCase();
         const dono = (l.donoInfo?.nome || '').toLowerCase();
         const email = (l.donoInfo?.email || '').toLowerCase();
         const wpp = String(l.whatsapp || '').replace(/\D/g, '');
 
-        const matchBusca = !buscaAtual || nome.includes(buscaAtual) || dono.includes(buscaAtual) || email.includes(buscaAtual) || wpp.includes(buscaAtual);
+        const matchBusca = !buscaAtual || nome.includes(buscaAtual) || razao.includes(buscaAtual) || cnpj.includes(buscaAtual) || dono.includes(buscaAtual) || email.includes(buscaAtual) || wpp.includes(buscaAtual);
         const status = l.status || 'ATIVO';
         const matchStatus = filtroStatusAtual === 'todos' || status === filtroStatusAtual;
 
@@ -264,6 +355,8 @@ function renderizarTabelaLojasMaster() {
 
     corpo.innerHTML = filtradas.map(loja => {
         const nome = loja.nomeEmpresa || loja.nome || 'Loja Sem Nome';
+        const razao = loja.configEmpresa?.nome || '';
+        const cnpj = loja.configEmpresa?.cnpj || loja.cnpj || '';
         const donoNome = loja.donoInfo?.nome || 'Administrador';
         const donoEmail = loja.donoInfo?.email || 'Sem e-mail';
         const wpp = loja.whatsapp || '';
@@ -302,7 +395,8 @@ function renderizarTabelaLojasMaster() {
             <tr class="hover:bg-slate-800/40 transition-colors">
                 <td class="py-4 px-4">
                     <div class="font-extrabold text-white text-base">${nome}</div>
-                    <div class="text-xs text-slate-500 font-mono">ID: ${loja.id}</div>
+                    ${razao && razao !== nome ? `<div class="text-xs text-slate-400 truncate max-w-xs">${razao}</div>` : ''}
+                    <div class="text-[11px] text-slate-500 font-mono mt-0.5">${cnpj ? 'CNPJ: ' + cnpj : 'ID: ' + loja.id}</div>
                 </td>
                 <td class="py-4 px-4">
                     <div class="font-semibold text-slate-200">${donoNome}</div>
@@ -321,12 +415,15 @@ function renderizarTabelaLojasMaster() {
                     ${badgeStatus}
                 </td>
                 <td class="py-4 px-4 text-right">
-                    <div class="flex items-center justify-end gap-2">
+                    <div class="flex items-center justify-end gap-1.5">
+                        <button onclick="abrirDossieEmpresa('${loja.id}')" title="Dossiê / Ficha Completa da Empresa" class="w-8 h-8 rounded-xl bg-amber-500/15 hover:bg-amber-500/30 text-amber-400 flex items-center justify-center transition-all border border-amber-500/20">
+                            <i class="fa-solid fa-id-card text-sm"></i>
+                        </button>
+                        <button onclick="gerarContratoParaLoja('${loja.id}')" title="Emitir Contrato SaaS" class="w-8 h-8 rounded-xl bg-purple-500/15 hover:bg-purple-500/30 text-purple-400 flex items-center justify-center transition-all border border-purple-500/20">
+                            <i class="fa-solid fa-file-contract text-sm"></i>
+                        </button>
                         <button onclick="enviarCobrancaWhatsAppMaster('${loja.id}')" title="Cobrança no WhatsApp" class="w-8 h-8 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 flex items-center justify-center transition-all border border-emerald-500/20">
                             <i class="fa-brands fa-whatsapp text-base"></i>
-                        </button>
-                        <button onclick="abrirEdicaoLojaMaster('${loja.id}')" title="Gerenciar Assinatura" class="w-8 h-8 rounded-xl bg-blue-500/15 hover:bg-blue-500/30 text-blue-400 flex items-center justify-center transition-all border border-blue-500/20">
-                            <i class="fa-solid fa-pen-to-square text-sm"></i>
                         </button>
                         ${status === 'BLOQUEADO' ? `
                             <button onclick="alternarBloqueioMaster('${loja.id}', 'ATIVO')" title="Desbloquear Loja" class="w-8 h-8 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 flex items-center justify-center transition-all border border-emerald-500/20">
@@ -385,75 +482,6 @@ function enviarCobrancaWhatsAppMaster(empresaId) {
 }
 window.enviarCobrancaWhatsAppMaster = enviarCobrancaWhatsAppMaster;
 
-// Modal de Edição
-function abrirEdicaoLojaMaster(empresaId) {
-    const loja = listaLojas.find(l => l.id === empresaId);
-    if (!loja) return;
-
-    document.getElementById('edit-empresa-id').value = loja.id;
-    document.getElementById('edit-nome-empresa').value = loja.nomeEmpresa || loja.nome || '';
-    document.getElementById('edit-whatsapp').value = loja.whatsapp || '';
-    document.getElementById('edit-plano').value = loja.plano || 'PRO';
-    document.getElementById('edit-valor').value = loja.valorMensalidade !== undefined ? loja.valorMensalidade : 99.00;
-    document.getElementById('edit-vencimento').value = loja.dataVencimento || '';
-    document.getElementById('edit-status').value = loja.status || 'ATIVO';
-
-    const modal = document.getElementById('modal-edicao');
-    if (modal) modal.classList.remove('hidden');
-}
-window.abrirEdicaoLojaMaster = abrirEdicaoLojaMaster;
-
-function fecharModalEdicao() {
-    const modal = document.getElementById('modal-edicao');
-    if (modal) modal.classList.add('hidden');
-}
-window.fecharModalEdicao = fecharModalEdicao;
-
-// Salvar Edição
-async function salvarEdicaoEmpresaMaster() {
-    const id = document.getElementById('edit-empresa-id').value;
-    if (!id) return;
-
-    const nome = document.getElementById('edit-nome-empresa').value.trim();
-    const wpp = document.getElementById('edit-whatsapp').value.trim();
-    const plano = document.getElementById('edit-plano').value;
-    const valor = parseFloat(document.getElementById('edit-valor').value) || 0;
-    const venc = document.getElementById('edit-vencimento').value;
-    const status = document.getElementById('edit-status').value;
-
-    try {
-        await firebase.firestore().collection('empresas').doc(id).set({
-            nomeEmpresa: nome,
-            whatsapp: wpp,
-            plano: plano,
-            valorMensalidade: valor,
-            dataVencimento: venc,
-            status: status,
-            ultimaAtualizacaoMaster: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-
-        const idx = listaLojas.findIndex(l => l.id === id);
-        if (idx !== -1) {
-            listaLojas[idx].nomeEmpresa = nome;
-            listaLojas[idx].whatsapp = wpp;
-            listaLojas[idx].plano = plano;
-            listaLojas[idx].valorMensalidade = valor;
-            listaLojas[idx].dataVencimento = venc;
-            listaLojas[idx].status = status;
-        }
-
-        fecharModalEdicao();
-        atualizarKPIsMaster();
-        renderizarTabelaLojasMaster();
-        showToast('Assinatura salva com sucesso!', 'success');
-
-    } catch (err) {
-        console.error("Erro ao salvar:", err);
-        showToast('Erro ao salvar: ' + err.message, 'error');
-    }
-}
-window.salvarEdicaoEmpresaMaster = salvarEdicaoEmpresaMaster;
-
 // Bloquear / Desbloquear Loja
 async function alternarBloqueioMaster(empresaId, novoStatus) {
     const loja = listaLojas.find(l => l.id === empresaId);
@@ -481,8 +509,833 @@ async function alternarBloqueioMaster(empresaId, novoStatus) {
 }
 window.alternarBloqueioMaster = alternarBloqueioMaster;
 
-// Modal Nova Loja
+// ==========================================
+// MÓDULO 2: DOSSIÊ COMPLETO DA EMPRESA
+// ==========================================
+async function abrirDossieEmpresa(empresaId) {
+    const loja = listaLojas.find(l => l.id === empresaId);
+    if (!loja) return;
+
+    lojaDossieAtual = loja;
+
+    // Cabeçalho do modal
+    const elTitulo = document.getElementById('dossie-empresa-titulo');
+    const elId = document.getElementById('dossie-empresa-id');
+    const elBadge = document.getElementById('dossie-empresa-status-badge');
+    const inputId = document.getElementById('dossie-input-empresa-id');
+
+    if (elTitulo) elTitulo.innerText = loja.nomeEmpresa || loja.nome || 'Loja Sem Nome';
+    if (elId) elId.innerText = `ID: ${loja.id}`;
+    if (inputId) inputId.value = loja.id;
+
+    const status = loja.status || 'ATIVO';
+    if (elBadge) {
+        elBadge.innerText = status;
+        elBadge.className = status === 'BLOQUEADO'
+            ? 'px-2.5 py-0.5 rounded-full text-xs font-black bg-red-500/15 text-red-400 border border-red-500/30'
+            : 'px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
+    }
+
+    // Carrega dados fiscais e cadastrais
+    const emp = loja.configEmpresa || {};
+    document.getElementById('dossie-cad-razao').value = emp.nome || loja.nomeEmpresa || '';
+    document.getElementById('dossie-cad-fantasia').value = emp.fantasia || loja.nomeEmpresa || '';
+    document.getElementById('dossie-cad-cnpj').value = emp.cnpj || loja.cnpj || '';
+    document.getElementById('dossie-cad-ie').value = emp.ie || '';
+    document.getElementById('dossie-cad-crt').value = emp.crt || '1';
+    document.getElementById('dossie-cad-cep').value = emp.cep || '';
+    document.getElementById('dossie-cad-rua').value = emp.rua || '';
+    document.getElementById('dossie-cad-numero').value = emp.numero || '';
+    document.getElementById('dossie-cad-bairro').value = emp.bairro || '';
+    document.getElementById('dossie-cad-cidade').value = emp.cidade || '';
+    document.getElementById('dossie-cad-uf').value = emp.uf || 'GO';
+    document.getElementById('dossie-cad-whatsapp').value = loja.whatsapp || emp.telefone || '';
+    document.getElementById('dossie-cad-telefone').value = emp.telefone || '';
+
+    // Carrega dados da assinatura
+    atualizarSelectsDePlanos();
+    document.getElementById('dossie-ass-plano').value = loja.plano || 'PRO';
+    document.getElementById('dossie-ass-valor').value = loja.valorMensalidade !== undefined ? loja.valorMensalidade : 99.00;
+    document.getElementById('dossie-ass-vencimento').value = loja.dataVencimento || '';
+    document.getElementById('dossie-ass-status').value = status;
+
+    // Abre na primeira aba
+    trocarAbaDossie('cadastral');
+
+    // Carrega lista de funcionários
+    await carregarUsuariosDossie(loja.id);
+
+    const modal = document.getElementById('modal-dossie-empresa');
+    if (modal) modal.classList.remove('hidden');
+}
+window.abrirDossieEmpresa = abrirDossieEmpresa;
+
+function fecharModalDossie() {
+    const modal = document.getElementById('modal-dossie-empresa');
+    if (modal) modal.classList.add('hidden');
+    lojaDossieAtual = null;
+}
+window.fecharModalDossie = fecharModalDossie;
+
+function trocarAbaDossie(aba) {
+    const abas = ['cadastral', 'assinatura', 'usuarios', 'contrato'];
+    abas.forEach(a => {
+        const div = document.getElementById(`dossie-aba-${a}`);
+        const btn = document.getElementById(`tab-btn-${a}`);
+        if (div) div.classList.add('hidden');
+        if (btn) {
+            btn.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all';
+        }
+    });
+
+    const divAtiva = document.getElementById(`dossie-aba-${aba}`);
+    const btnAtivo = document.getElementById(`tab-btn-${aba}`);
+    if (divAtiva) divAtiva.classList.remove('hidden');
+    if (btnAtivo) {
+        btnAtivo.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-amber-500 text-slate-950 shadow-sm';
+    }
+}
+window.trocarAbaDossie = trocarAbaDossie;
+
+// Salvar dados cadastrais e fiscais da empresa
+async function salvarDadosCadastraisEmpresa(e) {
+    if (e) e.preventDefault();
+    if (!lojaDossieAtual) return;
+
+    const id = lojaDossieAtual.id;
+    const razao = document.getElementById('dossie-cad-razao').value.trim();
+    const fantasia = document.getElementById('dossie-cad-fantasia').value.trim();
+    const cnpj = document.getElementById('dossie-cad-cnpj').value.trim();
+    const ie = document.getElementById('dossie-cad-ie').value.trim();
+    const crt = document.getElementById('dossie-cad-crt').value;
+    const cep = document.getElementById('dossie-cad-cep').value.trim();
+    const rua = document.getElementById('dossie-cad-rua').value.trim();
+    const numero = document.getElementById('dossie-cad-numero').value.trim();
+    const bairro = document.getElementById('dossie-cad-bairro').value.trim();
+    const cidade = document.getElementById('dossie-cad-cidade').value.trim();
+    const uf = document.getElementById('dossie-cad-uf').value.trim().toUpperCase();
+    const wpp = document.getElementById('dossie-cad-whatsapp').value.trim();
+    const tel = document.getElementById('dossie-cad-telefone').value.trim();
+
+    try {
+        const empDados = {
+            nome: razao,
+            fantasia: fantasia,
+            cnpj: cnpj,
+            ie: ie,
+            crt: crt,
+            cep: cep,
+            rua: rua,
+            numero: numero,
+            bairro: bairro,
+            cidade: cidade,
+            uf: uf,
+            telefone: tel || wpp
+        };
+
+        const db = firebase.firestore();
+        const batch = db.batch();
+
+        // 1. Atualiza no doc principal da empresa
+        batch.set(db.collection('empresas').doc(id), {
+            nomeEmpresa: fantasia || razao,
+            whatsapp: wpp,
+            cnpj: cnpj,
+            ultimaAtualizacaoMaster: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        // 2. Atualiza nas configurações da empresa
+        batch.set(db.collection('empresas').doc(id).collection('configuracoes').doc('config'), {
+            empresa: empDados
+        }, { merge: true });
+
+        await batch.commit();
+
+        // Atualiza memória
+        lojaDossieAtual.nomeEmpresa = fantasia || razao;
+        lojaDossieAtual.whatsapp = wpp;
+        lojaDossieAtual.cnpj = cnpj;
+        lojaDossieAtual.configEmpresa = empDados;
+
+        atualizarKPIsMaster();
+        renderizarTabelaLojasMaster();
+        showToast('Dados cadastrais da empresa salvos com sucesso!', 'success');
+
+    } catch (err) {
+        console.error("Erro ao salvar cadastro:", err);
+        showToast('Erro ao salvar: ' + err.message, 'error');
+    }
+}
+window.salvarDadosCadastraisEmpresa = salvarDadosCadastraisEmpresa;
+
+// Salvar assinatura pelo dossiê
+async function salvarAssinaturaPeloDossie(e) {
+    if (e) e.preventDefault();
+    if (!lojaDossieAtual) return;
+
+    const id = lojaDossieAtual.id;
+    const plano = document.getElementById('dossie-ass-plano').value;
+    const valor = parseFloat(document.getElementById('dossie-ass-valor').value) || 0;
+    const venc = document.getElementById('dossie-ass-vencimento').value;
+    const status = document.getElementById('dossie-ass-status').value;
+
+    try {
+        await firebase.firestore().collection('empresas').doc(id).set({
+            plano: plano,
+            valorMensalidade: valor,
+            dataVencimento: venc,
+            status: status,
+            ultimaAtualizacaoMaster: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        lojaDossieAtual.plano = plano;
+        lojaDossieAtual.valorMensalidade = valor;
+        lojaDossieAtual.dataVencimento = venc;
+        lojaDossieAtual.status = status;
+
+        const elBadge = document.getElementById('dossie-empresa-status-badge');
+        if (elBadge) {
+            elBadge.innerText = status;
+            elBadge.className = status === 'BLOQUEADO'
+                ? 'px-2.5 py-0.5 rounded-full text-xs font-black bg-red-500/15 text-red-400 border border-red-500/30'
+                : 'px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
+        }
+
+        atualizarKPIsMaster();
+        renderizarTabelaLojasMaster();
+        showToast('Assinatura atualizada com sucesso!', 'success');
+
+    } catch (err) {
+        console.error("Erro ao salvar assinatura:", err);
+        showToast('Erro: ' + err.message, 'error');
+    }
+}
+window.salvarAssinaturaPeloDossie = salvarAssinaturaPeloDossie;
+
+// Carregar equipe/usuários da empresa
+async function carregarUsuariosDossie(empresaId) {
+    const corpo = document.getElementById('dossie-lista-usuarios-corpo');
+    const badgeQtd = document.getElementById('dossie-qtd-usuarios');
+    if (!corpo) return;
+
+    try {
+        const snap = await firebase.firestore().collection('empresas').doc(empresaId).collection('funcionarios').get();
+        const usuarios = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        if (badgeQtd) badgeQtd.innerText = usuarios.length;
+
+        if (usuarios.length === 0) {
+            corpo.innerHTML = `
+                <tr>
+                    <td colspan="4" class="py-6 text-center text-slate-500">
+                        Nenhum colaborador adicional cadastrado nesta loja.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        corpo.innerHTML = usuarios.map(u => {
+            const isAdmin = u.isAdmin === true || u.isAdmin === 'true';
+            return `
+                <tr class="hover:bg-slate-800/40">
+                    <td class="py-2.5 px-3 font-bold text-white">${u.nome || 'Sem Nome'}</td>
+                    <td class="py-2.5 px-3 font-mono text-slate-300">${u.email || 'Sem E-mail'}</td>
+                    <td class="py-2.5 px-3">
+                        ${isAdmin ? '<span class="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 font-bold">Admin</span>' : '<span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300">Colaborador</span>'}
+                    </td>
+                    <td class="py-2.5 px-3 text-center">
+                        <span class="text-emerald-400 font-bold">● Ativo</span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+    } catch (err) {
+        console.error("Erro ao carregar usuários:", err);
+        corpo.innerHTML = `
+            <tr>
+                <td colspan="4" class="py-4 text-center text-red-400">
+                    Não foi possível carregar a equipe: ${err.message}
+                </td>
+            </tr>
+        `;
+    }
+}
+
+function irParaContratosDaEmpresa() {
+    if (!lojaDossieAtual) return;
+    const id = lojaDossieAtual.id;
+    fecharModalDossie();
+    gerarContratoParaLoja(id);
+}
+window.irParaContratosDaEmpresa = irParaContratosDaEmpresa;
+
+// ==========================================
+// MÓDULO 3: GESTÃO DE PLANOS DO SAAS
+// ==========================================
+const PLANOS_PADRAO = [
+    {
+        id: 'plano_start',
+        nome: 'Start (Frente de Caixa)',
+        preco: 59.90,
+        ciclo: 'mensal',
+        usuarios: 'Até 2 Usuários',
+        produtos: 'Até 500 Produtos',
+        descricao: 'Perfeito para pequenos negócios que precisam de agilidade no caixa e vendas rápidas.',
+        modulos: ['pdv', 'vendas', 'estoque', 'suporte'],
+        destaque: false,
+        ativo: true
+    },
+    {
+        id: 'plano_pro',
+        nome: 'Profissional (Gestão Completa)',
+        preco: 99.90,
+        ciclo: 'mensal',
+        usuarios: 'Até 5 Usuários',
+        produtos: 'Produtos Ilimitados',
+        descricao: 'Gestão completa com emissão fiscal (NF-e/NFC-e), financeiro avançado e catálogo online.',
+        modulos: ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'site', 'suporte'],
+        destaque: true,
+        ativo: true
+    },
+    {
+        id: 'plano_enterprise',
+        nome: 'Enterprise (Ilimitado + IA)',
+        preco: 179.90,
+        ciclo: 'mensal',
+        usuarios: 'Usuários Ilimitados',
+        produtos: 'Produtos Ilimitados',
+        descricao: 'A suíte definitiva com relatórios de IA Gemini, multi-acesso liberado e suporte dedicado VIP.',
+        modulos: ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'site', 'ia', 'suporte'],
+        destaque: false,
+        ativo: true
+    }
+];
+
+async function carregarPlanosMaster() {
+    try {
+        const snap = await firebase.firestore().collection('planos_saas').get();
+        if (snap.empty) {
+            // Inicializa planos padrão no banco
+            const batch = firebase.firestore().batch();
+            PLANOS_PADRAO.forEach(p => {
+                const ref = firebase.firestore().collection('planos_saas').doc(p.id);
+                batch.set(ref, p);
+            });
+            await batch.commit();
+            listaPlanos = [...PLANOS_PADRAO];
+        } else {
+            listaPlanos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+
+        renderizarGridPlanosMaster();
+        atualizarSelectsDePlanos();
+
+    } catch (err) {
+        console.error("Erro ao carregar planos:", err);
+        listaPlanos = [...PLANOS_PADRAO];
+        renderizarGridPlanosMaster();
+        atualizarSelectsDePlanos();
+    }
+}
+window.carregarPlanosMaster = carregarPlanosMaster;
+
+function renderizarGridPlanosMaster() {
+    const grid = document.getElementById('grid-planos');
+    if (!grid) return;
+
+    if (listaPlanos.length === 0) {
+        grid.innerHTML = `
+            <div class="col-span-3 text-center py-16 text-slate-500">
+                <i class="fa-solid fa-layer-group text-4xl mb-3"></i>
+                <p>Nenhum plano cadastrado. Clique no botão "+ Novo Plano" para criar.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const nomesModulos = {
+        pdv: 'Frente de Caixa (PDV)',
+        vendas: 'Vendas & Orçamentos',
+        fiscal: 'Emissor NF-e / NFC-e',
+        estoque: 'Controle de Estoque & Kardex',
+        financeiro: 'Financeiro & Fluxo de Caixa',
+        site: 'Loja / Catálogo Online',
+        ia: 'Relatórios IA Gemini',
+        suporte: 'Suporte WhatsApp VIP'
+    };
+
+    grid.innerHTML = listaPlanos.map(plano => {
+        const valorFmt = Number(plano.preco || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const mods = plano.modulos || [];
+
+        return `
+            <div class="bg-[#0f172a] rounded-3xl p-6 border ${plano.destaque ? 'border-amber-500/50 shadow-amber-500/10' : 'border-slate-800'} shadow-2xl flex flex-col justify-between relative overflow-hidden">
+                ${plano.destaque ? `
+                    <div class="absolute top-0 right-0 bg-gradient-to-l from-amber-500 to-yellow-400 text-slate-950 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl shadow-lg">
+                        Mais Popular
+                    </div>
+                ` : ''}
+
+                <div>
+                    <div class="flex items-center justify-between gap-2 mb-2">
+                        <h4 class="text-xl font-extrabold text-white">${plano.nome}</h4>
+                        ${plano.ativo !== false ? '<span class="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">Ativo</span>' : '<span class="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">Inativo</span>'}
+                    </div>
+
+                    <p class="text-xs text-slate-400 mb-5 min-h-[32px]">${plano.descricao || ''}</p>
+
+                    <div class="mb-6 flex items-baseline gap-1.5">
+                        <span class="text-4xl font-black text-white">${valorFmt}</span>
+                        <span class="text-xs font-semibold text-slate-400">/${plano.ciclo || 'mês'}</span>
+                    </div>
+
+                    <div class="space-y-2 py-4 border-y border-slate-800 text-xs">
+                        <div class="flex items-center gap-2 font-bold text-slate-200">
+                            <i class="fa-solid fa-users text-blue-400 w-4 text-center"></i> ${plano.usuarios || 'Usuários Ilimitados'}
+                        </div>
+                        <div class="flex items-center gap-2 font-bold text-slate-200">
+                            <i class="fa-solid fa-boxes-stacked text-purple-400 w-4 text-center"></i> ${plano.produtos || 'Produtos Ilimitados'}
+                        </div>
+                    </div>
+
+                    <div class="py-4 space-y-2">
+                        <p class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Módulos Inclusos:</p>
+                        <ul class="space-y-1.5 text-xs text-slate-300">
+                            ${Object.keys(nomesModulos).map(modKey => {
+                                const tem = mods.includes(modKey);
+                                return `
+                                    <li class="flex items-center gap-2 ${tem ? 'text-slate-200' : 'text-slate-600 line-through'}">
+                                        <i class="fa-solid ${tem ? 'fa-check text-emerald-400' : 'fa-xmark text-slate-600'} text-xs w-4 text-center"></i>
+                                        ${nomesModulos[modKey]}
+                                    </li>
+                                `;
+                            }).join('')}
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="pt-5 border-t border-slate-800 flex items-center justify-between gap-3">
+                    <button onclick="editarPlanoMaster('${plano.id}')" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-2.5 rounded-xl text-xs font-bold transition-all border border-slate-700 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-pen-to-square"></i> Editar
+                    </button>
+                    <button onclick="excluirPlanoMaster('${plano.id}')" class="w-9 h-9 rounded-xl bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/20 flex items-center justify-center transition-all">
+                        <i class="fa-solid fa-trash-can text-sm"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function atualizarSelectsDePlanos() {
+    const selects = ['dossie-ass-plano', 'nova-loja-plano'];
+    selects.forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+
+        const valAtual = sel.value;
+        sel.innerHTML = listaPlanos.map(p => {
+            const preco = Number(p.preco || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            return `<option value="${p.id}">${p.nome} (${preco})</option>`;
+        }).join('');
+
+        if (valAtual && listaPlanos.some(p => p.id === valAtual)) {
+            sel.value = valAtual;
+        } else if (listaPlanos.length > 0) {
+            sel.value = listaPlanos[0].id;
+        }
+    });
+}
+
+function atualizarValorPorPlanoSelecionado(planoId, targetInputId) {
+    const input = document.getElementById(targetInputId);
+    if (!input) return;
+
+    const p = listaPlanos.find(x => x.id === planoId);
+    if (p && p.preco !== undefined) {
+        input.value = Number(p.preco).toFixed(2);
+    }
+}
+window.atualizarValorPorPlanoSelecionado = atualizarValorPorPlanoSelecionado;
+
+function abrirModalPlano(plano = null) {
+    const modal = document.getElementById('modal-plano');
+    const titulo = document.getElementById('modal-plano-titulo');
+    if (!modal) return;
+
+    document.getElementById('plano-form-id').value = plano ? plano.id : '';
+    document.getElementById('plano-form-nome').value = plano ? plano.nome : '';
+    document.getElementById('plano-form-preco').value = plano ? plano.preco : '';
+    document.getElementById('plano-form-ciclo').value = plano ? (plano.ciclo || 'mensal') : 'mensal';
+    document.getElementById('plano-form-usuarios').value = plano ? (plano.usuarios || '') : '5 Usuários';
+    document.getElementById('plano-form-produtos').value = plano ? (plano.produtos || '') : 'Ilimitado';
+    document.getElementById('plano-form-desc').value = plano ? (plano.descricao || '') : '';
+    document.getElementById('plano-form-destaque').checked = plano ? Boolean(plano.destaque) : false;
+    document.getElementById('plano-form-ativo').checked = plano ? (plano.ativo !== false) : true;
+
+    const mods = plano ? (plano.modulos || []) : ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'site', 'suporte'];
+    const chkKeys = ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'site', 'ia', 'suporte'];
+    chkKeys.forEach(k => {
+        const el = document.getElementById(`mod-${k}`);
+        if (el) el.checked = mods.includes(k);
+    });
+
+    if (titulo) {
+        titulo.innerHTML = plano ? '<i class="fa-solid fa-pen-to-square text-blue-400"></i> Editar Plano SaaS' : '<i class="fa-solid fa-layer-group text-blue-400"></i> Cadastrar Novo Plano';
+    }
+
+    modal.classList.remove('hidden');
+}
+window.abrirModalPlano = abrirModalPlano;
+
+function fecharModalPlano() {
+    const modal = document.getElementById('modal-plano');
+    if (modal) modal.classList.add('hidden');
+}
+window.fecharModalPlano = fecharModalPlano;
+
+function editarPlanoMaster(planoId) {
+    const p = listaPlanos.find(x => x.id === planoId);
+    if (p) abrirModalPlano(p);
+}
+window.editarPlanoMaster = editarPlanoMaster;
+
+async function salvarPlanoMaster(e) {
+    if (e) e.preventDefault();
+
+    let id = document.getElementById('plano-form-id').value;
+    const nome = document.getElementById('plano-form-nome').value.trim();
+    const preco = parseFloat(document.getElementById('plano-form-preco').value) || 0;
+    const ciclo = document.getElementById('plano-form-ciclo').value;
+    const usuarios = document.getElementById('plano-form-usuarios').value.trim();
+    const produtos = document.getElementById('plano-form-produtos').value.trim();
+    const desc = document.getElementById('plano-form-desc').value.trim();
+    const destaque = document.getElementById('plano-form-destaque').checked;
+    const ativo = document.getElementById('plano-form-ativo').checked;
+
+    const modulos = [];
+    const chkKeys = ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'site', 'ia', 'suporte'];
+    chkKeys.forEach(k => {
+        const el = document.getElementById(`mod-${k}`);
+        if (el && el.checked) modulos.push(k);
+    });
+
+    if (!id) {
+        id = 'plano_' + Date.now().toString(36);
+    }
+
+    const payload = {
+        id: id,
+        nome: nome,
+        preco: preco,
+        ciclo: ciclo,
+        usuarios: usuarios,
+        produtos: produtos,
+        descricao: desc,
+        modulos: modulos,
+        destaque: destaque,
+        ativo: ativo,
+        ultimaAtualizacao: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    try {
+        await firebase.firestore().collection('planos_saas').doc(id).set(payload, { merge: true });
+
+        const idx = listaPlanos.findIndex(x => x.id === id);
+        if (idx !== -1) listaPlanos[idx] = payload;
+        else listaPlanos.push(payload);
+
+        fecharModalPlano();
+        renderizarGridPlanosMaster();
+        atualizarSelectsDePlanos();
+        showToast('Plano salvo com sucesso!', 'success');
+
+    } catch (err) {
+        console.error("Erro ao salvar plano:", err);
+        showToast('Erro ao salvar plano: ' + err.message, 'error');
+    }
+}
+window.salvarPlanoMaster = salvarPlanoMaster;
+
+async function excluirPlanoMaster(planoId) {
+    const p = listaPlanos.find(x => x.id === planoId);
+    if (!p) return;
+
+    if (!confirm(`Tem certeza que deseja excluir o plano "${p.nome}"?`)) return;
+
+    try {
+        await firebase.firestore().collection('planos_saas').doc(planoId).delete();
+        listaPlanos = listaPlanos.filter(x => x.id !== planoId);
+        renderizarGridPlanosMaster();
+        atualizarSelectsDePlanos();
+        showToast('Plano excluído com sucesso!', 'success');
+    } catch (err) {
+        console.error(err);
+        showToast('Erro ao excluir: ' + err.message, 'error');
+    }
+}
+window.excluirPlanoMaster = excluirPlanoMaster;
+
+// ==========================================
+// MÓDULO 4: CONTRATOS & TERMOS (A4 JURÍDICO)
+// ==========================================
+function popularSelectEmpresasContrato() {
+    const sel = document.getElementById('contrato-select-empresa');
+    if (!sel) return;
+
+    const valAtual = sel.value;
+    sel.innerHTML = '<option value="">Selecione uma empresa...</option>' + listaLojas.map(l => {
+        const nome = l.nomeEmpresa || l.nome || 'Loja';
+        const doc = l.configEmpresa?.cnpj || l.cnpj || l.id;
+        return `<option value="${l.id}">${nome} (${doc})</option>`;
+    }).join('');
+
+    if (valAtual && listaLojas.some(l => l.id === valAtual)) {
+        sel.value = valAtual;
+    }
+}
+
+function gerarContratoParaLoja(empresaId) {
+    navegarMaster('contratos');
+    const sel = document.getElementById('contrato-select-empresa');
+    if (sel) {
+        sel.value = empresaId;
+        selecionarEmpresaParaContrato();
+    }
+}
+window.gerarContratoParaLoja = gerarContratoParaLoja;
+
+function selecionarEmpresaParaContrato() {
+    const sel = document.getElementById('contrato-select-empresa');
+    const container = document.getElementById('area-impressao-contrato');
+    if (!sel || !container) return;
+
+    const empresaId = sel.value;
+    if (!empresaId) {
+        container.innerHTML = `
+            <div class="text-center py-16 text-slate-400 font-sans">
+                <i class="fa-solid fa-file-contract text-4xl text-slate-300 mb-3"></i>
+                <p class="text-base font-medium text-slate-600">Selecione uma empresa acima para visualizar e gerar o contrato formal de prestação de serviços SaaS.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const loja = listaLojas.find(l => l.id === empresaId);
+    if (!loja) return;
+
+    const emp = loja.configEmpresa || {};
+    const razaoSocial = emp.nome || loja.nomeEmpresa || 'EMPRESA CONTRATANTE';
+    const nomeFantasia = emp.fantasia || loja.nomeEmpresa || razaoSocial;
+    const cnpj = emp.cnpj || loja.cnpj || '00.000.000/0000-00';
+    const ie = emp.ie || 'ISENTO';
+    const endereco = `${emp.rua || 'Logradouro'}, Nº ${emp.numero || 'S/N'}, ${emp.bairro || 'Bairro'}, ${emp.cidade || 'Cidade'} - ${emp.uf || 'GO'}, CEP: ${emp.cep || '74000-000'}`;
+    const responsavel = loja.donoInfo?.nome || 'Representante Legal';
+    const emailDono = loja.donoInfo?.email || 'contato@empresa.com';
+    const whatsapp = loja.whatsapp || emp.telefone || '(00) 00000-0000';
+
+    const planoKey = loja.plano || 'PRO';
+    const planoObj = listaPlanos.find(p => p.id === planoKey || p.nome.toUpperCase().includes(planoKey.toUpperCase())) || { nome: planoKey, ciclo: 'mensal', usuarios: '5 Usuários', produtos: 'Ilimitado' };
+    const valorNum = Number(loja.valorMensalidade || 99.00);
+    const valorFmt = valorNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const dataVenc = formatarDataBr(loja.dataVencimento);
+    const diaVenc = loja.dataVencimento ? loja.dataVencimento.split('-')[2] : '10';
+
+    // Data de emissão por extenso
+    const hoje = new Date();
+    const meses = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+    const dataExtenso = `${hoje.getDate()} de ${meses[hoje.getMonth()]} de ${hoje.getFullYear()}`;
+
+    container.innerHTML = `
+        <div class="space-y-6 text-justify">
+            <!-- CABEÇALHO DO CONTRATO -->
+            <div class="text-center border-b-2 border-slate-900 pb-4">
+                <h1 class="text-lg md:text-xl font-bold uppercase tracking-wider">CONTRATO DE LICENÇA DE USO DE SOFTWARE (SaaS) E PRESTAÇÃO DE SERVIÇOS</h1>
+                <p class="text-xs uppercase text-slate-600 mt-1 font-sans">Instrumento Particular de Contratação Tecnológica e Gestão Empresarial</p>
+            </div>
+
+            <!-- PARTES -->
+            <div>
+                <h2 class="font-bold uppercase text-sm border-b border-slate-300 pb-1 mb-2">1. DAS PARTES CONTRATANTES</h2>
+                <p class="mb-2">
+                    <strong>CONTRATADA:</strong> <strong>PAULO AUGUSTO SILVA BORGES / SAAS MASTER TECNOLOGIA</strong>, com sede e foro na Comarca de Goiânia - GO, titular e desenvolvedor da plataforma em nuvem, contato administrativo e chave PIX: <strong>pauloaugusto.silvaborges@gmail.com</strong>.
+                </p>
+                <p>
+                    <strong>CONTRATANTE:</strong> <strong>${razaoSocial}</strong> (Nome Fantasia: <em>${nomeFantasia}</em>), inscrita no CNPJ/CPF sob nº <strong>${cnpj}</strong>, Inscrição Estadual: <strong>${ie}</strong>, com sede em: <strong>${endereco}</strong>, neste ato representada por <strong>${responsavel}</strong>, e-mail: <strong>${emailDono}</strong>, WhatsApp: <strong>${whatsapp}</strong>.
+                </p>
+            </div>
+
+            <!-- OBJETO -->
+            <div>
+                <h2 class="font-bold uppercase text-sm border-b border-slate-300 pb-1 mb-2">2. CLÁUSULA PRIMEIRA - DO OBJETO</h2>
+                <p>
+                    O presente instrumento tem como objeto a concessão, pela CONTRATADA à CONTRATANTE, de licença temporária, intransferível e não exclusiva de uso da plataforma web de gestão empresarial e operacional <strong>SaaS Master / FC Gestão</strong>, incluindo armazenamento em nuvem, módulos contratados, manutenção preventiva e atualizações contínuas.
+                </p>
+            </div>
+
+            <!-- PLANO E RECURSOS -->
+            <div>
+                <h2 class="font-bold uppercase text-sm border-b border-slate-300 pb-1 mb-2">3. CLÁUSULA SEGUNDA - DO PLANO E RECURSOS CONTRATADOS</h2>
+                <p>
+                    A CONTRATANTE adere expressamente ao <strong>PLANO ${planoObj.nome.toUpperCase()}</strong>, contemplando:
+                </p>
+                <ul class="list-disc pl-6 my-2 space-y-1 font-sans text-xs">
+                    <li>Acesso operacional via web em computadores, tablets e smartphones;</li>
+                    <li>Capacidade de usuários autorizados: <strong>${planoObj.usuarios || 'Conforme especificação do plano'}</strong>;</li>
+                    <li>Limite de produtos e cadastros: <strong>${planoObj.produtos || 'Ilimitado'}</strong>;</li>
+                    <li>Módulos inclusos: Frente de Caixa (PDV), Emissão Fiscal (NF-e/NFC-e), Gestão Financeira, Estoque e Catálogo Digital.</li>
+                </ul>
+            </div>
+
+            <!-- PREÇO E PAGAMENTO -->
+            <div>
+                <h2 class="font-bold uppercase text-sm border-b border-slate-300 pb-1 mb-2">4. CLÁUSULA TERCEIRA - DO PREÇO E FORMA DE PAGAMENTO</h2>
+                <p>
+                    Pela prestação dos serviços e licença de uso, a CONTRATANTE pagará à CONTRATADA o valor mensal fixo de <strong>${valorFmt} (${valorNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})</strong>.
+                </p>
+                <p class="mt-1">
+                    <strong>Parágrafo Primeiro:</strong> O vencimento da mensalidade ocorrerá todo <strong>dia ${diaVenc}</strong> de cada mês, sendo o pagamento realizado preferencialmente via <strong>PIX para a chave: pauloaugusto.silvaborges@gmail.com</strong>.
+                </p>
+            </div>
+
+            <!-- INADIMPLÊNCIA E BLOQUEIO -->
+            <div>
+                <h2 class="font-bold uppercase text-sm border-b border-slate-300 pb-1 mb-2">5. CLÁUSULA QUARTA - DA SUSPENSÃO POR INADIMPLÊNCIA</h2>
+                <p>
+                    O não pagamento da mensalidade no vencimento sujeitará a CONTRATANTE a aviso preventivo de cobrança. Ultrapassado o prazo de <strong>10 (dez) dias corridos de tolerância</strong>, a CONTRATADA reserva-se o direito de suspender temporariamente o acesso de todos os logins da empresa ao sistema, mantendo os dados preservados em segurança até a devida regularização financeira.
+                </p>
+            </div>
+
+            <!-- DISPONIBILIDADE E SUPORTE -->
+            <div>
+                <h2 class="font-bold uppercase text-sm border-b border-slate-300 pb-1 mb-2">6. CLÁUSULA QUINTA - DO NÍVEL DE SERVIÇO (SLA) E SUPORTE</h2>
+                <p>
+                    A CONTRATADA assegura a disponibilidade média da plataforma de 99,0% ao mês, bem como rotinas diárias de backup de segurança em servidores de alta confiabilidade. O suporte técnico é prestado em horário comercial via WhatsApp e canais digitais.
+                </p>
+            </div>
+
+            <!-- LGPD E CONFIDENCIALIDADE -->
+            <div>
+                <h2 class="font-bold uppercase text-sm border-b border-slate-300 pb-1 mb-2">7. CLÁUSULA SEXTA - DA PROTEÇÃO DE DADOS (LGPD)</h2>
+                <p>
+                    As partes comprometem-se ao cumprimento irrestrito da Lei Geral de Proteção de Dados Pessoais (Lei Federal nº 13.709/2018). Todas as informações financeiras, fiscais e de clientes cadastradas pela CONTRATANTE são de sua exclusiva titularidade e confidencialidade.
+                </p>
+            </div>
+
+            <!-- VIGÊNCIA E RESCISÃO -->
+            <div>
+                <h2 class="font-bold uppercase text-sm border-b border-slate-300 pb-1 mb-2">8. CLÁUSULA SÉTIMA - DA VIGÊNCIA E RESCISÃO</h2>
+                <p>
+                    O presente contrato vigora por prazo indeterminado. Qualquer das partes poderá rescindi-lo a qualquer momento, sem imposição de multa rescisória, mediante aviso prévio e formal por escrito com antecedência mínima de 30 (trinta) dias.
+                </p>
+            </div>
+
+            <!-- FORO -->
+            <div>
+                <h2 class="font-bold uppercase text-sm border-b border-slate-300 pb-1 mb-2">9. CLÁUSULA OITAVA - DO FORO</h2>
+                <p>
+                    Para dirimir quaisquer controvérsias oriundas deste instrumento, as partes elegem o Foro da Comarca de Goiânia, Estado de Goiás, com renúncia expressa a qualquer outro.
+                </p>
+            </div>
+
+            <!-- DATA E ASSINATURAS -->
+            <div class="pt-6 border-t border-slate-300 text-center font-sans space-y-8">
+                <p class="font-semibold text-slate-800">Goiânia - GO, ${dataExtenso}.</p>
+
+                <div class="grid grid-cols-2 gap-8 pt-8">
+                    <div>
+                        <div class="border-t-2 border-slate-900 mx-auto w-4/5 pt-1"></div>
+                        <p class="font-bold text-xs uppercase">PAULO AUGUSTO SILVA BORGES</p>
+                        <p class="text-[10px] text-slate-600">CONTRATADA (SaaS Master Tecnologia)</p>
+                    </div>
+                    <div>
+                        <div class="border-t-2 border-slate-900 mx-auto w-4/5 pt-1"></div>
+                        <p class="font-bold text-xs uppercase">${responsavel}</p>
+                        <p class="text-[10px] text-slate-600">CONTRATANTE (${nomeFantasia})</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-8 pt-4 text-[10px] text-slate-500">
+                    <div>Testemunha 1: ____________________________</div>
+                    <div>Testemunha 2: ____________________________</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+window.selecionarEmpresaParaContrato = selecionarEmpresaParaContrato;
+
+// Disparo de Impressão / PDF do Contrato (A4 nativo)
+function imprimirContratoA4() {
+    const sel = document.getElementById('contrato-select-empresa');
+    if (!sel || !sel.value) {
+        showToast('Selecione uma empresa antes de imprimir o contrato.', 'info');
+        return;
+    }
+    window.print();
+}
+window.imprimirContratoA4 = imprimirContratoA4;
+
+// Enviar Contrato no WhatsApp do Cliente
+function enviarContratoWhatsApp() {
+    const sel = document.getElementById('contrato-select-empresa');
+    if (!sel || !sel.value) {
+        showToast('Selecione uma empresa primeiro.', 'info');
+        return;
+    }
+
+    const loja = listaLojas.find(l => l.id === sel.value);
+    if (!loja) return;
+
+    let wpp = loja.whatsapp || '';
+    let wppLimpo = String(wpp).replace(/\D/g, '');
+
+    if (!wppLimpo || wppLimpo.length < 10) {
+        wpp = prompt('Informe o WhatsApp do cliente para enviar o termo (DDD + número):', wpp);
+        if (!wpp) return;
+        wppLimpo = String(wpp).replace(/\D/g, '');
+    }
+
+    if (wppLimpo.length === 10 || wppLimpo.length === 11) {
+        wppLimpo = '55' + wppLimpo;
+    }
+
+    const nomeLoja = loja.nomeEmpresa || loja.nome || 'Loja';
+    const plano = loja.plano || 'PRO';
+    const valor = Number(loja.valorMensalidade || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    const msg = `Olá! Segue o resumo do *Termo de Adesão e Licença de Uso SaaS* da sua empresa *${nomeLoja}*:\n\n` +
+        `📦 *Plano Contratado:* ${plano}\n` +
+        `💰 *Valor da Mensalidade:* ${valor}\n` +
+        `🔑 *Chave PIX Oficial:* pauloaugusto.silvaborges@gmail.com\n` +
+        `📄 *Status do Acesso:* 🟢 Liberado\n\n` +
+        `O seu contrato formal de prestação de serviços foi emitido pelo nosso sistema e encontra-se registrado. Qualquer dúvida jurídica ou operacional estamos à disposição!`;
+
+    window.open(`https://wa.me/${wppLimpo}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+window.enviarContratoWhatsApp = enviarContratoWhatsApp;
+
+// Copiar texto puro do contrato
+function copiarTextoContrato() {
+    const container = document.getElementById('area-impressao-contrato');
+    if (!container) return;
+
+    const texto = container.innerText;
+    navigator.clipboard.writeText(texto).then(() => {
+        showToast('Texto do contrato copiado para a área de transferência!', 'success');
+    }).catch(() => {
+        showToast('Erro ao copiar texto.', 'error');
+    });
+}
+window.copiarTextoContrato = copiarTextoContrato;
+
+// ==========================================
+// MÓDULO 5: CADASTRO MANUAL DE NOVA LOJA
+// ==========================================
 function abrirModalNovaLoja() {
+    atualizarSelectsDePlanos();
     const modal = document.getElementById('modal-nova-loja');
     if (modal) modal.classList.remove('hidden');
 }
@@ -494,7 +1347,6 @@ function fecharModalNovaLoja() {
 }
 window.fecharModalNovaLoja = fecharModalNovaLoja;
 
-// Cadastro Manual de Loja pelo Paulo Augusto
 async function cadastrarLojaManual(e) {
     if (e) e.preventDefault();
 
@@ -502,7 +1354,9 @@ async function cadastrarLojaManual(e) {
     const email = document.getElementById('nova-loja-email').value.trim().toLowerCase();
     const senha = document.getElementById('nova-loja-senha').value;
     const wpp = document.getElementById('nova-loja-whatsapp').value.trim();
+    const plano = document.getElementById('nova-loja-plano').value || 'plano_pro';
     const valor = parseFloat(document.getElementById('nova-loja-valor').value) || 99.00;
+    const cnpj = document.getElementById('nova-loja-cnpj').value.trim();
     const btn = document.getElementById('btn-criar-loja-manual');
 
     if (!nome || !email || !senha) {
@@ -551,7 +1405,8 @@ async function cadastrarLojaManual(e) {
             nomeEmpresa: nome,
             donoUid: uid,
             whatsapp: wpp,
-            plano: 'PRO',
+            cnpj: cnpj,
+            plano: plano,
             valorMensalidade: valor,
             dataVencimento: dataVencStr,
             status: 'ATIVO',
@@ -571,9 +1426,14 @@ async function cadastrarLojaManual(e) {
             status: 'ativo'
         });
 
-        // 5. Configuração e Caixa inicial
+        // 5. Configuração cadastral e Caixa inicial
         batch.set(db.collection('empresas').doc(empresaId).collection('configuracoes').doc('config'), {
-            empresa: { nome: nome, fantasia: nome },
+            empresa: {
+                nome: nome,
+                fantasia: nome,
+                cnpj: cnpj,
+                telefone: wpp
+            },
             pdv: { permite_estoque_negativo: false }
         });
         batch.set(db.collection('empresas').doc(empresaId).collection('caixa').doc('caixa_atual'), {
@@ -583,7 +1443,7 @@ async function cadastrarLojaManual(e) {
         await batch.commit();
 
         fecharModalNovaLoja();
-        showToast(`Loja "${nome}" criada com sucesso!`, 'success');
+        showToast(`Loja "${nome}" criada e liberada com sucesso!`, 'success');
         await carregarTodasAsLojasMaster();
 
     } catch (err) {
