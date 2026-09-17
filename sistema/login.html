@@ -49,13 +49,26 @@
             <i class="fa-solid fa-couch"></i>
         </div>
         <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-1" id="titulo-form">FC Móveis</h1>
-        <p class="text-slate-500 dark:text-slate-400 text-sm mb-6" id="subtitulo-form">Acesso ao sistema integrado</p>
+        <p class="text-slate-500 dark:text-slate-400 text-sm mb-4" id="subtitulo-form">Acesso ao sistema integrado</p>
+
+        <!-- Tabs Login / Register -->
+        <div class="flex border-b border-slate-200 dark:border-slate-700 mb-6">
+            <button id="tab-login" onclick="mudarAbaLogin('login')" class="flex-1 pb-2 font-bold text-blue-600 border-b-2 border-blue-600 transition-colors">Entrar</button>
+            <button id="tab-register" onclick="mudarAbaLogin('register')" class="flex-1 pb-2 font-bold text-slate-400 border-b-2 border-transparent transition-colors hover:text-slate-600 dark:hover:text-slate-300">Criar Conta</button>
+        </div>
         
-        <!-- Formulário de Login -->
+        <!-- Formulário -->
+        <input type="text" id="login-empresa" placeholder="Nome da Sua Loja" aria-label="Nome da Sua Loja" class="hidden w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 px-4 py-3 rounded-lg mb-4 focus:outline-none focus:border-blue-500 font-medium dark:text-white">
+        
         <input type="email" id="login-user" placeholder="E-mail" aria-label="E-mail" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 px-4 py-3 rounded-lg mb-4 focus:outline-none focus:border-blue-500 font-medium dark:text-white">
+        
         <input type="password" id="login-pass" placeholder="Senha" aria-label="Senha" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 px-4 py-3 rounded-lg mb-6 focus:outline-none focus:border-blue-500 font-medium dark:text-white" onkeypress="if(event.key === 'Enter') acaoPrincipal()">
         
         <button id="btn-acao" onclick="acaoPrincipal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors shadow-md">Entrar</button>
+        
+        <p class="mt-4 text-sm text-slate-500" id="esqueci-senha-link">
+            <a href="#" onclick="esqueciSenha(); return false;" class="text-blue-500 hover:underline">Esqueci minha senha</a>
+        </p>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>

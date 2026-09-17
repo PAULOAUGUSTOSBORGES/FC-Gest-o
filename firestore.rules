@@ -45,10 +45,17 @@ service cloud.firestore {
     // Mapeamento Global de Usuarios (Login)
     // ==========================================
     match /usuarios/{userId} {
-      // O proprio usuario pode ler seu documento para saber qual sua empresa, e o admin geral pode ler
       allow read: if isAutenticado() && (request.auth.uid == userId || request.auth.token.email == 'fabricadecoresgoiania@gmail.com');
-      // Apenas admin geral cria/edita
-      allow write: if isAutenticado() && request.auth.token.email == 'fabricadecoresgoiania@gmail.com';
+      // Permite o proprio usuario criar seu vinculo no onboarding
+      allow create: if isAutenticado() && request.auth.uid == userId;
+      // Apenas admin geral edita/deleta depois de criado
+      allow update, delete: if isAutenticado() && request.auth.token.email == 'fabricadecoresgoiania@gmail.com';
+    }
+
+    // Função auxiliar para validar criação em lote (onboarding)
+    function isDonoNoOnboarding(empresaId) {
+      return isAutenticado() && existsAfter(/databases/$(database)/documents/empresas/$(empresaId)) &&
+             getAfter(/databases/$(database)/documents/empresas/$(empresaId)).data.donoUid == request.auth.uid;
     }
 
     // ==========================================
@@ -57,18 +64,22 @@ service cloud.firestore {
     match /empresas/{empresaId} {
       // Leitura do doc da empresa (para vitrine ou login)
       allow read: if true;
-      allow write: if isAutenticado() && request.auth.token.email == 'fabricadecoresgoiania@gmail.com';
+      // Permite criacao se o donoUid for o proprio usuario (onboarding)
+      allow create: if isAutenticado() && request.resource.data.donoUid == request.auth.uid;
+      allow update, delete: if isAutenticado() && request.auth.token.email == 'fabricadecoresgoiania@gmail.com';
 
       // ==========================================
       // 1. Configuracoes e Caixa Fisico
       // ==========================================
       match /configuracoes/{docId} {
-        allow read: if true; // Dados publicos da vitrine
+        allow read: if true;
         allow write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_config') || temPermissao(empresaId, 'perm_gestao'));
+        allow create: if isDonoNoOnboarding(empresaId); // Permite no batch de criacao
       }
 
       match /caixa/{docId} {
         allow read, write: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
+        allow create: if isDonoNoOnboarding(empresaId); // Permite no batch de criacao
       }
 
       // ==========================================
@@ -147,8 +158,8 @@ service cloud.firestore {
       // ==========================================
       match /funcionarios/{userId} {
         allow read: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || request.auth.uid == userId);
-        // Regra para auto-cadastro simplificada para o tenant default durante a migracao
-        allow create: if getEmpresaUsuario() == empresaId || (empresaId == 'emp_fc_moveis' && isAutenticado());
+        // Regra para auto-cadastro simplificada para o tenant default durante a migracao, ou para o dono no onboarding
+        allow create: if getEmpresaUsuario() == empresaId || isDonoNoOnboarding(empresaId) || (empresaId == 'emp_fc_moveis' && isAutenticado());
         allow update, delete: if getEmpresaUsuario() == empresaId && isAdmin(empresaId);
       }
 
