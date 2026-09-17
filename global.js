@@ -496,7 +496,9 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
 
         // Se já está logado e abriu a tela de login, vai direto para o sistema
         if (isLoginPage) {
-            window.location.href = 'index.html';
+            if (!window._fazendoLogin) {
+                window.location.href = 'index.html';
+            }
             return;
         }
 
