@@ -565,19 +565,6 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
             }
         }
 
-        // Se for o dono geral do SaaS, adiciona o atalho para o Painel Master no menu
-        if (user.email === 'fabricadecoresgoiania@gmail.com') {
-            const sidebarNav = document.querySelector('#sidebar nav');
-            if (sidebarNav && !document.getElementById('btn-menu-saas-master')) {
-                const linkMaster = document.createElement('a');
-                linkMaster.id = 'btn-menu-saas-master';
-                linkMaster.href = 'admin_saas.html';
-                linkMaster.className = 'nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-extrabold transition-all bg-gradient-to-r from-amber-500/20 to-yellow-500/10 text-amber-400 border border-amber-500/30 hover:scale-[1.02] shadow-sm mb-2';
-                linkMaster.innerHTML = '<i class="fa-solid fa-crown text-amber-400 w-5 text-center"></i> Painel SaaS Master';
-                sidebarNav.insertBefore(linkMaster, sidebarNav.firstChild);
-            }
-        }
-
         // Inicia monitor para detectar quando der meia-noite
         iniciarMonitorSessaoDiaria();
 
