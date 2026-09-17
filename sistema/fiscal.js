@@ -697,7 +697,8 @@ async function reemitirNota(vendaId, tipo) {
 
     try {
         const emitirFunc = firebase.functions().httpsCallable(tipoFuncao);
-        const resp = await emitirFunc({ vendaId });
+        const empIdAtual = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+        const resp = await emitirFunc({ vendaId, empId: empIdAtual });
         const res = resp.data;
 
         if (res && res.success) {
@@ -1152,7 +1153,8 @@ async function emitirNotaDireta(vendaId, tipo, contingencia = false) {
 
     try {
         const func = firebase.functions().httpsCallable(tipo === 'nfce' ? 'emitirNFCe' : 'emitirNFe');
-        const res = await func({ vendaId, contingencia: Boolean(contingencia) });
+        const empIdAtual = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+        const res = await func({ vendaId, contingencia: Boolean(contingencia), empId: empIdAtual });
         showToast(res.data?.message || `${label} emitida com sucesso!`, 'success');
         document.getElementById('modal-selecionar-venda').classList.add('hidden');
         processarNotasFiscais();

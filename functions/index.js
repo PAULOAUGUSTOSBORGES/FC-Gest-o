@@ -14,14 +14,16 @@ const db = admin.firestore();
  * Chamada pelo Frontend passando { vendaId: '...' }
  */
 exports.chamarGemini = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
+    const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
+    const empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
     
     // Validar se tem permissão (Admin, Gestão ou Marketing)
-    const funcSnap = await db.collection("funcionarios").doc(context.auth.uid).get();
+    const funcSnap = await empresaRef.collection("funcionarios").doc(context.auth.uid).get();
     const isPermitido = funcSnap.exists && (funcSnap.data().isAdmin || funcSnap.data().perm_gestao);
     if (!isPermitido) throw new functions.https.HttpsError("permission-denied", "Sem permissão para usar IA.");
 
-    const configSnap = await db.collection("fc_moveis").doc("config").get();
+    const configSnap = await empresaRef.collection("configuracoes").doc("config").get();
     const configGemini = configSnap.data()?.geminiApiKey;
     if (!configGemini) throw new functions.https.HttpsError("failed-precondition", "API Key não configurada.");
 
@@ -125,7 +127,7 @@ async function montarItensFocus(produtosVenda) {
         if (!ncm || ncm === "00000000" || !cfop) {
             try {
                 if (item.id) {
-                    const pSnap = await db.collection("produtos").doc(String(item.id)).get();
+                    const pSnap = await empresaRef.collection("produtos").doc(String(item.id)).get();
                     if (pSnap.exists) {
                         const pData = pSnap.data();
                         if (!ncm && pData.ncm) ncm = String(pData.ncm).replace(/\D/g, "");
@@ -180,14 +182,98 @@ async function montarItensFocus(produtosVenda) {
 }
 
 // ==========================================
+// ==========================================
+// HELPERS MULTI-TENANT & FALLBACK FISCAL
+// ==========================================
+async function localizarVendaEConfig(vendaId, empId) {
+    const id = String(vendaId).trim();
+    let empresaRef = db.collection('empresas').doc(empId || 'emp_fc_moveis');
+    
+    // 1. Tenta na subcolecao da empresa
+    let vendaSnap = await empresaRef.collection("vendas").doc(id).get();
+    if (vendaSnap.exists) {
+        return { vendaSnap, empresaRef, vendaRef: vendaSnap.ref };
+    }
+    
+    // 2. Tenta na raiz (legado)
+    const raizSnap = await db.collection("vendas").doc(id).get();
+    if (raizSnap.exists) {
+        return { vendaSnap: raizSnap, empresaRef, vendaRef: raizSnap.ref };
+    }
+    
+    // 3. Tenta em collectionGroup('vendas') em caso de empId divergente ou nao especificado
+    try {
+        const cgSnap = await db.collectionGroup("vendas").where(admin.firestore.FieldPath.documentId(), "==", id).limit(1).get();
+        if (!cgSnap.empty) {
+            const foundSnap = cgSnap.docs[0];
+            const parentEmp = foundSnap.ref.parent ? foundSnap.ref.parent.parent : null;
+            if (parentEmp) {
+                empresaRef = parentEmp;
+            }
+            return { vendaSnap: foundSnap, empresaRef, vendaRef: foundSnap.ref };
+        }
+    } catch (e) {
+        console.warn("[localizarVendaEConfig] Aviso na busca collectionGroup:", e.message);
+    }
+    
+    return { vendaSnap, empresaRef, vendaRef: empresaRef.collection("vendas").doc(id) };
+}
+
+async function verificarPermissaoUsuario(empresaRef, uid, tiposPermissao = ['isAdmin', 'perm_pdv', 'perm_gestao']) {
+    try {
+        const funcSnap = await empresaRef.collection("funcionarios").doc(uid).get();
+        if (funcSnap.exists) {
+            const d = funcSnap.data() || {};
+            if (tiposPermissao.some(p => Boolean(d[p]))) return true;
+        }
+    } catch (e) {}
+
+    try {
+        const raizFuncSnap = await db.collection("funcionarios").doc(uid).get();
+        if (raizFuncSnap.exists) {
+            const d = raizFuncSnap.data() || {};
+            if (tiposPermissao.some(p => Boolean(d[p]))) return true;
+        }
+    } catch (e) {}
+
+    return false;
+}
+
+async function obterConfigEmpresaComFallback(empresaRef) {
+    let configSnap = await empresaRef.collection("configuracoes").doc("config").get();
+    let config = configSnap.data() || {};
+    
+    // Se a empresa nao tiver os dados fiscais / certificado, busca na empresa padrao ou na raiz
+    if (!config.empresa || !config.empresa.certificadoBase64) {
+        try {
+            const padraoSnap = await db.collection("empresas").doc("emp_fc_moveis").collection("configuracoes").doc("config").get();
+            if (padraoSnap.exists && padraoSnap.data()?.empresa?.certificadoBase64) {
+                config = { ...padraoSnap.data(), ...config, empresa: { ...(padraoSnap.data().empresa || {}), ...(config.empresa || {}) } };
+            }
+        } catch (e) {}
+    }
+    
+    if (!config.empresa || !config.empresa.certificadoBase64) {
+        try {
+            const raizConfigSnap = await db.collection("configuracoes").doc("config").get();
+            if (raizConfigSnap.exists && raizConfigSnap.data()?.empresa?.certificadoBase64) {
+                config = { ...raizConfigSnap.data(), ...config, empresa: { ...(raizConfigSnap.data().empresa || {}), ...(config.empresa || {}) } };
+            }
+        } catch (e) {}
+    }
+    
+    return config;
+}
+
 // 1. EMISSÃO DE NFC-e (CUPOM FISCAL / MOD 65)
 // ==========================================
 exports.emitirNFCe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
+    const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
+    let empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
 
     // Validação de permissão
-    const funcSnap = await db.collection("funcionarios").doc(context.auth.uid).get();
-    const hasPerm = funcSnap.exists && (funcSnap.data().isAdmin || funcSnap.data().perm_pdv || funcSnap.data().perm_gestao);
+    const hasPerm = await verificarPermissaoUsuario(empresaRef, context.auth.uid, ['isAdmin', 'perm_pdv', 'perm_gestao']);
     if (!hasPerm) throw new functions.https.HttpsError("permission-denied", "Sem permissão para emitir NFC-e.");
 
     try {
@@ -195,18 +281,20 @@ exports.emitirNFCe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
         if (!vendaId) throw new functions.https.HttpsError("invalid-argument", "vendaId não informado.");
 
         // 1. Buscar Venda e Configurações da Empresa
-        const vendaSnap = await db.collection("vendas").doc(String(vendaId)).get();
+        const loc = await localizarVendaEConfig(vendaId, empId);
+        const vendaSnap = loc.vendaSnap;
+        empresaRef = loc.empresaRef;
+        const vendaRef = loc.vendaRef;
         if (!vendaSnap.exists) throw new functions.https.HttpsError("not-found", "Venda não encontrada.");
         const venda = vendaSnap.data();
 
-        const configSnap = await db.collection("fc_moveis").doc("config").get();
-        const config = configSnap.data();
+        const config = await obterConfigEmpresaComFallback(empresaRef);
         if (!config || !config.empresa) throw new functions.https.HttpsError("failed-precondition", "Configurações da empresa incompletas.");
         const empresa = config.empresa;
 
         if (!empresa.ambienteFiscal || empresa.ambienteFiscal !== 'producao') {
             empresa.ambienteFiscal = 'producao';
-            db.collection("fc_moveis").doc("config").set({ empresa: { ambienteFiscal: 'producao' } }, { merge: true }).catch(console.error);
+            empresaRef.collection("configuracoes").doc("config").set({ empresa: { ambienteFiscal: 'producao' } }, { merge: true }).catch(console.error);
         }
 
         if (!empresa.certificadoBase64) {
@@ -234,7 +322,7 @@ exports.emitirNFCe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
         console.log(`Emitindo NFC-e ${isContingencia ? 'EM CONTINGÊNCIA' : 'via SEFAZ Direto'} para a venda ${vendaId}...`);
         let clienteData = null;
         if (venda.clienteId && venda.clienteId !== '0') {
-            const cliSnap = await db.collection("clientes").doc(String(venda.clienteId)).get();
+            const cliSnap = await empresaRef.collection("clientes").doc(String(venda.clienteId)).get();
             if (cliSnap.exists) clienteData = cliSnap.data();
         }
 
@@ -263,7 +351,7 @@ exports.emitirNFCe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
             motor: "sefaz_direto"
         };
 
-        await db.collection("vendas").doc(String(vendaId)).set({
+        await vendaRef.set({
             nfce: dadosRetorno,
             status_fiscal: dadosRetorno.status_sefaz,
             tipo_fiscal: "NFC-e",
@@ -276,7 +364,7 @@ exports.emitirNFCe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
 
         if (resultadoSefaz.sucesso && resultadoSefaz.numero) {
             const proxNum = parseInt(resultadoSefaz.numero, 10) + 1;
-            await db.collection("fc_moveis").doc("config").set({
+            await empresaRef.collection("configuracoes").doc("config").set({
                 empresa: { proximoNumeroNFCe: proxNum }
             }, { merge: true });
         }
@@ -305,22 +393,25 @@ exports.emitirNFCe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
 // 1.1 TRANSMISSÃO DE NFC-e EMITIDA EM CONTINGÊNCIA
 // ====================================================
 exports.transmitirNFCeContingencia = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
+    const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
+    let empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
 
-    const funcSnap = await db.collection("funcionarios").doc(context.auth.uid).get();
-    const hasPerm = funcSnap.exists && (funcSnap.data().isAdmin || funcSnap.data().perm_pdv || funcSnap.data().perm_gestao);
+    const hasPerm = await verificarPermissaoUsuario(empresaRef, context.auth.uid, ['isAdmin', 'perm_pdv', 'perm_gestao']);
     if (!hasPerm) throw new functions.https.HttpsError("permission-denied", "Sem permissão para transmitir nota.");
 
     try {
         const vendaId = data.vendaId;
         if (!vendaId) throw new functions.https.HttpsError("invalid-argument", "vendaId não informado.");
 
-        const vendaSnap = await db.collection("vendas").doc(String(vendaId)).get();
+        const loc = await localizarVendaEConfig(vendaId, empId);
+        const vendaSnap = loc.vendaSnap;
+        empresaRef = loc.empresaRef;
+        const vendaRef = loc.vendaRef;
         if (!vendaSnap.exists) throw new functions.https.HttpsError("not-found", "Venda não encontrada.");
         const venda = vendaSnap.data();
 
-        const configSnap = await db.collection("fc_moveis").doc("config").get();
-        const config = configSnap.data();
+        const config = await obterConfigEmpresaComFallback(empresaRef);
         if (!config || !config.empresa) throw new functions.https.HttpsError("failed-precondition", "Configurações da empresa incompletas.");
         const empresa = config.empresa;
 
@@ -345,7 +436,7 @@ exports.transmitirNFCeContingencia = functions.runWith({ serviceAccount: 'lojafc
                 contingencia_transmitida: true
             };
 
-            await db.collection("vendas").doc(String(vendaId)).set({
+            await vendaRef.set({
                 nfce: nfceAtualizada,
                 status_fiscal: "autorizado",
                 fiscal_protocolo: resultado.nProt,
@@ -373,11 +464,12 @@ exports.transmitirNFCeContingencia = functions.runWith({ serviceAccount: 'lojafc
 // 2. EMISSÃO DE NF-e (MODELO 55 - NOTA COMPLETA)
 // ==========================================
 exports.emitirNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
+    const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
+    let empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
 
     // Validação de permissão
-    const funcSnap = await db.collection("funcionarios").doc(context.auth.uid).get();
-    const hasPerm = funcSnap.exists && (funcSnap.data().isAdmin || funcSnap.data().perm_pdv || funcSnap.data().perm_gestao);
+    const hasPerm = await verificarPermissaoUsuario(empresaRef, context.auth.uid, ['isAdmin', 'perm_pdv', 'perm_gestao']);
     if (!hasPerm) throw new functions.https.HttpsError("permission-denied", "Sem permissão para emitir NF-e.");
 
     try {
@@ -385,18 +477,20 @@ exports.emitirNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gs
         if (!vendaId) throw new functions.https.HttpsError("invalid-argument", "vendaId não informado.");
 
         // 1. Buscar Venda e Configurações da Empresa
-        const vendaSnap = await db.collection("vendas").doc(String(vendaId)).get();
+        const loc = await localizarVendaEConfig(vendaId, empId);
+        const vendaSnap = loc.vendaSnap;
+        empresaRef = loc.empresaRef;
+        const vendaRef = loc.vendaRef;
         if (!vendaSnap.exists) throw new functions.https.HttpsError("not-found", "Venda não encontrada.");
         const venda = vendaSnap.data();
 
-        const configSnap = await db.collection("fc_moveis").doc("config").get();
-        const config = configSnap.data();
+        const config = await obterConfigEmpresaComFallback(empresaRef);
         if (!config || !config.empresa) throw new functions.https.HttpsError("failed-precondition", "Configurações da empresa incompletas.");
         const empresa = config.empresa;
 
         if (!empresa.ambienteFiscal || empresa.ambienteFiscal !== 'producao') {
             empresa.ambienteFiscal = 'producao';
-            db.collection("fc_moveis").doc("config").set({ empresa: { ambienteFiscal: 'producao' } }, { merge: true }).catch(console.error);
+            empresaRef.collection("configuracoes").doc("config").set({ empresa: { ambienteFiscal: 'producao' } }, { merge: true }).catch(console.error);
         }
 
         if (!empresa.certificadoBase64) {
@@ -409,7 +503,7 @@ exports.emitirNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gs
         // 2. Buscar Dados Completos do Cliente (Destinatário Obrigatório na NF-e)
         let clienteData = null;
         if (venda.clienteId && venda.clienteId !== '0') {
-            const cliSnap = await db.collection("clientes").doc(String(venda.clienteId)).get();
+            const cliSnap = await empresaRef.collection("clientes").doc(String(venda.clienteId)).get();
             if (cliSnap.exists) clienteData = cliSnap.data();
         }
 
@@ -440,7 +534,7 @@ exports.emitirNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gs
             motor: "sefaz_direto"
         };
 
-        await db.collection("vendas").doc(String(vendaId)).set({
+        await vendaRef.set({
             nfe: dadosRetorno,
             status_fiscal: dadosRetorno.status_sefaz,
             tipo_fiscal: "NF-e",
@@ -451,7 +545,7 @@ exports.emitirNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gs
 
         if (resultadoSefaz.sucesso && resultadoSefaz.numero) {
             const proxNum = parseInt(resultadoSefaz.numero, 10) + 1;
-            await db.collection("fc_moveis").doc("config").set({
+            await empresaRef.collection("configuracoes").doc("config").set({
                 empresa: { proximoNumeroNFe: proxNum }
             }, { merge: true });
         }
@@ -477,9 +571,11 @@ exports.emitirNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gs
 // 3. CANCELAMENTO DE NOTA FISCAL (NF-e OU NFC-e)
 // ==========================================
 exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
+    const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
+    const empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
 
-    const funcSnap = await db.collection("funcionarios").doc(context.auth.uid).get();
+    const funcSnap = await empresaRef.collection("funcionarios").doc(context.auth.uid).get();
     const hasPerm = funcSnap.exists && (funcSnap.data().isAdmin || funcSnap.data().perm_gestao);
     if (!hasPerm) throw new functions.https.HttpsError("permission-denied", "Sem permissão para cancelar notas fiscais.");
 
@@ -500,18 +596,19 @@ exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@a
 
         // 1. Tenta buscar na coleção 'vendas'
         if (vendaId) {
-            const vendaSnap = await db.collection("vendas").doc(String(vendaId)).get();
-            if (vendaSnap.exists) {
-                targetDoc = vendaSnap.data();
-                targetRef = vendaSnap.ref;
+            const loc = await localizarVendaEConfig(vendaId, empId);
+            if (loc.vendaSnap.exists) {
+                targetDoc = loc.vendaSnap.data();
+                targetRef = loc.vendaRef;
                 targetCollection = "vendas";
+                empresaRef = loc.empresaRef;
             }
         }
 
         // 2. Tenta buscar na coleção 'notas_devolucao'
         if (!targetDoc) {
             if (vendaId) {
-                const devSnap = await db.collection("notas_devolucao").doc(String(vendaId)).get();
+                const devSnap = await empresaRef.collection("notas_devolucao").doc(String(vendaId)).get();
                 if (devSnap.exists) {
                     targetDoc = devSnap.data();
                     targetRef = devSnap.ref;
@@ -520,7 +617,7 @@ exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@a
             }
             if (!targetDoc && chaveParam) {
                 const limpaChave = String(chaveParam).replace(/\D/g, '');
-                const qSnap = await db.collection("notas_devolucao").where("chave_nfe", "==", limpaChave).limit(1).get();
+                const qSnap = await empresaRef.collection("notas_devolucao").where("chave_nfe", "==", limpaChave).limit(1).get();
                 if (!qSnap.empty) {
                     targetDoc = qSnap.docs[0].data();
                     targetRef = qSnap.docs[0].ref;
@@ -528,7 +625,7 @@ exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@a
                 }
             }
             if (!targetDoc && numeroParam) {
-                const qSnap = await db.collection("notas_devolucao").where("numero", "==", String(numeroParam).trim()).limit(1).get();
+                const qSnap = await empresaRef.collection("notas_devolucao").where("numero", "==", String(numeroParam).trim()).limit(1).get();
                 if (!qSnap.empty) {
                     targetDoc = qSnap.docs[0].data();
                     targetRef = qSnap.docs[0].ref;
@@ -540,7 +637,7 @@ exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@a
         // 3. Tenta buscar na coleção 'notas_avulsas'
         if (!targetDoc) {
             if (vendaId) {
-                const avSnap = await db.collection("notas_avulsas").doc(String(vendaId)).get();
+                const avSnap = await empresaRef.collection("notas_avulsas").doc(String(vendaId)).get();
                 if (avSnap.exists) {
                     targetDoc = avSnap.data();
                     targetRef = avSnap.ref;
@@ -549,7 +646,7 @@ exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@a
             }
             if (!targetDoc && chaveParam) {
                 const limpaChave = String(chaveParam).replace(/\D/g, '');
-                const qSnap = await db.collection("notas_avulsas").where("chave_nfe", "==", limpaChave).limit(1).get();
+                const qSnap = await empresaRef.collection("notas_avulsas").where("chave_nfe", "==", limpaChave).limit(1).get();
                 if (!qSnap.empty) {
                     targetDoc = qSnap.docs[0].data();
                     targetRef = qSnap.docs[0].ref;
@@ -561,7 +658,7 @@ exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@a
         // 4. Tenta buscar na coleção 'notas_servico' (NFS-e de competência municipal)
         if (!targetDoc) {
             if (vendaId) {
-                const nsSnap = await db.collection("notas_servico").doc(String(vendaId)).get();
+                const nsSnap = await empresaRef.collection("notas_servico").doc(String(vendaId)).get();
                 if (nsSnap.exists) {
                     targetDoc = nsSnap.data();
                     targetRef = nsSnap.ref;
@@ -569,7 +666,7 @@ exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@a
                 }
             }
             if (!targetDoc && chaveParam) {
-                const qSnap = await db.collection("notas_servico").where("codigo_verificacao", "==", String(chaveParam).trim()).limit(1).get();
+                const qSnap = await empresaRef.collection("notas_servico").where("codigo_verificacao", "==", String(chaveParam).trim()).limit(1).get();
                 if (!qSnap.empty) {
                     targetDoc = qSnap.docs[0].data();
                     targetRef = qSnap.docs[0].ref;
@@ -577,7 +674,7 @@ exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@a
                 }
             }
             if (!targetDoc && numeroParam) {
-                const qSnap = await db.collection("notas_servico").where("numero", "==", String(numeroParam).trim()).limit(1).get();
+                const qSnap = await empresaRef.collection("notas_servico").where("numero", "==", String(numeroParam).trim()).limit(1).get();
                 if (!qSnap.empty) {
                     targetDoc = qSnap.docs[0].data();
                     targetRef = qSnap.docs[0].ref;
@@ -608,7 +705,7 @@ exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@a
 
             const refVendaId = targetDoc.vendaId || (targetCollection === "vendas" ? vendaId : null);
             if (refVendaId) {
-                await db.collection("vendas").doc(String(refVendaId)).set({
+                await empresaRef.collection("vendas").doc(String(refVendaId)).set({
                     status_fiscal_nfse: "cancelado",
                     "nfse.status": "cancelado",
                     "nfse.status_sefaz": "cancelado",
@@ -618,7 +715,7 @@ exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@a
             }
 
             if (targetCollection === "vendas" && targetDoc.nfse?.codigo_verificacao) {
-                const qSnap = await db.collection("notas_servico").where("codigo_verificacao", "==", targetDoc.nfse.codigo_verificacao).limit(1).get();
+                const qSnap = await empresaRef.collection("notas_servico").where("codigo_verificacao", "==", targetDoc.nfse.codigo_verificacao).limit(1).get();
                 if (!qSnap.empty) {
                     await qSnap.docs[0].ref.set(dadosCancelamento, { merge: true });
                 }
@@ -633,7 +730,7 @@ exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@a
             };
         }
 
-        const configSnap = await db.collection("fc_moveis").doc("config").get();
+        const configSnap = await empresaRef.collection("configuracoes").doc("config").get();
         const empresa = configSnap.data()?.empresa || {};
 
         if (!empresa.certificadoBase64) {
@@ -711,12 +808,12 @@ exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@a
                 }, { merge: true });
 
                 if (targetDoc.compraId) {
-                    await db.collection("compras").doc(String(targetDoc.compraId)).set({
+                    await empresaRef.collection("compras").doc(String(targetDoc.compraId)).set({
                         nfe_devolucao: { status_sefaz: "cancelado" }
                     }, { merge: true });
                 }
                 if (targetDoc.vendaId) {
-                    await db.collection("vendas").doc(String(targetDoc.vendaId)).set({
+                    await empresaRef.collection("vendas").doc(String(targetDoc.vendaId)).set({
                         nfe_devolucao: { status_sefaz: "cancelado" }
                     }, { merge: true });
                 }
@@ -761,17 +858,20 @@ exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@a
 // Desfaz marcação de cancelamento interno para permitir estorno oficial na SEFAZ via Devolução
 // ==========================================
 exports.reverterCancelamentoInterno = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
+    const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
+    const empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Usuário não autenticado.');
     const { vendaId, tipo } = data;
     if (!vendaId) throw new functions.https.HttpsError('invalid-argument', 'vendaId não informado.');
 
     try {
-        const funcSnap = await db.collection('funcionarios').doc(context.auth.uid).get();
+        const funcSnap = await empresaRef.collection('funcionarios').doc(context.auth.uid).get();
         const hasPerm = funcSnap.exists && (funcSnap.data().isAdmin || funcSnap.data().perm_gestao);
         if (!hasPerm) throw new functions.https.HttpsError('permission-denied', 'Sem permissão para alterar notas fiscais.');
 
-        const vendaRef = db.collection('vendas').doc(String(vendaId));
-        const vendaSnap = await vendaRef.get();
+        const loc = await localizarVendaEConfig(vendaId, empId);
+        const vendaSnap = loc.vendaSnap;
+        const vendaRef = loc.vendaRef;
         if (!vendaSnap.exists) throw new functions.https.HttpsError('not-found', 'Venda não encontrada.');
         const v = vendaSnap.data();
 
@@ -812,6 +912,8 @@ exports.reverterCancelamentoInterno = functions.runWith({ serviceAccount: 'lojaf
 // 4. CONSULTA DE STATUS NA SEFAZ (POLLING / REFRESH)
 // ==========================================
 exports.consultarStatusNota = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
+    const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
+    const empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
 
     try {
@@ -820,7 +922,8 @@ exports.consultarStatusNota = functions.runWith({ serviceAccount: 'lojafc-a31f9@
 
         const tipoNormalizado = (tipo && String(tipo).toLowerCase().includes("nfe") && !String(tipo).toLowerCase().includes("nfce")) ? "nfe" : "nfce";
 
-        const vendaSnap = await db.collection("vendas").doc(String(vendaId)).get();
+        const loc = await localizarVendaEConfig(vendaId, empId);
+        const vendaSnap = loc.vendaSnap;
         if (!vendaSnap.exists) throw new functions.https.HttpsError("not-found", "Venda não encontrada.");
         const venda = vendaSnap.data();
 
@@ -847,9 +950,11 @@ exports.consultarStatusNota = functions.runWith({ serviceAccount: 'lojafc-a31f9@
 // 5. CARTA DE CORREÇÃO ELETRÔNICA (CC-e PARA NF-e)
 // ==========================================
 exports.cartaCorrecaoNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
+    const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
+    const empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
 
-    const funcSnap = await db.collection("funcionarios").doc(context.auth.uid).get();
+    const funcSnap = await empresaRef.collection("funcionarios").doc(context.auth.uid).get();
     const hasPerm = funcSnap.exists && (funcSnap.data().isAdmin || funcSnap.data().perm_gestao);
     if (!hasPerm) throw new functions.https.HttpsError("permission-denied", "Sem permissão para emitir Carta de Correção.");
 
@@ -860,11 +965,12 @@ exports.cartaCorrecaoNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
             throw new functions.https.HttpsError("invalid-argument", "A correção deve ter pelo menos 15 caracteres (exigência da SEFAZ).");
         }
 
-        const vendaSnap = await db.collection("vendas").doc(String(vendaId)).get();
+        const loc = await localizarVendaEConfig(vendaId, empId);
+        const vendaSnap = loc.vendaSnap;
         if (!vendaSnap.exists) throw new functions.https.HttpsError("not-found", "Venda não encontrada.");
         const venda = vendaSnap.data();
 
-        const configSnap = await db.collection("fc_moveis").doc("config").get();
+        const configSnap = await empresaRef.collection("configuracoes").doc("config").get();
         const empresa = configSnap.data()?.empresa || {};
 
         if (!empresa.certificadoBase64) {
@@ -888,7 +994,7 @@ exports.cartaCorrecaoNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
                 data: new Date().toISOString()
             };
 
-            await db.collection("vendas").doc(String(vendaId)).set({
+            await vendaRef.set({
                 nfe: {
                     ...(venda.nfe || {}),
                     cce: dadosCCe
@@ -916,9 +1022,11 @@ exports.cartaCorrecaoNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
 // Emitida quando o cliente devolve mercadoria — NF entrada (tpNF=0), finNFe=4
 // ==========================================
 exports.emitirDevolucaoVenda = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
+    const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
+    const empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Usuário não autenticado.');
 
-    const funcSnap = await db.collection('funcionarios').doc(context.auth.uid).get();
+    const funcSnap = await empresaRef.collection('funcionarios').doc(context.auth.uid).get();
     const hasPerm = funcSnap.exists && (funcSnap.data().isAdmin || funcSnap.data().perm_gestao);
     if (!hasPerm) throw new functions.https.HttpsError('permission-denied', 'Sem permissão para emitir devoluções.');
 
@@ -927,19 +1035,22 @@ exports.emitirDevolucaoVenda = functions.runWith({ serviceAccount: 'lojafc-a31f9
         if (!vendaId) throw new functions.https.HttpsError('invalid-argument', 'vendaId não informado.');
 
         // Buscar venda e configurações
-        const vendaSnap = await db.collection('vendas').doc(String(vendaId)).get();
+        const loc = await localizarVendaEConfig(vendaId, empId);
+        const vendaSnap = loc.vendaSnap;
+        empresaRef = loc.empresaRef;
+        const vendaRef = loc.vendaRef;
         if (!vendaSnap.exists) throw new functions.https.HttpsError('not-found', 'Venda não encontrada.');
         const venda = vendaSnap.data();
 
-        const configSnap = await db.collection('fc_moveis').doc('config').get();
-        const empresa = configSnap.data()?.empresa;
+        const config = await obterConfigEmpresaComFallback(empresaRef);
+        const empresa = config.empresa;
         if (!empresa?.certificadoBase64) throw new functions.https.HttpsError('failed-precondition', 'Certificado A1 não configurado.');
         if (!empresa.ambienteFiscal) empresa.ambienteFiscal = 'producao';
 
         // Buscar cliente
         let clienteData = null;
         if (venda.clienteId && venda.clienteId !== '0') {
-            const cliSnap = await db.collection('clientes').doc(String(venda.clienteId)).get();
+            const cliSnap = await empresaRef.collection('clientes').doc(String(venda.clienteId)).get();
             if (cliSnap.exists) clienteData = cliSnap.data();
         }
 
@@ -1058,11 +1169,11 @@ exports.emitirDevolucaoVenda = functions.runWith({ serviceAccount: 'lojafc-a31f9
                 estornada_por_devolucao: resultadoSefaz.chave || true
             };
         }
-        await db.collection('vendas').doc(String(vendaId)).set(updateVenda, { merge: true });
+        await vendaRef.set(updateVenda, { merge: true });
 
         // Salvar também na coleção de devoluções para consulta no painel fiscal
         const docId = `dev_venda_${vendaId}_${Date.now()}`;
-        await db.collection('notas_devolucao').doc(docId).set({
+        await empresaRef.collection('notas_devolucao').doc(docId).set({
             ...dadosRetorno,
             vendaId: String(vendaId),
             tipo_devolucao: 'venda',
@@ -1071,7 +1182,7 @@ exports.emitirDevolucaoVenda = functions.runWith({ serviceAccount: 'lojafc-a31f9
 
         if (resultadoSefaz.numero) {
             const proxNum = parseInt(resultadoSefaz.numero, 10) + 1;
-            await db.collection('fc_moveis').doc('config').set({ empresa: { proximoNumeroNFe: proxNum } }, { merge: true });
+            await empresaRef.collection('configuracoes').doc('config').set({ empresa: { proximoNumeroNFe: proxNum } }, { merge: true });
         }
 
         return { success: true, message: 'NF-e de Devolução de Venda autorizada!', data: dadosRetorno };
@@ -1088,25 +1199,27 @@ exports.emitirDevolucaoVenda = functions.runWith({ serviceAccount: 'lojafc-a31f9
 // NF saída (tpNF=1), finNFe=4, destinatário = fornecedor
 // ==========================================
 exports.emitirDevolucaoCompra = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
+    const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
+    const empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Usuário não autenticado.');
 
-    const funcSnap = await db.collection('funcionarios').doc(context.auth.uid).get();
+    const funcSnap = await empresaRef.collection('funcionarios').doc(context.auth.uid).get();
     const hasPerm = funcSnap.exists && (funcSnap.data().isAdmin || funcSnap.data().perm_gestao);
     if (!hasPerm) throw new functions.https.HttpsError('permission-denied', 'Sem permissão para emitir devoluções.');
 
     try {
         const { compraId, fornecedorId, chaveOriginal, itensParaDevolucao, observacoes, destinatarioDados } = data;
 
-        const configSnap = await db.collection('fc_moveis').doc('config').get();
+        const configSnap = await empresaRef.collection('configuracoes').doc('config').get();
         const empresa = configSnap.data()?.empresa;
         if (!empresa?.certificadoBase64) throw new functions.https.HttpsError('failed-precondition', 'Certificado A1 não configurado.');
         empresa.ambienteFiscal = 'producao';
 
         // Buscar dados do fornecedor (destinatário neste caso)
         let fornecedorData = destinatarioDados || null;
-        const fId = fornecedorId || (compraId ? (await db.collection('compras').doc(String(compraId)).get()).data()?.fornecedorId : null);
+        const fId = fornecedorId || (compraId ? (await empresaRef.collection('compras').doc(String(compraId)).get()).data()?.fornecedorId : null);
         if (!fornecedorData && fId) {
-            const fSnap = await db.collection('fornecedores').doc(String(fId)).get();
+            const fSnap = await empresaRef.collection('fornecedores').doc(String(fId)).get();
             if (fSnap.exists) fornecedorData = fSnap.data();
         }
         if (!fornecedorData) throw new functions.https.HttpsError('failed-precondition', 'Dados do fornecedor/indústria não encontrados. Informe o fornecedor ou preencha os dados.');
@@ -1114,7 +1227,7 @@ exports.emitirDevolucaoCompra = functions.runWith({ serviceAccount: 'lojafc-a31f
         // Buscar itens da compra original se não fornecidos
         let itens = itensParaDevolucao || [];
         if (itens.length === 0 && compraId) {
-            const compraSnap = await db.collection('compras').doc(String(compraId)).get();
+            const compraSnap = await empresaRef.collection('compras').doc(String(compraId)).get();
             if (compraSnap.exists) itens = compraSnap.data().itens || compraSnap.data().produtos || [];
         }
         if (itens.length === 0) throw new functions.https.HttpsError('invalid-argument', 'Nenhum item para devolução.');
@@ -1173,11 +1286,11 @@ exports.emitirDevolucaoCompra = functions.runWith({ serviceAccount: 'lojafc-a31f
         }
 
         if (compraId) {
-            await db.collection('compras').doc(String(compraId)).set({ nfe_devolucao: dadosRetorno }, { merge: true });
+            await empresaRef.collection('compras').doc(String(compraId)).set({ nfe_devolucao: dadosRetorno }, { merge: true });
         }
 
         const docId = `dev_compra_${compraId || Date.now()}_${Date.now()}`;
-        await db.collection('notas_devolucao').doc(docId).set({
+        await empresaRef.collection('notas_devolucao').doc(docId).set({
             ...dadosRetorno,
             compraId: String(compraId || ''),
             tipo_devolucao: 'compra',
@@ -1186,7 +1299,7 @@ exports.emitirDevolucaoCompra = functions.runWith({ serviceAccount: 'lojafc-a31f
 
         if (resultadoSefaz.numero) {
             const proxNum = parseInt(resultadoSefaz.numero, 10) + 1;
-            await db.collection('fc_moveis').doc('config').set({ empresa: { proximoNumeroNFe: proxNum } }, { merge: true });
+            await empresaRef.collection('configuracoes').doc('config').set({ empresa: { proximoNumeroNFe: proxNum } }, { merge: true });
         }
 
         return { success: true, message: 'NF-e de Devolução de Compra autorizada!', data: dadosRetorno };
@@ -1202,6 +1315,8 @@ exports.emitirDevolucaoCompra = functions.runWith({ serviceAccount: 'lojafc-a31f
 // LIMPEZA DE TENTATIVAS DE DEVOLUÇÃO REJEITADAS
 // ==========================================
 exports.limparDevolucoesRejeitadas = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
+    const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
+    const empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Usuário não autenticado.');
 
     try {
@@ -1209,7 +1324,7 @@ exports.limparDevolucoesRejeitadas = functions.runWith({ serviceAccount: 'lojafc
         let vendasCorrigidas = 0;
 
         // 1. Limpar coleção notas_devolucao onde status_sefaz !== 'autorizado'
-        const devsSnap = await db.collection('notas_devolucao').get();
+        const devsSnap = await empresaRef.collection('notas_devolucao').get();
         for (const doc of devsSnap.docs) {
             const d = doc.data();
             if (d.status_sefaz !== 'autorizado') {
@@ -1219,7 +1334,7 @@ exports.limparDevolucoesRejeitadas = functions.runWith({ serviceAccount: 'lojafc
         }
 
         // 2. Limpar campo nfe_devolucao nas vendas onde não houve autorização
-        const vendasSnap = await db.collection('vendas').get();
+        const vendasSnap = await empresaRef.collection('vendas').get();
         for (const doc of vendasSnap.docs) {
             const v = doc.data();
             if (v.nfe_devolucao && v.nfe_devolucao.status_sefaz !== 'autorizado') {
@@ -1256,9 +1371,11 @@ exports.limparDevolucoesRejeitadas = functions.runWith({ serviceAccount: 'lojafc
 // 9. NOTA AVULSA (NF-e ou NFC-e sem venda cadastrada no sistema)
 // ==========================================
 exports.emitirNotaAvulsa = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
+    const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
+    const empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Usuário não autenticado.');
 
-    const funcSnap = await db.collection('funcionarios').doc(context.auth.uid).get();
+    const funcSnap = await empresaRef.collection('funcionarios').doc(context.auth.uid).get();
     const hasPerm = funcSnap.exists && (funcSnap.data().isAdmin || funcSnap.data().perm_pdv || funcSnap.data().perm_gestao);
     if (!hasPerm) throw new functions.https.HttpsError('permission-denied', 'Sem permissão para emitir notas avulsas.');
 
@@ -1277,7 +1394,7 @@ exports.emitirNotaAvulsa = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
             }
         }
 
-        const configSnap = await db.collection('fc_moveis').doc('config').get();
+        const configSnap = await empresaRef.collection('configuracoes').doc('config').get();
         const empresa = configSnap.data()?.empresa;
         if (!empresa?.certificadoBase64) throw new functions.https.HttpsError('failed-precondition', 'Certificado A1 não configurado.');
         empresa.ambienteFiscal = 'producao';
@@ -1374,7 +1491,7 @@ exports.emitirNotaAvulsa = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
 
         // Salvar nota avulsa na coleção própria (identificada pela chave)
         const docId = resultadoSefaz.chave || `avulsa_${Date.now()}`;
-        await db.collection('notas_avulsas').doc(docId).set({
+        await empresaRef.collection('notas_avulsas').doc(docId).set({
             ...dadosRetorno,
             criadoEm: new Date().toISOString(),
             emitidoPor: context.auth.uid
@@ -1383,7 +1500,7 @@ exports.emitirNotaAvulsa = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
         if (resultadoSefaz.sucesso && resultadoSefaz.numero) {
             const proxKey = modelo === '65' ? 'proximoNumeroNFCe' : 'proximoNumeroNFe';
             const proxNum = parseInt(resultadoSefaz.numero, 10) + 1;
-            await db.collection('fc_moveis').doc('config').set({ empresa: { [proxKey]: proxNum } }, { merge: true });
+            await empresaRef.collection('configuracoes').doc('config').set({ empresa: { [proxKey]: proxNum } }, { merge: true });
         }
 
         if (!resultadoSefaz.sucesso) {
@@ -1405,9 +1522,11 @@ exports.emitirNotaAvulsa = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
 // Competência Municipal - Padrão Nacional / ABRASF 2.04
 // ==========================================
 exports.emitirNFSe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
+    const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
+    const empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Usuário não autenticado.');
 
-    const funcSnap = await db.collection('funcionarios').doc(context.auth.uid).get();
+    const funcSnap = await empresaRef.collection('funcionarios').doc(context.auth.uid).get();
     const hasPerm = funcSnap.exists && (funcSnap.data().isAdmin || funcSnap.data().perm_pdv || funcSnap.data().perm_gestao);
     if (!hasPerm) throw new functions.https.HttpsError('permission-denied', 'Sem permissão para emitir NFS-e.');
 
@@ -1423,7 +1542,7 @@ exports.emitirNFSe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
             throw new functions.https.HttpsError('invalid-argument', 'O valor do serviço deve ser maior que zero.');
         }
 
-        const configSnap = await db.collection('fc_moveis').doc('config').get();
+        const configSnap = await empresaRef.collection('configuracoes').doc('config').get();
         const empresa = configSnap.data()?.empresa;
         if (!empresa) throw new functions.https.HttpsError('failed-precondition', 'Configurações da empresa não encontradas.');
 
@@ -1564,18 +1683,18 @@ exports.emitirNFSe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
 
         // Salva na coleção dedicada de notas de serviço
         const docId = `nfse_${numNFSe}_${codigoVerificacao}`;
-        await db.collection('notas_servico').doc(docId).set(dadosRetorno);
+        await empresaRef.collection('notas_servico').doc(docId).set(dadosRetorno);
 
         // Se vinculado a uma venda/serviço, atualiza o documento da venda
         if (vendaId) {
-            await db.collection('vendas').doc(String(vendaId)).set({
+            await empresaRef.collection('vendas').doc(String(vendaId)).set({
                 nfse: dadosRetorno,
                 status_fiscal_nfse: 'autorizado'
             }, { merge: true });
         }
 
         // Incrementa o número da próxima NFS-e
-        await db.collection('fc_moveis').doc('config').set({
+        await empresaRef.collection('configuracoes').doc('config').set({
             empresa: { proximoNumeroNFSe: numNFSe + 1 }
         }, { merge: true });
 
@@ -1595,6 +1714,8 @@ exports.emitirNFSe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
 });
 
 exports.validarCertificadoA1 = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
+    const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
+    const empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
 
     const { pfxBase64, senha } = data;

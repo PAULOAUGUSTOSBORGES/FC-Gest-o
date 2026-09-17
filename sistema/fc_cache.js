@@ -481,6 +481,15 @@
             await Promise.all(promessas);
             _atualizarBadgePendencias();
             console.log('[FCRepo] ⚡ Repositório Local carregado instantaneamente do IndexedDB.');
+
+            // Se for a primeira vez neste dispositivo (nunca sincronizado), realiza carga inicial silenciosa
+            const ultimaSinc = await _idbLerMeta('ultima_sincronizacao');
+            if (!ultimaSinc && !localStorage.getItem('fc_ultima_sincronizacao')) {
+                console.log('[FCRepo] 🚀 Primeira inicialização detectada. Baixando banco de dados completo em segundo plano...');
+                setTimeout(function () {
+                    sincronizarComFirebase(true);
+                }, 1000);
+            }
         } catch (err) {
             console.warn('[FCRepo] Erro ao carregar do IndexedDB:', err);
         }
