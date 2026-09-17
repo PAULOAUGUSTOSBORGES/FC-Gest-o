@@ -1137,17 +1137,18 @@ window.chamarGemini = async function(prompt) {
         // 1. Verifica se a loja contratou o módulo de IA no plano
         const user = firebase.auth().currentUser;
         const isMaster = user && (user.email === 'pauloaugusto.silvaborges@gmail.com' || user.email === 'fabricadecoresgoiania@gmail.com');
-        const mods = window.modulosLiberadosEmpresa || [];
+        const mods = window.modulosLiberadosEmpresa;
 
-        if (!isMaster && !mods.includes('ia')) {
+        // Se for o Fundador ou Super Admin, liberação total
+        // Se for lojista, só bloqueia se modulosLiberados foi carregado e não contém 'ia'
+        if (!isMaster && Array.isArray(mods) && mods.length > 0 && !mods.includes('ia')) {
             if (typeof showToast === 'function') {
-                showToast("O módulo de Inteligência Artificial não está incluso no plano da sua loja. Contate o suporte para ativar!", 'warning');
+                showToast("O módulo de Inteligência Artificial não está incluso no plano da sua loja. Fale com a administração para ativar!", 'warning');
             }
             return null;
         }
 
-        // 2. Busca da Chave da API:
-        // Primeiro da própria empresa, senão busca a Chave Mestra Global configurada pelo Fundador
+        // 2. Busca da Chave da API com alta redundância:
         let apiKey = '';
         if (window.currentEmpresaData && window.currentEmpresaData.geminiKey) {
             apiKey = window.currentEmpresaData.geminiKey;
@@ -1155,6 +1156,7 @@ window.chamarGemini = async function(prompt) {
             apiKey = db.config.empresa.geminiKey;
         }
 
+        // 2.1 Busca na Chave Mestra Global configurada pelo Fundador no Master
         if (!apiKey) {
             try {
                 const saasSnap = await firebase.firestore().collection('saas_config').doc('master').get();
@@ -1166,14 +1168,46 @@ window.chamarGemini = async function(prompt) {
             }
         }
 
+        // 2.2 Busca na empresa ativa do Firestore
+        if (!apiKey && typeof window.getEmpresaRef === 'function') {
+            try {
+                const empDoc = await window.getEmpresaRef().get();
+                if (empDoc.exists && empDoc.data().geminiKey) {
+                    apiKey = empDoc.data().geminiKey;
+                }
+            } catch(e) {}
+        }
+
+        // 2.3 Fallback nas configurações legadas (fc_moveis/config)
         if (!apiKey) {
+            try {
+                const legacySnap = await firebase.firestore().collection('fc_moveis').doc('config').get();
+                if (legacySnap.exists) {
+                    const lData = legacySnap.data();
+                    apiKey = (lData.empresa && lData.empresa.geminiKey) || lData.geminiApiKey || '';
+                }
+            } catch(e) {}
+        }
+
+        if (!apiKey) {
+            console.warn("Chave Gemini não localizada.");
             if (typeof showToast === 'function') {
-                showToast("A Chave de Inteligência Artificial ainda não foi configurada pelo administrador do sistema.", 'warning');
+                showToast("A Chave de Inteligência Artificial ainda não foi configurada no sistema.", 'warning');
             }
             return null;
         }
 
-        const modelosParaTentar = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-flash-latest'];
+        // 3. Execução com os modelos operacionais da Google
+        const modelosParaTentar = [
+            'gemini-3.5-flash-lite',
+            'gemini-flash-lite-latest',
+            'gemini-3.5-flash',
+            'gemini-3.8-flash',
+            'gemini-3.6-flash',
+            'gemini-3.7-flash',
+            'gemini-flash-latest'
+        ];
+
         for (const modelo of modelosParaTentar) {
             try {
                 const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`, {
@@ -1184,10 +1218,11 @@ window.chamarGemini = async function(prompt) {
 
                 if (response.ok) {
                     const data = await response.json();
-                    return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
+                    const txt = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (txt) return txt;
                 }
             } catch (e) {
-                // Tenta próximo modelo
+                // Tenta o próximo modelo
             }
         }
         return null;

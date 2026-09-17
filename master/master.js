@@ -1862,18 +1862,36 @@ async function testarChaveIAGlobal() {
     divResult.classList.remove('hidden');
 
     try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
-        const resp = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: "Diga apenas: 'Conexão validada com sucesso!'" }] }]
-            })
-        });
+        const modelosParaTestar = ['gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.5-flash', 'gemini-3.8-flash'];
+        let sucesso = false;
+        let resposta = '';
+        let ultimoErro = '';
 
-        const data = await resp.json();
-        if (resp.ok && data.candidates && data.candidates.length > 0) {
-            const resposta = data.candidates[0]?.content?.parts?.[0]?.text || 'OK';
+        for (const mod of modelosParaTestar) {
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${mod}:generateContent?key=${key}`;
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: "Diga apenas: 'Conexão validada com sucesso!'" }] }]
+                    })
+                });
+
+                const data = await resp.json();
+                if (resp.ok && data.candidates && data.candidates.length > 0) {
+                    resposta = data.candidates[0]?.content?.parts?.[0]?.text || 'OK';
+                    sucesso = true;
+                    break;
+                } else if (data.error) {
+                    ultimoErro = data.error.message || ultimoErro;
+                }
+            } catch(e) {
+                ultimoErro = e.message;
+            }
+        }
+
+        if (sucesso) {
             divResult.className = 'p-3 rounded-xl text-xs bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 space-y-1';
             divResult.innerHTML = `
                 <div class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-circle-check"></i> Chave Válida e Operacional!</div>
@@ -1881,11 +1899,10 @@ async function testarChaveIAGlobal() {
             `;
             showToast('Chave testada com sucesso!', 'success');
         } else {
-            const erroMsg = data.error?.message || 'Chave rejeitada pela Google.';
             divResult.className = 'p-3 rounded-xl text-xs bg-red-950/50 border border-red-500/40 text-red-300 space-y-1';
             divResult.innerHTML = `
                 <div class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-circle-xmark"></i> Falha na Validação Google</div>
-                <div class="text-[11px] text-red-200">${erroMsg}</div>
+                <div class="text-[11px] text-red-200">${ultimoErro || 'Chave rejeitada pela Google.'}</div>
             `;
             showToast('Chave inválida ou bloqueada pela Google!', 'error');
         }

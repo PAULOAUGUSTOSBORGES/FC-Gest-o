@@ -3235,7 +3235,7 @@ async function analisarFinanceiroIA() {
         divRes.innerHTML = resposta.replace(/\*\*/g, '').replace(/\*/g, '•');
         showToast('Análise concluída com sucesso!', 'success');
     } else {
-        divRes.innerHTML = 'Erro ao gerar análise. Verifique se você salvou sua chave API na aba Sistema.';
+        divRes.innerHTML = 'Erro ao gerar análise por Inteligência Artificial. Verifique se o módulo de IA está ativo no seu plano ou contate o suporte.';
     }
 
     btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Refazer Análise';
@@ -3738,7 +3738,7 @@ async function gerarRelatorioComIA(descricaoRelatorio) {
                 }).catch(function(err){ console.error('Erro ao salvar historico:', err); });
             }
         } else {
-            divRes.innerHTML = '<div class="flex flex-col items-center py-8"><i class="fa-solid fa-triangle-exclamation text-4xl text-amber-400 mb-3"></i><p class="text-slate-300 font-semibold text-sm mb-1">Nao foi possivel gerar o relatorio</p><p class="text-slate-500 text-xs text-center">Verifique se voce configurou a <strong class="text-slate-300">Chave API do Gemini</strong> em <strong class="text-slate-300">Sistema -> Configuracoes -> Inteligencia Artificial</strong>.</p></div>';
+            divRes.innerHTML = '<div class="flex flex-col items-center py-8"><i class="fa-solid fa-triangle-exclamation text-4xl text-amber-400 mb-3"></i><p class="text-slate-300 font-semibold text-sm mb-1">Não foi possível gerar o relatório com IA</p><p class="text-slate-500 text-xs text-center max-w-md">Verifique se o módulo de Inteligência Artificial está ativo no plano da sua loja ou contate o suporte.</p></div>';
         }
     } catch(e) {
         console.error('Erro ao gerar relatorio com IA:', e);
