@@ -221,7 +221,12 @@
             return function() {}; // unsubscribe vazio
         }
         
-        let ref = firestore.collection(colecao);
+        let ref;
+        if (typeof window.getEmpresaRef === 'function') {
+            ref = window.getEmpresaRef().collection(colecao);
+        } else {
+            ref = firestore.collection(colecao);
+        }
         
         // Aplica query customizada se fornecida
         if (typeof opcoes.query === 'function') {
@@ -286,7 +291,18 @@
             return function() {};
         }
         
-        const ref = firestore.collection(colecao).doc(docId);
+        let ref;
+        if (typeof window.getEmpresaRef === 'function') {
+            if (colecao === 'fc_moveis' && docId === 'caixa') {
+                ref = window.getEmpresaRef().collection('caixa').doc('caixa_atual');
+            } else if (colecao === 'fc_moveis' && (docId === 'config' || docId === 'config_loja')) {
+                ref = window.getEmpresaRef().collection('configuracoes').doc('config');
+            } else {
+                ref = window.getEmpresaRef().collection(colecao).doc(docId);
+            }
+        } else {
+            ref = firestore.collection(colecao).doc(docId);
+        }
 
         // Serve do cache imediatamente se válido
         if (!semCache && window.FCCache.isValido(cacheKey)) {

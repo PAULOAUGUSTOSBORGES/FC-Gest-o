@@ -517,8 +517,36 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
         }
 
         // Sessão do mesmo dia válida: mantém ativa sem deslogar por inatividade
+        const ultimoUid = localStorage.getItem('fc_sessao_uid');
+        if (ultimoUid && ultimoUid !== user.uid) {
+            console.log("Troca de usuário detectada! Limpando cache do navegador...");
+            sessionStorage.clear();
+            localStorage.removeItem('fc_empresa_ativa');
+        }
+
         localStorage.setItem('fc_sessao_data', hoje);
         localStorage.setItem('fc_sessao_uid', user.uid);
+
+        // Busca ou valida a empresa deste usuário no Firestore
+        let empId = localStorage.getItem('fc_empresa_ativa');
+        if (!empId) {
+            try {
+                const uDoc = await firestore.collection('usuarios').doc(user.uid).get();
+                if (uDoc.exists && uDoc.data().empresaId) {
+                    empId = uDoc.data().empresaId;
+                    localStorage.setItem('fc_empresa_ativa', empId);
+                } else if (user.email === 'fabricadecoresgoiania@gmail.com') {
+                    empId = 'emp_fc_moveis';
+                    localStorage.setItem('fc_empresa_ativa', empId);
+                }
+            } catch(e) {
+                console.error("Erro ao resolver empresa do usuário:", e);
+                if (user.email === 'fabricadecoresgoiania@gmail.com') {
+                    empId = 'emp_fc_moveis';
+                    localStorage.setItem('fc_empresa_ativa', empId);
+                }
+            }
+        }
 
         // Inicia monitor para detectar quando der meia-noite
         iniciarMonitorSessaoDiaria();
@@ -837,6 +865,8 @@ function saveDB() {
 async function fazerLogout() {
     localStorage.removeItem('fc_sessao_data');
     localStorage.removeItem('fc_sessao_uid');
+    localStorage.removeItem('fc_empresa_ativa');
+    sessionStorage.clear();
     // Limpa todo o cache ao fazer logout para garantir que outro usuário
     // não veja dados em cache do usuário anterior
     if (typeof window.FCCache !== 'undefined') {

@@ -66,18 +66,37 @@ async function fazerLogin() {
             localStorage.setItem('fc_sessao_data', hoje);
             localStorage.setItem('fc_sessao_uid', cred.user.uid);
             
+            // Limpa qualquer resíduo de cache de outra conta
+            sessionStorage.clear();
+            if (typeof window.FCCache !== 'undefined') window.FCCache.invalidarTudo();
+
             // Buscar empresa do usuario
             try {
                 const userDoc = await firebase.firestore().collection('usuarios').doc(cred.user.uid).get();
                 if (userDoc.exists && userDoc.data().empresaId) {
                     localStorage.setItem('fc_empresa_ativa', userDoc.data().empresaId);
-                } else {
-                    // Fallback
+                } else if (cred.user.email === 'fabricadecoresgoiania@gmail.com') {
+                    // Fallback exclusivo para a conta master
                     localStorage.setItem('fc_empresa_ativa', 'emp_fc_moveis');
+                } else {
+                    console.error("Usuário sem empresa registrada.");
+                    showToast('Conta sem loja vinculada. Crie uma nova conta.', 'error');
+                    await firebase.auth().signOut();
+                    window._fazendoLogin = false;
+                    btn.innerText = 'Entrar'; btn.disabled = false;
+                    return;
                 }
             } catch(e) {
                 console.error("Erro ao buscar empresa do usuario", e);
-                localStorage.setItem('fc_empresa_ativa', 'emp_fc_moveis');
+                if (cred.user.email === 'fabricadecoresgoiania@gmail.com') {
+                    localStorage.setItem('fc_empresa_ativa', 'emp_fc_moveis');
+                } else {
+                    showToast('Erro ao identificar sua loja: ' + e.message, 'error');
+                    await firebase.auth().signOut();
+                    window._fazendoLogin = false;
+                    btn.innerText = 'Entrar'; btn.disabled = false;
+                    return;
+                }
             }
         }
         showToast('Acesso liberado! Entrando...', 'success');
@@ -117,6 +136,10 @@ async function fazerCadastro() {
     
     try {
         window._fazendoLogin = true;
+        sessionStorage.clear();
+        localStorage.removeItem('fc_empresa_ativa');
+        if (typeof window.FCCache !== 'undefined') window.FCCache.invalidarTudo();
+
         const btn = document.getElementById('btn-acao');
         btn.innerText = 'Criando Loja...'; btn.disabled = true;
         
