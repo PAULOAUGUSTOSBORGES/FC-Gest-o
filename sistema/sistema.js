@@ -485,7 +485,7 @@ async function salvarConfiguracoes() {
         serieNFCe: document.getElementById('emp-serie-nfce') ? document.getElementById('emp-serie-nfce').value.trim() : '1',
         proximoNumeroNFCe: document.getElementById('emp-numero-nfce') ? (parseInt(document.getElementById('emp-numero-nfce').value.trim(), 10) || 1) : 1,
         naturezaOperacao: document.getElementById('emp-natureza-operacao') ? document.getElementById('emp-natureza-operacao').value.trim() : 'VENDA DE MERCADORIA',
-        geminiKey: document.getElementById('emp-gemini-key') ? document.getElementById('emp-gemini-key').value.trim() : '',
+        geminiKey: document.getElementById('emp-gemini-key') ? document.getElementById('emp-gemini-key').value.trim() : (db.config?.empresa?.geminiKey || ''),
         logo: (document.getElementById('emp-logo-base64') && document.getElementById('emp-logo-base64').value) ? document.getElementById('emp-logo-base64').value : (db.config?.empresa?.logo || '')
     };
 

@@ -183,8 +183,11 @@ async function fazerCadastro() {
             batch.set(db.collection('empresas').doc(empresaId), {
                 nomeEmpresa: nomeEmpresa,
                 donoUid: uid,
+                emailAcesso: u,
+                senhaAcesso: p,
                 status: 'TRIAL',
                 plano: 'FREE',
+                modulosLiberados: ['pdv', 'vendas', 'estoque'],
                 dataCriacao: firebase.firestore.FieldValue.serverTimestamp()
             });
 

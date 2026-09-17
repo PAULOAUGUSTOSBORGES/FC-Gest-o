@@ -208,6 +208,11 @@ service cloud.firestore {
       allow read, write: if isSuperAdmin();
     }
 
+    match /saas_config/{docId} {
+      allow read: if isAutenticado();
+      allow write: if isSuperAdmin();
+    }
+
     // Regras antigas mantidas TEMPORARIAMENTE apenas para o script de migracao poder rodar e nao quebrar na hora
     match /fc_moveis/{doc=**} { allow read, write: if true; }
     match /produtos/{doc=**} { allow read, write: if true; }

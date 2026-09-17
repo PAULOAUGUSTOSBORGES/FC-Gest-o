@@ -49,6 +49,43 @@ function showToast(msg, tipo = 'info') {
 window.showToast = showToast;
 
 // ==========================================
+// UTILITÁRIO: COPIAR PARA ÁREA DE TRANSFERÊNCIA
+// ==========================================
+function copiarTexto(txt, msg = 'Copiado para a área de transferência!') {
+    if (!txt) {
+        showToast('Nada para copiar!', 'info');
+        return;
+    }
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(txt).then(() => {
+            showToast(msg, 'success');
+        }).catch(() => {
+            copiarTextoFallback(txt, msg);
+        });
+    } else {
+        copiarTextoFallback(txt, msg);
+    }
+}
+function copiarTextoFallback(txt, msg) {
+    const inp = document.createElement('textarea');
+    inp.value = txt;
+    inp.style.position = 'fixed';
+    inp.style.opacity = '0';
+    document.body.appendChild(inp);
+    inp.focus();
+    inp.select();
+    try {
+        document.execCommand('copy');
+        showToast(msg, 'success');
+    } catch(e) {
+        showToast('Não foi possível copiar automaticamente.', 'error');
+    }
+    document.body.removeChild(inp);
+}
+window.copiarTexto = copiarTexto;
+
+
+// ==========================================
 // INICIALIZAÇÃO E SESSÃO DO FUNDADOR
 // ==========================================
 window.addEventListener('load', () => {
@@ -250,6 +287,17 @@ async function carregarTodasAsLojasMaster() {
                 data.whatsapp = configEmpresa.telefone || donoInfo.telefone || '';
             }
 
+            // Credenciais e Chaves de Integração
+            data.emailAcesso = data.emailAcesso || donoInfo.email || '';
+            data.senhaAcesso = data.senhaAcesso || '';
+            data.geminiKey = data.geminiKey || configEmpresa.geminiKey || '';
+
+            // Módulos liberados (se não houver personalização, herda módulos padrão do plano)
+            if (!data.modulosLiberados || !Array.isArray(data.modulosLiberados) || data.modulosLiberados.length === 0) {
+                const planoObj = listaPlanos.find(p => p.id === data.plano || p.id === 'plano_' + String(data.plano).toLowerCase()) || PLANOS_PADRAO[1];
+                data.modulosLiberados = planoObj ? [...planoObj.modulos] : ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'site'];
+            }
+
             return data;
         });
 
@@ -400,8 +448,31 @@ function renderizarTabelaLojasMaster() {
                 </td>
                 <td class="py-4 px-4">
                     <div class="font-semibold text-slate-200">${donoNome}</div>
-                    <div class="text-xs text-slate-400">${donoEmail}</div>
-                    ${temWpp ? `<div class="text-xs text-emerald-400 font-medium mt-0.5"><i class="fa-brands fa-whatsapp"></i> ${wpp}</div>` : ''}
+                    <div class="text-xs text-slate-400 font-mono flex items-center gap-1.5 mt-0.5">
+                        <i class="fa-solid fa-user text-[10px] text-slate-500"></i>
+                        <span>${loja.emailAcesso || donoEmail}</span>
+                        ${(loja.emailAcesso || donoEmail) && (loja.emailAcesso || donoEmail) !== 'Sem e-mail' ? `
+                            <button onclick="copiarTexto('${loja.emailAcesso || donoEmail}', 'E-mail copiado!')" title="Copiar e-mail" class="text-slate-500 hover:text-amber-400 transition-colors">
+                                <i class="fa-solid fa-copy text-[10px]"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                    <div class="text-xs font-mono text-amber-300/90 flex items-center gap-1.5 mt-1">
+                        <i class="fa-solid fa-key text-[10px] text-slate-500"></i>
+                        <span id="pass-loja-${loja.id}" data-oculta="true">••••••••</span>
+                        <button onclick="toggleVisualizarSenhaLoja('${loja.id}')" title="Ver / Ocultar Senha" class="text-slate-400 hover:text-amber-400 transition-colors">
+                            <i class="fa-solid fa-eye text-[11px]" id="olho-loja-${loja.id}"></i>
+                        </button>
+                        ${loja.senhaAcesso ? `
+                            <button onclick="copiarTexto('${loja.senhaAcesso}', 'Senha copiada!')" title="Copiar Senha" class="text-slate-400 hover:text-amber-400 transition-colors">
+                                <i class="fa-solid fa-copy text-[11px]"></i>
+                            </button>
+                        ` : ''}
+                        <button onclick="abrirModalRedefinirSenha('${loja.id}')" title="Alterar Senha do Cliente" class="text-[10px] font-sans font-bold bg-slate-800/80 hover:bg-slate-700 text-amber-400 hover:text-amber-300 px-1.5 py-0.5 rounded border border-slate-700/80 transition-colors ml-1">
+                            <i class="fa-solid fa-pen"></i> Alterar
+                        </button>
+                    </div>
+                    ${temWpp ? `<div class="text-xs text-emerald-400 font-medium mt-1"><i class="fa-brands fa-whatsapp"></i> ${wpp}</div>` : ''}
                 </td>
                 <td class="py-4 px-4">
                     <div class="font-black text-emerald-400 text-base">${valor}</div>
@@ -510,8 +581,215 @@ async function alternarBloqueioMaster(empresaId, novoStatus) {
 window.alternarBloqueioMaster = alternarBloqueioMaster;
 
 // ==========================================
-// MÓDULO 2: DOSSIÊ COMPLETO DA EMPRESA
+// MÓDULO 2: DOSSIÊ COMPLETO DA EMPRESA & GESTÃO DE ACESSO
 // ==========================================
+let dossieSenhaVisivel = false;
+
+function toggleVisualizarSenhaLoja(lojaId) {
+    const el = document.getElementById(`pass-loja-${lojaId}`);
+    const icone = document.getElementById(`olho-loja-${lojaId}`);
+    const loja = listaLojas.find(l => l.id === lojaId);
+    if (!el || !loja) return;
+
+    const isOculta = el.getAttribute('data-oculta') !== 'false';
+    if (isOculta) {
+        el.innerText = loja.senhaAcesso || '(Não salva)';
+        el.setAttribute('data-oculta', 'false');
+        if (icone) {
+            icone.classList.remove('fa-eye');
+            icone.classList.add('fa-eye-slash');
+        }
+    } else {
+        el.innerText = '••••••••';
+        el.setAttribute('data-oculta', 'true');
+        if (icone) {
+            icone.classList.remove('fa-eye-slash');
+            icone.classList.add('fa-eye');
+        }
+    }
+}
+window.toggleVisualizarSenhaLoja = toggleVisualizarSenhaLoja;
+
+function toggleVisualizarSenhaDossie() {
+    dossieSenhaVisivel = !dossieSenhaVisivel;
+    const el = document.getElementById('dossie-cred-senha');
+    const icone = document.getElementById('dossie-cred-olho');
+    if (!el) return;
+
+    if (dossieSenhaVisivel) {
+        el.innerText = lojaDossieAtual?.senhaAcesso || '(Não salva)';
+        if (icone) {
+            icone.classList.remove('fa-eye');
+            icone.classList.add('fa-eye-slash');
+        }
+    } else {
+        el.innerText = '••••••••';
+        if (icone) {
+            icone.classList.remove('fa-eye-slash');
+            icone.classList.add('fa-eye');
+        }
+    }
+}
+window.toggleVisualizarSenhaDossie = toggleVisualizarSenhaDossie;
+
+function copiarSenhaDossie() {
+    if (!lojaDossieAtual || !lojaDossieAtual.senhaAcesso) {
+        showToast('Esta loja ainda não possui senha registrada.', 'info');
+        return;
+    }
+    copiarTexto(lojaDossieAtual.senhaAcesso, 'Senha copiada com sucesso!');
+}
+window.copiarSenhaDossie = copiarSenhaDossie;
+
+function abrirModalRedefinirSenha(empresaId) {
+    const targetId = empresaId || (lojaDossieAtual ? lojaDossieAtual.id : null);
+    const loja = listaLojas.find(l => l.id === targetId) || lojaDossieAtual;
+    if (!loja) return;
+
+    const modal = document.getElementById('modal-redefinir-senha');
+    const inputId = document.getElementById('redefinir-empresa-id');
+    const txtNome = document.getElementById('redefinir-loja-nome');
+    const txtEmail = document.getElementById('redefinir-loja-email');
+    const inputSenha = document.getElementById('redefinir-nova-senha');
+
+    if (inputId) inputId.value = loja.id;
+    if (txtNome) txtNome.innerText = loja.nomeEmpresa || loja.nome || 'Loja';
+    const emailLogin = loja.emailAcesso || loja.donoInfo?.email || '';
+    if (txtEmail) txtEmail.innerText = emailLogin;
+    if (inputSenha) inputSenha.value = '';
+
+    if (modal) modal.classList.remove('hidden');
+}
+window.abrirModalRedefinirSenha = abrirModalRedefinirSenha;
+
+function fecharModalRedefinirSenha() {
+    const modal = document.getElementById('modal-redefinir-senha');
+    if (modal) modal.classList.add('hidden');
+}
+window.fecharModalRedefinirSenha = fecharModalRedefinirSenha;
+
+function gerarSenhaAleatoria() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+    let pass = '';
+    for (let i = 0; i < 10; i++) {
+        pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    const inputSenha = document.getElementById('redefinir-nova-senha');
+    if (inputSenha) {
+        inputSenha.value = pass;
+        inputSenha.focus();
+    }
+}
+window.gerarSenhaAleatoria = gerarSenhaAleatoria;
+
+async function confirmarRedefinirSenhaMaster(e) {
+    if (e) e.preventDefault();
+    const inputId = document.getElementById('redefinir-empresa-id');
+    const inputSenha = document.getElementById('redefinir-nova-senha');
+    const btn = document.getElementById('btn-salvar-nova-senha');
+
+    if (!inputId || !inputSenha) return;
+    const empresaId = inputId.value;
+    const novaSenha = inputSenha.value.trim();
+
+    if (novaSenha.length < 6) {
+        showToast('A senha deve conter no mínimo 6 caracteres!', 'error');
+        return;
+    }
+
+    const loja = listaLojas.find(l => l.id === empresaId);
+    if (!loja) return;
+
+    try {
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Atualizando...';
+        }
+
+        const emailLogin = loja.emailAcesso || loja.donoInfo?.email;
+        const senhaAntiga = loja.senhaAcesso;
+
+        // 1. Tentar sincronizar via Firebase Auth secundário caso senha antiga seja conhecida
+        if (emailLogin && senhaAntiga) {
+            try {
+                let secApp;
+                try {
+                    secApp = firebase.app('SecondaryMaster');
+                } catch(e) {
+                    secApp = firebase.initializeApp(firebaseConfig, 'SecondaryMaster');
+                }
+                const cred = await secApp.auth().signInWithEmailAndPassword(emailLogin, senhaAntiga);
+                await cred.user.updatePassword(novaSenha);
+                await secApp.auth().signOut();
+                console.log("Senha sincronizada com Firebase Auth com sucesso!");
+            } catch(authErr) {
+                console.warn("Aviso ao sincronizar Auth secundário:", authErr);
+            }
+        }
+
+        // 2. Salva a nova senha na collection empresas/{empresaId}
+        await firebase.firestore().collection('empresas').doc(empresaId).set({
+            senhaAcesso: novaSenha,
+            ultimaAlteracaoSenha: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        // 3. Atualiza na memória
+        loja.senhaAcesso = novaSenha;
+        if (lojaDossieAtual && lojaDossieAtual.id === empresaId) {
+            lojaDossieAtual.senhaAcesso = novaSenha;
+            const credSenha = document.getElementById('dossie-cred-senha');
+            if (credSenha && dossieSenhaVisivel) credSenha.innerText = novaSenha;
+        }
+
+        fecharModalRedefinirSenha();
+        renderizarTabelaLojasMaster();
+        showToast(`Senha da loja "${loja.nomeEmpresa || loja.nome}" redefinida com sucesso!`, 'success');
+
+    } catch (err) {
+        console.error("Erro ao redefinir senha:", err);
+        showToast('Erro ao redefinir senha: ' + err.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = 'Salvar Nova Senha';
+        }
+    }
+}
+window.confirmarRedefinirSenhaMaster = confirmarRedefinirSenhaMaster;
+
+function toggleVerGeminiDossie() {
+    const inp = document.getElementById('dossie-emp-gemini-key');
+    const icone = document.getElementById('olho-gemini-dossie');
+    if (!inp) return;
+    if (inp.type === 'password') {
+        inp.type = 'text';
+        if (icone) { icone.classList.remove('fa-eye'); icone.classList.add('fa-eye-slash'); }
+    } else {
+        inp.type = 'password';
+        if (icone) { icone.classList.remove('fa-eye-slash'); icone.classList.add('fa-eye'); }
+    }
+}
+window.toggleVerGeminiDossie = toggleVerGeminiDossie;
+
+function selecionarPlanoNoDossie(planoId) {
+    const plano = listaPlanos.find(p => p.id === planoId) || PLANOS_PADRAO.find(p => p.id === planoId || p.id === 'plano_' + String(planoId).toLowerCase());
+    if (plano) {
+        const inputValor = document.getElementById('dossie-ass-valor');
+        if (inputValor && plano.preco !== undefined) {
+            inputValor.value = Number(plano.preco).toFixed(2);
+        }
+
+        const mods = plano.modulos || ['pdv', 'vendas', 'estoque'];
+        const listaMods = ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'site', 'ia', 'suporte'];
+        listaMods.forEach(m => {
+            const chk = document.getElementById(`dossie-mod-${m}`);
+            if (chk) chk.checked = mods.includes(m);
+        });
+        showToast(`Módulos padrão do plano "${plano.nome}" aplicados!`, 'info');
+    }
+}
+window.selecionarPlanoNoDossie = selecionarPlanoNoDossie;
+
 async function abrirDossieEmpresa(empresaId) {
     const loja = listaLojas.find(l => l.id === empresaId);
     if (!loja) return;
@@ -536,6 +814,15 @@ async function abrirDossieEmpresa(empresaId) {
             : 'px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
     }
 
+    // Card de Credenciais de Acesso
+    dossieSenhaVisivel = false;
+    const credEmail = document.getElementById('dossie-cred-email');
+    const credSenha = document.getElementById('dossie-cred-senha');
+    const credOlho = document.getElementById('dossie-cred-olho');
+    if (credEmail) credEmail.innerText = loja.emailAcesso || loja.donoInfo?.email || 'Sem login';
+    if (credSenha) credSenha.innerText = '••••••••';
+    if (credOlho) { credOlho.classList.add('fa-eye'); credOlho.classList.remove('fa-eye-slash'); }
+
     // Carrega dados fiscais e cadastrais
     const emp = loja.configEmpresa || {};
     document.getElementById('dossie-cad-razao').value = emp.nome || loja.nomeEmpresa || '';
@@ -554,10 +841,34 @@ async function abrirDossieEmpresa(empresaId) {
 
     // Carrega dados da assinatura
     atualizarSelectsDePlanos();
-    document.getElementById('dossie-ass-plano').value = loja.plano || 'PRO';
+    let planoId = loja.plano || 'plano_pro';
+    if (!listaPlanos.some(p => p.id === planoId)) {
+        const match = listaPlanos.find(p => p.id.toLowerCase() === planoId.toLowerCase() || p.id.toLowerCase() === ('plano_' + planoId.toLowerCase()));
+        if (match) planoId = match.id;
+        else if (listaPlanos.length > 0) planoId = listaPlanos[0].id;
+    }
+    document.getElementById('dossie-ass-plano').value = planoId;
     document.getElementById('dossie-ass-valor').value = loja.valorMensalidade !== undefined ? loja.valorMensalidade : 99.00;
     document.getElementById('dossie-ass-vencimento').value = loja.dataVencimento || '';
     document.getElementById('dossie-ass-status').value = status;
+
+    // Carrega Módulos Liberados de Verdade
+    const modulosPadrao = (listaPlanos.find(p => p.id === planoId) || PLANOS_PADRAO[1])?.modulos || ['pdv', 'vendas', 'fiscal', 'estoque'];
+    const modulosAtivos = Array.isArray(loja.modulosLiberados) && loja.modulosLiberados.length > 0 ? loja.modulosLiberados : modulosPadrao;
+    const listaMods = ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'site', 'ia', 'suporte'];
+    listaMods.forEach(m => {
+        const chk = document.getElementById(`dossie-mod-${m}`);
+        if (chk) chk.checked = modulosAtivos.includes(m);
+    });
+
+    // Carrega Chave Gemini Individual da Loja
+    const inpGemini = document.getElementById('dossie-emp-gemini-key');
+    if (inpGemini) {
+        inpGemini.value = loja.geminiKey || emp.geminiKey || '';
+        inpGemini.type = 'password';
+        const olhoG = document.getElementById('olho-gemini-dossie');
+        if (olhoG) { olhoG.classList.add('fa-eye'); olhoG.classList.remove('fa-eye-slash'); }
+    }
 
     // Abre na primeira aba
     trocarAbaDossie('cadastral');
@@ -679,19 +990,48 @@ async function salvarAssinaturaPeloDossie(e) {
     const venc = document.getElementById('dossie-ass-vencimento').value;
     const status = document.getElementById('dossie-ass-status').value;
 
+    const listaMods = ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'site', 'ia', 'suporte'];
+    const modulosLiberados = listaMods.filter(m => document.getElementById(`dossie-mod-${m}`)?.checked);
+    const geminiKey = document.getElementById('dossie-emp-gemini-key')?.value.trim() || '';
+
     try {
-        await firebase.firestore().collection('empresas').doc(id).set({
+        const db = firebase.firestore();
+        const batch = db.batch();
+
+        // 1. Grava no documento da empresa
+        batch.set(db.collection('empresas').doc(id), {
             plano: plano,
             valorMensalidade: valor,
             dataVencimento: venc,
             status: status,
+            modulosLiberados: modulosLiberados,
+            geminiKey: geminiKey,
             ultimaAtualizacaoMaster: firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
+
+        // 2. Sincroniza geminiKey nas configurações internas da empresa
+        batch.set(db.collection('empresas').doc(id).collection('configuracoes').doc('config'), {
+            empresa: {
+                geminiKey: geminiKey
+            }
+        }, { merge: true });
+
+        await batch.commit();
 
         lojaDossieAtual.plano = plano;
         lojaDossieAtual.valorMensalidade = valor;
         lojaDossieAtual.dataVencimento = venc;
         lojaDossieAtual.status = status;
+        lojaDossieAtual.modulosLiberados = modulosLiberados;
+        lojaDossieAtual.geminiKey = geminiKey;
+        if (!lojaDossieAtual.configEmpresa) lojaDossieAtual.configEmpresa = {};
+        lojaDossieAtual.configEmpresa.geminiKey = geminiKey;
+
+        // Atualiza na lista de lojas
+        const idx = listaLojas.findIndex(l => l.id === id);
+        if (idx >= 0) {
+            listaLojas[idx] = { ...lojaDossieAtual };
+        }
 
         const elBadge = document.getElementById('dossie-empresa-status-badge');
         if (elBadge) {
@@ -703,7 +1043,7 @@ async function salvarAssinaturaPeloDossie(e) {
 
         atualizarKPIsMaster();
         renderizarTabelaLojasMaster();
-        showToast('Assinatura atualizada com sucesso!', 'success');
+        showToast('Assinatura e permissões da loja salvas com sucesso!', 'success');
 
     } catch (err) {
         console.error("Erro ao salvar assinatura:", err);
@@ -1401,6 +1741,9 @@ async function cadastrarLojaManual(e) {
         const dataVencStr = venc.toISOString().split('T')[0];
 
         // 3. Documento da empresa
+        const planoObj = listaPlanos.find(p => p.id === plano || p.id === 'plano_' + String(plano).toLowerCase()) || PLANOS_PADRAO[1];
+        const modsIniciais = planoObj.modulos || ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'site'];
+
         batch.set(db.collection('empresas').doc(empresaId), {
             nomeEmpresa: nome,
             donoUid: uid,
@@ -1410,6 +1753,9 @@ async function cadastrarLojaManual(e) {
             valorMensalidade: valor,
             dataVencimento: dataVencStr,
             status: 'ATIVO',
+            emailAcesso: email,
+            senhaAcesso: senha,
+            modulosLiberados: modsIniciais,
             dataCriacao: firebase.firestore.FieldValue.serverTimestamp()
         });
 
@@ -1455,3 +1801,140 @@ async function cadastrarLojaManual(e) {
     }
 }
 window.cadastrarLojaManual = cadastrarLojaManual;
+
+// ==========================================
+// MÓDULO 5: CONFIGURAÇÃO GLOBAL DO SAAS (GEMINI AI MASTER)
+// ==========================================
+function toggleVerGeminiGlobal() {
+    const inp = document.getElementById('config-global-gemini-key');
+    const icone = document.getElementById('olho-gemini-global');
+    if (!inp) return;
+    if (inp.type === 'password') {
+        inp.type = 'text';
+        if (icone) { icone.classList.remove('fa-eye'); icone.classList.add('fa-eye-slash'); }
+    } else {
+        inp.type = 'password';
+        if (icone) { icone.classList.remove('fa-eye-slash'); icone.classList.add('fa-eye'); }
+    }
+}
+window.toggleVerGeminiGlobal = toggleVerGeminiGlobal;
+
+async function abrirModalConfigGlobalSaaS() {
+    const modal = document.getElementById('modal-config-global-saas');
+    const inputKey = document.getElementById('config-global-gemini-key');
+    const divResult = document.getElementById('resultado-teste-ia-global');
+    if (divResult) divResult.classList.add('hidden');
+
+    try {
+        const doc = await firebase.firestore().collection('saas_config').doc('master').get();
+        if (doc.exists && doc.data().geminiKeyMaster) {
+            if (inputKey) inputKey.value = doc.data().geminiKeyMaster;
+        } else if (inputKey) {
+            inputKey.value = '';
+        }
+    } catch(err) {
+        console.warn("Aviso ao carregar saas_config/master:", err);
+    }
+
+    if (modal) modal.classList.remove('hidden');
+}
+window.abrirModalConfigGlobalSaaS = abrirModalConfigGlobalSaaS;
+
+function fecharModalConfigGlobalSaaS() {
+    const modal = document.getElementById('modal-config-global-saas');
+    if (modal) modal.classList.add('hidden');
+}
+window.fecharModalConfigGlobalSaaS = fecharModalConfigGlobalSaaS;
+
+async function testarChaveIAGlobal() {
+    const inputKey = document.getElementById('config-global-gemini-key');
+    const divResult = document.getElementById('resultado-teste-ia-global');
+    if (!inputKey || !divResult) return;
+
+    const key = inputKey.value.trim();
+    if (!key) {
+        showToast('Insira uma chave do Google Gemini para testar!', 'error');
+        return;
+    }
+
+    divResult.className = 'p-3 rounded-xl text-xs bg-purple-950/50 border border-purple-800 text-purple-300 flex items-center gap-2';
+    divResult.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Conectando à API do Google Gemini AI Studio...';
+    divResult.classList.remove('hidden');
+
+    try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: "Diga apenas: 'Conexão validada com sucesso!'" }] }]
+            })
+        });
+
+        const data = await resp.json();
+        if (resp.ok && data.candidates && data.candidates.length > 0) {
+            const resposta = data.candidates[0]?.content?.parts?.[0]?.text || 'OK';
+            divResult.className = 'p-3 rounded-xl text-xs bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 space-y-1';
+            divResult.innerHTML = `
+                <div class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-circle-check"></i> Chave Válida e Operacional!</div>
+                <div class="text-[11px] text-slate-300">Retorno da IA: "<em>${resposta.trim()}</em>"</div>
+            `;
+            showToast('Chave testada com sucesso!', 'success');
+        } else {
+            const erroMsg = data.error?.message || 'Chave rejeitada pela Google.';
+            divResult.className = 'p-3 rounded-xl text-xs bg-red-950/50 border border-red-500/40 text-red-300 space-y-1';
+            divResult.innerHTML = `
+                <div class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-circle-xmark"></i> Falha na Validação Google</div>
+                <div class="text-[11px] text-red-200">${erroMsg}</div>
+            `;
+            showToast('Chave inválida ou bloqueada pela Google!', 'error');
+        }
+    } catch(err) {
+        divResult.className = 'p-3 rounded-xl text-xs bg-red-950/50 border border-red-500/40 text-red-300 space-y-1';
+        divResult.innerHTML = `
+            <div class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation"></i> Erro de Rede</div>
+            <div class="text-[11px] text-red-200">${err.message}</div>
+        `;
+        showToast('Erro ao testar chave: ' + err.message, 'error');
+    }
+}
+window.testarChaveIAGlobal = testarChaveIAGlobal;
+
+async function salvarConfigGlobalSaaSMaster(e) {
+    if (e) e.preventDefault();
+    const inputKey = document.getElementById('config-global-gemini-key');
+    const btn = document.getElementById('btn-salvar-config-global');
+    if (!inputKey) return;
+
+    const key = inputKey.value.trim();
+    if (!key) {
+        showToast('Insira a chave do Google Gemini!', 'error');
+        return;
+    }
+
+    try {
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Gravando Chave Mestra...';
+        }
+
+        await firebase.firestore().collection('saas_config').doc('master').set({
+            geminiKeyMaster: key,
+            atualizadoPor: 'pauloaugusto.silvaborges@gmail.com',
+            ultimaAtualizacao: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        fecharModalConfigGlobalSaaS();
+        showToast('Chave Mestra Global de IA configurada com sucesso para todo o SaaS!', 'success');
+    } catch (err) {
+        console.error("Erro ao salvar chave global:", err);
+        showToast('Erro ao salvar configuração: ' + err.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = 'Salvar Chave Global';
+        }
+    }
+}
+window.salvarConfigGlobalSaaSMaster = salvarConfigGlobalSaaSMaster;
+
