@@ -24,9 +24,16 @@ service cloud.firestore {
         : {};
     }
     
+    function isSuperAdmin() {
+      return isAutenticado() && (
+        request.auth.token.email == 'pauloaugusto.silvaborges@gmail.com' ||
+        request.auth.token.email == 'fabricadecoresgoiania@gmail.com'
+      );
+    }
+
     function isAdmin(empresaId) {
       return isAutenticado() && (
-        request.auth.token.email == 'fabricadecoresgoiania@gmail.com' ||
+        isSuperAdmin() ||
         getFuncionarioDoc(empresaId).get('isAdmin', false) == true || 
         getFuncionarioDoc(empresaId).get('isAdmin', false) == 'true'
       );
@@ -47,17 +54,18 @@ service cloud.firestore {
     match /usuarios/{userId} {
       allow read: if isAutenticado() && (
         request.auth.uid == userId || 
-        request.auth.token.email == 'fabricadecoresgoiania@gmail.com' ||
+        isSuperAdmin() ||
         getEmpresaUsuario() == resource.data.empresaId
       );
       // Permite o proprio usuario no onboarding OU o admin da empresa cadastrando funcionario
       allow create: if isAutenticado() && (
         request.auth.uid == userId ||
+        isSuperAdmin() ||
         (getEmpresaUsuario() != null && getEmpresaUsuario() == request.resource.data.empresaId && isAdmin(getEmpresaUsuario()))
       );
       // Apenas admin geral ou admin da empresa pode atualizar/deletar seus funcionarios
       allow update, delete: if isAutenticado() && (
-        request.auth.token.email == 'fabricadecoresgoiania@gmail.com' ||
+        isSuperAdmin() ||
         (getEmpresaUsuario() != null && getEmpresaUsuario() == resource.data.empresaId && isAdmin(getEmpresaUsuario()))
       );
     }
@@ -74,9 +82,9 @@ service cloud.firestore {
     match /empresas/{empresaId} {
       // Leitura do doc da empresa (para vitrine ou login)
       allow read: if true;
-      // Permite criacao se o donoUid for o proprio usuario (onboarding)
-      allow create: if isAutenticado() && request.resource.data.donoUid == request.auth.uid;
-      allow update, delete: if isAutenticado() && request.auth.token.email == 'fabricadecoresgoiania@gmail.com';
+      // Permite criacao se o donoUid for o proprio usuario (onboarding) ou Super Admin
+      allow create: if isAutenticado() && (request.resource.data.donoUid == request.auth.uid || isSuperAdmin());
+      allow update, delete: if isSuperAdmin();
 
       // ==========================================
       // 1. Configuracoes e Caixa Fisico
