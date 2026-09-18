@@ -1189,7 +1189,13 @@ function renderCarrinho() {
                 ${item.id ? `<button onclick="abrirModalProduto('${item.id}')" class="ml-1 text-slate-400 hover:text-blue-500 transition-colors" title="Editar Cadastro do Produto"><i class="fa-solid fa-pencil text-xs"></i></button>` : ''}
                 <input type="text" placeholder="Obs do item (cor, lado, etc...)" value="${item.obsVenda || ''}" onchange="pdvMudarObsItem(${i}, this.value)" class="w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-[10px] outline-none focus:border-blue-400 placeholder:text-slate-300 dark:text-white">
             </td>
-            <td class="py-2 text-center"><input type="number" step="0.001" min="0.001" value="${item.qtd}" onchange="pdvMudarQtd(${i}, this.value)" class="w-14 text-center border border-slate-300 dark:border-slate-600 rounded-lg p-1.5 font-bold outline-none bg-white dark:bg-slate-800 dark:text-white"></td>
+            <td class="py-2 text-center">
+                <div class="inline-flex items-center justify-center bg-slate-100 dark:bg-slate-700/60 rounded-lg p-0.5 border border-slate-300 dark:border-slate-600">
+                    <button type="button" onclick="pdvAlterarQtdRelativa(${i}, -1)" class="w-6 h-7 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 rounded text-xs font-black transition active:scale-95" title="Diminuir 1">-</button>
+                    <input type="number" step="any" min="0.001" value="${Math.abs(Number(item.qtd) - Math.round(Number(item.qtd))) < 0.005 ? Math.round(Number(item.qtd)) : item.qtd}" onchange="pdvMudarQtd(${i}, this.value)" class="w-12 text-center bg-white dark:bg-slate-800 dark:text-white border-0 font-bold text-xs p-1 outline-none rounded mx-0.5 shadow-inner">
+                    <button type="button" onclick="pdvAlterarQtdRelativa(${i}, 1)" class="w-6 h-7 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 rounded text-xs font-black transition active:scale-95" title="Aumentar 1">+</button>
+                </div>
+            </td>
             <td class="py-2 text-right"><input type="text" data-mask="money" inputmode="numeric"   value="${Number(item.preco).toFixed(2)}" onchange="pdvMudarPreco(${i}, this.value)" class="w-20 text-right border border-slate-300 dark:border-slate-600 rounded-lg p-1.5 font-bold text-slate-600 dark:text-slate-300 outline-none focus:border-blue-500 bg-white dark:bg-slate-800 dark:text-white"></td>
             <td class="py-2 text-right"><input type="text" data-mask="money" inputmode="numeric"   value="${Number(item.desconto || 0).toFixed(2)}" onchange="pdvMudarDescontoItem(${i}, this.value)" class="w-20 text-right border border-slate-300 dark:border-slate-600 rounded-lg p-1.5 font-bold text-red-500 dark:text-red-400 outline-none focus:border-red-500 bg-white dark:bg-slate-800"></td>
             <td class="py-2 text-right font-bold text-slate-800 dark:text-slate-100">${formatMoney(((item.preco || 0) * (item.qtd || 1)) - (item.desconto || 0))}</td>
@@ -1199,13 +1205,46 @@ function renderCarrinho() {
     pdvAtualizarTotais();
 }
 
+function pdvAlterarQtdRelativa(i, delta) {
+    if (!cart[i]) return;
+    let atual = Number(cart[i].qtd) || 1;
+    if (Math.abs(atual - Math.round(atual)) < 0.005) {
+        atual = Math.round(atual);
+    }
+    let nova = atual + delta;
+    if (Math.abs(nova - Math.round(nova)) < 0.005) {
+        nova = Math.round(nova);
+    } else {
+        nova = Math.round(nova * 1000) / 1000;
+    }
+    nova = Math.max(0.001, nova);
+    pdvMudarQtd(i, nova);
+}
+
 function pdvMudarQtd(i, n) { 
+    if (!cart[i]) return;
     const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : 'Venda'; 
     const isOrcamento = op === 'Orçamento'; 
-    const novaQtd = Math.max(0.001, parseInputMoney(n)||0.001); 
+    
+    let parsed = 1;
+    if (typeof n === 'number') {
+        parsed = n;
+    } else {
+        const clean = String(n || '').trim().replace(',', '.');
+        parsed = parseFloat(clean);
+        if (isNaN(parsed) && typeof parseInputMoney === 'function') {
+            parsed = parseInputMoney(n);
+        }
+    }
+    let novaQtd = Math.max(0.001, (!isNaN(parsed) && parsed > 0) ? parsed : 1); 
+    if (Math.abs(novaQtd - Math.round(novaQtd)) < 0.005) {
+        novaQtd = Math.round(novaQtd);
+    } else {
+        novaQtd = Math.round(novaQtd * 1000) / 1000;
+    }
     cart[i].qtd = novaQtd; 
     
-    const p = db.produtos.find(x => String(x.id) === String(cart[i].id)); 
+    const p = (db.produtos || []).find(x => String(x.id) === String(cart[i].id)); 
     if(!isOrcamento && p && novaQtd > (p.estoque || 0)) {
         showToast(`Estoque NEGATIVO! Restam ${p.estoque || 0}.`, 'info'); 
     }
@@ -1257,7 +1296,10 @@ function pdvAtualizarTotais() {
     
     document.getElementById('pdv-subtotal').innerText = formatMoney(sub); 
     document.getElementById('pdv-total').innerText = formatMoney(tot); 
-    document.getElementById('pdv-qtd-itens').innerText = `${cart.reduce((a,b)=>a+(b.qtd||1),0)} itens`; 
+    const totalQtd = cart.reduce((a,b) => a + (Number(b.qtd) || 1), 0);
+    const qtdFormatada = Math.abs(totalQtd - Math.round(totalQtd)) < 0.005 ? Math.round(totalQtd) : parseFloat(totalQtd.toFixed(3));
+    const rotuloItens = qtdFormatada === 1 ? 'item' : 'itens';
+    document.getElementById('pdv-qtd-itens').innerText = `${qtdFormatada} ${rotuloItens}`; 
     
     pdvTotalAtual = tot; 
     atualizarResumoPagamentosVenda(); 
