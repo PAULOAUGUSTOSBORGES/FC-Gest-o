@@ -11,10 +11,46 @@ const EMAILS_MASTER = [
 
 let listaLojas = [];
 let listaPlanos = [];
+let listaSistemas = [];
 let buscaAtual = '';
 let filtroStatusAtual = 'todos';
+let filtroSistemaAtual = 'todos';
+let filtroVencimentoRelatorio = 'atrasados';
 let viewAtual = 'lojas';
 let lojaDossieAtual = null;
+
+const SISTEMAS_PADRAO = [
+    {
+        id: 'fc_gestao',
+        nome: 'FC-Gestão',
+        ramo: 'Móveis & Varejo',
+        icone: 'fa-store',
+        cor: 'amber',
+        url: '../sistema/',
+        status: 'ATIVO',
+        descricao: 'Sistema completo para gestão de lojas de móveis, eletro e varejo em geral com PDV e NF-e.'
+    },
+    {
+        id: 'fc_food',
+        nome: 'FC-Food',
+        ramo: 'Restaurantes & Delivery',
+        icone: 'fa-utensils',
+        cor: 'emerald',
+        url: '../food/',
+        status: 'ATIVO',
+        descricao: 'PDV gastronômico com comanda, pedidos via WhatsApp e controle de mesas.'
+    },
+    {
+        id: 'fc_barber',
+        nome: 'FC-Barber',
+        ramo: 'Barbearias & Estética',
+        icone: 'fa-scissors',
+        cor: 'purple',
+        url: '../barber/',
+        status: 'ATIVO',
+        descricao: 'Gestão de agendamentos online, comissões de barbeiros e fidelidade.'
+    }
+];
 
 // ==========================================
 // TOAST NOTIFICATIONS
@@ -121,6 +157,7 @@ window.addEventListener('load', () => {
         if (elEmail) elEmail.innerText = email;
 
         // Carrega dados iniciais do SaaS
+        await carregarSistemasMaster();
         await carregarPlanosMaster();
         await carregarTodasAsLojasMaster();
         navegarMaster('lojas');
@@ -176,7 +213,7 @@ window.fazerLogoutMaster = fazerLogoutMaster;
 function navegarMaster(view) {
     viewAtual = view;
 
-    const views = ['lojas', 'planos', 'contratos'];
+    const views = ['lojas', 'planos', 'contratos', 'relatorios', 'sistemas'];
     views.forEach(v => {
         const elView = document.getElementById(`view-${v}`);
         const elBtn = document.getElementById(`nav-btn-${v}`);
@@ -231,6 +268,35 @@ function navegarMaster(view) {
             `;
         }
         popularSelectEmpresasContrato();
+    } else if (view === 'relatorios') {
+        if (elTitulo) elTitulo.innerHTML = '<i class="fa-solid fa-chart-line text-emerald-400"></i> Relatórios Financeiros & Métricas SaaS';
+        if (elAcoes) {
+            elAcoes.innerHTML = `
+                <button onclick="renderizarRelatoriosSaaS()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border border-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-arrows-rotate"></i> Atualizar
+                </button>
+                <button onclick="exportarLojasExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 shadow-lg shadow-emerald-600/20">
+                    <i class="fa-solid fa-file-excel"></i> Exportar Excel
+                </button>
+                <button onclick="exportarRelatorioSaaSPDF()" class="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 shadow-lg shadow-purple-500/20">
+                    <i class="fa-solid fa-print"></i> Relatório PDF
+                </button>
+            `;
+        }
+        renderizarRelatoriosSaaS();
+    } else if (view === 'sistemas') {
+        if (elTitulo) elTitulo.innerHTML = '<i class="fa-solid fa-cubes text-cyan-400"></i> Ecossistema de Softwares & Produtos';
+        if (elAcoes) {
+            elAcoes.innerHTML = `
+                <button onclick="carregarSistemasMaster()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border border-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-arrows-rotate"></i> Atualizar
+                </button>
+                <button onclick="abrirModalNovoSistema()" class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white px-4 py-2 rounded-xl text-xs font-black transition-all shadow-lg shadow-cyan-500/20 flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i> Novo Sistema
+                </button>
+            `;
+        }
+        renderizarGridSistemasMaster();
     }
 }
 window.navegarMaster = navegarMaster;
@@ -298,6 +364,9 @@ async function carregarTodasAsLojasMaster() {
                 data.modulosLiberados = planoObj ? [...planoObj.modulos] : ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'site'];
             }
 
+            // Sistema vinculado (default: fc_gestao)
+            data.sistemaId = data.sistemaId || 'fc_gestao';
+
             return data;
         });
 
@@ -305,12 +374,13 @@ async function carregarTodasAsLojasMaster() {
         atualizarKPIsMaster();
         renderizarTabelaLojasMaster();
         popularSelectEmpresasContrato();
+        if (typeof renderizarRelatoriosSaaS === 'function') renderizarRelatoriosSaaS();
 
     } catch (err) {
         console.error("Erro ao listar lojas:", err);
         corpo.innerHTML = `
             <tr>
-                <td colspan="6" class="text-center py-10 text-red-400">
+                <td colspan="7" class="text-center py-10 text-red-400">
                     <i class="fa-solid fa-triangle-exclamation text-2xl mb-2"></i>
                     <p>Erro ao carregar lojas: ${err.message}</p>
                 </td>
@@ -360,9 +430,11 @@ function atualizarKPIsMaster() {
 function filtrarLojasMaster() {
     const inputBusca = document.getElementById('filtro-busca');
     const selectStatus = document.getElementById('filtro-status');
+    const selectSistema = document.getElementById('filtro-sistema');
 
     buscaAtual = inputBusca ? inputBusca.value.toLowerCase().trim() : '';
     filtroStatusAtual = selectStatus ? selectStatus.value : 'todos';
+    filtroSistemaAtual = selectSistema ? selectSistema.value : 'todos';
 
     renderizarTabelaLojasMaster();
 }
@@ -385,14 +457,15 @@ function renderizarTabelaLojasMaster() {
         const matchBusca = !buscaAtual || nome.includes(buscaAtual) || razao.includes(buscaAtual) || cnpj.includes(buscaAtual) || dono.includes(buscaAtual) || email.includes(buscaAtual) || wpp.includes(buscaAtual);
         const status = l.status || 'ATIVO';
         const matchStatus = filtroStatusAtual === 'todos' || status === filtroStatusAtual;
+        const matchSistema = filtroSistemaAtual === 'todos' || (l.sistemaId || 'fc_gestao') === filtroSistemaAtual;
 
-        return matchBusca && matchStatus;
+        return matchBusca && matchStatus && matchSistema;
     });
 
     if (filtradas.length === 0) {
         corpo.innerHTML = `
             <tr>
-                <td colspan="6" class="text-center py-12 text-slate-500">
+                <td colspan="7" class="text-center py-12 text-slate-500">
                     <i class="fa-solid fa-store-slash text-3xl mb-2"></i>
                     <p>Nenhuma loja encontrada para o filtro atual.</p>
                 </td>
@@ -439,12 +512,29 @@ function renderizarTabelaLojasMaster() {
         const wppLimpo = String(wpp).replace(/\D/g, '');
         const temWpp = wppLimpo.length >= 10;
 
+        // Badge do Sistema / Produto
+        const sistemaId = loja.sistemaId || 'fc_gestao';
+        const sisObj = listaSistemas.find(s => s.id === sistemaId) || SISTEMAS_PADRAO.find(s => s.id === sistemaId) || { nome: 'FC-Gestão', icone: 'fa-store', cor: 'amber' };
+        const corMap = {
+            amber: 'bg-amber-500/10 text-amber-400 border-amber-500/25',
+            emerald: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25',
+            blue: 'bg-blue-500/10 text-blue-400 border-blue-500/25',
+            purple: 'bg-purple-500/10 text-purple-400 border-purple-500/25',
+            rose: 'bg-rose-500/10 text-rose-400 border-rose-500/25',
+            cyan: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/25'
+        };
+        const badgeCor = corMap[sisObj.cor] || corMap.amber;
+        const badgeSistema = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black tracking-wide border ${badgeCor}"><i class="fa-solid ${sisObj.icone || 'fa-cubes'} text-[10px]"></i> ${sisObj.nome}</span>`;
+
         return `
             <tr class="hover:bg-slate-800/40 transition-colors">
                 <td class="py-4 px-4">
                     <div class="font-extrabold text-white text-base">${nome}</div>
                     ${razao && razao !== nome ? `<div class="text-xs text-slate-400 truncate max-w-xs">${razao}</div>` : ''}
                     <div class="text-[11px] text-slate-500 font-mono mt-0.5">${cnpj ? 'CNPJ: ' + cnpj : 'ID: ' + loja.id}</div>
+                </td>
+                <td class="py-4 px-4">
+                    ${badgeSistema}
                 </td>
                 <td class="py-4 px-4">
                     <div class="font-semibold text-slate-200">${donoNome}</div>
@@ -841,6 +931,11 @@ async function abrirDossieEmpresa(empresaId) {
 
     // Carrega dados da assinatura
     atualizarSelectsDePlanos();
+    popularSelectsSistemas();
+
+    const elSistemaAss = document.getElementById('dossie-ass-sistema');
+    if (elSistemaAss) elSistemaAss.value = loja.sistemaId || 'fc_gestao';
+
     let planoId = loja.plano || 'plano_pro';
     if (!listaPlanos.some(p => p.id === planoId)) {
         const match = listaPlanos.find(p => p.id.toLowerCase() === planoId.toLowerCase() || p.id.toLowerCase() === ('plano_' + planoId.toLowerCase()));
@@ -870,11 +965,49 @@ async function abrirDossieEmpresa(empresaId) {
         if (olhoG) { olhoG.classList.add('fa-eye'); olhoG.classList.remove('fa-eye-slash'); }
     }
 
+    // Configura Aba de Mensalidades & Pagamentos
+    const elFatVal = document.getElementById('dossie-fatura-valor-display');
+    const elFatPlano = document.getElementById('dossie-fatura-plano-display');
+    const elFatVenc = document.getElementById('dossie-fatura-venc-display');
+    const elFatBadge = document.getElementById('dossie-fatura-status-badge');
+
+    const planoNome = (listaPlanos.find(p => p.id === planoId)?.nome) || planoId;
+    if (elFatVal) elFatVal.innerText = Number(loja.valorMensalidade || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    if (elFatPlano) elFatPlano.innerText = `Plano: ${planoNome}`;
+    if (elFatVenc) elFatVenc.innerText = formatarDataBr(loja.dataVencimento);
+    if (elFatBadge) elFatBadge.innerText = status;
+
+    const elRegVal = document.getElementById('fatura-reg-valor');
+    const elRegMetodo = document.getElementById('fatura-reg-metodo');
+    const elRegData = document.getElementById('fatura-reg-data');
+    const elRegNovoVenc = document.getElementById('fatura-reg-novo-venc');
+    const elRegObs = document.getElementById('fatura-reg-obs');
+
+    if (elRegVal) elRegVal.value = Number(loja.valorMensalidade || 0).toFixed(2);
+    if (elRegMetodo) elRegMetodo.value = 'PIX';
+    const hojeStr = new Date().toISOString().split('T')[0];
+    if (elRegData) elRegData.value = hojeStr;
+
+    let baseVenc = loja.dataVencimento ? new Date(loja.dataVencimento + 'T00:00:00') : new Date();
+    if (isNaN(baseVenc.getTime()) || baseVenc < new Date()) {
+        baseVenc = new Date();
+    }
+    baseVenc.setDate(baseVenc.getDate() + 30);
+    if (elRegNovoVenc) elRegNovoVenc.value = baseVenc.toISOString().split('T')[0];
+    if (elRegObs) elRegObs.value = '';
+
+    // Configura Aba de Anotações CRM Privado
+    const elCrmNotas = document.getElementById('dossie-crm-notas');
+    const elCrmMod = document.getElementById('dossie-crm-ultima-salva');
+    if (elCrmNotas) elCrmNotas.value = loja.crmNotas || '';
+    if (elCrmMod) elCrmMod.innerText = loja.crmUltimaModificacao ? 'Última modificação: ' + loja.crmUltimaModificacao : 'Nenhuma anotação registrada ainda';
+
     // Abre na primeira aba
     trocarAbaDossie('cadastral');
 
-    // Carrega lista de funcionários
+    // Carrega dados assíncronos
     await carregarUsuariosDossie(loja.id);
+    await carregarFaturasDossie(loja.id);
 
     const modal = document.getElementById('modal-dossie-empresa');
     if (modal) modal.classList.remove('hidden');
@@ -889,7 +1022,7 @@ function fecharModalDossie() {
 window.fecharModalDossie = fecharModalDossie;
 
 function trocarAbaDossie(aba) {
-    const abas = ['cadastral', 'assinatura', 'usuarios', 'contrato'];
+    const abas = ['cadastral', 'assinatura', 'usuarios', 'faturas', 'crm', 'contrato'];
     abas.forEach(a => {
         const div = document.getElementById(`dossie-aba-${a}`);
         const btn = document.getElementById(`tab-btn-${a}`);
@@ -985,6 +1118,7 @@ async function salvarAssinaturaPeloDossie(e) {
     if (!lojaDossieAtual) return;
 
     const id = lojaDossieAtual.id;
+    const sistemaId = document.getElementById('dossie-ass-sistema')?.value || 'fc_gestao';
     const plano = document.getElementById('dossie-ass-plano').value;
     const valor = parseFloat(document.getElementById('dossie-ass-valor').value) || 0;
     const venc = document.getElementById('dossie-ass-vencimento').value;
@@ -1000,6 +1134,7 @@ async function salvarAssinaturaPeloDossie(e) {
 
         // 1. Grava no documento da empresa
         batch.set(db.collection('empresas').doc(id), {
+            sistemaId: sistemaId,
             plano: plano,
             valorMensalidade: valor,
             dataVencimento: venc,
@@ -1018,6 +1153,7 @@ async function salvarAssinaturaPeloDossie(e) {
 
         await batch.commit();
 
+        lojaDossieAtual.sistemaId = sistemaId;
         lojaDossieAtual.plano = plano;
         lojaDossieAtual.valorMensalidade = valor;
         lojaDossieAtual.dataVencimento = venc;
@@ -1043,6 +1179,8 @@ async function salvarAssinaturaPeloDossie(e) {
 
         atualizarKPIsMaster();
         renderizarTabelaLojasMaster();
+        popularSelectsSistemas();
+        if (typeof renderizarRelatoriosSaaS === 'function') renderizarRelatoriosSaaS();
         showToast('Assinatura e permissões da loja salvas com sucesso!', 'success');
 
     } catch (err) {
@@ -1051,6 +1189,259 @@ async function salvarAssinaturaPeloDossie(e) {
     }
 }
 window.salvarAssinaturaPeloDossie = salvarAssinaturaPeloDossie;
+
+// Carregar faturas da loja no Dossiê
+async function carregarFaturasDossie(empresaId) {
+    const corpo = document.getElementById('dossie-lista-faturas-corpo');
+    const badgeQtd = document.getElementById('dossie-total-faturas-count');
+    if (!corpo) return;
+
+    try {
+        const snap = await firebase.firestore().collection('empresas').doc(empresaId)
+            .collection('faturas_saas')
+            .orderBy('dataPagamento', 'desc')
+            .get();
+
+        const faturas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        if (badgeQtd) {
+            badgeQtd.innerText = `${faturas.length} pagamento(s) registrado(s)`;
+        }
+
+        if (faturas.length === 0) {
+            corpo.innerHTML = `
+                <tr>
+                    <td colspan="6" class="py-8 text-center text-slate-500">
+                        <i class="fa-solid fa-receipt text-2xl mb-1 text-slate-600"></i>
+                        <p>Nenhum pagamento registrado ainda para esta loja.</p>
+                        <p class="text-[10px] text-slate-600 mt-0.5">Use o formulário acima para registrar recebimentos via PIX ou dinheiro.</p>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        corpo.innerHTML = faturas.map(fat => {
+            const dataPgtoFmt = formatarDataBr(fat.dataPagamento);
+            const vencFmt = formatarDataBr(fat.novoVencimento || fat.dataVencimento);
+            const valorFmt = Number(fat.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            const metodo = fat.metodo || 'PIX';
+            const obs = fat.obs || '-';
+
+            return `
+                <tr class="hover:bg-slate-800/40">
+                    <td class="py-2.5 px-3 font-mono font-bold text-white">${dataPgtoFmt}</td>
+                    <td class="py-2.5 px-3 font-black text-emerald-400 text-sm">${valorFmt}</td>
+                    <td class="py-2.5 px-3">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-200 border border-slate-700">${metodo}</span>
+                    </td>
+                    <td class="py-2.5 px-3 font-mono text-amber-300">${vencFmt}</td>
+                    <td class="py-2.5 px-3 text-slate-400 max-w-[180px] truncate" title="${obs}">${obs}</td>
+                    <td class="py-2.5 px-3 text-right">
+                        <button type="button" onclick="copiarReciboFatura('${fat.id}')" title="Copiar Recibo WhatsApp" class="text-xs bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 px-2.5 py-1 rounded-lg border border-emerald-500/30 font-bold transition-all inline-flex items-center gap-1">
+                            <i class="fa-solid fa-copy text-[10px]"></i> Recibo
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+    } catch (err) {
+        console.error("Erro ao carregar histórico de faturas:", err);
+        corpo.innerHTML = `
+            <tr>
+                <td colspan="6" class="py-4 text-center text-red-400">
+                    Erro ao carregar histórico: ${err.message}
+                </td>
+            </tr>
+        `;
+    }
+}
+window.carregarFaturasDossie = carregarFaturasDossie;
+
+// Registrar pagamento de mensalidade com 1 clique e auto-renovação
+async function registrarPagamentoMensalidadeDossie(e) {
+    if (e) e.preventDefault();
+    if (!lojaDossieAtual) return;
+
+    const id = lojaDossieAtual.id;
+    const valor = parseFloat(document.getElementById('fatura-reg-valor').value) || 0;
+    const metodo = document.getElementById('fatura-reg-metodo').value;
+    const dataPgto = document.getElementById('fatura-reg-data').value;
+    const novoVenc = document.getElementById('fatura-reg-novo-venc').value;
+    const obs = document.getElementById('fatura-reg-obs').value.trim();
+    const btn = document.getElementById('btn-registrar-fatura');
+
+    if (!valor || !dataPgto || !novoVenc) {
+        showToast('Informe o valor, a data do pagamento e o novo vencimento!', 'error');
+        return;
+    }
+
+    try {
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Registrando Pagamento...';
+        }
+
+        const db = firebase.firestore();
+        const batch = db.batch();
+
+        const faturaRef = db.collection('empresas').doc(id).collection('faturas_saas').doc();
+        const dadosFatura = {
+            id: faturaRef.id,
+            empresaId: id,
+            empresaNome: lojaDossieAtual.nomeEmpresa || lojaDossieAtual.nome,
+            valor: valor,
+            metodo: metodo,
+            dataPagamento: dataPgto,
+            vencimentoAnterior: lojaDossieAtual.dataVencimento || '',
+            novoVencimento: novoVenc,
+            obs: obs,
+            registradoPor: 'Paulo Augusto (Fundador)',
+            dataCriacao: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        batch.set(faturaRef, dadosFatura);
+
+        // Atualiza a data de vencimento e status da empresa
+        batch.set(db.collection('empresas').doc(id), {
+            dataVencimento: novoVenc,
+            status: 'ATIVO',
+            ultimaMensalidadePaga: {
+                data: dataPgto,
+                valor: valor,
+                metodo: metodo
+            },
+            ultimaAtualizacaoMaster: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        await batch.commit();
+
+        // Atualiza em memória
+        lojaDossieAtual.dataVencimento = novoVenc;
+        lojaDossieAtual.status = 'ATIVO';
+
+        const idx = listaLojas.findIndex(l => l.id === id);
+        if (idx >= 0) {
+            listaLojas[idx].dataVencimento = novoVenc;
+            listaLojas[idx].status = 'ATIVO';
+        }
+
+        // Atualiza elementos do dossiê
+        document.getElementById('dossie-ass-vencimento').value = novoVenc;
+        document.getElementById('dossie-ass-status').value = 'ATIVO';
+        document.getElementById('dossie-fatura-venc-display').innerText = formatarDataBr(novoVenc);
+        document.getElementById('dossie-fatura-status-badge').innerText = 'ATIVO (Renovado)';
+
+        atualizarKPIsMaster();
+        renderizarTabelaLojasMaster();
+        if (typeof renderizarRelatoriosSaaS === 'function') renderizarRelatoriosSaaS();
+
+        await carregarFaturasDossie(id);
+
+        showToast(`Recebimento de ${valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} registrado! Vencimento estendido para ${formatarDataBr(novoVenc)}.`, 'success');
+
+        // Sugere cópia de comprovante
+        const reciboTxt = `*COMPROVANTE DE PAGAMENTO DE MENSALIDADE*\n\n` +
+            `🏢 *Empresa:* ${lojaDossieAtual.nomeEmpresa || lojaDossieAtual.nome}\n` +
+            `💰 *Valor Recebido:* ${valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}\n` +
+            `💳 *Forma de Pgto:* ${metodo}\n` +
+            `📅 *Data do Recebimento:* ${formatarDataBr(dataPgto)}\n` +
+            `🗓️ *Próximo Vencimento:* ${formatarDataBr(novoVenc)}\n` +
+            `🟢 *Status:* Acesso 100% Ativo e Liberado\n\n` +
+            `Agradecemos pela parceria e confiança contínua no nosso sistema!`;
+
+        copiarTexto(reciboTxt, 'Recibo copiado para envio no WhatsApp!');
+
+    } catch (err) {
+        console.error("Erro ao registrar fatura:", err);
+        showToast('Erro ao registrar pagamento: ' + err.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-check-double"></i> Confirmar Pagamento & Renovar Loja';
+        }
+    }
+}
+window.registrarPagamentoMensalidadeDossie = registrarPagamentoMensalidadeDossie;
+
+// Copiar recibo de fatura já gravada
+async function copiarReciboFatura(faturaId) {
+    if (!lojaDossieAtual) return;
+
+    try {
+        const doc = await firebase.firestore().collection('empresas').doc(lojaDossieAtual.id).collection('faturas_saas').doc(faturaId).get();
+        if (!doc.exists) {
+            showToast('Fatura não encontrada.', 'error');
+            return;
+        }
+
+        const fat = doc.data();
+        const valorFmt = Number(fat.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const reciboTxt = `*COMPROVANTE DE MENSALIDADE - SISTEMA SAAS*\n\n` +
+            `🏢 *Empresa:* ${lojaDossieAtual.nomeEmpresa || lojaDossieAtual.nome}\n` +
+            `💰 *Valor:* ${valorFmt}\n` +
+            `💳 *Forma de Pgto:* ${fat.metodo || 'PIX'}\n` +
+            `📅 *Data do Recebimento:* ${formatarDataBr(fat.dataPagamento)}\n` +
+            `🗓️ *Próximo Vencimento:* ${formatarDataBr(fat.novoVencimento || fat.dataVencimento)}\n` +
+            `🟢 *Status:* Acesso Ativo e Liberado\n\n` +
+            `Agradecemos pela parceria! Qualquer dúvida estamos à disposição.`;
+
+        copiarTexto(reciboTxt, 'Recibo copiado! Pronto para colar no WhatsApp.');
+
+    } catch (err) {
+        showToast('Erro ao buscar fatura: ' + err.message, 'error');
+    }
+}
+window.copiarReciboFatura = copiarReciboFatura;
+
+// Salvar anotações privadas / CRM do Fundador
+async function salvarAnotacoesCRMDossie(e) {
+    if (e) e.preventDefault();
+    if (!lojaDossieAtual) return;
+
+    const id = lojaDossieAtual.id;
+    const notas = document.getElementById('dossie-crm-notas').value;
+    const btn = document.getElementById('btn-salvar-crm');
+
+    try {
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Gravando...';
+        }
+
+        const agoraStr = new Date().toLocaleString('pt-BR');
+        await firebase.firestore().collection('empresas').doc(id).set({
+            crmNotas: notas,
+            crmUltimaModificacao: agoraStr,
+            ultimaAtualizacaoMaster: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        lojaDossieAtual.crmNotas = notas;
+        lojaDossieAtual.crmUltimaModificacao = agoraStr;
+
+        const idx = listaLojas.findIndex(l => l.id === id);
+        if (idx >= 0) {
+            listaLojas[idx].crmNotas = notas;
+            listaLojas[idx].crmUltimaModificacao = agoraStr;
+        }
+
+        const elMod = document.getElementById('dossie-crm-ultima-salva');
+        if (elMod) elMod.innerText = 'Última modificação: ' + agoraStr;
+
+        showToast('Anotações privadas do CRM salvas com sucesso!', 'success');
+
+    } catch (err) {
+        console.error("Erro ao salvar CRM:", err);
+        showToast('Erro ao salvar notas: ' + err.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Salvar Anotações Privadas';
+        }
+    }
+}
+window.salvarAnotacoesCRMDossie = salvarAnotacoesCRMDossie;
 
 // Carregar equipe/usuários da empresa
 async function carregarUsuariosDossie(empresaId) {
@@ -1676,6 +2067,7 @@ window.copiarTextoContrato = copiarTextoContrato;
 // ==========================================
 function abrirModalNovaLoja() {
     atualizarSelectsDePlanos();
+    popularSelectsSistemas();
     const modal = document.getElementById('modal-nova-loja');
     if (modal) modal.classList.remove('hidden');
 }
@@ -1691,6 +2083,7 @@ async function cadastrarLojaManual(e) {
     if (e) e.preventDefault();
 
     const nome = document.getElementById('nova-loja-nome').value.trim();
+    const sistemaId = document.getElementById('nova-loja-sistema')?.value || 'fc_gestao';
     const email = document.getElementById('nova-loja-email').value.trim().toLowerCase();
     const senha = document.getElementById('nova-loja-senha').value;
     const wpp = document.getElementById('nova-loja-whatsapp').value.trim();
@@ -1746,6 +2139,7 @@ async function cadastrarLojaManual(e) {
 
         batch.set(db.collection('empresas').doc(empresaId), {
             nomeEmpresa: nome,
+            sistemaId: sistemaId,
             donoUid: uid,
             whatsapp: wpp,
             cnpj: cnpj,
@@ -1954,4 +2348,735 @@ async function salvarConfigGlobalSaaSMaster(e) {
     }
 }
 window.salvarConfigGlobalSaaSMaster = salvarConfigGlobalSaaSMaster;
+
+// ==========================================
+// MÓDULO 6: ECOSSISTEMA MULTI-SISTEMAS
+// ==========================================
+async function carregarSistemasMaster() {
+    try {
+        const snap = await firebase.firestore().collection('sistemas_saas').get();
+        if (snap.empty) {
+            // Inicializa sistemas padrão no Firestore
+            const batch = firebase.firestore().batch();
+            SISTEMAS_PADRAO.forEach(sis => {
+                const ref = firebase.firestore().collection('sistemas_saas').doc(sis.id);
+                batch.set(ref, sis);
+            });
+            await batch.commit();
+            listaSistemas = [...SISTEMAS_PADRAO];
+        } else {
+            listaSistemas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+
+        popularSelectsSistemas();
+        renderizarGridSistemasMaster();
+
+    } catch (err) {
+        console.error("Erro ao carregar sistemas:", err);
+        listaSistemas = [...SISTEMAS_PADRAO];
+        popularSelectsSistemas();
+        renderizarGridSistemasMaster();
+    }
+}
+window.carregarSistemasMaster = carregarSistemasMaster;
+
+function popularSelectsSistemas() {
+    // 1. Filtro de sistemas na listagem de lojas
+    const selFiltro = document.getElementById('filtro-sistema');
+    if (selFiltro) {
+        const valAtual = selFiltro.value || 'todos';
+        let htmlFiltro = `<option value="todos">Todos os Sistemas (${listaLojas.length})</option>`;
+        listaSistemas.forEach(sis => {
+            const count = listaLojas.filter(l => (l.sistemaId || 'fc_gestao') === sis.id).length;
+            htmlFiltro += `<option value="${sis.id}">${sis.nome} (${count})</option>`;
+        });
+        selFiltro.innerHTML = htmlFiltro;
+        if (listaSistemas.some(s => s.id === valAtual) || valAtual === 'todos') {
+            selFiltro.value = valAtual;
+        }
+    }
+
+    // 2. Select no cadastro de nova loja
+    const selNovaLoja = document.getElementById('nova-loja-sistema');
+    if (selNovaLoja) {
+        selNovaLoja.innerHTML = listaSistemas.map(sis => `
+            <option value="${sis.id}">${sis.nome} (${sis.ramo})</option>
+        `).join('');
+    }
+
+    // 3. Select no dossiê da empresa (Tab 2)
+    const selDossie = document.getElementById('dossie-ass-sistema');
+    if (selDossie) {
+        selDossie.innerHTML = listaSistemas.map(sis => `
+            <option value="${sis.id}">${sis.nome} (${sis.ramo})</option>
+        `).join('');
+        if (lojaDossieAtual) {
+            selDossie.value = lojaDossieAtual.sistemaId || 'fc_gestao';
+        }
+    }
+}
+window.popularSelectsSistemas = popularSelectsSistemas;
+
+function renderizarGridSistemasMaster() {
+    const grid = document.getElementById('grid-sistemas');
+    if (!grid) return;
+
+    if (listaSistemas.length === 0) {
+        grid.innerHTML = `
+            <div class="col-span-3 text-center py-16 text-slate-500">
+                <i class="fa-solid fa-cubes text-4xl mb-3"></i>
+                <p>Nenhum sistema cadastrado. Clique no botão "+ Novo Sistema" para criar.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const corMap = {
+        amber: {
+            bgIcon: 'bg-amber-500/15 border-amber-500/30 text-amber-400',
+            badge: 'bg-amber-500/10 text-amber-400 border-amber-500/25',
+            gradientBtn: 'from-amber-500 to-yellow-400 text-slate-950 shadow-amber-500/20'
+        },
+        emerald: {
+            bgIcon: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400',
+            badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25',
+            gradientBtn: 'from-emerald-500 to-teal-500 text-slate-950 shadow-emerald-500/20'
+        },
+        blue: {
+            bgIcon: 'bg-blue-500/15 border-blue-500/30 text-blue-400',
+            badge: 'bg-blue-500/10 text-blue-400 border-blue-500/25',
+            gradientBtn: 'from-blue-500 to-indigo-600 text-white shadow-blue-500/20'
+        },
+        purple: {
+            bgIcon: 'bg-purple-500/15 border-purple-500/30 text-purple-400',
+            badge: 'bg-purple-500/10 text-purple-400 border-purple-500/25',
+            gradientBtn: 'from-purple-500 to-indigo-600 text-white shadow-purple-500/20'
+        },
+        rose: {
+            bgIcon: 'bg-rose-500/15 border-rose-500/30 text-rose-400',
+            badge: 'bg-rose-500/10 text-rose-400 border-rose-500/25',
+            gradientBtn: 'from-rose-500 to-pink-600 text-white shadow-rose-500/20'
+        },
+        cyan: {
+            bgIcon: 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400',
+            badge: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/25',
+            gradientBtn: 'from-cyan-500 to-blue-600 text-white shadow-cyan-500/20'
+        }
+    };
+
+    grid.innerHTML = listaSistemas.map(sis => {
+        const estilo = corMap[sis.cor] || corMap.amber;
+        const lojasDoSistema = listaLojas.filter(l => (l.sistemaId || 'fc_gestao') === sis.id);
+        const totalLojas = lojasDoSistema.length;
+        const ativas = lojasDoSistema.filter(l => l.status === 'ATIVO').length;
+        const mrr = lojasDoSistema.reduce((acc, l) => acc + Number(l.valorMensalidade || 0), 0);
+        const mrrFmt = mrr.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        return `
+            <div class="bg-[#0f172a] rounded-3xl p-6 border border-slate-800 shadow-2xl flex flex-col justify-between relative overflow-hidden group hover:border-slate-700 transition-all">
+                <div>
+                    <div class="flex items-start justify-between gap-3 mb-4">
+                        <div class="w-14 h-14 rounded-2xl ${estilo.bgIcon} border flex items-center justify-center text-2xl shrink-0 shadow-lg">
+                            <i class="fa-solid ${sis.icone || 'fa-cubes'}"></i>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${estilo.badge}">
+                                ${sis.status || 'ATIVO'}
+                            </span>
+                            ${sis.id !== 'fc_gestao' ? `
+                                <button onclick="excluirSistemaMaster('${sis.id}')" title="Excluir Sistema" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 flex items-center justify-center text-xs transition-colors">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+
+                    <h4 class="text-xl font-extrabold text-white group-hover:text-amber-400 transition-colors">${sis.nome}</h4>
+                    <p class="text-xs font-semibold text-slate-400 mt-0.5">${sis.ramo}</p>
+                    <p class="text-xs text-slate-500 mt-2 min-h-[32px] leading-relaxed">${sis.descricao || 'Solução especializada para automação comercial e financeira.'}</p>
+
+                    <!-- METRICAS DO SISTEMA -->
+                    <div class="grid grid-cols-2 gap-3 py-4 my-4 border-y border-slate-800">
+                        <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800/80">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Lojas / Clientes</p>
+                            <h5 class="text-lg font-black text-white mt-0.5">${totalLojas} <span class="text-[10px] font-bold text-emerald-400 font-sans">(${ativas} ativas)</span></h5>
+                        </div>
+                        <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800/80">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Receita (MRR)</p>
+                            <h5 class="text-lg font-black text-emerald-400 mt-0.5">${mrrFmt}</h5>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2 pt-2">
+                    <div class="flex items-center gap-2">
+                        <button onclick="filtrarLojasPorSistema('${sis.id}')" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all border border-slate-700">
+                            <i class="fa-solid fa-store text-[11px]"></i> Ver Lojas (${totalLojas})
+                        </button>
+                        ${sis.url ? `
+                            <a href="${sis.url}" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 px-3.5 rounded-xl text-xs flex items-center justify-center gap-1 transition-all border border-slate-700" title="Acessar / Testar Rota">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                            </a>
+                        ` : ''}
+                        <button onclick="abrirModalNovoSistema('${sis.id}')" title="Editar Detalhes" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center transition-all border border-slate-700">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+window.renderizarGridSistemasMaster = renderizarGridSistemasMaster;
+
+function abrirModalNovoSistema(sistemaId) {
+    const modal = document.getElementById('modal-novo-sistema');
+    const elTitulo = document.getElementById('modal-sistema-titulo');
+    const inputId = document.getElementById('sistema-form-id');
+    const inputNome = document.getElementById('sistema-form-nome');
+    const inputSlug = document.getElementById('sistema-form-slug');
+    const inputRamo = document.getElementById('sistema-form-ramo');
+    const selectIcone = document.getElementById('sistema-form-icone');
+    const selectCor = document.getElementById('sistema-form-cor');
+    const inputUrl = document.getElementById('sistema-form-url');
+    const inputDesc = document.getElementById('sistema-form-desc');
+    const chkAtivo = document.getElementById('sistema-form-ativo');
+
+    if (!modal) return;
+
+    if (sistemaId) {
+        const sis = listaSistemas.find(s => s.id === sistemaId);
+        if (sis) {
+            if (elTitulo) elTitulo.innerHTML = `<i class="fa-solid fa-pen text-cyan-400"></i> Editar Sistema "${sis.nome}"`;
+            if (inputId) inputId.value = sis.id;
+            if (inputNome) inputNome.value = sis.nome;
+            if (inputSlug) {
+                inputSlug.value = sis.id;
+                inputSlug.disabled = true; // Slug não muda na edição
+            }
+            if (inputRamo) inputRamo.value = sis.ramo || '';
+            if (selectIcone) selectIcone.value = sis.icone || 'fa-store';
+            if (selectCor) selectCor.value = sis.cor || 'amber';
+            if (inputUrl) inputUrl.value = sis.url || '../sistema/';
+            if (inputDesc) inputDesc.value = sis.descricao || '';
+            if (chkAtivo) chkAtivo.checked = sis.status !== 'INATIVO';
+        }
+    } else {
+        if (elTitulo) elTitulo.innerHTML = '<i class="fa-solid fa-cubes text-cyan-400"></i> Cadastrar Novo Sistema / Software';
+        if (inputId) inputId.value = '';
+        if (inputNome) inputNome.value = '';
+        if (inputSlug) {
+            inputSlug.value = '';
+            inputSlug.disabled = false;
+        }
+        if (inputRamo) inputRamo.value = '';
+        if (selectIcone) selectIcone.value = 'fa-store';
+        if (selectCor) selectCor.value = 'emerald';
+        if (inputUrl) inputUrl.value = '../sistema/';
+        if (inputDesc) inputDesc.value = '';
+        if (chkAtivo) chkAtivo.checked = true;
+    }
+
+    modal.classList.remove('hidden');
+}
+window.abrirModalNovoSistema = abrirModalNovoSistema;
+
+function fecharModalNovoSistema() {
+    const modal = document.getElementById('modal-novo-sistema');
+    if (modal) modal.classList.add('hidden');
+}
+window.fecharModalNovoSistema = fecharModalNovoSistema;
+
+async function salvarSistemaMaster(e) {
+    if (e) e.preventDefault();
+
+    const inputId = document.getElementById('sistema-form-id');
+    const inputNome = document.getElementById('sistema-form-nome');
+    const inputSlug = document.getElementById('sistema-form-slug');
+    const inputRamo = document.getElementById('sistema-form-ramo');
+    const selectIcone = document.getElementById('sistema-form-icone');
+    const selectCor = document.getElementById('sistema-form-cor');
+    const inputUrl = document.getElementById('sistema-form-url');
+    const inputDesc = document.getElementById('sistema-form-desc');
+    const chkAtivo = document.getElementById('sistema-form-ativo');
+    const btn = document.getElementById('btn-salvar-sistema');
+
+    const isEdit = !!inputId.value;
+    let slug = (isEdit ? inputId.value : inputSlug.value).trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    if (!slug) {
+        showToast('Informe o identificador / slug do sistema!', 'error');
+        return;
+    }
+
+    const nome = inputNome.value.trim();
+    const ramo = inputRamo.value.trim();
+    const icone = selectIcone.value;
+    const cor = selectCor.value;
+    const url = inputUrl.value.trim() || '../sistema/';
+    const desc = inputDesc.value.trim();
+    const status = chkAtivo.checked ? 'ATIVO' : 'INATIVO';
+
+    try {
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Gravando Sistema...';
+        }
+
+        const dados = {
+            id: slug,
+            nome: nome,
+            ramo: ramo,
+            icone: icone,
+            cor: cor,
+            url: url,
+            descricao: desc,
+            status: status,
+            ultimaAtualizacao: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await firebase.firestore().collection('sistemas_saas').doc(slug).set(dados, { merge: true });
+
+        const idx = listaSistemas.findIndex(s => s.id === slug);
+        if (idx >= 0) listaSistemas[idx] = { ...dados };
+        else listaSistemas.push(dados);
+
+        fecharModalNovoSistema();
+        popularSelectsSistemas();
+        renderizarGridSistemasMaster();
+        renderizarTabelaLojasMaster();
+        if (typeof renderizarRelatoriosSaaS === 'function') renderizarRelatoriosSaaS();
+
+        showToast(`Sistema "${nome}" salvo no ecossistema com sucesso!`, 'success');
+
+    } catch (err) {
+        console.error("Erro ao salvar sistema:", err);
+        showToast('Erro ao salvar sistema: ' + err.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = 'Salvar Sistema';
+        }
+    }
+}
+window.salvarSistemaMaster = salvarSistemaMaster;
+
+async function excluirSistemaMaster(sistemaId) {
+    if (sistemaId === 'fc_gestao') {
+        alert('O sistema FC-Gestão é o produto central nativo da plataforma e não pode ser excluído.');
+        return;
+    }
+
+    const lojasVinculadas = listaLojas.filter(l => (l.sistemaId || 'fc_gestao') === sistemaId);
+    if (lojasVinculadas.length > 0) {
+        alert(`Não é possível excluir este sistema pois existem ${lojasVinculadas.length} loja(s) vinculada(s) a ele. Reatribua as lojas para outro sistema no dossiê antes de excluir.`);
+        return;
+    }
+
+    const sis = listaSistemas.find(s => s.id === sistemaId);
+    const nome = sis ? sis.nome : sistemaId;
+
+    if (!confirm(`Tem certeza que deseja excluir permanentemente o produto "${nome}" do ecossistema SaaS?`)) return;
+
+    try {
+        await firebase.firestore().collection('sistemas_saas').doc(sistemaId).delete();
+        listaSistemas = listaSistemas.filter(s => s.id !== sistemaId);
+
+        popularSelectsSistemas();
+        renderizarGridSistemasMaster();
+        renderizarTabelaLojasMaster();
+        if (typeof renderizarRelatoriosSaaS === 'function') renderizarRelatoriosSaaS();
+
+        showToast(`Sistema "${nome}" excluído com sucesso.`, 'success');
+    } catch (err) {
+        console.error("Erro ao excluir sistema:", err);
+        showToast('Erro ao excluir sistema: ' + err.message, 'error');
+    }
+}
+window.excluirSistemaMaster = excluirSistemaMaster;
+
+function filtrarLojasPorSistema(sistemaId) {
+    const selFiltro = document.getElementById('filtro-sistema');
+    if (selFiltro) selFiltro.value = sistemaId;
+    filtroSistemaAtual = sistemaId;
+
+    navegarMaster('lojas');
+    filtrarLojasMaster();
+}
+window.filtrarLojasPorSistema = filtrarLojasPorSistema;
+
+// ==========================================
+// MÓDULO 7: RELATÓRIOS DO SAAS & INTELIGÊNCIA FINANCEIRA
+// ==========================================
+function renderizarRelatoriosSaaS() {
+    const hoje = new Date().toISOString().split('T')[0];
+
+    let mrr = 0;
+    let inadimplenciaTotal = 0;
+    let inadimplenciaQtd = 0;
+    let ativas = 0;
+    let emDia = 0;
+
+    listaLojas.forEach(loja => {
+        const val = Number(loja.valorMensalidade || 0);
+        const venc = loja.dataVencimento || '';
+        const status = loja.status || 'ATIVO';
+
+        if (status === 'ATIVO') {
+            mrr += val;
+            ativas++;
+
+            if (venc && venc < hoje) {
+                inadimplenciaTotal += val;
+                inadimplenciaQtd++;
+            } else {
+                emDia++;
+            }
+        } else if (status === 'PENDENTE') {
+            inadimplenciaTotal += val;
+            inadimplenciaQtd++;
+        }
+    });
+
+    const arr = mrr * 12;
+    const ticketMedio = ativas > 0 ? (mrr / ativas) : 0;
+    const taxaAdimplencia = ativas > 0 ? Math.round((emDia / ativas) * 100) : 100;
+
+    // Atualiza cards de topo
+    const elMrr = document.getElementById('rel-mrr-total');
+    const elArr = document.getElementById('rel-arr-total');
+    const elInadVal = document.getElementById('rel-inadimplencia-total');
+    const elInadQtd = document.getElementById('rel-inadimplencia-qtd');
+    const elTicket = document.getElementById('rel-ticket-medio');
+    const elTaxa = document.getElementById('rel-taxa-adimplencia');
+    const elLojasAdimp = document.getElementById('rel-lojas-adimplentes');
+
+    if (elMrr) elMrr.innerText = mrr.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    if (elArr) elArr.innerText = arr.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    if (elInadVal) elInadVal.innerText = inadimplenciaTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    if (elInadQtd) elInadQtd.innerText = `${inadimplenciaQtd} loja(s) com atraso`;
+    if (elTicket) elTicket.innerText = ticketMedio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    if (elTaxa) elTaxa.innerText = `${taxaAdimplencia}%`;
+    if (elLojasAdimp) elLojasAdimp.innerText = `${emDia} de ${ativas} em dia`;
+
+    // 1. Distribuição por Sistema
+    const contSistemas = document.getElementById('rel-lista-por-sistema');
+    const countBadgeSistemas = document.getElementById('rel-total-sistemas-count');
+    if (contSistemas) {
+        if (countBadgeSistemas) countBadgeSistemas.innerText = `${listaSistemas.length} Sistemas`;
+
+        contSistemas.innerHTML = listaSistemas.map(sis => {
+            const lojasDoSis = listaLojas.filter(l => (l.sistemaId || 'fc_gestao') === sis.id);
+            const mrrSis = lojasDoSis.reduce((acc, l) => acc + Number(l.valorMensalidade || 0), 0);
+            const pct = mrr > 0 ? Math.round((mrrSis / mrr) * 100) : 0;
+            const mrrSisFmt = mrrSis.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+            return `
+                <div class="space-y-1.5 p-2 rounded-xl hover:bg-slate-900/60 transition-colors">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="font-extrabold text-white flex items-center gap-1.5">
+                            <i class="fa-solid ${sis.icone || 'fa-cubes'} text-[11px] text-cyan-400"></i> ${sis.nome}
+                        </span>
+                        <span class="font-black text-emerald-400">${mrrSisFmt} <span class="text-slate-400 font-medium font-mono text-[10px]">(${pct}%)</span></span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                        <div class="bg-cyan-500 h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                    </div>
+                    <div class="flex items-center justify-between text-[10px] text-slate-400">
+                        <span>${lojasDoSis.length} empresa(s) vinculada(s)</span>
+                        <span>${sis.ramo}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // 2. Distribuição por Plano
+    const contPlanos = document.getElementById('rel-lista-por-plano');
+    const countBadgePlanos = document.getElementById('rel-total-planos-count');
+    if (contPlanos) {
+        if (countBadgePlanos) countBadgePlanos.innerText = `${listaPlanos.length} Planos`;
+
+        contPlanos.innerHTML = listaPlanos.map(plano => {
+            const lojasDoPlano = listaLojas.filter(l => l.plano === plano.id || l.plano === 'plano_' + String(plano.id).toLowerCase());
+            const mrrPlano = lojasDoPlano.reduce((acc, l) => acc + Number(l.valorMensalidade || 0), 0);
+            const pct = mrr > 0 ? Math.round((mrrPlano / mrr) * 100) : 0;
+            const mrrPlanoFmt = mrrPlano.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+            return `
+                <div class="space-y-1.5 p-2 rounded-xl hover:bg-slate-900/60 transition-colors">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="font-extrabold text-white flex items-center gap-1.5">
+                            <i class="fa-solid fa-layer-group text-[11px] text-blue-400"></i> ${plano.nome}
+                        </span>
+                        <span class="font-black text-emerald-400">${mrrPlanoFmt} <span class="text-slate-400 font-medium font-mono text-[10px]">(${pct}%)</span></span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                        <div class="bg-blue-500 h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                    </div>
+                    <div class="flex items-center justify-between text-[10px] text-slate-400">
+                        <span>${lojasDoPlano.length} loja(s) contratante(s)</span>
+                        <span>Preço base: R$ ${Number(plano.preco || 0).toFixed(2)}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    renderizarTabelaVencimentosRelatorio();
+}
+window.renderizarRelatoriosSaaS = renderizarRelatoriosSaaS;
+
+function renderizarTabelaVencimentosRelatorio() {
+    const corpo = document.getElementById('rel-tabela-vencimentos-corpo');
+    const selectFiltro = document.getElementById('filtro-vencimentos-rel');
+    if (!corpo) return;
+
+    const filtro = selectFiltro ? selectFiltro.value : 'atrasados';
+    const hoje = new Date().toISOString().split('T')[0];
+
+    const lojasFiltradas = listaLojas.filter(loja => {
+        const venc = loja.dataVencimento;
+        if (!venc) return false;
+
+        const d1 = new Date(hoje);
+        const d2 = new Date(venc);
+        const diffDias = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24));
+
+        if (filtro === 'atrasados') return diffDias < 0;
+        if (filtro === '7dias') return diffDias >= 0 && diffDias <= 7;
+        if (filtro === '15dias') return diffDias >= 0 && diffDias <= 15;
+        if (filtro === '30dias') return diffDias >= 0 && diffDias <= 30;
+        return true; // 'todos'
+    });
+
+    // Ordena pelo vencimento mais urgente (crescente)
+    lojasFiltradas.sort((a, b) => (a.dataVencimento || '').localeCompare(b.dataVencimento || ''));
+
+    if (lojasFiltradas.length === 0) {
+        corpo.innerHTML = `
+            <tr>
+                <td colspan="6" class="py-10 text-center text-slate-500">
+                    <i class="fa-solid fa-circle-check text-2xl mb-1 text-emerald-400"></i>
+                    <p class="font-bold text-white">Nenhum vencimento pendente para este período!</p>
+                    <p class="text-[10px] text-slate-500 mt-0.5">Todas as cobranças do período selecionado estão em dia.</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    corpo.innerHTML = lojasFiltradas.map(loja => {
+        const nome = loja.nomeEmpresa || loja.nome || 'Loja';
+        const valor = Number(loja.valorMensalidade || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const venc = loja.dataVencimento || '';
+        const status = loja.status || 'ATIVO';
+
+        const sistemaId = loja.sistemaId || 'fc_gestao';
+        const sisObj = listaSistemas.find(s => s.id === sistemaId) || SISTEMAS_PADRAO.find(s => s.id === sistemaId) || { nome: 'FC-Gestão', cor: 'amber' };
+
+        const d1 = new Date(hoje);
+        const d2 = new Date(venc);
+        const diffDias = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24));
+
+        let badgeDias = '';
+        if (diffDias < 0) {
+            badgeDias = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">Vencido (${Math.abs(diffDias)}d atrás)</span>`;
+        } else if (diffDias === 0) {
+            badgeDias = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/30">Vence HOJE!</span>`;
+        } else if (diffDias <= 5) {
+            badgeDias = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">Vence em ${diffDias}d</span>`;
+        } else {
+            badgeDias = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Em ${diffDias}d</span>`;
+        }
+
+        return `
+            <tr class="hover:bg-slate-800/40 transition-colors">
+                <td class="py-3 px-3.5">
+                    <div class="font-bold text-white">${nome}</div>
+                    <div class="text-[10px] text-slate-500 font-mono">${loja.whatsapp || loja.emailAcesso || 'Sem contato'}</div>
+                </td>
+                <td class="py-3 px-3.5">
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">${sisObj.nome}</span>
+                </td>
+                <td class="py-3 px-3.5 font-black text-emerald-400">${valor}</td>
+                <td class="py-3 px-3.5 font-mono text-slate-200">${formatarDataBr(venc)}</td>
+                <td class="py-3 px-3.5">${badgeDias}</td>
+                <td class="py-3 px-3.5 text-right">
+                    <div class="flex items-center justify-end gap-1.5">
+                        <button onclick="enviarCobrancaWhatsAppMaster('${loja.id}')" title="Enviar Cobrança WhatsApp" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow-sm">
+                            <i class="fa-brands fa-whatsapp"></i> Cobrar
+                        </button>
+                        <button onclick="abrirDossieEmpresa('${loja.id}'); setTimeout(() => trocarAbaDossie('faturas'), 150);" title="Registrar Recebimento" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-2.5 py-1 rounded-lg text-xs font-extrabold transition-all flex items-center gap-1 shadow-sm">
+                            <i class="fa-solid fa-check"></i> Receber
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+window.renderizarTabelaVencimentosRelatorio = renderizarTabelaVencimentosRelatorio;
+
+// Exportar base completa de lojas e mensalidades para Excel / CSV (compatível nativamente com Microsoft Excel)
+function exportarLojasExcel() {
+    if (listaLojas.length === 0) {
+        showToast('Nenhuma loja cadastrada para exportar!', 'info');
+        return;
+    }
+
+    const hoje = new Date().toISOString().split('T')[0];
+    const cabecalho = [
+        'ID Empresa',
+        'Nome / Razão Social',
+        'CNPJ / CPF',
+        'Sistema',
+        'Responsável',
+        'E-mail Login',
+        'WhatsApp',
+        'Plano',
+        'Valor Mensalidade (R$)',
+        'Data Vencimento',
+        'Status do Acesso',
+        'Anotações CRM'
+    ];
+
+    const linhas = listaLojas.map(loja => {
+        const sis = listaSistemas.find(s => s.id === (loja.sistemaId || 'fc_gestao'))?.nome || 'FC-Gestão';
+        const dono = loja.donoInfo?.nome || 'Admin';
+        const email = loja.emailAcesso || loja.donoInfo?.email || '';
+        const wpp = loja.whatsapp || '';
+        const crm = (loja.crmNotas || '').replace(/[\r\n]+/g, ' ');
+
+        return [
+            loja.id,
+            loja.nomeEmpresa || loja.nome || '',
+            loja.configEmpresa?.cnpj || loja.cnpj || '',
+            sis,
+            dono,
+            email,
+            wpp,
+            loja.plano || 'PRO',
+            Number(loja.valorMensalidade || 0).toFixed(2).replace('.', ','),
+            formatarDataBr(loja.dataVencimento),
+            loja.status || 'ATIVO',
+            crm
+        ].map(campo => `"${String(campo).replace(/"/g, '""')}"`).join(';');
+    });
+
+    const conteudoCsv = '\uFEFF' + [cabecalho.join(';'), ...linhas].join('\r\n');
+    const blob = new Blob([conteudoCsv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `relatorio_clientes_saas_${hoje}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showToast('Planilha Excel (.CSV) exportada com sucesso!', 'success');
+}
+window.exportarLojasExcel = exportarLojasExcel;
+
+// Exportar Relatório Executivo do SaaS em formato PDF
+function exportarRelatorioSaaSPDF() {
+    const container = document.getElementById('area-impressao-relatorio');
+    if (!container) return;
+
+    const hoje = new Date();
+    const dataFormatada = hoje.toLocaleDateString('pt-BR');
+    const horaFormatada = hoje.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    let mrr = 0;
+    let atrasadas = 0;
+    let ativas = 0;
+
+    listaLojas.forEach(l => {
+        const val = Number(l.valorMensalidade || 0);
+        if (l.status === 'ATIVO') {
+            mrr += val;
+            ativas++;
+            if (l.dataVencimento && l.dataVencimento < hoje.toISOString().split('T')[0]) atrasadas++;
+        }
+    });
+
+    const arr = mrr * 12;
+
+    container.className = "bg-white text-slate-900 p-8 rounded-xl space-y-6 text-xs";
+    container.innerHTML = `
+        <div style="border-bottom: 2px solid #0f172a; padding-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end;">
+            <div>
+                <h1 style="font-size: 18pt; font-weight: 900; color: #0f172a; margin: 0;">RELATÓRIO EXECUTIVO DO SAAS</h1>
+                <p style="font-size: 10pt; color: #475569; margin: 2px 0 0 0;">Painel de Inteligência Financeira e Clientes - Fundador</p>
+            </div>
+            <div style="text-align: right; font-size: 9pt; color: #64748b;">
+                <p style="margin: 0;"><strong>Emissão:</strong> ${dataFormatada} às ${horaFormatada}</p>
+                <p style="margin: 2px 0 0 0;"><strong>Fundador:</strong> Paulo Augusto</p>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0;">
+            <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; background: #f8fafc;">
+                <span style="font-size: 8pt; color: #64748b; font-weight: bold; text-transform: uppercase;">Receita Mensal (MRR)</span>
+                <div style="font-size: 14pt; font-weight: 900; color: #0f172a; margin-top: 4px;">${mrr.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+            </div>
+            <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; background: #f8fafc;">
+                <span style="font-size: 8pt; color: #64748b; font-weight: bold; text-transform: uppercase;">Projeção Anual (ARR)</span>
+                <div style="font-size: 14pt; font-weight: 900; color: #15803d; margin-top: 4px;">${arr.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+            </div>
+            <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; background: #f8fafc;">
+                <span style="font-size: 8pt; color: #64748b; font-weight: bold; text-transform: uppercase;">Total de Empresas</span>
+                <div style="font-size: 14pt; font-weight: 900; color: #0f172a; margin-top: 4px;">${listaLojas.length} (${ativas} ativas)</div>
+            </div>
+            <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; background: #f8fafc;">
+                <span style="font-size: 8pt; color: #64748b; font-weight: bold; text-transform: uppercase;">Inadimplência</span>
+                <div style="font-size: 14pt; font-weight: 900; color: #b91c1c; margin-top: 4px;">${atrasadas} loja(s)</div>
+            </div>
+        </div>
+
+        <div>
+            <h3 style="font-size: 11pt; font-weight: bold; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 8px;">Listagem Consolidada de Clientes e Assinaturas</h3>
+            <table style="width: 100%; border-collapse: collapse; font-size: 9pt;">
+                <thead>
+                    <tr style="background: #f1f5f9; text-align: left; border-bottom: 2px solid #cbd5e1;">
+                        <th style="padding: 6px 8px;">Empresa</th>
+                        <th style="padding: 6px 8px;">Sistema</th>
+                        <th style="padding: 6px 8px;">Dono / WhatsApp</th>
+                        <th style="padding: 6px 8px;">Plano</th>
+                        <th style="padding: 6px 8px;">Mensalidade</th>
+                        <th style="padding: 6px 8px;">Vencimento</th>
+                        <th style="padding: 6px 8px; text-align: center;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${listaLojas.map(loja => {
+                        const sis = listaSistemas.find(s => s.id === (loja.sistemaId || 'fc_gestao'))?.nome || 'FC-Gestão';
+                        const val = Number(loja.valorMensalidade || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                        return `
+                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                <td style="padding: 6px 8px; font-weight: bold;">${loja.nomeEmpresa || loja.nome}</td>
+                                <td style="padding: 6px 8px;">${sis}</td>
+                                <td style="padding: 6px 8px;">${loja.donoInfo?.nome || 'Admin'} (${loja.whatsapp || '-'})</td>
+                                <td style="padding: 6px 8px;">${loja.plano || 'PRO'}</td>
+                                <td style="padding: 6px 8px; font-weight: bold;">${val}</td>
+                                <td style="padding: 6px 8px;">${formatarDataBr(loja.dataVencimento)}</td>
+                                <td style="padding: 6px 8px; text-align: center;">${loja.status || 'ATIVO'}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+
+        <div style="margin-top: 24px; padding-top: 12px; border-top: 1px solid #cbd5e1; font-size: 8pt; color: #64748b; text-align: center;">
+            Documento de controle gerencial confidencial - SaaS Multi-Tenant Manager
+        </div>
+    `;
+
+    container.classList.remove('hidden');
+    window.print();
+    setTimeout(() => { container.classList.add('hidden'); }, 1000);
+}
+window.exportarRelatorioSaaSPDF = exportarRelatorioSaaSPDF;
 
