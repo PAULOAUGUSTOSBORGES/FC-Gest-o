@@ -1525,7 +1525,15 @@ function renderTitulos(tipo) {
     const dataFimEl = document.getElementById('filtro-' + prefix + '-fim');
     const dataFim = dataFimEl ? dataFimEl.value : '';
     
-    let lista = db.financeiro.filter(f => (f.tipo === tipo || (!f.tipo && tipo === 'RECEITA')));
+    let lista = (db.financeiro || []).filter(f => {
+        const isReceita = tipo === 'RECEITA';
+        const fTipo = String(f.tipo || '').toUpperCase().trim();
+        if (isReceita) {
+            return fTipo === 'RECEITA' || fTipo === 'RECEBER' || !f.tipo;
+        } else {
+            return fTipo === 'DESPESA' || fTipo === 'PAGAR' || fTipo === 'SAIDA';
+        }
+    });
     
     // 1. FILTRAGEM POR PESSOA (SELECT DROPDOWN)
     if (pessoaFiltroVal) {
@@ -1639,8 +1647,8 @@ function renderTitulos(tipo) {
 
             if (f.data) {
                 const dataFormatada = formatData(f.data).toLowerCase();
-                const dataIso = f.data.split('T')[0];
-                if (dataFormatada.includes(termoNorm) || dataIso.includes(termoNorm)) return true;
+                const dataIso = typeof formatarDataParaInputDate === 'function' ? formatarDataParaInputDate(f.data) : (typeof f.data === 'string' ? f.data.split('T')[0] : '');
+                if (dataFormatada.includes(termoNorm) || (dataIso && dataIso.includes(termoNorm))) return true;
             }
 
             return false;
@@ -1673,10 +1681,16 @@ function renderTitulos(tipo) {
 
     // 4. FILTRO DE DATAS ESPECÍFICAS (SEMPRE RESPEITADO)
     if (dataIni) {
-        lista = lista.filter(f => f.data && f.data.split('T')[0] >= dataIni);
+        lista = lista.filter(f => {
+            const dt = typeof formatarDataParaInputDate === 'function' ? formatarDataParaInputDate(f.data) : (typeof f.data === 'string' ? f.data.split('T')[0] : '');
+            return dt && dt >= dataIni;
+        });
     }
     if (dataFim) {
-        lista = lista.filter(f => f.data && f.data.split('T')[0] <= dataFim);
+        lista = lista.filter(f => {
+            const dt = typeof formatarDataParaInputDate === 'function' ? formatarDataParaInputDate(f.data) : (typeof f.data === 'string' ? f.data.split('T')[0] : '');
+            return dt && dt <= dataFim;
+        });
     }
 
     // 5. FILTRO DE PERÍODO RELATIVO (MÃÅ S, 7 DIAS, ETC.)
@@ -1790,11 +1804,11 @@ function renderTitulos(tipo) {
               </td>
             <td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold ${corStatus}">${badgeStatus}</span></td>
             <td class="p-3 text-center flex items-center justify-center gap-1 print:hidden">
-                <button onclick="verDetalhesTitulo('${f.id}')" class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 p-1.5" title="Detalhes do Título"><i class="fa-solid fa-eye"></i></button>
-                <button onclick="abrirModalContaEdicao('${f.id}')" class="text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 p-1.5" title="Editar Lançamento"><i class="fa-solid fa-pen"></i></button>
+                <button onclick="verDetalhesTitulo('${String(f.id || '').replace(/'/g, "\\'")}')" class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 p-1.5" title="Detalhes do Título"><i class="fa-solid fa-eye"></i></button>
+                <button onclick="abrirModalContaEdicao('${String(f.id || '').replace(/'/g, "\\'")}')" class="text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 p-1.5" title="Editar Lançamento"><i class="fa-solid fa-pen"></i></button>
                 ${btnWhats}
                 ${acoesExtras}
-                <button onclick="excluirTitulo('${f.id}')" class="text-slate-400 hover:text-rose-500 p-1.5 ml-1" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                <button onclick="excluirTitulo('${String(f.id || '').replace(/'/g, "\\'")}')" class="text-slate-400 hover:text-rose-500 p-1.5 ml-1" title="Excluir"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     }).join('');
@@ -1811,12 +1825,13 @@ function renderTitulos(tipo) {
 function preencherContaPessoaSelect(tipo) {
     const sel = document.getElementById('conta-pessoa-select');
     if (!sel) return;
-    const lista = tipo === 'RECEBER'
-        ? (db.clientes || []).map(c => c.nome || c.razaoSocial || '')
-        : [...(db.fornecedores || []), ...(db.funcionarios || [])].map(f => f.nome || f.razaoSocial || '');
-    const unique = [...new Set(lista.filter(n => n.trim()))].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' }));
+    const isReceber = (tipo === 'RECEBER' || tipo === 'RECEITA');
+    const lista = isReceber
+        ? (db.clientes || []).map(c => c ? (c.nome || c.razaoSocial || c.nomeFantasia || '') : '')
+        : [...(db.fornecedores || []), ...(db.funcionarios || [])].map(f => f ? (f.nome || f.razaoSocial || f.nomeFantasia || f.fantasia || '') : '');
+    const unique = [...new Set(lista.map(n => String(n || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' }));
     sel.innerHTML = '<option value="">-- Selecione um cadastrado --</option>'
-        + unique.map(n => `<option value="${n}">${n}</option>`).join('')
+        + unique.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('')
         + '<option value="__novo__">+ Cadastrar novo...</option>';
     sel.value = '';
 }
@@ -1838,9 +1853,9 @@ function toggleContaPessoaInput(val) {
 function getPessoaFinalConta() {
     const sel = document.getElementById('conta-pessoa-select');
     const input = document.getElementById('conta-pessoa');
-    const selVal = sel ? sel.value : '';
-    const inputVal = input ? input.value.trim() : '';
-    if (selVal && selVal !== '__novo__' && selVal !== '__avulso__' && selVal !== '') return selVal;
+    const selVal = sel ? String(sel.value || '').trim() : '';
+    const inputVal = input ? String(input.value || '').trim() : '';
+    if (selVal && selVal !== '__novo__' && selVal !== '__avulso__') return selVal;
     return inputVal;
 }
 
@@ -1952,78 +1967,145 @@ function abrirModalConta(tipo) {
 }
 
 function abrirModalContaEdicao(id) {
-    const f = db.financeiro.find(x => x.id === id);
-    if (!f) return;
-    
-    const tipo = f.tipo === 'RECEITA' ? 'RECEBER' : 'PAGAR';
-    
-    document.getElementById('conta-id').value = f.id; 
-    document.getElementById('conta-tipo').value = f.tipo; 
-    document.getElementById('lbl-conta-pessoa').innerText = tipo === 'RECEBER' ? 'Cliente / Pagador *' : 'Fornecedor / Favorecido *';
-    
-    document.getElementById('conta-categoria').innerHTML = (tipo === 'RECEBER' ? categoriasReceber : categoriasPagar).map(c => `<option value="${c}">${c}</option>`).join('');
-    
-    preencherContaPessoaSelect(tipo);
-    const pessoaSelEl = document.getElementById('conta-pessoa-select');
-    const pessoaWrapEl = document.getElementById('conta-pessoa-novo-wrap');
-    const pessoaInputEl = document.getElementById('conta-pessoa');
-    if (pessoaSelEl) {
-        let isKnown = false;
-        let matchedVal = f.pessoa;
-        Array.from(pessoaSelEl.options).forEach(opt => {
-            if (opt.value.toLowerCase() === (f.pessoa || '').toLowerCase()) { isKnown = true; matchedVal = opt.value; }
-        });
-        if (isKnown) {
-            pessoaSelEl.value = matchedVal;
-            if (pessoaWrapEl) pessoaWrapEl.classList.add('hidden');
-            if (pessoaInputEl) pessoaInputEl.value = '';
-        } else {
-            pessoaSelEl.value = '__novo__';
-            if (pessoaWrapEl) pessoaWrapEl.classList.remove('hidden');
-            if (pessoaInputEl) pessoaInputEl.value = f.pessoa || '';
+    try {
+        if (!db || !db.financeiro) {
+            showToast('Banco de dados financeiro ainda não foi carregado.', 'warning');
+            return;
         }
-    } else {
-        if (pessoaInputEl) pessoaInputEl.value = f.pessoa || '';
-    }
-    
-    document.getElementById('modal-conta-header').className = `p-4 md:p-5 text-white flex justify-between items-center shrink-0 bg-indigo-600`; 
-    document.getElementById('modal-conta-title').innerText = 'Editar Lançamento Financeiro';
-    
-    document.getElementById('conta-recorrencia').value = 'UNICA';
-    document.getElementById('conta-recorrencia').disabled = true;
-    toggleRecorrencia();
 
-    document.getElementById('conta-ref').value = f.ref || '';
-    document.getElementById('conta-categoria').value = f.categoria || (tipo === 'RECEBER' ? 'Vendas' : 'Outras Despesas');
-    document.getElementById('conta-centro-custo').value = f.centroCusto || 'Geral';
-    document.getElementById('conta-banco').value = f.contaBancaria || 'Caixa Físico';
-    
-    document.getElementById('conta-emissao').value = f.dataEmissao || '';
-    document.getElementById('conta-vencimento').value = f.data ? f.data.split('T')[0] : '';
-    const elCart = document.getElementById('conta-cartorio'); if(elCart) elCart.value = f.cartorioNome || '';
-    const elProt = document.getElementById('conta-data-protesto'); if(elProt) elProt.value = f.dataCartorio || '';
-      const elMulta = document.getElementById('conta-multa'); if(elMulta) elMulta.value = f.multaPerc || '';
-      const elJuros = document.getElementById('conta-juros'); if(elJuros) elJuros.value = f.jurosMesPerc || '';
-    document.getElementById('conta-competencia').value = f.competencia || '';
-    
-    document.getElementById('conta-num-nf').value = f.numNF || '';
-    document.getElementById('conta-num-boleto').value = f.numBoleto || '';
-    
-        let valStr = String(f.valor || 0);
-    if (valStr.includes(',')) { valStr = valStr.replace(/\./g, '').replace(',', '.'); }
-    document.getElementById('conta-valor').value = parseInputMoney(valStr) || 0;
-    document.getElementById('conta-acrescimo').value = f.acrescimo || 0;
-    document.getElementById('conta-desconto').value = f.desconto || 0;
-    
-    document.getElementById('conta-status').value = f.status || 'PENDENTE';
-    document.getElementById('conta-data-pgto').value = f.dataPagamento ? f.dataPagamento.split('T')[0] : '';
-    document.getElementById('conta-metodo').value = f.metodoPagamento || '';
-    
-    document.getElementById('conta-obs').value = f.observacao || '';
-    document.getElementById('conta-anexo-base64').value = f.anexoBase64 || '';
-    
-    calcularValorFinalFormulario();
-    document.getElementById('modal-nova-conta').classList.remove('hidden');
+        const f = db.financeiro.find(x => String(x.id).trim() === String(id).trim());
+        if (!f) {
+            showToast('Lançamento financeiro não encontrado no banco de dados.', 'warning');
+            return;
+        }
+        
+        const isReceita = f.tipo === 'RECEITA' || f.tipo === 'RECEBER';
+        const tipoAba = isReceita ? 'RECEBER' : 'PAGAR';
+        const tipoGravacao = isReceita ? 'RECEITA' : 'DESPESA';
+        
+        const elId = document.getElementById('conta-id');
+        if (elId) elId.value = f.id;
+        
+        const elTipo = document.getElementById('conta-tipo');
+        if (elTipo) elTipo.value = tipoGravacao;
+        
+        const elLblPessoa = document.getElementById('lbl-conta-pessoa');
+        if (elLblPessoa) elLblPessoa.innerText = isReceita ? 'Cliente / Pagador *' : 'Fornecedor / Favorecido *';
+        
+        const elCat = document.getElementById('conta-categoria');
+        if (elCat) {
+            elCat.innerHTML = (isReceita ? categoriasReceber : categoriasPagar).map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+            elCat.value = f.categoria || (isReceita ? 'Vendas' : 'Outras Despesas');
+        }
+        
+        preencherContaPessoaSelect(tipoAba);
+        const pessoaSelEl = document.getElementById('conta-pessoa-select');
+        const pessoaWrapEl = document.getElementById('conta-pessoa-novo-wrap');
+        const pessoaInputEl = document.getElementById('conta-pessoa');
+        const pessoaAlvo = String(f.pessoa || '').trim();
+        
+        if (pessoaSelEl) {
+            let isKnown = false;
+            let matchedVal = '';
+            
+            // 1. Busca exata (ignorando maiúsculas/minúsculas)
+            Array.from(pessoaSelEl.options).forEach(opt => {
+                if (opt.value && opt.value !== '__novo__' && opt.value !== '__avulso__') {
+                    if (opt.value.trim().toLowerCase() === pessoaAlvo.toLowerCase()) {
+                        isKnown = true;
+                        matchedVal = opt.value;
+                    }
+                }
+            });
+            
+            // 2. Se não achou exato, busca parcial (ex: "Brasilux" vs "Brasilux Tintas Técnicas Ltda")
+            if (!isKnown && pessoaAlvo) {
+                Array.from(pessoaSelEl.options).forEach(opt => {
+                    if (!isKnown && opt.value && opt.value !== '__novo__' && opt.value !== '__avulso__') {
+                        const optNorm = opt.value.trim().toLowerCase();
+                        const alvoNorm = pessoaAlvo.toLowerCase();
+                        if (optNorm.includes(alvoNorm) || alvoNorm.includes(optNorm)) {
+                            isKnown = true;
+                            matchedVal = opt.value;
+                        }
+                    }
+                });
+            }
+            
+            if (isKnown) {
+                pessoaSelEl.value = matchedVal;
+                if (pessoaWrapEl) pessoaWrapEl.classList.add('hidden');
+                if (pessoaInputEl) pessoaInputEl.value = '';
+            } else {
+                pessoaSelEl.value = '__novo__';
+                if (pessoaWrapEl) pessoaWrapEl.classList.remove('hidden');
+                if (pessoaInputEl) pessoaInputEl.value = pessoaAlvo;
+            }
+        } else {
+            if (pessoaInputEl) pessoaInputEl.value = pessoaAlvo;
+        }
+        
+        const elHeader = document.getElementById('modal-conta-header');
+        if (elHeader) elHeader.className = `p-4 md:p-5 text-white flex justify-between items-center shrink-0 bg-indigo-600`; 
+        const elTitle = document.getElementById('modal-conta-title');
+        if (elTitle) elTitle.innerText = 'Editar Lançamento Financeiro';
+        
+        const elRec = document.getElementById('conta-recorrencia');
+        if (elRec) {
+            elRec.value = 'UNICA';
+            elRec.disabled = true;
+        }
+        if (typeof toggleRecorrencia === 'function') toggleRecorrencia();
+
+        const setVal = (idEl, val) => {
+            const elem = document.getElementById(idEl);
+            if (elem) elem.value = (val !== undefined && val !== null) ? val : '';
+        };
+
+        const dateHelper = typeof formatarDataParaInputDate === 'function' ? formatarDataParaInputDate : (v => v ? String(v).split('T')[0] : '');
+
+        setVal('conta-ref', f.ref || '');
+        setVal('conta-centro-custo', f.centroCusto || 'Geral');
+        setVal('conta-banco', f.contaBancaria || 'Caixa Físico');
+        
+        setVal('conta-emissao', dateHelper(f.dataEmissao));
+        setVal('conta-vencimento', dateHelper(f.data));
+        setVal('conta-cartorio', f.cartorioNome || '');
+        setVal('conta-data-protesto', dateHelper(f.dataCartorio));
+        setVal('conta-multa', f.multaPerc || '');
+        setVal('conta-juros', f.jurosMesPerc || '');
+        setVal('conta-competencia', f.competencia || '');
+        
+        setVal('conta-num-nf', f.numNF || '');
+        setVal('conta-num-boleto', f.numBoleto || '');
+        
+        const valorOrig = parseInputMoney(f.valor) || 0;
+        const acreOrig = parseInputMoney(f.acrescimo) || 0;
+        const descOrig = parseInputMoney(f.desconto) || 0;
+        
+        setVal('conta-valor', valorOrig.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        setVal('conta-acrescimo', acreOrig.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        setVal('conta-desconto', descOrig.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        
+        setVal('conta-status', f.status || 'PENDENTE');
+        setVal('conta-data-pgto', dateHelper(f.dataPagamento));
+        setVal('conta-metodo', f.metodoPagamento || '');
+        
+        setVal('conta-obs', f.observacao || '');
+        setVal('conta-anexo-base64', f.anexoBase64 || '');
+        
+        calcularValorFinalFormulario();
+        
+        const modal = document.getElementById('modal-nova-conta');
+        if (modal) {
+            modal.classList.remove('hidden');
+        } else {
+            console.error("Elemento modal-nova-conta não encontrado!");
+        }
+    } catch (err) {
+        console.error("Erro em abrirModalContaEdicao:", err);
+        showToast("Erro ao abrir edição: " + (err.message || err), "error");
+    }
 }
 
 function calcularValorFinalFormulario() {
@@ -2053,87 +2135,113 @@ if (campoAnexo) {
 function fecharModalConta() { document.getElementById('modal-nova-conta').classList.add('hidden'); }
 
 function salvarConta() {
-    const idExistente = document.getElementById('conta-id').value;
-    const tipo = document.getElementById('conta-tipo').value; 
-    const pessoa = getPessoaFinalConta(); 
-    const valorOriginal = parseInputMoney(document.getElementById('conta-valor').value); 
-    const vencBase = document.getElementById('conta-vencimento').value;
-    
-    if(!pessoa || isNaN(valorOriginal) || !vencBase) return showToast('Preencha Favorecido, Vencimento e Valor!', 'error'); 
-    
-    const valorFin = calcularValorFinalFormulario();
-    
-    const recorrencia = document.getElementById('conta-recorrencia').value;
-    const isEdicao = !!idExistente;
-    const qtdLancamentos = (recorrencia === 'UNICA' || isEdicao) ? 1 : (parseInt(document.getElementById('conta-qtd-recorrencia').value) || 1);
-    const refBase = document.getElementById('conta-ref').value || 'Avulso';
-
-    let contasGeradas = 0;
-    const batch = firestore.batch();
-
-    for(let i = 0; i < qtdLancamentos; i++) {
-        let dataVenc = new Date(vencBase + 'T12:00:00');
+    try {
+        const idExistente = document.getElementById('conta-id')?.value;
+        const tipoRaw = document.getElementById('conta-tipo')?.value || 'DESPESA'; 
+        const tipo = (tipoRaw === 'RECEITA' || tipoRaw === 'RECEBER') ? 'RECEITA' : 'DESPESA';
+        const pessoa = getPessoaFinalConta(); 
+        const valorOriginal = parseInputMoney(document.getElementById('conta-valor')?.value); 
+        const vencBase = document.getElementById('conta-vencimento')?.value;
         
-        if (recorrencia === 'MENSAL') dataVenc.setMonth(dataVenc.getMonth() + i);
-        if (recorrencia === 'ANUAL') dataVenc.setFullYear(dataVenc.getFullYear() + i);
-        if (recorrencia === 'SEMANAL') dataVenc.setDate(dataVenc.getDate() + (i * 7));
-        if (recorrencia === 'QUINZENAL') dataVenc.setDate(dataVenc.getDate() + (i * 15));
-
-        let refFinal = refBase;
-        if (qtdLancamentos > 1) refFinal += ` (${i+1}/${qtdLancamentos})`;
-
-        const contaObj = {
-            tipo: tipo, 
-            pessoa: pessoa, 
-            ref: refFinal, 
-            categoria: document.getElementById('conta-categoria').value,
-            centroCusto: document.getElementById('conta-centro-custo').value,
-            contaBancaria: document.getElementById('conta-banco').value,
-            dataEmissao: document.getElementById('conta-emissao').value,
-            data: dataVenc.toISOString(), 
-            dataCartorio: document.getElementById('conta-data-protesto') ? document.getElementById('conta-data-protesto').value : '',
-            cartorioNome: document.getElementById('conta-cartorio') ? document.getElementById('conta-cartorio').value : '',
-              multaPerc: parseInputMoney(document.getElementById('conta-multa') ? document.getElementById('conta-multa').value : 0) || 0,
-              jurosMesPerc: parseInputMoney(document.getElementById('conta-juros') ? document.getElementById('conta-juros').value : 0) || 0, 
-            competencia: document.getElementById('conta-competencia').value,
-            numNF: document.getElementById('conta-num-nf').value,
-            numBoleto: document.getElementById('conta-num-boleto').value,
-            valor: valorOriginal, 
-            acrescimo: parseInputMoney(document.getElementById('conta-acrescimo').value) || 0,
-            desconto: parseInputMoney(document.getElementById('conta-desconto').value) || 0,
-            valorPago: valorFin,
-            status: document.getElementById('conta-status').value,
-            dataPagamento: document.getElementById('conta-data-pgto').value ? new Date(document.getElementById('conta-data-pgto').value + 'T12:00:00').toISOString() : '',
-            metodoPagamento: document.getElementById('conta-metodo').value,
-            observacao: document.getElementById('conta-obs').value,
-            anexoBase64: document.getElementById('conta-anexo-base64').value,
-            ultimaAlteracao: Date.now()
-        };
-
-        if (isEdicao) {
-            const ref = window.getEmpresaRef().collection('financeiro').doc(String(idExistente));
-            batch.set(ref, contaObj, { merge: true });
-        } else {
-            const ref = window.getEmpresaRef().collection('financeiro').doc();
-            batch.set(ref, contaObj);
-            contasGeradas++;
+        if(!pessoa || isNaN(valorOriginal) || valorOriginal < 0 || !vencBase) {
+            return showToast('Preencha Favorecido, Vencimento e Valor!', 'error'); 
         }
+        
+        const valorFin = calcularValorFinalFormulario();
+        
+        const recorrencia = document.getElementById('conta-recorrencia')?.value || 'UNICA';
+        const isEdicao = !!idExistente;
+        const qtdLancamentos = (recorrencia === 'UNICA' || isEdicao) ? 1 : (parseInt(document.getElementById('conta-qtd-recorrencia')?.value) || 1);
+        const refBase = document.getElementById('conta-ref')?.value || 'Avulso';
+
+        let contasGeradas = 0;
+        const batch = firestore.batch();
+
+        for(let i = 0; i < qtdLancamentos; i++) {
+            let dataVenc = new Date(vencBase + 'T12:00:00');
+            if (isNaN(dataVenc.getTime())) {
+                dataVenc = new Date();
+            }
+            
+            if (recorrencia === 'MENSAL') dataVenc.setMonth(dataVenc.getMonth() + i);
+            if (recorrencia === 'ANUAL') dataVenc.setFullYear(dataVenc.getFullYear() + i);
+            if (recorrencia === 'SEMANAL') dataVenc.setDate(dataVenc.getDate() + (i * 7));
+            if (recorrencia === 'QUINZENAL') dataVenc.setDate(dataVenc.getDate() + (i * 15));
+
+            let refFinal = refBase;
+            if (qtdLancamentos > 1) refFinal += ` (${i+1}/${qtdLancamentos})`;
+
+            const dataPgtoInput = document.getElementById('conta-data-pgto')?.value;
+            let dataPgtoIso = '';
+            if (dataPgtoInput) {
+                const dt = new Date(dataPgtoInput + 'T12:00:00');
+                dataPgtoIso = isNaN(dt.getTime()) ? '' : dt.toISOString();
+            }
+
+            const contaObj = {
+                tipo: tipo, 
+                pessoa: pessoa, 
+                ref: refFinal, 
+                categoria: document.getElementById('conta-categoria')?.value || (tipo === 'RECEITA' ? 'Vendas' : 'Outras Despesas'),
+                centroCusto: document.getElementById('conta-centro-custo')?.value || 'Geral',
+                contaBancaria: document.getElementById('conta-banco')?.value || 'Caixa Físico',
+                dataEmissao: document.getElementById('conta-emissao')?.value || '',
+                data: dataVenc.toISOString(), 
+                dataCartorio: document.getElementById('conta-data-protesto')?.value || '',
+                cartorioNome: document.getElementById('conta-cartorio')?.value || '',
+                multaPerc: parseInputMoney(document.getElementById('conta-multa')?.value || 0) || 0,
+                jurosMesPerc: parseInputMoney(document.getElementById('conta-juros')?.value || 0) || 0, 
+                competencia: document.getElementById('conta-competencia')?.value || '',
+                numNF: document.getElementById('conta-num-nf')?.value || '',
+                numBoleto: document.getElementById('conta-num-boleto')?.value || '',
+                valor: valorOriginal, 
+                acrescimo: parseInputMoney(document.getElementById('conta-acrescimo')?.value || 0) || 0,
+                desconto: parseInputMoney(document.getElementById('conta-desconto')?.value || 0) || 0,
+                valorPago: valorFin,
+                status: document.getElementById('conta-status')?.value || 'PENDENTE',
+                dataPagamento: dataPgtoIso,
+                metodoPagamento: document.getElementById('conta-metodo')?.value || '',
+                observacao: document.getElementById('conta-obs')?.value || '',
+                anexoBase64: document.getElementById('conta-anexo-base64')?.value || '',
+                ultimaAlteracao: Date.now()
+            };
+
+            if (isEdicao) {
+                const ref = window.getEmpresaRef().collection('financeiro').doc(String(idExistente));
+                batch.set(ref, contaObj, { merge: true });
+                
+                // Atualização otimista imediata no array local db.financeiro
+                if (Array.isArray(db.financeiro)) {
+                    const idx = db.financeiro.findIndex(x => String(x.id).trim() === String(idExistente).trim());
+                    if (idx !== -1) {
+                        db.financeiro[idx] = { ...db.financeiro[idx], ...contaObj, id: String(idExistente) };
+                    }
+                }
+            } else {
+                const ref = window.getEmpresaRef().collection('financeiro').doc();
+                batch.set(ref, contaObj);
+                contasGeradas++;
+            }
+        }
+
+        batch.commit().then(() => {
+            fecharModalConta(); 
+            renderFinAbas(tipo === 'RECEITA' ? 'receber' : 'pagar'); 
+            
+            if (isEdicao) {
+                showToast('Título Atualizado com Sucesso!', 'success');
+            } else {
+                if (qtdLancamentos > 1) showToast(`${contasGeradas} Títulos gerados!`, 'success');
+                else showToast('Título Salvo com Sucesso!', 'success');
+            }
+        }).catch(e => {
+            console.error("Erro ao salvar conta no Firestore:", e);
+            showToast('Erro ao salvar conta: ' + (e.message || e), 'error');
+        });
+    } catch (err) {
+        console.error("Erro em salvarConta:", err);
+        showToast('Erro ao processar dados da conta: ' + (err.message || err), 'error');
     }
-
-    batch.commit().then(() => {
-        fecharModalConta(); 
-        renderFinAbas(tipo === 'RECEITA' ? 'receber' : 'pagar'); 
-        
-        if (isEdicao) {
-            showToast('Título Atualizado!', 'success');
-        } else {
-            if (qtdLancamentos > 1) showToast(`${contasGeradas} Títulos gerados!`, 'success');
-            else showToast('Título Salvo!', 'success');
-        }
-    }).catch(e => {
-        console.error(e);
-        showToast('Erro ao salvar conta.', 'error');
-    });
 }
 
 function excluirTitulo(id) { 

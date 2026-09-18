@@ -30,6 +30,10 @@ function mudarVisaoLocal(viewId) {
         const overlay = document.getElementById('sidebar-overlay');
         if (overlay) overlay.classList.add('hidden');
     }
+
+    if (viewId === 'estoque' && typeof renderKardex === 'function') {
+        renderKardex();
+    }
 }
 
 function inicializarCadastro() {
@@ -68,7 +72,7 @@ function inicializarCadastro() {
         db.movimentacoes = dados;
         const v = document.getElementById('view-estoque');
         if (v && v.classList.contains('active')) renderKardex();
-    }, { query: function(ref) { return ref.orderBy('data', 'desc').limit(50); } });
+    }, { query: function(ref) { return ref.orderBy('data', 'desc').limit(200); } });
 
     // Carrega vendas para exibir histórico de compras do cliente
     _listen('vendas', function(dados) {
@@ -83,7 +87,7 @@ function inicializarCadastro() {
 
     const urlParams = new URLSearchParams(window.location.search);
     const view = urlParams.get('view');
-    mudarVisaoLocal(view || 'produtos');
+    mudarVisaoLocal(view || 'estoque');
 }
 
 window.addEventListener('load', () => { initGlobalData(inicializarCadastro); });
@@ -772,11 +776,31 @@ function excluirFornecedor(id) {
 // ESTOQUE KARDEX (UI)
 // ==========================================
 function renderKardex() {
-    document.getElementById('tabela-kardex').innerHTML = (db.movimentacoes || []).slice(0, 50).map(m => {
-        let badgeClass = m.tipo.includes('ENTRADA') ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400' : (m.tipo === 'VENDA' || m.tipo === 'SAIDA' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400');
-        let tipoHtml = String(m.tipo || '').split('<br>').map(t => `<span class="px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 ${badgeClass}">${t}</span>`).join('<br>');
+    const el = document.getElementById('tabela-kardex');
+    if (!el) return;
+    const termo = (document.getElementById('busca-kardex')?.value || '').toLowerCase().trim();
+    const filtroTipo = document.getElementById('filtro-kardex-tipo')?.value || 'todos';
+
+    let lista = db.movimentacoes || [];
+    if (filtroTipo !== 'todos') {
+        lista = lista.filter(m => String(m.tipo || '').toUpperCase().includes(filtroTipo));
+    }
+    if (termo) {
+        lista = lista.filter(m => 
+            (m.prodNome && String(m.prodNome).toLowerCase().includes(termo)) ||
+            (m.ref && String(m.ref).toLowerCase().includes(termo)) ||
+            (m.tipo && String(m.tipo).toLowerCase().includes(termo))
+        );
+    }
+
+    el.innerHTML = lista.slice(0, 100).map(m => {
+        const tipoStr = String(m.tipo || '').toUpperCase();
+        let badgeClass = tipoStr.includes('ENTRADA') ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400' : (tipoStr.includes('VENDA') || tipoStr.includes('SAIDA') ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400');
+        let tipoHtml = String(m.tipo || '-').split('<br>').map(t => `<span class="px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 ${badgeClass}">${t}</span>`).join('<br>');
         let dataFormatada = (m.data && typeof formatData === 'function') ? formatData(m.data).replace(',', '') : (m.data || '-');
-        return `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 text-xs text-slate-500 dark:text-slate-400">${dataFormatada}</td><td class="p-4 whitespace-nowrap">${tipoHtml}</td><td class="p-4 font-bold text-slate-800 dark:text-slate-100">${m.prodNome}</td><td class="p-4 text-slate-600 dark:text-slate-300 text-xs">${m.ref}</td><td class="p-4 text-right font-black ${m.qtd > 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-red-500 dark:text-red-400'}">${m.qtd > 0 ? '+' + m.qtd : m.qtd}</td></tr>`;
+        const qtdNum = Number(m.qtd || 0);
+        const qtdFormatada = qtdNum > 0 ? `+${qtdNum}` : String(qtdNum);
+        return `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 text-xs text-slate-500 dark:text-slate-400">${dataFormatada}</td><td class="p-4 whitespace-nowrap">${tipoHtml}</td><td class="p-4 font-bold text-slate-800 dark:text-slate-100">${m.prodNome || '-'}</td><td class="p-4 text-slate-600 dark:text-slate-300 text-xs">${m.ref || '-'}</td><td class="p-4 text-right font-black ${qtdNum > 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-red-500 dark:text-red-400'}">${qtdFormatada}</td></tr>`;
     }).join('') || '<tr><td colspan="5" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhuma movimentação de estoque.</td></tr>';
 }
 

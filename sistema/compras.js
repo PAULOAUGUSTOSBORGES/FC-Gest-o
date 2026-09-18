@@ -681,71 +681,143 @@ function abrirModalConta(tipo) {
 }
 
 function abrirModalContaEdicao(id) {
-    const f = db.financeiro.find(x => x.id === id);
-    if (!f) return;
-    
-    const tipo = f.tipo === 'RECEITA' ? 'RECEBER' : 'PAGAR';
-    
-    document.getElementById('conta-id').value = f.id; 
-    document.getElementById('conta-tipo').value = f.tipo; 
-    document.getElementById('lbl-conta-pessoa').innerText = tipo === 'RECEBER' ? 'Cliente / Pagador *' : 'Fornecedor / Favorecido *';
-    
-    document.getElementById('conta-categoria').innerHTML = (tipo === 'RECEBER' ? categoriasReceber : categoriasPagar).map(c => `<option value="${c}">${c}</option>`).join('');
-    document.getElementById('modal-conta-header').className = 'p-4 md:p-5 text-white flex justify-between items-center shrink-0 bg-indigo-600'; 
-    document.getElementById('modal-conta-title').innerText = 'Editar Lanamento Financeiro';
-    
-    document.getElementById('conta-recorrencia').value = 'UNICA';
-    document.getElementById('conta-recorrencia').disabled = true;
-    toggleRecorrencia();
-
-    const tipoPessoa = f.tipo === 'RECEITA' ? 'RECEBER' : 'PAGAR';
-    preencherContaPessoaSelect(tipoPessoa);
-    const pessoaSelEl = document.getElementById('conta-pessoa-select');
-    const pessoaWrapEl = document.getElementById('conta-pessoa-novo-wrap');
-    const pessoaInputEl = document.getElementById('conta-pessoa');
-    if (pessoaSelEl) {
-        const match = [...pessoaSelEl.options].find(o => o.value.toLowerCase() === (f.pessoa || '').toLowerCase());
-        if (match) {
-            pessoaSelEl.value = f.pessoa;
-            if(pessoaWrapEl) pessoaWrapEl.classList.add('hidden');
-            if(pessoaInputEl) pessoaInputEl.value = '';
-        } else {
-            pessoaSelEl.value = '__novo__';
-            if(pessoaWrapEl) pessoaWrapEl.classList.remove('hidden');
-            if(pessoaInputEl) pessoaInputEl.value = f.pessoa || '';
+    try {
+        if (!db || !db.financeiro) {
+            showToast('Banco de dados financeiro ainda não foi carregado.', 'warning');
+            return;
         }
+
+        const f = db.financeiro.find(x => String(x.id).trim() === String(id).trim());
+        if (!f) {
+            showToast('Lançamento financeiro não encontrado no banco de dados.', 'warning');
+            return;
+        }
+        
+        const isReceita = f.tipo === 'RECEITA' || f.tipo === 'RECEBER';
+        const tipoAba = isReceita ? 'RECEBER' : 'PAGAR';
+        const tipoGravacao = isReceita ? 'RECEITA' : 'DESPESA';
+        
+        const elId = document.getElementById('conta-id');
+        if (elId) elId.value = f.id;
+        
+        const elTipo = document.getElementById('conta-tipo');
+        if (elTipo) elTipo.value = tipoGravacao;
+        
+        const elLblPessoa = document.getElementById('lbl-conta-pessoa');
+        if (elLblPessoa) elLblPessoa.innerText = isReceita ? 'Cliente / Pagador *' : 'Fornecedor / Favorecido *';
+        
+        const elCat = document.getElementById('conta-categoria');
+        if (elCat) {
+            elCat.innerHTML = (isReceita ? categoriasReceber : categoriasPagar).map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+            elCat.value = f.categoria || (isReceita ? 'Vendas' : 'Outras Despesas');
+        }
+        
+        preencherContaPessoaSelect(tipoAba);
+        const pessoaSelEl = document.getElementById('conta-pessoa-select');
+        const pessoaWrapEl = document.getElementById('conta-pessoa-novo-wrap');
+        const pessoaInputEl = document.getElementById('conta-pessoa');
+        const pessoaAlvo = String(f.pessoa || '').trim();
+        
+        if (pessoaSelEl) {
+            let isKnown = false;
+            let matchedVal = '';
+            
+            Array.from(pessoaSelEl.options).forEach(opt => {
+                if (opt.value && opt.value !== '__novo__' && opt.value !== '__avulso__') {
+                    if (opt.value.trim().toLowerCase() === pessoaAlvo.toLowerCase()) {
+                        isKnown = true;
+                        matchedVal = opt.value;
+                    }
+                }
+            });
+            
+            if (!isKnown && pessoaAlvo) {
+                Array.from(pessoaSelEl.options).forEach(opt => {
+                    if (!isKnown && opt.value && opt.value !== '__novo__' && opt.value !== '__avulso__') {
+                        const optNorm = opt.value.trim().toLowerCase();
+                        const alvoNorm = pessoaAlvo.toLowerCase();
+                        if (optNorm.includes(alvoNorm) || alvoNorm.includes(optNorm)) {
+                            isKnown = true;
+                            matchedVal = opt.value;
+                        }
+                    }
+                });
+            }
+            
+            if (isKnown) {
+                pessoaSelEl.value = matchedVal;
+                if (pessoaWrapEl) pessoaWrapEl.classList.add('hidden');
+                if (pessoaInputEl) pessoaInputEl.value = '';
+            } else {
+                pessoaSelEl.value = '__novo__';
+                if (pessoaWrapEl) pessoaWrapEl.classList.remove('hidden');
+                if (pessoaInputEl) pessoaInputEl.value = pessoaAlvo;
+            }
+        } else {
+            if (pessoaInputEl) pessoaInputEl.value = pessoaAlvo;
+        }
+        
+        const elHeader = document.getElementById('modal-conta-header');
+        if (elHeader) elHeader.className = 'p-4 md:p-5 text-white flex justify-between items-center shrink-0 bg-indigo-600'; 
+        const elTitle = document.getElementById('modal-conta-title');
+        if (elTitle) elTitle.innerText = 'Editar Lançamento Financeiro';
+        
+        const elRec = document.getElementById('conta-recorrencia');
+        if (elRec) {
+            elRec.value = 'UNICA';
+            elRec.disabled = true;
+        }
+        if (typeof toggleRecorrencia === 'function') toggleRecorrencia();
+
+        const setVal = (idEl, val) => {
+            const elem = document.getElementById(idEl);
+            if (elem) elem.value = (val !== undefined && val !== null) ? val : '';
+        };
+
+        const dateHelper = typeof formatarDataParaInputDate === 'function' ? formatarDataParaInputDate : (v => v ? String(v).split('T')[0] : '');
+
+        setVal('conta-ref', f.ref || '');
+        setVal('conta-centro-custo', f.centroCusto || 'Geral');
+        setVal('conta-banco', f.contaBancaria || 'Caixa Físico');
+        
+        setVal('conta-emissao', dateHelper(f.dataEmissao));
+        setVal('conta-vencimento', dateHelper(f.data));
+        setVal('conta-cartorio', f.cartorioNome || '');
+        setVal('conta-data-protesto', dateHelper(f.dataCartorio));
+        setVal('conta-multa', f.multa || f.multaPerc || '');
+        setVal('conta-juros', f.juros || f.jurosMesPerc || '');
+        setVal('conta-competencia', f.competencia || '');
+        
+        setVal('conta-num-nf', f.numNF || '');
+        setVal('conta-num-boleto', f.numBoleto || '');
+        
+        const valorOrig = parseInputMoney(f.valor) || 0;
+        const acreOrig = parseInputMoney(f.acrescimo) || 0;
+        const descOrig = parseInputMoney(f.desconto) || 0;
+        
+        setVal('conta-valor', valorOrig.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        setVal('conta-acrescimo', acreOrig.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        setVal('conta-desconto', descOrig.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        
+        setVal('conta-status', f.status || 'PENDENTE');
+        setVal('conta-data-pgto', dateHelper(f.dataPagamento));
+        setVal('conta-metodo', f.metodoPagamento || '');
+        
+        setVal('conta-obs', f.observacao || '');
+        setVal('conta-anexo-base64', f.anexoBase64 || '');
+        
+        calcularValorFinalFormulario();
+        
+        const modal = document.getElementById('modal-nova-conta');
+        if (modal) {
+            modal.classList.remove('hidden');
+        } else {
+            console.error("Elemento modal-nova-conta não encontrado!");
+        }
+    } catch (err) {
+        console.error("Erro em abrirModalContaEdicao:", err);
+        showToast("Erro ao abrir edição: " + (err.message || err), "error");
     }
-    document.getElementById('conta-ref').value = f.ref || '';
-    document.getElementById('conta-categoria').value = f.categoria || (tipo === 'RECEBER' ? 'Vendas' : 'Outras Despesas');
-    document.getElementById('conta-centro-custo').value = f.centroCusto || 'Geral';
-    document.getElementById('conta-banco').value = f.contaBancaria || 'Caixa Fsico';
-    
-    document.getElementById('conta-emissao').value = f.dataEmissao || '';
-    document.getElementById('conta-vencimento').value = f.data ? f.data.split('T')[0] : '';
-    const elCart = document.getElementById('conta-cartorio'); if(elCart) elCart.value = f.cartorioNome || '';
-    const elProt = document.getElementById('conta-data-protesto'); if(elProt) elProt.value = f.dataCartorio || '';
-    const elJuros = document.getElementById('conta-juros'); if(elJuros) elJuros.value = f.juros || f.jurosMesPerc || '';
-    const elMulta = document.getElementById('conta-multa'); if(elMulta) elMulta.value = f.multa || f.multaPerc || '';
-    document.getElementById('conta-competencia').value = f.competencia || '';
-    
-    document.getElementById('conta-num-nf').value = f.numNF || '';
-    document.getElementById('conta-num-boleto').value = f.numBoleto || '';
-    
-        let valStr = String(f.valor || 0);
-    if (valStr.includes(',')) { valStr = valStr.replace(/\./g, '').replace(',', '.'); }
-    document.getElementById('conta-valor').value = parseInputMoney(valStr) || 0;
-    document.getElementById('conta-acrescimo').value = f.acrescimo || 0;
-    document.getElementById('conta-desconto').value = f.desconto || 0;
-    
-    document.getElementById('conta-status').value = f.status || 'PENDENTE';
-    document.getElementById('conta-data-pgto').value = f.dataPagamento ? f.dataPagamento.split('T')[0] : '';
-    document.getElementById('conta-metodo').value = f.metodoPagamento || '';
-    
-    document.getElementById('conta-obs').value = f.observacao || '';
-    document.getElementById('conta-anexo-base64').value = f.anexoBase64 || '';
-    
-    calcularValorFinalFormulario();
-    document.getElementById('modal-nova-conta').classList.remove('hidden');
 }
 
 function calcularValorFinalFormulario() {

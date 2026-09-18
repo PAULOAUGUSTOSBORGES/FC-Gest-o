@@ -497,9 +497,95 @@ const moneyMaskObserver = new MutationObserver((mutations) => {
 moneyMaskObserver.observe(document.body, { childList: true, subtree: true });
 const formatData = (isoStr) => {
     if (!isoStr) return '-';
+    if (typeof isoStr === 'object' && isoStr.seconds !== undefined) {
+        return new Date(isoStr.seconds * 1000).toLocaleString('pt-BR');
+    }
     const d = new Date(isoStr);
     return isNaN(d.getTime()) ? '-' : d.toLocaleString('pt-BR');
 };
+window.formatData = formatData;
+
+function formatarDataParaInputDate(val) {
+    if (!val) return '';
+    try {
+        if (typeof val === 'object' && typeof val.toDate === 'function') {
+            return val.toDate().toISOString().split('T')[0];
+        }
+        if (typeof val === 'object' && val.seconds !== undefined) {
+            return new Date(val.seconds * 1000).toISOString().split('T')[0];
+        }
+        if (val instanceof Date) {
+            return isNaN(val.getTime()) ? '' : val.toISOString().split('T')[0];
+        }
+        if (typeof val === 'number') {
+            const d = new Date(val);
+            return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
+        }
+        const str = String(val).trim();
+        if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+            return str.split('T')[0].substring(0, 10);
+        }
+        if (/^\d{2}\/\d{2}\/\d{4}/.test(str)) {
+            const parts = str.split('/');
+            return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+        const d = new Date(str);
+        return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
+    } catch (e) {
+        return '';
+    }
+}
+window.formatarDataParaInputDate = formatarDataParaInputDate;
+
+function parseDataGenerica(val) {
+    if (!val) return null;
+    try {
+        if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+        if (typeof val === 'object' && typeof val.toDate === 'function') {
+            const d = val.toDate();
+            return isNaN(d.getTime()) ? null : d;
+        }
+        if (typeof val === 'object' && val.seconds !== undefined) {
+            const d = new Date(val.seconds * 1000);
+            return isNaN(d.getTime()) ? null : d;
+        }
+        if (typeof val === 'number') {
+            const d = new Date(val);
+            return isNaN(d.getTime()) ? null : d;
+        }
+        if (typeof val === 'string') {
+            val = val.trim();
+            if (!val) return null;
+            // Formato brasileiro DD/MM/YYYY [HH:mm[:ss]]
+            const brMatch = val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+            if (brMatch) {
+                const dia = parseInt(brMatch[1], 10);
+                const mes = parseInt(brMatch[2], 10) - 1;
+                const ano = parseInt(brMatch[3], 10);
+                const hora = brMatch[4] ? parseInt(brMatch[4], 10) : 12;
+                const min = brMatch[5] ? parseInt(brMatch[5], 10) : 0;
+                const seg = brMatch[6] ? parseInt(brMatch[6], 10) : 0;
+                const d = new Date(ano, mes, dia, hora, min, seg);
+                return isNaN(d.getTime()) ? null : d;
+            }
+            // Formato ISO YYYY-MM-DD puro ou com meia-noite UTC (evita cair no dia anterior no UTC-3)
+            const isoDateOnly = val.match(/^(\d{4})-(\d{2})-(\d{2})(?:T00:00:00(?:\.000)?Z?)?$/);
+            if (isoDateOnly) {
+                const ano = parseInt(isoDateOnly[1], 10);
+                const mes = parseInt(isoDateOnly[2], 10) - 1;
+                const dia = parseInt(isoDateOnly[3], 10);
+                const d = new Date(ano, mes, dia, 12, 0, 0);
+                return isNaN(d.getTime()) ? null : d;
+            }
+            const d = new Date(val);
+            return isNaN(d.getTime()) ? null : d;
+        }
+    } catch(e) {
+        return null;
+    }
+    return null;
+}
+window.parseDataGenerica = parseDataGenerica;
 
 function normalizarTexto(str) {
     if (str === null || str === undefined) return '';

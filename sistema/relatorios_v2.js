@@ -185,6 +185,10 @@ function inicializarGestao() {
         // Nao conta no tentarRefresh (colecao adicional)
         debouncedRenderDashboard();
     });
+    _listen('movimentacoes', function(dados) {
+        db.movimentacoes = dados;
+        debouncedRenderDashboard();
+    }, { query: function(ref) { return ref.orderBy('data', 'desc').limit(300); } });
     // Caixa: sempre ativo pois e critico (saldo em tempo real)
     _listenDoc('fc_moveis', 'caixa', function(data) {
         db.caixa = data || { status: 'FECHADO', saldo: 0, historico: [] };
@@ -593,11 +597,11 @@ function renderTitulos(tipo) {
             <td class="p-3 text-right font-black ${tipo === 'RECEITA' ? 'text-blue-600' : 'text-red-500'}">${formatMoney(valorAExibir)}</td>
             <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${corStatus}">${badgeStatus}</span></td>
             <td class="p-3 text-center flex items-center justify-center gap-1 print:hidden">
-                <button onclick="verDetalhesTitulo('${f.id}')" class="text-blue-500 hover:text-blue-700 p-1.5" title="Detalhes do Título"><i class="fa-solid fa-eye"></i></button>
-                <button onclick="abrirModalContaEdicao('${f.id}')" class="text-indigo-500 hover:text-indigo-700 p-1.5" title="Editar Lançamento"><i class="fa-solid fa-pen"></i></button>
+                <button onclick="verDetalhesTitulo('${String(f.id || '').replace(/'/g, "\\'")}')" class="text-blue-500 hover:text-blue-700 p-1.5" title="Detalhes do Título"><i class="fa-solid fa-eye"></i></button>
+                <button onclick="abrirModalContaEdicao('${String(f.id || '').replace(/'/g, "\\'")}')" class="text-indigo-500 hover:text-indigo-700 p-1.5" title="Editar Lançamento"><i class="fa-solid fa-pen"></i></button>
                 ${btnWhats}
                 ${acoesExtras}
-                <button onclick="excluirTitulo('${f.id}')" class="text-slate-400 hover:text-red-500 p-1.5 ml-1" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                <button onclick="excluirTitulo('${String(f.id || '').replace(/'/g, "\\'")}')" class="text-slate-400 hover:text-red-500 p-1.5 ml-1" title="Excluir"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     }).join('') || `<tr><td colspan="6" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum título encontrado.</td></tr>`;
@@ -610,11 +614,11 @@ function preencherContaPessoaSelect(tipo) {
     const sel = document.getElementById('conta-pessoa-select');
     if (!sel) return;
     const lista = tipo === 'RECEBER'
-        ? (db.clientes || []).map(c => c.nome || c.razaoSocial || '')
-        : [...(db.fornecedores || []), ...(db.funcionarios || [])].map(f => f.nome || f.razaoSocial || '');
-    const unique = [...new Set(lista.filter(n => n.trim()))].sort();
+        ? (db.clientes || []).map(c => c.nome || c.razaoSocial || c.nomeFantasia || '')
+        : [...(db.fornecedores || []), ...(db.funcionarios || [])].map(f => f.nome || f.razaoSocial || f.nomeFantasia || f.fantasia || '');
+    const unique = [...new Set(lista.filter(n => n && n.trim()))].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' }));
     sel.innerHTML = '<option value="">-- Selecione um cadastrado --</option>'
-        + unique.map(n => `<option value="${n}">${n}</option>`).join('')
+        + unique.map(n => `<option value="${(typeof escapeHtml === 'function' ? escapeHtml(n) : n)}">${(typeof escapeHtml === 'function' ? escapeHtml(n) : n)}</option>`).join('')
         + '<option value="__novo__">+ Cadastrar novo...</option>';
     sel.value = '';
 }
@@ -686,67 +690,130 @@ function abrirModalConta(tipo) {
 }
 
 function abrirModalContaEdicao(id) {
-    const f = db.financeiro.find(x => x.id === id);
-    if (!f) return;
-    
-    const tipo = f.tipo === 'RECEITA' ? 'RECEBER' : 'PAGAR';
-    
-    document.getElementById('conta-id').value = f.id; 
-    document.getElementById('conta-tipo').value = f.tipo; 
-    document.getElementById('lbl-conta-pessoa').innerText = tipo === 'RECEBER' ? 'Cliente / Pagador *' : 'Fornecedor / Favorecido *';
-    
-    document.getElementById('conta-categoria').innerHTML = (tipo === 'RECEBER' ? categoriasReceber : categoriasPagar).map(c => `<option value="${c}">${c}</option>`).join('');
-    document.getElementById('modal-conta-header').className = `p-4 md:p-5 text-white flex justify-between items-center shrink-0 bg-indigo-600`; 
-    document.getElementById('modal-conta-title').innerText = 'Editar Lançamento Financeiro';
-    
-    document.getElementById('conta-recorrencia').value = 'UNICA';
-    document.getElementById('conta-recorrencia').disabled = true;
-    toggleRecorrencia();
-
-    const tipoPessoa = f.tipo === 'RECEITA' ? 'RECEBER' : 'PAGAR';
-    preencherContaPessoaSelect(tipoPessoa);
-    const pessoaSelEl = document.getElementById('conta-pessoa-select');
-    const pessoaWrapEl = document.getElementById('conta-pessoa-novo-wrap');
-    const pessoaInputEl = document.getElementById('conta-pessoa');
-    if (pessoaSelEl) {
-        const match = [...pessoaSelEl.options].find(o => o.value.toLowerCase() === (f.pessoa || '').toLowerCase());
-        if (match) {
-            pessoaSelEl.value = f.pessoa;
-            if(pessoaWrapEl) pessoaWrapEl.classList.add('hidden');
-            if(pessoaInputEl) pessoaInputEl.value = '';
-        } else {
-            pessoaSelEl.value = '__novo__';
-            if(pessoaWrapEl) pessoaWrapEl.classList.remove('hidden');
-            if(pessoaInputEl) pessoaInputEl.value = f.pessoa || '';
+    try {
+        const f = (db.financeiro || []).find(x => String(x.id).trim() === String(id).trim());
+        if (!f) {
+            console.warn("Lançamento financeiro não encontrado para ID:", id);
+            if (typeof showToast === 'function') showToast('Lançamento não encontrado.', 'error');
+            return;
         }
+        
+        const tipoNorm = String(f.tipo || '').toUpperCase();
+        const tipo = (tipoNorm === 'RECEITA' || tipoNorm === 'RECEBER' || tipoNorm === 'ENTRADA') ? 'RECEBER' : 'PAGAR';
+        
+        const elId = document.getElementById('conta-id'); if (elId) elId.value = f.id;
+        const elTipo = document.getElementById('conta-tipo'); if (elTipo) elTipo.value = tipo === 'RECEBER' ? 'RECEITA' : 'DESPESA';
+        const elLblPessoa = document.getElementById('lbl-conta-pessoa');
+        if (elLblPessoa) elLblPessoa.innerText = tipo === 'RECEBER' ? 'Cliente / Pagador *' : 'Fornecedor / Favorecido *';
+        
+        const elCat = document.getElementById('conta-categoria');
+        if (elCat) {
+            const arrCats = tipo === 'RECEBER' ? (typeof categoriasReceber !== 'undefined' ? categoriasReceber : []) : (typeof categoriasPagar !== 'undefined' ? categoriasPagar : []);
+            elCat.innerHTML = arrCats.map(c => `<option value="${c}">${c}</option>`).join('');
+        }
+        const elHeader = document.getElementById('modal-conta-header');
+        if (elHeader) elHeader.className = `p-4 md:p-5 text-white flex justify-between items-center shrink-0 bg-indigo-600`; 
+        const elTitle = document.getElementById('modal-conta-title');
+        if (elTitle) elTitle.innerText = 'Editar Lançamento Financeiro';
+        
+        const elRec = document.getElementById('conta-recorrencia');
+        if (elRec) {
+            elRec.value = 'UNICA';
+            elRec.disabled = true;
+        }
+        if (typeof toggleRecorrencia === 'function') toggleRecorrencia();
+
+        const tipoPessoa = tipo;
+        if (typeof preencherContaPessoaSelect === 'function') preencherContaPessoaSelect(tipoPessoa);
+        const pessoaSelEl = document.getElementById('conta-pessoa-select');
+        const pessoaWrapEl = document.getElementById('conta-pessoa-novo-wrap');
+        const pessoaInputEl = document.getElementById('conta-pessoa');
+        
+        const nomePessoa = String(f.pessoa || f.favorecido || f.fornecedor || f.cliente || '').trim();
+        
+        if (pessoaSelEl) {
+            const optionsArr = [...pessoaSelEl.options];
+            let match = optionsArr.find(o => o.value && o.value.trim().toLowerCase() === nomePessoa.toLowerCase());
+            
+            if (!match && nomePessoa) {
+                const normP = nomePessoa.toLowerCase();
+                match = optionsArr.find(o => {
+                    const optVal = (o.value || '').toLowerCase().trim();
+                    if (!optVal || optVal === '__novo__' || optVal.startsWith('--')) return false;
+                    return optVal.includes(normP) || normP.includes(optVal);
+                });
+            }
+
+            if (match && match.value && match.value !== '__novo__') {
+                pessoaSelEl.value = match.value;
+                if (pessoaWrapEl) pessoaWrapEl.classList.add('hidden');
+                if (pessoaInputEl) pessoaInputEl.value = '';
+            } else {
+                pessoaSelEl.value = '__novo__';
+                if (pessoaWrapEl) pessoaWrapEl.classList.remove('hidden');
+                if (pessoaInputEl) pessoaInputEl.value = nomePessoa;
+            }
+        } else if (pessoaInputEl) {
+            pessoaInputEl.value = nomePessoa;
+        }
+        
+        const elRef = document.getElementById('conta-ref'); if (elRef) elRef.value = f.ref || '';
+        if (elCat) elCat.value = f.categoria || (tipo === 'RECEBER' ? 'Vendas' : 'Outras Despesas');
+        const elCC = document.getElementById('conta-centro-custo'); if (elCC) elCC.value = f.centroCusto || 'Geral';
+        const elBanco = document.getElementById('conta-banco'); if (elBanco) elBanco.value = f.contaBancaria || 'Caixa Físico';
+        
+        const safeDateFormat = typeof formatarDataParaInputDate === 'function' 
+            ? formatarDataParaInputDate 
+            : (v) => {
+                if (!v) return '';
+                if (typeof v === 'string') return v.split('T')[0];
+                if (v && typeof v.toDate === 'function') return v.toDate().toISOString().split('T')[0];
+                return '';
+            };
+
+        const elEmissao = document.getElementById('conta-emissao'); 
+        if (elEmissao) elEmissao.value = safeDateFormat(f.dataEmissao || f.emissao || f.criadoEm);
+        
+        const elVenc = document.getElementById('conta-vencimento'); 
+        if (elVenc) elVenc.value = safeDateFormat(f.data || f.dataVencimento || f.vencimento);
+        
+        const elCart = document.getElementById('conta-cartorio'); if (elCart) elCart.value = f.cartorioNome || '';
+        const elProt = document.getElementById('conta-data-protesto'); if (elProt) elProt.value = safeDateFormat(f.dataCartorio || f.dataProtesto);
+        const elMulta = document.getElementById('conta-multa'); if (elMulta) elMulta.value = f.multaPerc || '';
+        const elJuros = document.getElementById('conta-juros'); if (elJuros) elJuros.value = f.jurosMesPerc || '';
+        const elComp = document.getElementById('conta-competencia'); if (elComp) elComp.value = f.competencia || '';
+        
+        const elNF = document.getElementById('conta-num-nf'); if (elNF) elNF.value = f.numNF || '';
+        const elBol = document.getElementById('conta-num-boleto'); if (elBol) elBol.value = f.numBoleto || '';
+        
+        const formatForInputMoney = (val) => {
+            const num = (typeof parseInputMoney === 'function' ? parseInputMoney(val) : Number(val)) || 0;
+            return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        };
+        
+        const elVal = document.getElementById('conta-valor');
+        if (elVal) elVal.value = formatForInputMoney(f.valor);
+        
+        const elAcresc = document.getElementById('conta-acrescimo');
+        if (elAcresc) elAcresc.value = f.acrescimo ? formatForInputMoney(f.acrescimo) : '0,00';
+        
+        const elDesc = document.getElementById('conta-desconto');
+        if (elDesc) elDesc.value = f.desconto ? formatForInputMoney(f.desconto) : '0,00';
+        
+        const elStatus = document.getElementById('conta-status'); if (elStatus) elStatus.value = f.status || 'PENDENTE';
+        const elPgto = document.getElementById('conta-data-pgto'); if (elPgto) elPgto.value = safeDateFormat(f.dataPagamento || f.dataPgto);
+        const elMetodo = document.getElementById('conta-metodo'); if (elMetodo) elMetodo.value = f.metodoPagamento || '';
+        
+        const elObs = document.getElementById('conta-obs'); if (elObs) elObs.value = f.observacao || '';
+        const elAnexo = document.getElementById('conta-anexo-base64'); if (elAnexo) elAnexo.value = f.anexoBase64 || '';
+        
+        if (typeof calcularValorFinalFormulario === 'function') calcularValorFinalFormulario();
+        const modal = document.getElementById('modal-nova-conta');
+        if (modal) modal.classList.remove('hidden');
+    } catch (err) {
+        console.error("Erro em abrirModalContaEdicao:", err);
+        if (typeof showToast === 'function') showToast('Erro ao abrir formulário de edição: ' + err.message, 'error');
     }
-    document.getElementById('conta-ref').value = f.ref || '';
-    document.getElementById('conta-categoria').value = f.categoria || (tipo === 'RECEBER' ? 'Vendas' : 'Outras Despesas');
-    document.getElementById('conta-centro-custo').value = f.centroCusto || 'Geral';
-    document.getElementById('conta-banco').value = f.contaBancaria || 'Caixa Físico';
-    
-    document.getElementById('conta-emissao').value = f.dataEmissao || '';
-    document.getElementById('conta-vencimento').value = f.data ? f.data.split('T')[0] : '';
-    document.getElementById('conta-competencia').value = f.competencia || '';
-    
-    document.getElementById('conta-num-nf').value = f.numNF || '';
-    document.getElementById('conta-num-boleto').value = f.numBoleto || '';
-    
-        let valStr = String(f.valor || 0);
-    if (valStr.includes(',')) { valStr = valStr.replace(/\./g, '').replace(',', '.'); }
-    document.getElementById('conta-valor').value = parseInputMoney(valStr) || 0;
-    document.getElementById('conta-acrescimo').value = f.acrescimo || 0;
-    document.getElementById('conta-desconto').value = f.desconto || 0;
-    
-    document.getElementById('conta-status').value = f.status || 'PENDENTE';
-    document.getElementById('conta-data-pgto').value = f.dataPagamento ? f.dataPagamento.split('T')[0] : '';
-    document.getElementById('conta-metodo').value = f.metodoPagamento || '';
-    
-    document.getElementById('conta-obs').value = f.observacao || '';
-    document.getElementById('conta-anexo-base64').value = f.anexoBase64 || '';
-    
-    calcularValorFinalFormulario();
-    document.getElementById('modal-nova-conta').classList.remove('hidden');
 }
 
 function calcularValorFinalFormulario() {
@@ -2027,6 +2094,7 @@ function obterIntervaloDatasBI() {
 // Helper: Garante que apenas contas rigorosamente PAGAS cujo pagamento foi feito no período sejam computadas
 function obterDespesasPagasDoPeriodo(periodo) {
     if (!db.financeiro) return [];
+    const _parseD = typeof parseDataGenerica === 'function' ? parseDataGenerica : (x => new Date(x));
     return db.financeiro.filter(f => {
         const tipo = String(f.tipo || '').toUpperCase();
         if (tipo !== 'DESPESA') return false;
@@ -2044,8 +2112,8 @@ function obterDespesasPagasDoPeriodo(periodo) {
         const rawData = f.dataPagamento || f.data;
         if (!rawData) return false;
 
-        const dataPg = new Date(rawData);
-        if (isNaN(dataPg.getTime())) return false;
+        const dataPg = _parseD(rawData);
+        if (!dataPg || isNaN(dataPg.getTime())) return false;
 
         return dataPg >= periodo.inicio && dataPg <= periodo.fim;
     });
@@ -2054,6 +2122,7 @@ function obterDespesasPagasDoPeriodo(periodo) {
 // Helper: Vendas válidas dentro do período filtrado
 function obterVendasDoPeriodo(periodo) {
     if (!db.vendas) return [];
+    const _parseD = typeof parseDataGenerica === 'function' ? parseDataGenerica : (x => new Date(x));
     return db.vendas.filter(v => {
         const tipo = String(v.tipo || '').toUpperCase();
         if (tipo === 'ORÇAMENTO' || tipo === 'ORCAMENTO') return false;
@@ -2065,8 +2134,8 @@ function obterVendasDoPeriodo(periodo) {
         const rawData = v.data || v.dataVenda || v.criadoEm;
         if (!rawData) return false;
 
-        const dataV = new Date(rawData);
-        if (isNaN(dataV.getTime())) return false;
+        const dataV = _parseD(rawData);
+        if (!dataV || isNaN(dataV.getTime())) return false;
 
         return dataV >= periodo.inicio && dataV <= periodo.fim;
     });
@@ -2075,14 +2144,15 @@ function obterVendasDoPeriodo(periodo) {
 // Helper: Compras registradas dentro do período filtrado
 function obterComprasDoPeriodo(periodo) {
     if (!db.compras) return [];
+    const _parseD = typeof parseDataGenerica === 'function' ? parseDataGenerica : (x => new Date(x));
     return db.compras.filter(c => {
         if (!periodo) return true;
 
         const rawData = c.data || c.dataEmissao || c.criadoEm;
         if (!rawData) return false;
 
-        const dataC = new Date(rawData);
-        if (isNaN(dataC.getTime())) return false;
+        const dataC = _parseD(rawData);
+        if (!dataC || isNaN(dataC.getTime())) return false;
 
         return dataC >= periodo.inicio && dataC <= periodo.fim;
     });
@@ -2117,18 +2187,111 @@ function renderDashboard() {
 
     const resultadoLiquido = lucroBruto - despesasOperacionais - impostosTotal;
 
-    // Elementos DRE Estruturado
+    // 1. Elementos DRE Estruturado & Análise Vertical (AV%)
+    // Base de cálculo AV: Faturamento Bruto para deduções/líquida, e Receita Líquida para operacionais/CMV
+    const avBruta = 100.0;
+    const avTaxas = fatTotal > 0 ? (taxasTotal / fatTotal) * 100 : 0;
+    const avLiquida = fatTotal > 0 ? (recLiquida / fatTotal) * 100 : 100.0;
+    const avBaseOperacional = recLiquida > 0 ? recLiquida : (fatTotal > 0 ? fatTotal : 1);
+    const avCmv = (cmvTotal / avBaseOperacional) * 100;
+    const avLucroBruto = (lucroBruto / avBaseOperacional) * 100;
+    const avDespesas = (despesasOperacionais / avBaseOperacional) * 100;
+    const avImpostos = (impostosTotal / avBaseOperacional) * 100;
+    const avResultadoLiq = (resultadoLiquido / avBaseOperacional) * 100;
+
     const dreBrutaEl = document.getElementById('dre-receita-bruta'); if(dreBrutaEl) dreBrutaEl.innerText = formatMoney(fatTotal);
+    const dreBrutaAvEl = document.getElementById('dre-receita-bruta-av'); if(dreBrutaAvEl) dreBrutaAvEl.innerText = `${avBruta.toFixed(1)}%`;
+
     const dreTaxEl = document.getElementById('dre-deducoes-taxas'); if(dreTaxEl) dreTaxEl.innerText = `- ${formatMoney(taxasTotal)}`;
+    const dreTaxAvEl = document.getElementById('dre-deducoes-taxas-av'); if(dreTaxAvEl) dreTaxAvEl.innerText = `-${avTaxas.toFixed(1)}%`;
+
     const dreLiqEl = document.getElementById('dre-receita-liquida'); if(dreLiqEl) dreLiqEl.innerText = formatMoney(recLiquida);
+    const dreLiqAvEl = document.getElementById('dre-receita-liquida-av'); if(dreLiqAvEl) dreLiqAvEl.innerText = `${avLiquida.toFixed(1)}%`;
+
     const dreCmvEl = document.getElementById('dre-cmv'); if(dreCmvEl) dreCmvEl.innerText = `- ${formatMoney(cmvTotal)}`;
+    const dreCmvAvEl = document.getElementById('dre-cmv-av'); if(dreCmvAvEl) dreCmvAvEl.innerText = `-${avCmv.toFixed(1)}%`;
+
     const dreLucroBrutoEl = document.getElementById('dre-lucro-bruto'); if(dreLucroBrutoEl) dreLucroBrutoEl.innerText = formatMoney(lucroBruto);
+    const dreLucroBrutoAvEl = document.getElementById('dre-lucro-bruto-av'); if(dreLucroBrutoAvEl) dreLucroBrutoAvEl.innerText = `${avLucroBruto.toFixed(1)}%`;
+
     const dreDespEl = document.getElementById('dre-despesas-operacionais'); if(dreDespEl) dreDespEl.innerText = `- ${formatMoney(despesasOperacionais)}`;
+    const dreDespAvEl = document.getElementById('dre-despesas-operacionais-av'); if(dreDespAvEl) dreDespAvEl.innerText = `-${avDespesas.toFixed(1)}%`;
+
     const dreImpEl = document.getElementById('dre-impostos'); if(dreImpEl) dreImpEl.innerText = `- ${formatMoney(impostosTotal)}`;
+    const dreImpAvEl = document.getElementById('dre-impostos-av'); if(dreImpAvEl) dreImpAvEl.innerText = `-${avImpostos.toFixed(1)}%`;
+
     const dreResEl = document.getElementById('dre-resultado-liquido'); 
+    const dreResAvEl = document.getElementById('dre-resultado-liquido-av');
     if(dreResEl) {
         dreResEl.innerText = formatMoney(resultadoLiquido);
         dreResEl.className = `p-4 rounded-r-lg text-right font-black text-base md:text-lg ${resultadoLiquido >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+    }
+    if(dreResAvEl) {
+        dreResAvEl.innerText = `${avResultadoLiq.toFixed(1)}%`;
+        dreResAvEl.className = `p-4 text-right text-xs md:text-sm font-black ${resultadoLiquido >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+    }
+
+    // 2. Raio-X Diagnóstico Executivo & Termômetro de Equilíbrio (Break-Even)
+    const despesasFixas = despesasOperacionais + impostosTotal;
+    const margemContribPct = recLiquida > 0 ? (lucroBruto / recLiquida) : 0;
+    const pontoEquilibrio = margemContribPct > 0 ? (despesasFixas / margemContribPct) : (despesasFixas > 0 ? despesasFixas : 0);
+
+    const kpiMargemValEl = document.getElementById('kpi-margem-contribuicao-valor');
+    if (kpiMargemValEl) kpiMargemValEl.innerText = formatMoney(lucroBruto);
+    const kpiMargemPctEl = document.getElementById('kpi-margem-contribuicao-perc');
+    if (kpiMargemPctEl) kpiMargemPctEl.innerText = `${(margemContribPct * 100).toFixed(1)}% da Receita Líq.`;
+
+    const kpiPontoEqValEl = document.getElementById('kpi-ponto-equilibrio-valor');
+    if (kpiPontoEqValEl) kpiPontoEqValEl.innerText = formatMoney(pontoEquilibrio);
+    const kpiPontoEqDetEl = document.getElementById('kpi-ponto-equilibrio-detalhe');
+    if (kpiPontoEqDetEl) kpiPontoEqDetEl.innerText = despesasFixas > 0 ? `Cobre ${formatMoney(despesasFixas)} de despesas e tributos.` : 'Nenhum custo fixo no período.';
+
+    const pctEquilibrio = pontoEquilibrio > 0 ? ((recLiquida / pontoEquilibrio) * 100) : (recLiquida > 0 ? 100 : 0);
+    const kpiPctBadgeEl = document.getElementById('kpi-break-even-pct-badge');
+    if (kpiPctBadgeEl) kpiPctBadgeEl.innerText = `${pctEquilibrio.toFixed(0)}%`;
+
+    const kpiBarraEl = document.getElementById('kpi-break-even-barra');
+    if (kpiBarraEl) {
+        kpiBarraEl.style.width = `${Math.min(100, Math.max(0, pctEquilibrio))}%`;
+        kpiBarraEl.className = resultadoLiquido >= 0 ? 'bg-emerald-500 h-full rounded-full transition-all duration-500' : 'bg-amber-500 h-full rounded-full transition-all duration-500';
+    }
+
+    const kpiStatusEl = document.getElementById('kpi-break-even-status');
+    const kpiSobraEl = document.getElementById('kpi-break-even-sobra');
+    if (kpiStatusEl) {
+        if (resultadoLiquido >= 0) {
+            kpiStatusEl.innerHTML = `<span class="text-emerald-400 font-bold flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> Meta Batida! Operação no Lucro</span>`;
+            if (kpiSobraEl) kpiSobraEl.innerText = `Superávit de ${formatMoney(recLiquida - pontoEquilibrio)} além do 0 a 0.`;
+        } else {
+            kpiStatusEl.innerHTML = `<span class="text-amber-400 font-bold flex items-center gap-1"><i class="fa-solid fa-triangle-exclamation"></i> Faltam ${formatMoney(Math.abs(resultadoLiquido))} p/ o 0 a 0</span>`;
+            if (kpiSobraEl) kpiSobraEl.innerText = `Receita ainda insuficiente p/ cobrir custos fixos.`;
+        }
+    }
+
+    const margemLiqRealPct = fatTotal > 0 ? ((resultadoLiquido / fatTotal) * 100) : 0;
+    const kpiMargemLiqEl = document.getElementById('kpi-margem-liquida-perc');
+    if (kpiMargemLiqEl) {
+        kpiMargemLiqEl.innerText = `${margemLiqRealPct.toFixed(1)}%`;
+        kpiMargemLiqEl.className = `text-xl font-black ${resultadoLiquido >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+    }
+    const kpiResLiqEl = document.getElementById('kpi-resultado-liquido-card');
+    if (kpiResLiqEl) kpiResLiqEl.innerText = formatMoney(resultadoLiquido);
+
+    const kpiSaudeBadgeEl = document.getElementById('kpi-saude-financeira-badge');
+    if (kpiSaudeBadgeEl) {
+        if (resultadoLiquido > 0 && margemLiqRealPct >= 15) {
+            kpiSaudeBadgeEl.className = 'px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 shadow-sm';
+            kpiSaudeBadgeEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Alta Eficiência (> 15%)`;
+        } else if (resultadoLiquido > 0 && margemLiqRealPct >= 5) {
+            kpiSaudeBadgeEl.className = 'px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-1.5 shadow-sm';
+            kpiSaudeBadgeEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-400"></span> Saudável (5% - 15%)`;
+        } else if (resultadoLiquido > 0) {
+            kpiSaudeBadgeEl.className = 'px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1.5 shadow-sm';
+            kpiSaudeBadgeEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400"></span> Atenção (Margem < 5%)`;
+        } else {
+            kpiSaudeBadgeEl.className = 'px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/30 flex items-center gap-1.5 shadow-sm';
+            kpiSaudeBadgeEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-400 animate-bounce"></span> Déficit Operacional`;
+        }
     }
 
     // Fallback legado
@@ -2153,15 +2316,20 @@ function renderDashboard() {
             .sort((a,b) => b.val - a.val)
             .slice(0, 5);
         if (itensTopCompras.length > 0) {
-            topComprasEl.innerHTML = itensTopCompras.map((p, i) => `
-                <div onclick="abrirDrilldownDRE('PRODUTO_COMPRAS', '${p.nome.replace(/'/g, "\\'")}')" class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver compras deste produto">
-                    <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">${i+1}. ${p.nome}</span>
-                    <div class="flex items-center gap-2 shrink-0">
+            const maxCompras = itensTopCompras[0].val || 1;
+            topComprasEl.innerHTML = itensTopCompras.map((p, i) => {
+                const pct = (p.val / maxCompras) * 100;
+                return `
+                <div onclick="abrirDrilldownDRE('PRODUTO_COMPRAS', '${p.nome.replace(/'/g, "\\'")}')" class="relative overflow-hidden flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver compras deste produto">
+                    <div class="absolute left-0 top-0 bottom-0 bg-red-500/10 pointer-events-none rounded-lg" style="width: ${pct}%"></div>
+                    <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors relative z-10">${i+1}. ${p.nome}</span>
+                    <div class="flex items-center gap-2 shrink-0 relative z-10">
                         <span class="font-bold text-red-500 dark:text-red-400">${formatMoney(p.val)}</span>
                         <i class="fa-solid fa-magnifying-glass text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         } else {
             topComprasEl.innerHTML = '<div class="text-slate-500 dark:text-slate-400 text-sm italic text-center py-2">Nenhuma compra no período</div>';
         }
@@ -2178,15 +2346,20 @@ function renderDashboard() {
     if(abcEl) {
         const itensTopVendas = Object.keys(rankingProd).map(k => ({nome: k, val: rankingProd[k]})).sort((a,b) => b.val - a.val).slice(0,5);
         if (itensTopVendas.length > 0) {
-            abcEl.innerHTML = itensTopVendas.map((p, i) => `
-                <div onclick="abrirDrilldownDRE('PRODUTO_VENDAS', '${p.nome.replace(/'/g, "\\'")}')" class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver vendas deste produto">
-                    <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">${i+1}. ${p.nome}</span>
-                    <div class="flex items-center gap-2 shrink-0">
+            const maxVendas = itensTopVendas[0].val || 1;
+            abcEl.innerHTML = itensTopVendas.map((p, i) => {
+                const pct = (p.val / maxVendas) * 100;
+                return `
+                <div onclick="abrirDrilldownDRE('PRODUTO_VENDAS', '${p.nome.replace(/'/g, "\\'")}')" class="relative overflow-hidden flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver vendas deste produto">
+                    <div class="absolute left-0 top-0 bottom-0 bg-emerald-500/10 pointer-events-none rounded-lg" style="width: ${pct}%"></div>
+                    <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors relative z-10">${i+1}. ${p.nome}</span>
+                    <div class="flex items-center gap-2 shrink-0 relative z-10">
                         <span class="font-bold text-emerald-600 dark:text-emerald-400">${formatMoney(p.val)}</span>
                         <i class="fa-solid fa-magnifying-glass text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         } else {
             abcEl.innerHTML = '<div class="text-slate-500 dark:text-slate-400 text-sm italic text-center py-2">Nenhuma venda no período</div>';
         }
@@ -2203,15 +2376,20 @@ function renderDashboard() {
     if(cliEl) {
         const itensTopCli = Object.keys(rankingCli).map(k => ({nome: k, val: rankingCli[k]})).sort((a,b) => b.val - a.val).slice(0,5);
         if (itensTopCli.length > 0) {
-            cliEl.innerHTML = itensTopCli.map((c, i) => `
-                <div onclick="abrirDrilldownDRE('CLIENTE_VENDAS', '${c.nome.replace(/'/g, "\\'")}')" class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver compras deste cliente">
-                    <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">${i+1}. ${c.nome}</span>
-                    <div class="flex items-center gap-2 shrink-0">
+            const maxCli = itensTopCli[0].val || 1;
+            cliEl.innerHTML = itensTopCli.map((c, i) => {
+                const pct = (c.val / maxCli) * 100;
+                return `
+                <div onclick="abrirDrilldownDRE('CLIENTE_VENDAS', '${c.nome.replace(/'/g, "\\'")}')" class="relative overflow-hidden flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver compras deste cliente">
+                    <div class="absolute left-0 top-0 bottom-0 bg-blue-500/10 pointer-events-none rounded-lg" style="width: ${pct}%"></div>
+                    <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors relative z-10">${i+1}. ${c.nome}</span>
+                    <div class="flex items-center gap-2 shrink-0 relative z-10">
                         <span class="font-bold text-blue-600 dark:text-blue-400">${formatMoney(c.val)}</span>
                         <i class="fa-solid fa-magnifying-glass text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         } else {
             cliEl.innerHTML = '<div class="text-slate-500 dark:text-slate-400 text-sm italic text-center py-2">Nenhum cliente no período</div>';
         }
@@ -2228,15 +2406,20 @@ function renderDashboard() {
     if(fornEl) {
         const itensTopForn = Object.keys(rankingForn).map(k => ({nome: k, val: rankingForn[k]})).sort((a,b) => b.val - a.val).slice(0,5);
         if (itensTopForn.length > 0) {
-            fornEl.innerHTML = itensTopForn.map((f, i) => `
-                <div onclick="abrirDrilldownDRE('FORNECEDOR_COMPRAS', '${f.nome.replace(/'/g, "\\'")}')" class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver compras deste fornecedor">
-                    <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-red-500 dark:group-hover:text-red-400 transition-colors">${i+1}. ${f.nome}</span>
-                    <div class="flex items-center gap-2 shrink-0">
+            const maxForn = itensTopForn[0].val || 1;
+            fornEl.innerHTML = itensTopForn.map((f, i) => {
+                const pct = (f.val / maxForn) * 100;
+                return `
+                <div onclick="abrirDrilldownDRE('FORNECEDOR_COMPRAS', '${f.nome.replace(/'/g, "\\'")}')" class="relative overflow-hidden flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver compras deste fornecedor">
+                    <div class="absolute left-0 top-0 bottom-0 bg-red-500/10 pointer-events-none rounded-lg" style="width: ${pct}%"></div>
+                    <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-red-500 dark:group-hover:text-red-400 transition-colors relative z-10">${i+1}. ${f.nome}</span>
+                    <div class="flex items-center gap-2 shrink-0 relative z-10">
                         <span class="font-bold text-red-500 dark:text-red-400">${formatMoney(f.val)}</span>
                         <i class="fa-solid fa-magnifying-glass text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         } else {
             fornEl.innerHTML = '<div class="text-slate-500 dark:text-slate-400 text-sm italic text-center py-2">Nenhum fornecedor no período</div>';
         }
@@ -2290,6 +2473,9 @@ function renderDashboard() {
             catEl.innerHTML = '<div class="text-slate-500 dark:text-slate-400 text-sm italic text-center py-2">Nenhuma despesa paga no período</div>';
         }
     }
+
+    // Renderiza Donut Chart de Despesas por Categoria
+    renderGraficoDespesasCategoria(rankingCategorias);
     
     const favEl = document.getElementById('bi-despesas-favorecido');
     if (favEl) {
@@ -2350,6 +2536,23 @@ function renderDashboard() {
             ctcEl.innerHTML = '<div class="text-slate-500 dark:text-slate-400 text-sm italic text-center py-2">Nenhum lançamento pago no período</div>';
         }
     }
+
+    // Alerta de Centro de Custo não classificado
+    const semCtcDespesas = despesasPagas.filter(d => {
+        const c = String(d.centroCusto || '').trim().toLowerCase();
+        return !c || c === 'sem centro de custo' || c === 'não informado' || c === 'nao informado';
+    });
+    const alertaCtcEl = document.getElementById('alerta-centro-custo-pendente');
+    const alertaCtcTxt = document.getElementById('alerta-centro-custo-texto');
+    if (alertaCtcEl && alertaCtcTxt) {
+        if (semCtcDespesas.length > 0) {
+            const totSemCtc = semCtcDespesas.reduce((a, b) => a + parseInputMoney(b.valorPago || b.valor || 0), 0);
+            alertaCtcTxt.innerText = `${semCtcDespesas.length} despesa(s) (${formatMoney(totSemCtc)}) sem Centro de Custo.`;
+            alertaCtcEl.classList.remove('hidden');
+        } else {
+            alertaCtcEl.classList.add('hidden');
+        }
+    }
     
     // Totalizadores de Compras
     const biQtdEl = document.getElementById('bi-compras-qtd'); if(biQtdEl) biQtdEl.innerText = compras.length;
@@ -2367,6 +2570,12 @@ function renderDashboard() {
         dlProdCusto.innerHTML = sortedProds.map(p => `<option value="${p.nome}">Estoque: ${p.estoque || 0}</option>`).join('');
         dlProdCusto.dataset.loaded = 'true';
     }
+
+    // Scanner de inflação de insumos (Top 3 Aumentos de Custo)
+    renderAlertaTopAumentosCusto(compras);
+
+    // Relatório de Estoque & Kardex de Movimentações
+    renderRelatorioEstoqueKardex();
 }
 
 // ==========================================
@@ -3000,43 +3209,233 @@ function exportarExcelDrilldownDRE() {
 }
 
 
-function renderCurvaABC(vendasFiltradas, fatTotal) {
-    const tbody = document.getElementById('tabela-curva-abc');
-    if(!tbody) return;
-    
-    if(fatTotal === 0 || vendasFiltradas.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500 dark:text-slate-400">Nenhuma venda no período para gerar a Curva ABC.</td></tr>';
+// --- GRÁFICOS & INTELIGÊNCIA ANALÍTICA APEXCHARTS ---
+window.graficoDespesasCategoriaInstance = null;
+function renderGraficoDespesasCategoria(rankingCategorias) {
+    const container = document.getElementById('grafico-despesas-categoria');
+    if (!container) return;
+    if (typeof ApexCharts === 'undefined') return;
+
+    const entries = Object.keys(rankingCategorias || {})
+        .map(k => ({ nome: k, val: rankingCategorias[k] }))
+        .filter(c => c.val > 0)
+        .sort((a, b) => b.val - a.val);
+
+    if (entries.length === 0) {
+        if (window.graficoDespesasCategoriaInstance) {
+            window.graficoDespesasCategoriaInstance.destroy();
+            window.graficoDespesasCategoriaInstance = null;
+        }
+        container.innerHTML = '<div class="text-xs text-slate-400 italic text-center py-8">Nenhuma despesa no período para exibir gráfico.</div>';
         return;
     }
 
+    container.innerHTML = '';
+
+    let nomes = [];
+    let valores = [];
+    if (entries.length <= 5) {
+        nomes = entries.map(e => e.nome);
+        valores = entries.map(e => Math.round(e.val * 100) / 100);
+    } else {
+        const top5 = entries.slice(0, 5);
+        const outrasVal = entries.slice(5).reduce((acc, cur) => acc + cur.val, 0);
+        nomes = [...top5.map(e => e.nome), 'Outras Categorias'];
+        valores = [...top5.map(e => Math.round(e.val * 100) / 100), Math.round(outrasVal * 100) / 100];
+    }
+
+    const isDark = document.documentElement.classList.contains('dark') || document.documentElement.getAttribute('data-theme') === 'dark';
+
+    const options = {
+        series: valores,
+        labels: nomes,
+        chart: {
+            type: 'donut',
+            height: 230,
+            background: 'transparent',
+            fontFamily: 'Inter, sans-serif',
+            toolbar: { show: false }
+        },
+        theme: { mode: isDark ? 'dark' : 'light' },
+        colors: ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'],
+        dataLabels: { enabled: false },
+        legend: {
+            position: 'bottom',
+            fontSize: '11px',
+            fontFamily: 'Inter, sans-serif',
+            labels: { colors: isDark ? '#94a3b8' : '#64748b' },
+            markers: { width: 8, height: 8, radius: 4 }
+        },
+        tooltip: {
+            theme: isDark ? 'dark' : 'light',
+            y: { formatter: val => formatMoney(val) }
+        },
+        plotOptions: {
+            pie: {
+                donut: {
+                    size: '68%',
+                    labels: {
+                        show: true,
+                        total: {
+                            show: true,
+                            label: 'Total Pago',
+                            fontSize: '11px',
+                            color: isDark ? '#94a3b8' : '#64748b',
+                            formatter: () => formatMoney(valores.reduce((a, b) => a + b, 0))
+                        },
+                        value: {
+                            fontSize: '14px',
+                            fontWeight: 700,
+                            color: isDark ? '#f8fafc' : '#1e293b',
+                            formatter: val => formatMoney(Number(val))
+                        }
+                    }
+                }
+            }
+        },
+        stroke: { show: false }
+    };
+
+    if (window.graficoDespesasCategoriaInstance) {
+        window.graficoDespesasCategoriaInstance.destroy();
+        window.graficoDespesasCategoriaInstance = null;
+    }
+
+    window.graficoDespesasCategoriaInstance = new ApexCharts(container, options);
+    window.graficoDespesasCategoriaInstance.render();
+}
+
+// --- CURVA ABC MULTIDIMENSIONAL & PARETO ---
+window.curvaAbcModoAtual = 'faturamento';
+window.graficoParetoInstance = null;
+
+window.mudarModoCurvaABC = function(modo) {
+    window.curvaAbcModoAtual = modo;
+    
+    const botoes = {
+        'faturamento': document.getElementById('btn-abc-fat'),
+        'qtd': document.getElementById('btn-abc-qtd'),
+        'lucro': document.getElementById('btn-abc-lucro')
+    };
+
+    Object.keys(botoes).forEach(k => {
+        const btn = botoes[k];
+        if (!btn) return;
+        if (k === modo) {
+            btn.className = 'px-3 py-1.5 rounded-md bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm transition-all flex items-center gap-1.5';
+        } else {
+            btn.className = 'px-3 py-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center gap-1.5';
+        }
+    });
+
+    const colHeader = document.getElementById('col-header-abc-valor');
+    if (colHeader) {
+        if (modo === 'faturamento') colHeader.innerText = 'Faturamento Total';
+        else if (modo === 'qtd') colHeader.innerText = 'Volume Total (Un)';
+        else if (modo === 'lucro') colHeader.innerText = 'Lucro Bruto Real';
+    }
+
+    const subtituloPareto = document.getElementById('pareto-info-subtitulo');
+    if (subtituloPareto) {
+        if (modo === 'faturamento') subtituloPareto.innerText = 'Por Receita Financeira (80/15/5)';
+        else if (modo === 'qtd') subtituloPareto.innerText = 'Por Volume / Giro de Peças';
+        else if (modo === 'lucro') subtituloPareto.innerText = 'Por Margem Bruta Real em R$';
+    }
+
+    const periodo = obterIntervaloDatasBI();
+    const vendas = obterVendasDoPeriodo(periodo);
+    const fatTotal = vendas.reduce((a, b) => a + Number(b.tot || b.total || b.valor || 0), 0);
+    renderCurvaABC(vendas, fatTotal);
+};
+
+function renderCurvaABC(vendasFiltradas, fatTotal) {
+    const tbody = document.getElementById('tabela-curva-abc');
+    if (!tbody) return;
+
+    if (vendasFiltradas.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500 dark:text-slate-400">Nenhuma venda no período para gerar a Curva ABC.</td></tr>';
+        if (window.graficoParetoInstance) {
+            window.graficoParetoInstance.destroy();
+            window.graficoParetoInstance = null;
+        }
+        const graficoEl = document.getElementById('grafico-curva-abc-pareto');
+        if (graficoEl) graficoEl.innerHTML = '<div class="text-xs text-slate-400 italic text-center py-10">Nenhuma venda no período para traçar a Curva de Pareto</div>';
+        return;
+    }
+
+    const modo = window.curvaAbcModoAtual || 'faturamento';
+
     // 1. Agrupar vendas por produto
     const rankingProd = {};
+    const prodsMap = {};
+    (db.produtos || []).forEach(p => { if (p && p.id) prodsMap[p.id] = p; });
+
     vendasFiltradas.forEach(v => {
         (v.itens || []).forEach(i => {
-            if(!rankingProd[i.id]) {
-                rankingProd[i.id] = { id: i.id, nome: i.nome, qtd: 0, faturamento: 0 };
+            const id = i.id || i.nome;
+            if (!rankingProd[id]) {
+                const prodRef = prodsMap[i.id];
+                rankingProd[id] = {
+                    id: id,
+                    nome: i.nome || prodRef?.nome || 'Produto Sem Nome',
+                    qtd: 0,
+                    faturamento: 0,
+                    custoTotal: 0,
+                    lucro: 0
+                };
             }
-            rankingProd[i.id].qtd += i.qtd;
-            rankingProd[i.id].faturamento += (i.preco * i.qtd);
+            const q = Number(i.qtd || 1);
+            const pr = Number(i.preco || 0);
+            const prodRef = prodsMap[i.id];
+            const custoUnit = Number(i.custoUnitario || i.custo || prodRef?.custo || 0);
+
+            rankingProd[id].qtd += q;
+            rankingProd[id].faturamento += (pr * q);
+            rankingProd[id].custoTotal += (custoUnit * q);
+            rankingProd[id].lucro += ((pr - custoUnit) * q);
         });
     });
 
-    // 2. Ordenar por faturamento descrescente
-    const produtosOrdenados = Object.values(rankingProd).sort((a, b) => b.faturamento - a.faturamento);
+    const listaProdutos = Object.values(rankingProd);
+
+    // 2. Definir métrica de ordenação
+    listaProdutos.forEach(p => {
+        if (modo === 'faturamento') {
+            p.metricaValor = p.faturamento;
+        } else if (modo === 'qtd') {
+            p.metricaValor = p.qtd;
+        } else {
+            p.metricaValor = Math.max(0, p.lucro);
+        }
+    });
+
+    const totalMetrica = listaProdutos.reduce((acc, p) => acc + p.metricaValor, 0);
+
+    if (totalMetrica === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500 dark:text-slate-400">Total apurado zerado para a métrica selecionada.</td></tr>';
+        return;
+    }
+
+    // Ordenar descrescente
+    const produtosOrdenados = listaProdutos.sort((a, b) => b.metricaValor - a.metricaValor);
 
     // 3. Classificar A (80%), B (15%), C (5%)
-    let fatAcumulado = 0;
+    let acumulado = 0;
     let html = '';
 
-    produtosOrdenados.forEach(p => {
-        fatAcumulado += p.faturamento;
-        const percAcumulado = (fatAcumulado / fatTotal) * 100;
-        const percIndividual = (p.faturamento / fatTotal) * 100;
-        
+    const paretoCategorias = [];
+    const paretoValores = [];
+    const paretoAcumulados = [];
+
+    produtosOrdenados.forEach((p, idx) => {
+        acumulado += p.metricaValor;
+        const percAcumulado = (acumulado / totalMetrica) * 100;
+        const percIndividual = (p.metricaValor / totalMetrica) * 100;
+
         let classe = 'C';
         let badgeColor = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800/50';
-        
-        if (percAcumulado <= 80) {
+
+        if (percAcumulado <= 80 || (idx === 0 && percAcumulado > 80)) {
             classe = 'A';
             badgeColor = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50';
         } else if (percAcumulado <= 95) {
@@ -3044,20 +3443,166 @@ function renderCurvaABC(vendasFiltradas, fatTotal) {
             badgeColor = 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800/50';
         }
 
+        // Salva top 10 para o gráfico de Pareto
+        if (idx < 10) {
+            paretoCategorias.push(p.nome.length > 18 ? p.nome.slice(0, 16) + '...' : p.nome);
+            paretoValores.push(Math.round(p.metricaValor * 100) / 100);
+            paretoAcumulados.push(Math.round(percAcumulado * 10) / 10);
+        }
+
+        let textoMetrica = '';
+        if (modo === 'faturamento') textoMetrica = formatMoney(p.faturamento);
+        else if (modo === 'qtd') textoMetrica = `${p.qtd} un`;
+        else textoMetrica = formatMoney(p.lucro);
+
         html += `
-            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+            <tr onclick="abrirDrilldownDRE('PRODUTO_VENDAS', '${p.nome.replace(/'/g, "\\'")}')" class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group" title="Clique para auditar vendas deste produto">
                 <td class="p-3">
                     <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded text-xs font-bold border ${badgeColor}">${classe}</span>
                 </td>
-                <td class="p-3 font-medium text-slate-800 dark:text-slate-200">${p.nome}</td>
-                <td class="p-3 text-center text-slate-600 dark:text-slate-400">${p.qtd}</td>
-                <td class="p-3 text-right font-bold text-slate-700 dark:text-slate-300">${formatMoney(p.faturamento)} <span class="text-xs font-normal text-slate-400 block">${percIndividual.toFixed(1)}%</span></td>
-                <td class="p-3 text-right text-slate-500 dark:text-slate-400">${percAcumulado.toFixed(1)}%</td>
+                <td class="p-3 font-medium text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">${p.nome}</td>
+                <td class="p-3 text-center text-slate-600 dark:text-slate-400 font-semibold">${p.qtd}</td>
+                <td class="p-3 text-right font-bold text-slate-700 dark:text-slate-300">${textoMetrica} <span class="text-xs font-normal text-slate-400 block">${percIndividual.toFixed(1)}%</span></td>
+                <td class="p-3 text-right text-slate-500 dark:text-slate-400 font-bold">${percAcumulado.toFixed(1)}%</td>
             </tr>
         `;
     });
 
     tbody.innerHTML = html;
+
+    // Renderiza Gráfico de Pareto
+    renderGraficoParetoABC(paretoCategorias, paretoValores, paretoAcumulados, modo);
+}
+
+function renderGraficoParetoABC(categorias, valores, acumulados, modo) {
+    const container = document.getElementById('grafico-curva-abc-pareto');
+    if (!container) return;
+    if (typeof ApexCharts === 'undefined') return;
+
+    if (categorias.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    const isDark = document.documentElement.classList.contains('dark') || document.documentElement.getAttribute('data-theme') === 'dark';
+
+    let nomeSerie1 = 'Faturamento (R$)';
+    if (modo === 'qtd') nomeSerie1 = 'Qtd. Vendida';
+    else if (modo === 'lucro') nomeSerie1 = 'Lucro Bruto (R$)';
+
+    const options = {
+        series: [
+            {
+                name: nomeSerie1,
+                type: 'column',
+                data: valores
+            },
+            {
+                name: '% Acumulado (Pareto)',
+                type: 'line',
+                data: acumulados
+            }
+        ],
+        chart: {
+            height: 260,
+            type: 'line',
+            toolbar: { show: false },
+            background: 'transparent',
+            fontFamily: 'Inter, sans-serif'
+        },
+        theme: { mode: isDark ? 'dark' : 'light' },
+        stroke: {
+            width: [0, 3],
+            curve: 'smooth'
+        },
+        colors: ['#6366f1', '#10b981'],
+        plotOptions: {
+            bar: {
+                borderRadius: 4,
+                columnWidth: '45%'
+            }
+        },
+        dataLabels: {
+            enabled: true,
+            enabledOnSeries: [1],
+            formatter: val => `${val}%`,
+            style: {
+                fontSize: '10px',
+                fontWeight: 700,
+                colors: [isDark ? '#34d399' : '#059669']
+            },
+            background: {
+                enabled: true,
+                foreColor: isDark ? '#0f172a' : '#ffffff',
+                borderRadius: 2,
+                padding: 3,
+                opacity: 0.85
+            }
+        },
+        labels: categorias,
+        xaxis: {
+            labels: {
+                rotate: -20,
+                style: {
+                    colors: isDark ? '#94a3b8' : '#64748b',
+                    fontSize: '10px'
+                }
+            },
+            axisBorder: { show: false },
+            axisTicks: { show: false }
+        },
+        yaxis: [
+            {
+                title: {
+                    text: nomeSerie1,
+                    style: { color: isDark ? '#94a3b8' : '#64748b', fontSize: '11px' }
+                },
+                labels: {
+                    formatter: val => modo === 'qtd' ? `${Math.round(val)} un` : formatMoney(val),
+                    style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '10px' }
+                }
+            },
+            {
+                opposite: true,
+                max: 100,
+                min: 0,
+                title: {
+                    text: '% Acumulado',
+                    style: { color: isDark ? '#94a3b8' : '#64748b', fontSize: '11px' }
+                },
+                labels: {
+                    formatter: val => `${val}%`,
+                    style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '10px' }
+                }
+            }
+        ],
+        legend: {
+            position: 'top',
+            horizontalAlign: 'right',
+            labels: { colors: isDark ? '#94a3b8' : '#64748b' }
+        },
+        tooltip: {
+            theme: isDark ? 'dark' : 'light',
+            shared: true,
+            intersect: false,
+            y: {
+                formatter: function (y, { seriesIndex }) {
+                    if (seriesIndex === 0) {
+                        return modo === 'qtd' ? `${y} un` : formatMoney(y);
+                    }
+                    return `${y}%`;
+                }
+            }
+        }
+    };
+
+    if (window.graficoParetoInstance) {
+        window.graficoParetoInstance.destroy();
+        window.graficoParetoInstance = null;
+    }
+
+    window.graficoParetoInstance = new ApexCharts(container, options);
+    window.graficoParetoInstance.render();
 }
 
 function renderSugestorCompras(vendasFiltradas, periodoObj) {
@@ -3085,14 +3630,13 @@ function renderSugestorCompras(vendasFiltradas, periodoObj) {
 
     let html = '';
     const produtosApp = (typeof ordenarListaAlfabeticamente === 'function') ? ordenarListaAlfabeticamente(db.produtos || [], 'nome') : [...(db.produtos || [])].sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
-    const ALVO_DIAS_ESTOQUE = 30; // O usuário não especificou, mantendo 30 dias de cobertura
+    const ALVO_DIAS_ESTOQUE = 30; // 30 dias de cobertura
 
     produtosApp.forEach(p => {
-        // Ignorar serviços ou itens sem controle de estoque
         if(p.tipo === 'Servico') return;
 
         const infoVenda = vendaPorProduto[p.id];
-        if(!infoVenda) return; // Se não vendeu nada no período, não entra na sugestão (ou poderia entrar com alerta de encalhe)
+        if(!infoVenda) return;
 
         const mediaDiaria = infoVenda.qtdVendida / diasPeriodo;
         if(mediaDiaria <= 0) return;
@@ -3100,7 +3644,6 @@ function renderSugestorCompras(vendasFiltradas, periodoObj) {
         const estoqueAtual = Number(p.estoque) || 0;
         const autonomiaDias = estoqueAtual / mediaDiaria;
         
-        // Sugere compra se a autonomia for menor que 15 dias ou se o estoque cobrir menos que o alvo (30)
         if(autonomiaDias <= 15) {
             const estoqueIdeal = mediaDiaria * ALVO_DIAS_ESTOQUE;
             const sugestaoCompra = Math.ceil(estoqueIdeal - estoqueAtual);
@@ -3136,11 +3679,103 @@ function renderSugestorCompras(vendasFiltradas, periodoObj) {
     }
 }
 
+// --- EVOLUÇÃO E HISTÓRICO DE CUSTOS & ALERTA DE INFLAÇÃO ---
+window.selecionarProdutoCustoBusca = function(nomeOuId) {
+    if (!nomeOuId) return;
+    const prods = db.produtos || [];
+    const termo = String(nomeOuId).toLowerCase().trim();
+    const match = prods.find(p => String(p.id) === String(nomeOuId) || String(p.nome).toLowerCase() === termo)
+               || prods.find(p => String(p.nome).toLowerCase().includes(termo));
+    if (match) {
+        const hiddenEl = document.getElementById('relatorio-custo-produto');
+        const inputEl = document.getElementById('busca-produto-custo');
+        if (hiddenEl) hiddenEl.value = match.id;
+        if (inputEl) inputEl.value = match.nome;
+        renderEvolucaoCustos();
+    }
+};
+
+function renderAlertaTopAumentosCusto(comprasDoPeriodo) {
+    const container = document.getElementById('container-top-aumentos-custo');
+    if (!container) return;
+
+    const comprasPorProd = {};
+    (db.compras || []).forEach(c => {
+        (c.itens || []).forEach(item => {
+            const pId = String(item.idMatch || item.id || item.nome);
+            const pNome = item.nome || 'Produto';
+            if (!comprasPorProd[pId]) comprasPorProd[pId] = { id: pId, nome: pNome, historico: [] };
+            comprasPorProd[pId].historico.push({
+                data: c.data || c.dataEmissao || c.criadoEm,
+                custo: Number(item.custoFinal || item.custoUnitOriginal || item.custo || 0)
+            });
+        });
+    });
+
+    const aumentos = [];
+    Object.values(comprasPorProd).forEach(p => {
+        if (p.historico.length >= 2) {
+            p.historico.sort((a, b) => new Date(a.data) - new Date(b.data));
+            const primeiro = p.historico[0].custo;
+            const ultimo = p.historico[p.historico.length - 1].custo;
+            if (primeiro > 0 && ultimo > primeiro) {
+                const diff = ultimo - primeiro;
+                const pct = (diff / primeiro) * 100;
+                aumentos.push({
+                    id: p.id,
+                    nome: p.nome,
+                    aumentoPct: pct,
+                    diff: diff,
+                    atual: ultimo
+                });
+            }
+        }
+    });
+
+    aumentos.sort((a, b) => b.aumentoPct - a.aumentoPct);
+    const top3 = aumentos.slice(0, 3);
+
+    if (top3.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="p-3.5 bg-slate-100 dark:bg-slate-900 border border-amber-300/80 dark:border-amber-500/40 rounded-xl text-xs flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
+            <div class="flex items-center gap-2.5">
+                <span class="w-8 h-8 rounded-lg bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-arrow-trend-up text-sm"></i>
+                </span>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-slate-800 dark:text-slate-100 text-xs">Alerta de Inflação de Insumos</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-700 dark:text-amber-300">Radar de Custos</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Maior reajuste de preço de custo unitário entre compras consecutivas no período:</p>
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                ${top3.map(item => `
+                    <button onclick="selecionarProdutoCustoBusca('${item.nome.replace(/'/g, "\\'")}')" class="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-amber-500 dark:hover:border-amber-500 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 shadow-xs group cursor-pointer" title="Ver histórico de custos de ${item.nome}">
+                        <span class="truncate max-w-[130px] text-slate-700 dark:text-slate-200 group-hover:text-amber-600 dark:group-hover:text-amber-400">${item.nome}</span>
+                        <span class="bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded text-[11px] font-black border border-red-200 dark:border-red-900/60">+${item.aumentoPct.toFixed(0)}%</span>
+                    </button>
+                `).join('')}
+                <button onclick="abrirInfoRelatorio('inflacao_custos')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer text-sm p-1" title="Entenda o Alerta de Inflação">
+                    <i class="fa-solid fa-circle-question"></i>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
 function renderEvolucaoCustos() {
-    const prodId = document.getElementById('relatorio-custo-produto').value;
+    const prodId = document.getElementById('relatorio-custo-produto')?.value;
+    const prodNome = document.getElementById('busca-produto-custo')?.value?.toLowerCase()?.trim() || '';
     const tbody = document.getElementById('tabela-evolucao-custos');
+    if(!tbody) return;
     
-    if(!prodId) {
+    if(!prodId && !prodNome) {
         tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500 dark:text-slate-400">Selecione um produto acima para ver o histórico.</td></tr>';
         return;
     }
@@ -3148,13 +3783,15 @@ function renderEvolucaoCustos() {
     let historico = [];
     (db.compras || []).forEach(compra => {
         (compra.itens || []).forEach(item => {
-            if (String(item.idMatch) === String(prodId)) {
+            const matchId = prodId && (String(item.idMatch) === String(prodId) || String(item.id) === String(prodId));
+            const matchNome = prodNome && String(item.nome || '').toLowerCase().trim() === prodNome;
+            if (matchId || matchNome) {
                 historico.push({
-                    data: compra.data,
-                    fornecedor: compra.fornecedor,
-                    ref: compra.numeroNF,
+                    data: compra.data || compra.dataEmissao || compra.criadoEm,
+                    fornecedor: compra.fornecedor || 'Fornecedor Não Informado',
+                    ref: compra.numeroNF || compra.ref || 'S/N',
                     qtd: item.qCom || item.qtd || 0,
-                    custo: item.custoFinal || item.custoUnitOriginal || 0
+                    custo: item.custoFinal || item.custoUnitOriginal || item.custo || 0
                 });
             }
         });
@@ -3203,6 +3840,342 @@ function renderEvolucaoCustos() {
         </tr>`;
     }).join('');
 }
+
+// ==========================================
+// RELATÓRIO DE ESTOQUE & KARDEX DE MOVIMENTAÇÕES
+// ==========================================
+function renderRelatorioEstoqueKardex() {
+    const card = document.getElementById('card-estoque-kardex');
+    if (!card) return;
+
+    // 1. KPIs de Valoração de Estoque
+    const produtos = (db.produtos || []).filter(p => p.tipo !== 'Servico');
+    let totalItens = 0;
+    let custoTotal = 0;
+    let vendaTotal = 0;
+
+    produtos.forEach(p => {
+        const est = Number(p.estoque || 0);
+        if (est > 0) {
+            totalItens += est;
+            const cUnit = Number(p.custo || p.custoUnit || 0);
+            const pUnit = Number(p.preco || p.precoVenda || 0);
+            custoTotal += (est * cUnit);
+            vendaTotal += (est * pUnit);
+        }
+    });
+
+    const lucroProjetado = vendaTotal - custoTotal;
+    const margemProjetada = vendaTotal > 0 ? ((lucroProjetado / vendaTotal) * 100) : 0;
+
+    const elItens = document.getElementById('kardex-kpi-total-itens');
+    if (elItens) elItens.innerText = `${totalItens} un`;
+
+    const elCusto = document.getElementById('kardex-kpi-custo-total');
+    if (elCusto) elCusto.innerText = formatMoney(custoTotal);
+
+    const elVenda = document.getElementById('kardex-kpi-venda-total');
+    if (elVenda) elVenda.innerText = formatMoney(vendaTotal);
+
+    const elLucro = document.getElementById('kardex-kpi-lucro-projetado');
+    if (elLucro) {
+        elLucro.innerText = formatMoney(lucroProjetado);
+        elLucro.className = `text-xl font-black ${lucroProjetado >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`;
+    }
+
+    const elMargem = document.getElementById('kardex-kpi-margem-projetada');
+    if (elMargem) {
+        elMargem.innerText = `Margem projetada: ${margemProjetada.toFixed(1)}%`;
+    }
+
+    // 2. Renderizar Tabela do Kardex com filtros
+    filtrarKardexRelatorio();
+}
+
+function filtrarKardexRelatorio() {
+    const tbody = document.getElementById('tabela-relatorio-kardex');
+    if (!tbody) return;
+
+    const inputBusca = document.getElementById('kardex-busca-produto');
+    const selectTipo = document.getElementById('kardex-filtro-tipo');
+    const contadorEl = document.getElementById('kardex-contador-registros');
+
+    const termo = inputBusca ? inputBusca.value.trim().toLowerCase() : '';
+    const filtroTipo = selectTipo ? selectTipo.value : 'TODOS';
+
+    let movimentacoes = (db.movimentacoes || []);
+
+    if (!movimentacoes || movimentacoes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-500 dark:text-slate-400"><i class="fa-solid fa-inbox text-2xl mb-2 text-slate-400 block"></i>Nenhuma movimentação registrada no Kardex até o momento.</td></tr>';
+        if (contadorEl) contadorEl.innerText = '0 movimentações';
+        return;
+    }
+
+    // Mapa de saldos atuais de produtos para exibir saldo em estoque
+    const mapaEstoque = {};
+    (db.produtos || []).forEach(p => {
+        if (p.id) mapaEstoque[String(p.id)] = Number(p.estoque || 0);
+        if (p.nome) mapaEstoque[String(p.nome).toLowerCase()] = Number(p.estoque || 0);
+    });
+
+    const filtradas = movimentacoes.filter(m => {
+        // Filtro por tipo
+        const tipoStr = String(m.tipo || '').toUpperCase();
+        if (filtroTipo === 'ENTRADA' && !tipoStr.includes('ENTRADA') && !tipoStr.includes('COMPRA')) return false;
+        if (filtroTipo === 'SAIDA' && !tipoStr.includes('SAIDA') && !tipoStr.includes('VENDA')) return false;
+        if (filtroTipo === 'AJUSTE' && !tipoStr.includes('AJUSTE') && !tipoStr.includes('BALANÇO') && !tipoStr.includes('BALANCO') && !tipoStr.includes('PERDA')) return false;
+
+        // Filtro por busca de texto (produto, ref, id)
+        if (termo) {
+            const pNome = String(m.prodNome || m.produtoNome || '').toLowerCase();
+            const ref = String(m.ref || m.doc || '').toLowerCase();
+            const pId = String(m.prodId || m.produtoId || '').toLowerCase();
+            if (!pNome.includes(termo) && !ref.includes(termo) && !pId.includes(termo)) return false;
+        }
+
+        return true;
+    });
+
+    if (contadorEl) {
+        contadorEl.innerText = `${filtradas.length} movimentação(ões)${termo || filtroTipo !== 'TODOS' ? ' (filtradas)' : ''}`;
+    }
+
+    if (filtradas.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-500 dark:text-slate-400"><i class="fa-solid fa-filter-circle-xmark text-2xl mb-2 text-slate-400 block"></i>Nenhuma movimentação encontrada para os filtros aplicados.</td></tr>';
+        return;
+    }
+
+    // Limita a exibição às 150 primeiras do filtro para performance e fluidez
+    const maxExibicao = 150;
+    const listaExibir = filtradas.slice(0, maxExibicao);
+
+    tbody.innerHTML = listaExibir.map(m => {
+        const tipoStr = String(m.tipo || '').toUpperCase();
+        let badgeClass = 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+        let badgeIcon = 'fa-solid fa-arrow-right-arrow-left';
+
+        if (tipoStr.includes('ENTRADA') || tipoStr.includes('COMPRA')) {
+            badgeClass = 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/50';
+            badgeIcon = 'fa-solid fa-arrow-down';
+        } else if (tipoStr.includes('VENDA') || tipoStr.includes('SAIDA')) {
+            badgeClass = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50';
+            badgeIcon = 'fa-solid fa-arrow-up';
+        } else if (tipoStr.includes('AJUSTE') || tipoStr.includes('BALANÇO') || tipoStr.includes('BALANCO')) {
+            badgeClass = 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border-purple-200 dark:border-purple-800/50';
+            badgeIcon = 'fa-solid fa-sliders';
+        } else if (tipoStr.includes('PERDA')) {
+            badgeClass = 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 border-rose-200 dark:border-rose-800/50';
+            badgeIcon = 'fa-solid fa-triangle-exclamation';
+        }
+
+        const qtdNum = Number(m.qtd || 0);
+        const corQtd = qtdNum > 0 ? 'text-indigo-600 dark:text-indigo-400 font-bold' : (qtdNum < 0 ? 'text-rose-500 font-bold' : 'text-slate-500');
+        const sinalQtd = qtdNum > 0 ? `+${qtdNum}` : `${qtdNum}`;
+
+        const pNome = m.prodNome || m.produtoNome || 'Produto';
+        const pId = m.prodId || m.produtoId;
+        const saldoAtual = (pId && mapaEstoque[String(pId)] !== undefined)
+            ? mapaEstoque[String(pId)]
+            : (mapaEstoque[String(pNome).toLowerCase()] !== undefined ? mapaEstoque[String(pNome).toLowerCase()] : '-');
+
+        let dataFormatada = '-';
+        try {
+            if (m.data) {
+                const dt = new Date(m.data);
+                if (!isNaN(dt.getTime())) {
+                    dataFormatada = dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                } else {
+                    dataFormatada = String(m.data);
+                }
+            }
+        } catch (e) {
+            dataFormatada = String(m.data || '-');
+        }
+
+        return `
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors border-b border-slate-100 dark:border-slate-800">
+                <td class="p-3 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">${dataFormatada}</td>
+                <td class="p-3 whitespace-nowrap">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${badgeClass}">
+                        <i class="${badgeIcon} text-[10px]"></i> ${m.tipo || 'MOVIMENTAÇÃO'}
+                    </span>
+                </td>
+                <td class="p-3 text-slate-800 dark:text-slate-100 font-medium">
+                    <div class="truncate max-w-xs sm:max-w-md font-semibold">${pNome}</div>
+                </td>
+                <td class="p-3 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">${m.ref || m.doc || '-'}</td>
+                <td class="p-3 text-right whitespace-nowrap ${corQtd} text-sm">${sinalQtd}</td>
+                <td class="p-3 text-right whitespace-nowrap font-bold text-slate-700 dark:text-slate-300">${saldoAtual !== '-' ? saldoAtual + ' un' : '-'}</td>
+            </tr>
+        `;
+    }).join('') + (filtradas.length > maxExibicao ? `<tr><td colspan="6" class="p-3 text-center text-xs text-slate-400 bg-slate-50 dark:bg-slate-900">Exibindo as primeiras ${maxExibicao} movimentações de ${filtradas.length}. Use os filtros acima para refinar.</td></tr>` : '');
+}
+
+window.filtrarKardexRelatorio = filtrarKardexRelatorio;
+window.renderRelatorioEstoqueKardex = renderRelatorioEstoqueKardex;
+
+function navegarParaKardex(event) {
+    if (event) event.preventDefault();
+    if (typeof mudarVisaoLocal === 'function') {
+        mudarVisaoLocal('relatorios');
+    }
+    const card = document.getElementById('card-estoque-kardex');
+    if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        card.classList.add('ring-4', 'ring-indigo-500/50');
+        setTimeout(() => {
+            card.classList.remove('ring-4', 'ring-indigo-500/50');
+        }, 2000);
+    }
+}
+window.navegarParaKardex = navegarParaKardex;
+
+// Se a página for aberta com âncora #card-estoque-kardex ou view=estoque, rola diretamente
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        if (window.location.hash === '#card-estoque-kardex' || window.location.search.includes('view=estoque')) {
+            navegarParaKardex();
+        }
+    }, 400);
+});
+
+// --- EXPORTAÇÃO EXECUTIVA EM PDF ---
+window.exportarRelatorioExecutivoPDF = function() {
+    if (typeof html2pdf === 'undefined') {
+        showToast('Biblioteca de PDF não disponível.', 'error');
+        return;
+    }
+
+    const periodoTexto = document.getElementById('bi-filtro-periodo')?.selectedOptions[0]?.text || 'Período Atual';
+    const empresaNome = document.getElementById('menu-empresa-nome')?.innerText || db?.config?.empresa?.nome || 'FC Móveis';
+
+    const printArea = document.getElementById('print-area-relatorios');
+    if (!printArea) {
+        showToast('Área de relatório não localizada.', 'error');
+        return;
+    }
+
+    showToast('Gerando Relatório Executivo em PDF...', 'info');
+
+    const wrapper = document.createElement('div');
+    wrapper.style.padding = '20px';
+    wrapper.style.fontFamily = 'Inter, sans-serif';
+    wrapper.style.color = '#0f172a';
+    wrapper.style.backgroundColor = '#ffffff';
+
+    const headerHtml = `
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #cbd5e1; padding-bottom: 12px; margin-bottom: 18px;">
+            <div>
+                <h1 style="font-size: 22px; font-weight: 800; color: #0f172a; margin: 0; text-transform: uppercase;">${empresaNome}</h1>
+                <p style="font-size: 12px; color: #475569; margin: 3px 0 0 0; font-weight: 600;">Relatório Executivo & DRE Gerencial Completo</p>
+            </div>
+            <div style="text-align: right;">
+                <span style="font-size: 11px; font-weight: 700; color: #1d4ed8; background: #dbeafe; padding: 4px 12px; border-radius: 9999px; display: inline-block;">Período: ${periodoTexto}</span>
+                <p style="font-size: 10px; color: #94a3b8; margin: 5px 0 0 0;">Emitido em: ${new Date().toLocaleString('pt-BR')}</p>
+            </div>
+        </div>
+    `;
+
+    const clone = printArea.cloneNode(true);
+    clone.querySelectorAll('.no-print, button, input, datalist, #busca-produto-custo, #grafico-curva-abc-pareto, #grafico-despesas-categoria-container').forEach(el => el.remove());
+
+    wrapper.innerHTML = headerHtml;
+    wrapper.appendChild(clone);
+
+    const opt = {
+        margin: [8, 8, 8, 8],
+        filename: `Relatorio_Executivo_${empresaNome.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(wrapper).save().then(() => {
+        showToast('Relatório Executivo em PDF gerado com sucesso!', 'success');
+    }).catch(err => {
+        console.error('Erro ao gerar PDF:', err);
+        showToast('Erro ao exportar PDF.', 'error');
+    });
+};
+
+// --- IMPRESSÃO INDIVIDUAL DE CADA RELATÓRIO SEPARADO ---
+window.imprimirRelatorioIndividual = function(containerId, tituloRelatorio) {
+    const el = document.getElementById(containerId);
+    if (!el) {
+        showToast("Relatório não encontrado para impressão.", "error");
+        return;
+    }
+
+    let empNome = "FC Gestão Comercial";
+    if (db && db.config && db.config.empresa && db.config.empresa.nome) {
+        empNome = db.config.empresa.nome;
+    }
+    let logoHtml = "";
+    if (db && db.config && db.config.empresa && db.config.empresa.logo) {
+        logoHtml = `<img src="${db.config.empresa.logo}" style="max-height: 48px; margin-bottom: 6px; border-radius: 6px;">`;
+    }
+
+    const periodoFiltro = document.getElementById('bi-filtro-periodo')?.selectedOptions[0]?.text || 'Período Atual';
+    const dataIni = document.getElementById('bi-data-inicio')?.value || '';
+    const dataFim = document.getElementById('bi-data-fim')?.value || '';
+    let datasDesc = periodoFiltro;
+    if (dataIni && dataFim) {
+        const d1 = dataIni.split('-').reverse().join('/');
+        const d2 = dataFim.split('-').reverse().join('/');
+        datasDesc += ` (${d1} a ${d2})`;
+    }
+
+    // Clonar elemento para manipular sem alterar a tela
+    const clone = el.cloneNode(true);
+
+    // Remover botões, inputs, abas e controles interativos da cópia
+    clone.querySelectorAll('button, input, select, datalist, .no-print, .print\\:hidden, #busca-produto-custo, #container-top-aumentos-custo, #alerta-centro-custo-pendente').forEach(node => node.remove());
+
+    // Ajustar classes de grid
+    clone.classList.remove('md:col-span-2', 'col-span-2');
+
+    // Ajustar card caso seja o Raio-X (que tem fundo escuro denso para papel)
+    if (containerId === 'card-raio-x-executivo') {
+        clone.className = "p-4 rounded-xl border border-slate-300 bg-white text-slate-900";
+        clone.querySelectorAll('.bg-slate-800\\/80, .bg-slate-900').forEach(c => {
+            c.className = "p-3 rounded-lg border border-slate-200 bg-slate-50 text-slate-800";
+        });
+        clone.querySelectorAll('.text-white, .text-slate-300, .text-slate-400').forEach(t => {
+            t.classList.remove('text-white', 'text-slate-300', 'text-slate-400');
+            t.classList.add('text-slate-700');
+        });
+    }
+
+    const htmlCompleto = `
+        <div style="padding: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #fff; color: #0f172a;">
+            <!-- Cabeçalho Oficial de Impressão -->
+            <div style="border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div>
+                    ${logoHtml}
+                    <h2 style="font-size: 18px; font-weight: 800; margin: 0; color: #0f172a; text-transform: uppercase;">${empNome}</h2>
+                    <h3 style="font-size: 14px; font-weight: 700; margin: 3px 0 0 0; color: #2563eb;">${tituloRelatorio || 'Relatório Gerencial Oficial'}</h3>
+                </div>
+                <div style="text-align: right; font-size: 11px; color: #475569;">
+                    <div><b>Filtro / Período:</b> ${datasDesc}</div>
+                    <div><b>Emissão:</b> ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+                </div>
+            </div>
+
+            <!-- Conteúdo do Relatório Formatado -->
+            <div class="relatorio-impressao-conteudo">
+                ${clone.innerHTML}
+            </div>
+
+            <!-- Rodapé Oficial -->
+            <div style="margin-top: 25px; padding-top: 8px; border-top: 1px solid #cbd5e1; display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8;">
+                <span>FC Gestão - Sistema de Gestão Empresarial e Comercial</span>
+                <span>Documento emitido para conferência e auditoria interna</span>
+            </div>
+        </div>
+    `;
+
+    printHtmlSeguro(htmlCompleto);
+};
 
 async function analisarFinanceiroIA() {
     const vendas = db.vendas || [];
@@ -3287,58 +4260,249 @@ function abrirInfoRelatorio(tipo) {
     let conteudo = '';
 
     switch(tipo) {
-        case 'dre':
-            titulo = 'DRE - Demonstrativo de Resultado do Exerc&iacute;cio';
-            conteudo = '<p class="mb-3">O DRE (Demonstrativo de Resultado do Exerc&iacute;cio) mostra a sa&uacute;de financeira do neg&oacute;cio. A Receita Bruta &eacute; o total vendido antes de dedu&ccedil;&otilde;es. O CMV (Custo das Mercadorias Vendidas) &eacute; o custo de aquisi&ccedil;&atilde;o dos produtos vendidos. O Lucro Real &eacute; o que sobrou ap&oacute;s pagar todas as despesas.</p>';
+        case 'raio_x':
+            titulo = 'Raio-X Diagnóstico Executivo & Termômetro de Equilíbrio';
+            conteudo = `
+                <div class="space-y-4">
+                    <p class="text-slate-700 dark:text-slate-200 font-medium">Este painel sintetiza os 4 indicadores vitais de sobrevivência, lucratividade e saúde do negócio no período selecionado:</p>
+                    
+                    <div class="p-3 bg-emerald-50 dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800/60 rounded-xl space-y-1">
+                        <div class="font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-chart-pie"></i> 1. Margem de Contribuição
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-300">É a sobra bruta das vendas após descontar o Custo das Mercadorias Vendidas (CMV) e as taxas de meios de pagamento (cartão/PIX). É o dinheiro real que entra no caixa para pagar as despesas fixas (aluguel, equipe, luz) e gerar o lucro.</p>
+                    </div>
+
+                    <div class="p-3 bg-amber-50 dark:bg-slate-900 border border-amber-200 dark:border-amber-800/60 rounded-xl space-y-1">
+                        <div class="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-scale-balanced"></i> 2. Ponto de Equilíbrio (Break-Even / Zero a Zero)
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-300">Indica exatamente quanto sua empresa precisa faturar para cobrir <b>100% de todas as despesas operacionais e tributos</b> sem ter nem lucro nem prejuízo.</p>
+                    </div>
+
+                    <div class="p-3 bg-indigo-50 dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800/60 rounded-xl space-y-1">
+                        <div class="font-bold text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-gauge-high"></i> 3. Termômetro de Equilíbrio
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-300">Mede o progresso em direção ao ponto de equilíbrio. Ao atingir <b>100%</b>, todas as contas do mês já foram pagas e cada nova venda gera puro lucro líquido.</p>
+                    </div>
+
+                    <div class="p-3 bg-blue-50 dark:bg-slate-900 border border-blue-200 dark:border-blue-800/60 rounded-xl space-y-1">
+                        <div class="font-bold text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-trophy"></i> 4. Margem Líquida Real
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-300">Percentual de eficiência financeira. Revela quantos reais de cada R$ 100,00 vendidos sobraram limpos no caixa após abater rigorosamente todas as saídas, taxas, salários e impostos.</p>
+                    </div>
+                </div>
+            `;
             break;
+
+        case 'dre':
+            titulo = 'DRE - Demonstrativo do Resultado do Exercício';
+            conteudo = `
+                <div class="space-y-4">
+                    <p class="text-slate-700 dark:text-slate-200 font-medium">O DRE Gerencial demonstra passo a passo como o faturamento bruto é consumido por custos operacionais até a formação do <b>Lucro Líquido Real</b>.</p>
+                    
+                    <div class="p-3 bg-blue-50 dark:bg-slate-900 border border-blue-200 dark:border-blue-800/60 rounded-xl space-y-1">
+                        <div class="font-bold text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-percent"></i> Como interpretar a coluna AV (%) - Análise Vertical?
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-300">A Análise Vertical revela qual percentual da sua <b>Receita Líquida (Base 100%)</b> foi absorvido por cada linha contábil. Exemplo: se o CMV for 42%, significa que para cada R$ 100 vendidos, R$ 42 foram para pagar fornecedores.</p>
+                    </div>
+
+                    <div class="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl space-y-2">
+                        <div class="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider">Estrutura de Linhas:</div>
+                        <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1.5 list-disc pl-4">
+                            <li><b>(+) Receita Operacional Bruta:</b> Total faturado em vendas e serviços antes de deduções.</li>
+                            <li><b>(-) Deduções e Taxas:</b> Descontos comerciais e taxas de cartões/maquininhas.</li>
+                            <li><b>(=) Receita Operacional Líquida:</b> O faturamento efetivo que entra no caixa (base 100%).</li>
+                            <li><b>(-) CMV:</b> Custo das Mercadorias Vendidas (custo de aquisição dos itens vendidos).</li>
+                            <li><b>(=) Lucro Bruto Operacional:</b> A margem de contribuição restante para cobrir despesas fixas.</li>
+                            <li><b>(-) Despesas Operacionais:</b> Boletos pagos, salários, aluguel, luz e manutenção.</li>
+                            <li><b>(-) Impostos e Tributos:</b> Guias fiscais pagas no período (DAS / Simples Nacional).</li>
+                            <li><b>(=) Resultado Líquido:</b> O lucro real e auditável que sobra no caixa.</li>
+                        </ul>
+                    </div>
+
+                    <div class="p-2.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800/50 rounded-lg text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                        <i class="fa-solid fa-lightbulb text-emerald-500 text-base"></i>
+                        <span><b>Dica de Auditoria:</b> Clique em qualquer linha do DRE para abrir o extrato analítico com todos os lançamentos individuais!</span>
+                    </div>
+                </div>
+            `;
+            break;
+
+        case 'curva_abc':
+        case 'curva_abc_produtos':
+            titulo = 'Curva ABC Multidimensional & Gráfico de Pareto';
+            conteudo = `
+                <div class="space-y-4">
+                    <p class="text-slate-700 dark:text-slate-200 font-medium">A Curva ABC classifica o catálogo de produtos aplicando o <b>Princípio de Pareto (80/15/5)</b> para foco máximo em quem realmente traz resultado:</p>
+                    
+                    <div class="space-y-2">
+                        <div class="p-2.5 bg-emerald-50 dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800/60 rounded-xl text-xs">
+                            <span class="font-black text-emerald-600 dark:text-emerald-400">Classe A (80% do Total):</span>
+                            <p class="text-slate-600 dark:text-slate-300 mt-0.5">Produtos vitais e mais estratégicos. <b>Nunca podem faltar no estoque</b>, pois respondem por 80% do desempenho.</p>
+                        </div>
+                        <div class="p-2.5 bg-amber-50 dark:bg-slate-900 border border-amber-300 dark:border-amber-800/60 rounded-xl text-xs">
+                            <span class="font-black text-amber-600 dark:text-amber-400">Classe B (15% do Total):</span>
+                            <p class="text-slate-600 dark:text-slate-300 mt-0.5">Produtos intermediários com giro moderado. Manter compras equilibradas.</p>
+                        </div>
+                        <div class="p-2.5 bg-rose-50 dark:bg-slate-900 border border-rose-300 dark:border-rose-800/60 rounded-xl text-xs">
+                            <span class="font-black text-rose-600 dark:text-rose-400">Classe C (5% do Total):</span>
+                            <p class="text-slate-600 dark:text-slate-300 mt-0.5">A maioria dos itens do catálogo, mas que somados geram apenas 5% do resultado. Evite empatar capital de giro com estoque elevado deles.</p>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-indigo-50 dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800/60 rounded-xl space-y-1">
+                        <div class="font-bold text-indigo-700 dark:text-indigo-400 text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-layer-group"></i> 3 Modos de Análise pelas Abas:
+                        </div>
+                        <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 list-disc pl-4">
+                            <li><b>Faturamento:</b> Classifica pelos produtos que trouxeram maior receita bruta em dinheiro.</li>
+                            <li><b>Qtd. Vendida:</b> Classifica pelo volume físico de unidades vendidas (giro de balcão).</li>
+                            <li><b>Lucro Bruto:</b> Classifica pelo lucro real que cada produto deixou (faturamento menos CMV).</li>
+                        </ul>
+                    </div>
+
+                    <div class="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-600 dark:text-slate-300">
+                        <div class="font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-1.5">
+                            <i class="fa-solid fa-chart-line text-indigo-500"></i> Como ler o Gráfico de Pareto?
+                        </div>
+                        <p>As <b>barras azuis</b> mostram a contribuição individual dos 10 primeiros produtos e a <b>linha vermelha pontilhada</b> mostra o percentual acumulado. Ao atingir 80%, identifica-se com precisão os itens campeões.</p>
+                    </div>
+                </div>
+            `;
+            break;
+
+        case 'inflacao_custos':
+            titulo = 'Alerta de Inflação de Insumos & Histórico de Custos';
+            conteudo = `
+                <div class="space-y-4">
+                    <p class="text-slate-700 dark:text-slate-200 font-medium">O radar de inflação analisa automaticamente todas as notas e pedidos de compra e compara preços unitários de aquisição:</p>
+                    
+                    <div class="p-3 bg-amber-50 dark:bg-slate-900 border border-amber-300 dark:border-amber-800/60 rounded-xl space-y-1">
+                        <div class="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-arrow-trend-up text-red-500"></i> Identificação Automática de Reajustes
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-300">Quando você compra o mesmo insumo mais de uma vez e o preço de custo sobe entre uma compra e outra, o sistema destaca no topo do painel os itens com maiores aumentos percentuais.</p>
+                    </div>
+
+                    <div class="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl space-y-2">
+                        <div class="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider">Ações Estratégicas Recomendadas:</div>
+                        <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1.5 list-disc pl-4">
+                            <li><b>Renegociar com o Fornecedor:</b> Apresente os preços das compras anteriores para contestar reajustes excessivos.</li>
+                            <li><b>Recalcular o Preço de Venda:</b> Se o custo unitário subiu e o preço de venda continuou igual, a sua margem de lucro diminuiu. Atualize o valor de venda no catálogo.</li>
+                            <li><b>Buscar Alternativas:</b> Cote com fornecedores concorrentes antes de emitir a próxima ordem de compra.</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+            break;
+
+        case 'despesas_centro_custo':
+        case 'centro_custo_alerta':
+            titulo = 'Despesas por Centro de Custo & Auditoria';
+            conteudo = `
+                <div class="space-y-4">
+                    <p class="text-slate-700 dark:text-slate-200 font-medium">O Centro de Custo permite saber exatamente qual área ou setor da empresa está demandando mais recursos financeiros:</p>
+                    
+                    <div class="p-3 bg-blue-50 dark:bg-slate-900 border border-blue-200 dark:border-blue-800/60 rounded-xl space-y-1">
+                        <div class="font-bold text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-building"></i> Gestão por Departamento
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-300">Permite dividir contas entre setores como <b>Administração, Vendas/Loja, Produção/Fábrica, Logística</b> ou filiais, avaliando o retorno operacional de cada centro.</p>
+                    </div>
+
+                    <div class="p-3 bg-amber-50 dark:bg-slate-900 border border-amber-300 dark:border-amber-800/60 rounded-xl space-y-1">
+                        <div class="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> Alerta de Despesas Sem Centro de Custo
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-300">Se o alerta amarelo aparecer, significa que existem títulos lançados sem atribuição de departamento. Clique em <b>Auditar</b> para listar as contas pendentes e atribuir o Centro de Custo correspondente.</p>
+                    </div>
+                </div>
+            `;
+            break;
+
         case 'top_vendas':
         case 'curva_abc_vendas':
-            titulo = 'Curva ABC de Vendas (Top Produtos)';
-            conteudo = '<p>Ranking dos produtos mais vendidos e que geraram maior volume de receita para a loja no período selecionado. Ajuda a identificar com precisão os itens mais procurados e manter estoques ajustados à demanda real.</p>';
+            titulo = 'Curva ABC de Vendas (Top Produtos Campeões)';
+            conteudo = '<p class="mb-2">Ranking dos produtos mais vendidos e que geraram maior volume de receita para a loja no período selecionado.</p><p class="text-xs text-slate-500 dark:text-slate-400">Ajuda a identificar com precisão os itens mais procurados e manter estoques ajustados à demanda real.</p>';
             break;
+
         case 'top_compras':
-            titulo = 'Top Compras (Produtos)';
-            conteudo = '<p>Mostra quais foram os produtos em que voc&ecirc; <b>mais investiu dinheiro</b> comprando de fornecedores no per&iacute;odo selecionado. Ajuda a entender para onde est&aacute; indo o caixa da empresa na hora da reposi&ccedil;&atilde;o.</p>';
+            titulo = 'Top Compras (Investimento em Estoque)';
+            conteudo = '<p class="mb-2">Mostra quais foram os produtos em que você <b>mais investiu dinheiro</b> comprando de fornecedores no período selecionado.</p><p class="text-xs text-slate-500 dark:text-slate-400">Ajuda a entender para onde está indo o caixa da empresa na hora da reposição.</p>';
             break;
+
         case 'top_clientes':
-            titulo = 'Top Clientes';
-            conteudo = '<p>Ranking dos clientes que <b>mais trouxeram faturamento</b> para a loja. Ideal para voc&ecirc; identificar seus clientes VIPs, oferecer brindes, descontos especiais ou fazer a&ccedil;&otilde;es de fideliza&ccedil;&atilde;o.</p>';
+            titulo = 'Top Clientes (Concentração de Faturamento)';
+            conteudo = '<p class="mb-2">Ranking dos clientes que <b>mais trouxeram faturamento</b> para a loja.</p><p class="text-xs text-slate-500 dark:text-slate-400">Ideal para identificar clientes VIPs, oferecer condições exclusivas e ações de fidelização.</p>';
             break;
+
         case 'top_fornecedores':
-            titulo = 'Top Fornecedores';
-            conteudo = '<p>Ranking dos fornecedores de quem voc&ecirc; <b>mais comprou</b> (em R$). &Uacute;til para saber com quem voc&ecirc; tem mais poder de barganha para negociar prazos maiores ou descontos.</p>';
+            titulo = 'Top Fornecedores (Parceiros de Compra)';
+            conteudo = '<p class="mb-2">Ranking dos fornecedores de quem você <b>mais comprou</b> (em R$).</p><p class="text-xs text-slate-500 dark:text-slate-400">Útil para saber com quem você tem maior poder de barganha para negociar prazos maiores ou descontos.</p>';
             break;
+
         case 'evolucao_custos':
-            titulo = 'Evolu&ccedil;&atilde;o de Custos';
-            conteudo = '<p>Permite selecionar um produto espec&iacute;fico e ver o <b>hist&oacute;rico de pre&ccedil;os que voc&ecirc; pagou por ele</b> nas &uacute;ltimas compras. Excelente para identificar se a infla&ccedil;&atilde;o est&aacute; corroendo sua margem ou se um fornecedor subiu muito o pre&ccedil;o.</p>';
+            titulo = 'Evolução e Histórico de Custos por Produto';
+            conteudo = '<p class="mb-2">Permite selecionar um produto específico e auditar o <b>histórico cronológico de preços pagos por ele</b> nas compras registradas.</p><p class="text-xs text-slate-500 dark:text-slate-400">Excelente para identificar se a inflação está corroendo sua margem ou se um fornecedor reajustou o valor unitário.</p>';
             break;
-        case 'curva_abc':
-            titulo = 'Curva ABC de Produtos';
-            conteudo = '<p class="mb-3">A Curva ABC divide seus produtos pela import&acirc;ncia no seu faturamento usando a Regra de Pareto (80/20):</p><ul class="list-disc pl-5 space-y-2"><li><b>Classe A (Verde):</b> Produtos que somados trazem <b>80% do seu faturamento</b>. S&atilde;o o cora&ccedil;&atilde;o da loja, nunca podem faltar no estoque!</li><li><b>Classe B (Amarelo):</b> Produtos m&eacute;dios, trazem os pr&oacute;ximos <b>15%</b>.</li><li><b>Classe C (Vermelho):</b> A grande maioria dos itens, mas que juntos trazem s&oacute; os <b>5%</b> finais. N&atilde;o invista muito dinheiro estocando esses itens.</li></ul>';
-            break;
+
         case 'sugestao_compras':
-            titulo = 'Sugest&atilde;o Inteligente de Reposi&ccedil;&atilde;o';
-            conteudo = '<p class="mb-3">O sistema analisa a velocidade com que cada produto foi vendido no per&iacute;odo e cruza com o que voc&ecirc; ainda tem no estoque.</p><ul class="list-disc pl-5 space-y-2"><li><b>Autonomia:</b> Quantos dias seu estoque atual vai durar se continuar vendendo nesse ritmo.</li><li><b>Sugest&atilde;o de Compra:</b> A quantidade exata que voc&ecirc; precisa comprar <b>hoje</b> para garantir que o produto n&atilde;o falte nos pr&oacute;ximos 30 dias.</li><li><b>Ruptura:</b> Quando o estoque j&aacute; acabou e voc&ecirc; est&aacute; perdendo vendas.</li><li><b>Cr&iacute;tico:</b> O estoque vai acabar em menos de 7 dias.</li></ul>';
+            titulo = 'Sugestão Inteligente de Reposição de Estoque';
+            conteudo = '<p class="mb-3">O sistema analisa a velocidade média diária com que cada produto foi vendido no período e cruza com o saldo em estoque:</p><ul class="list-disc pl-5 space-y-2 text-xs text-slate-600 dark:text-slate-300"><li><b>Autonomia:</b> Quantos dias seu estoque atual vai durar no ritmo atual de vendas.</li><li><b>Sugestão de Compra:</b> Quantidade exata recomendada para cobrir os próximos 30 dias de demanda.</li><li><b>Ruptura:</b> Estoque zerado com perda iminente de vendas.</li><li><b>Crítico:</b> Estoque vai acabar em menos de 7 dias.</li></ul>';
             break;
+
         case 'estatisticas_compras':
-            titulo = 'Estat&iacute;sticas de Compras';
-            conteudo = '<p>Um resumo consolidado do volume de compras feitas no per&iacute;odo. Inclui o n&uacute;mero de notas/pedidos, o ticket m&eacute;dio (valor m&eacute;dio de cada compra feita com fornecedores) e a quantidade total de itens que entraram no estoque.</p>';
+            titulo = 'Estatísticas Gerais de Compras';
+            conteudo = '<p>Resumo consolidado do volume de compras no período: total de notas/pedidos, ticket médio por compra e total de unidades físicas adquiridas.</p>';
             break;
+
         case 'despesas_categoria':
             titulo = 'Despesas por Categoria';
-            conteudo = '<p>Agrupa todas as suas despesas operacionais pelas categorias cadastradas (ex: Aluguel, Sal&aacute;rios, Impostos). Facilita enxergar onde o seu dinheiro est&aacute; sendo mais gasto e onde &eacute; poss&iacute;vel cortar custos.</p>';
+            conteudo = '<p>Agrupa todas as despesas operacionais pelas categorias cadastradas (Aluguel, Folha, Impostos, Energia). Facilita enxergar onde o dinheiro está sendo gasto e planejar cortes de despesas.</p>';
             break;
-        case 'despesas_centro_custo':
-            titulo = 'Despesas por Centro de Custo';
-            conteudo = '<p>Mostra como as despesas est&atilde;o divididas entre os diferentes setores ou filiais da sua empresa (ex: Administra&ccedil;&atilde;o, Vendas, Log&iacute;stica). Ajuda a medir a efici&ecirc;ncia de cada &aacute;rea.</p>';
-            break;
+
         case 'despesas_favorecido':
             titulo = 'Despesas por Favorecido';
-            conteudo = '<p>Lista quem s&atilde;o os maiores recebedores dos pagamentos da sua empresa, independentemente da categoria. Pode ajudar a identificar depend&ecirc;ncia excessiva de um &uacute;nico prestador de servi&ccedil;o ou concentrar pagamentos.</p>';
+            conteudo = '<p>Lista os maiores recebedores de pagamentos da empresa, auxiliando a auditar concentração de pagamentos em prestadores ou empresas parceiras.</p>';
             break;
+
         case 'despesas_funcionario':
-            titulo = 'Despesas por Funcion&aacute;rio';
-            conteudo = '<p>Demonstra os custos associados a cada colaborador da equipe, incluindo sal&aacute;rios, comiss&otilde;es e outras despesas vinculadas aos funcion&aacute;rios. &Uacute;til para o RH e controle de folha de pagamento.</p>';
+            titulo = 'Despesas por Funcionário (Folha & Encargos)';
+            conteudo = '<p>Demonstra os custos associados a cada colaborador da equipe, incluindo salários, comissões e despesas vinculadas para controle da folha de pagamento.</p>';
+            break;
+
+        case 'estoque_kardex':
+            titulo = 'Relatório de Estoque & Kardex de Movimentações';
+            conteudo = `
+                <div class="space-y-4">
+                    <p class="text-slate-700 dark:text-slate-200 font-medium">Este relatório consolida a <b>valoração contábil do inventário</b> da empresa e o <b>Kardex cronológico e auditável</b> de todas as movimentações de mercadorias:</p>
+
+                    <div class="p-3 bg-amber-50 dark:bg-slate-900 border border-amber-200 dark:border-amber-800/60 rounded-xl space-y-1">
+                        <div class="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-sack-dollar"></i> Custo Imobilizado (Capital em Estoque)
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-300">Representa a soma de todo o dinheiro da empresa que está fisicamente investido em produtos nas prateleiras, calculado pelo preço unitário de custo pago aos fornecedores.</p>
+                    </div>
+
+                    <div class="p-3 bg-blue-50 dark:bg-slate-900 border border-blue-200 dark:border-blue-800/60 rounded-xl space-y-1">
+                        <div class="font-bold text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-cash-register"></i> Valor Potencial de Venda & Margem Projetada
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-300">Indica a receita bruta potencial se todos os produtos em estoque forem vendidos pelo preço atual de tabela. A diferença direta entre o valor de venda e o custo imobilizado indica o lucro bruto que o estoque irá render.</p>
+                    </div>
+
+                    <div class="p-3 bg-indigo-50 dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800/60 rounded-xl space-y-1">
+                        <div class="font-bold text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-boxes-stacked"></i> A Ficha Kardex e a Auditoria de Estoque
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-300">O Kardex é o livro de registro contábil de movimentações físicas. Cada entrada (compra por nota fiscal ou lançamento manual), saída (venda no PDV) ou ajuste de inventário fica carimbado com data, hora, usuário, documento de origem e quantidade (+ ou -). É a ferramenta fundamental para auditorias e combate a perdas e divergências de estoque.</p>
+                    </div>
+                </div>
+            `;
             break;
     }
 
@@ -3538,8 +4702,10 @@ function calcularPrecoMargin(quemMudou = 'preco') {
 // PAINEL INTELIGENTE IA - ASSISTENTE DE RELATÓRIOS
 // ==========================================
 
-function coletarDadosCompletosParaIA() {
+function coletarDadosCompletosParaIA(perguntaUsuario) {
     if (!db) return "Nenhum dado carregado no sistema.";
+    
+    perguntaUsuario = perguntaUsuario || '';
     
     let periodo = null;
     const dataInicioIa = document.getElementById('ia-data-inicio');
@@ -3556,6 +4722,14 @@ function coletarDadosCompletosParaIA() {
     const txtPeriodo = (periodo && periodo.inicio && periodo.fim) ? 
         (periodo.inicio.toLocaleDateString('pt-BR') + ' ate ' + periodo.fim.toLocaleDateString('pt-BR')) : 'Todo o Historico';
 
+    let diasPeriodo = 30;
+    if (periodo && periodo.inicio && periodo.fim) {
+        let diffMs = Math.abs(periodo.fim.getTime() - periodo.inicio.getTime());
+        diasPeriodo = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+    }
+    let semanasPeriodo = Math.max(1, diasPeriodo / 7);
+    let mesesPeriodo = Math.max(1, diasPeriodo / 30);
+
     const vendas = obterVendasDoPeriodo(periodo) || [];
     const compras = obterComprasDoPeriodo(periodo) || [];
     const despesasPagasObj = obterDespesasPagasDoPeriodo(periodo) || [];
@@ -3563,6 +4737,54 @@ function coletarDadosCompletosParaIA() {
     const produtos = db.produtos || [];
     const clientes = db.clientes || [];
     const hoje = new Date();
+
+    function extrairNomeCliente(v) {
+        if (!v) return 'Consumidor Final';
+        let nome = v.clienteNome || v.nomeCliente || v.cliente;
+        if (nome && typeof nome === 'string' && nome.trim()) return nome.trim();
+        if (v.clienteInfo && typeof v.clienteInfo === 'object' && v.clienteInfo.nome) {
+            let n = String(v.clienteInfo.nome).trim();
+            if (n) return n;
+        }
+        if (v.clienteId && db && Array.isArray(db.clientes)) {
+            let c = db.clientes.find(x => String(x.id) === String(v.clienteId));
+            if (c && c.nome && c.nome.trim()) return c.nome.trim();
+        }
+        return 'Consumidor Final';
+    }
+
+    function extrairPagamento(v) {
+        if (!v) return 'Nao informado';
+        let pag = v.pag || v.pagamento || v.formaPagamento;
+        if (pag && typeof pag === 'string' && pag.trim()) return pag.trim();
+        if (Array.isArray(v.pagamentos) && v.pagamentos.length > 0) {
+            return v.pagamentos.map(p => {
+                let m = p.metodo || p.forma || 'Outro';
+                let val = Number(p.valor || 0);
+                return m + (val > 0 ? ' (R$ ' + val.toFixed(2) + ')' : '');
+            }).join(', ');
+        }
+        return 'Nao informado';
+    }
+
+    function extrairItens(v) {
+        if (!v || !Array.isArray(v.itens)) return [];
+        return v.itens.map(item => {
+            let nome = item.nome || item.descricao || item.produto || 'Item sem nome';
+            let qtd = Number(item.qtd != null ? item.qtd : (item.quantidade != null ? item.quantidade : 1)) || 1;
+            let preco = Number(item.preco != null ? item.preco : (item.valor != null ? item.valor : 0)) || 0;
+            let subtotal = Number(item.subtotal != null ? item.subtotal : (preco * qtd)) || (preco * qtd);
+            return { nome, qtd, preco, subtotal };
+        });
+    }
+
+    function formatarDataVenda(v) {
+        let raw = v.data || v.dataVenda || v.criadoEm || '';
+        if (!raw) return '-';
+        let d = typeof parseDataGenerica === 'function' ? parseDataGenerica(raw) : new Date(raw);
+        if (d && !isNaN(d.getTime())) return d.toLocaleString('pt-BR');
+        return String(raw);
+    }
 
     const fatTotal = vendas.reduce((a, b) => a + Number(b.tot || b.total || b.valor || 0), 0); 
     const cmvTotal = vendas.reduce((a, b) => a + Number(b.custoTotal || 0), 0); 
@@ -3591,7 +4813,7 @@ function coletarDadosCompletosParaIA() {
 
     var pagamentos = {};
     vendas.forEach(function(v){
-        var pag = v.pagamento || v.formaPagamento || 'Nao informado';
+        var pag = extrairPagamento(v);
         if(!pagamentos[pag]) pagamentos[pag] = {qtd:0, total:0};
         pagamentos[pag].qtd++; pagamentos[pag].total += (Number(v.tot||v.total||v.valor)||0);
     });
@@ -3601,42 +4823,84 @@ function coletarDadosCompletosParaIA() {
     var prodVendidos = {};
     var categVendidas = {};
     vendas.forEach(function(v){
-        (v.itens||[]).forEach(function(item){
-            var nome = item.nome||item.produto||'Desconhecido';
+        extrairItens(v).forEach(function(item){
+            var nome = item.nome;
             if(!prodVendidos[nome]) prodVendidos[nome]={qtd:0,receita:0};
-            prodVendidos[nome].qtd += (Number(item.quantidade)||1);
-            prodVendidos[nome].receita += (Number(item.subtotal)||(Number(item.preco)*(Number(item.quantidade)||1))||0);
+            prodVendidos[nome].qtd += item.qtd;
+            prodVendidos[nome].receita += item.subtotal;
 
-            // Tentar inferir categoria a partir do produto cadastrado
             let pDb = produtos.find(p => p.nome === nome);
             let cat = pDb ? (pDb.categoria || 'Geral') : 'Desconhecida';
             if(!categVendidas[cat]) categVendidas[cat]={qtd:0,receita:0};
-            categVendidas[cat].qtd += (Number(item.quantidade)||1);
-            categVendidas[cat].receita += (Number(item.subtotal)||(Number(item.preco)*(Number(item.quantidade)||1))||0);
+            categVendidas[cat].qtd += item.qtd;
+            categVendidas[cat].receita += item.subtotal;
         });
     });
-    var topProdTexto = Object.entries(prodVendidos).sort(function(a,b){return b[1].receita-a[1].receita;}).slice(0,20)
+    var topProdTexto = Object.entries(prodVendidos).sort(function(a,b){return b[1].receita-a[1].receita;}).slice(0,25)
         .map(function(e,i){return '  '+(i+1)+'. '+e[0]+': '+e[1].qtd+' un = R$ '+e[1].receita.toFixed(2);}).join('\n');
     
     var categTexto = Object.entries(categVendidas).sort(function(a,b){return b[1].receita-a[1].receita;}).slice(0,10)
         .map(function(e,i){return '  '+(i+1)+'. '+e[0]+': '+e[1].qtd+' itens = R$ '+e[1].receita.toFixed(2);}).join('\n');
 
+    // Mapeamento minucioso e completo de compras por cliente no período
     var clienteCompras = {};
     vendas.forEach(function(v){
-        var nome = v.cliente||v.nomeCliente||'Consumidor Final';
-        if(!clienteCompras[nome]) clienteCompras[nome]={qtd:0,total:0,ultima:v.data||''};
-        clienteCompras[nome].qtd++; clienteCompras[nome].total+=(Number(v.tot||v.total||v.valor)||0);
-        if((v.data||'')>clienteCompras[nome].ultima) clienteCompras[nome].ultima=v.data;
-    });
-    var topClientesTexto = Object.entries(clienteCompras).sort(function(a,b){return b[1].total-a[1].total;}).slice(0,15)
-        .map(function(e,i){return '  '+(i+1)+'. '+e[0]+': '+e[1].qtd+' compras = R$ '+e[1].total.toFixed(2)+' | Ticket: R$ '+(e[1].total/e[1].qtd).toFixed(2)+' | Ultima: '+e[1].ultima;}).join('\n');
+        var nome = extrairNomeCliente(v);
+        var itensVenda = extrairItens(v);
+        var valorVenda = Number(v.tot || v.total || v.valor || 0);
+        var qtdItensVenda = itensVenda.reduce(function(a, b){ return a + b.qtd; }, 0);
+        var dataFormatada = formatarDataVenda(v);
+        var pag = extrairPagamento(v);
+        var pedNum = String(v.numeroPedido || v.id || '-');
 
-    var inativos60 = Object.entries(clienteCompras).filter(function(e){
-        if(!e[1].ultima||e[0]==='Consumidor Final') return false;
-        var parts = e[1].ultima.split('/');
-        var ultima = parts.length===3 ? new Date(parts[2],parts[1]-1,parts[0]) : new Date(e[1].ultima);
-        return ((hoje-ultima)/(86400000)) > 60;
-    }).slice(0,10).map(function(e){return '  - '+e[0]+': ultima '+e[1].ultima+', total R$ '+e[1].total.toFixed(2);}).join('\n');
+        if (!clienteCompras[nome]) {
+            clienteCompras[nome] = {
+                nome: nome,
+                pedidosQtd: 0,
+                totalGasto: 0,
+                itensQtdTotal: 0,
+                primeiraData: dataFormatada,
+                ultimaData: dataFormatada,
+                produtos: {},
+                vendasDetalhes: []
+            };
+        }
+
+        var cInfo = clienteCompras[nome];
+        cInfo.pedidosQtd++;
+        cInfo.totalGasto += valorVenda;
+        cInfo.itensQtdTotal += qtdItensVenda;
+        cInfo.ultimaData = dataFormatada;
+
+        itensVenda.forEach(function(it){
+            if (!cInfo.produtos[it.nome]) cInfo.produtos[it.nome] = { qtd: 0, total: 0 };
+            cInfo.produtos[it.nome].qtd += it.qtd;
+            cInfo.produtos[it.nome].total += it.subtotal;
+        });
+
+        cInfo.vendasDetalhes.push({
+            numero: pedNum,
+            data: dataFormatada,
+            total: valorVenda,
+            pag: pag,
+            vendedor: v.vendedor || '-',
+            itens: itensVenda
+        });
+    });
+
+    // Lista consolidada de clientes que compraram no período
+    var clientesListaTexto = Object.values(clienteCompras).sort(function(a,b){ return b.totalGasto - a.totalGasto; })
+        .map(function(c, i){
+            var ticket = c.pedidosQtd > 0 ? (c.totalGasto / c.pedidosQtd) : 0;
+            return '  ' + (i+1) + '. ' + c.nome + ': ' + c.pedidosQtd + ' compras | R$ ' + c.totalGasto.toFixed(2) + ' total | ' + c.itensQtdTotal + ' itens/produtos | Ticket Médio: R$ ' + ticket.toFixed(2) + ' | Última compra: ' + c.ultimaData;
+        }).join('\n');
+
+    var inativos60 = Object.values(clienteCompras).filter(function(c){
+        if(!c.ultimaData || c.nome === 'Consumidor Final') return false;
+        var parts = c.ultimaData.split('/');
+        var ultima = parts.length === 3 ? new Date(parts[2], parts[1]-1, parts[0]) : new Date(c.ultimaData);
+        return ((hoje - ultima) / 86400000) > 60;
+    }).slice(0, 15).map(function(c){ return '  - ' + c.nome + ': última compra em ' + c.ultimaData + ', total R$ ' + c.totalGasto.toFixed(2); }).join('\n');
 
     var vendedores = {};
     vendas.forEach(function(v){
@@ -3655,7 +4919,7 @@ function coletarDadosCompletosParaIA() {
     (compras||[]).forEach(function(c){
         var forn=c.fornecedor||'Desconhecido';
         if(!fornecedores[forn]) fornecedores[forn]={qtd:0,total:0};
-        fornecedores[forn].qtd++; fornecedores[forn].total+=(Number(c.total)||0);
+        fornecedores[forn].qtd++; fornecedores[forn].total+=(Number(c.total||c.totalNF)||0);
     });
     var fornTexto = Object.entries(fornecedores).sort(function(a,b){return b[1].total-a[1].total;}).slice(0,10)
         .map(function(e){return '  - '+e[0]+': '+e[1].qtd+' pedidos = R$ '+e[1].total.toFixed(2);}).join('\n');
@@ -3681,11 +4945,210 @@ function coletarDadosCompletosParaIA() {
     var contasPagarTexto = Object.entries(contasPagarPorFornecedor).sort(function(a,b){return b[1]-a[1];})
         .map(function(e){return '  - ' + e[0] + ': R$ ' + e[1].toFixed(2);}).join('\n');
 
+    // Amostra detalhada de vendas do período (com itens, clientes, pagamentos)
+    var vendasRecentesTexto = vendas.slice(0, 100).map(function(v){
+        var cli = extrairNomeCliente(v);
+        var ped = String(v.numeroPedido || v.id || '-');
+        var pag = extrairPagamento(v);
+        var tot = Number(v.tot || v.total || v.valor || 0);
+        var dataF = formatarDataVenda(v);
+        var vend = v.vendedor || '-';
+        var itensStr = extrairItens(v).map(function(it){ return it.qtd + 'x ' + it.nome + ' (R$ ' + it.subtotal.toFixed(2) + ')'; }).join(', ');
+        return '  * [' + dataF + '] Pedido #' + ped + ' | Cliente: ' + cli + ' | Valor: R$ ' + tot.toFixed(2) + ' | Pag: ' + pag + ' | Vend: ' + vend + ' | Itens: ' + (itensStr || 'Sem itens descritos');
+    }).join('\n');
+
+    // Identificação contextual se a pergunta do usuário focar em um cliente específico
+    var dossieClienteTexto = '';
+    var normPergunta = String(perguntaUsuario).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    
+    if (normPergunta) {
+        var clientesCandidatos = [];
+        var nomesVerificados = new Set();
+        (clientes || []).forEach(function(c){ if (c.nome) nomesVerificados.add(c.nome); });
+        Object.keys(clienteCompras).forEach(function(n){ nomesVerificados.add(n); });
+
+        nomesVerificados.forEach(function(nomeC){
+            var normNome = nomeC.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            var match = false;
+            if (normNome.length >= 3 && normPergunta.includes(normNome)) {
+                match = true;
+            } else {
+                var tokens = normNome.split(/[\s\-_\/]+/).filter(function(t){ return t.length >= 4 && !['ltda', 'eireli', 'servicos', 'comercio', 'moveis', 'pintura', 's.a.'].includes(t); });
+                for (var t = 0; t < tokens.length; t++) {
+                    if (normPergunta.includes(tokens[t])) { match = true; break; }
+                }
+            }
+            if (match) clientesCandidatos.push(nomeC);
+        });
+
+        if (clientesCandidatos.length > 0) {
+            dossieClienteTexto = '\n\n========================================================\n' +
+                '=== DOSSIÊ COMPLETO DO(S) CLIENTE(S) IDENTIFICADO(S) NA PERGUNTA ===\n' +
+                '========================================================\n';
+            
+            clientesCandidatos.forEach(function(nomeC){
+                var cadastroCli = (clientes || []).find(function(c){ return (c.nome || '').trim().toLowerCase() === nomeC.trim().toLowerCase(); }) || {};
+                var infoPeriodo = clienteCompras[nomeC];
+                
+                // Todas as vendas de todo o histórico do banco para este cliente
+                var todasVendasCli = (db.vendas || []).filter(function(v){ return extrairNomeCliente(v).toLowerCase() === nomeC.toLowerCase(); });
+                todasVendasCli.sort(function(a,b){ return (new Date(b.data || 0)) - (new Date(a.data || 0)); });
+
+                // Títulos financeiros (fiados/receber)
+                var titulosCli = (financeiroTodos || []).filter(function(f){
+                    var p = (f.pessoa || f.clienteNome || '').toLowerCase();
+                    return p === nomeC.toLowerCase() || (cadastroCli.nome && p === cadastroCli.nome.toLowerCase());
+                });
+                var fiadoPendenteCli = titulosCli.filter(function(f){ return f.tipo === 'RECEITA' && f.status === 'PENDENTE'; });
+                var totalFiadoCli = fiadoPendenteCli.reduce(function(a,b){ return a + Number(b.valor || 0); }, 0);
+                var titulosPagosCli = titulosCli.filter(function(f){ return f.status === 'PAGO'; });
+                var totalJaPagoCli = titulosPagosCli.reduce(function(a,b){ return a + Number(b.valorPago || b.valor || 0); }, 0);
+
+                dossieClienteTexto += '\n--- CLIENTE: ' + nomeC + ' ---\n' +
+                    '- Nome Cadastral: ' + (cadastroCli.nome || nomeC) + '\n' +
+                    '- CPF/CNPJ: ' + (cadastroCli.doc || cadastroCli.cpfCnpj || cadastroCli.cnpj || 'Não informado') + '\n' +
+                    '- Telefone: ' + (cadastroCli.telefone || cadastroCli.tel || 'Não informado') + '\n' +
+                    '- Endereço: ' + (cadastroCli.endereco || cadastroCli.endCompleto || 'Não informado') + '\n' +
+                    '- Saldo Devedor / Fiado Pendente Atual: R$ ' + totalFiadoCli.toFixed(2) + ' (' + fiadoPendenteCli.length + ' títulos em aberto)\n' +
+                    '- Total já liquidado/pago pelo cliente no histórico: R$ ' + totalJaPagoCli.toFixed(2) + '\n';
+
+                if (infoPeriodo) {
+                    var mediaSemanal = (infoPeriodo.itensQtdTotal / semanasPeriodo);
+                    var mediaMensal = (infoPeriodo.itensQtdTotal / mesesPeriodo);
+                    var ticketCli = infoPeriodo.pedidosQtd > 0 ? (infoPeriodo.totalGasto / infoPeriodo.pedidosQtd) : 0;
+
+                    dossieClienteTexto += '\n[MÉTRICAS DO CLIENTE NO PERÍODO: ' + txtPeriodo + ']\n' +
+                        '  * Total de Compras/Pedidos no Período: ' + infoPeriodo.pedidosQtd + ' pedido(s)\n' +
+                        '  * Total de Produtos/Itens Comprados no Período: ' + infoPeriodo.itensQtdTotal + ' unidade(s)\n' +
+                        '  * Valor Total Gasto no Período: R$ ' + infoPeriodo.totalGasto.toFixed(2) + '\n' +
+                        '  * Ticket Médio por Compra no Período: R$ ' + ticketCli.toFixed(2) + '\n' +
+                        '  * MÉDIA DE PRODUTOS COMPRADOS POR SEMANA: ' + mediaSemanal.toFixed(1) + ' produtos/semana (base de ' + semanasPeriodo.toFixed(1) + ' semanas no período)\n' +
+                        '  * MÉDIA DE PRODUTOS COMPRADOS POR MÊS: ' + mediaMensal.toFixed(1) + ' produtos/mês (base de ' + mesesPeriodo.toFixed(1) + ' meses no período)\n';
+
+                    dossieClienteTexto += '\n[MIX DE PRODUTOS COMPRADOS PELO CLIENTE NO PERÍODO]\n';
+                    Object.entries(infoPeriodo.produtos).sort(function(a,b){ return b[1].qtd - a[1].qtd; }).forEach(function(pr, idx){
+                        dossieClienteTexto += '    ' + (idx+1) + '. ' + pr[0] + ': ' + pr[1].qtd + ' un = R$ ' + pr[1].total.toFixed(2) + '\n';
+                    });
+
+                    dossieClienteTexto += '\n[TODOS OS PEDIDOS DO CLIENTE NO PERÍODO SELECIONADO]\n';
+                    infoPeriodo.vendasDetalhes.forEach(function(det){
+                        var itStr = det.itens.map(function(it){ return it.qtd + 'x ' + it.nome + ' (R$ ' + it.subtotal.toFixed(2) + ')'; }).join(', ');
+                        dossieClienteTexto += '    - [' + det.data + '] Pedido #' + det.numero + ' | Total: R$ ' + det.total.toFixed(2) + ' | Pag: ' + det.pag + ' | Vend: ' + det.vendedor + ' | Itens: ' + itStr + '\n';
+                    });
+                } else {
+                    dossieClienteTexto += '\n[ATENÇÃO: O cliente NÃO possui compras registradas no recorte de data selecionado (' + txtPeriodo + ').]\n';
+                }
+
+                if (todasVendasCli.length > 0) {
+                    var totalGeralHist = todasVendasCli.reduce(function(a,b){ return a + Number(b.tot || b.total || b.valor || 0); }, 0);
+                    dossieClienteTexto += '\n[HISTÓRICO GERAL COMPLETO DO CLIENTE (TODOS OS TEMPOS)]\n' +
+                        '  * Total de Compras em Todo o Sistema: ' + todasVendasCli.length + ' pedidos\n' +
+                        '  * Valor Histórico Total Acumulado: R$ ' + totalGeralHist.toFixed(2) + '\n';
+                }
+            });
+        }
+    }
+
+    // Dossiê contextual de Produto se a pergunta mencionar um produto ou categoria
+    var dossieProdutoTexto = '';
+    if (normPergunta) {
+        var produtosCandidatos = [];
+        var prodsBase = produtos || [];
+        prodsBase.forEach(function(p){
+            if (!p.nome) return;
+            var normP = p.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            if (normP.length >= 4 && normPergunta.includes(normP)) {
+                produtosCandidatos.push(p.nome);
+            } else {
+                var pTokens = normP.split(/[\s\-_\/]+/).filter(function(t){ return t.length >= 4 && !['para', 'com', 'sem', 'alto', 'solidos', 'lt', 'litros', 'un', 'unidade'].includes(t); });
+                var matches = 0;
+                for (var t = 0; t < pTokens.length; t++) {
+                    if (normPergunta.includes(pTokens[t])) matches++;
+                }
+                if (matches >= 2 || (pTokens.length === 1 && matches === 1)) {
+                    produtosCandidatos.push(p.nome);
+                }
+            }
+        });
+
+        if (produtosCandidatos.length === 0) {
+            Object.keys(prodVendidos).forEach(function(nomeIt){
+                var normIt = nomeIt.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                if (normIt.length >= 4 && normPergunta.includes(normIt)) {
+                    produtosCandidatos.push(nomeIt);
+                }
+            });
+        }
+
+        if (produtosCandidatos.length > 0) {
+            dossieProdutoTexto = '\n\n========================================================\n' +
+                '=== DOSSIÊ COMPLETO DO(S) PRODUTO(S) IDENTIFICADO(S) NA PERGUNTA ===\n' +
+                '========================================================\n';
+            
+            produtosCandidatos.slice(0, 3).forEach(function(nomeProd){
+                var prodDb = prodsBase.find(function(p){ return (p.nome || '').toLowerCase() === nomeProd.toLowerCase(); }) || {};
+                var compradores = {};
+                var totalQtdVendida = 0;
+                var totalFatProduto = 0;
+                var pedidosDoItem = [];
+
+                vendas.forEach(function(v){
+                    var cli = extrairNomeCliente(v);
+                    var dataF = formatarDataVenda(v);
+                    var pedNum = String(v.numeroPedido || v.id || '-');
+                    extrairItens(v).forEach(function(it){
+                        var matchItem = (it.nome.toLowerCase() === nomeProd.toLowerCase()) ||
+                            it.nome.toLowerCase().includes(nomeProd.toLowerCase()) ||
+                            nomeProd.toLowerCase().includes(it.nome.toLowerCase());
+                        if (matchItem) {
+                            if (!compradores[cli]) compradores[cli] = { qtd: 0, total: 0, datas: [] };
+                            compradores[cli].qtd += it.qtd;
+                            compradores[cli].total += it.subtotal;
+                            compradores[cli].datas.push(dataF);
+                            totalQtdVendida += it.qtd;
+                            totalFatProduto += it.subtotal;
+                            pedidosDoItem.push({
+                                pedido: pedNum,
+                                cliente: cli,
+                                data: dataF,
+                                qtd: it.qtd,
+                                precoUnit: it.preco,
+                                subtotal: it.subtotal
+                            });
+                        }
+                    });
+                });
+
+                dossieProdutoTexto += '\n--- PRODUTO: ' + nomeProd + ' ---\n' +
+                    '- Estoque Atual em Loja: ' + (prodDb.estoque != null ? prodDb.estoque : 'N/A') + ' un\n' +
+                    '- Preço de Custo Cadastrado: R$ ' + (Number(prodDb.custo || 0)).toFixed(2) + '\n' +
+                    '- Preço de Venda Sugerido/Cadastrado: R$ ' + (Number(prodDb.preco || 0)).toFixed(2) + '\n' +
+                    '- Volume Total Vendido no Período: ' + totalQtdVendida + ' unidade(s)\n' +
+                    '- Faturamento Total Gerado pelo Produto no Período: R$ ' + totalFatProduto.toFixed(2) + '\n' +
+                    '\n[CLIENTES QUE COMPRARAM ESTE PRODUTO NO PERÍODO]\n';
+
+                if (Object.keys(compradores).length > 0) {
+                    Object.entries(compradores).sort(function(a,b){ return b[1].qtd - a[1].qtd; }).forEach(function(comp){
+                        dossieProdutoTexto += '  * Cliente: ' + comp[0] + ' | Comprou: ' + comp[1].qtd + ' un | Total: R$ ' + comp[1].total.toFixed(2) + ' | Datas: ' + comp[1].datas.join(', ') + '\n';
+                    });
+                    dossieProdutoTexto += '\n[TODAS AS VENDAS/PEDIDOS DESTE PRODUTO NO PERÍODO]\n';
+                    pedidosDoItem.forEach(function(po){
+                        dossieProdutoTexto += '  - Pedido #' + po.pedido + ' (' + po.data + ') | Cliente: ' + po.cliente + ' | ' + po.qtd + ' un a R$ ' + po.precoUnit.toFixed(2) + ' = R$ ' + po.subtotal.toFixed(2) + '\n';
+                    });
+                } else {
+                    dossieProdutoTexto += '  * Nenhuma venda registrada deste produto no período selecionado (' + txtPeriodo + ').\n';
+                }
+            });
+        }
+    }
+
     var todosClientesDb = clientes.slice(0, 500).map(function(c){ return c.nome + (c.telefone ? ' ('+c.telefone+')' : ''); }).join(' | ') + (clientes.length > 500 ? ' (+'+(clientes.length-500)+' outros)' : '');
     var todosProdutosDb = produtos.slice(0, 500).map(function(p){ return p.nome + ' (' + (p.estoque||0) + ' un - R$ ' + (Number(p.preco||0).toFixed(2)) + ')'; }).join(' | ') + (produtos.length > 500 ? ' (+'+(produtos.length-500)+' outros)' : '');
     var todosFornecedoresDb = (db.fornecedores || []).slice(0, 200).map(function(f){ return f.nome || f.razaoSocial; }).join(' | ') + ((db.fornecedores||[]).length > 200 ? ' (+'+((db.fornecedores||[]).length-200)+' outros)' : '');
 
     return '\n=== DADOS DO SISTEMA FC GESTAO ===\nPERIODO ANALISADO: '+txtPeriodo+'\nData de hoje: '+hoje.toLocaleDateString('pt-BR')+
+    (dossieClienteTexto || '') +
+    (dossieProdutoTexto || '') +
     '\n\n--- DRE RESUMIDA DO PERIODO ---\nReceita Bruta: R$ '+fatTotal.toFixed(2)+
     '\nDeducoes/Taxas Maquininha: R$ '+taxasTotal.toFixed(2)+
     '\nReceita Liquida: R$ '+recLiquida.toFixed(2)+
@@ -3694,19 +5157,20 @@ function coletarDadosCompletosParaIA() {
     '\nDespesas Operacionais Pagas: R$ '+despesasOperacionais.toFixed(2)+
     '\nImpostos Pagos: R$ '+impostosTotal.toFixed(2)+
     '\nLucro Real (DRE): R$ '+lucroReal.toFixed(2)+
-    '\nTicket Medio: R$ '+ticketMedio.toFixed(2)+
+    '\nTicket Medio da Loja: R$ '+ticketMedio.toFixed(2)+
     '\n\n--- INADIMPLENCIA E COMPROMISSOS (GERAL) ---\nContas Pagar Pendentes: R$ '+despesasPendentes.toFixed(2)+
     '\nContas Receber Pendentes: R$ '+receitasPendentes.toFixed(2)+'\nFiado Pendente (Subconjunto de Receber): R$ '+totalFiado.toFixed(2)+
     '\nValor Estoque Total Atual: R$ '+valorEstoqueTotal.toFixed(2)+
     '\n\n--- FORMAS DE PAGAMENTO NO PERIODO ---\n'+(pagamentosTexto||'Sem dados')+
     '\n\n--- VENDAS POR CATEGORIA NO PERIODO ---\n'+(categTexto||'Sem dados')+
-    '\n\n--- TOP 20 PRODUTOS VENDIDOS NO PERIODO ---\n'+(topProdTexto||'Sem dados')+
+    '\n\n--- TOP 25 PRODUTOS VENDIDOS NO PERIODO ---\n'+(topProdTexto||'Sem dados')+
     '\n\n--- COMPRAS FORNECEDORES NO PERIODO ---\n'+(fornTexto||'Sem compras')+
     '\n\n--- DESEMPENHO VENDEDORES NO PERIODO ---\n'+(vendedoresTexto||'Sem dados')+
     '\n\n--- ESTOQUE CRITICO (GERAL) ---\n'+(estoqueBaixo||'Nenhum critico')+
     '\n\n--- COMPROMISSOS DETALHADOS A PAGAR (FORNECEDORES/DESPESAS) ---\n'+(contasPagarTexto||'Nenhuma conta a pagar pendente')+
     '\n\n--- DIVIDAS PENDENTES POR CLIENTE (CONTAS A RECEBER) ---\n'+(contasReceberTexto||'Nenhuma divida pendente detalhada')+
-    '\n\n--- TOP 15 CLIENTES NO PERIODO ---\n'+(topClientesTexto||'Sem dados')+
+    '\n\n--- TODOS OS CLIENTES COM COMPRAS NO PERIODO ---\n'+(clientesListaTexto||'Nenhuma compra de cliente registrada no periodo')+
+    '\n\n--- AMOSTRA DETALHADA DE VENDAS REALIZADAS NO PERIODO ---\n'+(vendasRecentesTexto||'Sem vendas')+
     '\n\n--- CLIENTES INATIVOS (+60 DIAS SEM COMPRAR) ---\n'+(inativos60||'Nenhum')+
     '\n\n--- TODOS OS PRODUTOS CADASTRADOS (BASE GERAL DE ESTOQUE) ---\n'+(todosProdutosDb||'Nenhum produto cadastrado')+
     '\n\n--- TODOS OS FORNECEDORES CADASTRADOS (BASE GERAL) ---\n'+(todosFornecedoresDb||'Nenhum fornecedor cadastrado')+
@@ -3722,8 +5186,8 @@ async function gerarRelatorioComIA(descricaoRelatorio) {
     if (inputLivre) inputLivre.disabled = true;
     if (btnLivre) { btnLivre.disabled = true; btnLivre.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
     try {
-        var contextoDados = coletarDadosCompletosParaIA();
-        var prompt = 'Voce e um analista de negocios experiente de uma loja de varejo brasileira chamada FC Gestao.\nAbaixo estao os dados reais do sistema de gestao desta loja. Com base nesses dados, realize a seguinte tarefa:\n\nTAREFA: '+descricaoRelatorio+'\n\nDADOS DO SISTEMA:\n'+contextoDados+'\n\nINSTRUCOES:\n- Use os dados reais fornecidos para embasar TODA a analise.\n- Se um dado nao estiver disponivel, informe claramente.\n- Organize a resposta em secoes com titulos claros.\n- Use tabelas quando apresentar rankings ou comparacoes.\n- Destaque pontos importantes em **negrito**.\n- Forneca insights praticos e acionaveis.\n- Seja objetivo, direto e profissional.\n- Escreva em Portugues do Brasil.\n- Ao final, adicione uma secao com 2-3 Recomendacoes Praticas baseadas nos dados.';
+        var contextoDados = coletarDadosCompletosParaIA(descricaoRelatorio);
+        var prompt = 'Voce e um analista de negocios experiente de uma loja de varejo brasileira chamada FC Gestao.\nAbaixo estao os dados reais do sistema de gestao desta loja. Com base nesses dados, realize a seguinte tarefa:\n\nTAREFA: '+descricaoRelatorio+'\n\nDADOS DO SISTEMA:\n'+contextoDados+'\n\nINSTRUCOES:\n- Use os dados reais fornecidos para embasar TODA a analise.\n- Se houver um Dossiê do Cliente/Produto fornecido, use-o prioritariamente pois contem todos os pedidos, quantidades de itens, faturamento e medias calculadas.\n- Se um dado nao estiver disponivel, informe claramente.\n- Organize a resposta em secoes com titulos claros.\n- Use tabelas quando apresentar rankings ou comparacoes.\n- Destaque pontos importantes em **negrito**.\n- Forneca insights praticos e acionaveis.\n- Seja objetivo, direto e profissional.\n- Escreva em Portugues do Brasil.\n- Ao final, adicione uma secao com 2-3 Recomendacoes Praticas baseadas nos dados.';
         var resposta = await chamarGemini(prompt);
         if (resposta) {
             renderizarRelatorioIA(resposta);

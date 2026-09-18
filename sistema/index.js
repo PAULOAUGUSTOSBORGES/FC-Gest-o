@@ -4,12 +4,76 @@ let renderTimeout = null;
 
 function parseDataSegura(dataStr) {
     if (!dataStr) return null;
-    if (typeof dataStr === 'string' && dataStr.length === 10 && dataStr.includes('-')) {
-        const parts = dataStr.split('-').map(Number);
-        return new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0);
+    if (typeof window.parseDataGenerica === 'function') {
+        const dGen = window.parseDataGenerica(dataStr);
+        if (dGen && !isNaN(dGen.getTime())) return dGen;
     }
-    const d = new Date(dataStr);
-    return isNaN(d.getTime()) ? null : d;
+    if (dataStr instanceof Date) return isNaN(dataStr.getTime()) ? null : dataStr;
+    if (typeof dataStr === 'object') {
+        if (typeof dataStr.toDate === 'function') {
+            const d = dataStr.toDate();
+            return isNaN(d.getTime()) ? null : d;
+        }
+        if (dataStr.seconds !== undefined) {
+            const d = new Date(dataStr.seconds * 1000);
+            return isNaN(d.getTime()) ? null : d;
+        }
+    }
+    if (typeof dataStr === 'number') {
+        const d = new Date(dataStr);
+        return isNaN(d.getTime()) ? null : d;
+    }
+    if (typeof dataStr === 'string') {
+        const s = dataStr.trim();
+        if (!s) return null;
+        // Formato brasileiro DD/MM/YYYY [HH:mm[:ss]]
+        const br = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+        if (br) {
+            const dia = parseInt(br[1], 10);
+            const mes = parseInt(br[2], 10) - 1;
+            const ano = parseInt(br[3], 10);
+            const hora = br[4] ? parseInt(br[4], 10) : 12;
+            const min = br[5] ? parseInt(br[5], 10) : 0;
+            const seg = br[6] ? parseInt(br[6], 10) : 0;
+            const d = new Date(ano, mes, dia, hora, min, seg);
+            return isNaN(d.getTime()) ? null : d;
+        }
+        // Formato ISO YYYY-MM-DD puro ou com meia-noite UTC (evita cair no dia anterior no UTC-3)
+        const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:T00:00:00(?:\.000)?Z?)?$/);
+        if (iso) {
+            const ano = parseInt(iso[1], 10);
+            const mes = parseInt(iso[2], 10) - 1;
+            const dia = parseInt(iso[3], 10);
+            const d = new Date(ano, mes, dia, 12, 0, 0);
+            return isNaN(d.getTime()) ? null : d;
+        }
+        const d = new Date(s);
+        return isNaN(d.getTime()) ? null : d;
+    }
+    return null;
+}
+
+function getDataVenda(v) {
+    if (!v) return null;
+    return v.data || v.dataVenda || v.criadoEm || null;
+}
+
+function getValorVenda(v) {
+    if (!v) return 0;
+    return Number(v.tot != null ? v.tot : (v.total != null ? v.total : v.valor)) || 0;
+}
+
+function getCustoVenda(v) {
+    if (!v) return 0;
+    let custo = Number(v.custoTotal) || 0;
+    if (custo === 0 && Array.isArray(v.itens) && v.itens.length > 0) {
+        custo = v.itens.reduce((acc, it) => {
+            const q = Number(it.qtd != null ? it.qtd : it.quantidade) || 0;
+            const c = Number(it.custo != null ? it.custo : (it.precoCusto || 0)) || 0;
+            return acc + (q * c);
+        }, 0);
+    }
+    return custo + (Number(v.taxaValor) || 0);
 }
 
 function atualizarDashboard() {
@@ -68,15 +132,15 @@ function executarCalculosDashboard() {
             dataFim.setHours(23,59,59,999);
             break;
         case 'mes':
-            dataIni = new Date(agora.getFullYear(), agora.getMonth(), 1);
+            dataIni = new Date(agora.getFullYear(), agora.getMonth(), 1, 0, 0, 0, 0);
             dataFim = new Date(agora.getFullYear(), agora.getMonth() + 1, 0, 23, 59, 59, 999);
             break;
         case '3m':
-            dataIni = new Date(agora.getFullYear(), agora.getMonth() - 3, 1);
+            dataIni = new Date(agora.getFullYear(), agora.getMonth() - 3, 1, 0, 0, 0, 0);
             dataFim = new Date(agora.getFullYear(), agora.getMonth() + 1, 0, 23, 59, 59, 999);
             break;
         case 'ano':
-            dataIni = new Date(agora.getFullYear(), 0, 1);
+            dataIni = new Date(agora.getFullYear(), 0, 1, 0, 0, 0, 0);
             dataFim = new Date(agora.getFullYear(), 11, 31, 23, 59, 59, 999);
             break;
         case 'tudo':
@@ -105,28 +169,29 @@ function executarCalculosDashboard() {
 
     const orcamentosTotais = (db.vendas || []).filter(v => {
         const tipo = String(v.tipo || '').toUpperCase();
-        return tipo === 'ORÇAMENTO' || tipo === 'ORCAMENTO';
+        const status = String(v.status || '').toUpperCase();
+        return (tipo === 'ORÇAMENTO' || tipo === 'ORCAMENTO') && status !== 'CANCELADA' && status !== 'CANCELADO';
     });
     
-    const vendasPeriodo = vendasTotais.filter(v => dentroDoPeriodo(v.data));
+    const vendasPeriodo = vendasTotais.filter(v => dentroDoPeriodo(getDataVenda(v)));
     const vendasHoje = vendasTotais.filter(v => {
-        const d = parseDataSegura(v.data);
+        const d = parseDataSegura(getDataVenda(v));
         if (!d) return false;
         return d.getFullYear() === hoje.getFullYear() &&
                d.getMonth() === hoje.getMonth() &&
                d.getDate() === hoje.getDate();
     });
 
-    const fatHoje = vendasHoje.reduce((a, b) => a + (Number(b.tot) || 0), 0);
-    const fatPeriodo = vendasPeriodo.reduce((a, b) => a + (Number(b.tot) || 0), 0);
-    const cmvPeriodo = vendasPeriodo.reduce((a, b) => a + (Number(b.custoTotal) || 0) + (Number(b.taxaValor) || 0), 0);
+    const fatHoje = vendasHoje.reduce((a, b) => a + getValorVenda(b), 0);
+    const fatPeriodo = vendasPeriodo.reduce((a, b) => a + getValorVenda(b), 0);
+    const cmvPeriodo = vendasPeriodo.reduce((a, b) => a + getCustoVenda(b), 0);
     const lucroBruto = fatPeriodo - cmvPeriodo;
     const qtdVendasPeriodo = vendasPeriodo.length;
     const ticketMedio = qtdVendasPeriodo > 0 ? (fatPeriodo / qtdVendasPeriodo) : 0;
     const margemBrutaPerc = fatPeriodo > 0 ? ((lucroBruto / fatPeriodo) * 100).toFixed(1).replace('.', ',') + '%' : '0,0%';
 
     // 2. ORÇAMENTOS PENDENTES
-    const orcamentosPendentes = orcamentosTotais.filter(v => dentroDoPeriodo(v.data)).length;
+    const orcamentosPendentes = orcamentosTotais.filter(v => dentroDoPeriodo(getDataVenda(v))).length;
 
     // 3. FINANCEIRO
     const contas = db.financeiro || [];
@@ -139,8 +204,8 @@ function executarCalculosDashboard() {
         if (status !== 'PAGO') return false;
         const cat = String(c.categoria || '').toLowerCase();
         if (cat.includes('transferência') || cat.includes('transferencia')) return false;
-        return dentroDoPeriodo(c.dataPagamento || c.data);
-    }).reduce((a, b) => a + (Number(b.valorPago || b.valor) || 0), 0);
+        return dentroDoPeriodo(c.dataPagamento || c.data || c.dataVencimento);
+    }).reduce((a, b) => a + (Number(b.valorPago != null ? b.valorPago : b.valor) || 0), 0);
 
     // Lucro Líquido Real = Lucro Bruto - Despesas Pagas no Período
     const lucroLiquidoReal = lucroBruto - despesasPeriodo;
@@ -153,13 +218,13 @@ function executarCalculosDashboard() {
     });
     const valorReceberTotal = aReceberTodas.reduce((a, b) => a + (Number(b.valor) || 0), 0);
     const aReceberVencidas = aReceberTodas.filter(c => {
-        const d = parseDataSegura(c.data);
+        const d = parseDataSegura(c.dataVencimento || c.data || c.vencimento);
         return d && d.getTime() < hoje.getTime();
     });
     const valorReceberVencido = aReceberVencidas.reduce((a, b) => a + (Number(b.valor) || 0), 0);
     const qtdReceberVencidas = aReceberVencidas.length;
 
-    const aReceberPeriodo = periodo === 'tudo' ? aReceberTodas : aReceberTodas.filter(c => dentroDoPeriodo(c.data));
+    const aReceberPeriodo = periodo === 'tudo' ? aReceberTodas : aReceberTodas.filter(c => dentroDoPeriodo(c.dataVencimento || c.data || c.vencimento));
     const valorReceberPeriodo = aReceberPeriodo.reduce((a, b) => a + (Number(b.valor) || 0), 0);
 
     // Contas a Pagar
@@ -170,13 +235,13 @@ function executarCalculosDashboard() {
     });
     const valorPagarTotal = aPagarTodas.reduce((a, b) => a + (Number(b.valor) || 0), 0);
     const aPagarVencidas = aPagarTodas.filter(c => {
-        const d = parseDataSegura(c.data);
+        const d = parseDataSegura(c.dataVencimento || c.data || c.vencimento);
         return d && d.getTime() < hoje.getTime();
     });
     const valorPagarVencido = aPagarVencidas.reduce((a, b) => a + (Number(b.valor) || 0), 0);
     const qtdPagarVencidas = aPagarVencidas.length;
 
-    const aPagarPeriodo = periodo === 'tudo' ? aPagarTodas : aPagarTodas.filter(c => dentroDoPeriodo(c.data));
+    const aPagarPeriodo = periodo === 'tudo' ? aPagarTodas : aPagarTodas.filter(c => dentroDoPeriodo(c.dataVencimento || c.data || c.vencimento));
     const valorPagarPeriodo = aPagarPeriodo.reduce((a, b) => a + (Number(b.valor) || 0), 0);
 
     const saldoCaixa = (db.caixa && db.caixa.saldo) ? Number(db.caixa.saldo) : 0;
@@ -288,24 +353,27 @@ function executarCalculosDashboard() {
 
     vendasPeriodo.forEach(v => {
         // Agrupar Clientes
-        const cNome = v.clienteNome || 'Cliente Não Identificado';
+        const cNome = v.clienteNome || (typeof v.cliente === 'string' ? v.cliente : (v.cliente && v.cliente.nome ? v.cliente.nome : '')) || v.nomeCliente || 'Consumidor Final';
         const cId = v.clienteId || cNome;
         if(!clienteVendas[cId]) {
             clienteVendas[cId] = { nome: cNome, compras: 0, receita: 0 };
         }
         clienteVendas[cId].compras++;
-        clienteVendas[cId].receita += Number(v.tot) || 0;
+        clienteVendas[cId].receita += getValorVenda(v);
 
         // Agrupar Produtos
         if(v.itens && Array.isArray(v.itens)) {
             v.itens.forEach(item => {
-                const pNome = item.nome || 'Produto Não Identificado';
-                const pId = item.id || pNome;
+                const pNome = item.nome || item.descricao || 'Produto Não Identificado';
+                const pId = item.id || item.produtoId || pNome;
                 if(!produtoVendas[pId]) {
                     produtoVendas[pId] = { nome: pNome, qtd: 0, receita: 0 };
                 }
-                produtoVendas[pId].qtd += Number(item.qtd) || 0;
-                produtoVendas[pId].receita += (Number(item.qtd) || 0) * (Number(item.preco) || 0);
+                const qItem = Number(item.qtd != null ? item.qtd : item.quantidade) || 0;
+                const prItem = Number(item.preco != null ? item.preco : (item.valorUnitario || item.valor || 0)) || 0;
+                const recItem = Number(item.subtotal) || (qItem * prItem);
+                produtoVendas[pId].qtd += qItem;
+                produtoVendas[pId].receita += recItem;
             });
         }
     });
@@ -794,26 +862,51 @@ function renderizarGraficos() {
     let dadosReceitas = [];
     let dadosDespesas = [];
 
+    const isMesmoDia = (dataVal, refDate) => {
+        const dObj = parseDataSegura(dataVal);
+        if (!dObj) return false;
+        return dObj.getFullYear() === refDate.getFullYear() &&
+               dObj.getMonth() === refDate.getMonth() &&
+               dObj.getDate() === refDate.getDate();
+    };
+
     for (let i = 6; i >= 0; i--) {
         let d = new Date();
         d.setDate(d.getDate() - i);
-        let dateStr = d.toISOString().split('T')[0];
         let diaMes = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
         categorias.push(diaMes);
 
         // Vendas no dia
-        let vDia = vendas.filter(v => v.data && v.data.startsWith(dateStr) && v.status !== 'Cancelada' && v.tipo !== 'ORÇAMENTO');
-        let totalVenda = Math.round(vDia.reduce((a, b) => a + (Number(b.tot) || 0), 0) * 100) / 100;
+        let vDia = vendas.filter(v => {
+            const tipo = String(v.tipo || '').toUpperCase();
+            if (tipo === 'ORÇAMENTO' || tipo === 'ORCAMENTO') return false;
+            const status = String(v.status || '').toUpperCase();
+            if (status === 'CANCELADA' || status === 'CANCELADO') return false;
+            return isMesmoDia(getDataVenda(v), d);
+        });
+        let totalVenda = Math.round(vDia.reduce((a, b) => a + getValorVenda(b), 0) * 100) / 100;
         dadosVendas.push(totalVenda);
 
         // Receitas no dia (PAGAS)
-        let rDia = contas.filter(c => (!c.tipo || c.tipo === 'RECEITA') && c.status === 'PAGO' && c.dataPagamento && c.dataPagamento.startsWith(dateStr));
-        let totalReceita = Math.round(rDia.reduce((a, b) => a + (Number(b.valor) || 0), 0) * 100) / 100;
+        let rDia = contas.filter(c => {
+            const tipo = String(c.tipo || 'RECEITA').toUpperCase();
+            const status = String(c.status || '').toUpperCase();
+            if (tipo !== 'RECEITA' || status !== 'PAGO') return false;
+            return isMesmoDia(c.dataPagamento || c.data, d);
+        });
+        let totalReceita = Math.round(rDia.reduce((a, b) => a + (Number(b.valorPago != null ? b.valorPago : b.valor) || 0), 0) * 100) / 100;
         dadosReceitas.push(totalReceita);
 
         // Despesas no dia (PAGAS)
-        let dDia = contas.filter(c => c.tipo === 'DESPESA' && c.status === 'PAGO' && c.dataPagamento && c.dataPagamento.startsWith(dateStr));
-        let totalDespesa = Math.round(dDia.reduce((a, b) => a + (Number(b.valor) || 0), 0) * 100) / 100;
+        let dDia = contas.filter(c => {
+            const tipo = String(c.tipo || '').toUpperCase();
+            const status = String(c.status || '').toUpperCase();
+            if (tipo !== 'DESPESA' || status !== 'PAGO') return false;
+            const cat = String(c.categoria || '').toLowerCase();
+            if (cat.includes('transferência') || cat.includes('transferencia')) return false;
+            return isMesmoDia(c.dataPagamento || c.data, d);
+        });
+        let totalDespesa = Math.round(dDia.reduce((a, b) => a + (Number(b.valorPago != null ? b.valorPago : b.valor) || 0), 0) * 100) / 100;
         dadosDespesas.push(totalDespesa);
     }
 
@@ -826,12 +919,12 @@ function renderizarGraficos() {
             categories: categorias,
             labels: { style: { colors: textColor } }
         },
-        yaxis: {
+        yaxis: { 
             decimalsInFloat: 0,
-            labels: {
+            labels: { 
                 style: { colors: textColor },
                 formatter: (val) => formatarMoedaEixoY(val)
-            }
+            } 
         }
     });
 
@@ -884,12 +977,12 @@ function renderizarGraficos() {
     let totalPago = receber.filter(c => c.status === 'PAGO').reduce((a,b) => a + (Number(b.valorPago || b.valor) || 0), 0);
     let totalAtrasado = receber.filter(c => {
         if (c.status !== 'PENDENTE') return false;
-        const d = parseDataSegura(c.data);
+        const d = parseDataSegura(c.dataVencimento || c.data || c.vencimento);
         return d && d.getTime() < hojeZero.getTime();
     }).reduce((a,b) => a + (Number(b.valor) || 0), 0);
     let totalPendenteDia = receber.filter(c => {
         if (c.status !== 'PENDENTE') return false;
-        const d = parseDataSegura(c.data);
+        const d = parseDataSegura(c.dataVencimento || c.data || c.vencimento);
         return d && d.getTime() >= hojeZero.getTime();
     }).reduce((a,b) => a + (Number(b.valor) || 0), 0);
 

@@ -32,12 +32,12 @@
     <meta name="apple-mobile-web-app-title" content="FC Gestão">
     <link rel="apple-touch-icon" href="../icons/icon-apple-touch.png">
     <link rel="icon" type="image/png" href="../icons/favicon.png">
-    <title>FC Móveis - ESTOQUE</title>
+    <title>FC Gestão - Estoque & Kardex</title>
         
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css?v=20260917145657">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260917145657">
+    <link rel="stylesheet" href="../style.css?v=20260918153826">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260918153826">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -84,7 +84,6 @@
                 <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
                 <a href="compras.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & NF-e XML</a>
                 <a href="relatorios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
-                <a href="estoque.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="estoque"><i class="fa-solid fa-pallet w-5 text-center"></i> Estoque & Kardex</a>
                 <a href="agenda.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="agenda"><i class="fa-regular fa-calendar w-5 text-center"></i> Agenda</a>
                 <a href="marketing.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="marketing"><i class="fa-solid fa-bullhorn w-5 text-center"></i> Marketing & Lembretes</a>
 
@@ -101,7 +100,7 @@
             <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
                 <div class="flex items-center gap-3">
                     <button onclick="toggleMenu()" class="md:hidden text-slate-600 dark:text-slate-300 hover:text-blue-600 p-2"><i class="fa-solid fa-bars text-xl"></i></button>
-                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate" id="header-title">Cadastros & Estoque</h2>
+                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate" id="header-title">Estoque & Kardex</h2>
                 </div>
                 <div class="flex items-center gap-2 md:gap-4">
                     <a href="operacao.html" class="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-3 md:px-4 py-2 rounded-lg font-bold text-xs md:text-sm flex items-center gap-2 transition-colors whitespace-nowrap"><i class="fa-solid fa-cart-shopping"></i> <span class="hidden sm:inline">Abrir PDV</span></a>
@@ -166,133 +165,27 @@
 
                 <!-- ESTOQUE / KARDEX -->
                 <div id="view-estoque" class="view-section max-w-7xl mx-auto space-y-6 active">
-                    <div class="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                        <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100">Kardex de Movimentações</h2>
-                        <p class="text-xs md:text-sm text-slate-500 dark:text-slate-400">Histórico de todas as entradas e saídas de estoque.</p>
-                    </div>
-                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                        <div class="overflow-x-auto custom-scrollbar">
-                            <table class="w-full text-left min-w-[600px]">
-                                <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold border-b border-slate-200 dark:border-slate-700">
-                                    <tr><th class="p-4">Data/Hora</th><th class="p-4">Tipo</th><th class="p-4">Produto</th><th class="p-4">Doc/Ref</th><th class="p-4 text-right">Qtd</th></tr>
-                                </thead>
-                                <tbody id="tabela-kardex" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
-                            </table>
+                    <div class="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100">Kardex de Movimentações</h2>
+                            <p class="text-xs md:text-sm text-slate-500 dark:text-slate-400">Histórico de todas as entradas e saídas de estoque.</p>
                         </div>
-                    </div>
-                </div>
-
-                <!-- CLIENTES -->
-                <div id="view-clientes" class="view-section hidden max-w-7xl mx-auto space-y-4 md:space-y-6 hidden">
-                    <div class="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 gap-3">
-                        <div class="relative w-full md:w-96">
-                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-sm"></i>
-                            <input type="text" id="busca-cliente-lista" placeholder="Buscar Cliente..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderClientes()">
-                        </div>
-                        <button onclick="abrirModalCliente()" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"><i class="fa-solid fa-user-plus text-lg"></i> Novo Cliente</button>
-                    </div>
-                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                        <div class="overflow-x-auto custom-scrollbar">
-                            <table class="w-full text-left min-w-[600px]">
-                                <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold border-b border-slate-200 dark:border-slate-700">
-                                    <tr>
-                                        <th class="p-3">Nome / Razão Social</th>
-                                        <th class="p-3">CPF / CNPJ</th>
-                                        <th class="p-3">Contato</th>
-                                        <th class="p-3">Cidade / UF</th>
-                                        <th class="p-3 text-center w-24">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tabela-clientes" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- FORNECEDORES -->
-                <div id="view-fornecedores" class="view-section hidden max-w-7xl mx-auto space-y-4 md:space-y-6 hidden">
-                    <div class="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 gap-3">
-                        <div class="relative w-full md:w-96">
-                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-sm"></i>
-                            <input type="text" id="busca-fornecedor-lista" placeholder="Buscar Fornecedor..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderFornecedores()">
-                        </div>
-                        <button onclick="abrirModalFornecedor()" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"><i class="fa-solid fa-truck-fast text-lg"></i> Novo Fornecedor</button>
-                    </div>
-                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                        <div class="overflow-x-auto custom-scrollbar">
-                            <table class="w-full text-left min-w-[600px]">
-                                <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold border-b border-slate-200 dark:border-slate-700">
-                                    <tr>
-                                        <th class="p-3">Razão Social</th>
-                                        <th class="p-3">CNPJ</th>
-                                        <th class="p-3">Contato / Telefone</th>
-                                        <th class="p-3 text-center w-24">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tabela-fornecedores" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
-                            </table>
-                        </div>`r
-                    </div>`r
-                </div>`r
-`r
-                <!-- PRODUTOS -->`r
-                <div id="view-produtos" class="view-section hidden max-w-7xl mx-auto space-y-4 md:space-y-6">
-
-                    <!-- BANNERS DE CADASTRO DE PRODUTOS -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        <!-- Botão Cadastro Manual -->
-                        <div class="bg-emerald-600 rounded-xl shadow-lg p-6 text-white flex flex-col items-center justify-center text-center relative overflow-hidden transition-transform hover:-translate-y-1">
-                            <div class="absolute -right-4 -bottom-4 opacity-10 pointer-events-none"><i class="fa-solid fa-box text-9xl"></i></div>
-                            <i class="fa-solid fa-plus-circle text-3xl md:text-4xl mb-3 text-emerald-200 relative z-10"></i>
-                            <h2 class="text-lg md:text-xl font-bold mb-1 relative z-10">Cadastro Manual</h2>
-                            <p class="text-emerald-200 text-[10px] md:text-xs mb-4 max-w-sm relative z-10">Cadastre um produto ou serviço preenchendo os dados um a um.</p>
-                            <button onclick="abrirModalProduto()" class="bg-white dark:bg-slate-800 text-emerald-700 px-5 py-2.5 rounded-lg font-bold shadow-md hover:bg-emerald-50 transition text-sm relative z-10">
-                                <i class="fa-solid fa-plus mr-1"></i> Novo Produto
-                            </button>
-                        </div>
-
-                        <!-- Botão Importar Planilha -->
-                        <div class="bg-indigo-600 rounded-xl shadow-lg p-6 text-white flex flex-col items-center justify-center text-center relative overflow-hidden transition-transform hover:-translate-y-1">
-                            <div class="absolute -right-4 -bottom-4 opacity-10 pointer-events-none"><i class="fa-solid fa-file-excel text-9xl"></i></div>
-                            <i class="fa-solid fa-file-import text-3xl md:text-4xl mb-3 text-indigo-200 relative z-10"></i>
-                            <h2 class="text-lg md:text-xl font-bold mb-1 relative z-10">Importar em Massa (Excel/CSV)</h2>
-                            <p class="text-indigo-200 text-[10px] md:text-xs mb-4 max-w-sm relative z-10">Baixe a planilha modelo, preencha no Excel e faça o upload no sistema.</p>
-                            <div class="flex gap-2 relative z-10">
-                                <button onclick="baixarPlanilhaModeloProduto()" class="bg-indigo-800 text-white px-4 py-2.5 rounded-lg font-bold shadow-md hover:bg-indigo-900 transition text-xs sm:text-sm">
-                                    <i class="fa-solid fa-download mr-1"></i> Baixar Modelo
-                                </button>
-                                <label class="bg-white dark:bg-slate-800 text-indigo-700 px-4 py-2.5 rounded-lg font-bold shadow-md cursor-pointer hover:bg-indigo-50 transition text-xs sm:text-sm">
-                                    <i class="fa-solid fa-upload mr-1"></i> Enviar Planilha
-                                    <input type="file" accept=".csv" onchange="processarPlanilhaProdutos(event)" class="hidden">
-                                </label>
+                        <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                            <div class="relative w-full sm:w-80">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+                                <input type="text" id="busca-kardex" placeholder="Buscar no Kardex..." oninput="renderKardex()" class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
                             </div>
+                            <select id="filtro-kardex-tipo" onchange="renderKardex()" class="w-full sm:w-auto bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 dark:text-white font-medium cursor-pointer">
+                                <option value="todos">Todos os Tipos</option>
+                                <option value="ENTRADA">Entradas</option>
+                                <option value="VENDA">Vendas</option>
+                                <option value="SAIDA">Saídas</option>
+                                <option value="AJUSTE">Ajustes</option>
+                            </select>
+                            <a href="relatorios.html#card-estoque-kardex" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors whitespace-nowrap shadow-sm" title="Abrir no Painel de Relatórios">
+                                <i class="fa-solid fa-chart-line"></i> Relatório & DRE
+                            </a>
                         </div>
-                    </div>
-
-                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                        <div class="overflow-x-auto custom-scrollbar">
-                            <table class="w-full text-left border-collapse min-w-[700px]">
-                                <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold border-b border-slate-200 dark:border-slate-700">
-                                    <tr>
-                                        <th class="p-3 w-16 text-center"><i class="fa-regular fa-image text-lg"></i></th>
-                                        <th class="p-3">Produto & Info</th>
-                                        <th class="p-3 text-right">Custo / Margem</th>
-                                        <th class="p-3 text-right">Preço Venda</th>
-                                        <th class="p-3 text-center">Estoque</th>
-                                        <th class="p-3 text-center">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tabela-produtos" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ESTOQUE / KARDEX -->
-                <div id="view-estoque" class="view-section max-w-7xl mx-auto space-y-6 active">
-                    <div class="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                        <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100">Kardex de Movimentações</h2>
-                        <p class="text-xs md:text-sm text-slate-500 dark:text-slate-400">Histórico de todas as entradas e saídas de estoque.</p>
                     </div>
                     <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                         <div class="overflow-x-auto custom-scrollbar">
@@ -354,33 +247,6 @@
                                     </tr>
                                 </thead>
                                 <tbody id="tabela-fornecedores" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- FUNCIONÁRIOS -->
-                <div id="view-funcionarios" class="view-section hidden max-w-7xl mx-auto space-y-4 md:space-y-6 hidden">
-                    <div class="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 gap-3">
-                        <div class="relative w-full md:w-96">
-                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-sm"></i>
-                            <input type="text" id="busca-funcionario-lista" placeholder="Buscar Funcionário..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderFuncionarios()">
-                        </div>
-                        <button onclick="abrirModalFuncionario()" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"><i class="fa-solid fa-user-plus text-lg"></i> Novo Funcionário</button>
-                    </div>
-                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                        <div class="overflow-x-auto custom-scrollbar">
-                            <table class="w-full text-left min-w-[600px]">
-                                <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold border-b border-slate-200 dark:border-slate-700">
-                                    <tr>
-                                        <th class="p-3">Nome do Colaborador</th>
-                                        <th class="p-3">Login / E-mail</th>
-                                        <th class="p-3">Cargo / É Vendedor</th>
-                                        <th class="p-3">Comissão</th>
-                                        <th class="p-3 text-center w-24">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tabela-funcionarios" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
                             </table>
                         </div>
                     </div>
@@ -887,10 +753,10 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20260917145657"></script>
-    <script src="../global.js?v=20260917145657"></script>
-    <script src="fc_cache.js?v=639253246088128532"></script>
-    <script src="estoque.js?v=20260917145657"></script>
+    <script src="../sistema/config_banco.js?v=20260918153826"></script>
+    <script src="../global.js?v=20260918153826"></script>
+    <script src="fc_cache.js?v=20260918153826"></script>
+    <script src="estoque.js?v=20260918153826"></script>
 </body>
 </html>
 
