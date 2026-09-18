@@ -173,7 +173,7 @@ function enviarWhatsAppMarketing(clienteId, link) {
     
     const hojeStr = formatarDataHoje();
     
-    firestore.collection('clientes').doc(clienteId).set({
+    window.getEmpresaRef().collection('clientes').doc(clienteId).set({
         lembrete_last_sent: hojeStr
     }, { merge: true }).then(() => {
         // Atualiza cache local e força re-render para ver o check "Enviado Hoje"
@@ -231,7 +231,7 @@ async function salvarLembrete() {
     const ativo = document.getElementById('lemb-ativo').checked;
     
     try {
-        await firestore.collection('clientes').doc(id).set({
+        await window.getEmpresaRef().collection('clientes').doc(id).set({
             lembrete_wpp: ativo,
             lembrete_msg: msg
         }, { merge: true });
@@ -248,7 +248,7 @@ async function removerLembrete(id) {
     if (!confirm('Deseja excluir este lembrete? O cliente não será excluído, apenas o lembrete diário será desativado.')) return;
     
     try {
-        await firestore.collection('clientes').doc(id).set({
+        await window.getEmpresaRef().collection('clientes').doc(id).set({
             lembrete_wpp: false,
             lembrete_msg: ''
         }, { merge: true });
@@ -339,28 +339,7 @@ window.gerarMarketingIA = async function() {
     resultadoContainer.innerHTML = '<div class="flex flex-col items-center justify-center text-blue-500 mt-10"><i class="fa-solid fa-spinner fa-spin text-4xl mb-3"></i><p>A Inteligência Artificial está escrevendo...</p></div>';
 
     try {
-        // 1. Busca a chave da API no banco de dados
-        const docSnap = await firestore.collection('fc_moveis').doc('config').get();
-        let apiKey = '';
-        if (docSnap.exists) {
-            const config = docSnap.data();
-            if (config.empresa && config.empresa.geminiKey) {
-                apiKey = config.empresa.geminiKey;
-            }
-        }
-        
-        if (!apiKey) {
-            resultadoContainer.innerHTML = `
-                <div class="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-lg">
-                    <p class="font-bold"><i class="fa-solid fa-triangle-exclamation"></i> Chave da API não encontrada.</p>
-                    <p class="text-sm mt-2">Você precisa configurar a chave do Gemini no menu <b>Sistema -> Configurações</b> para usar esta funcionalidade.</p>
-                </div>`;
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-bolt"></i> Gerar Ideias e Textos';
-            return;
-        }
-
-        // 2. Monta o Prompt para a IA
+        // 1. Monta o Prompt para a IA
         const promptText = `Atue como um Assessor de Marketing Digital Especialista.
 Meu nicho de atuação é: "${nicho}".
 O objetivo desta campanha/postagem é: "${objetivo}".
@@ -374,83 +353,27 @@ Para cada ideia, forneça:
 
 Formate a resposta em HTML limpo. Use <h3> para os títulos das ideias, <p> para os textos, <strong> para negrito e <ul><li> para listas. Não use markdown de código na saída, apenas o HTML puro.`;
 
-        // Lista de modelos recomendados pela API (começando pelo recomendado gemini-1.5-flash, e caindo para versões "lite" se os servidores estiverem cheios)
-        const modelosParaTentar = ['gemini-1.5-flash', 'gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-pro-latest'];
-        let response = null;
-        let lastErrorText = "";
-        
-        for (const modelo of modelosParaTentar) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`;
-            try {
-                response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
-                });
-                
-                if (response.ok) {
-                    break; // Sucesso, sai do loop
-                } else {
-                    lastErrorText = await response.text();
-                    // Se o erro for de demanda (high demand) ou limite (429), tenta o próximo modelo
-                    if (response.status === 503 || response.status === 429) {
-                        continue;
-                    }
-                    break; // Outro tipo de erro, sai e mostra pro usuário
-                }
-            } catch (e) {
-                lastErrorText = e.toString();
-                // erro de rede, tenta o próximo
-            }
-        }
+        // 2. Chama a IA centralizada do SaaS
+        const respostaTexto = await window.chamarGemini(promptText);
 
-        if (!response || !response.ok) {
-            let errMsg = "Erro desconhecido ou Servidores do Google sobrecarregados.";
-            try {
-                const errJson = JSON.parse(lastErrorText);
-                if (errJson.error && errJson.error.message) errMsg = errJson.error.message;
-            } catch(e) {
-                if (lastErrorText) errMsg = lastErrorText;
-            }
-            
-            let modelosDisp = "";
-            try {
-                const mResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-                if (mResp.ok) {
-                    const mJson = await mResp.json();
-                    if(mJson.models) {
-                        modelosDisp = "<br><br><strong>Modelos disponíveis nesta chave:</strong><br>" + mJson.models.filter(m => m.name.includes("gemini")).map(m => m.name.replace('models/','')).join(', ');
-                    }
-                }
-            } catch (e) { console.error("Erro interno:", e); }
-            
+        if (!respostaTexto) {
             resultadoContainer.innerHTML = `
-            <div class="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-4 rounded-xl text-sm mb-4">
-                <strong><i class="fa-solid fa-triangle-exclamation mr-2"></i>Erro ao consultar IA.</strong><br><br>
-                ${errMsg}${modelosDisp}<br><br>
-                Os servidores do Google Gemini podem estar sobrecarregados. Tente novamente em alguns minutos.
-            </div>`;
+                <div class="bg-amber-500/10 text-amber-400 p-4 rounded-xl text-sm border border-amber-500/20">
+                    <p class="font-bold"><i class="fa-solid fa-triangle-exclamation"></i> Inteligência Artificial Não Habilitada ou Indisponível</p>
+                    <p class="text-xs mt-1">O recurso de IA do Gemini é gerenciado centralmente pela administração do SaaS. Verifique se o módulo está liberado no seu plano ou contate o suporte.</p>
+                </div>`;
             btn.disabled = false;
             btn.innerHTML = '<i class="fa-solid fa-bolt"></i> Gerar Ideias e Textos';
             return;
         }
 
-        const data = await response.json();
-        // 4. Extrai a resposta
-        let textResult = data.candidates[0].content.parts[0].text;
-        const modeloUsado = data.model || 'Gemini IA'; // Extrai o modelo que retornou o sucesso
-        
-        // Remove blocos de markdown html se a IA colocar
-        textResult = textResult.replace(/```html/g, '').replace(/```/g, '');
-        
-        // Adiciona um aviso discreto sobre o modelo no rodapé do resultado
-        const infoModeloHtml = `<div class="mt-8 pt-4 border-t border-slate-100 dark:border-slate-700 text-xs text-slate-400 text-right italic"><i class="fa-solid fa-microchip mr-1"></i> Respondido por ${modeloUsado.replace('models/', '')}</div>`;
-        
+        let textResult = respostaTexto.replace(/```html/g, '').replace(/```/g, '');
+        const infoModeloHtml = `<div class="mt-8 pt-4 border-t border-slate-100 dark:border-slate-700 text-xs text-slate-400 text-right italic"><i class="fa-solid fa-robot mr-1"></i> Inteligência Artificial SaaS Master</div>`;
         resultadoContainer.innerHTML = textResult + infoModeloHtml;
-        
-        // --- 5. Salva no Banco de Dados para Histórico ---
+
+        // 3. Salva no Banco de Dados para Histórico
         try {
-            await firestore.collection('marketing_historico').add({
+            await window.getEmpresaRef().collection('marketing_historico').add({
                 nicho: nicho,
                 objetivo: objetivo,
                 resultado_html: textResult,
@@ -516,7 +439,7 @@ async function carregarHistoricoMarketing() {
         dataLimite.setDate(dataLimite.getDate() - 30); // 30 dias atrás
         
         // Busca todos
-        const snapshot = await firestore.collection('marketing_historico')
+        const snapshot = await window.getEmpresaRef().collection('marketing_historico')
             .orderBy('data_geracao', 'desc')
             .get();
             

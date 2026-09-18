@@ -306,11 +306,11 @@ async function salvarProduto() {
             const idStr = String(id).trim();
             const oldP = db.produtos.find(x => String(x.id).trim() === idStr);
             const difEstoque = p.estoque - (oldP ? oldP.estoque : 0);
-            await firestore.collection('produtos').doc(idStr).set(p, { merge: true });
+            await window.getEmpresaRef().collection('produtos').doc(idStr).set(p, { merge: true });
             if (difEstoque !== 0) salvarKardex('Ajuste Manual', idStr, p.nome, difEstoque, 'AJUSTE');
             showToast('Produto Atualizado!');
         } else {
-            const docRef = await firestore.collection('produtos').add(p);
+            const docRef = await window.getEmpresaRef().collection('produtos').add(p);
             if (p.estoque > 0) salvarKardex('Estoque Inicial', docRef.id, p.nome, p.estoque, 'INICIAL');
             showToast('Produto Criado!', 'success');
         }
@@ -327,7 +327,7 @@ async function editarProduto(id) {
     
     if (!p) {
         try {
-            const snap = await firestore.collection('produtos').doc(idStr).get();
+            const snap = await window.getEmpresaRef().collection('produtos').doc(idStr).get();
             if (snap.exists) {
                 p = { id: snap.id, ...snap.data() };
                 db.produtos.push(p);
@@ -372,7 +372,7 @@ async function editarProduto(id) {
 function excluirProduto(id) {
     abrirConfirmacao('Excluir Produto', 'Remover produto permanentemente?', async () => {
         try {
-            await firestore.collection('produtos').doc(id).delete();
+            await window.getEmpresaRef().collection('produtos').doc(id).delete();
             showToast('Produto excluído!');
         } catch (e) {
             showToast('Erro ao excluir', 'error');
@@ -442,10 +442,10 @@ async function salvarCliente() {
 
     try {
         if (id) {
-            await firestore.collection('clientes').doc(String(id)).set(c, { merge: true });
+            await window.getEmpresaRef().collection('clientes').doc(String(id)).set(c, { merge: true });
             showToast('Cliente atualizado!', 'success');
         } else {
-            await firestore.collection('clientes').add(c);
+            await window.getEmpresaRef().collection('clientes').add(c);
             showToast('Cliente cadastrado!', 'success');
         }
         fecharModalCliente();
@@ -464,7 +464,7 @@ async function editarCliente(id) {
     // Se não encontrou (cache vazio), busca diretamente no Firestore
     if (!c) {
         try {
-            const snap = await firestore.collection('clientes').doc(idStr).get();
+            const snap = await window.getEmpresaRef().collection('clientes').doc(idStr).get();
             if (snap.exists) {
                 c = { id: snap.id, ...snap.data() };
                 db.clientes.push(c);
@@ -495,7 +495,7 @@ async function editarCliente(id) {
 function excluirCliente(id) {
     abrirConfirmacao('Excluir Cliente', 'Remover cliente?', async () => {
         try {
-            await firestore.collection('clientes').doc(id).delete();
+            await window.getEmpresaRef().collection('clientes').doc(id).delete();
             showToast('Cliente Excluído!');
         } catch (e) { showToast('Erro', 'error'); }
     });
@@ -547,8 +547,8 @@ async function salvarFornecedor() {
     };
 
     try {
-        if (id) { await firestore.collection('fornecedores').doc(id).update(f); }
-        else { await firestore.collection('fornecedores').add(f); }
+        if (id) { await window.getEmpresaRef().collection('fornecedores').doc(id).update(f); }
+        else { await window.getEmpresaRef().collection('fornecedores').add(f); }
         fecharModalFornecedor();
         showToast('Fornecedor Salvo!', 'success');
     } catch (e) { showToast('Erro', 'error'); }
@@ -568,7 +568,7 @@ function editarFornecedor(id) {
 function excluirFornecedor(id) {
     abrirConfirmacao('Excluir', 'Isso não apagará as Notas. Continuar?', async () => {
         try {
-            await firestore.collection('fornecedores').doc(id).delete();
+            await window.getEmpresaRef().collection('fornecedores').doc(id).delete();
             showToast('Excluído!');
         } catch (e) { showToast('Erro', 'error'); }
     });
@@ -720,11 +720,11 @@ async function processarPlanilhaProdutos(event) {
                 }
 
                 if (!existe) {
-                    const docRef = firestore.collection('produtos').doc();
+                    const docRef = window.getEmpresaRef().collection('produtos').doc();
                     batch.set(docRef, { nome, ean, categoria, marca, custo, margem, preco, estoque, min, foto: '', ativo: true });
 
                     if (estoque > 0) {
-                        const karRef = firestore.collection('movimentacoes').doc();
+                        const karRef = window.getEmpresaRef().collection('movimentacoes').doc();
                         batch.set(karRef, { data: new Date().toISOString(), ref: "Importação de Planilha", prodId: docRef.id, prodNome: nome, qtd: estoque, tipo: "INICIAL" });
                     }
                     produtosAdicionados++;
@@ -903,7 +903,20 @@ async function salvarFuncionario() {
             await secApp.auth().signOut();
             
             obj.id = uid;
-            await firestore.collection('funcionarios').doc(uid).set(obj);
+            // 1. Salva na gaveta da empresa ativa
+            await window.getEmpresaRef().collection('funcionarios').doc(uid).set(obj);
+            
+            // 2. Salva no índice global de usuários para o login identificar a empresa dele
+            const empAtiva = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+            await firestore.collection('usuarios').doc(uid).set({
+                email: email,
+                empresaId: empAtiva,
+                role: obj.isAdmin ? 'admin' : 'operador',
+                nome: obj.nome,
+                criadoPor: firebase.auth().currentUser ? firebase.auth().currentUser.uid : null,
+                dataCriacao: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
             showToast('Funcionário e acesso criados com sucesso!', 'success');
             
         } else {
@@ -914,7 +927,7 @@ async function salvarFuncionario() {
                 // Como workaround, o usuário pode usar a recuperação de senha na tela de login.
             }
             
-            await firestore.collection('funcionarios').doc(id).set(obj, { merge: true });
+            await window.getEmpresaRef().collection('funcionarios').doc(id).set(obj, { merge: true });
             showToast('Funcionário atualizado com sucesso!', 'success');
         }
         
@@ -934,7 +947,7 @@ async function salvarFuncionario() {
 function excluirFuncionario(id) {
     abrirConfirmacao('Excluir Funcionário', 'ATENÇÃO: O cadastro será apagado do sistema, mas a conta de login continuará ativa no Firebase (devido a restrições de segurança do cliente). O usuário não poderá mais acessar o sistema. Continuar?', async () => {
         try {
-            await firestore.collection('funcionarios').doc(id).delete();
+            await window.getEmpresaRef().collection('funcionarios').doc(id).delete();
             showToast('Funcionário excluído! Acesso revogado.', 'success');
             renderFuncionarios();
         } catch (e) {

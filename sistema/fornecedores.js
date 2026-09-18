@@ -137,8 +137,8 @@ async function salvarFornecedor() {
     };
 
     try {
-        if (id) { await firestore.collection('fornecedores').doc(id).update(f); }
-        else { await firestore.collection('fornecedores').add(f); }
+        if (id) { await window.getEmpresaRef().collection('fornecedores').doc(id).update(f); }
+        else { await window.getEmpresaRef().collection('fornecedores').add(f); }
         fecharModalFornecedor();
         showToast('Fornecedor Salvo!', 'success');
     } catch (e) { showToast('Erro', 'error'); }
@@ -175,7 +175,7 @@ function editarFornecedor(id) {
 function excluirFornecedor(id) {
     abrirConfirmacao('Excluir', 'Isso não apagará as Notas. Continuar?', async () => {
         try {
-            await firestore.collection('fornecedores').doc(id).delete();
+            await window.getEmpresaRef().collection('fornecedores').doc(id).delete();
             showToast('Excluído!', 'success');
         } catch (e) { showToast('Erro', 'error'); }
     });

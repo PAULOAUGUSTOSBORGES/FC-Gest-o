@@ -214,13 +214,73 @@ document.addEventListener('DOMContentLoaded', function () {
         headerActions.prepend(headerBtn);
     }
 
+    // 3. Botão SINCRONIZAR no Header (Repositório Local com Firebase)
+    if (headerActions && !document.getElementById('header-btn-sync')) {
+        const syncBtn = document.createElement('button');
+        syncBtn.id = 'header-btn-sync';
+        syncBtn.type = 'button';
+        syncBtn.onclick = function() {
+            if (window.FCCache && typeof window.FCCache.sincronizarComFirebase === 'function') {
+                window.FCCache.sincronizarComFirebase();
+            } else if (typeof window.showToast === 'function') {
+                window.showToast('Repositório local já atualizado.', 'info');
+            }
+        };
+        syncBtn.className = 'h-9 px-2.5 sm:px-3 flex items-center gap-1.5 sm:gap-2 rounded-lg bg-slate-700 hover:bg-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-[11px] sm:text-xs font-bold tracking-wider transition-all cursor-pointer shadow-sm select-none border border-slate-600 shrink-0';
+        syncBtn.title = 'Sincronizar banco de dados local com o Firebase';
+        syncBtn.innerHTML = `
+            <span id="header-btn-sync-text">SINCRONIZAR</span>
+            <span id="header-btn-sync-box" class="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded bg-white/10 text-white text-xs">
+                <i id="header-btn-sync-icon" class="fa-solid fa-arrows-rotate"></i>
+            </span>
+            <span id="header-btn-sync-badge" class="hidden px-1.5 py-0.2 text-[10px] font-bold bg-amber-500 text-slate-900 rounded-full">0</span>
+        `;
+        headerActions.prepend(syncBtn);
+    }
+
     _atualizarBotaoTemaSistema();
 });
 
 
 
 // As credenciais e inicialização do Firebase agora vêm de sistema/config_banco.js
+
 const firestore = firebase.firestore();
+
+// --- INICIO MULTI-TENANT ---
+window.getEmpresaRef = function() {
+    const empId = localStorage.getItem('fc_empresa_ativa');
+    if (!empId) {
+        console.error("Nenhuma empresa ativa encontrada no login!");
+        // Fallback temporario para nao quebrar em sessoes antigas
+        return firestore.collection('empresas').doc('emp_fc_moveis');
+    }
+    return firestore.collection('empresas').doc(empId);
+};
+// --- FIM MULTI-TENANT ---
+
+// Interceptar chamadas HTTPS para enviar empId automaticamente para as funções do Backend
+if (typeof firebase !== 'undefined' && firebase.functions) {
+    const _origFunctions = firebase.functions;
+    firebase.functions = function(...args) {
+        const fnInstance = _origFunctions.apply(this, args);
+        if (fnInstance && !fnInstance._interceptorEmpIdAtivo) {
+            const _origCallable = fnInstance.httpsCallable.bind(fnInstance);
+            fnInstance.httpsCallable = function(name, options) {
+                const callable = _origCallable(name, options);
+                return async function(data) {
+                    const payload = (typeof data === 'object' && data !== null) ? { ...data } : {};
+                    if (!payload.empId) {
+                        payload.empId = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+                    }
+                    return callable(payload);
+                };
+            };
+            fnInstance._interceptorEmpIdAtivo = true;
+        }
+        return fnInstance;
+    };
+}
 
 // ATIVAR MODO OFFLINE (Apenas em ambiente HTTP/HTTPS com servidor)
 if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
@@ -482,7 +542,9 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
 
         // Se já está logado e abriu a tela de login, vai direto para o sistema
         if (isLoginPage) {
-            window.location.href = 'index.html';
+            if (!window._fazendoLogin) {
+                window.location.href = 'index.html';
+            }
             return;
         }
 
@@ -501,8 +563,63 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
         }
 
         // Sessão do mesmo dia válida: mantém ativa sem deslogar por inatividade
+        const ultimoUid = localStorage.getItem('fc_sessao_uid');
+        if (ultimoUid && ultimoUid !== user.uid) {
+            console.log("Troca de usuário detectada! Limpando cache do navegador...");
+            sessionStorage.clear();
+            localStorage.removeItem('fc_empresa_ativa');
+        }
+
         localStorage.setItem('fc_sessao_data', hoje);
         localStorage.setItem('fc_sessao_uid', user.uid);
+
+        // Busca ou valida a empresa deste usuário no Firestore
+        let empId = localStorage.getItem('fc_empresa_ativa');
+        if (!empId) {
+            try {
+                const uDoc = await firestore.collection('usuarios').doc(user.uid).get();
+                if (uDoc.exists && uDoc.data().empresaId) {
+                    empId = uDoc.data().empresaId;
+                    localStorage.setItem('fc_empresa_ativa', empId);
+                } else if (user.email === 'fabricadecoresgoiania@gmail.com') {
+                    empId = 'emp_fc_moveis';
+                    localStorage.setItem('fc_empresa_ativa', empId);
+                }
+            } catch(e) {
+                console.error("Erro ao resolver empresa do usuário:", e);
+                if (user.email === 'fabricadecoresgoiania@gmail.com') {
+                    empId = 'emp_fc_moveis';
+                    localStorage.setItem('fc_empresa_ativa', empId);
+                }
+            }
+        }
+
+        // 3. Verificação de Bloqueio por Inadimplência e Carregamento de Plano SaaS
+        if (empId) {
+            try {
+                const empDoc = await firestore.collection('empresas').doc(empId).get();
+                if (empDoc.exists) {
+                    const empData = empDoc.data();
+                    window.currentEmpresaData = empData;
+
+                    if (user.email !== 'fabricadecoresgoiania@gmail.com' && user.email !== 'pauloaugusto.silvaborges@gmail.com') {
+                        if (empData.status === 'BLOQUEADO') {
+                            sessionStorage.clear();
+                            localStorage.removeItem('fc_empresa_ativa');
+                            alert('O acesso da sua empresa está suspenso temporariamente por pendência financeira. Entre em contato com o suporte.');
+                            await auth.signOut();
+                            window.location.href = 'login.html';
+                            return;
+                        }
+                    }
+
+                    // Aplica controle real dos módulos contratados pelo plano da loja
+                    aplicarControleDeModulosSaaS(empData, user);
+                }
+            } catch (errBloq) {
+                console.warn("Aviso ao checar empresa:", errBloq);
+            }
+        }
 
         // Inicia monitor para detectar quando der meia-noite
         iniciarMonitorSessaoDiaria();
@@ -534,8 +651,8 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
             const sincronizarFirebase = async () => {
                 try {
                     const [confSnap, userSnap] = await Promise.all([
-                        firestore.collection("fc_moveis").doc("config").get().catch(e => { console.error("Erro ao carregar config:", e); return null; }),
-                        firestore.collection("funcionarios").doc(user.uid).get().catch(e => { console.error("Erro de permissões:", e); return null; })
+                        window.getEmpresaRef().collection('configuracoes').doc('config').get().catch(e => { console.error("Erro ao carregar config:", e); return null; }),
+                        window.getEmpresaRef().collection("funcionarios").doc(user.uid).get().catch(e => { console.error("Erro de permissões:", e); return null; })
                     ]);
 
                     if (confSnap && confSnap.exists) {
@@ -550,7 +667,7 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                         };
                         if (typeof window.FCCache !== 'undefined') window.FCCache.set('fc_moveis_config', db.config);
                     } else if (confSnap && !confSnap.exists) {
-                        await firestore.collection("fc_moveis").doc("config").set(db.config).catch(() => {});
+                        await window.getEmpresaRef().collection('configuracoes').doc('config').set(db.config).catch(() => {});
                     }
 
                     if (userSnap && userSnap.exists) {
@@ -565,7 +682,7 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                             window.currentUserInfo.perm_gestao = true;
                             window.currentUserInfo.perm_config = true;
                             
-                            firestore.collection("funcionarios").doc(user.uid).update({
+                            window.getEmpresaRef().collection("funcionarios").doc(user.uid).update({
                                 isAdmin: true,
                                 perm_dashboard: true,
                                 perm_pdv: true,
@@ -593,7 +710,7 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                         }
 
                         try {
-                            await firestore.collection('funcionarios').doc(user.uid).set({
+                            await window.getEmpresaRef().collection('funcionarios').doc(user.uid).set({
                                 nome: window.currentUserInfo.isAdmin ? "Administrador" : "NOVO CADASTRO", 
                                 email: user.email || '', 
                                 isAdmin: window.currentUserInfo.isAdmin,
@@ -738,6 +855,126 @@ function aplicarControleDeAcesso() {
     }
 }
 
+// =======================================================
+// CONTROLE REAL DE MÓDULOS CONTRATADOS DO PLANO SAAS
+// =======================================================
+function aplicarControleDeModulosSaaS(empData, user) {
+    if (!empData) return;
+
+    // Super admins têm acesso total irrestrito
+    if (user.email === 'fabricadecoresgoiania@gmail.com' || user.email === 'pauloaugusto.silvaborges@gmail.com') {
+        window.modulosLiberadosEmpresa = ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'site', 'ia', 'suporte'];
+        return;
+    }
+
+    // Se houver modulosLiberados definidos na empresa pelo Fundador, usa eles
+    let mods = empData.modulosLiberados;
+    if (!mods || !Array.isArray(mods) || mods.length === 0) {
+        const plano = (empData.plano || '').toUpperCase();
+        if (plano.includes('START') || plano.includes('BASICO') || plano === 'FREE') {
+            mods = ['pdv', 'vendas', 'estoque'];
+        } else if (plano.includes('PRO') || plano.includes('PROFISSIONAL')) {
+            mods = ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'site'];
+        } else if (plano.includes('ENTERPRISE') || plano.includes('ILIMITADO')) {
+            mods = ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'site', 'ia'];
+        } else {
+            mods = ['pdv', 'vendas', 'estoque', 'financeiro'];
+        }
+    }
+    window.modulosLiberadosEmpresa = mods;
+
+    const path = window.location.pathname.toLowerCase();
+
+    // Mapeamento de páginas para seus módulos obrigatórios
+    const mapaPaginas = [
+        { rotas: ['fiscal.html'], modulo: 'fiscal', nome: 'Emissor Fiscal (NF-e/NFC-e)' },
+        { rotas: ['financeiro.html', 'compras.html', 'gestao.html'], modulo: 'financeiro', nome: 'Gestão Financeira & DRE' },
+        { rotas: ['pdv.html', 'caixa.html'], modulo: 'pdv', nome: 'Frente de Caixa (PDV)' },
+        { rotas: ['vendas_operacao.html', 'vendas_gestao.html', 'orcamentos.html', 'operacao.html'], modulo: 'vendas', nome: 'Histórico de Vendas & Orçamentos' },
+        { rotas: ['produtos.html', 'cadastro.html', 'estoque.html', 'clientes.html', 'fornecedores.html'], modulo: 'estoque', nome: 'Produtos, Estoque & Cadastros' },
+        { rotas: ['marketing.html'], modulo: 'site', nome: 'Marketing & Loja Online' }
+    ];
+
+    // 1. Bloqueia a página se o módulo correspondente não estiver contratado
+    for (const item of mapaPaginas) {
+        const estaNaRota = item.rotas.some(r => path.endsWith('/' + r) || path.endsWith(r));
+        if (estaNaRota && !mods.includes(item.modulo)) {
+            bloquearPaginaPorPlanoSaaS(item.nome, empData.plano || 'Atual');
+            return;
+        }
+    }
+
+    // 2. Bloqueia visualmente os itens da barra lateral
+    setTimeout(() => {
+        atualizarMenuLateralPorPlanoSaaS(mods);
+    }, 100);
+}
+
+function bloquearPaginaPorPlanoSaaS(nomeModulo, nomePlano) {
+    const main = document.querySelector('main');
+    if (!main) return;
+
+    main.innerHTML = `
+        <div class="flex flex-col items-center justify-center min-h-[70vh] text-center p-6">
+            <div class="w-20 h-20 bg-amber-500/15 text-amber-400 border border-amber-500/30 rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-amber-500/10 text-3xl">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <h2 class="text-2xl font-black text-slate-800 dark:text-white mb-2">Módulo Não Habilitado no seu Plano</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400 max-w-md mb-6 leading-relaxed">
+                O recurso <strong class="text-amber-400 font-bold">${nomeModulo}</strong> não faz parte do pacote contratado pela sua loja (<strong>${nomePlano}</strong>).
+            </p>
+            <div class="flex items-center gap-3">
+                <a href="index.html" class="px-5 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-arrow-left"></i> Voltar ao Painel
+                </a>
+                <a href="https://wa.me/5562999999999?text=${encodeURIComponent('Olá Paulo Augusto! Gostaria de fazer o upgrade do plano da minha loja para liberar o módulo ' + nomeModulo)}" target="_blank" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-600 hover:to-yellow-500 text-slate-950 text-xs font-extrabold transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2">
+                    <i class="fa-brands fa-whatsapp text-sm"></i> Falar com a Administração
+                </a>
+            </div>
+        </div>
+    `;
+}
+
+function atualizarMenuLateralPorPlanoSaaS(modulosLiberados) {
+    const mapaLinks = [
+        { href: 'fiscal.html', modulo: 'fiscal', nome: 'Fiscal NF-e' },
+        { href: 'financeiro.html', modulo: 'financeiro', nome: 'Financeiro' },
+        { href: 'compras.html', modulo: 'financeiro', nome: 'Compras' },
+        { href: 'pdv.html', modulo: 'pdv', nome: 'PDV' },
+        { href: 'vendas_operacao.html', modulo: 'vendas', nome: 'Vendas' },
+        { href: 'orcamentos.html', modulo: 'vendas', nome: 'Orçamentos' },
+        { href: 'produtos.html', modulo: 'estoque', nome: 'Produtos' },
+        { href: 'clientes.html', modulo: 'estoque', nome: 'Clientes' },
+        { href: 'marketing.html', modulo: 'site', nome: 'Loja Online' }
+    ];
+
+    mapaLinks.forEach(item => {
+        const links = document.querySelectorAll(`aside a[href*="${item.href}"]`);
+        links.forEach(link => {
+            if (!modulosLiberados.includes(item.modulo)) {
+                link.classList.add('opacity-40', 'cursor-not-allowed');
+                link.classList.remove('hover:bg-slate-800');
+                if (!link.querySelector('.badge-modulo-bloqueado')) {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge-modulo-bloqueado ml-auto text-[10px] text-amber-400/80 font-bold';
+                    badge.innerHTML = '<i class="fa-solid fa-lock text-[9px]"></i>';
+                    link.appendChild(badge);
+                }
+                link.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (typeof showToast === 'function') {
+                        showToast(`O módulo ${item.nome} não está incluso no plano da sua loja. Fale com a administração para ativar!`, 'warning');
+                    } else {
+                        alert(`O módulo ${item.nome} não está incluso no plano da sua loja. Fale com a administração para ativar!`);
+                    }
+                };
+            }
+        });
+    });
+}
+
+
 function mostrarNomeUsuarioNoHeader(nome) {
     const header = document.querySelector('header');
     if (!header) return;
@@ -806,7 +1043,7 @@ document.addEventListener('click', (e) => {
 
 async function salvarKardex(ref, prodId, prodNome, qtd, tipo) {
     try {
-        await firestore.collection('movimentacoes').add({
+        await window.getEmpresaRef().collection('movimentacoes').add({
             data: new Date().toISOString(), ref, prodId, prodNome, qtd, tipo
         });
     } catch (e) {
@@ -821,6 +1058,8 @@ function saveDB() {
 async function fazerLogout() {
     localStorage.removeItem('fc_sessao_data');
     localStorage.removeItem('fc_sessao_uid');
+    localStorage.removeItem('fc_empresa_ativa');
+    sessionStorage.clear();
     // Limpa todo o cache ao fazer logout para garantir que outro usuário
     // não veja dados em cache do usuário anterior
     if (typeof window.FCCache !== 'undefined') {
@@ -835,6 +1074,32 @@ async function fazerLogout() {
 }
 window.fazerLogout = fazerLogout;
 window.logout = fazerLogout;
+
+// Funções da Loja Virtual Multi-Tenant
+window.gerarLinkLojaVirtual = function() {
+    const empId = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+    const baseUrl = window.location.href.split('/sistema/')[0] + '/site/index.html';
+    return `${baseUrl}?loja=${encodeURIComponent(empId)}`;
+};
+
+window.copiarLinkLojaVirtual = function() {
+    const link = window.gerarLinkLojaVirtual();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link).then(() => {
+            if (typeof showToast === 'function') showToast('Link da sua loja virtual copiado com sucesso!', 'success');
+            else alert('Link copiado: ' + link);
+        }).catch(() => {
+            prompt('Copie o link da sua loja:', link);
+        });
+    } else {
+        prompt('Copie o link da sua loja:', link);
+    }
+};
+
+window.abrirMinhaLojaVirtual = function() {
+    const link = window.gerarLinkLojaVirtual();
+    window.open(link, '_blank');
+};
 
 function toggleMenu() {
     const sidebar = document.getElementById('sidebar');
@@ -893,24 +1158,80 @@ function aplicarTema() {
 
 window.chamarGemini = async function(prompt) {
     try {
-        let apiKey = '';
-        try {
-            const docSnap = await firebase.firestore().collection('fc_moveis').doc('config').get();
-            if (docSnap.exists) {
-                const config = docSnap.data();
-                apiKey = (config.empresa && config.empresa.geminiKey) || config.geminiApiKey || '';
+        // 1. Verifica se a loja contratou o módulo de IA no plano
+        const user = firebase.auth().currentUser;
+        const isMaster = user && (user.email === 'pauloaugusto.silvaborges@gmail.com' || user.email === 'fabricadecoresgoiania@gmail.com');
+        const mods = window.modulosLiberadosEmpresa;
+
+        // Se for o Fundador ou Super Admin, liberação total
+        // Se for lojista, só bloqueia se modulosLiberados foi carregado e não contém 'ia'
+        if (!isMaster && Array.isArray(mods) && mods.length > 0 && !mods.includes('ia')) {
+            if (typeof showToast === 'function') {
+                showToast("O módulo de Inteligência Artificial não está incluso no plano da sua loja. Fale com a administração para ativar!", 'warning');
             }
-        } catch (e) {
-            console.warn("Aviso: Não foi possível obter a chave do Firestore.", e);
+            return null;
+        }
+
+        // 2. Busca da Chave da API com alta redundância:
+        let apiKey = '';
+        if (window.currentEmpresaData && window.currentEmpresaData.geminiKey) {
+            apiKey = window.currentEmpresaData.geminiKey;
+        } else if (typeof db !== 'undefined' && db.config && db.config.empresa && db.config.empresa.geminiKey) {
+            apiKey = db.config.empresa.geminiKey;
+        }
+
+        // 2.1 Busca na Chave Mestra Global configurada pelo Fundador no Master
+        if (!apiKey) {
+            try {
+                const saasSnap = await firebase.firestore().collection('saas_config').doc('master').get();
+                if (saasSnap.exists && saasSnap.data().geminiKeyMaster) {
+                    apiKey = saasSnap.data().geminiKeyMaster;
+                }
+            } catch (e) {
+                console.warn("Aviso ao buscar chave mestra do SaaS:", e);
+            }
+        }
+
+        // 2.2 Busca na empresa ativa do Firestore
+        if (!apiKey && typeof window.getEmpresaRef === 'function') {
+            try {
+                const empDoc = await window.getEmpresaRef().get();
+                if (empDoc.exists && empDoc.data().geminiKey) {
+                    apiKey = empDoc.data().geminiKey;
+                }
+            } catch(e) {}
+        }
+
+        // 2.3 Fallback nas configurações legadas (fc_moveis/config)
+        if (!apiKey) {
+            try {
+                const legacySnap = await firebase.firestore().collection('fc_moveis').doc('config').get();
+                if (legacySnap.exists) {
+                    const lData = legacySnap.data();
+                    apiKey = (lData.empresa && lData.empresa.geminiKey) || lData.geminiApiKey || '';
+                }
+            } catch(e) {}
         }
 
         if (!apiKey) {
-            throw new Error("Chave API do Gemini não configurada.");
+            console.warn("Chave Gemini não localizada.");
+            if (typeof showToast === 'function') {
+                showToast("A Chave de Inteligência Artificial ainda não foi configurada no sistema.", 'warning');
+            }
+            return null;
         }
 
-        const modelosParaTentar = ['gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-pro-latest'];
-        let lastErrorText = "";
-        
+        // 3. Execução com os modelos operacionais da Google
+        const modelosParaTentar = [
+            'gemini-3.5-flash-lite',
+            'gemini-flash-lite-latest',
+            'gemini-3.5-flash',
+            'gemini-3.8-flash',
+            'gemini-3.6-flash',
+            'gemini-3.7-flash',
+            'gemini-flash-latest'
+        ];
+
         for (const modelo of modelosParaTentar) {
             try {
                 const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`, {
@@ -918,19 +1239,20 @@ window.chamarGemini = async function(prompt) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                 });
-                
+
                 if (response.ok) {
                     const data = await response.json();
-                    return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
+                    const txt = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (txt) return txt;
                 }
             } catch (e) {
-                // Tenta o próximo
+                // Tenta o próximo modelo
             }
         }
         return null;
     } catch (e) {
         console.error("Erro ao chamar IA Gemini:", e);
-        return null; // Retorna nulo para que quem chamou possa tratar (mostrar erro na tela)
+        return null;
     }
 };
 
@@ -1005,10 +1327,10 @@ window.excluirVenda = function(id) {
                     v.itens.forEach(item => { 
                         const p = (window.db.produtos || []).find(prod => String(prod.id) === String(item.id)); 
                         if(p) { 
-                            const pRef = firestore.collection('produtos').doc(String(p.id));
+                            const pRef = window.getEmpresaRef().collection('produtos').doc(String(p.id));
                             batch.update(pRef, { estoque: firebase.firestore.FieldValue.increment(Number(item.qtd || 1)) });
                             
-                            const kardexRef = firestore.collection('movimentacoes').doc();
+                            const kardexRef = window.getEmpresaRef().collection('movimentacoes').doc();
                             batch.set(kardexRef, {
                                 data: new Date().toISOString(),
                                 ref: 'Estorno (Exclusão) ' + (v.tipo || 'Venda') + ' #' + numPedStr,
@@ -1021,7 +1343,7 @@ window.excluirVenda = function(id) {
                     }); 
                 }
                 
-                const finQuery = await firestore.collection('financeiro').where('origemVendaId', '==', String(id)).get();
+                const finQuery = await window.getEmpresaRef().collection('financeiro').where('origemVendaId', '==', String(id)).get();
                 finQuery.docs.forEach(doc => {
                     batch.delete(doc.ref);
                 });
@@ -1049,12 +1371,12 @@ window.excluirVenda = function(id) {
                         valor: valorDinheiroEfetivo 
                     });
                     
-                    const caixaRef = firestore.collection('fc_moveis').doc('caixa');
+                    const caixaRef = window.getEmpresaRef().collection('caixa').doc('caixa_atual');
                     batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
                 }
             }
 
-            const vendaRef = firestore.collection('vendas').doc(String(id));
+            const vendaRef = window.getEmpresaRef().collection('vendas').doc(String(id));
             batch.delete(vendaRef);
 
             await batch.commit();

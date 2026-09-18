@@ -35,8 +35,8 @@
     <title>Configurações do Sistema</title>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css?v=20260916175501">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260916175501">
+    <link rel="stylesheet" href="../style.css?v=20260917145657">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260917145657">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -179,6 +179,29 @@
                                         <span id="badge-tema-light" class="hidden text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/40 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800"><i class="fa-solid fa-check mr-1"></i>Ativo</span>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- LINK DA LOJA VIRTUAL EXCLUSIVA -->
+                    <div class="bg-gradient-to-r from-blue-900/30 to-indigo-900/30 border border-blue-500/30 p-5 rounded-xl mb-6 shadow-sm">
+                        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                            <div>
+                                <h4 class="font-bold text-white text-base flex items-center gap-2">
+                                    <i class="fa-solid fa-store text-blue-400"></i> Sua Loja Virtual / Catálogo Online
+                                </h4>
+                                <p class="text-xs text-slate-300 mt-1">
+                                    Este é o link exclusivo do seu site com os seus produtos para enviar aos clientes ou colocar no Instagram.
+                                </p>
+                            </div>
+                            <div class="flex items-center gap-2 w-full md:w-auto">
+                                <input type="text" id="link-loja-virtual" readonly class="bg-slate-900/90 border border-slate-700 text-xs text-blue-300 px-3 py-2.5 rounded-lg select-all w-full md:w-72 font-mono">
+                                <button type="button" onclick="copiarLinkLojaVirtual()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-lg transition-colors shrink-0 flex items-center gap-1.5 shadow">
+                                    <i class="fa-solid fa-copy"></i> Copiar
+                                </button>
+                                <button type="button" onclick="abrirMinhaLojaVirtual()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-lg transition-colors shrink-0 flex items-center gap-1.5 shadow">
+                                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir Site
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -405,17 +428,18 @@
                         </div>
                     </div>
                     <!-- ================================================ -->
-                    <!-- CONFIGURAÇÕES DE IA (GEMINI) -->
+                    <!-- STATUS DE IA (GOOGLE GEMINI - GERENCIADO PELO SAAS) -->
                     <!-- ================================================ -->
                     <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mt-6">
-                        <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3"><i class="fa-solid fa-robot text-purple-600"></i> Inteligência Artificial (Google Gemini)</h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Insira sua Chave de API do Google AI Studio para habilitar o Assessor de Marketing Inteligente no sistema.</p>
-                        
-                        <div class="mb-4">
-                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Chave de API (Google AI Studio)</label>
-                            <input type="password" id="emp-gemini-key" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-purple-500 dark:text-white font-mono" placeholder="Cole sua chave (AIzaSy...) aqui">
-                            <p class="text-[10px] text-slate-500 mt-1"><a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-500 hover:underline"><i class="fa-solid fa-link"></i> Clique aqui para gerar sua chave gratuitamente</a></p>
+                        <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3 mb-3">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                <i class="fa-solid fa-robot text-purple-600"></i> Inteligência Artificial (Google Gemini)
+                            </h3>
+                            <span id="badge-status-ia-sistema" class="px-2.5 py-1 rounded-full text-xs font-bold bg-purple-500/10 text-purple-500 border border-purple-500/20 flex items-center gap-1.5">
+                                <i class="fa-solid fa-circle-check"></i> Gerenciada pelo SaaS
+                            </span>
                         </div>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Os recursos de Inteligência Artificial para sugestões de marketing, insights e análises operacionais são administrados e ativados centralmente pelo seu plano.</p>
                     </div>
                     <!-- ================================================ -->
                     <!-- PÁGINA DA LOJA ONLINE -->
@@ -550,9 +574,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
     
-    <script src="../sistema/config_banco.js?v=20260916175501"></script>
-    <script src="../global.js?v=20260916175501"></script>
-    <script src="fc_cache.js?v=20260916175501"></script>
-    <script src="sistema.js?v=20260916175501"></script>
+    <script src="../sistema/config_banco.js?v=20260917145657"></script>
+    <script src="../global.js?v=20260917145657"></script>
+    <script src="fc_cache.js?v=639253246190868591"></script>
+    <script src="sistema.js?v=20260917145657"></script>
 </body>
 </html>

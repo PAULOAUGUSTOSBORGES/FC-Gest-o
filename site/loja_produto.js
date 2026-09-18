@@ -2,9 +2,18 @@ let lojaConfig = {};
 let produtoUrlId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Pegar o ID da URL
+    // Pegar o ID da URL e a Loja Ativa
     const urlParams = new URLSearchParams(window.location.search);
     produtoUrlId = urlParams.get('id');
+    const empresaAtivaSite = urlParams.get('loja') || urlParams.get('empresa') || 'emp_fc_moveis';
+    window.empresaAtivaSite = empresaAtivaSite;
+
+    // Atualiza links de voltar para manter a loja ativa
+    document.querySelectorAll('a[href="index.html"], a[href="./index.html"]').forEach(link => {
+        if (empresaAtivaSite !== 'emp_fc_moveis') {
+            link.href = `index.html?loja=${encodeURIComponent(empresaAtivaSite)}`;
+        }
+    });
 
     if (!produtoUrlId) {
         mostrarNaoEncontrado();
@@ -74,16 +83,34 @@ window.atualizarIconesTema = atualizarIconesTema;
 
 async function initProduto() {
     try {
-        const configDoc = await firebase.firestore().collection('fc_moveis').doc('config').get();
-        if (configDoc.exists) {
+        const empresaAtiva = window.empresaAtivaSite || 'emp_fc_moveis';
+        let configDoc;
+        if (empresaAtiva === 'emp_fc_moveis') {
+            configDoc = await firebase.firestore().collection('empresas').doc('emp_fc_moveis').collection('configuracoes').doc('config').get();
+            if (!configDoc.exists) {
+                configDoc = await firebase.firestore().collection('fc_moveis').doc('config').get();
+            }
+        } else {
+            configDoc = await firebase.firestore().collection('empresas').doc(empresaAtiva).collection('configuracoes').doc('config').get();
+        }
+
+        if (configDoc && configDoc.exists) {
             const data = configDoc.data();
             lojaConfig = data.loja || {};
             aplicarConfiguracoesLoja(data.empresa || {});
         }
 
-        const prodDoc = await firebase.firestore().collection('produtos').doc(produtoUrlId).get();
+        let prodDoc;
+        if (empresaAtiva === 'emp_fc_moveis') {
+            prodDoc = await firebase.firestore().collection('empresas').doc('emp_fc_moveis').collection('produtos').doc(produtoUrlId).get();
+            if (!prodDoc.exists) {
+                prodDoc = await firebase.firestore().collection('produtos').doc(produtoUrlId).get();
+            }
+        } else {
+            prodDoc = await firebase.firestore().collection('empresas').doc(empresaAtiva).collection('produtos').doc(produtoUrlId).get();
+        }
         
-        if (!prodDoc.exists) {
+        if (!prodDoc || !prodDoc.exists) {
             mostrarNaoEncontrado();
             return;
         }

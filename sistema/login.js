@@ -17,17 +17,23 @@ function mudarAbaLogin(modo) {
     const tabRegister = document.getElementById('tab-register');
     const btnAcao = document.getElementById('btn-acao');
     const subtitulo = document.getElementById('subtitulo-form');
+    const inputEmpresa = document.getElementById('login-empresa');
+    const esqueciSenhaLink = document.getElementById('esqueci-senha-link');
 
     if (modo === 'login') {
         if (tabLogin) tabLogin.className = 'flex-1 pb-2 font-bold text-blue-600 border-b-2 border-blue-600 transition-colors';
         if (tabRegister) tabRegister.className = 'flex-1 pb-2 font-bold text-slate-400 border-b-2 border-transparent transition-colors hover:text-slate-600 dark:hover:text-slate-300';
         if (btnAcao) btnAcao.innerText = 'Entrar';
         if (subtitulo) subtitulo.innerText = 'Acesso ao sistema integrado';
+        if (inputEmpresa) inputEmpresa.classList.add('hidden');
+        if (esqueciSenhaLink) esqueciSenhaLink.classList.remove('hidden');
     } else {
         if (tabRegister) tabRegister.className = 'flex-1 pb-2 font-bold text-blue-600 border-b-2 border-blue-600 transition-colors';
         if (tabLogin) tabLogin.className = 'flex-1 pb-2 font-bold text-slate-400 border-b-2 border-transparent transition-colors hover:text-slate-600 dark:hover:text-slate-300';
         if (btnAcao) btnAcao.innerText = 'Criar Conta';
         if (subtitulo) subtitulo.innerText = 'Crie sua conta para solicitar acesso';
+        if (inputEmpresa) inputEmpresa.classList.remove('hidden');
+        if (esqueciSenhaLink) esqueciSenhaLink.classList.add('hidden');
     }
 }
 
@@ -59,6 +65,58 @@ async function fazerLogin() {
             const hoje = new Date().toDateString();
             localStorage.setItem('fc_sessao_data', hoje);
             localStorage.setItem('fc_sessao_uid', cred.user.uid);
+            
+            // Limpa qualquer resíduo de cache de outra conta
+            sessionStorage.clear();
+            if (typeof window.FCCache !== 'undefined') window.FCCache.invalidarTudo();
+
+            // Buscar empresa do usuario
+            try {
+                const userDoc = await firebase.firestore().collection('usuarios').doc(cred.user.uid).get();
+                if (userDoc.exists && userDoc.data().empresaId) {
+                    localStorage.setItem('fc_empresa_ativa', userDoc.data().empresaId);
+                } else if (cred.user.email === 'fabricadecoresgoiania@gmail.com') {
+                    // Fallback exclusivo para a conta master
+                    localStorage.setItem('fc_empresa_ativa', 'emp_fc_moveis');
+                } else {
+                    console.error("Usuário sem empresa registrada.");
+                    showToast('Conta sem loja vinculada. Crie uma nova conta.', 'error');
+                    await firebase.auth().signOut();
+                    window._fazendoLogin = false;
+                    btn.innerText = 'Entrar'; btn.disabled = false;
+                    return;
+                }
+            } catch(e) {
+                console.error("Erro ao buscar empresa do usuario", e);
+                if (cred.user.email === 'fabricadecoresgoiania@gmail.com') {
+                    localStorage.setItem('fc_empresa_ativa', 'emp_fc_moveis');
+                } else {
+                    showToast('Erro ao identificar sua loja: ' + e.message, 'error');
+                    await firebase.auth().signOut();
+                    window._fazendoLogin = false;
+                    btn.innerText = 'Entrar'; btn.disabled = false;
+                    return;
+                }
+            }
+
+            // Verificar se a empresa está com acesso bloqueado
+            const empAtivaFinal = localStorage.getItem('fc_empresa_ativa');
+            if (empAtivaFinal && cred.user.email !== 'fabricadecoresgoiania@gmail.com') {
+                try {
+                    const empDoc = await firebase.firestore().collection('empresas').doc(empAtivaFinal).get();
+                    if (empDoc.exists && empDoc.data().status === 'BLOQUEADO') {
+                        await firebase.auth().signOut();
+                        localStorage.removeItem('fc_empresa_ativa');
+                        sessionStorage.clear();
+                        window._fazendoLogin = false;
+                        btn.innerText = 'Entrar'; btn.disabled = false;
+                        showToast('O acesso desta empresa está temporariamente bloqueado por pendência financeira. Contate o suporte.', 'error');
+                        return;
+                    }
+                } catch (errCheck) {
+                    console.warn("Falha na checagem de status da empresa:", errCheck);
+                }
+            }
         }
         showToast('Acesso liberado! Entrando...', 'success');
         window.location.href = 'index.html';
@@ -75,9 +133,16 @@ async function fazerLogin() {
 }
 
 async function fazerCadastro() {
+    const nomeEmpresaInput = document.getElementById('login-empresa');
     const u = document.getElementById('login-user').value;
     const p = document.getElementById('login-pass').value;
+    const nomeEmpresa = nomeEmpresaInput ? nomeEmpresaInput.value.trim() : '';
     
+    if (!nomeEmpresa) {
+        showToast('Preencha o nome da sua Loja/Empresa!', 'error');
+        return;
+    }
+
     if(!u || !p) {
         showToast('Preencha os campos de e-mail e senha!', 'error');
         return;
@@ -90,16 +155,84 @@ async function fazerCadastro() {
     
     try {
         window._fazendoLogin = true;
+        sessionStorage.clear();
+        localStorage.removeItem('fc_empresa_ativa');
+        if (typeof window.FCCache !== 'undefined') window.FCCache.invalidarTudo();
+
         const btn = document.getElementById('btn-acao');
-        btn.innerText = 'Aguarde...'; btn.disabled = true;
+        btn.innerText = 'Criando Loja...'; btn.disabled = true;
+        
         const cred = await firebase.auth().createUserWithEmailAndPassword(u, p);
         if (cred && cred.user) {
+            const uid = cred.user.uid;
+            // Gerar empresaId unico
+            const empresaId = 'loja_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
+            
+            const db = firebase.firestore();
+            const batch = db.batch();
+            
+            // 1. Criar o documento global do usuario
+            batch.set(db.collection('usuarios').doc(uid), {
+                email: u,
+                empresaId: empresaId,
+                role: 'admin',
+                dataCriacao: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            // 2. Criar o documento da empresa
+            batch.set(db.collection('empresas').doc(empresaId), {
+                nomeEmpresa: nomeEmpresa,
+                donoUid: uid,
+                emailAcesso: u,
+                senhaAcesso: p,
+                status: 'TRIAL',
+                plano: 'FREE',
+                modulosLiberados: ['pdv', 'vendas', 'estoque'],
+                dataCriacao: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            // 3. Criar o perfil de funcionario admin dentro da empresa
+            batch.set(db.collection('empresas').doc(empresaId).collection('funcionarios').doc(uid), {
+                nome: 'Administrador',
+                email: u,
+                isAdmin: true,
+                perm_dashboard: true,
+                perm_pdv: true,
+                perm_cadastros: true,
+                perm_gestao: true,
+                perm_config: true,
+                status: 'ativo'
+            });
+
+            // 4. Configuracao inicial basica
+            batch.set(db.collection('empresas').doc(empresaId).collection('configuracoes').doc('config'), {
+                empresa: {
+                    nome: nomeEmpresa,
+                    fantasia: nomeEmpresa,
+                    cnpj: ''
+                },
+                pdv: {
+                    permite_estoque_negativo: false
+                }
+            });
+
+            // 5. Caixa zerado
+            batch.set(db.collection('empresas').doc(empresaId).collection('caixa').doc('caixa_atual'), {
+                status: 'fechado',
+                saldo: 0,
+                historico: [],
+                ultimaAtualizacao: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            await batch.commit();
+
             const hoje = new Date().toDateString();
             localStorage.setItem('fc_sessao_data', hoje);
-            localStorage.setItem('fc_sessao_uid', cred.user.uid);
+            localStorage.setItem('fc_sessao_uid', uid);
+            localStorage.setItem('fc_empresa_ativa', empresaId);
         }
-        showToast('Conta criada com sucesso! Entrando...', 'success');
-        window.location.href = 'index.html';
+        showToast('Loja criada com sucesso! Entrando...', 'success');
+        setTimeout(() => { window.location.href = 'index.html'; }, 1000);
     } catch (e) { 
         window._fazendoLogin = false;
         document.getElementById('btn-acao').innerText = 'Criar Conta'; document.getElementById('btn-acao').disabled = false;
