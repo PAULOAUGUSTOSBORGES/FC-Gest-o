@@ -10,67 +10,38 @@ let compraManualItens = [];
 const categoriasPagar = ['Fornecedores / Compras', 'Impostos (DAS, ICMS, etc)', 'Salários / Folha', 'Aluguel', 'Água', 'Energia', 'Internet / Telefonia', 'Contabilidade', 'Sistema / Software', 'IPTU', 'Outras Despesas'];
 const categoriasReceber = ['Vendas', 'Serviços', 'Outras Receitas'];
 
-// Evita o "piscar" da tela carregando as abas instantaneamente antes do Firebase
+// Navegação suave e scroll direto para cards de relatório (Histórico de Vendas, Kardex, etc.)
 document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
-    const view = urlParams.get('view') || 'relatorios';
-    if (typeof mudarVisaoLocal === 'function') mudarVisaoLocal(view);
+    const view = urlParams.get('view');
+    if (view === 'vendas_gestao' || view === 'vendas' || window.location.hash === '#card-historico-vendas') {
+        setTimeout(() => navegarParaHistoricoVendas(), 400);
+    } else if (view === 'estoque' || window.location.hash === '#card-estoque-kardex') {
+        setTimeout(() => { if (typeof navegarParaKardex === 'function') navegarParaKardex(); }, 400);
+    }
 });
 
-// ==========================================
-// 1. NAVEGAÇÃO E DASHBOARDS
-// ==========================================
+function navegarParaHistoricoVendas() {
+    const card = document.getElementById('card-historico-vendas');
+    if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        card.classList.add('ring-4', 'ring-blue-500/50');
+        setTimeout(() => {
+            card.classList.remove('ring-4', 'ring-blue-500/50');
+        }, 2000);
+    }
+}
+window.navegarParaHistoricoVendas = navegarParaHistoricoVendas;
+
 function mudarVisaoLocal(viewId) {
-    document.querySelectorAll('.view-section').forEach(el => { 
-        el.classList.add('hidden'); 
-        el.classList.remove('active'); 
-    });
-    
-    const v = document.getElementById(`view-${viewId}`);
-    if (v) { 
-        v.classList.remove('hidden'); 
-        v.classList.add('active'); 
+    if (viewId === 'vendas_gestao' || viewId === 'vendas') {
+        navegarParaHistoricoVendas();
+    } else if (viewId === 'estoque') {
+        if (typeof navegarParaKardex === 'function') navegarParaKardex();
     }
-    
-    document.querySelectorAll('.nav-btn[data-target]').forEach(btn => { 
-        btn.classList.remove('bg-blue-600', 'text-white'); 
-        btn.classList.add('text-slate-300'); 
-    });
-    
-    const activeBtn = document.querySelector(`.nav-btn[data-target="${viewId}"]`); 
-    if (activeBtn) { 
-        activeBtn.classList.remove('text-slate-300'); 
-        activeBtn.classList.add('bg-blue-600', 'text-white'); 
-    }
-    
-    if (window.innerWidth < 768) { 
-        const sidebar = document.getElementById('sidebar'); 
-        if (sidebar) sidebar.classList.add('-translate-x-full'); 
-        const overlay = document.getElementById('sidebar-overlay'); 
-        if (overlay) overlay.classList.add('hidden'); 
-    }
-    
-    if (viewId === 'financeiro') {
-        renderFinAbas('receber');
-        atualizarCardsFluxoDeCaixa(); 
-    }
-    if (viewId === 'relatorios') {
-        renderDashboard();
-        if(typeof carregarHistoricoRelatoriosIA === 'function') carregarHistoricoRelatoriosIA();
-    }
-    if (viewId === 'compras') renderComprasHist();
-    if (viewId === 'vendas') renderVendas();
 }
+window.mudarVisaoLocal = mudarVisaoLocal;
 
-function refreshCurrentView() {
-    const urlParams = new URLSearchParams(window.location.search);
-    let view = urlParams.get('view'); if (!view) view = 'relatorios';
-    mudarVisaoLocal(view);
-}
-
-// ==========================================
-// MIGRAÇÃO AUTOMÁTICA DO BANCO ANTIGO
-// ==========================================
 async function migrarDadosSeNecessario() {
     try {
         const comprasSnap = await window.getEmpresaRef().collection('compras').limit(1).get();
@@ -2576,6 +2547,9 @@ function renderDashboard() {
 
     // Relatório de Estoque & Kardex de Movimentações
     renderRelatorioEstoqueKardex();
+
+    // Relatório & Histórico Gerencial de Vendas
+    renderVendas();
 }
 
 // ==========================================
@@ -4260,6 +4234,36 @@ function abrirInfoRelatorio(tipo) {
     let conteudo = '';
 
     switch(tipo) {
+        case 'historico_vendas':
+            titulo = 'Relatório & Histórico Gerencial de Vendas';
+            conteudo = `
+                <div class="space-y-4">
+                    <p class="text-slate-700 dark:text-slate-200 font-medium">Este relatório gerencial detalha com precisão cirúrgica a lucratividade real de cada venda e serviço prestado pela sua empresa:</p>
+                    
+                    <div class="p-3 bg-emerald-50 dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800/60 rounded-xl space-y-1">
+                        <div class="font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-sack-dollar"></i> Lucro Líquido Real por Venda
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-300">Diferença entre o valor recebido pelo cliente e os custos diretos da mercadoria (CMV) somados às taxas de maquininhas de cartão ou intermediadores. Revela o lucro verdadeiro que cada pedido injetou no seu caixa.</p>
+                    </div>
+
+                    <div class="p-3 bg-blue-50 dark:bg-slate-900 border border-blue-200 dark:border-blue-800/60 rounded-xl space-y-1">
+                        <div class="font-bold text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-invoice-dollar"></i> DRE por Pedido (Auditoria Item a Item)
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-300">Ao clicar no ícone de visualização (olho) de qualquer venda, você acessa a ficha contábil do pedido com margens, markups, desconto aplicado e comprovante anexado, permitindo auditar a performance dos seus vendedores.</p>
+                    </div>
+
+                    <div class="p-3 bg-amber-50 dark:bg-slate-900 border border-amber-200 dark:border-amber-800/60 rounded-xl space-y-1">
+                        <div class="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-filter"></i> Filtros Segmentados
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-300">Permite cruzar vendas por forma de pagamento (PIX, Cartão, Dinheiro), tipo de operação (Venda vs Serviço) e períodos personalizados para conciliação contábil.</p>
+                    </div>
+                </div>
+            `;
+            break;
+
         case 'raio_x':
             titulo = 'Raio-X Diagnóstico Executivo & Termômetro de Equilíbrio';
             conteudo = `
@@ -4512,6 +4516,55 @@ function abrirInfoRelatorio(tipo) {
 }
 
 
+// ==========================================
+// HISTÓRICO DE VENDAS (GESTÃO) & AUDITORIA DE LUCRO
+// ==========================================
+
+function mudarPeriodoVendas(render = true) {
+    const p = document.getElementById('filtro-vendas-periodo') ? document.getElementById('filtro-vendas-periodo').value : null;
+    const customDiv = document.getElementById('vendas-datas-custom');
+    const ini = document.getElementById('filtro-vendas-ini');
+    const fim = document.getElementById('filtro-vendas-fim');
+    
+    if(!p || !ini || !fim) return;
+    
+    if(p === 'CUSTOM') {
+        if(customDiv) customDiv.classList.remove('hidden');
+        return;
+    }
+    
+    if(customDiv) customDiv.classList.add('hidden');
+    const hoje = new Date();
+    
+    const setDates = (d1, d2) => {
+        ini.value = d1.toISOString().split('T')[0];
+        fim.value = d2.toISOString().split('T')[0];
+    };
+    
+    if(p === 'MES') {
+        setDates(new Date(hoje.getFullYear(), hoje.getMonth(), 1), new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0));
+    } else if (p === 'HOJE') {
+        setDates(hoje, hoje);
+    } else if (p === 'ONTEM') {
+        const ontem = new Date(hoje); ontem.setDate(hoje.getDate() - 1);
+        setDates(ontem, ontem);
+    } else if (p === '7') {
+        const d = new Date(hoje); d.setDate(hoje.getDate() - 7);
+        setDates(d, hoje);
+    } else if (p === '30') {
+        const d = new Date(hoje); d.setDate(hoje.getDate() - 30);
+        setDates(d, hoje);
+    } else if (p === 'MES_ANT') {
+        setDates(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1), new Date(hoje.getFullYear(), hoje.getMonth(), 0));
+    } else if (p === 'ANO') {
+        setDates(new Date(hoje.getFullYear(), 0, 1), new Date(hoje.getFullYear(), 11, 31));
+    } else if (p === 'TUDO') {
+        ini.value = ''; fim.value = '';
+    }
+    
+    if(render && typeof renderVendas === 'function') renderVendas();
+}
+
 function renderVendas() {
     const buscaEl = document.getElementById('busca-vendas'); 
     const dataIniEl = document.getElementById('filtro-vendas-ini'); 
@@ -4538,42 +4591,226 @@ function renderVendas() {
     filtrados.sort((a,b) => new Date(b.data || 0) - new Date(a.data || 0));
 
     let totalLucro = 0;
+    let totalFaturamento = 0;
+    let totalCusto = 0;
     
-    document.getElementById('tabela-vendas-body').innerHTML = filtrados.map(v => {
-        try {
-            const custoTotalDaVenda = (Number(v.custoTotal) || 0) + (Number(v.taxaValor) || 0); 
-            const lucroDaVenda = (Number(v.tot) || 0) - custoTotalDaVenda; 
-            const margemDaVenda = (Number(v.tot) > 0) ? ((lucroDaVenda / Number(v.tot)) * 100) : 0;
-            const numPedStr = String(v.numeroPedido || v.id || '0').padStart(4, '0'); 
-            totalLucro += lucroDaVenda;
-            
-            const dataRender = v.data && typeof formatData === 'function' ? formatData(v.data).replace(',', '') : (v.data || '-'); 
-            const clienteRender = v.clienteNome || 'Desconhecido'; 
-            const vendRender = v.vendedor || '-'; 
-            const pagRender = v.pag || '-';
-            
-            const badgeTipo = v.tipo === 'SERVIÇO' ? `<span class="bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">SERVIÇO</span><br>` : `<span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">VENDA</span><br>`;
-            
-            return `
-            <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
-                <td class="p-3 text-slate-500 dark:text-slate-400 text-xs">${dataRender}</td>
-                <td class="p-3 font-mono font-bold text-slate-700 dark:text-slate-200">${badgeTipo}#${numPedStr}</td>
-                <td class="p-3 font-bold text-slate-800 dark:text-slate-100">${clienteRender} <br> <span class="text-[10px] text-slate-400 font-normal">Vend: ${vendRender}</span></td>
-                <td class="p-3"><span class="bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap">${pagRender}</span></td>
-                <td class="p-3 text-right font-black text-slate-700 dark:text-slate-200">${typeof formatMoney === 'function' ? formatMoney(v.tot || 0) : (v.tot || 0)}</td>
-                <td class="p-3 text-right font-bold text-red-500">-${typeof formatMoney === 'function' ? formatMoney(custoTotalDaVenda) : custoTotalDaVenda}</td>
-                <td class="p-3 text-right">
-                    <div class="font-black text-emerald-600">${typeof formatMoney === 'function' ? formatMoney(lucroDaVenda) : lucroDaVenda}</div>
-                    <div class="text-[10px] text-blue-500 dark:text-blue-400 font-bold mt-0.5">${margemDaVenda.toFixed(1)}% Margem</div>
-                </td>
-            </tr>`;
-        } catch (e) { console.error(e); return ''; }
-    }).join('') || '<tr><td colspan="7" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum registro encontrado com os filtros atuais.</td></tr>';
-    
+    const tbody = document.getElementById('tabela-vendas-body');
+    if (tbody) {
+        tbody.innerHTML = filtrados.map(v => {
+            try {
+                const fatVenda = Number(v.tot || v.total || v.valor || 0);
+                const custoTotalDaVenda = (Number(v.custoTotal) || 0) + (Number(v.taxaValor) || 0); 
+                const lucroDaVenda = fatVenda - custoTotalDaVenda; 
+                const margemDaVenda = (fatVenda > 0) ? ((lucroDaVenda / fatVenda) * 100) : 0;
+                const numPedStr = String(v.numeroPedido || v.id || '0').padStart(4, '0'); 
+                
+                totalFaturamento += fatVenda;
+                totalCusto += custoTotalDaVenda;
+                totalLucro += lucroDaVenda;
+                
+                const dataRender = v.data && typeof formatData === 'function' ? formatData(v.data).replace(',', '') : (v.data || '-'); 
+                const clienteRender = v.clienteNome || 'Consumidor'; 
+                const vendRender = v.vendedor || '-'; 
+                const pagRender = v.pag || '-';
+                
+                const badgeTipo = v.tipo === 'SERVIÇO' ? '<span class="bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">SERVIÇO</span><br>' : '<span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">VENDA</span><br>';
+                
+                return `
+                <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
+                    <td class="p-3 text-slate-500 dark:text-slate-400 text-xs">${dataRender}</td>
+                    <td class="p-3 font-mono font-bold text-slate-700 dark:text-slate-200">${badgeTipo}#${numPedStr}</td>
+                    <td class="p-3 font-bold text-slate-800 dark:text-slate-100">${clienteRender} <br> <span class="text-[10px] text-slate-400 font-normal">Vend: ${vendRender}</span></td>
+                    <td class="p-3"><span class="bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap">${pagRender}</span></td>
+                    <td class="p-3 text-right font-black text-slate-700 dark:text-slate-200">${typeof formatMoney === 'function' ? formatMoney(fatVenda) : fatVenda}</td>
+                    <td class="p-3 text-right font-bold text-red-500">-${typeof formatMoney === 'function' ? formatMoney(custoTotalDaVenda) : custoTotalDaVenda}</td>
+                    <td class="p-3 text-right">
+                        <div class="font-black text-emerald-600">${typeof formatMoney === 'function' ? formatMoney(lucroDaVenda) : lucroDaVenda}</div>
+                        <div class="text-[10px] text-blue-500 dark:text-blue-400 font-bold mt-0.5">${margemDaVenda.toFixed(1)}% Margem</div>
+                    </td>
+                    <td class="p-3 text-center no-print">
+                        <button type="button" onclick="verDetalhesVenda('${v.id}')" class="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer" title="Ver Detalhes do Documento">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            } catch (e) { console.error(e); return ''; }
+        }).join('') || '<tr><td colspan="8" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum registro encontrado com os filtros atuais.</td></tr>';
+    }
+
+    const margemGeral = totalFaturamento > 0 ? ((totalLucro / totalFaturamento) * 100) : 0;
+
+    // Atualiza mini KPIs do card
+    const kpiQtdEl = document.getElementById('vendas-card-kpi-qtd');
+    if (kpiQtdEl) kpiQtdEl.innerText = `${filtrados.length} ${filtrados.length === 1 ? 'pedido' : 'pedidos'}`;
+
+    const kpiFatEl = document.getElementById('vendas-card-kpi-total');
+    if (kpiFatEl) kpiFatEl.innerText = typeof formatMoney === 'function' ? formatMoney(totalFaturamento) : `R$ ${totalFaturamento.toFixed(2)}`;
+
+    const kpiCustoEl = document.getElementById('vendas-card-kpi-custo');
+    if (kpiCustoEl) kpiCustoEl.innerText = typeof formatMoney === 'function' ? formatMoney(totalCusto) : `R$ ${totalCusto.toFixed(2)}`;
+
+    const kpiLucroEl = document.getElementById('vendas-card-kpi-lucro');
+    if (kpiLucroEl) kpiLucroEl.innerText = typeof formatMoney === 'function' ? formatMoney(totalLucro) : `R$ ${totalLucro.toFixed(2)}`;
+
+    const kpiMargemEl = document.getElementById('vendas-card-kpi-margem');
+    if (kpiMargemEl) kpiMargemEl.innerText = `Margem média: ${margemGeral.toFixed(1)}%`;
+
+    const contadorEl = document.getElementById('vendas-contador-registros');
+    if (contadorEl) contadorEl.innerText = `${filtrados.length} ${filtrados.length === 1 ? 'venda' : 'vendas'}`;
+
     if (document.getElementById('vendas-total-filtros')) {
         document.getElementById('vendas-total-filtros').innerText = `Lucro Real Acumulado: ${typeof formatMoney === 'function' ? formatMoney(totalLucro) : totalLucro}`;
     }
 }
+
+function verDetalhesVenda(id) {
+    const v = (db.vendas || []).find(x => String(x.id) === String(id)); 
+    if(!v) return; 
+    
+    const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
+    let tipoTexto = v.tipo || 'VENDA';
+    
+    const cliEl = document.getElementById('det-venda-cliente');
+    const dataEl = document.getElementById('det-venda-data');
+    const pagEl = document.getElementById('det-venda-pag');
+    if (cliEl) cliEl.innerText = v.clienteNome || 'Consumidor'; 
+    if (dataEl) dataEl.innerText = `${v.data ? (typeof formatData === 'function' ? formatData(v.data).split(' ')[0] : v.data) : '-'} | #${numPedStr}`; 
+    if (pagEl) pagEl.innerText = tipoTexto === 'ORÇAMENTO' ? 'Orçamento' : (v.pag || '-'); 
+    
+    let osInfoHtml = '';
+    if (tipoTexto === 'SERVIÇO' && v.servicoDetalhes) {
+        let galeriaHtml = '';
+        if (v.servicoDetalhes.fotos && v.servicoDetalhes.fotos.length > 0) { 
+            galeriaHtml = `<p class="mt-2"><strong>Fotos de Referência:</strong></p><div class="flex gap-2 flex-wrap mt-1">${v.servicoDetalhes.fotos.map(f => `<img src="${f}" onclick="abrirZoom('${f}')" class="h-20 rounded border border-purple-300 cursor-zoom-in shadow-sm hover:opacity-80 transition" title="Clique para ampliar">`).join('')}</div>`; 
+        } else if (v.servicoDetalhes.foto) { 
+            galeriaHtml = `<p class="mt-2"><strong>Foto de Referência:</strong></p><img src="${v.servicoDetalhes.foto}" onclick="abrirZoom('${v.servicoDetalhes.foto}')" class="mt-1 h-24 rounded border border-purple-300 cursor-zoom-in shadow-sm hover:opacity-80 transition" title="Clique para ampliar">`; 
+        }
+        osInfoHtml = `
+            <div class="mt-4 bg-purple-50 dark:bg-purple-900/20 p-3 md:p-4 rounded-lg border border-purple-200 dark:border-purple-800/50 text-xs md:text-sm text-purple-900 dark:text-purple-200">
+                <h4 class="font-bold mb-2 uppercase text-purple-700 dark:text-purple-300 border-b border-purple-200 dark:border-purple-800/50 pb-2"><i class="fa-solid fa-clipboard-list"></i> Ficha da Ordem de Serviço</h4>
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <p><strong>Prazo de Entrega:</strong> ${v.servicoDetalhes.prazo ? v.servicoDetalhes.prazo.split('-').reverse().join('/') : 'Não informado'}</p>
+                    <p><strong>Garantia:</strong> ${v.servicoDetalhes.garantia || 'Nenhuma'}</p>
+                </div>
+                <p class="mb-2"><strong>Escopo / Diagnóstico:</strong><br> ${v.servicoDetalhes.desc || 'Nenhum detalhe adicional.'}</p>
+                ${galeriaHtml}
+            </div>`;
+    }
+    
+    const obsEl = document.getElementById('det-venda-obs');
+    if (obsEl) {
+        obsEl.innerHTML = (v.obs ? v.obs : '<span class="text-slate-400 italic">Nenhuma observação geral vinculada a esta venda.</span>') + osInfoHtml;
+    }
+    
+    let totalCusto = 0;
+    const itensEl = document.getElementById('det-venda-itens');
+    if (itensEl) {
+        itensEl.innerHTML = (v.itens || []).map(i => {
+            const preco = Number(i.preco) || 0;
+            const qtd = Number(i.qtd) || 1;
+            const custo = Number(i.custo) || 0;
+            
+            const subTot = preco * qtd;
+            const subCusto = custo * qtd;
+            const lucroSub = subTot - subCusto;
+            const margemSub = subTot > 0 ? ((lucroSub / subTot) * 100) : 0;
+            
+            totalCusto += subCusto;
+            
+            return `
+            <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800/50 transition-colors group">
+                <td class="p-4 border-b border-slate-100 dark:border-slate-800/50">
+                    <div class="font-bold text-slate-800 dark:text-slate-200 text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">${i.nome || 'Produto/Serviço'}</div>
+                    ${i.obsVenda ? `<div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 bg-slate-100 dark:bg-slate-800 inline-block px-2 py-0.5 rounded-md"><i class="fa-solid fa-note-sticky mr-1"></i>${i.obsVenda}</div>` : ''}
+                </td>
+                <td class="p-4 text-center border-b border-slate-100 dark:border-slate-800/50">
+                    <span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-black px-2.5 py-1 rounded-lg text-xs border border-slate-200 dark:border-slate-700">${qtd}</span>
+                </td>
+                <td class="p-4 text-right border-b border-slate-100 dark:border-slate-800/50">
+                    <div class="font-black text-slate-700 dark:text-slate-300 text-sm">${typeof formatMoney === 'function' ? formatMoney(preco) : preco}</div>
+                    <div class="text-[10px] text-red-500/80 dark:text-red-400/80 font-bold mt-0.5 bg-red-50 dark:bg-red-900/20 inline-block px-1.5 py-0.5 rounded border border-red-100 dark:border-red-800/30">Custo: ${typeof formatMoney === 'function' ? formatMoney(custo) : custo}</div>
+                </td>
+                <td class="p-4 text-right border-b border-slate-100 dark:border-slate-800/50">
+                    <div class="font-black text-slate-800 dark:text-white text-sm">${typeof formatMoney === 'function' ? formatMoney(subTot) : subTot}</div>
+                    <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5 bg-emerald-50 dark:bg-emerald-900/20 inline-block px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-800/30">Lucro: ${typeof formatMoney === 'function' ? formatMoney(lucroSub) : lucroSub} <span class="text-blue-500">(${margemSub.toFixed(1)}%)</span></div>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+    
+    const tot = Number(v.tot) || 0;
+    const taxaCartao = Number(v.taxaValor) || 0;
+    const taxaBoleto = Number(v.taxaBoleto) || 0;
+    const totalDespesas = taxaCartao + taxaBoleto;
+    const custoGeral = totalCusto + totalDespesas;
+    const lucroLiquido = tot - custoGeral;
+    const margemLiquidaReal = tot > 0 ? ((lucroLiquido / tot) * 100) : 0;
+    const markupReal = custoGeral > 0 ? ((lucroLiquido / custoGeral) * 100) : 0;
+    
+    const tfootEl = document.querySelector('#det-venda-tfoot');
+    if (tfootEl) {
+        let tfootHtml = `
+            <tr>
+                <td colspan="3" class="p-4 text-right font-bold text-slate-500 dark:text-slate-400 text-[11px] uppercase tracking-wider">Custo Total (Produtos/Serviços)</td>
+                <td class="p-4 text-right font-black text-red-500 dark:text-red-400 text-sm bg-red-50/50 dark:bg-red-900/10">- ${typeof formatMoney === 'function' ? formatMoney(totalCusto) : totalCusto}</td>
+            </tr>
+        `;
+        if (taxaCartao > 0) {
+            tfootHtml += `
+            <tr>
+                <td colspan="3" class="p-4 text-right font-bold text-slate-500 dark:text-slate-400 text-[11px] uppercase tracking-wider">Taxa de Cartão / Operadora</td>
+                <td class="p-4 text-right font-black text-red-500 dark:text-red-400 text-sm bg-red-50/50 dark:bg-red-900/10">- ${typeof formatMoney === 'function' ? formatMoney(taxaCartao) : taxaCartao}</td>
+            </tr>`;
+        }
+        tfootHtml += `
+            <tr class="border-t border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-800/50">
+                <td colspan="3" class="p-4 text-right font-black text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wide">Valor Bruto Total</td>
+                <td class="p-4 text-right font-black text-slate-900 dark:text-white text-lg">${typeof formatMoney === 'function' ? formatMoney(tot) : tot}</td>
+            </tr>
+            <tr class="bg-gradient-to-r from-emerald-50 to-emerald-100/50 dark:from-emerald-900/30 dark:to-emerald-900/10 border-t border-emerald-200 dark:border-emerald-800/50">
+                <td colspan="3" class="p-4 text-right font-black text-emerald-800 dark:text-emerald-400 text-sm uppercase tracking-wide">Lucro Líquido Real</td>
+                <td class="p-4 text-right font-black text-emerald-600 dark:text-emerald-400 text-xl shadow-sm">${typeof formatMoney === 'function' ? formatMoney(lucroLiquido) : lucroLiquido}</td>
+            </tr>
+            <tr class="bg-emerald-50/40 dark:bg-emerald-950/20 border-t border-emerald-100 dark:border-emerald-800/30">
+                <td colspan="3" class="p-3 text-right font-bold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider">Margem de Lucro Real / Markup</td>
+                <td class="p-3 text-right font-black text-sm">
+                    <span class="bg-emerald-100 dark:bg-emerald-800/60 text-emerald-800 dark:text-emerald-200 px-2 py-0.5 rounded font-black text-xs">${margemLiquidaReal.toFixed(2)}% Margem</span>
+                    <span class="text-[11px] text-blue-600 dark:text-blue-400 font-bold ml-1">(${markupReal.toFixed(2)}% MKP)</span>
+                </td>
+            </tr>
+        `;
+        tfootEl.innerHTML = tfootHtml;
+    }
+    
+    const m = document.getElementById('modal-detalhes-venda');
+    if (m) m.classList.remove('hidden');
+}
+
+function fecharModalDetalhesVenda() { 
+    const m = document.getElementById('modal-detalhes-venda');
+    if (m) m.classList.add('hidden'); 
+}
+
+function abrirZoom(url) {
+    let m = document.getElementById('modal-zoom-foto');
+    if (!m) {
+        m = document.createElement('div');
+        m.id = 'modal-zoom-foto';
+        m.className = 'fixed inset-0 bg-black/90 z-[600] hidden flex items-center justify-center p-4 cursor-pointer backdrop-blur-sm';
+        m.onclick = () => m.classList.add('hidden');
+        m.innerHTML = `<div class="relative max-w-4xl max-h-[90vh]"><img id="img-zoom-foto" src="" class="max-w-full max-h-[90vh] rounded-xl object-contain shadow-2xl"><button class="absolute -top-10 right-0 text-white text-3xl font-bold"><i class="fa-solid fa-xmark"></i></button></div>`;
+        document.body.appendChild(m);
+    }
+    const img = document.getElementById('img-zoom-foto');
+    if (img) img.src = url;
+    m.classList.remove('hidden');
+}
+
+window.mudarPeriodoVendas = mudarPeriodoVendas;
+window.renderVendas = renderVendas;
+window.verDetalhesVenda = verDetalhesVenda;
+window.fecharModalDetalhesVenda = fecharModalDetalhesVenda;
+window.abrirZoom = abrirZoom;
 
 
 

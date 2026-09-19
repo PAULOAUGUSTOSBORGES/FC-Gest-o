@@ -25,7 +25,7 @@ const BANCO_OFICIAL = {
 const BANCO_TESTES = {
     // PREENCHA AS CREDENCIAIS DE TESTE APENAS NO SEU AMBIENTE LOCAL.
     // NÃO FAÇA COMMIT DISSO PARA A PRODUÇÃO!
-    apiKey: "COLE_A_CHAVE_AQUI",
+    apiKey: "AIzaSyAvaDdhJSFP6WKs8UFRvlQmNGFlc1ZKgFk",
     authDomain: "fcgestao-testes.firebaseapp.com",
     projectId: "fcgestao-testes",
     storageBucket: "fcgestao-testes.firebasestorage.app",

@@ -70,3 +70,11 @@ node_modules/
 
 # Configurações do Banco
 sistema/config_banco.js
+
+# Arquivamento e backups locais
+_arquivados*
+_backup*
+scratch/
+
+*serviceAccountKey*.json
+

@@ -12,7 +12,14 @@ function inicializarFiscal() {
 
     // Listener para configurações da empresa
     const _listenDoc = (typeof window.fcListenDoc === 'function') ? window.fcListenDoc : function(col, id, cb) {
-        return firestore.collection(col).doc(id).onSnapshot(doc => cb(doc.exists ? doc.data() : null));
+        let ref;
+        if (typeof window.getEmpresaRef === 'function') {
+            if (col === 'fc_moveis' && id === 'config') ref = window.getEmpresaRef().collection('configuracoes').doc('config');
+            else ref = window.getEmpresaRef().collection(col).doc(id);
+        } else {
+            ref = firestore.collection(col).doc(id);
+        }
+        return ref.onSnapshot(doc => cb(doc.exists ? doc.data() : null));
     };
 
     _listenDoc('fc_moveis', 'config', function(dados) {
@@ -32,9 +39,17 @@ function inicializarFiscal() {
         }
     });
 
-    // Conectar listener de vendas
-    const _listenCol = (typeof window.fcListen === 'function') ? window.fcListen : function(col, cb) {
-        return firestore.collection(col).onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    // Conectar listener de vendas e coleções fiscais com suporte Multi-Tenant e Cache
+    const _listenCol = function(col, cb) {
+        if (typeof window.fcListenCollection === 'function') {
+            return window.fcListenCollection(col, cb, { realtime: true });
+        }
+        const ref = (typeof window.getEmpresaRef === 'function')
+            ? window.getEmpresaRef().collection(col)
+            : firestore.collection(col);
+        return ref.onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))), err => {
+            console.error(`[Fiscal] Erro no listener da coleção ${col}:`, err);
+        });
     };
 
     unsubscribeVendas = _listenCol('vendas', function(vendas) {
@@ -787,7 +802,10 @@ function mostrarErroSefaz(msgEnc) {
 }
 window.mostrarErroSefaz = mostrarErroSefaz;
 
-function atualizarTabelaFiscal() {
+async function atualizarTabelaFiscal() {
+    if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.sincronizarComFirebase === 'function') {
+        await window.FCCache.sincronizarComFirebase(true);
+    }
     processarNotasFiscais();
     renderNotasFiscais();
     showToast('Lista de notas fiscais sincronizada!', 'success');

@@ -7,7 +7,17 @@
       "**/.*",
       "**/node_modules/**",
       ".firebase/**",
-      "**/*.log"
+      "**/*.log",
+      "scripts/**",
+      "scratch/**",
+      "_backup*/**",
+      "_arquivados*/**",
+      "**/*.ps1",
+      "**/*.py",
+      "**/*.cs",
+      "**/*.exe",
+      "**/*.key",
+      "**/serviceAccountKey*.json"
     ],
     "headers": [
       {

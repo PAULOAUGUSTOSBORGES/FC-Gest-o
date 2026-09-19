@@ -26,7 +26,11 @@
         'vendas',
         'financeiro',
         'compras',
-        'movimentacoes'
+        'movimentacoes',
+        'notas_avulsas',
+        'notas_devolucao',
+        'notas_servico',
+        'caixa_fechamentos'
     ];
 
     // TTL de segurança (em ms) apenas para fallback de sincronização automática leve se desejado
@@ -809,6 +813,36 @@
         },
 
         /**
+         * Salva otimisticamente um item: atualiza memória viva, cache local e enfileira na fila offline
+         */
+        salvarOtimista: async function (colecao, docId, dados, operacao = 'set') {
+            const idStr = String(docId);
+            // 1. Atualiza memória global window.db
+            if (typeof window.db !== 'undefined' && Array.isArray(window.db[colecao])) {
+                const idx = window.db[colecao].findIndex(x => String(x.id) === idStr);
+                if (idx >= 0) {
+                    window.db[colecao][idx] = Object.assign({}, window.db[colecao][idx], dados, { id: docId });
+                } else {
+                    window.db[colecao].unshift(Object.assign({ id: docId }, dados));
+                }
+            }
+            // 2. Atualiza memória interna _memoria, session e IndexedDB
+            if (Array.isArray(_memoria[colecao])) {
+                const idx = _memoria[colecao].findIndex(x => String(x.id) === idStr);
+                if (idx >= 0) {
+                    _memoria[colecao][idx] = Object.assign({}, _memoria[colecao][idx], dados, { id: docId });
+                } else {
+                    _memoria[colecao].unshift(Object.assign({ id: docId }, dados));
+                }
+                _salvarSession(colecao, _memoria[colecao]);
+                await _idbSalvarColecao(colecao, _memoria[colecao]);
+            }
+            // 3. Enfileira operação na fila pendente para garantir persistência offline e contra concorrência
+            await _idbEnfileirar(colecao, docId, operacao, dados);
+            _atualizarBadgePendencias();
+        },
+
+        /**
          * Remove da fila pendente após confirmação de gravação
          */
         removerDaFila: function (colecao, docId) {
@@ -1105,6 +1139,9 @@
             }
         };
     };
+
+    // Alias global para compatibilidade retroativa com telas que chamam fcListen
+    window.fcListen = window.fcListenCollection;
 
     // ----------------------------------------------------------------------
     // 9. Hidratação Instantânea de `window.db`

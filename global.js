@@ -39,6 +39,16 @@ window.selecionarProdutoCustoBusca = function(nomeProd) {
 // ==========================================
 // 1. CONFIGURA??ES DO FIREBASE E SEGURAN?A
 // ==========================================
+// --- CARREGADOR AUTOMÁTICO DO CLIENTE DE LICENCIAMENTO SAAS MASTER ---
+if (typeof document !== 'undefined' && typeof window.consultarLicencaCentral !== 'function') {
+    try {
+        const s = document.createElement('script');
+        const basePath = window.location.pathname.includes('/sistema/') ? '' : 'sistema/';
+        s.src = basePath + 'saas_licenca.js';
+        document.head.appendChild(s);
+    } catch(e) {}
+}
+
 
 // --- KILL SWITCH DO SERVICE WORKER E CACHE ---
 // Adicionado para resolver o problema de loop infinito (cache travado).
@@ -680,12 +690,22 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
             }
         }
 
-        // 3. Verificação de Bloqueio por Inadimplência e Carregamento de Plano SaaS
+        // 3. Verificação de Bloqueio por Inadimplência e Carregamento de Plano SaaS (Integrado ao SaaS Master)
         if (empId) {
             try {
-                const empDoc = await firestore.collection('empresas').doc(empId).get();
-                if (empDoc.exists) {
-                    const empData = empDoc.data();
+                let empData = null;
+                // Consulta prioritária ao servidor central do SaaS Master
+                if (typeof window.consultarLicencaCentral === 'function') {
+                    empData = await window.consultarLicencaCentral(empId, 'fc_gestao');
+                }
+                
+                // Fallback para o banco local da empresa
+                if (!empData) {
+                    const empDoc = await firestore.collection('empresas').doc(empId).get();
+                    if (empDoc.exists) empData = empDoc.data();
+                }
+
+                if (empData) {
                     window.currentEmpresaData = empData;
 
                     if (user.email !== 'fabricadecoresgoiania@gmail.com' && user.email !== 'pauloaugusto.silvaborges@gmail.com') {

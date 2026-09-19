@@ -676,6 +676,25 @@ async function salvarProduto() {
 
     if (!nome || isNaN(preco)) return showToast('Preencha Nome e Preço de Venda!', 'error');
 
+    const idStr = id ? String(id).trim() : '';
+    const oldP = idStr ? (db.produtos || []).find(x => String(x.id).trim() === idStr) : null;
+
+    // Preservação segura de fotos existentes para não perder ao editar apenas texto
+    const fotoDigitada = document.getElementById('prod-foto-base64') ? document.getElementById('prod-foto-base64').value : '';
+    const fotoFinal = (fotosGaleria && fotosGaleria.length > 0 && fotosGaleria[0]) 
+        || fotoDigitada 
+        || (oldP ? (oldP.foto || (Array.isArray(oldP.fotos) ? oldP.fotos[0] : '')) : '') 
+        || '';
+
+    let fotosFinal = (fotosGaleria && fotosGaleria.length > 0) 
+        ? fotosGaleria 
+        : (oldP && Array.isArray(oldP.fotos) && oldP.fotos.length > 0 
+            ? oldP.fotos 
+            : (fotoFinal ? [fotoFinal] : []));
+
+    // Limita galeria em no máximo 3 fotos para manter tamanho de documento Firestore < 500KB
+    if (fotosFinal.length > 3) fotosFinal = fotosFinal.slice(0, 3);
+
     const p = {
         nome, preco,
         ean: document.getElementById('prod-ean').value,
@@ -689,8 +708,8 @@ async function salvarProduto() {
         min: parseInputMoney(document.getElementById('prod-minimo').value) || 0,
         ativo: document.getElementById('prod-ativo').value === 'true',
         obs: document.getElementById('prod-obs').value,
-        foto: fotosGaleria[0] || document.getElementById('prod-foto-base64').value || '',
-        fotos: fotosGaleria,
+        foto: fotoFinal,
+        fotos: fotosFinal,
         ncm: document.getElementById('prod-ncm') ? document.getElementById('prod-ncm').value : '',
         cfop: document.getElementById('prod-cfop') ? document.getElementById('prod-cfop').value : '',
         csosn: document.getElementById('prod-csosn') ? document.getElementById('prod-csosn').value : '',
@@ -702,22 +721,66 @@ async function salvarProduto() {
     };
 
     try {
-        if (id) {
-            const idStr = String(id).trim();
-            const oldP = db.produtos.find(x => String(x.id).trim() === idStr);
+        if (idStr) {
             const difEstoque = p.estoque - (oldP ? oldP.estoque : 0);
-            await window.getEmpresaRef().collection('produtos').doc(idStr).set(p, { merge: true });
+            const produtoCompleto = { ...p, id: idStr };
+
+            // 1. Atualização Otimista Imediata em Memória e Cache Local
+            if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.salvarOtimista === 'function') {
+                await window.FCCache.salvarOtimista('produtos', idStr, produtoCompleto, 'set');
+            } else {
+                if (Array.isArray(db.produtos)) {
+                    const idx = db.produtos.findIndex(x => String(x.id).trim() === idStr);
+                    if (idx >= 0) db.produtos[idx] = produtoCompleto;
+                    else db.produtos.unshift(produtoCompleto);
+                }
+                if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+                    window.FCCache.set('produtos', db.produtos);
+                }
+            }
+
+            // 2. Feedback visual instantâneo (sem delay de rede)
+            fecharModalProduto();
+            renderProdutos();
+            showToast('Produto Atualizado com sucesso!', 'success');
+
+            // 3. Persistência no Firestore em segundo plano
+            try {
+                await window.getEmpresaRef().collection('produtos').doc(idStr).set(p, { merge: true });
+                if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.removerDaFila === 'function') {
+                    await window.FCCache.removerDaFila('produtos', idStr);
+                }
+            } catch (nuvemErr) {
+                console.warn('[Produtos] Falha ao persistir na nuvem imediatamente (salvo na fila offline):', nuvemErr);
+            }
+
             if (difEstoque !== 0) salvarKardex('Ajuste Manual', idStr, p.nome, difEstoque, 'AJUSTE');
-            showToast('Produto Atualizado!');
         } else {
-            const docRef = await window.getEmpresaRef().collection('produtos').add(p);
-            if (p.estoque > 0) salvarKardex('Estoque Inicial', docRef.id, p.nome, p.estoque, 'INICIAL');
-            showToast('Produto Criado!', 'success');
+            const tempId = 'prod_' + Date.now();
+            const novoProduto = { ...p, id: tempId };
+
+            // Otimista imediato
+            if (Array.isArray(db.produtos)) db.produtos.unshift(novoProduto);
+            fecharModalProduto();
+            renderProdutos();
+            showToast('Produto Criado com sucesso!', 'success');
+
+            try {
+                const docRef = await window.getEmpresaRef().collection('produtos').add(p);
+                novoProduto.id = docRef.id;
+                if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.salvarOtimista === 'function') {
+                    await window.FCCache.salvarOtimista('produtos', docRef.id, novoProduto, 'set');
+                    await window.FCCache.removerDaFila('produtos', docRef.id);
+                }
+                if (p.estoque > 0) salvarKardex('Estoque Inicial', docRef.id, p.nome, p.estoque, 'INICIAL');
+                renderProdutos();
+            } catch (nuvemErr) {
+                console.warn('[Produtos] Erro ao cadastrar na nuvem, mantido localmente:', nuvemErr);
+            }
         }
-        fecharModalProduto();
     } catch (e) {
         showToast('Erro ao salvar produto: ' + (e.message || ''), 'error');
-        console.error(e);
+        console.error('Erro em salvarProduto:', e);
     }
 }
 

@@ -3,7 +3,7 @@
 // Cache inteligente, carregamento ultra-rápido e suporte Offline
 // ==============================================================
 
-const CACHE_NAME = 'fc-gestao-cache-v20';
+const CACHE_NAME = 'fc-gestao-cache-v22';
 
 // Arquivos do App Shell para pré-armazenamento em cache
 const SHELL_ASSETS = [
@@ -49,8 +49,6 @@ const SHELL_ASSETS = [
     '/sistema/compras.js',
     '/sistema/relatorios.html',
     '/sistema/relatorios_v2.js',
-    '/sistema/estoque.html',
-    '/sistema/estoque.js',
     '/sistema/agenda.html',
     '/sistema/agenda.js',
     '/sistema/marketing.html',

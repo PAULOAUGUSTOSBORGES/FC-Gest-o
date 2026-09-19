@@ -335,8 +335,8 @@ function executarCalculosDashboard() {
     
     const temProdutos = (Array.isArray(db.produtos) && db.produtos.length > 0) || window._produtosCarregados;
     if (temProdutos) {
-        setHtml('dash-valor-estoque', fM(valorTotalEstoqueCusto));
-        setHtml('dash-valor-estoque-sub', `Custo • Venda: ${fM(valorTotalEstoqueVenda)}`);
+        setHtml('dash-valor-estoque', fM(valorTotalEstoqueVenda));
+        setHtml('dash-valor-estoque-sub', `Preço de Custo: ${fM(valorTotalEstoqueCusto)}`);
     } else {
         setHtml('dash-valor-estoque', '<i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i>');
         setHtml('dash-valor-estoque-sub', 'Carregando estoque...');
@@ -477,14 +477,14 @@ function renderizarNotificacoes(prodVazios, prodBaixo, recVencidas, pagVencidas,
     }
 
     if (prodVazios > 0) {
-        alertas.push(`<div class="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800/50 rounded-lg flex gap-3 items-center cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors" onclick="window.location.href='cadastro.html?view=produtos'">
+        alertas.push(`<div class="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800/50 rounded-lg flex gap-3 items-center cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors" onclick="window.location.href='produtos.html'">
             <div class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0"><i class="fa-solid fa-box-open"></i></div>
             <div><p class="text-sm font-bold text-slate-800 dark:text-slate-100">${prodVazios} Produto(s) sem estoque</p><p class="text-xs text-slate-500 dark:text-slate-400">Reponha o estoque urgentemente.</p></div>
         </div>`);
     }
 
     if (prodBaixo > 0) {
-        alertas.push(`<div class="p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800/50 rounded-lg flex gap-3 items-center cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors" onclick="window.location.href='cadastro.html?view=produtos'">
+        alertas.push(`<div class="p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800/50 rounded-lg flex gap-3 items-center cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors" onclick="window.location.href='produtos.html'">
             <div class="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0"><i class="fa-solid fa-battery-quarter"></i></div>
             <div><p class="text-sm font-bold text-slate-800 dark:text-slate-100">${prodBaixo} Produto(s) acabando</p><p class="text-xs text-slate-500 dark:text-slate-400">Estoque atingiu o nível mínimo.</p></div>
         </div>`);
@@ -645,7 +645,7 @@ function abrirInfoDashboard(tipo) {
             break;
         case 'estoque_valor':
             titulo = 'Valor Total em Estoque';
-            conteudo = '<p class="mb-3">Patrimônio total da empresa imobilizado em mercadorias ativas.</p><ul class="list-disc pl-5 space-y-2"><li><b>Preço de Custo (Destaque):</b> Valor real investido na aquisição do estoque atual (Estoque x Custo Unitário).</li><li><b>Preço de Venda (Subtítulo):</b> Potencial bruto de faturamento caso todos os itens em estoque sejam vendidos ao preço de tabela.</li></ul>';
+            conteudo = '<p class="mb-3">Patrimônio total da empresa imobilizado em mercadorias ativas.</p><ul class="list-disc pl-5 space-y-2"><li><b>Preço de Venda (Destaque):</b> Potencial bruto de faturamento caso todos os itens em estoque sejam vendidos ao preço de tabela.</li><li><b>Preço de Custo (Subtítulo):</b> Valor real investido na aquisição do estoque atual (Estoque x Custo Unitário).</li></ul>';
             break;
         case 'desempenho':
             titulo = 'Desempenho no Período';

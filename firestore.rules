@@ -172,6 +172,25 @@ service cloud.firestore {
         allow write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
       }
 
+      match /notas_fiscais/{docId} {
+        allow read: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
+        allow write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+      }
+
+      match /caixa/{caixaId} {
+        allow read, write: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao') || isAdmin(empresaId));
+      }
+
+      match /caixa_fechamentos/{docId} {
+        allow read, create: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
+        allow update, delete: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+      }
+
+      match /fechamentos_caixa/{docId} {
+        allow read, create: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
+        allow update, delete: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+      }
+
       // ==========================================
       // 5. Funcionarios / RH da Empresa
       // ==========================================
@@ -231,5 +250,9 @@ service cloud.firestore {
     match /notas_avulsas/{doc=**} { allow read, write: if true; }
     match /marketing_historico/{doc=**} { allow read, write: if true; }
     match /relatorios_ia_historico/{doc=**} { allow read, write: if true; }
+    match /caixa/{doc=**} { allow read, write: if true; }
+    match /caixa_fechamentos/{doc=**} { allow read, write: if true; }
+    match /fechamentos_caixa/{doc=**} { allow read, write: if true; }
+    match /notas_fiscais/{doc=**} { allow read, write: if true; }
   }
 }

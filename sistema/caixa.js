@@ -603,25 +603,33 @@ async function confirmarFechamentoCego() {
 
         const batch = firestore.batch();
         const caixaRef = window.getEmpresaRef().collection('caixa').doc('caixa_atual');
-        batch.set(caixaRef, {
+        const novoCaixaDados = {
             ...cxAtual,
             status: 'FECHADO',
             saldo: 0,
             historico: cxHistoricoNovo,
             ultimoFechamento: mapaDados
-        }, { merge: true });
+        };
+        batch.set(caixaRef, novoCaixaDados, { merge: true });
 
-        const fechamentoDocRef = firestore.collection('fechamentos_caixa').doc(mapaDados.id);
+        // Grava no tenant ativo da empresa
+        const fechamentoDocRef = window.getEmpresaRef().collection('caixa_fechamentos').doc(mapaDados.id);
         batch.set(fechamentoDocRef, mapaDados);
 
         await batch.commit();
+
+        // Atualiza memória viva e cache local imediatamente
+        db.caixa = novoCaixaDados;
+        if (typeof FCCache !== 'undefined' && typeof FCCache.set === 'function') {
+            FCCache.set('fc_moveis_caixa', novoCaixaDados);
+        }
 
         fecharModalFechamentoCego();
         renderCaixaDiario();
         exibirModalMapaCaixa(mapaDados);
         showToast('Turno de caixa fechado com sucesso!', 'success');
     } catch (e) {
-        console.error(e);
+        console.error('Erro ao fechar caixa:', e);
         showToast('Erro ao gravar fechamento de caixa.', 'error');
     }
 }

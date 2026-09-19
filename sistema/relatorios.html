@@ -38,8 +38,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    <link rel="stylesheet" href="../style.css?v=20260918153826">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260918153826">
+    <link rel="stylesheet" href="../style.css?v=20260919122209">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260919122209">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -80,7 +80,6 @@
                 <a href="funcionarios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="funcionarios"><i class="fa-solid fa-user-tie w-5 text-center"></i> Funcionários / Vendedores</a>
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
-                <a href="vendas_gestao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_gestao"><i class="fa-solid fa-chart-line w-5 text-center"></i> Histórico Vendas (Gestão)</a>
                 <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
                 <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
                 <a href="compras.html" id="nav-compras" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & Estoque</a>
@@ -101,165 +100,18 @@
             <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
                 <div class="flex items-center gap-3">
                     <button onclick="toggleMenu()" class="md:hidden text-slate-600 dark:text-slate-300 hover:text-blue-600 p-2"><i class="fa-solid fa-bars text-xl"></i></button>
-                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate" id="header-title">Gestão</h2>
+                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate" id="header-title">Relatórios & DRE</h2>
                 </div>
                 <div class="flex items-center gap-2 md:gap-4">
-                    <a href="operacao.html" class="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-3 md:px-4 py-2 rounded-lg font-bold text-xs md:text-sm flex items-center gap-2 transition-colors whitespace-nowrap"><i class="fa-solid fa-cart-shopping"></i> <span class="hidden sm:inline">Abrir PDV</span></a>
+                    <a href="pdv.html" class="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-3 md:px-4 py-2 rounded-lg font-bold text-xs md:text-sm flex items-center gap-2 transition-colors whitespace-nowrap"><i class="fa-solid fa-cart-shopping"></i> <span class="hidden sm:inline">Abrir PDV</span></a>
                     <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs shrink-0">PA</div>
                 </div>
             </header>
 
             <div class="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth custom-scrollbar w-full relative">
 
-                <!-- MÓDULO FINANCEIRO -->
-                <div id="view-financeiro" class="view-section max-w-7xl mx-auto space-y-4 md:space-y-6 hidden">
-                    <!-- Fluxo de Caixa Projetado -->
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                        <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-center">
-                            <h3 class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Fluxo 30 Dias (Real)</h3>
-                            <p class="text-xl font-black text-blue-600 mt-1" id="dash-fluxo-30">R$ 0,00</p>
-                        </div>
-                        <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-center">
-                            <h3 class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Fluxo 60 Dias (Proj)</h3>
-                            <p class="text-xl font-black text-indigo-600 mt-1" id="dash-fluxo-60">R$ 0,00</p>
-                        </div>
-                        <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-center">
-                            <h3 class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Fluxo 90 Dias (Proj)</h3>
-                            <p class="text-xl font-black text-purple-600 mt-1" id="dash-fluxo-90">R$ 0,00</p>
-                        </div>
-                        <div class="bg-red-50 dark:bg-red-900/30 p-4 rounded-xl border border-red-200 dark:border-red-800 shadow-sm flex flex-col justify-center">
-                            <h3 class="text-[10px] font-bold text-red-700 dark:text-red-400 uppercase">Inadimplência (Atrasos)</h3>
-                            <p class="text-xl font-black text-red-600 dark:text-red-500 mt-1" id="dash-inadimplencia">R$ 0,00</p>
-                        </div>
-                    </div>
-
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 hidden md:block">Gestão de Contas</h2>
-                        <div class="flex bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-1 shadow-sm w-full md:w-auto overflow-x-auto custom-scrollbar">
-                            <button onclick="renderFinAbas('receber')" id="fin-tab-receber" class="px-4 py-1.5 rounded-md text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:text-slate-100 transition-colors whitespace-nowrap">Contas a Receber</button>
-                            <button onclick="renderFinAbas('pagar')" id="fin-tab-pagar" class="px-4 py-1.5 rounded-md text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:text-slate-100 transition-colors whitespace-nowrap">Contas a Pagar</button>
-                        </div>
-                    </div>
-
-                    <!-- SUB-ABA CONTAS A RECEBER -->
-                    <div id="fin-area-receber" class="fin-area hidden space-y-4 md:space-y-6">
-                        <div class="flex flex-col lg:flex-row justify-between items-center bg-white dark:bg-slate-800 p-3 md:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 gap-3 md:gap-4">
-                            <div class="flex flex-col sm:flex-row gap-2 w-full lg:w-auto flex-1">
-                                <div class="relative w-full sm:w-64">
-                                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-sm"></i>
-                                    <input type="text" id="busca-fin-receber" placeholder="Buscar Cliente, Ref ou Data..." class="w-full pl-10 pr-4 py-2 md:py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderFinAbas('receber')">
-                                </div>
-                                <div class="flex gap-2 w-full sm:w-auto flex-wrap">
-                                    <select id="filtro-receber-forma-pagamento" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white max-w-[150px]" onchange="renderFinAbas('receber')">
-                                        <option value="">Forma de Pgto</option>
-                                        <option value="Dinheiro">Dinheiro</option>
-                                        <option value="PIX">PIX</option>
-                                        <option value="Cartão">Cartão</option>
-                                        <option value="Cartão Crédito">Cartão Crédito</option>
-                                        <option value="Cartão Débito">Cartão Débito</option>
-                                        <option value="Boleto">Boleto</option>
-                                        <option value="Fiado">Fiado</option>
-                                        <option value="Transferência">Transferência</option>
-                                    </select>
-                                    <select id="filtro-receber-status" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('receber')">
-                                        <option value="TODOS">Todos os Status</option>
-                                        <option value="PENDENTE" selected>Em Aberto / Pendente</option>
-                                        <option value="PAGO">Recebido / Pago</option>
-                                        <option value="ATRASADO">Vencido / Atrasado</option>
-                                        <option value="CANCELADO">Cancelado</option>
-                                    </select>
-                                    <select id="filtro-receber-periodo" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('receber')">
-                                        <option value="MES" selected>Este Mês</option>
-                                        <option value="7">Próximos 7 dias</option>
-                                        <option value="30">Próximos 30 dias</option>
-                                        <option value="90">Próximos 90 dias</option>
-                                        <option value="MES_ANT">Mês Anterior</option>
-                                        <option value="ANO">Este Ano</option>
-                                        <option value="TUDO">Histórico Completo</option>
-                                    </select>
-                                    <input type="date" id="filtro-receber-ini" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('receber')" title="Data Inicial">
-                                    <input type="date" id="filtro-receber-fim" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('receber')" title="Data Final">
-                                </div>
-                            </div>
-                            <div class="flex gap-2 w-full lg:w-auto">
-                                <button onclick="imprimirArea('print-area-receber')" class="flex-1 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:bg-slate-700 px-4 py-2 md:py-2.5 rounded-lg text-sm transition-colors" title="Imprimir"><i class="fa-solid fa-print"></i></button>
-                                <button onclick="exportarExcel('tabela-fin-receber-export', 'Recebimentos')" class="flex-1 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:bg-slate-700 px-4 py-2 md:py-2.5 rounded-lg text-sm transition-colors" title="Exportar Excel"><i class="fa-solid fa-file-excel"></i></button>
-                                <button onclick="abrirModalConta('RECEBER')" class="w-full lg:w-auto bg-emerald-500 hover:bg-emerald-600 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"><i class="fa-solid fa-plus"></i> Nova Receita</button>
-                            </div>
-                        </div>
-                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden" id="print-area-receber">
-                            <div class="overflow-x-auto custom-scrollbar">
-                                <table class="w-full text-left min-w-[700px]" id="tabela-fin-receber-export">
-                                    <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold border-b border-slate-200 dark:border-slate-700">
-                                        <tr><th class="p-3">Vencimento</th><th class="p-3">Cliente / Pagador</th><th class="p-3">Ref/Categoria</th><th class="p-3 text-right">Valor Final</th><th class="p-3 text-center">Status</th><th class="p-3 text-center print:hidden">Ações Avançadas</th></tr>
-                                    </thead>
-                                    <tbody id="tabela-fin-receber" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- SUB-ABA CONTAS A PAGAR -->
-                    <div id="fin-area-pagar" class="fin-area hidden space-y-4 md:space-y-6">
-                        <div class="flex flex-col lg:flex-row justify-between items-center bg-white dark:bg-slate-800 p-3 md:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 gap-3 md:gap-4">
-                            <div class="flex flex-col sm:flex-row gap-2 w-full lg:w-auto flex-1">
-                                <div class="relative w-full sm:w-64">
-                                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-sm"></i>
-                                    <input type="text" id="busca-fin-pagar" placeholder="Buscar Fornecedor, Ref ou Data..." class="w-full pl-10 pr-4 py-2 md:py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderFinAbas('pagar')">
-                                </div>
-                                <div class="flex gap-2 w-full sm:w-auto flex-wrap">
-                                    <select id="filtro-pagar-forma-pagamento" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white max-w-[150px]" onchange="renderFinAbas('pagar')">
-                                        <option value="">Forma de Pgto</option>
-                                        <option value="Dinheiro">Dinheiro</option>
-                                        <option value="PIX">PIX</option>
-                                        <option value="Cartão">Cartão</option>
-                                        <option value="Cartão Crédito">Cartão Crédito</option>
-                                        <option value="Cartão Débito">Cartão Débito</option>
-                                        <option value="Boleto">Boleto</option>
-                                        <option value="Fiado">Fiado</option>
-                                        <option value="Transferência">Transferência</option>
-                                    </select>
-                                    <select id="filtro-pagar-status" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('pagar')">
-                                        <option value="TODOS">Todos os Status</option>
-                                        <option value="PENDENTE" selected>Em Aberto / A Pagar</option>
-                                        <option value="PAGO">Pago</option>
-                                        <option value="ATRASADO">Vencido / Atrasado</option>
-                                        <option value="RENEGOCIADO">Renegociado</option>
-                                    </select>
-                                    <select id="filtro-pagar-periodo" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('pagar')">
-                                        <option value="MES" selected>Este Mês</option>
-                                        <option value="7">Próximos 7 dias</option>
-                                        <option value="30">Próximos 30 dias</option>
-                                        <option value="90">Próximos 90 dias</option>
-                                        <option value="MES_ANT">Mês Anterior</option>
-                                        <option value="ANO">Este Ano</option>
-                                        <option value="TUDO">Histórico Completo</option>
-                                    </select>
-                                    <input type="date" id="filtro-pagar-ini" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('pagar')" title="Data Inicial">
-                                    <input type="date" id="filtro-pagar-fim" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('pagar')" title="Data Final">
-                                </div>
-                            </div>
-                            <div class="flex gap-2 w-full lg:w-auto">
-                                <button onclick="imprimirArea('print-area-pagar')" class="flex-1 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:bg-slate-700 px-4 py-2 md:py-2.5 rounded-lg text-sm transition-colors" title="Imprimir"><i class="fa-solid fa-print"></i></button>
-                                <button onclick="exportarExcel('tabela-fin-pagar-export', 'Pagamentos')" class="flex-1 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:bg-slate-700 px-4 py-2 md:py-2.5 rounded-lg text-sm transition-colors" title="Exportar Excel"><i class="fa-solid fa-file-excel"></i></button>
-                                <button onclick="abrirModalConta('PAGAR')" class="w-full lg:w-auto bg-red-500 hover:bg-red-600 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"><i class="fa-solid fa-plus"></i> Nova Despesa</button>
-                            </div>
-                        </div>
-                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden" id="print-area-pagar">
-                            <div class="overflow-x-auto custom-scrollbar">
-                                 <table class="w-full text-left min-w-[700px]" id="tabela-fin-pagar-export">
-                                    <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold border-b border-slate-200 dark:border-slate-700">
-                                        <tr><th class="p-3">Vencimento</th><th class="p-3">Favorecido</th><th class="p-3">Ref/Categoria</th><th class="p-3 text-right">Valor Final</th><th class="p-3 text-center">Status</th><th class="p-3 text-center print:hidden">Ações Avançadas</th></tr>
-                                    </thead>
-                                    <tbody id="tabela-fin-pagar" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- RELATÓRIOS GERENCIAIS E BI -->
-                <div id="view-relatorios" class="view-section hidden max-w-7xl mx-auto space-y-6">
+                <div id="view-relatorios" class="max-w-7xl mx-auto space-y-6">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100">Relatórios & BI Comercial</h2>
                         <div class="flex flex-wrap gap-2 no-print">
@@ -1022,6 +874,137 @@
                                             <tr><td colspan="6" class="p-4 text-center text-slate-500 dark:text-slate-400">Nenhuma ruptura identificada ou carregando...</td></tr>
                                         </tbody>
                                     </table>
+                                </div>
+                            </div>
+
+                            <!-- Relatório & Histórico Gerencial de Vendas -->
+                            <div id="card-historico-vendas" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 md:col-span-2 scroll-mt-6 transition-all duration-300">
+                                <!-- Topo do Card -->
+                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 dark:border-slate-700 pb-3 mb-5 gap-3">
+                                    <div>
+                                        <h3 class="font-bold text-base text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                            <i class="fa-solid fa-receipt text-blue-500"></i> Relatório & Histórico Gerencial de Vendas
+                                        </h3>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Auditoria analítica completa de todas as vendas e serviços, com detalhamento de custos (CMV), taxas, lucro líquido real e DRE por venda.</p>
+                                    </div>
+                                    <div class="flex items-center gap-1.5 print:hidden self-end sm:self-auto">
+                                        <button type="button" onclick="exportarExcel('tabela-vendas-export', 'Historico_Vendas_Gestao')" class="text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 transition-colors cursor-pointer text-xs font-semibold flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 px-2.5 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800" title="Exportar Excel">
+                                            <i class="fa-solid fa-file-excel"></i> <span class="hidden sm:inline">Excel</span>
+                                        </button>
+                                        <button type="button" onclick="imprimirRelatorioIndividual('card-historico-vendas', 'Relatório & Histórico Gerencial de Vendas')" class="text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer text-xs font-semibold flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-700 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600" title="Imprimir este relatório">
+                                            <i class="fa-solid fa-print"></i> <span class="hidden sm:inline">Imprimir</span>
+                                        </button>
+                                        <button type="button" onclick="abrirInfoRelatorio('historico_vendas')" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer text-base p-1" title="Entender este relatório"><i class="fa-solid fa-circle-question"></i></button>
+                                    </div>
+                                </div>
+
+                                <!-- Mini KPIs de Performance de Vendas -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                                    <div class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700/80">
+                                        <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1">
+                                            <span class="text-[11px] font-bold uppercase tracking-wider">Vendas Realizadas</span>
+                                            <i class="fa-solid fa-receipt text-blue-500 text-sm"></i>
+                                        </div>
+                                        <p class="text-xl font-black text-slate-800 dark:text-slate-100" id="vendas-card-kpi-qtd">0 pedidos</p>
+                                        <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Total no filtro selecionado</p>
+                                    </div>
+
+                                    <div class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700/80">
+                                        <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1">
+                                            <span class="text-[11px] font-bold uppercase tracking-wider">Faturamento Bruto</span>
+                                            <i class="fa-solid fa-cash-register text-emerald-500 text-sm"></i>
+                                        </div>
+                                        <p class="text-xl font-black text-emerald-600 dark:text-emerald-400" id="vendas-card-kpi-total">R$ 0,00</p>
+                                        <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Receita bruta total faturada</p>
+                                    </div>
+
+                                    <div class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700/80">
+                                        <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1">
+                                            <span class="text-[11px] font-bold uppercase tracking-wider">Custo das Mercadorias (CMV)</span>
+                                            <i class="fa-solid fa-boxes-packing text-amber-500 text-sm"></i>
+                                        </div>
+                                        <p class="text-xl font-black text-amber-600 dark:text-amber-400" id="vendas-card-kpi-custo">R$ 0,00</p>
+                                        <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Custo de aquisição dos itens</p>
+                                    </div>
+
+                                    <div class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700/80">
+                                        <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1">
+                                            <span class="text-[11px] font-bold uppercase tracking-wider">Lucro Real Líquido</span>
+                                            <i class="fa-solid fa-sack-dollar text-indigo-500 text-sm"></i>
+                                        </div>
+                                        <p class="text-xl font-black text-indigo-600 dark:text-indigo-400" id="vendas-card-kpi-lucro">R$ 0,00</p>
+                                        <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1" id="vendas-card-kpi-margem">Margem média: 0.0%</p>
+                                    </div>
+                                </div>
+
+                                <!-- Filtros Rápidos do Card -->
+                                <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 mb-4 print:hidden bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                                    <div class="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 flex-1">
+                                        <div class="relative flex-1 min-w-[200px]">
+                                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                                            <input type="text" id="busca-vendas" oninput="renderVendas()" placeholder="Buscar por cliente, pedido ou vendedor..." class="w-full pl-8 pr-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white">
+                                        </div>
+                                        <div class="w-full sm:w-44">
+                                            <select id="filtro-vendas-tipo" onchange="renderVendas()" class="w-full py-1.5 px-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white">
+                                                <option value="TODOS" selected>Vendas e Serviços</option>
+                                                <option value="VENDAS">Apenas Vendas</option>
+                                                <option value="SERVIÇOS">Apenas Serviços</option>
+                                            </select>
+                                        </div>
+                                        <div class="w-full sm:w-44">
+                                            <select id="filtro-vendas-pgto" onchange="renderVendas()" class="w-full py-1.5 px-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white">
+                                                <option value="TODOS">Todas as Formas de Pgto</option>
+                                                <option value="Dinheiro">Dinheiro</option>
+                                                <option value="PIX">PIX</option>
+                                                <option value="Cartão Crédito">Cartão de Crédito</option>
+                                                <option value="Cartão Débito">Cartão de Débito</option>
+                                                <option value="Boleto">Boleto</option>
+                                                <option value="Fiado">Fiado</option>
+                                            </select>
+                                        </div>
+                                        <div class="w-full sm:w-48">
+                                            <select id="filtro-vendas-periodo" onchange="mudarPeriodoVendas()" class="w-full py-1.5 px-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white">
+                                                <option value="MES" selected>Este Mês (Padrão)</option>
+                                                <option value="HOJE">Hoje</option>
+                                                <option value="ONTEM">Ontem</option>
+                                                <option value="7">Últimos 7 dias</option>
+                                                <option value="30">Últimos 30 dias</option>
+                                                <option value="MES_ANT">Mês Anterior</option>
+                                                <option value="ANO">Este Ano</option>
+                                                <option value="TUDO">Histórico Completo</option>
+                                                <option value="CUSTOM">Personalizado</option>
+                                            </select>
+                                        </div>
+                                        <div id="vendas-datas-custom" class="hidden flex gap-2 w-full sm:w-auto">
+                                            <input type="date" id="filtro-vendas-ini" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs rounded-lg px-2 py-1.5 outline-none focus:border-blue-500 dark:text-white" onchange="renderVendas()" title="Data Inicial">
+                                            <input type="date" id="filtro-vendas-fim" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs rounded-lg px-2 py-1.5 outline-none focus:border-blue-500 dark:text-white" onchange="renderVendas()" title="Data Final">
+                                        </div>
+                                    </div>
+                                    <div class="text-right flex items-center justify-end gap-2 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                        <i class="fa-solid fa-receipt text-blue-500"></i>
+                                        <span id="vendas-contador-registros">0 vendas</span>
+                                    </div>
+                                </div>
+
+                                <!-- Tabela Gerencial de Vendas -->
+                                <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden" id="print-area-vendas">
+                                    <div class="overflow-x-auto custom-scrollbar max-h-[550px]">
+                                        <table class="w-full text-left min-w-[700px]" id="tabela-vendas-export">
+                                            <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10">
+                                                <tr>
+                                                    <th class="p-3">Data / Hora</th>
+                                                    <th class="p-3">Pedido / Tipo</th>
+                                                    <th class="p-3">Cliente</th>
+                                                    <th class="p-3">Pagamentos</th>
+                                                    <th class="p-3 text-right">Valor Bruto</th>
+                                                    <th class="p-3 text-right">Custos</th>
+                                                    <th class="p-3 text-right">Lucro Líquido</th>
+                                                    <th class="p-3 text-center w-16 print:hidden">Ação</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tabela-vendas-body" class="divide-y divide-slate-100 dark:divide-slate-700/50 text-xs"></tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1943,13 +1926,86 @@
         </div>
     </div>
 
+    <!-- MODAL DETALHES DA VENDA (VISÃO GERENCIAL DE CUSTOS E LUCROS) -->
+    <div id="modal-detalhes-venda" class="fixed inset-0 bg-slate-900/60 z-[500] hidden flex items-center justify-center p-4 backdrop-blur-md transition-all duration-300">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-slate-200/50 dark:border-slate-700/50 w-full max-w-4xl flex flex-col overflow-hidden max-h-[90vh] transform scale-100 transition-transform">
+            
+            <!-- HEADER -->
+            <div class="bg-gradient-to-r from-slate-800 to-slate-900 dark:from-slate-950 dark:to-slate-900 p-5 md:p-6 text-white flex justify-between items-center shrink-0 border-b border-white/10">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-xl backdrop-blur-sm shadow-inner">
+                        <i class="fa-solid fa-receipt text-blue-300"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-lg md:text-xl tracking-tight">Detalhes do Documento</h3>
+                        <p class="text-xs text-slate-400 font-medium tracking-wide uppercase mt-0.5">Visão Gerencial de Custos e Lucros</p>
+                    </div>
+                </div>
+                <button onclick="fecharModalDetalhesVenda()" class="text-slate-400 hover:text-white hover:bg-white/10 w-10 h-10 rounded-full transition-all flex items-center justify-center"><i class="fa-solid fa-xmark text-2xl"></i></button>
+            </div>
+            
+            <!-- BODY -->
+            <div class="p-5 md:p-8 bg-slate-50 dark:bg-slate-900/50 flex-1 overflow-y-auto custom-scrollbar relative">
+                <!-- Info Cards -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="col-span-2 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700/50 hover:shadow-md transition-shadow relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><i class="fa-solid fa-user text-4xl"></i></div>
+                        <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Cliente</p>
+                        <p class="font-black text-slate-800 dark:text-slate-100 text-sm md:text-base truncate relative z-10" id="det-venda-cliente">-</p>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700/50 hover:shadow-md transition-shadow relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><i class="fa-regular fa-calendar text-4xl"></i></div>
+                        <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Data / Ref</p>
+                        <p class="font-black text-slate-800 dark:text-slate-100 text-sm md:text-base relative z-10" id="det-venda-data">-</p>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700/50 hover:shadow-md transition-shadow relative overflow-hidden group text-right">
+                        <div class="absolute top-0 left-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><i class="fa-solid fa-tag text-4xl"></i></div>
+                        <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Tipo</p>
+                        <span class="inline-block bg-blue-100/80 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50 px-3 py-1 rounded-lg text-xs font-black tracking-wide relative z-10 shadow-sm" id="det-venda-pag">-</span>
+                    </div>
+                </div>
+                
+                <!-- Obs -->
+                <div class="mb-6">
+                    <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2"><i class="fa-regular fa-comment-dots"></i> Observações</p>
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border-l-4 border-l-blue-400 dark:border-slate-700 shadow-sm text-sm text-slate-600 dark:text-slate-300 min-h-[50px] font-medium" id="det-venda-obs"></div>
+                </div>
+
+                <!-- Table -->
+                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700/50 overflow-hidden mb-2">
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left min-w-[700px]">
+                            <thead class="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold tracking-wider border-b border-slate-200 dark:border-slate-700/50">
+                                <tr>
+                                    <th class="p-4">Produto/Serviço</th>
+                                    <th class="p-4 text-center w-16">Qtd</th>
+                                    <th class="p-4 text-right w-32">Valores Unit.</th>
+                                    <th class="p-4 text-right w-32">Totais</th>
+                                </tr>
+                            </thead>
+                            <tbody id="det-venda-itens" class="divide-y divide-slate-100 dark:divide-slate-700/50 text-sm"></tbody>
+                            <tfoot class="bg-slate-50/80 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-700/50" id="det-venda-tfoot">
+                                <!-- Preenchido dinamicamente via JS com DRE, custos, lucro, margem e markup -->
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- FOOTER -->
+            <div class="bg-white dark:bg-slate-900 p-4 md:p-5 border-t border-slate-200 dark:border-slate-800 flex justify-end shrink-0 rounded-b-2xl">
+                <button onclick="fecharModalDetalhesVenda()" class="bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-bold tracking-wide px-8 py-2.5 rounded-xl text-sm shadow-md transition-all active:scale-95"><i class="fa-solid fa-check mr-2"></i> Fechar Janela</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20260918153826"></script>
-    <script src="../global.js?v=20260918153826"></script>
-    <script src="fc_cache.js?v=20260918153826"></script>
-    <script src="relatorios_v2.js?v=20260918153826"></script>
+    <script src="../sistema/config_banco.js?v=20260919122209"></script>
+    <script src="../global.js?v=20260919122209"></script>
+    <script src="fc_cache.js?v=20260919122209"></script>
+    <script src="relatorios_v2.js?v=20260919122209"></script>
 </body>
 </html>
 
