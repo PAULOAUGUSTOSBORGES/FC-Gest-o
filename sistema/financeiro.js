@@ -4628,3 +4628,68 @@ window.verDetalhesVenda = async function(id) {
     console.log('[VerVenda] Modal exibido com sucesso!');
 };
 
+let finCalendarInstance = null;
+function renderCalendarFin() {
+    if (!db.financeiro) return;
+    
+    const calendarEl = document.getElementById('fin-calendar');
+    if (!calendarEl) return;
+    
+    if (!finCalendarInstance) {
+        finCalendarInstance = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'pt-br',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,listWeek'
+            },
+            buttonText: {
+                today: 'Hoje',
+                month: 'Mês',
+                week: 'Semana',
+                list: 'Lista'
+            },
+            eventClick: function(info) {
+                if (typeof window.verDetalhesTitulo === 'function') {
+                    window.verDetalhesTitulo(info.event.id);
+                }
+            }
+        });
+        finCalendarInstance.render();
+    }
+    
+    finCalendarInstance.removeAllEvents();
+    
+    db.financeiro.forEach(f => {
+        if (f.status === 'CANCELADO' || f.status === 'RENEGOCIADO') return;
+        
+        let color = '#ef4444'; // DESPESA
+        if (f.tipo === 'RECEITA') {
+            color = '#10b981'; // RECEITA
+        }
+        if (f.status === 'PAGO') {
+            color = '#64748b'; // PAGO
+        }
+        
+        let dateStr = f.data;
+        if (dateStr && dateStr.includes('T')) {
+            dateStr = dateStr.split('T')[0];
+        }
+        
+        const valorFormatado = typeof window.formatMoney === 'function' ? window.formatMoney(f.valor) : ('R$ ' + parseFloat(f.valor||0).toFixed(2));
+        const titulo = (f.pessoa || 'Diversos') + ' - ' + valorFormatado;
+        
+        if (dateStr) {
+            finCalendarInstance.addEvent({
+                id: f.id,
+                title: titulo,
+                start: dateStr,
+                allDay: true,
+                backgroundColor: color,
+                borderColor: color
+            });
+        }
+    });
+}
+window.renderCalendarFin = renderCalendarFin;

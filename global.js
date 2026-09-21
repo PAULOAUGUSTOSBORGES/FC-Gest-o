@@ -708,19 +708,25 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                 if (empData) {
                     window.currentEmpresaData = empData;
 
-                    if (user.email !== 'fabricadecoresgoiania@gmail.com' && user.email !== 'pauloaugusto.silvaborges@gmail.com') {
-                        if (empData.status === 'BLOQUEADO') {
-                            sessionStorage.clear();
-                            localStorage.removeItem('fc_empresa_ativa');
-                            alert('O acesso da sua empresa está suspenso temporariamente por pendência financeira. Entre em contato com o suporte.');
-                            await auth.signOut();
-                            window.location.href = 'login.html';
+                    if (empData.status === 'BLOQUEADO') {
+                        if (typeof window.aplicarBloqueioTotal === 'function') {
+                            window.aplicarBloqueioTotal('O acesso da sua empresa foi suspenso por pendencia financeira.');
                             return;
                         }
+                        sessionStorage.clear();
+                        localStorage.removeItem('fc_empresa_ativa');
+                        alert('O acesso da sua empresa esta suspenso temporariamente por pendencia financeira. Entre em contato com o suporte.');
+                        await auth.signOut();
+                        window.location.href = 'login.html';
+                        return;
                     }
 
-                    // Aplica controle real dos módulos contratados pelo plano da loja
+                    // Aplica controle real dos modulos contratados pelo plano da loja
                     aplicarControleDeModulosSaaS(empData, user);
+                    // Inicia listener em tempo real para detectar mudancas de modulos pelo master
+                    if (typeof window.iniciarListenerBloqueioTempoReal === 'function') {
+                        window.iniciarListenerBloqueioTempoReal(empId, user.email);
+                    }
                 }
             } catch (errBloq) {
                 console.warn("Aviso ao checar empresa:", errBloq);
@@ -743,6 +749,7 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                 aplicarControleDeAcesso();
                 mostrarNomeUsuarioNoHeader(window.currentUserInfo.isAdmin ? 'Admin Master' : `Func.: ${window.currentUserInfo.nome || 'Usuário'}`);
                 aplicarIdentidadeVisualGlobal();
+                if (window.__paginaBloqueadaPorPlano) return;
                 if (funcaoDeRenderizacaoDaPagina) {
                     try {
                         funcaoDeRenderizacaoDaPagina();
@@ -967,14 +974,12 @@ function aplicarControleDeAcesso() {
 function aplicarControleDeModulosSaaS(empData, user) {
     if (!empData) return;
 
-    // Super admins têm acesso total irrestrito
-    if (user.email === 'fabricadecoresgoiania@gmail.com' || user.email === 'pauloaugusto.silvaborges@gmail.com') {
-        window.modulosLiberadosEmpresa = ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'site', 'ia', 'suporte'];
-        return;
-    }
+    // Respeita estritamente a configuracao de modulos feita no SaaS Master
+    const licencaCentral = window.currentSaaSLicense;
+    let mods = (licencaCentral && Array.isArray(licencaCentral.modulosLiberados) && licencaCentral.modulosLiberados.length > 0)
+        ? licencaCentral.modulosLiberados
+        : empData.modulosLiberados;
 
-    // Se houver modulosLiberados definidos na empresa pelo Fundador, usa eles
-    let mods = empData.modulosLiberados;
     if (!mods || !Array.isArray(mods) || mods.length === 0) {
         const plano = (empData.plano || '').toUpperCase();
         if (plano.includes('START') || plano.includes('BASICO') || plano === 'FREE') {
@@ -991,21 +996,31 @@ function aplicarControleDeModulosSaaS(empData, user) {
 
     const path = window.location.pathname.toLowerCase();
 
-    // Mapeamento de páginas para seus módulos obrigatórios
+    // Mapeamento de paginas para seus modulos obrigatorios no SaaS
     const mapaPaginas = [
-        { rotas: ['fiscal.html'], modulo: 'fiscal', nome: 'Emissor Fiscal (NF-e/NFC-e)' },
-        { rotas: ['financeiro.html', 'compras.html', 'gestao.html'], modulo: 'financeiro', nome: 'Gestão Financeira & DRE' },
-        { rotas: ['pdv.html', 'caixa.html'], modulo: 'pdv', nome: 'Frente de Caixa (PDV)' },
-        { rotas: ['vendas_operacao.html', 'vendas_gestao.html', 'orcamentos.html', 'operacao.html'], modulo: 'vendas', nome: 'Histórico de Vendas & Orçamentos' },
-        { rotas: ['produtos.html', 'cadastro.html', 'estoque.html', 'clientes.html', 'fornecedores.html'], modulo: 'estoque', nome: 'Produtos, Estoque & Cadastros' },
-        { rotas: ['marketing.html'], modulo: 'site', nome: 'Marketing & Loja Online' }
+        { rotas: ['fiscal.html'],         modulo: 'fiscal',     nome: 'Emissor Fiscal (NF-e/NFC-e)' },
+        { rotas: ['financeiro.html'],      modulo: 'financeiro', nome: 'Financeiro & Fluxo de Caixa' },
+        { rotas: ['compras.html'],         modulo: 'compras',    nome: 'Compras & NF-e XML' },
+        { rotas: ['relatorios.html'],      modulo: 'relatorios', nome: 'Relatorios & DRE' },
+        { rotas: ['agenda.html'],          modulo: 'agenda',     nome: 'Agenda & Lembretes' },
+        { rotas: ['marketing.html'],       modulo: 'ia',         nome: 'Marketing & IA' },
+        { rotas: ['caixa.html'],           modulo: 'caixa',      nome: 'Caixa Fisico' },
+        { rotas: ['pdv.html'],             modulo: 'pdv',        nome: 'Frente de Caixa (PDV)' },
+        { rotas: ['vendas_operacao.html', 'vendas_gestao.html', 'orcamentos.html', 'operacao.html'], modulo: 'vendas', nome: 'Historico de Vendas & Orcamentos' },
+        { rotas: ['produtos.html', 'cadastro.html', 'estoque.html', 'fornecedores.html'], modulo: 'estoque', nome: 'Produtos, Estoque & Cadastros' }
     ];
 
-    // 1. Bloqueia a página se o módulo correspondente não estiver contratado
+    // 1. Bloqueia a pagina se o modulo correspondente nao estiver contratado
+    const _checar = typeof window.temPermissaoModulo === 'function' ? window.temPermissaoModulo : function(m, l) {
+        if (!l || !Array.isArray(l)) return false;
+        if (m === 'ia' || m === 'marketing') return l.includes('ia') || l.includes('marketing');
+        return l.includes(m);
+    };
     for (const item of mapaPaginas) {
         const estaNaRota = item.rotas.some(r => path.endsWith('/' + r) || path.endsWith(r));
-        if (estaNaRota && !mods.includes(item.modulo)) {
-            bloquearPaginaPorPlanoSaaS(item.nome, empData.plano || 'Atual');
+        if (estaNaRota && !_checar(item.modulo, mods)) {
+            window.__paginaBloqueadaPorPlano = true;
+            bloquearPaginaPorPlanoSaaS(item.nome, empData.plano || 'Atual', item.modulo);
             return;
         }
     }
@@ -1015,49 +1030,80 @@ function aplicarControleDeModulosSaaS(empData, user) {
         atualizarMenuLateralPorPlanoSaaS(mods);
     }, 100);
 }
+window.aplicarControleDeModulosSaaS = aplicarControleDeModulosSaaS;
 
-function bloquearPaginaPorPlanoSaaS(nomeModulo, nomePlano) {
+function bloquearPaginaPorPlanoSaaS(nomeModulo, nomePlano, moduloId) {
+    window.__paginaBloqueadaPorPlano = true;
     const main = document.querySelector('main');
-    if (!main) return;
+    if (main) {
+        main.style.visibility = 'hidden';
+        main.innerHTML = '';
+    }
 
-    main.innerHTML = `
-        <div class="flex flex-col items-center justify-center min-h-[70vh] text-center p-6">
-            <div class="w-20 h-20 bg-amber-500/15 text-amber-400 border border-amber-500/30 rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-amber-500/10 text-3xl">
+    // Se o cliente SaaS tiver o overlay completo com comparativo de planos, aciona ele
+    if (typeof window.aplicarBloqueioPlano === 'function') {
+        window.aplicarBloqueioPlano(moduloId || 'modulo', nomeModulo);
+        return;
+    }
+
+    // Fallback elegante caso saas_licenca.js nao esteja pronto
+    const antigo = document.getElementById('fc-saas-overlay-plano');
+    if (antigo) antigo.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'fc-saas-overlay-plano';
+    overlay.style.cssText = 'position:fixed; inset:0; z-index:99999; background:rgba(15,23,42,0.98); display:flex; align-items:center; justify-content:center; padding:16px; font-family:Inter,system-ui,sans-serif;';
+    overlay.innerHTML = `
+        <div style="max-width:480px; width:100%; text-align:center; padding:2.5rem 2rem; background:#1e293b; border-radius:1.5rem; border:1px solid #334155; box-shadow:0 25px 50px -12px rgba(0,0,0,0.8);">
+            <div style="width:72px; height:72px; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.3); border-radius:1rem; display:flex; align-items:center; justify-content:center; margin:0 auto 1.25rem; font-size:1.75rem; color:#f59e0b;">
                 <i class="fa-solid fa-lock"></i>
             </div>
-            <h2 class="text-2xl font-black text-slate-800 dark:text-white mb-2">Módulo Não Habilitado no seu Plano</h2>
-            <p class="text-sm text-slate-500 dark:text-slate-400 max-w-md mb-6 leading-relaxed">
-                O recurso <strong class="text-amber-400 font-bold">${nomeModulo}</strong> não faz parte do pacote contratado pela sua loja (<strong>${nomePlano}</strong>).
+            <h2 style="color:#f8fafc; font-size:1.35rem; font-weight:900; margin:0 0 0.5rem;">Modulo Nao Habilitado</h2>
+            <p style="color:#94a3b8; font-size:0.875rem; margin:0 0 1.5rem; line-height:1.6;">
+                O modulo <strong style="color:#fbbf24;">${nomeModulo}</strong> nao faz parte do pacote liberado para a sua loja.
             </p>
-            <div class="flex items-center gap-3">
-                <a href="index.html" class="px-5 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all flex items-center gap-2">
+            <div style="display:flex; gap:0.75rem; justify-content:center; flex-wrap:wrap;">
+                <a href="index.html" style="display:inline-flex; align-items:center; gap:0.4rem; padding:0.65rem 1.5rem; background:#334155; border-radius:0.75rem; color:#f8fafc; font-size:0.8rem; font-weight:700; text-decoration:none;">
                     <i class="fa-solid fa-arrow-left"></i> Voltar ao Painel
                 </a>
-                <a href="https://wa.me/5562999999999?text=${encodeURIComponent('Olá Paulo Augusto! Gostaria de fazer o upgrade do plano da minha loja para liberar o módulo ' + nomeModulo)}" target="_blank" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-600 hover:to-yellow-500 text-slate-950 text-xs font-extrabold transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2">
-                    <i class="fa-brands fa-whatsapp text-sm"></i> Falar com a Administração
+                <a href="https://wa.me/5562993341774?text=${encodeURIComponent('Ola! Gostaria de fazer o upgrade do plano da minha loja para liberar o modulo ' + nomeModulo)}" target="_blank" style="display:inline-flex; align-items:center; gap:0.4rem; padding:0.65rem 1.5rem; background:linear-gradient(135deg,#f59e0b,#eab308); border-radius:0.75rem; color:#0f172a; font-size:0.8rem; font-weight:900; text-decoration:none;">
+                    <i class="fa-brands fa-whatsapp"></i> Falar com Suporte
                 </a>
             </div>
         </div>
     `;
+    document.body.appendChild(overlay);
 }
 
 function atualizarMenuLateralPorPlanoSaaS(modulosLiberados) {
+    const checarPerm = typeof window.temPermissaoModulo === 'function' ? window.temPermissaoModulo : function(m, list) {
+        if (!list || !Array.isArray(list)) return false;
+        if (m === 'ia' || m === 'marketing') return list.includes('ia') || list.includes('marketing');
+        return list.includes(m);
+    };
+
     const mapaLinks = [
-        { href: 'fiscal.html', modulo: 'fiscal', nome: 'Fiscal NF-e' },
-        { href: 'financeiro.html', modulo: 'financeiro', nome: 'Financeiro' },
-        { href: 'compras.html', modulo: 'financeiro', nome: 'Compras' },
-        { href: 'pdv.html', modulo: 'pdv', nome: 'PDV' },
-        { href: 'vendas_operacao.html', modulo: 'vendas', nome: 'Vendas' },
-        { href: 'orcamentos.html', modulo: 'vendas', nome: 'Orçamentos' },
-        { href: 'produtos.html', modulo: 'estoque', nome: 'Produtos' },
-        { href: 'clientes.html', modulo: 'estoque', nome: 'Clientes' },
-        { href: 'marketing.html', modulo: 'site', nome: 'Loja Online' }
+        { href: 'fiscal.html',         modulo: 'fiscal',     nome: 'Emissor Fiscal (NF-e)' },
+        { href: 'financeiro.html',      modulo: 'financeiro', nome: 'Financeiro & Contas' },
+        { href: 'compras.html',         modulo: 'compras',    nome: 'Compras & NF-e XML' },
+        { href: 'caixa.html',           modulo: 'caixa',      nome: 'Caixa Fisico' },
+        { href: 'relatorios.html',      modulo: 'relatorios', nome: 'Relatorios & DRE' },
+        { href: 'pdv.html',             modulo: 'pdv',        nome: 'Frente de Caixa (PDV)' },
+        { href: 'vendas_operacao.html', modulo: 'vendas',     nome: 'Vendas & Orcamentos' },
+        { href: 'vendas_gestao.html',   modulo: 'vendas',     nome: 'Gestao de Vendas' },
+        { href: 'orcamentos.html',      modulo: 'vendas',     nome: 'Meus Orcamentos' },
+        { href: 'funcionarios.html',    modulo: 'vendas',     nome: 'Funcionarios' },
+        { href: 'agenda.html',          modulo: 'agenda',     nome: 'Agenda & Lembretes' },
+        { href: 'marketing.html',       modulo: 'ia',         nome: 'Marketing & Lembretes' },
+        { href: 'produtos.html',        modulo: 'estoque',    nome: 'Produtos & Servicos' },
+        { href: 'clientes.html',        modulo: 'vendas',     nome: 'Clientes' },
+        { href: 'fornecedores.html',    modulo: 'estoque',    nome: 'Fornecedores' }
     ];
 
     mapaLinks.forEach(item => {
         const links = document.querySelectorAll(`aside a[href*="${item.href}"]`);
         links.forEach(link => {
-            if (!modulosLiberados.includes(item.modulo)) {
+            if (!checarPerm(item.modulo, modulosLiberados)) {
                 link.classList.add('opacity-40', 'cursor-not-allowed');
                 link.classList.remove('hover:bg-slate-800');
                 if (!link.querySelector('.badge-modulo-bloqueado')) {
@@ -1069,17 +1115,60 @@ function atualizarMenuLateralPorPlanoSaaS(modulosLiberados) {
                 link.onclick = (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (typeof showToast === 'function') {
-                        showToast(`O módulo ${item.nome} não está incluso no plano da sua loja. Fale com a administração para ativar!`, 'warning');
+                    if (typeof window.aplicarBloqueioPlano === 'function') {
+                        window.aplicarBloqueioPlano(item.modulo, item.nome);
+                    } else if (typeof showToast === 'function') {
+                        showToast(`O modulo ${item.nome} nao esta incluso no plano da sua loja. Fale com a administracao para ativar!`, 'warning');
                     } else {
-                        alert(`O módulo ${item.nome} não está incluso no plano da sua loja. Fale com a administração para ativar!`);
+                        alert(`O modulo ${item.nome} nao esta incluso no plano da sua loja. Fale com a administracao para ativar!`);
                     }
                 };
+            } else {
+                link.classList.remove('opacity-40', 'cursor-not-allowed');
+                const badge = link.querySelector('.badge-modulo-bloqueado');
+                if (badge) badge.remove();
+                link.onclick = null;
             }
         });
     });
-}
 
+    // Tratamento especifico do link da Loja Virtual na barra lateral
+    const linksLoja = document.querySelectorAll('aside a[onclick*="abrirMinhaLojaVirtual"]');
+    linksLoja.forEach(link => {
+        const permitido = checarPerm('site', modulosLiberados);
+        if (!permitido) {
+            link.classList.add('opacity-40', 'cursor-not-allowed');
+            link.classList.remove('hover:bg-slate-800', 'text-emerald-400');
+            link.classList.add('text-slate-500');
+            link.setAttribute('title', 'Loja Virtual nao inclusa no seu plano atual');
+            if (!link.querySelector('.badge-modulo-bloqueado')) {
+                const badge = document.createElement('span');
+                badge.className = 'badge-modulo-bloqueado ml-auto text-[10px] text-amber-400/80 font-bold';
+                badge.innerHTML = '<i class="fa-solid fa-lock text-[9px]"></i>';
+                link.appendChild(badge);
+            }
+            link.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof window.aplicarBloqueioPlano === 'function') {
+                    window.aplicarBloqueioPlano('site', 'Loja Virtual & Catalogo Online');
+                } else if (typeof showToast === 'function') {
+                    showToast('A Loja Virtual nao esta disponivel no plano atual da sua empresa.', 'warning');
+                }
+            };
+        } else {
+            link.classList.remove('opacity-40', 'cursor-not-allowed', 'text-slate-500');
+            link.classList.add('text-emerald-400');
+            link.removeAttribute('title');
+            const badge = link.querySelector('.badge-modulo-bloqueado');
+            if (badge) badge.remove();
+            link.onclick = (e) => {
+                e.preventDefault();
+                abrirMinhaLojaVirtual();
+            };
+        }
+    });
+}
 
 function mostrarNomeUsuarioNoHeader(nome) {
     const header = document.querySelector('header');
@@ -1106,10 +1195,47 @@ function mostrarNomeUsuarioNoHeader(nome) {
     }
 }
 
-// Intercepta cliques nos links para não deixar a tela piscar (navegar) se não tiver permissão
+// Intercepta cliques nos links para nao deixar navegar se o modulo SaaS ou permissao estiver bloqueado
 document.addEventListener('click', (e) => {
     const link = e.target.closest('a');
     if (!link || !link.href) return;
+    if (link.hostname !== window.location.hostname) return;
+
+    // 1. CHECAGEM ESTRITA DE MODULOS DO SAAS (Aplica a todos os usuarios da loja)
+    if (window.modulosLiberadosEmpresa && Array.isArray(window.modulosLiberadosEmpresa)) {
+        const mapaRotasModulos = [
+            { rotas: ['fiscal.html'],         modulo: 'fiscal',     nome: 'Emissor Fiscal (NF-e)' },
+            { rotas: ['financeiro.html'],      modulo: 'financeiro', nome: 'Financeiro & Contas' },
+            { rotas: ['compras.html'],         modulo: 'compras',    nome: 'Compras & NF-e XML' },
+            { rotas: ['relatorios.html'],      modulo: 'relatorios', nome: 'Relatorios & DRE' },
+            { rotas: ['agenda.html'],          modulo: 'agenda',     nome: 'Agenda & Lembretes' },
+            { rotas: ['marketing.html'],       modulo: 'ia',         nome: 'Marketing & IA' },
+            { rotas: ['caixa.html'],           modulo: 'caixa',      nome: 'Caixa Fisico' },
+            { rotas: ['pdv.html'],             modulo: 'pdv',        nome: 'Frente de Caixa (PDV)' },
+            { rotas: ['vendas_operacao.html', 'vendas_gestao.html', 'orcamentos.html'], modulo: 'vendas', nome: 'Vendas & Orcamentos' },
+            { rotas: ['produtos.html', 'cadastro.html', 'estoque.html', 'fornecedores.html'], modulo: 'estoque', nome: 'Produtos & Estoque' }
+        ];
+
+        const targetPath = link.pathname.toLowerCase();
+        const _checarClick = typeof window.temPermissaoModulo === 'function' ? window.temPermissaoModulo : function(m, l) {
+            if (!l || !Array.isArray(l)) return false;
+            if (m === 'ia' || m === 'marketing') return l.includes('ia') || l.includes('marketing');
+            return l.includes(m);
+        };
+        for (const item of mapaRotasModulos) {
+            const estaNaRota = item.rotas.some(r => targetPath.endsWith('/' + r) || targetPath.endsWith(r));
+            if (estaNaRota && !_checarClick(item.modulo, window.modulosLiberadosEmpresa)) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof window.aplicarBloqueioPlano === 'function') {
+                    window.aplicarBloqueioPlano(item.modulo, item.nome);
+                } else if (typeof showToast === 'function') {
+                    showToast(`O modulo ${item.nome} nao esta incluso no plano da sua loja.`, 'warning');
+                }
+                return;
+            }
+        }
+    }
     
     // Ignora links externos ou vazios
     if (link.hostname !== window.location.hostname) return;
@@ -1189,6 +1315,14 @@ window.gerarLinkLojaVirtual = function() {
 };
 
 window.copiarLinkLojaVirtual = function() {
+    if (typeof window.verificarAcessoModulo === 'function' && !window.verificarAcessoModulo('site')) {
+        if (typeof window.aplicarBloqueioPlano === 'function') {
+            window.aplicarBloqueioPlano('site', 'Loja Virtual & Catalogo Online');
+        } else if (typeof showToast === 'function') {
+            showToast('A Loja Virtual nao esta disponivel no plano atual da sua empresa.', 'warning');
+        }
+        return;
+    }
     const link = window.gerarLinkLojaVirtual();
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(link).then(() => {
@@ -1203,6 +1337,14 @@ window.copiarLinkLojaVirtual = function() {
 };
 
 window.abrirMinhaLojaVirtual = function() {
+    if (typeof window.verificarAcessoModulo === 'function' && !window.verificarAcessoModulo('site')) {
+        if (typeof window.aplicarBloqueioPlano === 'function') {
+            window.aplicarBloqueioPlano('site', 'Loja Virtual & Catalogo Online');
+        } else if (typeof showToast === 'function') {
+            showToast('A Loja Virtual nao esta disponivel no plano atual da sua empresa.', 'warning');
+        }
+        return;
+    }
     const link = window.gerarLinkLojaVirtual();
     window.open(link, '_blank');
 };

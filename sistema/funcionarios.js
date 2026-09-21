@@ -61,6 +61,18 @@ function inicializarCadastro() {
     _listen('funcionarios', function(dados) {
         db.funcionarios = dados;
         if (typeof renderFuncionarios === 'function') renderFuncionarios();
+        // Sincroniza em segundo plano com o banco central do SaaS Master
+        if (typeof window.obterInstanciaSaaS === 'function') {
+            try {
+                const sDb = window.obterInstanciaSaaS();
+                const empId = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+                if (sDb && empId && Array.isArray(dados) && dados.length > 0) {
+                    dados.forEach(f => {
+                        sDb.collection('empresas').doc(empId).collection('funcionarios').doc(f.id).set(f, { merge: true }).catch(() => {});
+                    });
+                }
+            } catch(eSync) {}
+        }
     });
 
     unsubKardex = _listen('movimentacoes', function(dados) {
@@ -917,6 +929,14 @@ async function salvarFuncionario() {
                 dataCriacao: firebase.firestore.FieldValue.serverTimestamp()
             });
 
+            // 3. Sincroniza diretamente com o SaaS Master
+            if (typeof window.obterInstanciaSaaS === 'function') {
+                try {
+                    const sDb = window.obterInstanciaSaaS();
+                    if (sDb) await sDb.collection('empresas').doc(empAtiva).collection('funcionarios').doc(uid).set(obj);
+                } catch(e) {}
+            }
+
             showToast('Funcionário e acesso criados com sucesso!', 'success');
             
         } else {
@@ -928,6 +948,16 @@ async function salvarFuncionario() {
             }
             
             await window.getEmpresaRef().collection('funcionarios').doc(id).set(obj, { merge: true });
+
+            // Sincroniza atualização com o SaaS Master
+            if (typeof window.obterInstanciaSaaS === 'function') {
+                try {
+                    const sDb = window.obterInstanciaSaaS();
+                    const empAtiva = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+                    if (sDb) await sDb.collection('empresas').doc(empAtiva).collection('funcionarios').doc(id).set(obj, { merge: true });
+                } catch(e) {}
+            }
+
             showToast('Funcionário atualizado com sucesso!', 'success');
         }
         
@@ -948,6 +978,16 @@ function excluirFuncionario(id) {
     abrirConfirmacao('Excluir Funcionário', 'ATENÇÃO: O cadastro será apagado do sistema, mas a conta de login continuará ativa no Firebase (devido a restrições de segurança do cliente). O usuário não poderá mais acessar o sistema. Continuar?', async () => {
         try {
             await window.getEmpresaRef().collection('funcionarios').doc(id).delete();
+
+            // Remove do SaaS Master também
+            if (typeof window.obterInstanciaSaaS === 'function') {
+                try {
+                    const sDb = window.obterInstanciaSaaS();
+                    const empAtiva = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+                    if (sDb) await sDb.collection('empresas').doc(empAtiva).collection('funcionarios').doc(id).delete();
+                } catch(e) {}
+            }
+
             showToast('Funcionário excluído! Acesso revogado.', 'success');
             renderFuncionarios();
         } catch (e) {

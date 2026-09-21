@@ -119,6 +119,7 @@ async function migrarDadosSeNecessario() {
 }
 
 function inicializarGestao() {
+    if (window.__paginaBloqueadaPorPlano) return;
     // Primeiro tenta migrar dados do banco antigo se necessario
     migrarDadosSeNecessario();
 

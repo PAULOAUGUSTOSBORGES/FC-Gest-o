@@ -359,6 +359,55 @@ function carregarConfiguracoesNaTela() {
             if (hex) hex.value = db.config.loja['cor-primaria'];
         }
     }
+
+    // 5. Restrição de Acesso à Loja Virtual por Plano SaaS
+    const temAcessoLoja = typeof window.verificarAcessoModulo === 'function' ? window.verificarAcessoModulo('site') : true;
+    const containerLinkLoja = document.getElementById('container-link-loja-virtual');
+    const secaoConfigLoja = document.getElementById('secao-config-loja-online');
+
+    if (!temAcessoLoja) {
+        if (containerLinkLoja) {
+            containerLinkLoja.classList.add('opacity-50', 'pointer-events-none');
+            containerLinkLoja.setAttribute('title', 'Módulo não incluso no seu plano');
+        }
+        if (secaoConfigLoja && !document.getElementById('aviso-bloqueio-loja-saas')) {
+            const aviso = document.createElement('div');
+            aviso.id = 'aviso-bloqueio-loja-saas';
+            aviso.className = 'mb-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between gap-4';
+            aviso.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-lock text-amber-500 text-xl"></i>
+                    <div>
+                        <h4 class="font-bold text-amber-500 text-sm">Loja Virtual não inclusa no seu plano</h4>
+                        <p class="text-xs text-slate-400">Faça o upgrade do seu plano para liberar a Loja Virtual e Catálogo Online para seus clientes.</p>
+                    </div>
+                </div>
+                <button type="button" onclick="if(typeof window.aplicarBloqueioPlano === 'function') window.aplicarBloqueioPlano('site', 'Loja Virtual & Catálogo Online');" class="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg transition-colors shrink-0 shadow cursor-pointer">
+                    Ver Planos
+                </button>
+            `;
+            secaoConfigLoja.insertBefore(aviso, secaoConfigLoja.children[1] || secaoConfigLoja.firstChild);
+            
+            // Desabilita inputs da seção de loja
+            secaoConfigLoja.querySelectorAll('input, button:not([onclick*="aplicarBloqueioPlano"])').forEach(el => {
+                el.disabled = true;
+                el.classList.add('opacity-60', 'cursor-not-allowed');
+            });
+        }
+    } else {
+        if (containerLinkLoja) {
+            containerLinkLoja.classList.remove('opacity-50', 'pointer-events-none');
+            containerLinkLoja.removeAttribute('title');
+        }
+        const aviso = document.getElementById('aviso-bloqueio-loja-saas');
+        if (aviso) aviso.remove();
+        if (secaoConfigLoja) {
+            secaoConfigLoja.querySelectorAll('input, button').forEach(el => {
+                el.disabled = false;
+                el.classList.remove('opacity-60', 'cursor-not-allowed');
+            });
+        }
+    }
 }
 window.carregarConfiguracoesNaTela = carregarConfiguracoesNaTela;
 

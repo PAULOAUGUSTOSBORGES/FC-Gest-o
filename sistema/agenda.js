@@ -22,6 +22,66 @@ document.addEventListener('DOMContentLoaded', function() {
 
 window.addEventListener('load', () => { initGlobalData(carregarEventos); });
 
+let financeiroEventsData = [];
+let agendaEventsData = {};
+let unsubscribeFinanceiro = null;
+
+function renderizarTodosEventosAgenda() {
+    if (!calendar) return;
+    calendar.removeAllEvents();
+    
+    if (agendaEventsData) {
+        Object.keys(agendaEventsData).forEach(key => {
+            let ev = agendaEventsData[key];
+            calendar.addEvent({
+                id: key,
+                title: ev.titulo,
+                start: ev.inicio,
+                end: ev.fim || null,
+                allDay: ev.diaInteiro,
+                backgroundColor: ev.cor || '#3b82f6',
+                borderColor: ev.cor || '#3b82f6',
+                extendedProps: {
+                    descricao: ev.descricao || '',
+                    tipoEvento: 'AGENDA'
+                }
+            });
+        });
+    }
+    
+    if (financeiroEventsData && Array.isArray(financeiroEventsData)) {
+        financeiroEventsData.forEach(f => {
+            if (f.status === 'CANCELADO' || f.status === 'RENEGOCIADO') return;
+            
+            let color = '#ef4444'; 
+            if (f.tipo === 'RECEITA') color = '#10b981';
+            if (f.status === 'PAGO') color = '#64748b';
+            
+            let dateStr = f.data;
+            if (dateStr && dateStr.includes('T')) dateStr = dateStr.split('T')[0];
+            
+            const valorFmt = typeof window.formatMoney === 'function' ? window.formatMoney(f.valor) : ('R$ ' + parseFloat(f.valor||0).toFixed(2));
+            const titulo = (f.pessoa || 'Diversos') + ' - ' + valorFmt;
+            
+            if (dateStr) {
+                calendar.addEvent({
+                    id: 'fin_' + f.id,
+                    title: titulo,
+                    start: dateStr,
+                    allDay: true,
+                    backgroundColor: color,
+                    borderColor: color,
+                    extendedProps: {
+                        descricao: 'Evento do módulo financeiro.',
+                        tipoEvento: 'FINANCEIRO',
+                        originalId: f.id
+                    }
+                });
+            }
+        });
+    }
+}
+
 function initCalendar() {
     var calendarEl = document.getElementById('calendar');
     calendar = new FullCalendar.Calendar(calendarEl, {
@@ -34,35 +94,49 @@ function initCalendar() {
         },
         buttonText: {
             today: 'Hoje',
-            month: 'MÃªs',
+            month: 'Mês',
             week: 'Semana',
             day: 'Dia',
             list: 'Lista'
         },
-        editable: true, // permite arrastar eventos
+        editable: true,
         selectable: true,
         selectMirror: true,
-        dayMaxEvents: true, // Exibe "mais +" quando tem muitos
+        dayMaxEvents: true,
         height: '100%',
         
-        // Ao clicar num dia ou arrastar seleÃ§Ã£o
         select: function(info) {
             abrirModalEvento(null, info.startStr, info.endStr);
             calendar.unselect();
         },
         
-        // Ao clicar num evento existente
         eventClick: function(info) {
+            if (info.event.extendedProps && info.event.extendedProps.tipoEvento === 'FINANCEIRO') {
+                if (typeof showToast === 'function') {
+                    showToast('Conta a pagar/receber. Acesse o módulo Financeiro para visualizar.', 'info');
+                } else {
+                    alert('Acesse o módulo Financeiro para visualizar esta conta.');
+                }
+                return;
+            }
             abrirModalEvento(info.event);
         },
         
-        // Ao arrastar e soltar (reagendar)
         eventDrop: function(info) {
+            if (info.event.extendedProps && info.event.extendedProps.tipoEvento === 'FINANCEIRO') {
+                info.revert();
+                if (typeof showToast === 'function') showToast('Não é possível reagendar contas por aqui.', 'error');
+                return;
+            }
             atualizarDataEvento(info.event);
         },
         
-        // Ao redimensionar evento
         eventResize: function(info) {
+            if (info.event.extendedProps && info.event.extendedProps.tipoEvento === 'FINANCEIRO') {
+                info.revert();
+                if (typeof showToast === 'function') showToast('Não é possível reagendar contas por aqui.', 'error');
+                return;
+            }
             atualizarDataEvento(info.event);
         }
     });
@@ -71,35 +145,27 @@ function initCalendar() {
 }
 
 function carregarEventos() {
+    if (window.__paginaBloqueadaPorPlano) return;
     if (unsubscribeAgenda) unsubscribeAgenda();
+    if (unsubscribeFinanceiro) unsubscribeFinanceiro();
     
     const _listenDoc = (typeof window.fcListenDoc === 'function') ? window.fcListenDoc : function(col, id, cb) {
         return firestore.collection(col).doc(id).onSnapshot(doc => cb(doc.exists ? doc.data() : null));
     };
+    const _listenCollection = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb) {
+        return firestore.collection(col).onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    };
     
     unsubscribeAgenda = _listenDoc('fc_moveis', 'config', function(docData) {
-        if (!calendar) return;
-        calendar.removeAllEvents();
-        if (!docData) return;
-        
-        const data = docData.agenda_eventos || {};
-        Object.keys(data).forEach(key => {
-            let ev = data[key];
-            calendar.addEvent({
-                id: key,
-                title: ev.titulo,
-                start: ev.inicio,
-                end: ev.fim || null,
-                allDay: ev.diaInteiro,
-                backgroundColor: ev.cor || '#3b82f6',
-                borderColor: ev.cor || '#3b82f6',
-                extendedProps: {
-                    descricao: ev.descricao || ''
-                }
-            });
-        });
+        agendaEventsData = (docData && docData.agenda_eventos) ? docData.agenda_eventos : {};
+        renderizarTodosEventosAgenda();
     });
-}
+    
+    unsubscribeFinanceiro = _listenCollection('financeiro', function(dados) {
+        financeiroEventsData = dados || [];
+        renderizarTodosEventosAgenda();
+    });
+} 
 
 function abrirModalEvento(eventoObj = null, dataInicio = '', dataFim = '') {
     const tituloEl = document.getElementById('modal-evento-titulo');
@@ -263,6 +329,8 @@ async function atualizarDataEvento(eventoFullCalendar) {
         eventoFullCalendar.revert();
     }
 }
+
+
 
 
 

@@ -142,6 +142,56 @@ window.atualizarIconesTema = atualizarIconesTema;
 
 async function initLoja() {
     try {
+        // 0. Validação de Licença e Módulo SaaS da Empresa
+        try {
+            const dbFirestore = firebase.firestore();
+            const empresaDocSnap = await dbFirestore.collection('empresas').doc(empresaAtivaSite).get();
+            if (empresaDocSnap.exists) {
+                const empData = empresaDocSnap.data() || {};
+                
+                // Verifica se a empresa está bloqueada pelo SaaS
+                if (empData.status === 'BLOQUEADO') {
+                    esconderLoaderSite();
+                    const inativa = document.getElementById('loja-inativa');
+                    if (inativa) {
+                        const h1 = inativa.querySelector('h1');
+                        const p = inativa.querySelector('p');
+                        if (h1) h1.innerText = 'Loja Suspensa';
+                        if (p) p.innerText = 'O acesso aos serviços desta empresa está temporariamente suspenso.';
+                        inativa.classList.remove('hidden');
+                    }
+                    return;
+                }
+
+                // Resolve módulos liberados pelo plano
+                const modulos = empData.modulosLiberados && Array.isArray(empData.modulosLiberados) && empData.modulosLiberados.length > 0
+                    ? empData.modulosLiberados
+                    : (function(planoStr) {
+                        const p = (planoStr || '').toLowerCase();
+                        if (p.includes('ultra') || p.includes('enterprise') || p.includes('pro') || p.includes('profissional')) {
+                            return ['site'];
+                        }
+                        return [];
+                    })(empData.plano);
+
+                // Se o módulo 'site' não estiver liberado para o plano da empresa
+                if (!modulos.includes('site')) {
+                    esconderLoaderSite();
+                    const inativa = document.getElementById('loja-inativa');
+                    if (inativa) {
+                        const h1 = inativa.querySelector('h1');
+                        const p = inativa.querySelector('p');
+                        if (h1) h1.innerText = 'Loja Indisponível';
+                        if (p) p.innerText = 'A Loja Virtual e Catálogo Online não estão disponíveis no plano contratado desta empresa.';
+                        inativa.classList.remove('hidden');
+                    }
+                    return;
+                }
+            }
+        } catch (errLic) {
+            console.warn("[Loja SaaS] Verificação de licença ignorada em fallback local:", errLic);
+        }
+
         // 1. Carregar Configurações da Loja Multi-Tenant
         let configSnap;
         if (empresaAtivaSite === 'emp_fc_moveis') {
@@ -161,7 +211,13 @@ async function initLoja() {
             if (lojaConfig.ativa === false) {
                 esconderLoaderSite();
                 const inativa = document.getElementById('loja-inativa');
-                if (inativa) inativa.classList.remove('hidden');
+                if (inativa) {
+                    const h1 = inativa.querySelector('h1');
+                    const p = inativa.querySelector('p');
+                    if (h1) h1.innerText = 'Loja Temporariamente Indisponível';
+                    if (p) p.innerText = 'Esta loja não está ativada no momento. Por favor, volte mais tarde.';
+                    inativa.classList.remove('hidden');
+                }
                 return;
             }
 

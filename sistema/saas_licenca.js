@@ -6,7 +6,7 @@
 
 (function() {
     const SAAS_CONFIG = {
-        apiKey: "AIzaSyAvaDdhJSFP6WKs8UFRvlQmNGFlc1ZKgFk", // Web API Key do projeto fcgestao-testes
+        apiKey: "AIzaSyAvaDdhJSFP6WKs8UFRvlQmNGFlc1ZKgFk",
         authDomain: "fcgestao-testes.firebaseapp.com",
         projectId: "fcgestao-testes",
         storageBucket: "fcgestao-testes.firebasestorage.app",
@@ -14,20 +14,95 @@
         appId: "1:126917183785:web:32cdc3fd9b8e1064658f38"
     };
 
+    // Número do WhatsApp de suporte (formato internacional sem +)
+    const SUPORTE_WHATSAPP = '5562993341774';
+
+    // Mapeamento completo: módulo → nome legível
+    const NOMES_MODULOS = {
+        pdv:        'Frente de Caixa (PDV)',
+        vendas:     'Vendas & Orçamentos',
+        fiscal:     'Emissor Fiscal (NF-e/NFC-e)',
+        estoque:    'Produtos & Estoque',
+        financeiro: 'Financeiro & Fluxo de Caixa',
+        relatorios: 'Relatórios & DRE',
+        caixa:      'Caixa Físico',
+        compras:    'Compras & NF-e XML',
+        site:       'Loja Virtual & Catálogo Online',
+        ia:         'Inteligência Artificial (IA Gemini)',
+        agenda:     'Agenda & Compromissos',
+        marketing:  'Marketing & Lembretes',
+        suporte:    'Suporte VIP WhatsApp'
+    };
+
+    // Planos padrão — espelha PLANOS_PADRAO do master.js
+    const PLANOS_INFO = {
+        'plano_start':      { nome: 'Start (Frente de Caixa)', preco: 'R$ 69,90/mês',  cor: '#64748b' },
+        'plano_fiscal':     { nome: 'Fiscal & Vendas',         preco: 'R$ 119,90/mês', cor: '#0ea5e9' },
+        'plano_pro':        { nome: 'Profissional',            preco: 'R$ 169,90/mês', cor: '#f59e0b' },
+        'plano_enterprise': { nome: 'Enterprise',              preco: 'R$ 249,90/mês', cor: '#8b5cf6' },
+        'plano_ultra':      { nome: 'Ultra Completo',          preco: 'R$ 349,90/mês', cor: '#10b981' },
+        'START':            { nome: 'Start',                  preco: 'R$ 69,90/mês',  cor: '#64748b' },
+        'FISCAL':           { nome: 'Fiscal & Vendas',         preco: 'R$ 119,90/mês', cor: '#0ea5e9' },
+        'PRO':              { nome: 'Profissional',            preco: 'R$ 169,90/mês', cor: '#f59e0b' },
+        'ENTERPRISE':       { nome: 'Enterprise',              preco: 'R$ 249,90/mês', cor: '#8b5cf6' },
+        'ULTRA':            { nome: 'Ultra Completo',          preco: 'R$ 349,90/mês', cor: '#10b981' },
+        'FREE':             { nome: 'Gratuito (Trial)',        preco: 'Trial',         cor: '#64748b' }
+    };
+
+    // Tabela comparativa de módulos por plano para exibir no overlay (do mais caro para o mais barato)
+    const TABELA_PLANOS = [
+        {
+            id: 'plano_ultra',
+            nome: 'Ultra Completo',
+            preco: 'R$ 349,90',
+            cor: 'emerald',
+            modulos: ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'caixa', 'compras', 'relatorios', 'agenda', 'site', 'ia', 'marketing', 'suporte']
+        },
+        {
+            id: 'plano_enterprise',
+            nome: 'Enterprise',
+            preco: 'R$ 249,90',
+            cor: 'purple',
+            modulos: ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'caixa', 'compras', 'relatorios', 'agenda', 'site', 'ia', 'marketing', 'suporte']
+        },
+        {
+            id: 'plano_pro',
+            nome: 'Profissional',
+            preco: 'R$ 169,90',
+            cor: 'amber',
+            destaque: true,
+            modulos: ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'caixa', 'compras', 'relatorios', 'agenda', 'site', 'suporte']
+        },
+        {
+            id: 'plano_fiscal',
+            nome: 'Fiscal',
+            preco: 'R$ 119,90',
+            cor: 'cyan',
+            modulos: ['pdv', 'vendas', 'fiscal', 'estoque', 'caixa', 'suporte']
+        },
+        {
+            id: 'plano_start',
+            nome: 'Start',
+            preco: 'R$ 69,90',
+            cor: 'slate',
+            modulos: ['pdv', 'vendas', 'estoque', 'caixa', 'suporte']
+        }
+    ];
+
     let saasApp = null;
     let saasDb = null;
+    let _bloqueioOnSnapshotUnsub = null;
 
+    // -----------------------------------------------------------------------
+    // CONEXÃO COM O BANCO CENTRAL DO SAAS
+    // -----------------------------------------------------------------------
     function obterInstanciaSaaS() {
         if (saasDb) return saasDb;
         if (typeof firebase === 'undefined') return null;
 
         try {
-            // Se apiKey ainda não foi preenchida, não trava a loja
-            if (!SAAS_CONFIG.apiKey || SAAS_CONFIG.apiKey.includes('COLE_')) {
-                return null;
-            }
+            if (!SAAS_CONFIG.apiKey || SAAS_CONFIG.apiKey.includes('COLE_')) return null;
 
-            // Inicializa conexão secundária isolada
             const appExistente = firebase.apps.find(a => a.name === 'saasLicenseApp');
             if (appExistente) {
                 saasApp = appExistente;
@@ -37,12 +112,14 @@
             saasDb = saasApp.firestore();
             return saasDb;
         } catch (e) {
-            console.warn('[SaaS Licença] Conexão remota indisponível, operando com cache local:', e.message);
+            console.warn('[SaaS Licença] Conexão remota indisponível:', e.message);
             return null;
         }
     }
 
-    // Consulta e valida licença no banco do SaaS Master
+    // -----------------------------------------------------------------------
+    // CONSULTA DE LICENÇA CENTRAL
+    // -----------------------------------------------------------------------
     async function consultarLicencaCentral(empresaId, sistemaId = 'fc_gestao') {
         const cacheKey = `saas_licenca_${empresaId}`;
         const cacheLocal = localStorage.getItem(cacheKey);
@@ -53,14 +130,7 @@
 
         const sDb = obterInstanciaSaaS();
         if (!sDb) {
-            // Fallback resiliente: se não há conexão com o SaaS, usa cache local ou libera modo offline seguro
-            return licencaCached || {
-                status: 'ATIVO',
-                plano: 'plano_pro',
-                sistemaId: sistemaId,
-                modulosLiberados: ['pdv', 'vendas', 'produtos', 'fiscal', 'financeiro', 'caixa', 'compras', 'relatorios', 'site'],
-                origem: 'fallback_offline'
-            };
+            return licencaCached || _licencaFallback(sistemaId);
         }
 
         try {
@@ -68,27 +138,394 @@
             if (docSnap.exists) {
                 const dados = docSnap.data();
                 dados.id = docSnap.id;
+                // SEMPRE usa modulosLiberados diretamente do Firestore (fonte da verdade)
+                // Se modulosLiberados estiver definido no doc, usa ele. Caso contrario, resolve pelo plano.
+                if (!dados.modulosLiberados || !Array.isArray(dados.modulosLiberados)) {
+                    dados.modulosLiberados = _resolverModulos(dados);
+                }
+                console.log('[SaaS Licenca] Licenca carregada para ' + empresaId + ':', {
+                    plano: dados.plano,
+                    status: dados.status,
+                    modulos: dados.modulosLiberados,
+                    banco: 'fcgestao-testes'
+                });
+                // Invalida cache local se o servidor tiver dados mais recentes
+                const ultimaAtualServidor = dados.ultimaAtualizacaoMaster ? dados.ultimaAtualizacaoMaster.toMillis() : 0;
+                if (licencaCached) {
+                    const ultimaAtualCache = licencaCached._cacheTimestamp || 0;
+                    if (ultimaAtualServidor > ultimaAtualCache) {
+                        console.log('[SaaS Licenca] Cache local invalidado - servidor tem dados mais recentes');
+                    }
+                }
+                dados._cacheTimestamp = Date.now();
                 localStorage.setItem(cacheKey, JSON.stringify(dados));
                 window.currentSaaSLicense = dados;
                 return dados;
             } else if (licencaCached) {
+                window.currentSaaSLicense = licencaCached;
                 return licencaCached;
             }
         } catch (err) {
             console.warn('[SaaS Licença] Erro ao consultar servidor central:', err);
-            if (licencaCached) return licencaCached;
+            if (licencaCached) {
+                window.currentSaaSLicense = licencaCached;
+                return licencaCached;
+            }
         }
 
-        // Default seguro para a empresa fundadora ou testes
+        return _licencaFallback(sistemaId);
+    }
+
+    // -----------------------------------------------------------------------
+    // RESOLVE MÓDULOS BASEADO NO PLANO SE NÃO FORAM DEFINIDOS MANUALMENTE
+    // -----------------------------------------------------------------------
+    function _resolverModulos(empData) {
+        if (empData.modulosLiberados && Array.isArray(empData.modulosLiberados) && empData.modulosLiberados.length > 0) {
+            return empData.modulosLiberados;
+        }
+        const plano = (empData.plano || '').toLowerCase();
+        if (plano.includes('ultra') || plano.includes('completo') || plano.includes('ilimitado')) {
+            return ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'caixa', 'compras', 'relatorios', 'agenda', 'site', 'ia', 'marketing', 'suporte'];
+        } else if (plano.includes('enterprise')) {
+            return ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'caixa', 'compras', 'relatorios', 'agenda', 'site', 'ia', 'marketing', 'suporte'];
+        } else if (plano.includes('pro') || plano.includes('profissional')) {
+            return ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'caixa', 'compras', 'relatorios', 'agenda', 'site', 'suporte'];
+        } else if (plano.includes('fiscal')) {
+            return ['pdv', 'vendas', 'fiscal', 'estoque', 'caixa', 'suporte'];
+        } else if (plano.includes('start') || plano.includes('basico') || plano === 'free') {
+            return ['pdv', 'vendas', 'estoque', 'caixa', 'suporte'];
+        }
+        return ['pdv', 'vendas', 'estoque', 'caixa', 'suporte'];
+    }
+
+    // -----------------------------------------------------------------------
+    // LICENÇA FALLBACK PARA MODO OFFLINE / SEM CONEXÃO COM SAAS
+    // -----------------------------------------------------------------------
+    function _licencaFallback(sistemaId) {
+        // FALLBACK RESTRITIVO: se nao conseguir conectar ao SaaS, usa o cache local.
+        // Se nao houver cache, concede apenas acesso basico (PDV + Vendas + Estoque).
+        // Isso garante que um cliente bloqueado nao ganhe acesso total por falha de conexao.
+        const empresaId = localStorage.getItem('fc_empresa_ativa') || '';
+        if (empresaId) {
+            const cacheKey = 'saas_licenca_' + empresaId;
+            const cacheRaw = localStorage.getItem(cacheKey);
+            if (cacheRaw) {
+                try {
+                    const cached = JSON.parse(cacheRaw);
+                    if (cached && Array.isArray(cached.modulosLiberados)) {
+                        console.warn('[SaaS Licenca] Usando cache local como fallback para:', empresaId);
+                        return cached;
+                    }
+                } catch(e) {}
+            }
+        }
+        console.warn('[SaaS Licenca] Sem conexao e sem cache - aplicando acesso minimo restritivo');
         return {
             status: 'ATIVO',
-            plano: 'plano_pro',
+            plano: 'start',
             sistemaId: sistemaId,
-            modulosLiberados: ['pdv', 'vendas', 'produtos', 'fiscal', 'financeiro', 'caixa', 'compras', 'relatorios', 'site']
+            modulosLiberados: ['pdv', 'vendas', 'estoque'],
+            origem: 'fallback_offline_restritivo'
         };
     }
 
+    // -----------------------------------------------------------------------
+    // VERIFICAÇÃO ESTRITA DE MÓDULOS (Respeita 100% as caixas marcadas no SaaS)
+    // -----------------------------------------------------------------------
+    function temPermissaoModulo(modulo, mods) {
+        if (!mods || !Array.isArray(mods)) return false;
+        // IA e Marketing referem-se a mesma funcionalidade contratada no SaaS
+        if (modulo === 'ia' || modulo === 'marketing') {
+            return mods.includes('ia') || mods.includes('marketing');
+        }
+        return mods.includes(modulo);
+    }
+
+    // -----------------------------------------------------------------------
+    // VERIFICA SE UM MÓDULO ESTÁ LIBERADO PARA A EMPRESA ATUAL
+    // -----------------------------------------------------------------------
+    function verificarAcessoModulo(modulo) {
+        const licenca = window.currentSaaSLicense || window.currentEmpresaData;
+        if (!licenca) return true; // Permissivo enquanto não carregou
+
+        const mods = licenca.modulosLiberados || _resolverModulos(licenca);
+        return temPermissaoModulo(modulo, mods);
+    }
+
+    function _isSuperAdmin(email) {
+        return false; // Sem bypass na loja: respeita estritamente o que foi configurado no SaaS
+    }
+
+    // -----------------------------------------------------------------------
+    // OVERLAY DE BLOQUEIO POR PLANO (módulo não incluso)
+    // -----------------------------------------------------------------------
+    function aplicarBloqueioPlano(moduloId, tituloModuloOverride) {
+        const licenca = window.currentSaaSLicense || window.currentEmpresaData || {};
+        const nomeModulo = tituloModuloOverride || NOMES_MODULOS[moduloId] || moduloId;
+        const planoId = (licenca.plano || 'FREE').toLowerCase().replace(/\s+/g, '_');
+        const planoInfo = PLANOS_INFO[licenca.plano] || PLANOS_INFO[planoId] || { nome: licenca.plano || 'Atual', preco: '', cor: '#64748b' };
+        const nomePlano = planoInfo.nome;
+
+        // Remove overlay antigo se existir
+        const antigo = document.getElementById('fc-saas-overlay-plano');
+        if (antigo) antigo.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'fc-saas-overlay-plano';
+
+        const tabelaHtml = TABELA_PLANOS.map(p => {
+            const temModulo = temPermissaoModulo(moduloId, p.modulos);
+            const isAtual = planoId.includes(p.id.replace('plano_', '')) || (licenca.plano || '').toUpperCase().includes(p.nome.toUpperCase().split(' ')[0]);
+            const destaque = p.destaque ? 'border-amber-500/50 bg-amber-500/5' : 'border-slate-700/50 bg-slate-800/50';
+            const corNome = p.cor === 'amber' ? 'text-amber-400' : (p.cor === 'purple' ? 'text-purple-400' : 'text-slate-300');
+            const badgeAtual = isAtual ? `<span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 ml-1">Atual</span>` : '';
+            return `
+                <div class="rounded-xl border ${destaque} p-3 flex flex-col gap-1 min-w-[120px]">
+                    <div class="text-xs font-black ${corNome} flex items-center gap-1">${p.nome}${badgeAtual}</div>
+                    <div class="text-[11px] text-slate-400 font-semibold">${p.preco}<span class="text-slate-600">/mês</span></div>
+                    <div class="mt-1">
+                        ${temModulo
+                            ? `<div class="flex items-center gap-1 text-[11px] text-emerald-400 font-bold"><i class="fa-solid fa-check text-[9px]"></i> Incluído</div>`
+                            : `<div class="flex items-center gap-1 text-[11px] text-slate-500 font-medium"><i class="fa-solid fa-xmark text-[9px]"></i> Não incluído</div>`
+                        }
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        const msgWpp = encodeURIComponent(`Olá! Gostaria de fazer o upgrade do meu plano para liberar o módulo "${nomeModulo}".`);
+
+        overlay.style.cssText = `
+            position: fixed; inset: 0; z-index: 99999;
+            background: rgba(15,23,42,0.97);
+            display: flex; align-items: center; justify-content: center;
+            padding: 16px;
+            font-family: 'Inter', system-ui, sans-serif;
+        `;
+
+        overlay.innerHTML = `
+            <div style="max-width:520px; width:100%; text-align:center; padding: 2rem 1.5rem; background: #1e293b; border-radius: 1.5rem; border: 1px solid #334155; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7);">
+                
+                <!-- Ícone -->
+                <div style="width:72px;height:72px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:1rem;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-size:1.75rem;color:#f59e0b;">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+
+                <!-- Título -->
+                <h2 style="color:#f8fafc;font-size:1.25rem;font-weight:900;margin:0 0 0.5rem;">Módulo não disponível no seu plano</h2>
+                <p style="color:#94a3b8;font-size:0.8rem;margin:0 0 1.25rem;line-height:1.6;">
+                    O módulo <strong style="color:#fbbf24;font-weight:700;">${nomeModulo}</strong> não está incluso no plano
+                    <strong style="color:#f8fafc;">${nomePlano}</strong> da sua loja.
+                    Faça o upgrade para desbloquear este e outros recursos.
+                </p>
+
+                <!-- Tabela de Planos -->
+                <div style="display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap;margin-bottom:1.5rem;">
+                    ${tabelaHtml}
+                </div>
+
+                <!-- Botões -->
+                <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
+                    <a href="index.html" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.6rem 1.25rem;background:#334155;border-radius:0.625rem;color:#cbd5e1;font-size:0.75rem;font-weight:700;text-decoration:none;border:1px solid #475569;transition:all .2s;">
+                        <i class="fa-solid fa-arrow-left"></i> Voltar ao Painel
+                    </a>
+                    <a href="https://wa.me/${SUPORTE_WHATSAPP}?text=${msgWpp}" target="_blank" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.6rem 1.25rem;background:linear-gradient(135deg,#f59e0b,#eab308);border-radius:0.625rem;color:#0f172a;font-size:0.75rem;font-weight:900;text-decoration:none;box-shadow:0 4px 15px rgba(245,158,11,0.25);transition:all .2s;">
+                        <i class="fa-brands fa-whatsapp" style="font-size:0.9rem;"></i> Falar com Suporte para Upgrade
+                    </a>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        // Oculta o conteúdo da página por baixo (evita scroll/interação)
+        const main = document.querySelector('main');
+        if (main) main.style.visibility = 'hidden';
+    }
+
+    // -----------------------------------------------------------------------
+    // OVERLAY DE BLOQUEIO TOTAL (empresa BLOQUEADA / inadimplente)
+    // -----------------------------------------------------------------------
+    function aplicarBloqueioTotal(motivo) {
+        const antigo = document.getElementById('fc-saas-overlay-bloqueio');
+        if (antigo) antigo.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'fc-saas-overlay-bloqueio';
+
+        const msgMotivo = motivo || 'O acesso à sua conta foi temporariamente suspenso por pendência financeira.';
+        const msgWpp = encodeURIComponent('Olá! Quero regularizar minha situação e reativar o acesso ao sistema.');
+
+        overlay.style.cssText = `
+            position: fixed; inset: 0; z-index: 99999;
+            background: rgba(15,23,42,0.98);
+            display: flex; align-items: center; justify-content: center;
+            padding: 16px;
+            font-family: 'Inter', system-ui, sans-serif;
+        `;
+
+        overlay.innerHTML = `
+            <div style="max-width:460px;width:100%;text-align:center;padding:2.5rem 2rem;background:#1e293b;border-radius:1.5rem;border:1px solid #ef444440;box-shadow:0 25px 50px -12px rgba(0,0,0,0.8);">
+                
+                <!-- Ícone -->
+                <div style="width:80px;height:80px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;font-size:2rem;color:#ef4444;">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+
+                <!-- Título -->
+                <h2 style="color:#f8fafc;font-size:1.4rem;font-weight:900;margin:0 0 0.625rem;">⛔ Acesso Suspenso</h2>
+                <p style="color:#94a3b8;font-size:0.82rem;line-height:1.7;margin:0 0 0.75rem;">${msgMotivo}</p>
+                <p style="color:#64748b;font-size:0.75rem;margin:0 0 2rem;">Para reativar seu acesso imediatamente, regularize sua situação entrando em contato com o suporte.</p>
+
+                <!-- Botões -->
+                <div style="display:flex;flex-direction:column;gap:0.75rem;align-items:center;">
+                    <a href="https://wa.me/${SUPORTE_WHATSAPP}?text=${msgWpp}" target="_blank" style="display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;padding:0.8rem 2rem;width:100%;max-width:300px;background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:0.75rem;color:white;font-size:0.82rem;font-weight:900;text-decoration:none;box-shadow:0 4px 15px rgba(34,197,94,0.25);">
+                        <i class="fa-brands fa-whatsapp" style="font-size:1.1rem;"></i> Regularizar via WhatsApp
+                    </a>
+                    <button onclick="window.__fcSaasRevalidar && window.__fcSaasRevalidar()" style="display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;padding:0.6rem 1.5rem;background:transparent;border:1px solid #334155;border-radius:0.625rem;color:#94a3b8;font-size:0.75rem;font-weight:600;cursor:pointer;width:100%;max-width:300px;">
+                        <i class="fa-solid fa-rotate-right"></i> Já regularizei — Verificar novamente
+                    </button>
+                    <button onclick="firebase.auth().signOut().then(()=>window.location.href='login.html')" style="display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;padding:0.5rem 1.25rem;background:transparent;border:none;color:#475569;font-size:0.72rem;font-weight:500;cursor:pointer;">
+                        <i class="fa-solid fa-right-from-bracket"></i> Sair / Trocar conta
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+        const main = document.querySelector('main');
+        if (main) main.style.visibility = 'hidden';
+    }
+
+    // -----------------------------------------------------------------------
+    // LISTENER EM TEMPO REAL — Detecta bloqueio sem precisar recarregar
+    // -----------------------------------------------------------------------
+    function iniciarListenerBloqueioTempoReal(empresaId, userEmail) {
+        if (_isSuperAdmin(userEmail)) return; // Super admins: sem listener
+        if (_bloqueioOnSnapshotUnsub) {
+            try { _bloqueioOnSnapshotUnsub(); } catch(e) {}
+        }
+
+        const sDb = obterInstanciaSaaS();
+        if (!sDb) return;
+
+        try {
+            _bloqueioOnSnapshotUnsub = sDb.collection('empresas').doc(empresaId).onSnapshot((snap) => {
+                if (!snap.exists) return;
+                const dados = snap.data();
+                const statusAtual = dados.status || 'ATIVO';
+
+                // Atualiza licença em memória
+                // IMPORTANTE: Respeita modulosLiberados definidos pelo master (fonte da verdade).
+                // Só usa _resolverModulos se o master nunca definiu a lista manualmente.
+                const licAtual = window.currentSaaSLicense || {};
+                const novaLicenca = { ...licAtual, ...dados, id: empresaId };
+                if (!dados.modulosLiberados || !Array.isArray(dados.modulosLiberados)) {
+                    novaLicenca.modulosLiberados = _resolverModulos(novaLicenca);
+                } else {
+                    novaLicenca.modulosLiberados = dados.modulosLiberados;
+                }
+                const modsAnterior = JSON.stringify(licAtual.modulosLiberados || []);
+                const modsNovos = JSON.stringify(novaLicenca.modulosLiberados || []);
+                const modulosMudaram = modsAnterior !== modsNovos;
+                window.currentSaaSLicense = novaLicenca;
+                window.currentEmpresaData = novaLicenca;
+                localStorage.setItem(`saas_licenca_${empresaId}`, JSON.stringify(novaLicenca));
+
+                // Aplica bloqueio total em tempo real se status mudou
+                if (statusAtual === 'BLOQUEADO') {
+                    const overlayBloq = document.getElementById('fc-saas-overlay-bloqueio');
+                    if (!overlayBloq) {
+                        aplicarBloqueioTotal('O acesso da sua loja foi suspenso pelo administrador por pendência financeira.');
+                    }
+                } else {
+                    // Remove overlay de bloqueio se foi reativado
+                    const overlayBloq = document.getElementById('fc-saas-overlay-bloqueio');
+                    if (overlayBloq) {
+                        overlayBloq.remove();
+                        const main = document.querySelector('main');
+                        if (main) main.style.visibility = 'visible';
+                        if (typeof showToast === 'function') showToast('✅ Acesso reativado com sucesso!', 'success');
+                    }
+                    // Reaplica controle de módulos em tempo real se o master alterou os módulos
+                    if (modulosMudaram) {
+                        if (typeof window.atualizarMenuLateralPorPlanoSaaS === 'function') {
+                            window.atualizarMenuLateralPorPlanoSaaS(novaLicenca.modulosLiberados);
+                        }
+                        if (typeof window.aplicarControleDeModulosSaaS === 'function') {
+                            const userAtual = typeof firebase !== 'undefined' ? firebase.auth().currentUser : null;
+                            if (userAtual) window.aplicarControleDeModulosSaaS(novaLicenca, userAtual);
+                        }
+                        // Verifica se a página atual agora está bloqueada
+                        const pathAtual = window.location.pathname.toLowerCase();
+                        const paginasModulos = [
+                            { rotas: ['fiscal.html'],         modulo: 'fiscal' },
+                            { rotas: ['financeiro.html'],      modulo: 'financeiro' },
+                            { rotas: ['compras.html'],         modulo: 'compras' },
+                            { rotas: ['relatorios.html'],      modulo: 'relatorios' },
+                            { rotas: ['agenda.html'],          modulo: 'agenda' },
+                            { rotas: ['marketing.html'],       modulo: 'ia' },
+                            { rotas: ['caixa.html'],           modulo: 'caixa' },
+                            { rotas: ['pdv.html'],             modulo: 'pdv' },
+                            { rotas: ['vendas_operacao.html', 'vendas_gestao.html', 'orcamentos.html'], modulo: 'vendas' },
+                        ];
+                        for (const item of paginasModulos) {
+                            const estaNaRota = item.rotas.some(r => pathAtual.endsWith('/' + r) || pathAtual.endsWith(r));
+                            if (estaNaRota && !temPermissaoModulo(item.modulo, novaLicenca.modulosLiberados)) {
+                                if (typeof showToast === 'function') showToast('⚠️ Seu acesso a esta área foi removido pelo administrador.', 'warning');
+                                setTimeout(() => window.location.href = 'index.html', 2500);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }, (err) => {
+                console.warn('[SaaS Licença] onSnapshot erro:', err.message);
+            });
+        } catch(e) {
+            console.warn('[SaaS Licença] Falha ao iniciar listener:', e.message);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // REVALIDAÇÃO MANUAL (botão "Já paguei")
+    // -----------------------------------------------------------------------
+    window.__fcSaasRevalidar = async function() {
+        const empresaId = localStorage.getItem('fc_empresa_ativa');
+        if (!empresaId) return;
+
+        const overlay = document.getElementById('fc-saas-overlay-bloqueio');
+        if (overlay) {
+            overlay.querySelector('button').innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verificando...';
+        }
+
+        const licenca = await consultarLicencaCentral(empresaId, 'fc_gestao');
+        if (licenca && licenca.status !== 'BLOQUEADO') {
+            if (overlay) overlay.remove();
+            const main = document.querySelector('main');
+            if (main) main.style.visibility = 'visible';
+            if (typeof showToast === 'function') showToast('✅ Acesso reativado! Recarregando...', 'success');
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            if (overlay) {
+                const btn = overlay.querySelector('button');
+                if (btn) btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Já regularizei — Verificar novamente';
+            }
+            if (typeof showToast === 'function') showToast('Acesso ainda suspenso. Contate o suporte.', 'error');
+        }
+    };
+
+    // -----------------------------------------------------------------------
+    // EXPORTS GLOBAIS
+    // -----------------------------------------------------------------------
     window.consultarLicencaCentral = consultarLicencaCentral;
     window.obterInstanciaSaaS = obterInstanciaSaaS;
+    window.verificarAcessoModulo = verificarAcessoModulo;
+    window.temPermissaoModulo = temPermissaoModulo;
+    window.aplicarBloqueioPlano = aplicarBloqueioPlano;
+    window.aplicarBloqueioTotal = aplicarBloqueioTotal;
+    window.iniciarListenerBloqueioTempoReal = iniciarListenerBloqueioTempoReal;
     window.SAAS_CONFIG = SAAS_CONFIG;
+    window.SAAS_NOMES_MODULOS = NOMES_MODULOS;
+    window._resolverModulosSaaS = _resolverModulos;
 })();
