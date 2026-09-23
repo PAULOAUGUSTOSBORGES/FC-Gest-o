@@ -36,8 +36,8 @@
         
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css?v=20260921143823">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260921143823">
+    <link rel="stylesheet" href="../style.css?v=20260923172910">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260923172910">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="vendas">
 
@@ -652,29 +652,113 @@
                 </div>
 
                 <h4 class="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-100 dark:border-slate-700 pb-2 uppercase tracking-wide">Controle de Acesso (Permissóes)</h4>
-                <div class="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-2">
-                    <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
-                        <input type="checkbox" id="func-perm-dashboard" class="w-5 h-5 accent-blue-600 rounded">
-                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Acesso ao Dashboard</span>
-                    </label>
-                    <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
-                        <input type="checkbox" id="func-perm-pdv" class="w-5 h-5 accent-blue-600 rounded">
-                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Acesso ao PDV / Caixa</span>
-                    </label>
-                    <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
-                        <input type="checkbox" id="func-perm-cadastros" class="w-5 h-5 accent-blue-600 rounded">
-                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Acesso a Cadastros</span>
-                    </label>
-                    <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
-                        <input type="checkbox" id="func-perm-gestao" class="w-5 h-5 accent-blue-600 rounded">
-                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Acesso Financeiro / Gestão</span>
-                    </label>
-                    <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
-                        <input type="checkbox" id="func-perm-config" class="w-5 h-5 accent-blue-600 rounded">
-                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Acesso a Configurações</span>
-                    </label>
-                </div>
-                <p class="text-[10px] text-slate-400 mb-4">* Se todas desmarcadas, o usuï¿½rio não conseguirï¿½ usar as abas do sistema.</p>
+                  <!-- BARRA DE AÇÕES RÁPIDAS DE PERMISSÕES -->
+                  <div class="flex items-center justify-between mb-3 px-1">
+                      <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5"><i class="fa-solid fa-shield-halved text-blue-500"></i> Páginas e Módulos Liberados</span>
+                      <div class="flex items-center gap-2">
+                          <button type="button" onclick="marcarTodasPermissoes(true)" class="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline">Marcar Todos</button>
+                          <span class="text-slate-300 dark:text-slate-600">|</span>
+                          <button type="button" onclick="marcarTodasPermissoes(false)" class="text-[11px] font-bold text-slate-500 dark:text-slate-400 hover:underline">Desmarcar Todos</button>
+                      </div>
+                  </div>
+
+                  <div class="space-y-3 mb-3">
+                      <!-- 1. VISÃO GERAL -->
+                      <div class="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+                          <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1"><i class="fa-solid fa-chart-pie text-blue-500"></i> Visão Geral</p>
+                          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                              <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                  <input type="checkbox" id="func-perm-dashboard" class="w-4 h-4 accent-blue-600 rounded">
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Dashboard</span>
+                              </label>
+                          </div>
+                      </div>
+
+                      <!-- 2. OPERAÇÃO DE VENDAS -->
+                      <div class="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+                          <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1"><i class="fa-solid fa-cash-register text-emerald-500"></i> Operação de Vendas</p>
+                          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                              <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                  <input type="checkbox" id="func-perm-pdv" class="w-4 h-4 accent-blue-600 rounded">
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Frente de Caixa (PDV)</span>
+                              </label>
+                              <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                  <input type="checkbox" id="func-perm-vendas-op" class="w-4 h-4 accent-blue-600 rounded">
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Histórico Vendas/Serviços</span>
+                              </label>
+                              <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                  <input type="checkbox" id="func-perm-orcamentos" class="w-4 h-4 accent-blue-600 rounded">
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Meus Orçamentos</span>
+                              </label>
+                              <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                  <input type="checkbox" id="func-perm-fiscal" class="w-4 h-4 accent-blue-600 rounded">
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Emissor Fiscal (NF-e)</span>
+                              </label>
+                          </div>
+                      </div>
+
+                      <!-- 3. CADASTROS -->
+                      <div class="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+                          <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1"><i class="fa-solid fa-boxes-stacked text-purple-500"></i> Cadastros</p>
+                          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                              <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                  <input type="checkbox" id="func-perm-produtos" class="w-4 h-4 accent-blue-600 rounded">
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Produtos & Serviços</span>
+                              </label>
+                              <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                  <input type="checkbox" id="func-perm-clientes" class="w-4 h-4 accent-blue-600 rounded">
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Clientes</span>
+                              </label>
+                              <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                  <input type="checkbox" id="func-perm-fornecedores" class="w-4 h-4 accent-blue-600 rounded">
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Fornecedores</span>
+                              </label>
+                          </div>
+                      </div>
+
+                      <!-- 4. GESTÃO E FINANCEIRO -->
+                      <div class="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+                          <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1"><i class="fa-solid fa-money-bill-trend-up text-amber-500"></i> Gestão Financeira & Administrativa</p>
+                          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                              <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                  <input type="checkbox" id="func-perm-financeiro" class="w-4 h-4 accent-blue-600 rounded">
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Contas a Pagar/Receber</span>
+                              </label>
+                              <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                  <input type="checkbox" id="func-perm-caixa" class="w-4 h-4 accent-blue-600 rounded">
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Caixa Físico</span>
+                              </label>
+                              <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                  <input type="checkbox" id="func-perm-compras" class="w-4 h-4 accent-blue-600 rounded">
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Compras & NF-e XML</span>
+                              </label>
+                              <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                  <input type="checkbox" id="func-perm-relatorios" class="w-4 h-4 accent-blue-600 rounded">
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Relatórios & DRE</span>
+                              </label>
+                              <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                  <input type="checkbox" id="func-perm-agenda" class="w-4 h-4 accent-blue-600 rounded">
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Agenda</span>
+                              </label>
+                              <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                  <input type="checkbox" id="func-perm-marketing" class="w-4 h-4 accent-blue-600 rounded">
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Marketing & Lembretes</span>
+                              </label>
+                          </div>
+                      </div>
+
+                      <!-- 5. SISTEMA -->
+                      <div class="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+                          <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1"><i class="fa-solid fa-gear text-slate-500"></i> Sistema</p>
+                          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                              <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                  <input type="checkbox" id="func-perm-config" class="w-4 h-4 accent-blue-600 rounded">
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Configurações Gerais</span>
+                              </label>
+                          </div>
+                      </div>
+                  </div>
+                  <p class="text-[10px] text-slate-400 mb-4">* Se todas as opções forem desmarcadas, o usuário não terá permissão para abrir nenhuma página.</p>
             </div>
 
             <div class="p-4 md:p-5 bg-slate-50 dark:bg-slate-900/50 flex justify-end gap-3 shrink-0">
@@ -746,11 +830,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20260921143823"></script>
-    <script src="saas_licenca.js?v=20260921143823"></script>
-    <script src="../global.js?v=20260921143823"></script>
-    <script src="fc_cache.js?v=20260921143823"></script>
-    <script src="clientes.js?v=20260921143823"></script>
+    <script src="../sistema/config_banco.js?v=20260923172910"></script>
+    <script src="saas_licenca.js?v=20260923172910"></script>
+    <script src="../global.js?v=20260923172910"></script>
+    <script src="fc_cache.js?v=20260923172910"></script>
+    <script src="clientes.js?v=20260923172910"></script>
 </body>
 </html>
 

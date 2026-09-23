@@ -33,6 +33,10 @@ function mudarVisaoLocal(viewId) {
 }
 
 function inicializarCadastro() {
+    if (window.__paginaBloqueadaPorPermissao || (typeof window.verificarPermissaoRota === 'function' && !window.verificarPermissaoRota(window.location.pathname).permitido)) {
+        console.warn('Bloqueando execução: usuário sem permissão para esta rota.');
+        return;
+    }
     // Liga os listeners do Firestore com cache inteligente (FCCache)
     const _listen = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb, opts) {
         let ref = firestore.collection(col);
@@ -781,19 +785,38 @@ function renderFuncionarios() {
     
     document.getElementById('tabela-funcionarios').innerHTML = lista.map(f => {
         let permissoesStr = [];
+        if (f.perm_dashboard) permissoesStr.push('Dashboard');
         if (f.perm_pdv) permissoesStr.push('PDV');
-        if (f.perm_cadastros) permissoesStr.push('Cadastros');
-        if (f.perm_gestao) permissoesStr.push('Gestão');
+        if (f.perm_vendas_op) permissoesStr.push('Vendas');
+        if (f.perm_orcamentos) permissoesStr.push('Orçamentos');
+        if (f.perm_fiscal) permissoesStr.push('Fiscal');
+        if (f.perm_produtos) permissoesStr.push('Produtos');
+        if (f.perm_clientes) permissoesStr.push('Clientes');
+        if (f.perm_fornecedores) permissoesStr.push('Fornecedores');
+        if (f.perm_financeiro) permissoesStr.push('Financeiro');
+        if (f.perm_caixa) permissoesStr.push('Caixa');
+        if (f.perm_compras) permissoesStr.push('Compras');
+        if (f.perm_relatorios) permissoesStr.push('Relatórios');
+        if (f.perm_agenda) permissoesStr.push('Agenda');
+        if (f.perm_marketing) permissoesStr.push('Marketing');
         if (f.perm_config) permissoesStr.push('Config');
         
-        let permissoesBadge = permissoesStr.length > 0 ? permissoesStr.join(', ') : 'Nenhum Acesso';
-        if (f.isAdmin) permissoesBadge = 'Acesso Total (Admin)';
+        let permissoesBadge = '';
+        if (f.isAdmin) {
+            permissoesBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">Acesso Total (Admin)</span>';
+        } else if (permissoesStr.length === 15) {
+            permissoesBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">Todas as Páginas (15/15)</span>';
+        } else if (permissoesStr.length > 0) {
+            permissoesBadge = `<span class="text-blue-500 font-bold">${permissoesStr.slice(0, 3).join(', ')}${permissoesStr.length > 3 ? ` +${permissoesStr.length - 3}` : ''}</span>`;
+        } else {
+            permissoesBadge = '<span class="text-rose-500 font-bold">Nenhum Acesso</span>';
+        }
 
         return `
         <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700 transition-colors">
             <td class="p-3">
                 <div class="font-bold text-slate-800 dark:text-slate-100 uppercase">${f.nome || 'Sem Nome'}</div>
-                <div class="text-[10px] text-slate-400 mt-0.5">Permissões: <span class="text-blue-500 font-bold">${permissoesBadge}</span></div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Permissões: ${permissoesBadge}</div>
             </td>
             <td class="p-3 text-slate-600 dark:text-slate-300 font-medium">${f.email}</td>
             <td class="p-3 text-slate-600 dark:text-slate-300">
@@ -832,11 +855,44 @@ function abrirModalFuncionario(id = null) {
             document.getElementById('func-comissao').value = f.comissao || 0;
             document.getElementById('func-telefone').value = f.telefone || '';
             
-            document.getElementById('func-perm-dashboard').checked = !!f.perm_dashboard;
-            document.getElementById('func-perm-pdv').checked = !!f.perm_pdv;
-            document.getElementById('func-perm-cadastros').checked = !!f.perm_cadastros;
-            document.getElementById('func-perm-gestao').checked = !!f.perm_gestao;
-            document.getElementById('func-perm-config').checked = !!f.perm_config;
+            const setCheck = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.checked = !!val;
+            };
+
+            const temProd = f.perm_produtos !== undefined ? !!f.perm_produtos : !!f.perm_cadastros;
+            const temCli = f.perm_clientes !== undefined ? !!f.perm_clientes : !!f.perm_cadastros;
+            const temForn = f.perm_fornecedores !== undefined ? !!f.perm_fornecedores : !!f.perm_cadastros;
+
+            const temPdv = !!f.perm_pdv;
+            const temVendasOp = f.perm_vendas_op !== undefined ? !!f.perm_vendas_op : temPdv;
+            const temOrcamentos = f.perm_orcamentos !== undefined ? !!f.perm_orcamentos : temPdv;
+            const temFiscal = f.perm_fiscal !== undefined ? !!f.perm_fiscal : !!f.perm_gestao;
+
+            const temGestao = !!f.perm_gestao;
+            const temFinanceiro = f.perm_financeiro !== undefined ? !!f.perm_financeiro : temGestao;
+            const temCaixa = f.perm_caixa !== undefined ? !!f.perm_caixa : (temPdv || temGestao);
+            const temCompras = f.perm_compras !== undefined ? !!f.perm_compras : temGestao;
+            const temRelatorios = f.perm_relatorios !== undefined ? !!f.perm_relatorios : temGestao;
+            const temAgenda = f.perm_agenda !== undefined ? !!f.perm_agenda : temGestao;
+            const temMarketing = f.perm_marketing !== undefined ? !!f.perm_marketing : temGestao;
+
+            setCheck('func-perm-dashboard', f.perm_dashboard);
+            setCheck('func-perm-pdv', f.perm_pdv);
+            setCheck('func-perm-vendas-op', temVendasOp);
+            setCheck('func-perm-orcamentos', temOrcamentos);
+            setCheck('func-perm-fiscal', temFiscal);
+            setCheck('func-perm-produtos', temProd);
+            setCheck('func-perm-clientes', temCli);
+            setCheck('func-perm-fornecedores', temForn);
+            setCheck('func-perm-financeiro', temFinanceiro);
+            setCheck('func-perm-caixa', temCaixa);
+            setCheck('func-perm-compras', temCompras);
+            setCheck('func-perm-relatorios', temRelatorios);
+            setCheck('func-perm-agenda', temAgenda);
+            setCheck('func-perm-marketing', temMarketing);
+            setCheck('func-perm-config', f.perm_config);
+            setCheck('func-perm-admin', f.isAdmin);
         }
     } else {
         document.getElementById('modal-funcionario-title').innerText = 'Novo Funcionário';
@@ -850,17 +906,57 @@ function abrirModalFuncionario(id = null) {
         document.getElementById('func-comissao').value = 0;
         document.getElementById('func-telefone').value = '';
         
-        document.getElementById('func-perm-dashboard').checked = true;
-        document.getElementById('func-perm-pdv').checked = true;
-        document.getElementById('func-perm-cadastros').checked = false;
-        document.getElementById('func-perm-gestao').checked = false;
-                  document.getElementById('func-perm-config').checked = false;
-          document.getElementById('func-perm-admin').checked = false;
+        const setCheck = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.checked = !!val;
+        };
+
+        setCheck('func-perm-dashboard', true);
+        setCheck('func-perm-pdv', true);
+        setCheck('func-perm-vendas-op', true);
+        setCheck('func-perm-orcamentos', true);
+        setCheck('func-perm-fiscal', false);
+        setCheck('func-perm-produtos', false);
+        setCheck('func-perm-clientes', false);
+        setCheck('func-perm-fornecedores', false);
+        setCheck('func-perm-financeiro', false);
+        setCheck('func-perm-caixa', false);
+        setCheck('func-perm-compras', false);
+        setCheck('func-perm-relatorios', false);
+        setCheck('func-perm-agenda', false);
+        setCheck('func-perm-marketing', false);
+        setCheck('func-perm-config', false);
+        setCheck('func-perm-admin', false);
     }
     
     document.getElementById('modal-funcionario').classList.remove('hidden');
     document.getElementById('modal-funcionario').style.display = 'flex';
 }
+
+function marcarTodasPermissoes(estado) {
+    const ids = [
+        'func-perm-dashboard',
+        'func-perm-pdv',
+        'func-perm-vendas-op',
+        'func-perm-orcamentos',
+        'func-perm-fiscal',
+        'func-perm-produtos',
+        'func-perm-clientes',
+        'func-perm-fornecedores',
+        'func-perm-financeiro',
+        'func-perm-caixa',
+        'func-perm-compras',
+        'func-perm-relatorios',
+        'func-perm-agenda',
+        'func-perm-marketing',
+        'func-perm-config'
+    ];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.checked = !!estado;
+    });
+}
+window.marcarTodasPermissoes = marcarTodasPermissoes;
 
 function fecharModalFuncionario() {
     document.getElementById('modal-funcionario').classList.add('hidden');
@@ -881,18 +977,55 @@ async function salvarFuncionario() {
     const email = document.getElementById('func-email').value.trim();
     const senha = document.getElementById('func-senha').value;
     
+    const getCheck = (id) => {
+        const el = document.getElementById(id);
+        return el ? !!el.checked : false;
+    };
+
+    const perm_dashboard = getCheck('func-perm-dashboard');
+    const perm_pdv = getCheck('func-perm-pdv');
+    const perm_vendas_op = getCheck('func-perm-vendas-op');
+    const perm_orcamentos = getCheck('func-perm-orcamentos');
+    const perm_fiscal = getCheck('func-perm-fiscal');
+    const perm_produtos = getCheck('func-perm-produtos');
+    const perm_clientes = getCheck('func-perm-clientes');
+    const perm_fornecedores = getCheck('func-perm-fornecedores');
+    const perm_financeiro = getCheck('func-perm-financeiro');
+    const perm_caixa = getCheck('func-perm-caixa');
+    const perm_compras = getCheck('func-perm-compras');
+    const perm_relatorios = getCheck('func-perm-relatorios');
+    const perm_agenda = getCheck('func-perm-agenda');
+    const perm_marketing = getCheck('func-perm-marketing');
+    const perm_config = getCheck('func-perm-config');
+    const isAdmin = getCheck('func-perm-admin');
+
+    const perm_cadastros = perm_produtos || perm_clientes || perm_fornecedores;
+    const perm_gestao = perm_financeiro || perm_caixa || perm_compras || perm_relatorios || perm_agenda || perm_marketing || perm_fiscal;
+
     const obj = {
         nome: document.getElementById('func-nome').value.trim().toUpperCase(),
         email: email,
         vendedor: document.getElementById('func-vendedor').value,
         comissao: parseInputMoney(document.getElementById('func-comissao').value) || 0,
         telefone: document.getElementById('func-telefone').value.trim(),
-        perm_dashboard: document.getElementById('func-perm-dashboard').checked,
-        perm_pdv: document.getElementById('func-perm-pdv').checked,
-        perm_cadastros: document.getElementById('func-perm-cadastros').checked,
-        perm_gestao: document.getElementById('func-perm-gestao').checked,
-                perm_config: document.getElementById('func-perm-config').checked,
-        isAdmin: document.getElementById('func-perm-admin').checked,
+        perm_dashboard: perm_dashboard,
+        perm_pdv: perm_pdv,
+        perm_vendas_op: perm_vendas_op,
+        perm_orcamentos: perm_orcamentos,
+        perm_fiscal: perm_fiscal,
+        perm_produtos: perm_produtos,
+        perm_clientes: perm_clientes,
+        perm_fornecedores: perm_fornecedores,
+        perm_financeiro: perm_financeiro,
+        perm_caixa: perm_caixa,
+        perm_compras: perm_compras,
+        perm_relatorios: perm_relatorios,
+        perm_agenda: perm_agenda,
+        perm_marketing: perm_marketing,
+        perm_config: perm_config,
+        perm_cadastros: perm_cadastros,
+        perm_gestao: perm_gestao,
+        isAdmin: isAdmin,
         ultimaAtualizacao: new Date().toISOString()
     };
     

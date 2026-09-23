@@ -92,18 +92,31 @@ async function migrarDadosSeNecessario() {
     }
 }
 
+// FIX: refreshCurrentView estava sendo chamada mas nao existia, causando ReferenceError silencioso
+// que impedia o dashboard de renderizar. Agora chama renderDashboard() corretamente.
+function refreshCurrentView() {
+    try {
+        renderDashboard();
+    } catch(e) {
+        console.error('Erro ao atualizar a view de relatorios:', e);
+    }
+}
 function inicializarGestao() {
+    if (window.__paginaBloqueadaPorPermissao || (typeof window.verificarPermissaoRota === 'function' && !window.verificarPermissaoRota(window.location.pathname).permitido)) {
+        console.warn('Bloqueando execução: usuário sem permissão para esta rota.');
+        return;
+    }
     // Primeiro tenta migrar dados do banco antigo se necessario
     migrarDadosSeNecessario();
 
     // Cache inteligente: serve dados instantaneamente do sessionStorage
     const _listen = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb, opts) {
-        let ref = firestore.collection(col);
+        let ref = window.getEmpresaRef().collection(col);
         if (opts && typeof opts.query === 'function') ref = opts.query(ref);
         return ref.onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
     };
     const _listenDoc = (typeof window.fcListenDoc === 'function') ? window.fcListenDoc : function(col, id, cb) {
-        return firestore.collection(col).doc(id).onSnapshot(doc => cb(doc.exists ? doc.data() : null));
+        return window.getEmpresaRef().collection(col).doc(id).onSnapshot(doc => cb(doc.exists ? doc.data() : null));
     };
 
     // Debounce para evitar renderizacoes multiplas simultaneas
@@ -161,14 +174,26 @@ function inicializarGestao() {
         debouncedRenderDashboard();
     }, { query: function(ref) { return ref.orderBy('data', 'desc').limit(300); } });
     // Caixa: sempre ativo pois e critico (saldo em tempo real)
-    _listenDoc('fc_moveis', 'caixa', function(data) {
+    _listenDoc('caixa', 'caixa_atual', function(data) {
         db.caixa = data || { status: 'FECHADO', saldo: 0, historico: [] };
         if (colecoesProntas >= totalColecoes) refreshCurrentView();
     });
+
+    // Inicia carregamento do historico de relatorios com IA e aplicacao de permissoes
+    setTimeout(() => {
+        if (typeof carregarHistoricoRelatoriosIA === 'function') carregarHistoricoRelatoriosIA();
+        if (typeof aplicarControleAcessoRelatoriosPorPlano === 'function') aplicarControleAcessoRelatoriosPorPlano();
+    }, 600);
 }
 
 
-window.addEventListener('load', () => { initGlobalData(inicializarGestao); });
+window.addEventListener('load', () => { 
+    initGlobalData(inicializarGestao); 
+    setTimeout(() => {
+        if (typeof carregarHistoricoRelatoriosIA === 'function') carregarHistoricoRelatoriosIA();
+        if (typeof aplicarControleAcessoRelatoriosPorPlano === 'function') aplicarControleAcessoRelatoriosPorPlano();
+    }, 1200);
+});
 
 function atualizarCardsFluxoDeCaixa() {
     if (!db.financeiro) return;
@@ -283,7 +308,10 @@ function imprimirArea(areaId) {
     const element = document.getElementById(areaId);
     if(!element) return showToast("Área de impressão não encontrada.", "error");
     
-    const printContent = element.innerHTML; 
+    // Clona e remove relatorios bloqueados do documento impresso
+    const cloneElement = element.cloneNode(true);
+    cloneElement.querySelectorAll('[data-relatorio-bloqueado="true"]').forEach(n => n.remove());
+    const printContent = cloneElement.innerHTML; 
     const htmlCompleto = `
         <div style="padding: 20px; font-family: Arial, sans-serif; background: #fff; color: #000;">
             <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
@@ -1087,7 +1115,7 @@ function gerarPreviewParcelasRenegociacao() {
         const numParcela = `${i + 1}/${qtd}`;
 
         tbody.innerHTML += `
-            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40 border-b border-slate-100 dark:border-slate-700/60">
+            <tr class="dark:hover:bg-slate-800 border-b border-slate-100 dark:border-slate-700/60">
                 <td class="p-2.5 text-center font-bold text-slate-500 dark:text-slate-400">${numParcela}</td>
                 <td class="p-2.5">
                     <input type="date" value="${dataVencIso}" class="reneg-item-data w-full sm:w-auto bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-1.5 rounded-lg text-xs font-bold text-slate-800 dark:text-white outline-none focus:border-purple-500">
@@ -2291,7 +2319,7 @@ function renderDashboard() {
             topComprasEl.innerHTML = itensTopCompras.map((p, i) => {
                 const pct = (p.val / maxCompras) * 100;
                 return `
-                <div onclick="abrirDrilldownDRE('PRODUTO_COMPRAS', '${p.nome.replace(/'/g, "\\'")}')" class="relative overflow-hidden flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver compras deste produto">
+                <div onclick="abrirDrilldownDRE('PRODUTO_COMPRAS', '${p.nome.replace(/'/g, "\\'")}')" class="relative overflow-hidden flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer dark:hover:bg-slate-800 p-1.5 rounded-lg transition-colors group" title="Clique para ver compras deste produto">
                     <div class="absolute left-0 top-0 bottom-0 bg-red-500/10 pointer-events-none rounded-lg" style="width: ${pct}%"></div>
                     <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors relative z-10">${i+1}. ${p.nome}</span>
                     <div class="flex items-center gap-2 shrink-0 relative z-10">
@@ -2321,7 +2349,7 @@ function renderDashboard() {
             abcEl.innerHTML = itensTopVendas.map((p, i) => {
                 const pct = (p.val / maxVendas) * 100;
                 return `
-                <div onclick="abrirDrilldownDRE('PRODUTO_VENDAS', '${p.nome.replace(/'/g, "\\'")}')" class="relative overflow-hidden flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver vendas deste produto">
+                <div onclick="abrirDrilldownDRE('PRODUTO_VENDAS', '${p.nome.replace(/'/g, "\\'")}')" class="relative overflow-hidden flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer dark:hover:bg-slate-800 p-1.5 rounded-lg transition-colors group" title="Clique para ver vendas deste produto">
                     <div class="absolute left-0 top-0 bottom-0 bg-emerald-500/10 pointer-events-none rounded-lg" style="width: ${pct}%"></div>
                     <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors relative z-10">${i+1}. ${p.nome}</span>
                     <div class="flex items-center gap-2 shrink-0 relative z-10">
@@ -2351,7 +2379,7 @@ function renderDashboard() {
             cliEl.innerHTML = itensTopCli.map((c, i) => {
                 const pct = (c.val / maxCli) * 100;
                 return `
-                <div onclick="abrirDrilldownDRE('CLIENTE_VENDAS', '${c.nome.replace(/'/g, "\\'")}')" class="relative overflow-hidden flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver compras deste cliente">
+                <div onclick="abrirDrilldownDRE('CLIENTE_VENDAS', '${c.nome.replace(/'/g, "\\'")}')" class="relative overflow-hidden flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer dark:hover:bg-slate-800 p-1.5 rounded-lg transition-colors group" title="Clique para ver compras deste cliente">
                     <div class="absolute left-0 top-0 bottom-0 bg-blue-500/10 pointer-events-none rounded-lg" style="width: ${pct}%"></div>
                     <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors relative z-10">${i+1}. ${c.nome}</span>
                     <div class="flex items-center gap-2 shrink-0 relative z-10">
@@ -2381,7 +2409,7 @@ function renderDashboard() {
             fornEl.innerHTML = itensTopForn.map((f, i) => {
                 const pct = (f.val / maxForn) * 100;
                 return `
-                <div onclick="abrirDrilldownDRE('FORNECEDOR_COMPRAS', '${f.nome.replace(/'/g, "\\'")}')" class="relative overflow-hidden flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver compras deste fornecedor">
+                <div onclick="abrirDrilldownDRE('FORNECEDOR_COMPRAS', '${f.nome.replace(/'/g, "\\'")}')" class="relative overflow-hidden flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer dark:hover:bg-slate-800 p-1.5 rounded-lg transition-colors group" title="Clique para ver compras deste fornecedor">
                     <div class="absolute left-0 top-0 bottom-0 bg-red-500/10 pointer-events-none rounded-lg" style="width: ${pct}%"></div>
                     <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-red-500 dark:group-hover:text-red-400 transition-colors relative z-10">${i+1}. ${f.nome}</span>
                     <div class="flex items-center gap-2 shrink-0 relative z-10">
@@ -2432,7 +2460,7 @@ function renderDashboard() {
                 .map(k => ({nome: k, val: rankingCategorias[k]}))
                 .sort((a,b) => b.val - a.val)
                 .map((c, i) => `
-                    <div onclick="abrirDrilldownDRE('CATEGORIA', '${c.nome.replace(/'/g, "\\'")}')" class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver extrato detalhado desta categoria">
+                    <div onclick="abrirDrilldownDRE('CATEGORIA', '${c.nome.replace(/'/g, "\\'")}')" class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer dark:hover:bg-slate-800 p-1.5 rounded-lg transition-colors group" title="Clique para ver extrato detalhado desta categoria">
                         <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-red-500 transition-colors">${i+1}. ${c.nome}</span>
                         <div class="flex items-center gap-2 shrink-0">
                             <span class="font-bold text-red-500 dark:text-red-400">${formatMoney(c.val)}</span>
@@ -2455,7 +2483,7 @@ function renderDashboard() {
                 .map(k => ({nome: k, val: rankingFavorecidos[k]}))
                 .sort((a,b) => b.val - a.val)
                 .map((c, i) => `
-                    <div onclick="abrirDrilldownDRE('FAVORECIDO', '${c.nome.replace(/'/g, "\\'")}')" class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver extrato detalhado deste favorecido">
+                    <div onclick="abrirDrilldownDRE('FAVORECIDO', '${c.nome.replace(/'/g, "\\'")}')" class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer dark:hover:bg-slate-800 p-1.5 rounded-lg transition-colors group" title="Clique para ver extrato detalhado deste favorecido">
                         <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-indigo-500 transition-colors">${i+1}. ${c.nome}</span>
                         <div class="flex items-center gap-2 shrink-0">
                             <span class="font-bold text-indigo-500 dark:text-indigo-400">${formatMoney(c.val)}</span>
@@ -2475,7 +2503,7 @@ function renderDashboard() {
                 .map(k => ({nome: k, val: rankingFuncionarios[k]}))
                 .sort((a,b) => b.val - a.val)
                 .map((c, i) => `
-                    <div onclick="abrirDrilldownDRE('FUNCIONARIO', '${c.nome.replace(/'/g, "\\'")}')" class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver extrato deste funcionário">
+                    <div onclick="abrirDrilldownDRE('FUNCIONARIO', '${c.nome.replace(/'/g, "\\'")}')" class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer dark:hover:bg-slate-800 p-1.5 rounded-lg transition-colors group" title="Clique para ver extrato deste funcionário">
                         <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-emerald-500 transition-colors">${i+1}. ${c.nome}</span>
                         <div class="flex items-center gap-2 shrink-0">
                             <span class="font-bold text-emerald-500 dark:text-emerald-400">${formatMoney(c.val)}</span>
@@ -2495,7 +2523,7 @@ function renderDashboard() {
                 .map(k => ({nome: k, val: rankingCentros[k]}))
                 .sort((a,b) => b.val - a.val)
                 .map((c, i) => `
-                    <div onclick="abrirDrilldownDRE('CENTRO_CUSTO', '${c.nome.replace(/'/g, "\\'")}')" class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1.5 rounded-lg transition-colors group" title="Clique para ver extrato deste centro de custo">
+                    <div onclick="abrirDrilldownDRE('CENTRO_CUSTO', '${c.nome.replace(/'/g, "\\'")}')" class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-700 pb-1.5 cursor-pointer dark:hover:bg-slate-800 p-1.5 rounded-lg transition-colors group" title="Clique para ver extrato deste centro de custo">
                         <span class="truncate pr-2 font-medium text-slate-700 dark:text-slate-200 group-hover:text-purple-500 transition-colors">${i+1}. ${c.nome}</span>
                         <div class="flex items-center gap-2 shrink-0">
                             <span class="font-bold text-purple-500 dark:text-purple-400">${formatMoney(c.val)}</span>
@@ -2543,13 +2571,19 @@ function renderDashboard() {
     }
 
     // Scanner de inflação de insumos (Top 3 Aumentos de Custo)
-    renderAlertaTopAumentosCusto(compras);
+    try { renderAlertaTopAumentosCusto(compras); } catch (e) { console.error('Erro em renderAlertaTopAumentosCusto:', e); }
 
     // Relatório de Estoque & Kardex de Movimentações
-    renderRelatorioEstoqueKardex();
+    try { renderRelatorioEstoqueKardex(); } catch (e) { console.error('Erro em renderRelatorioEstoqueKardex:', e); }
 
     // Relatório & Histórico Gerencial de Vendas
-    renderVendas();
+    try { renderVendas(); } catch (e) { console.error('Erro em renderVendas:', e); }
+
+    // Relatório Detalhado de Comissões por Vendedor
+    try { renderizarRelatorioComissoes(); } catch (e) { console.error('Erro em renderizarRelatorioComissoes:', e); }
+
+    // Aplica o Controle de Acesso a Relatórios por Plano SaaS
+    try { aplicarControleAcessoRelatoriosPorPlano(); } catch (e) { console.error('Erro em aplicarControleAcessoRelatoriosPorPlano:', e); }
 }
 
 // ==========================================
@@ -3059,7 +3093,7 @@ function renderLinhasDrilldownDRE(lista) {
         const dataFmt = item.data ? (typeof formatData === 'function' ? formatData(item.data).split(' ')[0].replace(',', '') : String(item.data).split('T')[0].split('-').reverse().join('/')) : '-';
         const badgeSpan = item.badge ? `<span class="px-1.5 py-0.5 text-[9px] font-black uppercase rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 ml-1 inline-block">${item.badge}</span>` : '';
         return `
-            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors border-b border-slate-100 dark:border-slate-700">
+            <tr class="dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-700">
                 <td class="p-3 text-xs font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">${dataFmt}</td>
                 <td class="p-3 font-semibold text-slate-800 dark:text-slate-100">
                     <div>${item.descricao} ${badgeSpan}</div>
@@ -3430,7 +3464,7 @@ function renderCurvaABC(vendasFiltradas, fatTotal) {
         else textoMetrica = formatMoney(p.lucro);
 
         html += `
-            <tr onclick="abrirDrilldownDRE('PRODUTO_VENDAS', '${p.nome.replace(/'/g, "\\'")}')" class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group" title="Clique para auditar vendas deste produto">
+            <tr onclick="abrirDrilldownDRE('PRODUTO_VENDAS', '${p.nome.replace(/'/g, "\\'")}')" class="dark:hover:bg-slate-800 transition-colors cursor-pointer group" title="Clique para auditar vendas deste produto">
                 <td class="p-3">
                     <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded text-xs font-bold border ${badgeColor}">${classe}</span>
                 </td>
@@ -3633,7 +3667,7 @@ function renderSugestorCompras(vendasFiltradas, periodoObj) {
                 }
 
                 html += `
-                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <tr class="dark:hover:bg-slate-800 transition-colors">
                         <td class="p-3">${statusBadge}</td>
                         <td class="p-3 font-medium text-slate-800 dark:text-slate-200">${p.nome}</td>
                         <td class="p-3 text-center ${estoqueAtual <= 0 ? 'text-red-500 font-bold' : 'text-slate-600 dark:text-slate-400'}">${estoqueAtual}</td>
@@ -3910,18 +3944,24 @@ function filtrarKardexRelatorio() {
         return true;
     });
 
-    if (contadorEl) {
-        contadorEl.innerText = `${filtradas.length} movimentação(ões)${termo || filtroTipo !== 'TODOS' ? ' (filtradas)' : ''}`;
-    }
-
     if (filtradas.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-500 dark:text-slate-400"><i class="fa-solid fa-filter-circle-xmark text-2xl mb-2 text-slate-400 block"></i>Nenhuma movimentação encontrada para os filtros aplicados.</td></tr>';
+        if (contadorEl) contadorEl.innerText = `0 movim.${termo || filtroTipo !== 'TODOS' ? ' (filtradas)' : ''}`;
         return;
     }
 
-    // Limita a exibição às 150 primeiras do filtro para performance e fluidez
-    const maxExibicao = 150;
-    const listaExibir = filtradas.slice(0, maxExibicao);
+    // Limite de exibicao configuravel (padrao: 10 primeiras movimentacoes)
+    const selectLimiteK = document.getElementById('kardex-filtro-limite');
+    const limiteKardex = selectLimiteK ? (selectLimiteK.value === 'TODOS' ? Infinity : (parseInt(selectLimiteK.value, 10) || 10)) : 10;
+    const listaExibir = filtradas.slice(0, limiteKardex);
+
+    if (contadorEl) {
+        if (filtradas.length > listaExibir.length) {
+            contadorEl.innerText = `${filtradas.length} movim. (exibindo ${listaExibir.length})`;
+        } else {
+            contadorEl.innerText = `${filtradas.length} movim.${termo || filtroTipo !== 'TODOS' ? ' (filtradas)' : ''}`;
+        }
+    }
 
     tbody.innerHTML = listaExibir.map(m => {
         const tipoStr = String(m.tipo || '').toUpperCase();
@@ -3967,7 +4007,7 @@ function filtrarKardexRelatorio() {
         }
 
         return `
-            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors border-b border-slate-100 dark:border-slate-800">
+            <tr class="dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800">
                 <td class="p-3 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">${dataFormatada}</td>
                 <td class="p-3 whitespace-nowrap">
                     <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${badgeClass}">
@@ -3982,7 +4022,7 @@ function filtrarKardexRelatorio() {
                 <td class="p-3 text-right whitespace-nowrap font-bold text-slate-700 dark:text-slate-300">${saldoAtual !== '-' ? saldoAtual + ' un' : '-'}</td>
             </tr>
         `;
-    }).join('') + (filtradas.length > maxExibicao ? `<tr><td colspan="6" class="p-3 text-center text-xs text-slate-400 bg-slate-50 dark:bg-slate-900">Exibindo as primeiras ${maxExibicao} movimentações de ${filtradas.length}. Use os filtros acima para refinar.</td></tr>` : '');
+    }).join('') + (filtradas.length > listaExibir.length ? `<tr><td colspan="6" class="p-3 text-center text-xs text-slate-400 bg-slate-50 dark:bg-slate-900">Exibindo as primeiras ${listaExibir.length} movimentações de ${filtradas.length}. Use os filtros acima para refinar.</td></tr>` : '');
 }
 
 window.filtrarKardexRelatorio = filtrarKardexRelatorio;
@@ -4074,6 +4114,14 @@ window.exportarRelatorioExecutivoPDF = function() {
 
 // --- IMPRESSÃO INDIVIDUAL DE CADA RELATÓRIO SEPARADO ---
 window.imprimirRelatorioIndividual = function(containerId, tituloRelatorio) {
+    const elCheck = document.getElementById(containerId);
+    if (elCheck) {
+        const relIdCheck = elCheck.getAttribute('data-relatorio-id');
+        if (relIdCheck && typeof window.verificarAcessoRelatorio === 'function' && !window.verificarAcessoRelatorio(relIdCheck)) {
+            if (typeof showToast === 'function') showToast("Este relatório não está disponível no seu plano atual.", "warning");
+            return;
+        }
+    }
     const el = document.getElementById(containerId);
     if (!el) {
         showToast("Relatório não encontrado para impressão.", "error");
@@ -4594,9 +4642,13 @@ function renderVendas() {
     let totalFaturamento = 0;
     let totalCusto = 0;
     
+    const limiteVendasEl = document.getElementById('filtro-vendas-limite');
+    const limiteVendas = limiteVendasEl ? (limiteVendasEl.value === 'TODOS' ? Infinity : (parseInt(limiteVendasEl.value, 10) || 10)) : 10;
+    const vendasExibir = filtrados.slice(0, limiteVendas);
+
     const tbody = document.getElementById('tabela-vendas-body');
     if (tbody) {
-        tbody.innerHTML = filtrados.map(v => {
+        tbody.innerHTML = vendasExibir.map(v => {
             try {
                 const fatVenda = Number(v.tot || v.total || v.valor || 0);
                 const custoTotalDaVenda = (Number(v.custoTotal) || 0) + (Number(v.taxaValor) || 0); 
@@ -4656,7 +4708,13 @@ function renderVendas() {
     if (kpiMargemEl) kpiMargemEl.innerText = `Margem média: ${margemGeral.toFixed(1)}%`;
 
     const contadorEl = document.getElementById('vendas-contador-registros');
-    if (contadorEl) contadorEl.innerText = `${filtrados.length} ${filtrados.length === 1 ? 'venda' : 'vendas'}`;
+    if (contadorEl) {
+        if (typeof vendasExibir !== 'undefined' && filtrados.length > vendasExibir.length) {
+            contadorEl.innerText = `${filtrados.length} vendas (exibindo ${vendasExibir.length})`;
+        } else {
+            contadorEl.innerText = `${filtrados.length} ${filtrados.length === 1 ? 'venda' : 'vendas'}`;
+        }
+    }
 
     if (document.getElementById('vendas-total-filtros')) {
         document.getElementById('vendas-total-filtros').innerText = `Lucro Real Acumulado: ${typeof formatMoney === 'function' ? formatMoney(totalLucro) : totalLucro}`;
@@ -4666,6 +4724,12 @@ function renderVendas() {
 function verDetalhesVenda(id) {
     const v = (db.vendas || []).find(x => String(x.id) === String(id)); 
     if(!v) return; 
+    
+    window.__vendaDetalheAtual = v;
+    const btnIni = document.getElementById('btn-iniciar-edicao-custo');
+    if (btnIni) btnIni.classList.remove('hidden');
+    const acoesEdicao = document.getElementById('acoes-edicao-custo');
+    if (acoesEdicao) acoesEdicao.classList.add('hidden');
     
     const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
     let tipoTexto = v.tipo || 'VENDA';
@@ -4787,8 +4851,318 @@ function verDetalhesVenda(id) {
 }
 
 function fecharModalDetalhesVenda() { 
+    window.__vendaDetalheAtual = null;
+    const btnIni = document.getElementById('btn-iniciar-edicao-custo');
+    if (btnIni) btnIni.classList.remove('hidden');
+    const acoesEdicao = document.getElementById('acoes-edicao-custo');
+    if (acoesEdicao) acoesEdicao.classList.add('hidden');
     const m = document.getElementById('modal-detalhes-venda');
     if (m) m.classList.add('hidden'); 
+}
+
+function habilitarEdicaoCustoVenda() {
+    const v = window.__vendaDetalheAtual;
+    if (!v) return;
+
+    const btnIni = document.getElementById('btn-iniciar-edicao-custo');
+    if (btnIni) btnIni.classList.add('hidden');
+    const acoesEdicao = document.getElementById('acoes-edicao-custo');
+    if (acoesEdicao) acoesEdicao.classList.remove('hidden');
+
+    // Transforma a seção de observações em textarea editável
+    const obsEl = document.getElementById('det-venda-obs');
+    if (obsEl) {
+        const obsAtual = (v.obs || '');
+        obsEl.innerHTML = `
+            <div class="space-y-2">
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between">
+                    <span><i class="fa-solid fa-pen-to-square text-indigo-500 mr-1"></i> Anotações / Observações Gerais da Venda</span>
+                    <span class="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded">Modo Edição Ativo</span>
+                </label>
+                <textarea id="edit-venda-obs" rows="3" placeholder="Digite uma anotação, motivo do ajuste de custo ou observação geral..." class="w-full bg-slate-50 dark:bg-slate-900 border border-indigo-300 dark:border-indigo-600 rounded-xl p-3 text-xs md:text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100">${obsAtual.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+                <p class="text-[11px] text-slate-400 italic">Dica: as anotações ficam gravadas no documento da venda para auditoria e histórico gerencial.</p>
+            </div>
+        `;
+    }
+
+    // Renderiza itens em modo de edição
+    const itensEl = document.getElementById('det-venda-itens');
+    if (itensEl) {
+        itensEl.innerHTML = (v.itens || []).map((i, idx) => {
+            const preco = Number(i.preco) || 0;
+            const qtd = Number(i.qtd) || 1;
+            const custo = Number(i.custo) || 0;
+            const subTot = preco * qtd;
+            const subCusto = custo * qtd;
+            const lucroSub = subTot - subCusto;
+            const margemSub = subTot > 0 ? ((lucroSub / subTot) * 100) : 0;
+
+            // Busca produto no cadastro para permitir sincronização
+            const prodCadastrado = (db.produtos || []).find(p => (i.id && String(p.id) === String(i.id)) || (p.nome && i.nome && p.nome.trim().toLowerCase() === i.nome.trim().toLowerCase()));
+
+            return `
+            <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800/50 transition-colors bg-amber-50/20 dark:bg-amber-950/10">
+                <td class="p-4 border-b border-slate-100 dark:border-slate-800/50 align-top">
+                    <div class="font-bold text-slate-800 dark:text-slate-200 text-sm">${i.nome || 'Produto/Serviço'}</div>
+                    <div class="mt-1.5">
+                        <input type="text" id="edit-item-obs-${idx}" value="${(i.obsVenda || '').replace(/"/g, '&quot;')}" placeholder="Anotação deste item (opcional)..." class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-700 dark:text-slate-300 outline-none focus:border-indigo-500">
+                    </div>
+                </td>
+                <td class="p-4 text-center border-b border-slate-100 dark:border-slate-800/50 align-top">
+                    <span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-black px-2.5 py-1 rounded-lg text-xs border border-slate-200 dark:border-slate-700" id="edit-item-qtd-${idx}">${qtd}</span>
+                </td>
+                <td class="p-4 text-right border-b border-slate-100 dark:border-slate-800/50 align-top">
+                    <div class="font-black text-slate-700 dark:text-slate-300 text-sm" id="edit-item-preco-${idx}">${typeof formatMoney === 'function' ? formatMoney(preco) : preco}</div>
+                    <div class="mt-2 flex flex-col items-end gap-1">
+                        <div class="flex items-center gap-1.5 justify-end">
+                            <span class="text-[11px] font-bold text-slate-400">Custo: R$</span>
+                            <input type="text" data-mask="money" inputmode="numeric" 
+                                   id="edit-custo-item-${idx}" 
+                                   value="${typeof formatMoneyInput === 'function' ? formatMoneyInput(custo) : custo.toFixed(2).replace('.', ',')}" 
+                                   oninput="recalcularCustosEdicaoLive()"
+                                   class="w-24 bg-white dark:bg-slate-800 border border-amber-400 dark:border-amber-500 rounded-lg px-2 py-1 text-right text-xs font-black text-amber-600 dark:text-amber-400 outline-none focus:ring-2 focus:ring-amber-500 shadow-sm">
+                        </div>
+                        ${prodCadastrado ? `
+                        <label class="flex items-center gap-1.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 cursor-pointer hover:underline select-none mt-0.5" title="Se marcado, atualiza também o custo de compra deste produto no estoque para futuras vendas">
+                            <input type="checkbox" id="sync-prod-custo-${idx}" data-prod-id="${prodCadastrado.id}" class="rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                            <span>Atualizar no estoque</span>
+                        </label>` : ''}
+                    </div>
+                </td>
+                <td class="p-4 text-right border-b border-slate-100 dark:border-slate-800/50 align-top">
+                    <div class="font-black text-slate-800 dark:text-white text-sm" id="edit-subtot-${idx}">${typeof formatMoney === 'function' ? formatMoney(subTot) : subTot}</div>
+                    <div class="text-[10px] font-bold mt-1.5" id="edit-lucro-container-${idx}">
+                        <div class="text-emerald-600 dark:text-emerald-400 font-bold" id="edit-sublucro-${idx}">Lucro: ${typeof formatMoney === 'function' ? formatMoney(lucroSub) : lucroSub}</div>
+                        <div class="text-blue-500 dark:text-blue-400" id="edit-submargem-${idx}">(${margemSub.toFixed(1)}%)</div>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    recalcularCustosEdicaoLive();
+}
+
+function recalcularCustosEdicaoLive() {
+    const v = window.__vendaDetalheAtual;
+    if (!v) return;
+
+    let totalCusto = 0;
+    const itens = v.itens || [];
+
+    itens.forEach((i, idx) => {
+        const preco = Number(i.preco) || 0;
+        const qtd = Number(i.qtd) || 1;
+        const inputCusto = document.getElementById(`edit-custo-item-${idx}`);
+        const custo = inputCusto ? (typeof parseInputMoney === 'function' ? parseInputMoney(inputCusto.value) : (parseFloat(inputCusto.value.replace(/\./g, '').replace(',', '.')) || 0)) : (Number(i.custo) || 0);
+
+        const subTot = preco * qtd;
+        const subCusto = custo * qtd;
+        const lucroSub = subTot - subCusto;
+        const margemSub = subTot > 0 ? ((lucroSub / subTot) * 100) : 0;
+
+        totalCusto += subCusto;
+
+        const subLucroEl = document.getElementById(`edit-sublucro-${idx}`);
+        if (subLucroEl) {
+            subLucroEl.innerText = `Lucro: ${typeof formatMoney === 'function' ? formatMoney(lucroSub) : 'R$ ' + lucroSub.toFixed(2)}`;
+            if (lucroSub < 0) {
+                subLucroEl.className = 'text-red-500 font-bold';
+            } else {
+                subLucroEl.className = 'text-emerald-600 dark:text-emerald-400 font-bold';
+            }
+        }
+        const subMargemEl = document.getElementById(`edit-submargem-${idx}`);
+        if (subMargemEl) {
+            subMargemEl.innerText = `(${margemSub.toFixed(1)}%)`;
+        }
+    });
+
+    const tot = Number(v.tot) || 0;
+    const taxaCartao = Number(v.taxaValor) || 0;
+    const taxaBoleto = Number(v.taxaBoleto) || 0;
+    const totalDespesas = taxaCartao + taxaBoleto;
+    const custoGeral = totalCusto + totalDespesas;
+    const lucroLiquido = tot - custoGeral;
+    const margemLiquidaReal = tot > 0 ? ((lucroLiquido / tot) * 100) : 0;
+    const markupReal = custoGeral > 0 ? ((lucroLiquido / custoGeral) * 100) : 0;
+
+    const tfootEl = document.querySelector('#det-venda-tfoot');
+    if (tfootEl) {
+        let tfootHtml = `
+            <tr class="bg-amber-50/40 dark:bg-amber-950/20 border-t border-amber-200 dark:border-amber-800/40">
+                <td colspan="3" class="p-4 text-right font-bold text-amber-800 dark:text-amber-300 text-[11px] uppercase tracking-wider">
+                    <i class="fa-solid fa-calculator mr-1"></i> Custo Total Recalculado (Produtos)
+                </td>
+                <td class="p-4 text-right font-black text-red-500 dark:text-red-400 text-sm bg-red-50/50 dark:bg-red-900/10">- ${typeof formatMoney === 'function' ? formatMoney(totalCusto) : totalCusto}</td>
+            </tr>
+        `;
+        if (taxaCartao > 0) {
+            tfootHtml += `
+            <tr>
+                <td colspan="3" class="p-4 text-right font-bold text-slate-500 dark:text-slate-400 text-[11px] uppercase tracking-wider">Taxa de Cartão / Operadora</td>
+                <td class="p-4 text-right font-black text-red-500 dark:text-red-400 text-sm bg-red-50/50 dark:bg-red-900/10">- ${typeof formatMoney === 'function' ? formatMoney(taxaCartao) : taxaCartao}</td>
+            </tr>`;
+        }
+        tfootHtml += `
+            <tr class="border-t border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-800/50">
+                <td colspan="3" class="p-4 text-right font-black text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wide">Valor Bruto Total</td>
+                <td class="p-4 text-right font-black text-slate-900 dark:text-white text-lg">${typeof formatMoney === 'function' ? formatMoney(tot) : tot}</td>
+            </tr>
+            <tr class="bg-gradient-to-r from-emerald-50 to-emerald-100/50 dark:from-emerald-900/30 dark:to-emerald-900/10 border-t border-emerald-200 dark:border-emerald-800/50">
+                <td colspan="3" class="p-4 text-right font-black text-emerald-800 dark:text-emerald-400 text-sm uppercase tracking-wide">Lucro Líquido Real Recalculado</td>
+                <td class="p-4 text-right font-black text-xl shadow-sm ${lucroLiquido < 0 ? 'text-red-600' : 'text-emerald-600 dark:text-emerald-400'}">${typeof formatMoney === 'function' ? formatMoney(lucroLiquido) : lucroLiquido}</td>
+            </tr>
+            <tr class="bg-emerald-50/40 dark:bg-emerald-950/20 border-t border-emerald-100 dark:border-emerald-800/30">
+                <td colspan="3" class="p-3 text-right font-bold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider">Margem de Lucro Real / Markup</td>
+                <td class="p-3 text-right font-black text-sm">
+                    <span class="bg-emerald-100 dark:bg-emerald-800/60 text-emerald-800 dark:text-emerald-200 px-2 py-0.5 rounded font-black text-xs">${margemLiquidaReal.toFixed(2)}% Margem</span>
+                    <span class="text-[11px] text-blue-600 dark:text-blue-400 font-bold ml-1">(${markupReal.toFixed(2)}% MKP)</span>
+                </td>
+            </tr>
+        `;
+        tfootEl.innerHTML = tfootHtml;
+    }
+}
+
+function cancelarEdicaoCustoVenda() {
+    if (window.__vendaDetalheAtual) {
+        verDetalhesVenda(window.__vendaDetalheAtual.id);
+    }
+}
+
+async function salvarAjusteCustoVenda() {
+    const v = window.__vendaDetalheAtual;
+    if (!v) return;
+
+    const btnSalvar = document.getElementById('btn-salvar-edicao-custo');
+    if (btnSalvar) {
+        btnSalvar.disabled = true;
+        btnSalvar.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i> <span>Salvando...</span>`;
+    }
+
+    try {
+        const obsEl = document.getElementById('edit-venda-obs');
+        const novaObs = obsEl ? obsEl.value.trim() : (v.obs || '');
+
+        const novosItens = JSON.parse(JSON.stringify(v.itens || []));
+        let novoCustoTotal = 0;
+        const produtosParaAtualizarCusto = [];
+
+        novosItens.forEach((item, idx) => {
+            const inputCusto = document.getElementById(`edit-custo-item-${idx}`);
+            const inputObsItem = document.getElementById(`edit-item-obs-${idx}`);
+            const checkSync = document.getElementById(`sync-prod-custo-${idx}`);
+
+            const custoUnit = inputCusto ? (typeof parseInputMoney === 'function' ? parseInputMoney(inputCusto.value) : (parseFloat(inputCusto.value.replace(/\./g, '').replace(',', '.')) || 0)) : (Number(item.custo) || 0);
+            item.custo = Math.max(0, custoUnit);
+
+            if (inputObsItem) {
+                item.obsVenda = inputObsItem.value.trim();
+            }
+
+            const qtd = Number(item.qtd) || 1;
+            novoCustoTotal += (item.custo * qtd);
+
+            if (checkSync && checkSync.checked && checkSync.dataset.prodId) {
+                produtosParaAtualizarCusto.push({
+                    id: checkSync.dataset.prodId,
+                    novoCusto: item.custo,
+                    nome: item.nome || ''
+                });
+            }
+        });
+
+        const tot = Number(v.tot) || 0;
+        const taxaCartao = Number(v.taxaValor) || 0;
+        const taxaBoleto = Number(v.taxaBoleto) || 0;
+        const totalDespesas = taxaCartao + taxaBoleto;
+        const novoLucroReal = tot - (novoCustoTotal + totalDespesas);
+
+        // Firestore Batch
+        const batch = (typeof firestore !== 'undefined' && firestore.batch) 
+            ? firestore.batch() 
+            : window.getEmpresaRef().firestore.batch();
+
+        const vendaRef = window.getEmpresaRef().collection('vendas').doc(String(v.id));
+
+        const dadosAtualizacaoVenda = {
+            itens: novosItens,
+            custoTotal: novoCustoTotal,
+            lucroReal: novoLucroReal,
+            obs: novaObs,
+            dataUltimoAjusteCusto: new Date().toISOString()
+        };
+
+        batch.update(vendaRef, dadosAtualizacaoVenda);
+
+        // Sincronização opcional com cadastro de produtos
+        produtosParaAtualizarCusto.forEach(pSync => {
+            const prodRef = window.getEmpresaRef().collection('produtos').doc(String(pSync.id));
+            batch.update(prodRef, {
+                custo: pSync.novoCusto,
+                dataAtualizacaoCusto: new Date().toISOString()
+            });
+
+            // Atualiza em memória db.produtos
+            if (Array.isArray(db.produtos)) {
+                const prodEmMemoria = db.produtos.find(p => String(p.id) === String(pSync.id));
+                if (prodEmMemoria) {
+                    prodEmMemoria.custo = pSync.novoCusto;
+                }
+            }
+        });
+
+        await batch.commit();
+
+        // Atualiza objeto em memória db.vendas
+        v.itens = novosItens;
+        v.custoTotal = novoCustoTotal;
+        v.lucroReal = novoLucroReal;
+        v.obs = novaObs;
+        v.dataUltimoAjusteCusto = dadosAtualizacaoVenda.dataUltimoAjusteCusto;
+
+        if (Array.isArray(db.vendas)) {
+            const idxV = db.vendas.findIndex(x => String(x.id) === String(v.id));
+            if (idxV !== -1) {
+                db.vendas[idxV] = Object.assign({}, db.vendas[idxV], dadosAtualizacaoVenda);
+            }
+        }
+
+        // Atualiza FCCache se ativo
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+            window.FCCache.set('vendas', db.vendas || []);
+            if (produtosParaAtualizarCusto.length > 0) {
+                window.FCCache.set('produtos', db.produtos || []);
+            }
+        }
+
+        // Recarrega telas e tabelas dependentes
+        if (typeof renderVendas === 'function') renderVendas();
+        if (typeof renderizarDRE === 'function') renderizarDRE();
+        if (typeof debouncedRenderDashboard === 'function') debouncedRenderDashboard();
+        if (typeof renderEstatisticasVendas === 'function') renderEstatisticasVendas();
+
+        if (typeof showToast === 'function') {
+            const extraMsg = produtosParaAtualizarCusto.length > 0 
+                ? ` e ${produtosParaAtualizarCusto.length} produto(s) atualizado(s) no estoque!` 
+                : '!';
+            showToast(`Custos e anotações da venda atualizados com sucesso${extraMsg}`, 'success');
+        }
+
+        // Retorna o modal para modo de visualização com os dados novos
+        verDetalhesVenda(v.id);
+
+    } catch (err) {
+        console.error('Erro ao salvar ajuste de custo da venda:', err);
+        if (typeof showToast === 'function') {
+            showToast('Erro ao salvar ajustes: ' + (err.message || 'Falha na comunicação com o banco.'), 'error');
+        }
+        if (btnSalvar) {
+            btnSalvar.disabled = false;
+            btnSalvar.innerHTML = `<i class="fa-solid fa-floppy-disk mr-1"></i> <span>Salvar Alterações</span>`;
+        }
+    }
 }
 
 function abrirZoom(url) {
@@ -4810,6 +5184,10 @@ window.mudarPeriodoVendas = mudarPeriodoVendas;
 window.renderVendas = renderVendas;
 window.verDetalhesVenda = verDetalhesVenda;
 window.fecharModalDetalhesVenda = fecharModalDetalhesVenda;
+window.habilitarEdicaoCustoVenda = habilitarEdicaoCustoVenda;
+window.recalcularCustosEdicaoLive = recalcularCustosEdicaoLive;
+window.cancelarEdicaoCustoVenda = cancelarEdicaoCustoVenda;
+window.salvarAjusteCustoVenda = salvarAjusteCustoVenda;
 window.abrirZoom = abrirZoom;
 
 
@@ -5415,6 +5793,10 @@ function coletarDadosCompletosParaIA(perguntaUsuario) {
 }
 
 async function gerarRelatorioComIA(descricaoRelatorio) {
+    if (typeof window.verificarAcessoRelatorio === 'function' && !window.verificarAcessoRelatorio('rel_ia_assistente')) {
+        if (typeof showToast === 'function') showToast("O Assistente IA de Relatórios não está liberado no seu plano.", "warning");
+        return;
+    }
     var divRes = document.getElementById('ia-rel-resultado');
     if (!divRes) return;
     divRes.innerHTML = '<div class="flex flex-col items-center justify-center py-10"><div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center mb-4"><i class="fa-solid fa-brain text-white text-2xl animate-pulse"></i></div><p class="text-slate-200 font-semibold text-sm mb-1">Analisando seus dados em tempo real...</p><p class="text-slate-500 text-xs">Coletando vendas, estoque, clientes, financeiro...</p><div class="mt-4 flex gap-1.5"><span class="w-2 h-2 rounded-full bg-violet-400 animate-bounce"></span><span class="w-2 h-2 rounded-full bg-violet-400 animate-bounce" style="animation-delay:150ms"></span><span class="w-2 h-2 rounded-full bg-violet-400 animate-bounce" style="animation-delay:300ms"></span></div></div>';
@@ -5431,12 +5813,19 @@ async function gerarRelatorioComIA(descricaoRelatorio) {
             if (typeof showToast === 'function') showToast('Relatorio gerado com sucesso!', 'success');
             
             // Salvar no Historico
-            if (typeof firestore !== 'undefined') {
-                window.getEmpresaRef().collection('relatorios_ia_historico').add({
-                    pergunta: descricaoRelatorio,
-                    resposta: resposta,
-                    dataGeracao: new Date().toISOString()
-                }).catch(function(err){ console.error('Erro ao salvar historico:', err); });
+            if (typeof firestore !== 'undefined' && typeof window.getEmpresaRef === 'function') {
+                const empRef = window.getEmpresaRef();
+                if (empRef) {
+                    empRef.collection('relatorios_ia_historico').add({
+                        pergunta: descricaoRelatorio,
+                        resposta: resposta,
+                        dataGeracao: new Date().toISOString()
+                    }).then(function() {
+                        if (typeof carregarHistoricoRelatoriosIA === 'function') {
+                            carregarHistoricoRelatoriosIA();
+                        }
+                    }).catch(function(err){ console.error('Erro ao salvar historico:', err); });
+                }
             }
         } else {
             divRes.innerHTML = '<div class="flex flex-col items-center py-8"><i class="fa-solid fa-triangle-exclamation text-4xl text-amber-400 mb-3"></i><p class="text-slate-300 font-semibold text-sm mb-1">Não foi possível gerar o relatório com IA</p><p class="text-slate-500 text-xs text-center max-w-md">Verifique se o módulo de Inteligência Artificial está ativo no plano da sua loja ou contate o suporte.</p></div>';
@@ -5451,6 +5840,10 @@ async function gerarRelatorioComIA(descricaoRelatorio) {
 }
 
 async function gerarRelatorioLivre() {
+    if (typeof window.verificarAcessoRelatorio === 'function' && !window.verificarAcessoRelatorio('rel_ia_assistente')) {
+        if (typeof showToast === 'function') showToast("O Assistente IA de Relatórios não está liberado no seu plano.", "warning");
+        return;
+    }
     var input = document.getElementById('ia-rel-pergunta-livre');
     if (!input) return;
     var pergunta = input.value.trim();
@@ -5621,55 +6014,119 @@ function baixarRelatorioPlanilha() {
 
 async function carregarHistoricoRelatoriosIA() {
     var list = document.getElementById('ia-historico-lista');
+    var badgeCount = document.getElementById('ia-historico-count');
     if (!list) return;
-    list.innerHTML = '<div class="text-center py-4 text-slate-400 text-sm"><i class="fa-solid fa-spinner fa-spin"></i> Carregando histórico...</div>';
+
+    list.innerHTML = '<div class="text-center py-10 text-slate-400 dark:text-slate-500 flex flex-col items-center justify-center gap-2.5"><div class="w-7 h-7 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div><span class="text-xs font-medium">Buscando análises anteriores...</span></div>';
+
     try {
         if (typeof firestore === 'undefined') {
-            list.innerHTML = '<div class="text-center py-4 text-red-400 text-sm">Banco de dados indisponível.</div>';
+            list.innerHTML = '<div class="text-center py-6 text-slate-400 text-xs">Banco de dados indisponível no momento.</div>';
             return;
         }
-        var trintaDiasAtras = new Date();
-        trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
-        
-        var snap = await window.getEmpresaRef().collection('relatorios_ia_historico')
-            .where('dataGeracao', '>=', trintaDiasAtras.toISOString())
-            .orderBy('dataGeracao', 'desc')
-            .get();
-            
-        if (snap.empty) {
-            list.innerHTML = '<div class="text-center py-6 text-slate-400 text-sm"><i class="fa-solid fa-clock-rotate-left mb-2 text-2xl text-slate-500 block"></i>Nenhum relatório salvo nos últimos 30 dias.</div>';
+
+        if (typeof window.getEmpresaRef !== 'function') {
+            list.innerHTML = '<div class="text-center py-6 text-slate-400 text-xs">Aguardando identificação da empresa...</div>';
             return;
         }
-        
+
+        const empresaRef = window.getEmpresaRef();
+        if (!empresaRef) {
+            list.innerHTML = '<div class="text-center py-6 text-slate-400 text-xs">Empresa não selecionada.</div>';
+            return;
+        }
+
+        let docs = [];
+        try {
+            const snap = await empresaRef.collection('relatorios_ia_historico')
+                .orderBy('dataGeracao', 'desc')
+                .limit(50)
+                .get();
+            snap.forEach(d => docs.push({ id: d.id, ...d.data() }));
+        } catch (queryErr) {
+            console.warn('[Relatorios IA] Fallback query historico sem orderBy:', queryErr);
+            const snapFallback = await empresaRef.collection('relatorios_ia_historico').limit(50).get();
+            snapFallback.forEach(d => docs.push({ id: d.id, ...d.data() }));
+            docs.sort((a, b) => new Date(b.dataGeracao || 0) - new Date(a.dataGeracao || 0));
+        }
+
+        if (badgeCount) {
+            badgeCount.innerText = docs.length;
+        }
+
+        if (docs.length === 0) {
+            list.innerHTML = '<div class="text-center py-12 px-4 text-slate-400 dark:text-slate-500 flex flex-col items-center justify-center gap-2"><div class="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 text-base mb-1"><i class="fa-solid fa-sparkles"></i></div><span class="text-xs font-bold text-slate-600 dark:text-slate-300">Nenhuma análise anterior</span><p class="text-[11px] text-slate-400 max-w-[220px] leading-relaxed">Clique em uma das opções sugeridas ou faça uma pergunta livre para gerar sua primeira análise com IA!</p></div>';
+            return;
+        }
+
         var html = '';
-        snap.forEach(function(doc) {
-            var data = doc.data();
-            var d = new Date(data.dataGeracao);
-            var titulo = (data.pergunta || 'Relatório Geral').substring(0, 60) + (data.pergunta && data.pergunta.length > 60 ? '...' : '');
-            
-            html += '<div class="bg-slate-800 border border-slate-700 rounded-lg p-4 mb-3 hover:border-violet-500 transition-colors cursor-pointer" onclick="verRelatorioHistorico(\''+doc.id+'\')">';
-            html += '<div class="flex justify-between items-start mb-2">';
-            html += '<h4 class="text-slate-200 font-semibold text-sm leading-tight">'+titulo+'</h4>';
-            html += '<span class="text-xs text-slate-500 whitespace-nowrap ml-2">'+d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'</span>';
-            html += '</div>';
-            html += '<div class="text-xs text-slate-400 truncate">'+(data.resposta||'').substring(0, 80)+'...</div>';
-            html += '<textarea id="hist-raw-'+doc.id+'" class="hidden">'+(data.resposta||'').replace(/</g,'&lt;')+'</textarea>';
-            html += '</div>';
+        docs.forEach(function(item) {
+            var d = item.dataGeracao ? new Date(item.dataGeracao) : new Date();
+            var dataFmt = !isNaN(d.getTime()) 
+                ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                : 'Recente';
+            var titulo = (item.pergunta || 'Análise Comercial Inteligente').trim();
+            var preview = (item.resposta || '')
+                .replace(/[*#_`|>-]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .substring(0, 95);
+            if (preview.length >= 95) preview += '...';
+
+            html += '<div class="shrink-0 relative bg-white/70 dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 hover:border-indigo-400/80 dark:hover:border-indigo-500/80 rounded-xl p-3 transition-all duration-200 cursor-pointer shadow-sm hover:shadow group" onclick="verRelatorioHistorico(\''+item.id+'\')">' +
+                '<div class="flex items-start justify-between gap-2 mb-1.5">' +
+                    '<div class="flex items-center gap-1.5 min-w-0">' +
+                        '<i class="fa-solid fa-robot text-indigo-500 text-[11px] shrink-0"></i>' +
+                        '<h5 class="text-xs font-bold text-slate-700 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 truncate leading-snug">'+titulo+'</h5>' +
+                    '</div>' +
+                    '<span class="text-[10px] font-mono text-slate-400 dark:text-slate-500 shrink-0">'+dataFmt+'</span>' +
+                '</div>' +
+                '<p class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed pl-4">'+(preview || 'Clique para visualizar o relatório completo gerado.')+'</p>' +
+                '<div class="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/40 flex items-center justify-between text-[10px] text-indigo-500 font-semibold pl-4">' +
+                    '<span class="flex items-center gap-1 group-hover:underline"><i class="fa-solid fa-eye text-[9px]"></i> Ver Relatório</span>' +
+                    '<button type="button" onclick="event.stopPropagation(); deletarRelatorioHistorico(\''+item.id+'\')" class="text-slate-400 hover:text-red-500 p-0.5 rounded transition-colors" title="Excluir do histórico">' +
+                        '<i class="fa-solid fa-trash-can text-[10px]"></i>' +
+                    '</button>' +
+                '</div>' +
+                '<textarea id="hist-raw-'+item.id+'" class="hidden">'+(item.resposta || '').replace(/</g,'&lt;')+'</textarea>' +
+            '</div>';
         });
         list.innerHTML = html;
-    } catch(e) {
-        console.error('Erro historico IA:', e);
-        list.innerHTML = '<div class="text-center py-4 text-red-400 text-sm">Erro ao carregar histórico.</div>';
+    } catch (e) {
+        console.error('[Relatorios IA] Erro ao carregar historico:', e);
+        list.innerHTML = '<div class="text-center py-6 text-red-400 text-xs">Erro ao consultar histórico: ' + (e.message || 'Tente novamente.') + '</div>';
     }
 }
 
 function verRelatorioHistorico(id) {
-    var rawEl = document.getElementById('hist-raw-'+id);
+    var rawEl = document.getElementById('hist-raw-' + id);
     if (!rawEl) return;
     renderizarRelatorioIA(rawEl.value);
-    // Volta pra aba principal
-    mudarAbaRelIA('vendas');
+    
+    // Rola suavemente até o container de resultado
+    var divRes = document.getElementById('ia-rel-resultado');
+    if (divRes) {
+        divRes.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        divRes.classList.add('ring-4', 'ring-indigo-500/40');
+        setTimeout(() => divRes.classList.remove('ring-4', 'ring-indigo-500/40'), 1500);
+    }
 }
+
+async function deletarRelatorioHistorico(id) {
+    if (!confirm('Deseja realmente remover esta análise do seu histórico?')) return;
+    try {
+        const empresaRef = window.getEmpresaRef();
+        if (empresaRef) {
+            await empresaRef.collection('relatorios_ia_historico').doc(id).delete();
+            if (typeof showToast === 'function') showToast('Análise removida do histórico.', 'info');
+            carregarHistoricoRelatoriosIA();
+        }
+    } catch (e) {
+        console.error('Erro ao excluir historico IA:', e);
+        if (typeof showToast === 'function') showToast('Erro ao remover: ' + e.message, 'error');
+    }
+}
+
 
 function mudarAbaRelIA(aba) {
     document.querySelectorAll('.ia-chips-area').forEach(function(el){el.classList.add('hidden');});
@@ -5714,3 +6171,569 @@ window.mudarAbaRelIA = mudarAbaRelIA;
 window.coletarDadosCompletosParaIA = coletarDadosCompletosParaIA;
 
 
+
+
+// =========================================================================
+// MÓDULO: RELATÓRIO DETALHADO DE COMISSÕES POR VENDEDOR & CONTROLE POR PLANO
+// =========================================================================
+
+let _graficoComissaoChart = null;
+let _dadosComissaoAtual = { vendedores: {}, totalVendas: 0, totalComissao: 0, periodo: '' };
+let _vendedorExtratoSelecionado = null;
+
+function formatarDataBR(dataStr) {
+    if (!dataStr) return '';
+    if (dataStr.includes('T')) dataStr = dataStr.split('T')[0];
+    let parts = dataStr.split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return dataStr;
+}
+
+function isVendaEfetivaParaComissao(v) {
+    if (!v) return false;
+
+    // Status cancelado ou de orcamento
+    const status = String(v.status || '').trim().toUpperCase();
+    if (status === 'CANCELADA' || status === 'CANCELADO') return false;
+    if (status === 'ORÇAMENTO' || status === 'ORCAMENTO' || status.includes('ORÇ') || status.includes('ORC')) return false;
+
+    // Tipo de operacao
+    const tipo = String(v.tipo || '').trim().toUpperCase();
+    if (tipo === 'ORÇAMENTO' || tipo === 'ORCAMENTO' || tipo.includes('ORÇ') || tipo.includes('ORC')) return false;
+
+    // Operacao do PDV
+    const operacao = String(v.operacao || '').trim().toUpperCase();
+    if (operacao === 'ORÇAMENTO' || operacao === 'ORCAMENTO' || operacao.includes('ORÇ') || operacao.includes('ORC')) return false;
+
+    // Flags booleanas
+    if (v.isOrcamento === true || v.isOrcamento === 'true' || v.orcamento === true) return false;
+
+    // Forma de pagamento indicando orcamento
+    const pag = String(v.pag || v.formaPagamento || '').toUpperCase();
+    if (pag.includes('ORÇAMENTO') || pag.includes('ORCAMENTO')) return false;
+
+    return true;
+}
+
+
+
+function renderizarRelatorioComissoes() {
+    const card = document.getElementById('card-comissao-vendedores');
+    if (!card) return;
+
+    // Popula select de vendedores com os vendedores cadastrados e os que têm vendas
+    const selVend = document.getElementById('filtro-comissao-vendedor');
+    if (selVend) {
+        const valAtual = selVend.value || 'TODOS';
+        const nomesVendedoresSet = new Set();
+
+        (db.funcionarios || []).forEach(f => {
+            if (f.nome && (f.vendedor === 'SIM' || f.vendedor === 'Sim' || f.vendedor === true)) {
+                nomesVendedoresSet.add(f.nome.trim().toUpperCase());
+            }
+        });
+        (db.vendas || []).forEach(v => {
+            if (!isVendaEfetivaParaComissao(v)) return;
+            if (v.vendedor && v.vendedor.trim()) {
+                nomesVendedoresSet.add(v.vendedor.trim().toUpperCase());
+            }
+        });
+
+        const nomesOrdenados = Array.from(nomesVendedoresSet).sort();
+        let optionsHtml = '<option value="TODOS">Todos os Vendedores</option>';
+        nomesOrdenados.forEach(nome => {
+            const isSel = valAtual === nome ? 'selected' : '';
+            optionsHtml += `<option value="${nome}" ${isSel}>${nome}</option>`;
+        });
+        selVend.innerHTML = optionsHtml;
+    }
+
+    // Inicializa datas padrão (mês atual) se vazias
+    const inpIni = document.getElementById('filtro-comissao-data-ini');
+    const inpFim = document.getElementById('filtro-comissao-data-fim');
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoje.getDate()).padStart(2, '0');
+
+    if (inpIni && !inpIni.value) {
+        inpIni.value = `${ano}-${mes}-01`;
+    }
+    if (inpFim && !inpFim.value) {
+        inpFim.value = `${ano}-${mes}-${dia}`;
+    }
+
+    const dataIniStr = inpIni ? inpIni.value : '';
+    const dataFimStr = inpFim ? inpFim.value : '';
+    const vendFiltro = selVend ? selVend.value : 'TODOS';
+
+    const dIni = dataIniStr ? new Date(`${dataIniStr}T00:00:00`).getTime() : 0;
+    const dFim = dataFimStr ? new Date(`${dataFimStr}T23:59:59`).getTime() : Infinity;
+
+    // Mapa de taxas de comissão dos funcionários
+    const funcComissaoMap = {};
+    (db.funcionarios || []).forEach(f => {
+        if (f.nome) {
+            const n = f.nome.trim().toUpperCase();
+            funcComissaoMap[n] = Number(f.comissao || 0);
+        }
+    });
+
+    // Filtra exclusivamente VENDAS efetivas (exclui orcamentos, canceladas, etc)
+    const todasVendas = db.vendas || [];
+    const vendasFiltradas = todasVendas.filter(v => {
+        if (!isVendaEfetivaParaComissao(v)) return false;
+
+        const dTime = v.data ? new Date(v.data).getTime() : 0;
+        if (dTime < dIni || dTime > dFim) return false;
+
+        const vNome = (v.vendedor || 'Sem Vendedor').trim().toUpperCase();
+        if (vendFiltro !== 'TODOS' && vNome !== vendFiltro) return false;
+
+        return true;
+    });
+
+    // Agrupamento por vendedor
+    const vendedoresMap = {};
+    let totalGeralVendas = 0;
+    let totalGeralComissao = 0;
+
+    vendasFiltradas.forEach(v => {
+        const vNome = (v.vendedor || 'SEM VENDEDOR').trim().toUpperCase();
+        const totVenda = Number(v.tot || v.total || v.valorFinal || v.valor || 0);
+
+        let perc = 0;
+        if (v.comissaoPerc !== undefined && v.comissaoPerc !== null && v.comissaoPerc !== '') {
+            perc = Number(v.comissaoPerc);
+        } else if (funcComissaoMap[vNome] !== undefined) {
+            perc = funcComissaoMap[vNome];
+        }
+
+        const valComissao = totVenda * (perc / 100);
+
+        if (!vendedoresMap[vNome]) {
+            vendedoresMap[vNome] = {
+                nome: vNome,
+                qtdVendas: 0,
+                totalFaturado: 0,
+                comissaoPercPadrao: perc,
+                totalComissao: 0,
+                vendas: []
+            };
+        }
+
+        vendedoresMap[vNome].qtdVendas += 1;
+        vendedoresMap[vNome].totalFaturado += totVenda;
+        vendedoresMap[vNome].totalComissao += valComissao;
+        vendedoresMap[vNome].vendas.push({
+            id: v.id || v.numeroPedido || '-',
+            numeroPedido: v.numeroPedido || v.id || '-',
+            data: v.data || '',
+            clienteNome: v.clienteNome || v.cliente || 'Consumidor',
+            pag: v.pag || v.formaPagamento || 'A Vista',
+            valorTotal: totVenda,
+            comissaoPerc: perc,
+            comissaoValor: valComissao
+        });
+
+        totalGeralVendas += totVenda;
+        totalGeralComissao += valComissao;
+    });
+
+    _dadosComissaoAtual = {
+        vendedores: vendedoresMap,
+        totalVendas: totalGeralVendas,
+        totalComissao: totalGeralComissao,
+        periodo: `${dataIniStr ? formatarDataBR(dataIniStr) : ''} até ${dataFimStr ? formatarDataBR(dataFimStr) : ''}`
+    };
+
+    // Atualiza KPIs
+    const elTotVendas = document.getElementById('kpi-comissao-total-vendas');
+    if (elTotVendas) elTotVendas.innerText = formatMoney(totalGeralVendas);
+
+    const elQtdVendas = document.getElementById('kpi-comissao-qtd-pedidos');
+    if (elQtdVendas) elQtdVendas.innerText = `${vendasFiltradas.length} venda(s) no período`;
+
+    const elTotComissao = document.getElementById('kpi-comissao-total-valor');
+    if (elTotComissao) elTotComissao.innerText = formatMoney(totalGeralComissao);
+
+    const elTicketMedio = document.getElementById('kpi-comissao-ticket-medio');
+    const ticket = vendasFiltradas.length > 0 ? (totalGeralVendas / vendasFiltradas.length) : 0;
+    if (elTicketMedio) elTicketMedio.innerText = formatMoney(ticket);
+
+    // Top Vendedor
+    const listaVendOrdenada = Object.values(vendedoresMap).sort((a, b) => b.totalFaturado - a.totalFaturado);
+    const topVend = listaVendOrdenada.length > 0 ? listaVendOrdenada[0] : null;
+
+    const elTopNome = document.getElementById('kpi-comissao-top-vendedor');
+    const elTopValor = document.getElementById('kpi-comissao-top-valor');
+    if (elTopNome) elTopNome.innerText = topVend ? topVend.nome : '-';
+    if (elTopValor) elTopValor.innerText = topVend ? `${formatMoney(topVend.totalComissao)} em comissão (${topVend.qtdVendas} vendas)` : 'R$ 0,00';
+
+    // Renderiza Tabela de Vendedores
+    const tbody = document.getElementById('tabela-comissao-vendedores-body');
+    if (tbody) {
+        if (listaVendOrdenada.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400 italic">Nenhuma venda comissionada no período selecionado.</td></tr>';
+        } else {
+            tbody.innerHTML = listaVendOrdenada.map(vend => {
+                const percMedio = vend.totalFaturado > 0 ? ((vend.totalComissao / vend.totalFaturado) * 100) : vend.comissaoPercPadrao;
+                const nomeEscapado = vend.nome.replace(/'/g, "\\'");
+                return `
+                    <tr class="dark:hover:bg-slate-800 transition-colors">
+                        <td class="p-3 font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-black text-xs">
+                                <i class="fa-solid fa-user-tie"></i>
+                            </div>
+                            <span>${vend.nome}</span>
+                        </td>
+                        <td class="p-3 text-center font-semibold text-slate-600 dark:text-slate-300">${vend.qtdVendas}</td>
+                        <td class="p-3 text-right font-bold text-slate-700 dark:text-slate-200">${formatMoney(vend.totalFaturado)}</td>
+                        <td class="p-3 text-center font-bold text-blue-600 dark:text-blue-400">${percMedio.toFixed(1)}%</td>
+                        <td class="p-3 text-right font-black text-emerald-600 dark:text-emerald-400 text-sm">${formatMoney(vend.totalComissao)}</td>
+                        <td class="p-3 text-center print:hidden">
+                            <button onclick="abrirExtratoComissaoVendedor('${nomeEscapado}')" class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1 mx-auto" title="Ver Vendas e Imprimir Recibo">
+                                <i class="fa-solid fa-file-invoice-dollar"></i> Extrato
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    }
+
+    // Renderiza Gráfico Comparativo ApexCharts
+    renderGraficoComissao(listaVendOrdenada);
+}
+window.renderizarRelatorioComissoes = renderizarRelatorioComissoes;
+
+function renderGraficoComissao(listaVendedores) {
+    const container = document.getElementById('grafico-comissao-vendedores');
+    if (!container || typeof ApexCharts === 'undefined') return;
+
+    if (_graficoComissaoChart) {
+        try { _graficoComissaoChart.destroy(); } catch(e) {}
+        _graficoComissaoChart = null;
+    }
+
+    const top5 = listaVendedores.slice(0, 8);
+    if (top5.length === 0) {
+        container.innerHTML = '<div class="text-xs text-slate-400 italic text-center py-6">Sem dados suficientes para o gráfico no período.</div>';
+        return;
+    }
+
+    container.innerHTML = '';
+    const isDark = document.documentElement.classList.contains('dark');
+
+    const options = {
+        series: [{
+            name: 'Comissão (R$)',
+            data: top5.map(v => Number(v.totalComissao.toFixed(2)))
+        }],
+        chart: {
+            type: 'bar',
+            height: 220,
+            toolbar: { show: false },
+            background: 'transparent'
+        },
+        plotOptions: {
+            bar: {
+                borderRadius: 6,
+                horizontal: false,
+                columnWidth: '45%',
+                distributed: true
+            }
+        },
+        colors: ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#06b6d4', '#ec4899', '#14b8a6', '#6366f1'],
+        dataLabels: {
+            enabled: true,
+            formatter: val => formatMoney(val),
+            style: { fontSize: '10px', fontWeight: 'bold' }
+        },
+        xaxis: {
+            categories: top5.map(v => v.nome.split(' ')[0]),
+            labels: {
+                style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '11px', fontWeight: 'bold' }
+            }
+        },
+        yaxis: {
+            labels: {
+                formatter: val => formatMoney(val),
+                style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '10px' }
+            }
+        },
+        tooltip: {
+            theme: isDark ? 'dark' : 'light',
+            y: { formatter: val => formatMoney(val) }
+        },
+        legend: { show: false },
+        grid: {
+            borderColor: isDark ? '#334155' : '#e2e8f0',
+            strokeDashArray: 3
+        }
+    };
+
+    try {
+        _graficoComissaoChart = new ApexCharts(container, options);
+        _graficoComissaoChart.render();
+    } catch(err) {
+        console.warn('Erro ao renderizar gráfico de comissão:', err);
+    }
+}
+window.renderGraficoComissao = renderGraficoComissao;
+
+function abrirExtratoComissaoVendedor(vendedorNome) {
+    const dados = _dadosComissaoAtual.vendedores[vendedorNome];
+    if (!dados) return;
+
+    _vendedorExtratoSelecionado = dados;
+
+    const elNome = document.getElementById('modal-extrato-nome-vendedor');
+    if (elNome) elNome.innerText = dados.nome;
+
+    const elPeriodo = document.getElementById('modal-extrato-periodo-info');
+    if (elPeriodo) elPeriodo.innerText = `Período: ${_dadosComissaoAtual.periodo || 'Geral'}`;
+
+    const elQtd = document.getElementById('modal-extrato-qtd-vendas');
+    if (elQtd) elQtd.innerText = `${dados.qtdVendas} pedidos`;
+
+    const elFat = document.getElementById('modal-extrato-total-faturado');
+    if (elFat) elFat.innerText = formatMoney(dados.totalFaturado);
+
+    const elCom = document.getElementById('modal-extrato-total-comissao');
+    if (elCom) elCom.innerText = formatMoney(dados.totalComissao);
+
+    const tbody = document.getElementById('modal-extrato-tabela-vendas');
+    if (tbody) {
+        tbody.innerHTML = (dados.vendas || []).map(v => {
+            const dataFmt = v.data ? formatarDataBR(v.data) : '-';
+            return `
+                <tr class="dark:hover:bg-slate-800">
+                    <td class="p-2.5 font-medium text-slate-700 dark:text-slate-300">${dataFmt}</td>
+                    <td class="p-2.5 font-bold text-blue-600">#${v.numeroPedido}</td>
+                    <td class="p-2.5 font-medium text-slate-800 dark:text-slate-200">${v.clienteNome}</td>
+                    <td class="p-2.5 text-slate-500">${v.pag}</td>
+                    <td class="p-2.5 text-right font-bold text-slate-700 dark:text-slate-200">${formatMoney(v.valorTotal)}</td>
+                    <td class="p-2.5 text-center font-bold text-blue-500">${v.comissaoPerc}%</td>
+                    <td class="p-2.5 text-right font-black text-emerald-600 dark:text-emerald-400">${formatMoney(v.comissaoValor)}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    const modal = document.getElementById('modal-extrato-comissao');
+    if (modal) modal.classList.remove('hidden');
+}
+window.abrirExtratoComissaoVendedor = abrirExtratoComissaoVendedor;
+
+function fecharModalExtratoComissao() {
+    const modal = document.getElementById('modal-extrato-comissao');
+    if (modal) modal.classList.add('hidden');
+}
+window.fecharModalExtratoComissao = fecharModalExtratoComissao;
+
+function imprimirExtratoIndividualVendedor() {
+    if (!_vendedorExtratoSelecionado) return;
+    const v = _vendedorExtratoSelecionado;
+    const emp = (window.currentEmpresaData) || { nomeEmpresa: 'FC Gestão' };
+
+    const win = window.open('', '_blank');
+    const linhas = (v.vendas || []).map(item => `
+        <tr>
+            <td style="padding:6px; border-bottom:1px solid #eee;">${item.data ? formatarDataBR(item.data) : '-'}</td>
+            <td style="padding:6px; border-bottom:1px solid #eee;">#${item.numeroPedido}</td>
+            <td style="padding:6px; border-bottom:1px solid #eee;">${item.clienteNome}</td>
+            <td style="padding:6px; border-bottom:1px solid #eee; text-align:right;">${formatMoney(item.valorTotal)}</td>
+            <td style="padding:6px; border-bottom:1px solid #eee; text-align:center;">${item.comissaoPerc}%</td>
+            <td style="padding:6px; border-bottom:1px solid #eee; text-align:right; font-weight:bold; color:#059669;">${formatMoney(item.comissaoValor)}</td>
+        </tr>
+    `).join('');
+
+    win.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Recibo de Comissão - ${v.nome}</title>
+            <style>
+                body { font-family: 'Segoe UI', Arial, sans-serif; padding: 24px; color: #1e293b; max-width: 800px; margin: auto; }
+                h1, h2, h3 { margin: 0; }
+                .header { border-bottom: 2px solid #059669; padding-bottom: 12px; margin-bottom: 16px; }
+                .grid { display: flex; justify-content: space-between; margin-bottom: 16px; font-size: 13px; }
+                .card { background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; }
+                table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 12px; }
+                th { background: #059669; color: white; padding: 8px 6px; text-align: left; }
+                .ass-box { margin-top: 40px; display: flex; justify-content: space-between; gap: 40px; }
+                .ass-linha { border-top: 1px solid #64748b; padding-top: 6px; text-align: center; font-size: 12px; flex: 1; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h2>${emp.nomeEmpresa || 'FC Gestão'}</h2>
+                <p style="margin:4px 0 0; color:#64748b; font-size:12px;">Extrato de Fechamento de Comissão de Vendas</p>
+            </div>
+            <div class="grid">
+                <div>
+                    <strong>Colaborador / Vendedor:</strong> ${v.nome}<br>
+                    <strong>Período:</strong> ${_dadosComissaoAtual.periodo || 'Atual'}
+                </div>
+                <div style="text-align:right;">
+                    <strong>Data de Emissão:</strong> ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}
+                </div>
+            </div>
+            <div class="card" style="display:flex; justify-content:space-around; text-align:center; margin-bottom:20px;">
+                <div>
+                    <div style="font-size:11px; color:#64748b; font-weight:bold;">PEDIDOS VENDIDOS</div>
+                    <div style="font-size:18px; font-weight:bold; color:#1e293b;">${v.qtdVendas}</div>
+                </div>
+                <div>
+                    <div style="font-size:11px; color:#64748b; font-weight:bold;">TOTAL FATURADO</div>
+                    <div style="font-size:18px; font-weight:bold; color:#2563eb;">${formatMoney(v.totalFaturado)}</div>
+                </div>
+                <div>
+                    <div style="font-size:11px; color:#059669; font-weight:bold;">TOTAL DE COMISSÃO A PAGAR</div>
+                    <div style="font-size:20px; font-weight:900; color:#059669;">${formatMoney(v.totalComissao)}</div>
+                </div>
+            </div>
+            <h3>Detalhamento das Vendas</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Pedido</th>
+                        <th>Cliente</th>
+                        <th style="text-align:right;">Valor Venda</th>
+                        <th style="text-align:center;">% Com.</th>
+                        <th style="text-align:right;">Valor Comissão</th>
+                    </tr>
+                </thead>
+                <tbody>${linhas}</tbody>
+            </table>
+            <div class="ass-box">
+                <div class="ass-linha">
+                    Assinatura da Empresa / Gestão
+                </div>
+                <div class="ass-linha">
+                    Assinatura do Vendedor (${v.nome})
+                </div>
+            </div>
+        </body>
+        </html>
+    `);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 500);
+}
+window.imprimirExtratoIndividualVendedor = imprimirExtratoIndividualVendedor;
+
+function imprimirRelatorioComissoes() {
+    if (typeof imprimirRelatorioIndividual === 'function') {
+        imprimirRelatorioIndividual('card-comissao-vendedores', 'Relatório Geral de Comissões por Vendedor');
+    } else {
+        window.print();
+    }
+}
+window.imprimirRelatorioComissoes = imprimirRelatorioComissoes;
+
+// -------------------------------------------------------------------------
+// CONTROLE DE ACESSO VISUAL AOS RELATÓRIOS POR PLANO
+// -------------------------------------------------------------------------
+function aplicarControleAcessoRelatoriosPorPlano() {
+    if (typeof window.verificarAcessoRelatorio !== 'function') return;
+
+    const cards = document.querySelectorAll('[data-relatorio-id]');
+    cards.forEach(card => {
+        const relId = card.getAttribute('data-relatorio-id');
+        if (!relId) return;
+
+        const permitido = window.verificarAcessoRelatorio(relId);
+        let overlayExistente = card.querySelector('.card-relatorio-bloqueado-overlay');
+
+        if (!permitido) {
+            // Marca atributo de bloqueio estrito
+            card.setAttribute('data-relatorio-bloqueado', 'true');
+            card.style.position = 'relative';
+            card.style.overflow = 'hidden';
+
+            // Oculta completamente todos os filhos internos para impedir QUALQUER visualizacao
+            Array.from(card.children).forEach(child => {
+                if (!child.classList.contains('card-relatorio-bloqueado-overlay')) {
+                    child.style.visibility = 'hidden';
+                    child.style.opacity = '0';
+                    child.style.pointerEvents = 'none';
+                    child.style.userSelect = 'none';
+                    child.setAttribute('aria-hidden', 'true');
+                }
+            });
+
+            if (!overlayExistente) {
+                const overlay = document.createElement('div');
+                overlay.className = 'card-relatorio-bloqueado-overlay absolute inset-0 z-40 bg-slate-900 rounded-xl flex flex-col items-center justify-center p-6 text-center border border-amber-500/40 select-none';
+                overlay.style.backgroundColor = '#0f172a';
+                overlay.style.opacity = '1';
+                overlay.innerHTML = `
+                    <div class="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-2xl mb-3 shadow-lg shadow-amber-500/10">
+                        <i class="fa-solid fa-lock"></i>
+                    </div>
+                    <h4 class="text-base font-black text-white mb-1.5">Relatório Bloqueado no seu Plano</h4>
+                    <p class="text-xs text-slate-300 max-w-sm mb-4 leading-relaxed">
+                        Este relatório analítico avançado está disponível para contratação. Faça o upgrade do seu plano para liberá-lo imediatamente.
+                    </p>
+                    <a href="https://wa.me/5562993341774?text=${encodeURIComponent('Olá! Gostaria de fazer upgrade do plano para liberar relatórios adicionais no FC-Gestão.')}" target="_blank" class="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 text-xs font-black rounded-xl shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95">
+                        <i class="fa-brands fa-whatsapp text-sm"></i> Fazer Upgrade
+                    </a>
+                `;
+                card.appendChild(overlay);
+            } else {
+                overlayExistente.style.backgroundColor = '#0f172a';
+                overlayExistente.style.opacity = '1';
+                overlayExistente.classList.remove('bg-slate-900/90', 'backdrop-blur-[3px]');
+                overlayExistente.classList.add('bg-slate-900', 'z-40');
+            }
+        } else {
+            // Desbloqueia e restaura visibilidade
+            card.removeAttribute('data-relatorio-bloqueado');
+            if (overlayExistente) {
+                overlayExistente.remove();
+            }
+            Array.from(card.children).forEach(child => {
+                child.style.visibility = '';
+                child.style.opacity = '';
+                child.style.pointerEvents = '';
+                child.style.userSelect = '';
+                child.removeAttribute('aria-hidden');
+            });
+        }
+    });
+}
+window.aplicarControleAcessoRelatoriosPorPlano = aplicarControleAcessoRelatoriosPorPlano;
+
+window.carregarHistoricoRelatoriosIA = carregarHistoricoRelatoriosIA;
+window.verRelatorioHistorico = verRelatorioHistorico;
+window.deletarRelatorioHistorico = deletarRelatorioHistorico;
+
+
+window.atualizarLimiteExtratoVendedor = function() {
+    if (!_vendedorExtratoSelecionado) return;
+    const dados = _vendedorExtratoSelecionado;
+    const selLimite = document.getElementById('modal-extrato-filtro-limite');
+    const limite = selLimite ? (selLimite.value === 'TODOS' ? Infinity : (parseInt(selLimite.value, 10) || 10)) : 10;
+    const vendas = (dados.vendas || []).slice(0, limite);
+
+    const tbody = document.getElementById('modal-extrato-tabela-vendas');
+    if (tbody) {
+        tbody.innerHTML = vendas.map(v => {
+            const dataFmt = v.data ? formatarDataBR(v.data) : '-';
+            return `
+                <tr class="dark:hover:bg-slate-800">
+                    <td class="p-2.5 font-medium text-slate-700 dark:text-slate-300">${dataFmt}</td>
+                    <td class="p-2.5 font-bold text-blue-600">#${v.numeroPedido}</td>
+                    <td class="p-2.5 font-medium text-slate-800 dark:text-slate-200">${v.clienteNome}</td>
+                    <td class="p-2.5 text-slate-500">${v.pag}</td>
+                    <td class="p-2.5 text-right font-bold text-slate-700 dark:text-slate-200">${formatMoney(v.valorTotal)}</td>
+                    <td class="p-2.5 text-center font-bold text-blue-500">${v.comissaoPerc}%</td>
+                    <td class="p-2.5 text-right font-black text-emerald-600 dark:text-emerald-400">${formatMoney(v.comissaoValor)}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+};

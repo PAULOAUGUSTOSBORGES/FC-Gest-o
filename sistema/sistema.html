@@ -35,8 +35,8 @@
     <title>Configurações do Sistema</title>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css?v=20260921143823">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260921143823">
+    <link rel="stylesheet" href="../style.css?v=20260923172910">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260923172910">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -392,22 +392,22 @@
                         <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Insira o percentual exato cobrado pela sua maquininha. O sistema abaterá isso para mostrar seu Lucro Real no Histórico.</p>
                         
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                            <div class="col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Cartão de Débito (%)</label><input type="number" step="0.01" id="tx-deb" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm font-bold text-slate-700 dark:text-slate-200 dark:text-white"></div>
-                            <div class="col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Custo Fixo por Boleto (R$)</label><input type="number" step="0.01" id="tx-boleto-custo" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm font-bold text-slate-700 dark:text-slate-200 dark:text-white"></div>
+                            <div class="col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Cartão de Débito (%)</label><input type="text" data-mask="money" inputmode="numeric" id="tx-deb" placeholder="0,00" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm font-bold text-slate-700 dark:text-slate-200 dark:text-white"></div>
+                            <div class="col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Custo Fixo por Boleto (R$)</label><input type="text" data-mask="money" inputmode="numeric" id="tx-boleto-custo" placeholder="0,00" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm font-bold text-slate-700 dark:text-slate-200 dark:text-white"></div>
                             
                             <!-- 1x a 12x -->
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 1x (%)</label><input type="number" step="0.01" id="tx-c1" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 2x (%)</label><input type="number" step="0.01" id="tx-c2" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 3x (%)</label><input type="number" step="0.01" id="tx-c3" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 4x (%)</label><input type="number" step="0.01" id="tx-c4" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 5x (%)</label><input type="number" step="0.01" id="tx-c5" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 6x (%)</label><input type="number" step="0.01" id="tx-c6" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 7x (%)</label><input type="number" step="0.01" id="tx-c7" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 8x (%)</label><input type="number" step="0.01" id="tx-c8" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 9x (%)</label><input type="number" step="0.01" id="tx-c9" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 10x (%)</label><input type="number" step="0.01" id="tx-c10" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 11x (%)</label><input type="number" step="0.01" id="tx-c11" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 12x (%)</label><input type="number" step="0.01" id="tx-c12" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 1x (%)</label><input type="text" data-mask="money" inputmode="numeric" id="tx-c1" placeholder="0,00" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 2x (%)</label><input type="text" data-mask="money" inputmode="numeric" id="tx-c2" placeholder="0,00" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 3x (%)</label><input type="text" data-mask="money" inputmode="numeric" id="tx-c3" placeholder="0,00" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 4x (%)</label><input type="text" data-mask="money" inputmode="numeric" id="tx-c4" placeholder="0,00" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 5x (%)</label><input type="text" data-mask="money" inputmode="numeric" id="tx-c5" placeholder="0,00" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 6x (%)</label><input type="text" data-mask="money" inputmode="numeric" id="tx-c6" placeholder="0,00" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 7x (%)</label><input type="text" data-mask="money" inputmode="numeric" id="tx-c7" placeholder="0,00" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 8x (%)</label><input type="text" data-mask="money" inputmode="numeric" id="tx-c8" placeholder="0,00" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 9x (%)</label><input type="text" data-mask="money" inputmode="numeric" id="tx-c9" placeholder="0,00" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 10x (%)</label><input type="text" data-mask="money" inputmode="numeric" id="tx-c10" placeholder="0,00" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 11x (%)</label><input type="text" data-mask="money" inputmode="numeric" id="tx-c11" placeholder="0,00" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Crédito 12x (%)</label><input type="text" data-mask="money" inputmode="numeric" id="tx-c12" placeholder="0,00" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm dark:text-white"></div>
                         </div>
                     </div>
 
@@ -427,15 +427,90 @@
                         </div>
                     </div>
 
-                    <!-- CONFIGURAÇÕES DE IA (GEMINI) -->
+                    
+                    <!-- GESTÃO DE PERSONALIZAÇÃO DE MÓVEIS (MADEIRAS, TECIDOS E CORES) -->
                     <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mt-6">
-                        <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3"><i class="fa-solid fa-robot text-purple-600"></i> Inteligência Artificial (Google Gemini)</h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Insira sua Chave de API do Google AI Studio para habilitar o Assessor de Marketing Inteligente no sistema.</p>
-                        
-                        <div class="mb-4">
-                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Chave de API (Google AI Studio)</label>
-                            <input type="password" id="emp-gemini-key" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-purple-500 dark:text-white font-mono" placeholder="Cole sua chave (AIzaSy...) aqui">
-                            <p class="text-[10px] text-slate-500 mt-1"><a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-500 hover:underline"><i class="fa-solid fa-link"></i> Clique aqui para gerar sua chave gratuitamente</a></p>
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-700 pb-3 mb-4">
+                            <div>
+                                <h3 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                    <i class="fa-solid fa-couch text-amber-600"></i> Personalização de Móveis & Estofados
+                                </h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Gerencie os tipos de madeira, cores de acabamento, tecidos e cores de estofado disponíveis no PDV e Orçamentos.</p>
+                            </div>
+                            <button type="button" onclick="abrirModalOpcoesPersonalizadas()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded-lg text-xs transition shadow-sm flex items-center gap-1.5 self-start sm:self-auto active:scale-95">
+                                <i class="fa-solid fa-sliders"></i> Abrir Central Rápida
+                            </button>
+                        </div>
+
+                        <!-- 4 Caixas de Gestao Direta -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- 1. Madeiras -->
+                            <div class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 flex flex-col justify-between">
+                                <div>
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h4 class="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5">
+                                            <i class="fa-solid fa-tree text-amber-600"></i> Tipos de Madeira
+                                        </h4>
+                                        <span id="sis-count-madeiras" class="text-[10px] text-slate-500 font-semibold">0 cadastradas</span>
+                                    </div>
+                                    <div id="sis-lista-madeiras" class="flex flex-wrap gap-1.5 mb-3 min-h-[40px] max-h-40 overflow-y-auto custom-scrollbar p-1"></div>
+                                </div>
+                                <div class="flex gap-1.5 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                                    <input type="text" id="sis-input-madeiras" placeholder="Nova madeira..." class="flex-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white" onkeydown="if(event.key==='Enter'){ event.preventDefault(); sisAdicionarOpcaoPers('madeiras'); }">
+                                    <button type="button" onclick="sisAdicionarOpcaoPers('madeiras')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-lg text-xs font-bold transition shadow-xs"><i class="fa-solid fa-plus"></i></button>
+                                </div>
+                            </div>
+
+                            <!-- 2. Cores Madeira -->
+                            <div class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 flex flex-col justify-between">
+                                <div>
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h4 class="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5">
+                                            <i class="fa-solid fa-palette text-amber-600"></i> Cores / Acabamentos da Madeira
+                                        </h4>
+                                        <span id="sis-count-cores_madeira" class="text-[10px] text-slate-500 font-semibold">0 cadastradas</span>
+                                    </div>
+                                    <div id="sis-lista-cores_madeira" class="flex flex-wrap gap-1.5 mb-3 min-h-[40px] max-h-40 overflow-y-auto custom-scrollbar p-1"></div>
+                                </div>
+                                <div class="flex gap-1.5 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                                    <input type="text" id="sis-input-cores_madeira" placeholder="Nova cor de madeira..." class="flex-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white" onkeydown="if(event.key==='Enter'){ event.preventDefault(); sisAdicionarOpcaoPers('cores_madeira'); }">
+                                    <button type="button" onclick="sisAdicionarOpcaoPers('cores_madeira')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-lg text-xs font-bold transition shadow-xs"><i class="fa-solid fa-plus"></i></button>
+                                </div>
+                            </div>
+
+                            <!-- 3. Tecidos -->
+                            <div class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 flex flex-col justify-between">
+                                <div>
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h4 class="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5">
+                                            <i class="fa-solid fa-rug text-blue-500"></i> Tipos de Estofado / Tecido
+                                        </h4>
+                                        <span id="sis-count-tecidos" class="text-[10px] text-slate-500 font-semibold">0 cadastradas</span>
+                                    </div>
+                                    <div id="sis-lista-tecidos" class="flex flex-wrap gap-1.5 mb-3 min-h-[40px] max-h-40 overflow-y-auto custom-scrollbar p-1"></div>
+                                </div>
+                                <div class="flex gap-1.5 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                                    <input type="text" id="sis-input-tecidos" placeholder="Novo tecido/estofado..." class="flex-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white" onkeydown="if(event.key==='Enter'){ event.preventDefault(); sisAdicionarOpcaoPers('tecidos'); }">
+                                    <button type="button" onclick="sisAdicionarOpcaoPers('tecidos')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-lg text-xs font-bold transition shadow-xs"><i class="fa-solid fa-plus"></i></button>
+                                </div>
+                            </div>
+
+                            <!-- 4. Cores Estofado -->
+                            <div class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 flex flex-col justify-between">
+                                <div>
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h4 class="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5">
+                                            <i class="fa-solid fa-brush text-purple-500"></i> Cores do Tecido
+                                        </h4>
+                                        <span id="sis-count-cores_estofado" class="text-[10px] text-slate-500 font-semibold">0 cadastradas</span>
+                                    </div>
+                                    <div id="sis-lista-cores_estofado" class="flex flex-wrap gap-1.5 mb-3 min-h-[40px] max-h-40 overflow-y-auto custom-scrollbar p-1"></div>
+                                </div>
+                                <div class="flex gap-1.5 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                                    <input type="text" id="sis-input-cores_estofado" placeholder="Nova cor do estofado..." class="flex-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white" onkeydown="if(event.key==='Enter'){ event.preventDefault(); sisAdicionarOpcaoPers('cores_estofado'); }">
+                                    <button type="button" onclick="sisAdicionarOpcaoPers('cores_estofado')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-lg text-xs font-bold transition shadow-xs"><i class="fa-solid fa-plus"></i></button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -570,10 +645,73 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
     
-    <script src="../sistema/config_banco.js?v=20260921143823"></script>
-    <script src="saas_licenca.js?v=20260921143823"></script>
-    <script src="../global.js?v=20260921143823"></script>
-    <script src="fc_cache.js?v=20260921143823"></script>
-    <script src="sistema.js?v=20260921143823"></script>
+    <script src="../sistema/config_banco.js?v=20260923172910"></script>
+    <script src="saas_licenca.js?v=20260923172910"></script>
+    <script src="../global.js?v=20260923172910"></script>
+    <script src="fc_cache.js?v=20260923172910"></script>
+    <script src="sistema.js?v=20260923172910"></script>
+<!-- MODAL DE GERENCIAMENTO DE OPCOES PERSONALIZADAS (MADEIRAS, TECIDOS, CORES) -->
+    <div id="modal-opcoes-personalizadas" class="fixed inset-0 bg-slate-900/70 z-[170] hidden flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in duration-150 max-h-[90vh]">
+            <div class="bg-slate-900 px-5 py-4 text-white flex justify-between items-center shrink-0 border-b border-slate-700">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-amber-600/20 text-amber-500 border border-amber-500/30 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-sliders text-base"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base leading-tight">Opções de Personalização da Loja</h3>
+                        <p class="text-xs text-slate-400">Cadastre e remova opções que aparecem nas personalizações</p>
+                    </div>
+                </div>
+                <button type="button" onclick="fecharModalOpcoesPersonalizadas()" class="text-slate-400 hover:text-white p-1 transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <div class="p-4 sm:p-6 overflow-y-auto flex-1 space-y-5 custom-scrollbar text-xs">
+                <!-- Seletor de Categoria de Opcao -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 border-b border-slate-200 dark:border-slate-700 pb-4">
+                    <button type="button" onclick="alternarAbaOpcoesPersonalizacao('madeiras')" id="aba-pers-btn-madeiras" class="py-2 px-3 rounded-lg font-bold text-xs transition border flex items-center justify-center gap-1.5 bg-amber-500/10 border-amber-500 text-amber-600 dark:text-amber-400">
+                        <i class="fa-solid fa-tree"></i> Madeiras
+                    </button>
+                    <button type="button" onclick="alternarAbaOpcoesPersonalizacao('cores_madeira')" id="aba-pers-btn-cores_madeira" class="py-2 px-3 rounded-lg font-bold text-xs transition border flex items-center justify-center gap-1.5 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100">
+                        <i class="fa-solid fa-palette"></i> Cores Madeira
+                    </button>
+                    <button type="button" onclick="alternarAbaOpcoesPersonalizacao('tecidos')" id="aba-pers-btn-tecidos" class="py-2 px-3 rounded-lg font-bold text-xs transition border flex items-center justify-center gap-1.5 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100">
+                        <i class="fa-solid fa-rug"></i> Tecidos
+                    </button>
+                    <button type="button" onclick="alternarAbaOpcoesPersonalizacao('cores_estofado')" id="aba-pers-btn-cores_estofado" class="py-2 px-3 rounded-lg font-bold text-xs transition border flex items-center justify-center gap-1.5 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100">
+                        <i class="fa-solid fa-brush"></i> Cores Tecido
+                    </button>
+                </div>
+
+                <!-- Adicionar Nova Opcao -->
+                <div>
+                    <label id="label-nova-opcao-pers" class="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">Adicionar Novo Tipo de Madeira:</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="input-nova-opcao-pers" placeholder="Ex: Cedro Rosa, Peroba, Imbuia, Suede, Linho..." class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white" onkeydown="if(event.key==='Enter'){ event.preventDefault(); adicionarOpcaoPersonalizacaoAtiva(); }">
+                        <button type="button" onclick="adicionarOpcaoPersonalizacaoAtiva()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2.5 rounded-lg text-xs transition shadow-sm flex items-center gap-1.5 active:scale-95 shrink-0">
+                            <i class="fa-solid fa-plus"></i> Adicionar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Lista de Opcoes Cadastradas -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-bold text-slate-700 dark:text-slate-300">Opções Disponíveis:</span>
+                        <span id="contador-opcoes-pers" class="text-[11px] text-slate-500">0 cadastradas</span>
+                    </div>
+                    <div id="lista-opcoes-pers-tags" class="flex flex-wrap gap-2 p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700/80 min-h-[100px] items-start content-start">
+                        <!-- Tags injetadas via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-3.5 bg-slate-100 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-700 flex justify-end shrink-0">
+                <button type="button" onclick="fecharModalOpcoesPersonalizadas()" class="px-5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-white hover:bg-slate-700 transition">Concluído</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

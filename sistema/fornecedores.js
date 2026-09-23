@@ -3,6 +3,10 @@
 let acaoConfirmacaoPendente = null;
 
 function inicializarFornecedores() {
+    if (window.__paginaBloqueadaPorPermissao || (typeof window.verificarPermissaoRota === 'function' && !window.verificarPermissaoRota(window.location.pathname).permitido)) {
+        console.warn('Bloqueando execução: usuário sem permissão para esta rota.');
+        return;
+    }
     // Liga os listeners do Firestore para Fornecedores e Compras com cache inteligente
     const _listen = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb, opts) {
         let ref = firestore.collection(col);

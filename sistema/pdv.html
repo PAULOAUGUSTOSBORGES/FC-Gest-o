@@ -39,8 +39,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- CORRIGIDO: Removido o ?v=20260831113500 que estava quebrando o carregamento offline -->
-    <link rel="stylesheet" href="../style.css?v=20260921143823">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260921143823">
+    <link rel="stylesheet" href="../style.css?v=20260923172910">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260923172910">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="pdv">
 
@@ -131,7 +131,7 @@
                             <input type="hidden" id="pdv-cliente" value="0">
                             <input type="text" id="pdv-cliente-busca" placeholder="Cliente: Consumidor Final" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-sm font-bold text-slate-700 dark:text-slate-200 px-3 py-2 rounded-l-lg outline-none focus:border-blue-500 w-full dark:text-white" autocomplete="off" onfocus="filtrarClientesPDV(this.value)" oninput="filtrarClientesPDV(this.value)">
                             <div id="pdv-cliente-resultados" class="absolute z-50 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl rounded-lg top-[42px] hidden max-h-60 overflow-y-auto custom-scrollbar"></div>
-                            <button onclick="abrirModalClienteRapido()" class="bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-200 border-l-0 px-3 py-2 rounded-r-lg font-bold text-sm transition shrink-0" title="Novo Cliente"><i class="fa-solid fa-user-plus"></i></button>
+                            <button id="btn-pdv-novo-cliente" onclick="abrirModalClienteRapido()" class="bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-200 border-l-0 px-3 py-2 rounded-r-lg font-bold text-sm transition shrink-0" title="Novo Cliente"><i class="fa-solid fa-user-plus"></i></button>
                         </div>
                         <button onclick="pdvLimpar()" class="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-lg font-bold text-sm transition ml-1" title="Limpar Tudo"><i class="fa-solid fa-trash text-lg"></i></button>
                     </div>
@@ -151,7 +151,7 @@
                                     <div id="pdv-busca-resultados" class="absolute z-50 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl rounded-lg mt-1 hidden max-h-60 overflow-y-auto custom-scrollbar"></div>
                                 </div>
                                 <button onclick="abrirLeitorCamera()" class="bg-slate-800 hover:bg-slate-900 text-white px-3 md:px-4 font-bold rounded-lg transition-colors shadow-md text-sm" title="Ler Código de Barras"><i class="fa-solid fa-camera"></i></button>
-                                <button onclick="abrirModalProduto()" class="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200 px-3 md:px-4 font-bold rounded-lg transition-colors shadow-sm text-sm" title="Cadastrar Produto/Serviço"><i class="fa-solid fa-box-open"></i></button>
+                                <button id="btn-pdv-novo-produto" onclick="abrirModalProduto()" class="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200 px-3 md:px-4 font-bold rounded-lg transition-colors shadow-sm text-sm" title="Cadastrar Produto/Serviço"><i class="fa-solid fa-box-open"></i></button>
                             </div>
 
                             <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex-1 flex flex-col overflow-hidden z-10">
@@ -268,7 +268,14 @@
                                     </div>
                                 </div>
 
-                                <div class="mb-4 mt-1 shrink-0">
+                                                                <div class="mb-3 shrink-0">
+                                    <label class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 flex items-center justify-between">
+                                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-truck-fast text-blue-500"></i> Previsão / Data de Entrega</span>
+                                        <span class="text-[9px] text-blue-500 font-bold lowercase">(sai no contrato)</span>
+                                    </label>
+                                    <input type="date" id="pdv-data-entrega" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs md:text-sm font-semibold text-slate-700 dark:text-slate-200 outline-none focus:border-blue-500 dark:text-white" title="Defina a data prevista de entrega para sair no contrato">
+                                </div>
+<div class="mb-4 mt-1 shrink-0">
                                     <label class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Observações Gerais</label>
                                     <textarea id="pdv-obs" rows="2" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs md:text-sm outline-none focus:border-blue-500 dark:text-white" placeholder="Ex: Cuidado no transporte..."></textarea>
                                 </div>
@@ -276,6 +283,16 @@
                                 <button id="btn-finalizar-venda" onclick="finalizarVendaMultipla()" class="mt-auto w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black text-base md:text-lg py-3 md:py-4 rounded-xl shadow-lg transition-transform flex items-center justify-center gap-2 opacity-50 cursor-not-allowed shrink-0" disabled><i class="fa-solid fa-circle-check text-xl"></i> FINALIZAR OPERAÇÃO</button>
                             </div>
                         </div>
+                    
+                    <!-- Barra Rápida Flutuante Mobile / Tablet (atalho direto ao pagamento) -->
+                    <div id="pdv-mobile-quickbar" class="lg:hidden fixed bottom-4 left-4 right-4 z-40 bg-slate-900/95 border border-slate-700/80 backdrop-blur-md p-3 rounded-2xl shadow-2xl flex items-center justify-between text-white hidden">
+                        <div>
+                            <span class="text-[10px] text-slate-400 font-bold block">TOTAL DO CARRINHO</span>
+                            <span id="pdv-mobile-total-badge" class="text-base font-black text-emerald-400">R$ 0,00</span>
+                        </div>
+                        <button type="button" onclick="document.getElementById('btn-finalizar-venda').scrollIntoView({behavior: 'smooth'})" class="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 text-white font-black px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/25">
+                            <i class="fa-solid fa-arrow-down"></i> Ir para Pagamento
+                        </button>
                     </div>
                 </div>
 
@@ -711,18 +728,236 @@
         </div>
     </div>
 
+            <!-- MODAL DE PERSONALIZACAO DO PRODUTO (MOVEIS E ESTOFADOS) -->
+    <div id="modal-personalizacao-item" class="fixed inset-0 bg-slate-900/70 z-[160] hidden flex items-center justify-center p-3 sm:p-5 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden max-h-[92vh] border border-slate-200 dark:border-slate-700">
+            <!-- Cabecalho Sofisticado -->
+            <div class="bg-amber-600 p-4 sm:p-5 text-white flex justify-between items-center shrink-0 shadow-md" style="background-color: #d97706; color: #ffffff;">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white text-xl shadow-inner shrink-0">
+                        <i class="fa-solid fa-couch"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base md:text-lg text-white leading-tight flex items-center gap-2">
+                            Personalização do Móvel
+                        </h3>
+                        <p class="text-xs text-amber-100 mt-0.5 font-medium">Madeira, acabamento, tecido, medidas e observações exclusivas</p>
+                    </div>
+                </div>
+                <button type="button" onclick="fecharModalPersonalizacao()" class="text-amber-100 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors text-2xl leading-none">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Corpo com scroll suave -->
+            <div class="p-4 sm:p-6 overflow-y-auto space-y-4 text-slate-700 dark:text-slate-200 text-xs custom-scrollbar">
+                <!-- Card do Móvel Selecionado -->
+                <div class="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3.5 rounded-xl flex items-center gap-3.5">
+                    <div id="modal-pers-prod-foto" class="w-12 h-12 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 overflow-hidden text-xl">
+                        <i class="fa-solid fa-couch"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <span class="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">Móvel Selecionado</span>
+                        <h4 id="modal-pers-prod-nome" class="font-bold text-sm sm:text-base text-slate-800 dark:text-slate-100 truncate mt-0.5">Nome do Produto</h4>
+                    </div>
+                </div>
+
+                <input type="hidden" id="modal-pers-item-idx">
+
+                <!-- 1. MADEIRA E ACABAMENTO -->
+                <div class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <div class="flex items-center justify-between pb-2 mb-3 border-b border-slate-200 dark:border-slate-700">
+                        <span class="font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                            <i class="fa-solid fa-tree text-amber-600 dark:text-amber-400"></i> Estrutura & Madeira
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                        <div class="flex flex-col justify-end">
+                            <div class="flex items-center justify-between mb-1.5 min-h-[24px]">
+                                <label class="font-bold text-slate-700 dark:text-slate-300 text-xs truncate">Tipo de Madeira</label>
+                                <button type="button" onclick="cadastrarOpcaoRapida('madeiras')" class="text-xs text-amber-600 hover:text-amber-700 dark:text-amber-400 font-bold flex items-center gap-1 hover:underline whitespace-nowrap shrink-0 ml-2">
+                                    <i class="fa-solid fa-plus-circle text-[11px]"></i> + Cadastrar Nova
+                                </button>
+                            </div>
+                            <select id="modal-pers-madeira" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white">
+                                <option value="">(Padrão / Não se aplica)</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col justify-end">
+                            <div class="flex items-center justify-between mb-1.5 min-h-[24px]">
+                                <label class="font-bold text-slate-700 dark:text-slate-300 text-xs truncate">Cor / Acabamento</label>
+                                <button type="button" onclick="cadastrarOpcaoRapida('cores_madeira')" class="text-xs text-amber-600 hover:text-amber-700 dark:text-amber-400 font-bold flex items-center gap-1 hover:underline whitespace-nowrap shrink-0 ml-2">
+                                    <i class="fa-solid fa-plus-circle text-[11px]"></i> + Cadastrar Nova
+                                </button>
+                            </div>
+                            <select id="modal-pers-cor-madeira" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white">
+                                <option value="">(Padrão / Não se aplica)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. ESTOFADO E TECIDO -->
+                <div class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <div class="flex items-center justify-between pb-2 mb-3 border-b border-slate-200 dark:border-slate-700">
+                        <span class="font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                            <i class="fa-solid fa-rug text-blue-500"></i> Estofamento & Tecido
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                        <div class="flex flex-col justify-end">
+                            <div class="flex items-center justify-between mb-1.5 min-h-[24px]">
+                                <label class="font-bold text-slate-700 dark:text-slate-300 text-xs truncate">Tipo de Tecido</label>
+                                <button type="button" onclick="cadastrarOpcaoRapida('tecidos')" class="text-xs text-amber-600 hover:text-amber-700 dark:text-amber-400 font-bold flex items-center gap-1 hover:underline whitespace-nowrap shrink-0 ml-2">
+                                    <i class="fa-solid fa-plus-circle text-[11px]"></i> + Cadastrar Novo
+                                </button>
+                            </div>
+                            <select id="modal-pers-estofado" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white">
+                                <option value="">(Padrão / Não se aplica)</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col justify-end">
+                            <div class="flex items-center justify-between mb-1.5 min-h-[24px]">
+                                <label class="font-bold text-slate-700 dark:text-slate-300 text-xs truncate">Cor do Tecido</label>
+                                <button type="button" onclick="cadastrarOpcaoRapida('cores_estofado')" class="text-xs text-amber-600 hover:text-amber-700 dark:text-amber-400 font-bold flex items-center gap-1 hover:underline whitespace-nowrap shrink-0 ml-2">
+                                    <i class="fa-solid fa-plus-circle text-[11px]"></i> + Cadastrar Nova
+                                </button>
+                            </div>
+                            <select id="modal-pers-cor-estofado" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white">
+                                <option value="">(Padrão / Não se aplica)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. DIMENSÕES SOB MEDIDA -->
+                <div class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <div class="flex items-center justify-between pb-2 mb-3 border-b border-slate-200 dark:border-slate-700">
+                        <span class="font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                            <i class="fa-solid fa-ruler-combined text-purple-500"></i> Dimensões / Sob Medida <span class="text-[10px] font-normal text-slate-400 capitalize">(Opcional)</span>
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label class="font-semibold text-slate-600 dark:text-slate-300 text-xs block mb-1">Largura (L)</label>
+                            <input type="text" id="modal-pers-med-l" placeholder="Ex: 2,10m" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white font-medium">
+                        </div>
+                        <div>
+                            <label class="font-semibold text-slate-600 dark:text-slate-300 text-xs block mb-1">Altura (A)</label>
+                            <input type="text" id="modal-pers-med-a" placeholder="Ex: 0,85m" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white font-medium">
+                        </div>
+                        <div>
+                            <label class="font-semibold text-slate-600 dark:text-slate-300 text-xs block mb-1">Profundidade (P)</label>
+                            <input type="text" id="modal-pers-med-p" placeholder="Ex: 0,90m" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white font-medium">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. OBSERVAÇÕES ESPECIAIS DO MÓVEL -->
+                <div class="bg-amber-50/40 dark:bg-amber-950/20 p-4 rounded-xl border border-amber-300/60 dark:border-amber-800/60">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-comment-dots text-amber-600"></i> Observações Especiais do Móvel (Além da Obs Geral)
+                        </label>
+                        <span class="text-[10px] text-amber-700 dark:text-amber-400 font-bold bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded border border-amber-300/50">Impresso no Pedido & Contrato</span>
+                    </div>
+                    <textarea id="modal-pers-obs" rows="3" placeholder="Ex: Detalhes de costura, modelo dos pés em ferro preto, lado do braço, densidade de espuma, cuidados especiais..." class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white resize-none shadow-inner"></textarea>
+                    <p class="text-[10px] text-slate-400 mt-1">Esta observação ficará vinculada aos detalhes do móvel e sairá no comprovante, pedido e contrato.</p>
+                </div>
+            </div>
+
+            <!-- Rodape -->
+            <div class="bg-slate-100 dark:bg-slate-900 p-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 shrink-0 rounded-b-2xl">
+                <button type="button" onclick="removerPersonalizacaoItem()" class="text-xs font-bold text-red-600 hover:text-red-700 dark:text-red-400 flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 transition">
+                    <i class="fa-solid fa-trash-can"></i> Limpar Personalização
+                </button>
+                <div class="flex items-center gap-2.5">
+                    <button type="button" onclick="fecharModalPersonalizacao()" class="px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition text-xs shadow-sm">Cancelar</button>
+                    <button type="button" onclick="salvarPersonalizacaoItem()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-6 py-2.5 rounded-lg flex items-center gap-2 shadow-md transition text-xs active:scale-95" style="background-color: #d97706;">
+                        <i class="fa-solid fa-check"></i> Salvar e Aplicar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE GERENCIAMENTO DE OPCOES PERSONALIZADAS (MADEIRAS, TECIDOS, CORES) -->
+    <div id="modal-opcoes-personalizadas" class="fixed inset-0 bg-slate-900/70 z-[170] hidden flex items-center justify-center p-3 sm:p-5 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden max-h-[90vh] border border-slate-200 dark:border-slate-700">
+            <div class="bg-slate-900 px-6 py-4 text-white flex justify-between items-center shrink-0 border-b border-slate-700">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-500 border border-amber-500/30 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-sliders text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base leading-tight">Opções de Personalização da Loja</h3>
+                        <p class="text-xs text-slate-400">Cadastre e remova opções que aparecem nas personalizações dos móveis</p>
+                    </div>
+                </div>
+                <button type="button" onclick="fecharModalOpcoesPersonalizadas()" class="text-slate-400 hover:text-white p-1 transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <div class="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4 custom-scrollbar text-xs">
+                <!-- Seletor de Categoria de Opcao -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 border-b border-slate-200 dark:border-slate-700 pb-4">
+                    <button type="button" onclick="alternarAbaOpcoesPersonalizacao('madeiras')" id="aba-pers-btn-madeiras" class="py-2.5 px-3 rounded-xl font-bold text-xs transition border flex items-center justify-center gap-1.5 bg-amber-500/15 border-amber-500 text-amber-600 dark:text-amber-400">
+                        <i class="fa-solid fa-tree"></i> Madeiras
+                    </button>
+                    <button type="button" onclick="alternarAbaOpcoesPersonalizacao('cores_madeira')" id="aba-pers-btn-cores_madeira" class="py-2.5 px-3 rounded-xl font-bold text-xs transition border flex items-center justify-center gap-1.5 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100">
+                        <i class="fa-solid fa-palette"></i> Cores Madeira
+                    </button>
+                    <button type="button" onclick="alternarAbaOpcoesPersonalizacao('tecidos')" id="aba-pers-btn-tecidos" class="py-2.5 px-3 rounded-xl font-bold text-xs transition border flex items-center justify-center gap-1.5 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100">
+                        <i class="fa-solid fa-rug"></i> Tecidos
+                    </button>
+                    <button type="button" onclick="alternarAbaOpcoesPersonalizacao('cores_estofado')" id="aba-pers-btn-cores_estofado" class="py-2.5 px-3 rounded-xl font-bold text-xs transition border flex items-center justify-center gap-1.5 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100">
+                        <i class="fa-solid fa-brush"></i> Cores Tecido
+                    </button>
+                </div>
+
+                <!-- Adicionar Nova Opcao -->
+                <div>
+                    <label id="label-nova-opcao-pers" class="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">Adicionar Novo Tipo de Madeira:</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="input-nova-opcao-pers" placeholder="Ex: Cedro Rosa, Peroba, Imbuia, Suede, Linho..." class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-xl text-xs outline-none focus:border-amber-500 dark:text-white" onkeydown="if(event.key==='Enter'){ event.preventDefault(); adicionarOpcaoPersonalizacaoAtiva(); }">
+                        <button type="button" onclick="adicionarOpcaoPersonalizacaoAtiva()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition shadow-sm flex items-center gap-1.5 active:scale-95 shrink-0" style="background-color: #d97706;">
+                            <i class="fa-solid fa-plus"></i> Adicionar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Lista de Opcoes Cadastradas -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-bold text-slate-700 dark:text-slate-300">Opções Disponíveis:</span>
+                        <span id="contador-opcoes-pers" class="text-[11px] text-slate-500 font-semibold">0 cadastradas</span>
+                    </div>
+                    <div id="lista-opcoes-pers-tags" class="flex flex-wrap gap-2 p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700/80 min-h-[100px] items-start content-start">
+                        <!-- Tags injetadas via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-3.5 bg-slate-100 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-700 flex justify-end shrink-0 rounded-b-2xl">
+                <button type="button" onclick="fecharModalOpcoesPersonalizadas()" class="px-5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-white hover:bg-slate-700 transition">Concluído</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
 
-    <script src="../sistema/config_banco.js?v=20260921143823"></script>
-    <script src="saas_licenca.js?v=20260921143823"></script>
-    <script src="../global.js?v=20260921143823"></script>
-    <script src="fc_cache.js?v=20260921143823"></script>
-    <script src="pdv.js?v=20260921143823"></script>
+    <script src="../sistema/config_banco.js?v=20260923172910"></script>
+    <script src="saas_licenca.js?v=20260923172910"></script>
+    <script src="../global.js?v=20260923172910"></script>
+    <script src="fc_cache.js?v=20260923172910"></script>
+    <script src="pdv.js?v=20260923172910"></script>
 </body>
 </html>
+
 
 
 

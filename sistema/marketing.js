@@ -22,6 +22,10 @@ document.addEventListener('DOMContentLoaded', function() {
 window.addEventListener('load', () => { if (typeof initGlobalData === 'function') initGlobalData(carregarClientesELembretes); });
 
 function carregarClientesELembretes() {
+    if (window.__paginaBloqueadaPorPermissao || (typeof window.verificarPermissaoRota === 'function' && !window.verificarPermissaoRota(window.location.pathname).permitido)) {
+        console.warn('Bloqueando execução: usuário sem permissão para esta rota.');
+        return;
+    }
     if (unsubscribeClientes) unsubscribeClientes();
     
     const _listen = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb, opts) {
@@ -372,12 +376,13 @@ Formate a resposta em HTML limpo. Use <h3> para os títulos das ideias, <p> para
         resultadoContainer.innerHTML = textResult + infoModeloHtml;
 
         // 3. Salva no Banco de Dados para Histórico
+        // FIX: modeloUsado não é exposto por window.chamarGemini() → usar fallback seguro
         try {
             await window.getEmpresaRef().collection('marketing_historico').add({
                 nicho: nicho,
                 objetivo: objetivo,
                 resultado_html: textResult,
-                modelo: modeloUsado.replace('models/', ''),
+                modelo: (typeof modeloUsado !== 'undefined' && modeloUsado) ? String(modeloUsado).replace('models/', '') : 'Gemini IA',
                 data_geracao: new Date().toISOString()
             });
             console.log("Consultoria salva no histórico com sucesso.");
@@ -428,99 +433,145 @@ Formate a resposta em HTML limpo. Use <h3> para os títulos das ideias, <p> para
 // ==========================================
 let todosHistoricosIA = [];
 
+// FIX: helper seguro para converter data_geracao (pode ser string ISO, Timestamp Firestore ou null)
+function _parseDataGeracao(valor) {
+    if (!valor) return new Date(0);
+    // Firestore Timestamp object: tem método .toDate()
+    if (typeof valor.toDate === 'function') return valor.toDate();
+    // Firestore Timestamp como objeto plain: { seconds, nanoseconds }
+    if (typeof valor.seconds === 'number') return new Date(valor.seconds * 1000);
+    // String ISO ou timestamp numérico
+    const d = new Date(valor);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+}
+
 async function carregarHistoricoMarketing() {
     const container = document.getElementById('historico-container');
     if (!container) return;
-    
+
+    // Verifica se a empresa está carregada antes de tentar buscar dados
+    if (typeof window.getEmpresaRef !== 'function') {
+        container.innerHTML = `<div class="col-span-full p-8 text-center text-amber-500 bg-amber-50 dark:bg-amber-900/20 rounded-xl"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Aguardando carregamento do sistema...</div>`;
+        return;
+    }
+
     container.innerHTML = `<div class="col-span-full p-8 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Carregando histórico e limpando itens antigos...</div>`;
-    
+
     try {
         const dataLimite = new Date();
         dataLimite.setDate(dataLimite.getDate() - 30); // 30 dias atrás
-        
-        // Busca todos
-        const snapshot = await window.getEmpresaRef().collection('marketing_historico')
-            .orderBy('data_geracao', 'desc')
-            .get();
-            
+
+        // Busca todos ordenados por data (desc)
+        let snapshot;
+        try {
+            snapshot = await window.getEmpresaRef().collection('marketing_historico')
+                .orderBy('data_geracao', 'desc')
+                .get();
+        } catch (queryErr) {
+            console.warn('[Marketing] Fallback query historico sem orderBy:', queryErr);
+            snapshot = await window.getEmpresaRef().collection('marketing_historico').get();
+        }
+
         todosHistoricosIA = [];
-        let html = '';
-        
+
         // Lógica de Exclusão Automática (30 dias)
-        const batch = firestore.batch();
+        // FIX: usar batch apenas se houver itens a deletar; evitar commit de batch vazio
+        const docsParaDeletar = [];
         let itemsDeletados = 0;
-        
+
         snapshot.docs.forEach(doc => {
             const hist = { id: doc.id, ...doc.data() };
-            const dataHist = new Date(hist.data_geracao);
-            
+            // FIX: converter Firestore Timestamp com segurança
+            const dataHist = _parseDataGeracao(hist.data_geracao);
+
             if (dataHist < dataLimite) {
                 // Item é mais velho que 30 dias -> APAGAR DA NUVEM
-                batch.delete(doc.ref);
+                docsParaDeletar.push(doc.ref);
                 itemsDeletados++;
             } else {
                 // Item é válido -> MANTER E MOSTRAR
                 todosHistoricosIA.push(hist);
             }
         });
-        
-        // Se achou lixo velho, comita a limpeza na nuvem
+
+        todosHistoricosIA.sort((a, b) => {
+            const da = _parseDataGeracao(a.data_geracao);
+            const db = _parseDataGeracao(b.data_geracao);
+            return db - da;
+        });
+
+        // FIX: só commita o batch se houver itens para deletar (evita erro de batch vazio)
         if (itemsDeletados > 0) {
-            await batch.commit();
+            // Batches têm limite de 500 ops; dividir se necessário
+            const BATCH_LIMIT = 450;
+            for (let i = 0; i < docsParaDeletar.length; i += BATCH_LIMIT) {
+                const batch = firestore.batch();
+                docsParaDeletar.slice(i, i + BATCH_LIMIT).forEach(ref => batch.delete(ref));
+                await batch.commit();
+            }
             console.log(`🗑️ Limpeza de Histórico: ${itemsDeletados} consultorias velhas apagadas.`);
         }
-        
+
         // Renderiza na tela
         if (todosHistoricosIA.length === 0) {
             container.innerHTML = `<div class="col-span-full p-8 text-center text-slate-400 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50">Nenhuma consultoria encontrada nos últimos 30 dias.</div>`;
             return;
         }
-        
+
+        let html = '';
         todosHistoricosIA.forEach(hist => {
-            const d = new Date(hist.data_geracao);
+            // FIX: usar helper para converter data com segurança
+            const d = _parseDataGeracao(hist.data_geracao);
             const dataStr = d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
-            
-            const objCurto = hist.objetivo.length > 80 ? hist.objetivo.substring(0, 80) + '...' : hist.objetivo;
+
+            // FIX: verificar se hist.objetivo existe antes de chamar .length
+            const objTexto = hist.objetivo || '(sem objetivo)';
+            const objCurto = objTexto.length > 80 ? objTexto.substring(0, 80) + '...' : objTexto;
             const nomeModelo = hist.modelo ? hist.modelo : 'IA';
-            
+            // FIX: escapar aspas simples no ID para não quebrar o onclick
+            const idSafe = String(hist.id).replace(/'/g, "\\'");
+
             html += `
                 <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col h-full hover:shadow-md transition-shadow">
                     <div class="flex justify-between items-start mb-3">
-                        <span class="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">${hist.nicho}</span>
+                        <span class="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">${hist.nicho || 'Sem nicho'}</span>
                         <span class="text-[10px] text-slate-400 font-medium"><i class="fa-solid fa-microchip mr-1"></i> ${nomeModelo}</span>
                     </div>
-                    
+
                     <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm mb-2 flex-1">"${objCurto}"</h4>
-                    
+
                     <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center">
                         <span class="text-[11px] text-slate-500"><i class="fa-regular fa-calendar mr-1"></i> ${dataStr}</span>
-                        <button onclick="verDetalhesHistorico('${hist.id}')" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-bold flex items-center gap-1 transition-colors">
+                        <button onclick="verDetalhesHistorico('${idSafe}')" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-bold flex items-center gap-1 transition-colors">
                             Ler <i class="fa-solid fa-arrow-right"></i>
                         </button>
                     </div>
                 </div>
             `;
         });
-        
+
         container.innerHTML = html;
-        
+
     } catch (e) {
-        console.error("Erro ao carregar histórico:", e);
-        container.innerHTML = `<div class="col-span-full p-8 text-center text-red-500 bg-red-50 dark:bg-red-900/20 rounded-xl">Erro ao carregar histórico. Verifique a conexão.</div>`;
+        console.error("Erro ao carregar histórico de marketing:", e);
+        const msgErro = e && e.message ? e.message : String(e);
+        container.innerHTML = `<div class="col-span-full p-8 text-center text-red-500 bg-red-50 dark:bg-red-900/20 rounded-xl"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Erro ao carregar histórico.<br><span class="text-xs opacity-70">${msgErro}</span><br><button onclick="carregarHistoricoMarketing()" class="mt-3 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-sm font-bold transition-colors"><i class="fa-solid fa-rotate-right mr-1"></i>Tentar Novamente</button></div>`;
     }
 }
 
 window.verDetalhesHistorico = function(id) {
     const hist = todosHistoricosIA.find(h => h.id === id);
     if (!hist) return;
-    
-    document.getElementById('modal-hist-nicho').innerText = hist.nicho;
-    document.getElementById('modal-hist-objetivo').innerText = hist.objetivo;
-    document.getElementById('modal-hist-texto').innerHTML = hist.resultado_html;
-    
-    const d = new Date(hist.data_geracao);
+
+    // FIX: null guards para evitar erro se campos estiverem ausentes
+    document.getElementById('modal-hist-nicho').innerText = hist.nicho || '(sem nicho)';
+    document.getElementById('modal-hist-objetivo').innerText = hist.objetivo || '(sem objetivo)';
+    document.getElementById('modal-hist-texto').innerHTML = hist.resultado_html || '';
+
+    // FIX: usar helper _parseDataGeracao para suportar Firestore Timestamp, string ISO ou null
+    const d = _parseDataGeracao(hist.data_geracao);
     document.getElementById('modal-hist-data').innerText = `Gerado em ${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`;
-    
+
     document.getElementById('modal-historico').classList.remove('hidden');
     // Adiciona delay para a animação de entrada
     setTimeout(() => {
@@ -534,11 +585,14 @@ window.fecharModalHistorico = function() {
     document.getElementById('modal-historico').classList.remove('opacity-100');
     document.getElementById('modal-historico-content').classList.remove('scale-100');
     document.getElementById('modal-historico-content').classList.add('scale-95');
-    
+
     setTimeout(() => {
         document.getElementById('modal-historico').classList.add('hidden');
     }, 300);
 };
+
+// FIX: exportar carregarHistoricoMarketing globalmente para que botões onclick e callbacks funcionem
+window.carregarHistoricoMarketing = carregarHistoricoMarketing;
 
 
 

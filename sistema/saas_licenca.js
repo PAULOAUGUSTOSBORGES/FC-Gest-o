@@ -89,6 +89,38 @@
         }
     ];
 
+    // -----------------------------------------------------------------------
+    // CATÁLOGO DE RELATÓRIOS — IDs únicos de cada relatório da tela relatorios.html
+    // Estes IDs são usados pelo controle granular por plano.
+    // -----------------------------------------------------------------------
+    const CATALOGO_RELATORIOS = [
+        { id: 'rel_ia_assistente',     nome: 'Assistente IA de Relatórios',      icone: 'fa-robot',            categoria: 'IA' },
+        { id: 'rel_dre',               nome: 'DRE — Demonstrativo de Resultado',  icone: 'fa-table-columns',    categoria: 'Financeiro' },
+        { id: 'rel_raio_x',            nome: 'Raio-X Executivo & Break-Even',     icone: 'fa-chart-line',       categoria: 'Financeiro' },
+        { id: 'rel_top_produtos',      nome: 'Top Produtos Mais Vendidos',         icone: 'fa-ranking-star',     categoria: 'Vendas' },
+        { id: 'rel_top_clientes',      nome: 'Top Clientes (Ranking)',            icone: 'fa-users',            categoria: 'Vendas' },
+        { id: 'rel_top_compras',       nome: 'Top Compras por Produto',           icone: 'fa-boxes-stacked',    categoria: 'Compras' },
+        { id: 'rel_top_fornecedores',   nome: 'Top Fornecedores',                  icone: 'fa-truck',            categoria: 'Compras' },
+        { id: 'rel_despesas',          nome: 'Despesas por Centro de Custo',      icone: 'fa-money-bill-wave',  categoria: 'Financeiro' },
+        { id: 'rel_curva_abc',         nome: 'Curva ABC de Produtos',             icone: 'fa-chart-pie',        categoria: 'Estoque' },
+        { id: 'rel_kardex',            nome: 'Estoque & Kardex Detalhado',        icone: 'fa-warehouse',        categoria: 'Estoque' },
+        { id: 'rel_historico_vendas',  nome: 'Histórico Completo de Vendas',      icone: 'fa-receipt',          categoria: 'Vendas' },
+        { id: 'rel_comissao',          nome: 'Comissão Detalhada de Vendedores',  icone: 'fa-hand-holding-dollar', categoria: 'Vendas' },
+        { id: 'rel_vendedores',        nome: 'Desempenho por Vendedor',           icone: 'fa-user-tie',         categoria: 'Vendas' },
+        { id: 'rel_sugestor_compras',  nome: 'Sugestor Inteligente de Compras',   icone: 'fa-cart-plus',        categoria: 'Compras' },
+        { id: 'rel_evolucao_custos',   nome: 'Evolução de Custos',                icone: 'fa-arrow-trend-up',   categoria: 'Financeiro' },
+        { id: 'rel_mapa_calor',        nome: 'Mapa de Calor de Vendas',           icone: 'fa-fire',             categoria: 'Vendas' },
+    ];
+
+    // Relatórios padrão por plano (fallback quando o admin não configurou no Master)
+    const RELATORIOS_POR_PLANO_PADRAO = {
+        plano_ultra:      ['rel_ia_assistente','rel_dre','rel_raio_x','rel_top_produtos','rel_top_clientes','rel_top_compras','rel_top_fornecedores','rel_despesas','rel_curva_abc','rel_kardex','rel_historico_vendas','rel_comissao','rel_vendedores','rel_sugestor_compras','rel_evolucao_custos','rel_mapa_calor'],
+        plano_enterprise: ['rel_ia_assistente','rel_dre','rel_raio_x','rel_top_produtos','rel_top_clientes','rel_top_compras','rel_top_fornecedores','rel_despesas','rel_curva_abc','rel_kardex','rel_historico_vendas','rel_comissao','rel_vendedores','rel_sugestor_compras','rel_evolucao_custos','rel_mapa_calor'],
+        plano_pro:        ['rel_dre','rel_raio_x','rel_top_produtos','rel_top_clientes','rel_top_compras','rel_top_fornecedores','rel_despesas','rel_curva_abc','rel_kardex','rel_historico_vendas','rel_comissao','rel_vendedores','rel_sugestor_compras','rel_evolucao_custos'],
+        plano_fiscal:     ['rel_dre','rel_top_produtos','rel_historico_vendas','rel_comissao'],
+        plano_start:      ['rel_top_produtos','rel_historico_vendas','rel_comissao'],
+    };
+
     let saasApp = null;
     let saasDb = null;
     let _bloqueioOnSnapshotUnsub = null;
@@ -455,6 +487,7 @@
                         if (typeof window.aplicarControleDeModulosSaaS === 'function') {
                             const userAtual = typeof firebase !== 'undefined' ? firebase.auth().currentUser : null;
                             if (userAtual) window.aplicarControleDeModulosSaaS(novaLicenca, userAtual);
+                        if (typeof window.aplicarControleAcessoRelatoriosPorPlano === 'function') window.aplicarControleAcessoRelatoriosPorPlano();
                         }
                         // Verifica se a página atual agora está bloqueada
                         const pathAtual = window.location.pathname.toLowerCase();
@@ -516,6 +549,174 @@
     };
 
     // -----------------------------------------------------------------------
+    // CONTROLE GRANULAR DE RELATÓRIOS POR PLANO
+    // -----------------------------------------------------------------------
+
+    /**
+     * Retorna a lista de IDs de relatórios permitidos para a licença atual.
+     * Prioridade:
+     *   1. licenca.relatoriosPermitidos   — configurado manualmente no Painel Master
+     *   2. plano_saas.relatoriosPermitidos — herdado do documento do plano no Firestore
+     *   3. RELATORIOS_POR_PLANO_PADRAO    — fallback estático por tipo de plano
+     *   4. todos os relatórios            — se plano não identificado (permissivo enquanto carrega)
+     */
+    function obterRelatoriosPermitidos(licenca) {
+        licenca = licenca || window.currentSaaSLicense || window.currentEmpresaData;
+        if (!licenca) {
+            // Ainda não carregou: retorna todos (permissivo temporário)
+            return CATALOGO_RELATORIOS.map(r => r.id);
+        }
+
+        // 1. Override direto no documento da empresa (Master configurou individualmente)
+        if (licenca.relatoriosPermitidos && Array.isArray(licenca.relatoriosPermitidos)) {
+            return licenca.relatoriosPermitidos;
+        }
+
+        // 2. Tenta resolver pelo plano
+        const planoId = (licenca.plano || '').toLowerCase().replace(/\s+/g, '_');
+
+        // Mapeia variações de nome para chave padrão
+        let chave = null;
+        if (planoId.includes('ultra') || planoId.includes('completo') || planoId.includes('ilimitado')) chave = 'plano_ultra';
+        else if (planoId.includes('enterprise')) chave = 'plano_enterprise';
+        else if (planoId.includes('pro') || planoId.includes('profissional')) chave = 'plano_pro';
+        else if (planoId.includes('fiscal')) chave = 'plano_fiscal';
+        else if (planoId.includes('start') || planoId.includes('basico') || planoId === 'free') chave = 'plano_start';
+        else {
+            // Tenta matching direto (ex: 'plano_pro', 'plano_start')
+            chave = Object.keys(RELATORIOS_POR_PLANO_PADRAO).find(k => planoId.includes(k.replace('plano_', ''))) || null;
+        }
+
+        if (chave && RELATORIOS_POR_PLANO_PADRAO[chave]) {
+            return RELATORIOS_POR_PLANO_PADRAO[chave];
+        }
+
+        // 3. Se o plano tiver o módulo de relatórios completo (relatorios), libera tudo
+        const mods = licenca.modulosLiberados || _resolverModulos(licenca);
+        if (mods.includes('relatorios')) {
+            return CATALOGO_RELATORIOS.map(r => r.id);
+        }
+
+        // 4. Acesso mínimo
+        return ['rel_top_produtos', 'rel_historico_vendas'];
+    }
+
+    /**
+     * Verifica se um relatório específico está liberado.
+     * @param {string} relatorioId - ex: 'rel_dre', 'rel_ia_assistente'
+     * @param {object} [licenca] - opcional, usa window.currentSaaSLicense se omitido
+     * @returns {boolean}
+     */
+    function verificarAcessoRelatorio(relatorioId, licenca) {
+        const permitidos = obterRelatoriosPermitidos(licenca);
+        return permitidos.includes(relatorioId);
+    }
+
+    // -----------------------------------------------------------------------
+    // CONTROLE DE LIMITE DE USUÁRIOS POR PLANO
+    // -----------------------------------------------------------------------
+    function obterLimiteUsuarios(licenca) {
+        licenca = licenca || window.currentSaaSLicense || window.currentEmpresaData || {};
+
+        // 1. Limite configurado explicitamente no documento da empresa ou plano
+        if (licenca.limiteUsuarios !== undefined && licenca.limiteUsuarios !== null && licenca.limiteUsuarios !== '') {
+            const raw = String(licenca.limiteUsuarios).trim();
+            if (/ilimitad/i.test(raw)) {
+                return { limite: 999999, ilimitado: true, planoNome: licenca.plano || 'Ilimitado' };
+            }
+            const num = parseInt(raw.replace(/\D+/g, ''), 10);
+            if (!isNaN(num) && num > 0) {
+                return { limite: num, ilimitado: false, planoNome: licenca.plano || 'Personalizado' };
+            }
+        }
+
+        // 2. Fallback baseado no plano padrão
+        const plano = (licenca.plano || '').toLowerCase();
+        let limite = 2; // Default start
+        let ilimitado = false;
+        let planoNome = 'Start';
+
+        if (plano.includes('ultra') || plano.includes('completo') || plano.includes('ilimitado')) {
+            limite = 999999;
+            ilimitado = true;
+            planoNome = 'Ultra Completo';
+        } else if (plano.includes('enterprise')) {
+            limite = 10;
+            planoNome = 'Enterprise';
+        } else if (plano.includes('pro') || plano.includes('profissional')) {
+            limite = 5;
+            planoNome = 'Profissional';
+        } else if (plano.includes('fiscal')) {
+            limite = 3;
+            planoNome = 'Fiscal & Vendas';
+        } else {
+            limite = 2;
+            planoNome = 'Start';
+        }
+
+        return { limite: limite, ilimitado: ilimitado, planoNome: planoNome };
+    }
+
+    function verificarLimiteUsuarios(totalAtual, licenca) {
+        const info = obterLimiteUsuarios(licenca);
+        const atual = typeof totalAtual === 'number' ? totalAtual : 0;
+        const permitido = info.ilimitado || atual < info.limite;
+        return {
+            permitido: permitido,
+            atual: atual,
+            limite: info.limite,
+            ilimitado: info.ilimitado,
+            plano: info.planoNome,
+            restantes: Math.max(0, info.limite - atual)
+        };
+    }
+
+    function exibirModalLimiteUsuarios(limiteInfo) {
+        const antigo = document.getElementById('modal-limite-usuarios-saas');
+        if (antigo) antigo.remove();
+
+        const planoNome = (limiteInfo && limiteInfo.plano) || 'Atual';
+        const limite = (limiteInfo && limiteInfo.limite) || 2;
+        const atual = (limiteInfo && limiteInfo.atual) || limite;
+        const msgWpp = encodeURIComponent(`Olá! Atingi o limite de ${limite} usuários no plano "${planoNome}" da minha loja no FC-Gestão e gostaria de fazer upgrade para adicionar mais colaboradores.`);
+
+        const modal = document.createElement('div');
+        modal.id = 'modal-limite-usuarios-saas';
+        modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm';
+        modal.innerHTML = `
+            <div class="bg-slate-900 border border-amber-500/40 rounded-3xl max-w-md w-full p-6 text-center shadow-2xl animate-fade-in relative">
+                <button onclick="document.getElementById('modal-limite-usuarios-saas').remove()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                <div class="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-2xl mx-auto mb-4">
+                    <i class="fa-solid fa-user-lock"></i>
+                </div>
+                <span class="inline-block px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20 mb-2">
+                    Limite do Plano Atingido
+                </span>
+                <h3 class="text-xl font-black text-white mb-2">Limite de Usuários Atingido</h3>
+                <p class="text-slate-300 text-sm mb-4 leading-relaxed">
+                    Sua conta no plano <strong class="text-amber-400 font-bold">${planoNome}</strong> já atingiu o limite contratado de 
+                    <strong class="text-white font-black">${limite} ${limite === 1 ? 'usuário' : 'usuários'}</strong> (atualmente <strong class="text-amber-300">${atual}</strong> cadastrados).
+                </p>
+                <div class="p-3 bg-slate-800/80 rounded-xl border border-slate-700/60 mb-5 text-left flex items-center gap-3">
+                    <i class="fa-solid fa-circle-info text-blue-400 text-lg"></i>
+                    <p class="text-xs text-slate-300">Faça o upgrade do seu plano para liberar mais acessos individuais e manter sua equipe sincronizada!</p>
+                </div>
+                <div class="flex flex-col gap-2">
+                    <a href="https://wa.me/${SUPORTE_WHATSAPP}?text=${msgWpp}" target="_blank" class="w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-sm rounded-xl transition-all shadow-lg shadow-amber-500/25 flex items-center justify-center gap-2">
+                        <i class="fa-brands fa-whatsapp text-base"></i> Fazer Upgrade no WhatsApp
+                    </a>
+                    <button onclick="document.getElementById('modal-limite-usuarios-saas').remove()" class="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition-all">
+                        Fechar
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    // -----------------------------------------------------------------------
     // EXPORTS GLOBAIS
     // -----------------------------------------------------------------------
     window.consultarLicencaCentral = consultarLicencaCentral;
@@ -528,4 +729,11 @@
     window.SAAS_CONFIG = SAAS_CONFIG;
     window.SAAS_NOMES_MODULOS = NOMES_MODULOS;
     window._resolverModulosSaaS = _resolverModulos;
+    window.SAAS_CATALOGO_RELATORIOS = CATALOGO_RELATORIOS;
+    window.SAAS_RELATORIOS_POR_PLANO_PADRAO = RELATORIOS_POR_PLANO_PADRAO;
+    window.obterRelatoriosPermitidos = obterRelatoriosPermitidos;
+    window.verificarAcessoRelatorio = verificarAcessoRelatorio;
+    window.obterLimiteUsuarios = obterLimiteUsuarios;
+    window.verificarLimiteUsuarios = verificarLimiteUsuarios;
+    window.exibirModalLimiteUsuarios = exibirModalLimiteUsuarios;
 })();

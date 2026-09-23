@@ -115,6 +115,10 @@ async function migrarDadosSeNecessario() {
 }
 
 function inicializarGestao() {
+    if (window.__paginaBloqueadaPorPermissao || (typeof window.verificarPermissaoRota === 'function' && !window.verificarPermissaoRota(window.location.pathname).permitido)) {
+        console.warn('Bloqueando execução: usuário sem permissão para esta rota.');
+        return;
+    }
     // Primeiro tenta migrar dados do banco antigo se necessario
     migrarDadosSeNecessario();
 

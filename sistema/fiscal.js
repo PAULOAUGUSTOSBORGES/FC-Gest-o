@@ -8,6 +8,10 @@ let notaEmCCe = null;
 let unsubscribeVendas = null;
 
 function inicializarFiscal() {
+    if (window.__paginaBloqueadaPorPermissao || (typeof window.verificarPermissaoRota === 'function' && !window.verificarPermissaoRota(window.location.pathname).permitido)) {
+        console.warn('Bloqueando execução: usuário sem permissão para esta rota.');
+        return;
+    }
     atualizarBadgeAmbiente();
 
     // Listener para configurações da empresa

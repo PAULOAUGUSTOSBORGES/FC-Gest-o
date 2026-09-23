@@ -168,7 +168,7 @@ async function initLoja() {
                     ? empData.modulosLiberados
                     : (function(planoStr) {
                         const p = (planoStr || '').toLowerCase();
-                        if (p.includes('ultra') || p.includes('enterprise') || p.includes('pro') || p.includes('profissional')) {
+                        if (p.includes('ultra') || p.includes('enterprise') || p.includes('pro') || p.includes('profissional') || p.includes('ilimitado') || p.includes('completo')) {
                             return ['site'];
                         }
                         return [];

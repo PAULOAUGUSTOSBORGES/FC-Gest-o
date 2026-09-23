@@ -41,8 +41,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link rel="stylesheet" href="../style.css?v=20260921143823">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260921143823">
+    <link rel="stylesheet" href="../style.css?v=20260923172910">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260923172910">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="vendas">
 
@@ -906,7 +906,20 @@
             </div>
             
             <!-- FOOTER -->
-            <div class="bg-white dark:bg-slate-900 p-4 md:p-5 border-t border-slate-200 dark:border-slate-800 flex justify-end shrink-0 rounded-b-2xl">
+            <div class="bg-white dark:bg-slate-900 p-4 md:p-5 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0 rounded-b-2xl">
+                <div class="flex items-center gap-2">
+                    <button id="btn-iniciar-edicao-custo" type="button" onclick="habilitarEdicaoCustoVenda()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold px-4 py-2 rounded-xl text-xs sm:text-sm shadow-sm transition-all flex items-center gap-2 active:scale-95 cursor-pointer" title="Editar custos dos itens e anotações desta venda">
+                        <i class="fa-solid fa-pen-to-square"></i> <span>Ajustar Custos & Observações</span>
+                    </button>
+                    <div id="acoes-edicao-custo" class="hidden flex items-center gap-2">
+                        <button id="btn-cancelar-edicao-custo" type="button" onclick="cancelarEdicaoCustoVenda()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 font-bold px-4 py-2 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer">
+                            <i class="fa-solid fa-xmark"></i> <span>Cancelar</span>
+                        </button>
+                        <button id="btn-salvar-edicao-custo" type="button" onclick="salvarAjusteCustoVenda()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2 rounded-xl text-xs sm:text-sm shadow-md transition-all flex items-center gap-2 active:scale-95 cursor-pointer">
+                            <i class="fa-solid fa-floppy-disk"></i> <span>Salvar Alterações</span>
+                        </button>
+                    </div>
+                </div>
                 <button onclick="fecharModalDetalhesVenda()" class="bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-bold tracking-wide px-8 py-2.5 rounded-xl text-sm shadow-md transition-all active:scale-95"><i class="fa-solid fa-check mr-2"></i> Fechar Janela</button>
             </div>
         </div>
@@ -928,11 +941,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20260921143823"></script>
-    <script src="saas_licenca.js?v=20260921143823"></script>
-    <script src="../global.js?v=20260921143823"></script>
-    <script src="fc_cache.js?v=20260921143823"></script>
-    <script src="vendas_gestao.js?v=20260921143823"></script>
+    <script src="../sistema/config_banco.js?v=20260923172910"></script>
+    <script src="saas_licenca.js?v=20260923172910"></script>
+    <script src="../global.js?v=20260923172910"></script>
+    <script src="fc_cache.js?v=20260923172910"></script>
+    <script src="vendas_gestao.js?v=20260923172910"></script>
 </body>
 
 

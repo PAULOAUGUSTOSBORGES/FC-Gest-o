@@ -47,6 +47,24 @@ service cloud.firestore {
         )
       );
     }
+    
+    function podeCadastrarProdutos(empresaId) {
+      return isAdmin(empresaId) || (
+        isAutenticado() && (
+          getFuncionarioDoc(empresaId).get('perm_produtos', getFuncionarioDoc(empresaId).get('perm_cadastros', false)) == true ||
+          getFuncionarioDoc(empresaId).get('perm_produtos', getFuncionarioDoc(empresaId).get('perm_cadastros', false)) == 'true'
+        )
+      );
+    }
+
+    function podeCadastrarClientes(empresaId) {
+      return isAdmin(empresaId) || (
+        isAutenticado() && (
+          getFuncionarioDoc(empresaId).get('perm_clientes', getFuncionarioDoc(empresaId).get('perm_cadastros', false)) == true ||
+          getFuncionarioDoc(empresaId).get('perm_clientes', getFuncionarioDoc(empresaId).get('perm_cadastros', false)) == 'true'
+        )
+      );
+    }
 
     // ==========================================
     // Mapeamento Global de Usuarios (Login)
@@ -105,7 +123,11 @@ service cloud.firestore {
       // ==========================================
       match /produtos/{produtoId} {
         allow read: if true; // Publico para a loja virtual (vitrine)
-        allow write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_cadastros') || temPermissao(empresaId, 'perm_pdv'));
+        allow create, delete: if getEmpresaUsuario() == empresaId && podeCadastrarProdutos(empresaId);
+        allow update: if getEmpresaUsuario() == empresaId && (
+          podeCadastrarProdutos(empresaId) ||
+          (temPermissao(empresaId, 'perm_pdv') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estoque', 'ultimaAtualizacao']))
+        );
       }
 
       match /movimentacoes/{movId} {
@@ -115,7 +137,7 @@ service cloud.firestore {
 
       match /categorias/{catId} {
         allow read: if true;
-        allow write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_cadastros'));
+        allow write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || podeCadastrarProdutos(empresaId) || temPermissao(empresaId, 'perm_cadastros'));
       }
 
       // ==========================================
@@ -123,7 +145,7 @@ service cloud.firestore {
       // ==========================================
       match /clientes/{clienteId} {
         allow read: if getEmpresaUsuario() == empresaId && isAutenticado();
-        allow write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_cadastros') || temPermissao(empresaId, 'perm_pdv'));
+        allow write: if getEmpresaUsuario() == empresaId && podeCadastrarClientes(empresaId);
       }
 
       match /fornecedores/{fornecedorId} {

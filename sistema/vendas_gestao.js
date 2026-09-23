@@ -168,6 +168,10 @@ async function migrarDadosSeNecessario() {
 }
 
 function inicializarGestao() {
+    if (window.__paginaBloqueadaPorPermissao || (typeof window.verificarPermissaoRota === 'function' && !window.verificarPermissaoRota(window.location.pathname).permitido)) {
+        console.warn('Bloqueando execução: usuário sem permissão para esta rota.');
+        return;
+    }
     // Primeiro tenta migrar dados do banco antigo se necessario
     migrarDadosSeNecessario();
 
@@ -2608,6 +2612,12 @@ function verDetalhesVenda(id) {
     const v = db.vendas.find(x => String(x.id) === String(id)); 
     if(!v) return; 
     
+    window.__vendaDetalheAtual = v;
+    const btnIni = document.getElementById('btn-iniciar-edicao-custo');
+    if (btnIni) btnIni.classList.remove('hidden');
+    const acoesEdicao = document.getElementById('acoes-edicao-custo');
+    if (acoesEdicao) acoesEdicao.classList.add('hidden');
+    
     const isGestao = window.location.href.includes('gestao');
     
     const subtitleEl = document.querySelector('#modal-detalhes-venda p.text-slate-400.uppercase');
@@ -2642,7 +2652,14 @@ function verDetalhesVenda(id) {
             </div>`;
     }
     
-    document.getElementById('det-venda-obs').innerHTML = (v.obs ? v.obs : '<span class="text-slate-400 italic">Nenhuma observa\u00e7\u00e3o geral vinculada a esta venda.</span>') + osInfoHtml;
+    let entregaInfoModal = '';
+    const dEntVal = v.dataEntrega || (v.servicoDetalhes ? v.servicoDetalhes.prazo : '');
+    if (dEntVal) {
+        const dEntFormat = dEntVal.includes('-') ? dEntVal.split('-').reverse().join('/') : dEntVal;
+        entregaInfoModal = `<div class="mt-3 bg-blue-50 dark:bg-blue-900/20 p-2.5 rounded-lg border border-blue-200 dark:border-blue-800/40 text-xs text-blue-900 dark:text-blue-200 flex items-center gap-2"><i class="fa-solid fa-truck-fast text-blue-600 dark:text-blue-400 text-sm"></i> <strong>Previsão de Entrega:</strong> <span class="font-bold text-sm text-blue-700 dark:text-blue-300">${dEntFormat}</span></div>`;
+    }
+    
+    document.getElementById('det-venda-obs').innerHTML = (v.obs ? v.obs : '<span class="text-slate-400 italic">Nenhuma observação geral vinculada a esta venda.</span>') + entregaInfoModal + osInfoHtml;
     
     let totalCusto = 0;
     document.getElementById('det-venda-itens').innerHTML = (v.itens || []).map(i => {
@@ -2735,7 +2752,317 @@ function verDetalhesVenda(id) {
 }
 
 function fecharModalDetalhesVenda() { 
+    window.__vendaDetalheAtual = null;
+    const btnIni = document.getElementById('btn-iniciar-edicao-custo');
+    if (btnIni) btnIni.classList.remove('hidden');
+    const acoesEdicao = document.getElementById('acoes-edicao-custo');
+    if (acoesEdicao) acoesEdicao.classList.add('hidden');
     document.getElementById('modal-detalhes-venda').classList.add('hidden'); 
+}
+
+function habilitarEdicaoCustoVenda() {
+    const v = window.__vendaDetalheAtual;
+    if (!v) return;
+
+    const btnIni = document.getElementById('btn-iniciar-edicao-custo');
+    if (btnIni) btnIni.classList.add('hidden');
+    const acoesEdicao = document.getElementById('acoes-edicao-custo');
+    if (acoesEdicao) acoesEdicao.classList.remove('hidden');
+
+    // Transforma a seção de observações em textarea editável
+    const obsEl = document.getElementById('det-venda-obs');
+    if (obsEl) {
+        const obsAtual = (v.obs || '');
+        obsEl.innerHTML = `
+            <div class="space-y-2">
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between">
+                    <span><i class="fa-solid fa-pen-to-square text-indigo-500 mr-1"></i> Anotações / Observações Gerais da Venda</span>
+                    <span class="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded">Modo Edição Ativo</span>
+                </label>
+                <textarea id="edit-venda-obs" rows="3" placeholder="Digite uma anotação, motivo do ajuste de custo ou observação geral..." class="w-full bg-slate-50 dark:bg-slate-900 border border-indigo-300 dark:border-indigo-600 rounded-xl p-3 text-xs md:text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100">${obsAtual.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+                <p class="text-[11px] text-slate-400 italic">Dica: as anotações ficam gravadas no documento da venda para auditoria e histórico gerencial.</p>
+            </div>
+        `;
+    }
+
+    // Renderiza itens em modo de edição
+    const itensEl = document.getElementById('det-venda-itens');
+    if (itensEl) {
+        itensEl.innerHTML = (v.itens || []).map((i, idx) => {
+            const preco = Number(i.preco) || 0;
+            const qtd = Number(i.qtd) || 1;
+            const custo = Number(i.custo) || 0;
+            const subTot = preco * qtd;
+            const subCusto = custo * qtd;
+            const lucroSub = subTot - subCusto;
+            const margemSub = subTot > 0 ? ((lucroSub / subTot) * 100) : 0;
+
+            // Busca produto no cadastro para permitir sincronização
+            const prodCadastrado = (db.produtos || []).find(p => (i.id && String(p.id) === String(i.id)) || (p.nome && i.nome && p.nome.trim().toLowerCase() === i.nome.trim().toLowerCase()));
+
+            return `
+            <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800/50 transition-colors bg-amber-50/20 dark:bg-amber-950/10">
+                <td class="p-4 border-b border-slate-100 dark:border-slate-800/50 align-top">
+                    <div class="font-bold text-slate-800 dark:text-slate-200 text-sm">${i.nome || 'Produto/Serviço'}</div>
+                    <div class="mt-1.5">
+                        <input type="text" id="edit-item-obs-${idx}" value="${(i.obsVenda || '').replace(/"/g, '&quot;')}" placeholder="Anotação deste item (opcional)..." class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-700 dark:text-slate-300 outline-none focus:border-indigo-500">
+                    </div>
+                </td>
+                <td class="p-4 text-center border-b border-slate-100 dark:border-slate-800/50 align-top">
+                    <span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-black px-2.5 py-1 rounded-lg text-xs border border-slate-200 dark:border-slate-700" id="edit-item-qtd-${idx}">${qtd}</span>
+                </td>
+                <td class="p-4 text-right border-b border-slate-100 dark:border-slate-800/50 align-top">
+                    <div class="font-black text-slate-700 dark:text-slate-300 text-sm" id="edit-item-preco-${idx}">${typeof formatMoney === 'function' ? formatMoney(preco) : preco}</div>
+                    <div class="mt-2 flex flex-col items-end gap-1">
+                        <div class="flex items-center gap-1.5 justify-end">
+                            <span class="text-[11px] font-bold text-slate-400">Custo: R$</span>
+                            <input type="text" data-mask="money" inputmode="numeric" 
+                                   id="edit-custo-item-${idx}" 
+                                   value="${typeof formatMoneyInput === 'function' ? formatMoneyInput(custo) : custo.toFixed(2).replace('.', ',')}" 
+                                   oninput="recalcularCustosEdicaoLive()"
+                                   class="w-24 bg-white dark:bg-slate-800 border border-amber-400 dark:border-amber-500 rounded-lg px-2 py-1 text-right text-xs font-black text-amber-600 dark:text-amber-400 outline-none focus:ring-2 focus:ring-amber-500 shadow-sm">
+                        </div>
+                        ${prodCadastrado ? `
+                        <label class="flex items-center gap-1.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 cursor-pointer hover:underline select-none mt-0.5" title="Se marcado, atualiza também o custo de compra deste produto no estoque para futuras vendas">
+                            <input type="checkbox" id="sync-prod-custo-${idx}" data-prod-id="${prodCadastrado.id}" class="rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                            <span>Atualizar no estoque</span>
+                        </label>` : ''}
+                    </div>
+                </td>
+                <td class="p-4 text-right border-b border-slate-100 dark:border-slate-800/50 align-top">
+                    <div class="font-black text-slate-800 dark:text-white text-sm" id="edit-subtot-${idx}">${typeof formatMoney === 'function' ? formatMoney(subTot) : subTot}</div>
+                    <div class="text-[10px] font-bold mt-1.5" id="edit-lucro-container-${idx}">
+                        <div class="text-emerald-600 dark:text-emerald-400 font-bold" id="edit-sublucro-${idx}">Lucro: ${typeof formatMoney === 'function' ? formatMoney(lucroSub) : lucroSub}</div>
+                        <div class="text-blue-500 dark:text-blue-400" id="edit-submargem-${idx}">(${margemSub.toFixed(1)}%)</div>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    recalcularCustosEdicaoLive();
+}
+
+function recalcularCustosEdicaoLive() {
+    const v = window.__vendaDetalheAtual;
+    if (!v) return;
+
+    let totalCusto = 0;
+    const itens = v.itens || [];
+
+    itens.forEach((i, idx) => {
+        const preco = Number(i.preco) || 0;
+        const qtd = Number(i.qtd) || 1;
+        const inputCusto = document.getElementById(`edit-custo-item-${idx}`);
+        const custo = inputCusto ? (typeof parseInputMoney === 'function' ? parseInputMoney(inputCusto.value) : (parseFloat(inputCusto.value.replace(/\./g, '').replace(',', '.')) || 0)) : (Number(i.custo) || 0);
+
+        const subTot = preco * qtd;
+        const subCusto = custo * qtd;
+        const lucroSub = subTot - subCusto;
+        const margemSub = subTot > 0 ? ((lucroSub / subTot) * 100) : 0;
+
+        totalCusto += subCusto;
+
+        const subLucroEl = document.getElementById(`edit-sublucro-${idx}`);
+        if (subLucroEl) {
+            subLucroEl.innerText = `Lucro: ${typeof formatMoney === 'function' ? formatMoney(lucroSub) : 'R$ ' + lucroSub.toFixed(2)}`;
+            if (lucroSub < 0) {
+                subLucroEl.className = 'text-red-500 font-bold';
+            } else {
+                subLucroEl.className = 'text-emerald-600 dark:text-emerald-400 font-bold';
+            }
+        }
+        const subMargemEl = document.getElementById(`edit-submargem-${idx}`);
+        if (subMargemEl) {
+            subMargemEl.innerText = `(${margemSub.toFixed(1)}%)`;
+        }
+    });
+
+    const tot = Number(v.tot) || 0;
+    const taxaCartao = Number(v.taxaValor) || 0;
+    const taxaBoleto = Number(v.taxaBoleto) || 0;
+    const totalDespesas = taxaCartao + taxaBoleto;
+    const custoGeral = totalCusto + totalDespesas;
+    const lucroLiquido = tot - custoGeral;
+    const margemLiquidaReal = tot > 0 ? ((lucroLiquido / tot) * 100) : 0;
+    const markupReal = custoGeral > 0 ? ((lucroLiquido / custoGeral) * 100) : 0;
+
+    const tfootEl = document.querySelector('#det-venda-tfoot');
+    if (tfootEl) {
+        let tfootHtml = `
+            <tr class="bg-amber-50/40 dark:bg-amber-950/20 border-t border-amber-200 dark:border-amber-800/40">
+                <td colspan="3" class="p-4 text-right font-bold text-amber-800 dark:text-amber-300 text-[11px] uppercase tracking-wider">
+                    <i class="fa-solid fa-calculator mr-1"></i> Custo Total Recalculado (Produtos)
+                </td>
+                <td class="p-4 text-right font-black text-red-500 dark:text-red-400 text-sm bg-red-50/50 dark:bg-red-900/10">- ${typeof formatMoney === 'function' ? formatMoney(totalCusto) : totalCusto}</td>
+            </tr>
+        `;
+        if (taxaCartao > 0) {
+            tfootHtml += `
+            <tr>
+                <td colspan="3" class="p-4 text-right font-bold text-slate-500 dark:text-slate-400 text-[11px] uppercase tracking-wider">Taxa de Cartão / Despesa</td>
+                <td class="p-4 text-right font-black text-red-500 dark:text-red-400 text-sm bg-red-50/50 dark:bg-red-900/10">- ${typeof formatMoney === 'function' ? formatMoney(taxaCartao) : taxaCartao}</td>
+            </tr>`;
+        }
+        tfootHtml += `
+            <tr class="border-t border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-800/50">
+                <td colspan="3" class="p-4 text-right font-black text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wide">Valor Bruto Total</td>
+                <td class="p-4 text-right font-black text-slate-900 dark:text-white text-lg">${typeof formatMoney === 'function' ? formatMoney(tot) : tot}</td>
+            </tr>
+            <tr class="bg-gradient-to-r from-emerald-50 to-emerald-100/50 dark:from-emerald-900/30 dark:to-emerald-900/10 border-t border-emerald-200 dark:border-emerald-800/50">
+                <td colspan="3" class="p-4 text-right font-black text-emerald-800 dark:text-emerald-400 text-sm uppercase tracking-wide">Lucro Líquido Real Recalculado</td>
+                <td class="p-4 text-right font-black text-xl shadow-sm ${lucroLiquido < 0 ? 'text-red-600' : 'text-emerald-600 dark:text-emerald-400'}">${typeof formatMoney === 'function' ? formatMoney(lucroLiquido) : lucroLiquido}</td>
+            </tr>
+            <tr class="bg-emerald-50/40 dark:bg-emerald-950/20 border-t border-emerald-100 dark:border-emerald-800/30">
+                <td colspan="3" class="p-3 text-right font-bold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider">Margem de Lucro Real / Markup</td>
+                <td class="p-3 text-right font-black text-sm">
+                    <span class="bg-emerald-100 dark:bg-emerald-800/60 text-emerald-800 dark:text-emerald-200 px-2 py-0.5 rounded font-black text-xs">${margemLiquidaReal.toFixed(2)}% Margem</span>
+                    <span class="text-[11px] text-blue-600 dark:text-blue-400 font-bold ml-1">(${markupReal.toFixed(2)}% MKP)</span>
+                </td>
+            </tr>
+        `;
+        tfootEl.innerHTML = tfootHtml;
+    }
+}
+
+function cancelarEdicaoCustoVenda() {
+    if (window.__vendaDetalheAtual) {
+        verDetalhesVenda(window.__vendaDetalheAtual.id);
+    }
+}
+
+async function salvarAjusteCustoVenda() {
+    const v = window.__vendaDetalheAtual;
+    if (!v) return;
+
+    const btnSalvar = document.getElementById('btn-salvar-edicao-custo');
+    if (btnSalvar) {
+        btnSalvar.disabled = true;
+        btnSalvar.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i> <span>Salvando...</span>`;
+    }
+
+    try {
+        const obsEl = document.getElementById('edit-venda-obs');
+        const novaObs = obsEl ? obsEl.value.trim() : (v.obs || '');
+
+        const novosItens = JSON.parse(JSON.stringify(v.itens || []));
+        let novoCustoTotal = 0;
+        const produtosParaAtualizarCusto = [];
+
+        novosItens.forEach((item, idx) => {
+            const inputCusto = document.getElementById(`edit-custo-item-${idx}`);
+            const inputObsItem = document.getElementById(`edit-item-obs-${idx}`);
+            const checkSync = document.getElementById(`sync-prod-custo-${idx}`);
+
+            const custoUnit = inputCusto ? (typeof parseInputMoney === 'function' ? parseInputMoney(inputCusto.value) : (parseFloat(inputCusto.value.replace(/\./g, '').replace(',', '.')) || 0)) : (Number(item.custo) || 0);
+            item.custo = Math.max(0, custoUnit);
+
+            if (inputObsItem) {
+                item.obsVenda = inputObsItem.value.trim();
+            }
+
+            const qtd = Number(item.qtd) || 1;
+            novoCustoTotal += (item.custo * qtd);
+
+            if (checkSync && checkSync.checked && checkSync.dataset.prodId) {
+                produtosParaAtualizarCusto.push({
+                    id: checkSync.dataset.prodId,
+                    novoCusto: item.custo,
+                    nome: item.nome || ''
+                });
+            }
+        });
+
+        const tot = Number(v.tot) || 0;
+        const taxaCartao = Number(v.taxaValor) || 0;
+        const taxaBoleto = Number(v.taxaBoleto) || 0;
+        const totalDespesas = taxaCartao + taxaBoleto;
+        const novoLucroReal = tot - (novoCustoTotal + totalDespesas);
+
+        // Firestore Batch
+        const batch = (typeof firestore !== 'undefined' && firestore.batch) 
+            ? firestore.batch() 
+            : window.getEmpresaRef().firestore.batch();
+
+        const vendaRef = window.getEmpresaRef().collection('vendas').doc(String(v.id));
+
+        const dadosAtualizacaoVenda = {
+            itens: novosItens,
+            custoTotal: novoCustoTotal,
+            lucroReal: novoLucroReal,
+            obs: novaObs,
+            dataUltimoAjusteCusto: new Date().toISOString()
+        };
+
+        batch.update(vendaRef, dadosAtualizacaoVenda);
+
+        // Sincronização opcional com cadastro de produtos
+        produtosParaAtualizarCusto.forEach(pSync => {
+            const prodRef = window.getEmpresaRef().collection('produtos').doc(String(pSync.id));
+            batch.update(prodRef, {
+                custo: pSync.novoCusto,
+                dataAtualizacaoCusto: new Date().toISOString()
+            });
+
+            // Atualiza em memória db.produtos
+            if (Array.isArray(db.produtos)) {
+                const prodEmMemoria = db.produtos.find(p => String(p.id) === String(pSync.id));
+                if (prodEmMemoria) {
+                    prodEmMemoria.custo = pSync.novoCusto;
+                }
+            }
+        });
+
+        await batch.commit();
+
+        // Atualiza objeto em memória db.vendas
+        v.itens = novosItens;
+        v.custoTotal = novoCustoTotal;
+        v.lucroReal = novoLucroReal;
+        v.obs = novaObs;
+        v.dataUltimoAjusteCusto = dadosAtualizacaoVenda.dataUltimoAjusteCusto;
+
+        if (Array.isArray(db.vendas)) {
+            const idxV = db.vendas.findIndex(x => String(x.id) === String(v.id));
+            if (idxV !== -1) {
+                db.vendas[idxV] = Object.assign({}, db.vendas[idxV], dadosAtualizacaoVenda);
+            }
+        }
+
+        // Atualiza FCCache se ativo
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+            window.FCCache.set('vendas', db.vendas || []);
+            if (produtosParaAtualizarCusto.length > 0) {
+                window.FCCache.set('produtos', db.produtos || []);
+            }
+        }
+
+        // Recarrega telas e tabelas dependentes
+        if (typeof renderVendas === 'function') renderVendas();
+        if (typeof renderizarDRE === 'function') renderizarDRE();
+        if (typeof debouncedRenderDashboard === 'function') debouncedRenderDashboard();
+        if (typeof renderEstatisticasVendas === 'function') renderEstatisticasVendas();
+
+        if (typeof showToast === 'function') {
+            const extraMsg = produtosParaAtualizarCusto.length > 0 
+                ? ` e ${produtosParaAtualizarCusto.length} produto(s) atualizado(s) no estoque!` 
+                : '!';
+            showToast(`Custos e anotações da venda atualizados com sucesso${extraMsg}`, 'success');
+        }
+
+        // Retorna o modal para modo de visualização com os dados novos
+        verDetalhesVenda(v.id);
+
+    } catch (err) {
+        console.error('Erro ao salvar ajuste de custo da venda:', err);
+        if (typeof showToast === 'function') {
+            showToast('Erro ao salvar ajustes: ' + (err.message || 'Falha na comunicação com o banco.'), 'error');
+        }
+        if (btnSalvar) {
+            btnSalvar.disabled = false;
+            btnSalvar.innerHTML = `<i class="fa-solid fa-floppy-disk mr-1"></i> <span>Salvar Alterações</span>`;
+        }
+    }
 }
 
 // NOVO: Funes auxiliares para Vnculo de XML
@@ -2820,5 +3147,9 @@ window.renderHistoricoVendas = function() { renderVendas(); };
 window.abrirDetalheVenda = function(id) { verDetalhesVenda(id); };
 window.verDetalheVenda = function(id) { verDetalhesVenda(id); };
 window.abrirDetalhesVenda = function(id) { verDetalhesVenda(id); };
+window.habilitarEdicaoCustoVenda = habilitarEdicaoCustoVenda;
+window.recalcularCustosEdicaoLive = recalcularCustosEdicaoLive;
+window.cancelarEdicaoCustoVenda = cancelarEdicaoCustoVenda;
+window.salvarAjusteCustoVenda = salvarAjusteCustoVenda;
 
 

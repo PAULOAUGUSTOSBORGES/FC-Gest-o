@@ -746,10 +746,10 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
 
             let renderizouImediato = false;
             if (window.currentUserInfo) {
-                aplicarControleDeAcesso();
+                if (aplicarControleDeAcesso()) return;
                 mostrarNomeUsuarioNoHeader(window.currentUserInfo.isAdmin ? 'Admin Master' : `Func.: ${window.currentUserInfo.nome || 'Usuário'}`);
                 aplicarIdentidadeVisualGlobal();
-                if (window.__paginaBloqueadaPorPlano) return;
+                if (window.__paginaBloqueadaPorPlano || window.__paginaBloqueadaPorPermissao) return;
                 if (funcaoDeRenderizacaoDaPagina) {
                     try {
                         funcaoDeRenderizacaoDaPagina();
@@ -792,6 +792,8 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                             window.currentUserInfo.perm_dashboard = true;
                             window.currentUserInfo.perm_pdv = true;
                             window.currentUserInfo.perm_cadastros = true;
+                            window.currentUserInfo.perm_produtos = true;
+                            window.currentUserInfo.perm_clientes = true;
                             window.currentUserInfo.perm_gestao = true;
                             window.currentUserInfo.perm_config = true;
                             
@@ -800,17 +802,19 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                                 perm_dashboard: true,
                                 perm_pdv: true,
                                 perm_cadastros: true,
+                                perm_produtos: true,
+                                perm_clientes: true,
                                 perm_gestao: true,
                                 perm_config: true
                             }).catch(e => console.error("Erro ao atualizar admin", e));
                         }
                         
                         if (typeof window.FCCache !== 'undefined') window.FCCache.set(userCacheKey, window.currentUserInfo);
-                        aplicarControleDeAcesso();
+                        if (aplicarControleDeAcesso()) return;
                         mostrarNomeUsuarioNoHeader(window.currentUserInfo.isAdmin ? 'Admin Master' : `Func.: ${window.currentUserInfo.nome || 'Usuário'}`);
                     } else if (userSnap && !userSnap.exists) {
                         // Usuário não cadastrado na base de funcionários
-                        window.currentUserInfo = { isAdmin: false, perm_dashboard: false, perm_pdv: false, perm_cadastros: false, perm_gestao: false, perm_config: false };
+                        window.currentUserInfo = { isAdmin: false, perm_dashboard: false, perm_pdv: false, perm_cadastros: false, perm_produtos: false, perm_clientes: false, perm_gestao: false, perm_config: false };
                         
                         // CORRE??O: Garante admin na criação do cadastro
                         if (user.email === 'fabricadecoresgoiania@gmail.com') {
@@ -818,6 +822,8 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                             window.currentUserInfo.perm_dashboard = true;
                             window.currentUserInfo.perm_pdv = true;
                             window.currentUserInfo.perm_cadastros = true;
+                            window.currentUserInfo.perm_produtos = true;
+                            window.currentUserInfo.perm_clientes = true;
                             window.currentUserInfo.perm_gestao = true;
                             window.currentUserInfo.perm_config = true;
                         }
@@ -830,6 +836,8 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                                 perm_dashboard: window.currentUserInfo.perm_dashboard, 
                                 perm_pdv: window.currentUserInfo.perm_pdv, 
                                 perm_cadastros: window.currentUserInfo.perm_cadastros,
+                                perm_produtos: window.currentUserInfo.perm_produtos,
+                                perm_clientes: window.currentUserInfo.perm_clientes,
                                 perm_gestao: window.currentUserInfo.perm_gestao, 
                                 perm_config: window.currentUserInfo.perm_config, 
                                 dataCadastro: new Date().toISOString(), 
@@ -848,8 +856,24 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
 
                     aplicarIdentidadeVisualGlobal();
 
-                    // Se não pôde renderizar de imediato por falta de cache, renderiza agora
-                    if (!renderizouImediato && funcaoDeRenderizacaoDaPagina) {
+                    // Listener em tempo real para permissões do usuário
+                    if (!window._listenerFuncionarioAtivo && user && user.uid) {
+                        window._listenerFuncionarioAtivo = true;
+                        try {
+                            window.getEmpresaRef().collection("funcionarios").doc(user.uid).onSnapshot(docSnap => {
+                                if (docSnap && docSnap.exists) {
+                                    const dadosNovos = docSnap.data();
+                                    window.currentUserInfo = dadosNovos;
+                                    if (typeof window.FCCache !== 'undefined') window.FCCache.set(userCacheKey, dadosNovos);
+                                    if (aplicarControleDeAcesso()) return;
+                                    mostrarNomeUsuarioNoHeader(dadosNovos.isAdmin ? 'Admin Master' : `Func.: ${dadosNovos.nome || 'Usuário'}`);
+                                }
+                            }, errSnap => console.warn("Listener de permissões:", errSnap));
+                        } catch(eSnap) {}
+                    }
+
+                    // Se não pôde renderizar de imediato por falta de cache, renderiza agora (apenas se página permitida)
+                    if (!renderizouImediato && !window.__paginaBloqueadaPorPermissao && !window.__paginaBloqueadaPorPlano && funcaoDeRenderizacaoDaPagina) {
                         funcaoDeRenderizacaoDaPagina();
                     } else if (renderizouImediato && typeof window.carregarConfiguracoesNaTela === 'function') {
                         // Se a tela atual for a de configurações, atualiza os campos com os dados frescos do Firestore
@@ -903,69 +927,397 @@ function iniciarMonitorSessaoDiaria() {
     window.addEventListener('focus', checarMeiaNoite);
 }
 
+// Funções auxiliares para checagem granular de permissões
+window.checarPermissaoUsuario = function(user, key, fallbackKey) {
+    if (!user) return false;
+    if (user.isAdmin) return true;
+    if (user[key] !== undefined && user[key] !== null) {
+        return user[key] === true || user[key] === 'true';
+    }
+    if (fallbackKey && user[fallbackKey] !== undefined && user[fallbackKey] !== null) {
+        return user[fallbackKey] === true || user[fallbackKey] === 'true';
+    }
+    return false;
+};
+
+window.podeCadastrarProdutos = function(user = window.currentUserInfo) {
+    return window.checarPermissaoUsuario(user, 'perm_produtos', 'perm_cadastros');
+};
+
+window.podeCadastrarClientes = function(user = window.currentUserInfo) {
+    return window.checarPermissaoUsuario(user, 'perm_clientes', 'perm_cadastros');
+};
+
+window.podeCadastrarFornecedores = function(user = window.currentUserInfo) {
+    return window.checarPermissaoUsuario(user, 'perm_fornecedores', 'perm_cadastros');
+};
+
+window.podeAcessarCadastrosGerais = function(user = window.currentUserInfo) {
+    if (!user) return false;
+    if (user.isAdmin) return true;
+    if (user.perm_cadastros === true || user.perm_cadastros === 'true') return true;
+    return window.podeCadastrarProdutos(user) || window.podeCadastrarClientes(user) || window.podeCadastrarFornecedores(user);
+};
+
+window.verificarPermissaoRota = function(rota, user = window.currentUserInfo) {
+    if (!user) return { permitido: false, motivo: 'Usuário não autenticado.' };
+    if (user.isAdmin) return { permitido: true };
+
+    const path = (rota || window.location.pathname).toLowerCase();
+    const check = (k, fb) => window.checarPermissaoUsuario(user, k, fb);
+
+    // 1. Dashboard / Visão Geral
+    if (path.includes('index.html') || path.endsWith('/sistema/') || path.endsWith('/sistema') || path === '' || path === '/') {
+        if (!check('perm_dashboard')) {
+            return { permitido: false, motivo: 'Acesso Negado ao Dashboard (Visão Geral).' };
+        }
+        return { permitido: true };
+    }
+
+    // 2. Operação
+    if (path.includes('pdv.html')) {
+        if (!check('perm_pdv')) {
+            return { permitido: false, motivo: 'Acesso Negado à Frente de Caixa (PDV).' };
+        }
+        return { permitido: true };
+    }
+
+    if (path.includes('vendas_operacao.html')) {
+        if (!check('perm_vendas_op', 'perm_pdv')) {
+            return { permitido: false, motivo: 'Acesso Negado ao Histórico de Vendas/Serviços.' };
+        }
+        return { permitido: true };
+    }
+
+    if (path.includes('orcamentos.html')) {
+        if (!check('perm_orcamentos', 'perm_pdv')) {
+            return { permitido: false, motivo: 'Acesso Negado a Meus Orçamentos.' };
+        }
+        return { permitido: true };
+    }
+
+    if (path.includes('fiscal.html')) {
+        if (!check('perm_fiscal', 'perm_gestao')) {
+            return { permitido: false, motivo: 'Acesso Negado ao Emissor Fiscal (NF-e).' };
+        }
+        return { permitido: true };
+    }
+
+    // 3. Cadastros
+    if (path.includes('produtos.html')) {
+        if (!window.podeCadastrarProdutos(user)) {
+            return { permitido: false, motivo: 'Acesso Negado à Área de Cadastro de Produtos.' };
+        }
+        return { permitido: true };
+    }
+
+    if (path.includes('clientes.html')) {
+        if (!window.podeCadastrarClientes(user)) {
+            return { permitido: false, motivo: 'Acesso Negado à Área de Cadastro de Clientes.' };
+        }
+        return { permitido: true };
+    }
+
+    if (path.includes('fornecedores.html')) {
+        if (!window.podeCadastrarFornecedores(user)) {
+            return { permitido: false, motivo: 'Acesso Negado ao Cadastro de Fornecedores.' };
+        }
+        return { permitido: true };
+    }
+
+    if (path.includes('cadastro.html')) {
+        if (!window.podeAcessarCadastrosGerais(user)) {
+            return { permitido: false, motivo: 'Acesso Negado aos Cadastros.' };
+        }
+        return { permitido: true };
+    }
+
+    // 4. Funcionários (Apenas Admin Geral da Empresa)
+    if (path.includes('funcionarios.html') || path.includes('view=funcionarios')) {
+        return { permitido: false, motivo: 'Acesso Negado: Apenas o Administrador pode gerenciar Funcionários.' };
+    }
+
+    // 5. Caixa Físico
+    if (path.includes('caixa.html')) {
+        const permitidoCaixa = user.perm_caixa !== undefined
+            ? (user.perm_caixa === true || user.perm_caixa === 'true')
+            : (check('perm_pdv') || check('perm_gestao'));
+        if (!permitidoCaixa) {
+            return { permitido: false, motivo: 'Acesso Negado ao Caixa Físico.' };
+        }
+        return { permitido: true };
+    }
+
+    // 6. Gestão Financeira
+    if (path.includes('financeiro.html') || path.includes('vendas_gestao.html')) {
+        if (!check('perm_financeiro', 'perm_gestao')) {
+            return { permitido: false, motivo: 'Acesso Negado ao Financeiro e Gestão de Vendas.' };
+        }
+        return { permitido: true };
+    }
+
+    // 7. Compras
+    if (path.includes('compras.html')) {
+        if (!check('perm_compras', 'perm_gestao')) {
+            return { permitido: false, motivo: 'Acesso Negado a Compras e XML.' };
+        }
+        return { permitido: true };
+    }
+
+    // 8. Relatórios
+    if (path.includes('relatorios.html')) {
+        if (!check('perm_relatorios', 'perm_gestao')) {
+            return { permitido: false, motivo: 'Acesso Negado aos Relatórios & DRE.' };
+        }
+        return { permitido: true };
+    }
+
+    // 9. Agenda
+    if (path.includes('agenda.html')) {
+        if (!check('perm_agenda', 'perm_gestao')) {
+            return { permitido: false, motivo: 'Acesso Negado à Agenda.' };
+        }
+        return { permitido: true };
+    }
+
+    // 10. Marketing
+    if (path.includes('marketing.html')) {
+        if (!check('perm_marketing', 'perm_gestao')) {
+            return { permitido: false, motivo: 'Acesso Negado ao Marketing.' };
+        }
+        return { permitido: true };
+    }
+
+    // 11. Configurações do Sistema
+    if (path.includes('sistema.html')) {
+        if (!check('perm_config')) {
+            return { permitido: false, motivo: 'Acesso Negado às Configurações do Sistema.' };
+        }
+        return { permitido: true };
+    }
+
+    return { permitido: true };
+};
+
+window.obterRotaInicialUsuario = function(user = window.currentUserInfo) {
+    if (!user) return 'login.html';
+    if (user.isAdmin) return 'index.html';
+
+    const check = (k, fb) => window.checarPermissaoUsuario(user, k, fb);
+
+    if (check('perm_dashboard')) return 'index.html';
+    if (check('perm_pdv')) return 'pdv.html';
+    if (check('perm_vendas_op', 'perm_pdv')) return 'vendas_operacao.html';
+    if (check('perm_orcamentos', 'perm_pdv')) return 'orcamentos.html';
+    if (check('perm_fiscal', 'perm_gestao')) return 'fiscal.html';
+    if (window.podeCadastrarProdutos(user)) return 'produtos.html';
+    if (window.podeCadastrarClientes(user)) return 'clientes.html';
+    if (window.podeCadastrarFornecedores(user)) return 'fornecedores.html';
+    if (check('perm_financeiro', 'perm_gestao')) return 'financeiro.html';
+    if (user.perm_caixa !== undefined ? (user.perm_caixa === true || user.perm_caixa === 'true') : (check('perm_pdv') || check('perm_gestao'))) return 'caixa.html';
+    if (check('perm_compras', 'perm_gestao')) return 'compras.html';
+    if (check('perm_relatorios', 'perm_gestao')) return 'relatorios.html';
+    if (check('perm_agenda', 'perm_gestao')) return 'agenda.html';
+    if (check('perm_marketing', 'perm_gestao')) return 'marketing.html';
+    if (check('perm_config')) return 'sistema.html';
+
+    return 'login.html';
+};
+
+function esconderSecoesVaziasSidebar() {
+    const nav = document.querySelector('aside nav');
+    if (!nav) return;
+    const titulos = nav.querySelectorAll('p');
+    titulos.forEach(p => {
+        let el = p.nextElementSibling;
+        let temLinkVisivel = false;
+        while (el && el.tagName !== 'P') {
+            if (el.tagName === 'A' && !el.classList.contains('hidden') && el.style.display !== 'none') {
+                temLinkVisivel = true;
+                break;
+            }
+            el = el.nextElementSibling;
+        }
+        if (!temLinkVisivel) {
+            p.classList.add('hidden');
+        } else {
+            p.classList.remove('hidden');
+        }
+    });
+}
+
 function aplicarControleDeAcesso() {
-    if (!window.currentUserInfo) return;
+    if (!window.currentUserInfo) return false;
     const p = window.currentUserInfo;
     const path = window.location.pathname;
-    
-    // Se for admin, não bloqueia nada
-    if (p.isAdmin) return;
 
-    // 1. Bloqueio de Acesso com Alerta Visual
-    let bloqueado = false;
-    let mensagemBloqueio = '';
-
-    const isIndex = path.includes('index.html') || path.endsWith('/') || path === '';
-    
-    if (isIndex && !p.perm_dashboard) {
-        bloqueado = true;
-        mensagemBloqueio = 'Acesso Negado ao Dashboard (Visão Geral).';
-    } else if ((path.includes('cadastro.html') || path.includes('produtos.html') || path.includes('clientes.html') || path.includes('fornecedores.html')) && !p.perm_cadastros) {
-        bloqueado = true;
-        mensagemBloqueio = 'Acesso Negado aos Cadastros.';
-    } else if (path.includes('funcionarios.html')) {
-        // A aba de funcionários é bloqueada para todos que não são Admin Master
-        bloqueado = true;
-        mensagemBloqueio = 'Acesso Negado: Apenas o Administrador pode gerenciar Funcionários.';
-    } else if ((path.includes('vendas_gestao.html') || path.includes('financeiro.html') || path.includes('relatorios.html') || path.includes('compras.html')) && !p.perm_gestao) {
-        bloqueado = true;
-        mensagemBloqueio = 'Acesso Negado à Gestão Financeira.';
-    } else if ((path.includes('operacao.html') || path.includes('pdv.html') || path.includes('vendas_operacao.html') || path.includes('orcamentos.html') || path.includes('caixa.html')) && !p.perm_pdv) {
-        bloqueado = true;
-        mensagemBloqueio = 'Acesso Negado ao PDV e Vendas.';
-    } else if (path.includes('sistema.html') && !p.perm_config) {
-        bloqueado = true;
-        mensagemBloqueio = 'Acesso Negado às Configurações do Sistema.';
+    // Se for admin, não bloqueia nada e garante todos os links visíveis
+    if (p.isAdmin) {
+        document.querySelectorAll('aside a, aside p').forEach(el => el.classList.remove('hidden'));
+        return false;
     }
 
-    if (bloqueado) {
+    // 1. Validação da Rota Atual da Página
+    const rotaCheck = window.verificarPermissaoRota(path, p);
+    if (!rotaCheck.permitido) {
+        window.__paginaBloqueadaPorPermissao = true;
         const main = document.querySelector('main');
         if (main) {
-            main.innerHTML = `
-                <div class="flex flex-col items-center justify-center h-full text-center p-6 animate-[pop_0.3s_ease-out]">
-                    <div class="w-24 h-24 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-red-500/20">
-                        <i class="fa-solid fa-lock text-5xl"></i>
-                    </div>
-                    <h2 class="text-3xl font-black text-slate-800 dark:text-white mb-2">Acesso Restrito</h2>
-                    <p class="text-slate-500 dark:text-slate-400 max-w-md mx-auto">${mensagemBloqueio}</p>
-                    <button onclick="window.history.back()" class="mt-8 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 text-white px-6 py-3 rounded-lg font-bold transition-colors shadow-md">
-                          <i class="fa-solid fa-arrow-left mr-2"></i> Voltar
-                      </button>
-                      <button onclick="firebase.auth().signOut().then(() => window.location.href='login.html')" class="mt-8 ml-2 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-bold transition-colors shadow-md">
-                          <i class="fa-solid fa-right-from-bracket mr-2"></i> Sair / Trocar Conta
-                      </button>
-                </div>
-            `;
+            main.style.visibility = 'hidden';
+            main.innerHTML = '';
         }
-        showToast(mensagemBloqueio, 'error');
-        // Impede que os botões do dashboard funcionem se ele for clicado (ex: index.html)
-        document.querySelectorAll('.view-section').forEach(el => el.remove());
+        showToast(rotaCheck.motivo, 'error');
+
+        const rotaDestino = window.obterRotaInicialUsuario(p);
+        const pathAtual = window.location.pathname.toLowerCase();
+        if (!pathAtual.includes(rotaDestino)) {
+            window.location.replace(rotaDestino);
+        }
+        return true; // Retorna true informando que a página foi bloqueada
     }
 
-    // 2. Se for admin master, mostra aba de funcionários. Senão, esconde S? a aba de funcionários do menu lateral
-    if (!p.isAdmin) {
-        document.querySelectorAll('a[href*="view=funcionarios"], [data-target="funcionarios"]').forEach(el => el.classList.add('hidden'));
+    // 2. Controle Dinâmico Completo do Menu Lateral (Sidebar)
+    const check = (k, fb) => window.checarPermissaoUsuario(p, k, fb);
+
+    // 2.1 Visão Geral
+    document.querySelectorAll('a[href*="index.html"], [data-target="dashboard"]').forEach(el => {
+        if (!check('perm_dashboard')) el.classList.add('hidden');
+        else el.classList.remove('hidden');
+    });
+
+    // 2.2 Operação
+    document.querySelectorAll('a[href*="pdv.html"], [data-target="pdv"]').forEach(el => {
+        if (!check('perm_pdv')) el.classList.add('hidden');
+        else el.classList.remove('hidden');
+    });
+    document.querySelectorAll('a[href*="vendas_operacao.html"], [data-target="vendas_operacao"]').forEach(el => {
+        if (!check('perm_vendas_op', 'perm_pdv')) el.classList.add('hidden');
+        else el.classList.remove('hidden');
+    });
+    document.querySelectorAll('a[href*="orcamentos.html"], [data-target="orcamentos"]').forEach(el => {
+        if (!check('perm_orcamentos', 'perm_pdv')) el.classList.add('hidden');
+        else el.classList.remove('hidden');
+    });
+    document.querySelectorAll('a[href*="fiscal.html"], [data-target="fiscal"]').forEach(el => {
+        if (!check('perm_fiscal', 'perm_gestao')) el.classList.add('hidden');
+        else el.classList.remove('hidden');
+    });
+
+    // 2.3 Cadastros
+    document.querySelectorAll('a[href*="produtos.html"], [data-target="produtos"]').forEach(el => {
+        if (!window.podeCadastrarProdutos(p)) el.classList.add('hidden');
+        else el.classList.remove('hidden');
+    });
+    document.querySelectorAll('a[href*="clientes.html"], [data-target="clientes"]').forEach(el => {
+        if (!window.podeCadastrarClientes(p)) el.classList.add('hidden');
+        else el.classList.remove('hidden');
+    });
+    document.querySelectorAll('a[href*="fornecedores.html"], [data-target="fornecedores"]').forEach(el => {
+        if (!window.podeCadastrarFornecedores(p)) el.classList.add('hidden');
+        else el.classList.remove('hidden');
+    });
+    document.querySelectorAll('a[href*="funcionarios.html"], a[href*="view=funcionarios"], [data-target="funcionarios"]').forEach(el => {
+        el.classList.add('hidden');
+    });
+
+    // 2.4 Gestão
+    document.querySelectorAll('a[href*="financeiro.html"], [data-target="financeiro"], a[href*="vendas_gestao.html"], [data-target="vendas_gestao"]').forEach(el => {
+        if (!check('perm_financeiro', 'perm_gestao')) el.classList.add('hidden');
+        else el.classList.remove('hidden');
+    });
+    document.querySelectorAll('a[href*="caixa.html"], [data-target="caixa"]').forEach(el => {
+        const permCaixa = p.perm_caixa !== undefined
+            ? (p.perm_caixa === true || p.perm_caixa === 'true')
+            : (check('perm_pdv') || check('perm_gestao'));
+        if (!permCaixa) el.classList.add('hidden');
+        else el.classList.remove('hidden');
+    });
+    document.querySelectorAll('a[href*="compras.html"], [data-target="compras"]').forEach(el => {
+        if (!check('perm_compras', 'perm_gestao')) el.classList.add('hidden');
+        else el.classList.remove('hidden');
+    });
+    document.querySelectorAll('a[href*="relatorios.html"], [data-target="relatorios"]').forEach(el => {
+        if (!check('perm_relatorios', 'perm_gestao')) el.classList.add('hidden');
+        else el.classList.remove('hidden');
+    });
+    document.querySelectorAll('a[href*="agenda.html"], [data-target="agenda"]').forEach(el => {
+        if (!check('perm_agenda', 'perm_gestao')) el.classList.add('hidden');
+        else el.classList.remove('hidden');
+    });
+    document.querySelectorAll('a[href*="marketing.html"], [data-target="marketing"]').forEach(el => {
+        if (!check('perm_marketing', 'perm_gestao')) el.classList.add('hidden');
+        else el.classList.remove('hidden');
+    });
+
+    // 2.5 Configurações
+    document.querySelectorAll('a[href*="sistema.html"], [data-target="config"]').forEach(el => {
+        if (!check('perm_config')) el.classList.add('hidden');
+        else el.classList.remove('hidden');
+    });
+
+    // 2.6 Esconde títulos de seções vazias no menu
+    esconderSecoesVaziasSidebar();
+
+    // 3. Controle de botões no PDV / Operação / Orçamentos
+    const btnNovoProd = document.getElementById('btn-pdv-novo-produto');
+    if (btnNovoProd) {
+        if (!window.podeCadastrarProdutos(p)) {
+            btnNovoProd.classList.add('hidden');
+        } else {
+            btnNovoProd.classList.remove('hidden');
+        }
     }
+
+    const btnNovoCli = document.getElementById('btn-pdv-novo-cliente');
+    const inputCliBusca = document.getElementById('pdv-cliente-busca');
+    if (btnNovoCli) {
+        if (!window.podeCadastrarClientes(p)) {
+            btnNovoCli.classList.add('hidden');
+            if (inputCliBusca) {
+                inputCliBusca.classList.remove('rounded-l-lg');
+                inputCliBusca.classList.add('rounded-lg');
+            }
+        } else {
+            btnNovoCli.classList.remove('hidden');
+            if (inputCliBusca) {
+                inputCliBusca.classList.remove('rounded-lg');
+                inputCliBusca.classList.add('rounded-l-lg');
+            }
+        }
+    }
+
+    if (typeof window.renderCarrinho === 'function' && typeof window.cart !== 'undefined' && Array.isArray(window.cart) && window.cart.length > 0) {
+        try { window.renderCarrinho(); } catch(eCarrinho) {}
+    }
+
+    // 4. Oculta atalhos e botões no Dashboard caso o usuário não tenha permissão
+    const btnNovoCliDash = document.querySelector('button[onclick*="clientes.html"]');
+    if (btnNovoCliDash && !window.podeCadastrarClientes(p)) btnNovoCliDash.classList.add('hidden');
+
+    const btnNovoProdDash = document.querySelector('button[onclick*="produtos.html"]');
+    if (btnNovoProdDash && !window.podeCadastrarProdutos(p)) btnNovoProdDash.classList.add('hidden');
+
+    const btnLancFinDash = document.querySelector('button[onclick*="financeiro.html"]');
+    if (btnLancFinDash && !p.perm_gestao) btnLancFinDash.classList.add('hidden');
+
+    const btnPdvDash = document.querySelector('button[onclick*="pdv.html"], a[href*="pdv.html"]');
+    if (btnPdvDash && !p.perm_pdv) btnPdvDash.classList.add('hidden');
+
+    // Desativa cliques nos cards de KPI do dashboard para módulos sem permissão
+    document.querySelectorAll('[onclick*="financeiro.html"]').forEach(card => {
+        if (!p.perm_gestao && card.tagName !== 'BUTTON') {
+            card.removeAttribute('onclick');
+            card.classList.remove('cursor-pointer');
+        }
+    });
+    document.querySelectorAll('[onclick*="vendas_operacao.html"]').forEach(card => {
+        if (!p.perm_pdv && card.tagName !== 'BUTTON') {
+            card.removeAttribute('onclick');
+            card.classList.remove('cursor-pointer');
+        }
+    });
+
+    return false;
 }
 
 // =======================================================
@@ -1242,34 +1594,13 @@ document.addEventListener('click', (e) => {
     
     const p = window.currentUserInfo;
     if (!p || p.isAdmin) return; // Se for admin, passa direto
-    
-    let bloqueado = false;
-    let mensagemBloqueio = '';
-    
-    // Checa as regras do link de destino
-    if (link.href.includes('cadastro.html') && link.href.includes('view=funcionarios')) {
-        bloqueado = true;
-        mensagemBloqueio = 'Acesso Negado: Apenas o Administrador pode gerenciar Funcionários.';
-    } else if (link.href.includes('cadastro.html') && !p.perm_cadastros) {
-        bloqueado = true;
-        mensagemBloqueio = 'Acesso Negado aos Cadastros.';
-    } else if ((link.href.includes('vendas_gestao.html') || link.href.includes('financeiro.html') || link.href.includes('relatorios.html') || link.href.includes('compras.html')) && !p.perm_gestao) {
-        bloqueado = true;
-        mensagemBloqueio = 'Acesso Negado à Gestão Financeira.';
-    } else if (link.href.includes('operacao.html') && !p.perm_pdv) {
-        bloqueado = true;
-        mensagemBloqueio = 'Acesso Negado ao PDV e Vendas.';
-    } else if (link.href.includes('sistema.html') && !p.perm_config) {
-        bloqueado = true;
-        mensagemBloqueio = 'Acesso Negado às Configurações do Sistema.';
-    } else if ((link.href.endsWith('index.html') || link.pathname === '/') && !p.perm_dashboard) {
-        bloqueado = true;
-        mensagemBloqueio = 'Acesso Negado ao Dashboard (Visão Geral).';
-    }
-    
-    if (bloqueado) {
-        e.preventDefault(); // Impede o navegador de ir pra página!
-        showToast(mensagemBloqueio, 'error');
+
+    // Validação estrita e centralizada de rotas para usuários comuns
+    const rotaCheck = window.verificarPermissaoRota(link.href, p);
+    if (!rotaCheck.permitido) {
+        e.preventDefault();
+        e.stopPropagation();
+        showToast(rotaCheck.motivo, 'error');
     }
 });
 
@@ -2871,4 +3202,196 @@ window.imprimirDanfeNativo = imprimirDanfeNativo;
 window.imprimirDanfeNativoGlobal = imprimirDanfeNativo;
 window.baixarXmlNativo = baixarXmlNativo;
 window.baixarXmlNativoGlobal = baixarXmlNativo;
+
+
+
+// =======================================================
+// GERENCIADOR DE OPCOES PERSONALIZADAS (MOVEIS E ESTOFADOS)
+// Disponivel em todas as telas: PDV, Produtos, Configuracoes, Orcamentos
+// =======================================================
+window.categoriaOpcaoPersAtiva = 'madeiras';
+
+window.getPersonalizacaoConfig = function() {
+    if (!window.db) window.db = {};
+    if (!window.db.config) window.db.config = {};
+    if (!window.db.config.personalizacao) {
+        window.db.config.personalizacao = {
+            madeiras: ['MDF Naval', 'MDF Cru', 'Madeira Maciça (Jequitibá)', 'Madeira Maciça (Angelim)', 'Compensado Naval'],
+            cores_madeira: ['Natural / Verniz Fosco', 'Natural / Verniz Brilho', 'Freijó', 'Castanho / Nogueira', 'Imbuia', 'Preto Fosco', 'Branco Acetinado', 'Off White'],
+            tecidos: ['Suede Tradicional', 'Suede Animale', 'Linho Puro', 'Bouclé', 'Couro Sintético (Courino)', 'Veludo Molhado', 'Facto Impermeável'],
+            cores_estofado: ['Bege Claro / Areia', 'Cinza Claro', 'Cinza Chumbo', 'Terracota', 'Verde Oliva', 'Azul Marinho', 'Preto', 'Off-White']
+        };
+    }
+    return window.db.config.personalizacao;
+};
+
+window.salvarConfiguracaoPersonalizacaoNoBanco = async function() {
+    try {
+        const pers = window.getPersonalizacaoConfig();
+        if (typeof window.getEmpresaRef === 'function') {
+            await window.getEmpresaRef().collection('configuracoes').doc('config').set({
+                personalizacao: pers
+            }, { merge: true });
+        }
+        if (typeof window.FCCache !== 'undefined' && window.db && window.db.config) {
+            window.FCCache.set('fc_moveis_config', window.db.config);
+        }
+        console.log('Opcoes de personalizacao sincronizadas com o banco!');
+    } catch (err) {
+        console.error('Erro ao sincronizar personalizacao:', err);
+    }
+};
+
+window.abrirModalOpcoesPersonalizadas = function(catInicial) {
+    if (catInicial) window.categoriaOpcaoPersAtiva = catInicial;
+    const modal = document.getElementById('modal-opcoes-personalizadas');
+    if (modal) modal.classList.remove('hidden');
+    window.alternarAbaOpcoesPersonalizacao(window.categoriaOpcaoPersAtiva || 'madeiras');
+};
+
+window.fecharModalOpcoesPersonalizadas = function() {
+    const modal = document.getElementById('modal-opcoes-personalizadas');
+    if (modal) modal.classList.add('hidden');
+    // Atualiza selects abertos se o modal de personalizacao do item estiver aberto
+    if (typeof window.atualizarSelectsModalPersonalizacao === 'function') {
+        window.atualizarSelectsModalPersonalizacao();
+    }
+};
+
+window.alternarAbaOpcoesPersonalizacao = function(cat) {
+    window.categoriaOpcaoPersAtiva = cat;
+    
+    // Atualiza botoes da aba
+    ['madeiras', 'cores_madeira', 'tecidos', 'cores_estofado'].forEach(k => {
+        const btn = document.getElementById('aba-pers-btn-' + k);
+        if (btn) {
+            if (k === cat) {
+                btn.className = 'py-2 px-3 rounded-lg font-bold text-xs transition border flex items-center justify-center gap-1.5 bg-amber-500/10 border-amber-500 text-amber-600 dark:text-amber-400 shadow-xs';
+            } else {
+                btn.className = 'py-2 px-3 rounded-lg font-bold text-xs transition border flex items-center justify-center gap-1.5 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800';
+            }
+        }
+    });
+
+    const labelMap = {
+        madeiras: 'Adicionar Tipo de Madeira (Ex: MDF Naval, Madeira Maciça, Cedro):',
+        cores_madeira: 'Adicionar Cor / Acabamento da Madeira (Ex: Freijó, Imbuia, Verniz Fosco):',
+        tecidos: 'Adicionar Tipo de Tecido / Estofado (Ex: Linho Puro, Bouclé, Suede, Couro):',
+        cores_estofado: 'Adicionar Cor do Tecido (Ex: Areia, Terracota, Cinza Chumbo):'
+    };
+
+    const lbl = document.getElementById('label-nova-opcao-pers');
+    if (lbl) lbl.innerText = labelMap[cat] || 'Adicionar Opção:';
+
+    const input = document.getElementById('input-nova-opcao-pers');
+    if (input) {
+        input.value = '';
+        input.focus();
+    }
+
+    window.renderizarListaTagsOpcoesPers();
+};
+
+window.renderizarListaTagsOpcoesPers = function() {
+    const cat = window.categoriaOpcaoPersAtiva || 'madeiras';
+    const pers = window.getPersonalizacaoConfig();
+    const lista = pers[cat] || [];
+    
+    const countEl = document.getElementById('contador-opcoes-pers');
+    if (countEl) countEl.innerText = lista.length + (lista.length === 1 ? ' cadastrada' : ' cadastradas');
+
+    const container = document.getElementById('lista-opcoes-pers-tags');
+    if (!container) return;
+
+    if (lista.length === 0) {
+        container.innerHTML = '<div class="text-slate-400 text-xs py-4 text-center w-full">Nenhuma opção cadastrada nesta categoria. Adicione a primeira acima!</div>';
+        return;
+    }
+
+    container.innerHTML = lista.map((item, idx) => {
+        const val = typeof item === 'string' ? item : (item.nome || '');
+        return `<span class="inline-flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs group hover:border-amber-400 dark:hover:border-amber-500 transition">
+            <span>${val}</span>
+            <button type="button" onclick="removerOpcaoPersonalizacao('${cat}', ${idx})" class="text-slate-400 hover:text-red-500 transition p-0.5 rounded" title="Excluir opção">
+                <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
+        </span>`;
+    }).join('');
+};
+
+window.adicionarOpcaoPersonalizacaoAtiva = async function() {
+    const cat = window.categoriaOpcaoPersAtiva || 'madeiras';
+    const input = document.getElementById('input-nova-opcao-pers');
+    if (!input) return;
+    const val = input.value.trim();
+    if (!val) {
+        if (typeof showToast === 'function') showToast('Digite o nome da opção a cadastrar', 'info');
+        return;
+    }
+
+    const pers = window.getPersonalizacaoConfig();
+    if (!pers[cat]) pers[cat] = [];
+
+    // Checar duplicidade
+    const jaExiste = pers[cat].some(opt => (typeof opt === 'string' ? opt : opt.nome).toLowerCase() === val.toLowerCase());
+    if (jaExiste) {
+        if (typeof showToast === 'function') showToast('Esta opção já está cadastrada!', 'error');
+        return;
+    }
+
+    pers[cat].push(val);
+    input.value = '';
+    window.renderizarListaTagsOpcoesPers();
+    await window.salvarConfiguracaoPersonalizacaoNoBanco();
+
+    if (typeof showToast === 'function') showToast('Opção adicionada com sucesso!', 'success');
+
+    if (typeof window.atualizarSelectsModalPersonalizacao === 'function') {
+        window.atualizarSelectsModalPersonalizacao(cat, val);
+    }
+};
+
+window.removerOpcaoPersonalizacao = async function(cat, idx) {
+    const pers = window.getPersonalizacaoConfig();
+    if (!pers[cat] || !pers[cat][idx]) return;
+    const nome = typeof pers[cat][idx] === 'string' ? pers[cat][idx] : pers[cat][idx].nome;
+    
+    pers[cat].splice(idx, 1);
+    window.renderizarListaTagsOpcoesPers();
+    await window.salvarConfiguracaoPersonalizacaoNoBanco();
+
+    if (typeof showToast === 'function') showToast(`Opção "${nome}" removida.`, 'info');
+
+    if (typeof window.atualizarSelectsModalPersonalizacao === 'function') {
+        window.atualizarSelectsModalPersonalizacao();
+    }
+};
+
+window.cadastrarOpcaoRapida = function(cat) {
+    const nomesAmigaveis = {
+        madeiras: 'Tipo de Madeira',
+        cores_madeira: 'Cor / Acabamento da Madeira',
+        tecidos: 'Tipo de Estofado / Tecido',
+        cores_estofado: 'Cor do Estofado'
+    };
+    const titulo = nomesAmigaveis[cat] || 'Opção';
+    const nova = prompt(`Cadastrar novo ${titulo}:\n(Ficará salvo no sistema para futuras vendas)`);
+    if (!nova || !nova.trim()) return;
+
+    const val = nova.trim();
+    const pers = window.getPersonalizacaoConfig();
+    if (!pers[cat]) pers[cat] = [];
+
+    const jaExiste = pers[cat].some(opt => (typeof opt === 'string' ? opt : opt.nome).toLowerCase() === val.toLowerCase());
+    if (!jaExiste) {
+        pers[cat].push(val);
+        window.salvarConfiguracaoPersonalizacaoNoBanco();
+    }
+
+    if (typeof window.atualizarSelectsModalPersonalizacao === 'function') {
+        window.atualizarSelectsModalPersonalizacao(cat, val);
+    }
+
+    if (typeof showToast === 'function') showToast(`"${val}" adicionado às opções!`, 'success');
+};
 

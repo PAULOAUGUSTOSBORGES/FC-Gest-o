@@ -115,6 +115,10 @@ function mudarVisaoLocal(viewId) {
 }
 
 function inicializarOperacao() {
+    if (window.__paginaBloqueadaPorPermissao || (typeof window.verificarPermissaoRota === 'function' && !window.verificarPermissaoRota(window.location.pathname).permitido)) {
+        console.warn('Bloqueando execução: usuário sem permissão para esta rota.');
+        return;
+    }
     aplicarIdentidadeVisualNoMenu(); 
 
     // Cache inteligente: serve dados instantaneamente do sessionStorage
@@ -281,6 +285,10 @@ function filtrarClientesPDV(termo) {
 }
 
 function abrirModalClienteRapido() {
+    if (typeof window.podeCadastrarClientes === 'function' && !window.podeCadastrarClientes()) {
+        showToast('Acesso Negado: Você não tem permissão para cadastrar clientes.', 'error');
+        return;
+    }
     document.getElementById('cli-id').value = '';
     document.getElementById('cli-nome').value = '';
     document.getElementById('cli-doc').value = '';
@@ -323,6 +331,10 @@ async function buscarCNPJ(prefix) {
 }
 
 async function salvarCliente() {
+    if (typeof window.podeCadastrarClientes === 'function' && !window.podeCadastrarClientes()) {
+        showToast('Acesso Negado: Você não tem permissão para cadastrar clientes.', 'error');
+        return;
+    }
     const nome = document.getElementById('cli-nome').value.trim();
     if(!nome) return showToast('Nome Completo / Razão Social é obrigatório!', 'error');
 
@@ -374,6 +386,10 @@ function abaModal(prefix, nomeAba) {
 }
 
 function abrirModalProduto(id = null) {
+    if (typeof window.podeCadastrarProdutos === 'function' && !window.podeCadastrarProdutos()) {
+        showToast('Acesso Negado: Você não tem permissão para cadastrar ou editar produtos.', 'error');
+        return;
+    }
     const divAcao = document.getElementById('div-acao-vinculo-xml'); if(divAcao) divAcao.classList.add('hidden');
     const titleEl = document.getElementById('modal-produto-title');
     abaModal('prod', 'dados');
@@ -451,6 +467,10 @@ function processarFoto(event) {
 }
 
 async function salvarProdutoRapido() {
+    if (typeof window.podeCadastrarProdutos === 'function' && !window.podeCadastrarProdutos()) {
+        showToast('Acesso Negado: Você não tem permissão para cadastrar ou editar produtos.', 'error');
+        return;
+    }
     const idEl = document.getElementById('prod-id');
     const nomeEl = document.getElementById('prod-nome');
     const precoEl = document.getElementById('prod-preco');
@@ -741,6 +761,7 @@ function enviarPDFWhatsApp(id) {
                 <strong>DADOS DA OPERAÇÃO</strong><br>
                 Nº: #${numPedStr}<br>
                 Data Orig: ${v.data ? new Date(v.data).toLocaleString('pt-BR') : '-'}<br>
+                ${(v.dataEntrega || (v.servicoDetalhes && v.servicoDetalhes.prazo)) ? `Previsão Entrega: <strong>${(v.dataEntrega || v.servicoDetalhes.prazo).includes('-') ? (v.dataEntrega || v.servicoDetalhes.prazo).split('-').reverse().join('/') : (v.dataEntrega || v.servicoDetalhes.prazo)}</strong><br>` : ''}
                 Op: VIA WHATSAPP
             </div>
         </div>
@@ -910,7 +931,7 @@ function imprimirContratoObj(v) {
             ${fotoHtml}
             <div style="flex: 1;">
                 <strong>PRODUTO/SERVIÇO ${idx + 1}</strong><br>
-                Descrição: ${i.nome} ${i.obsVenda ? ` - Obs: ${i.obsVenda}` : ''}<br>
+                Descrição: ${i.nome} ${i.obsVenda ? ` - Obs: ${i.obsVenda}` : ''}<br>${typeof formatarCustomizacaoContratoTexto === "function" ? formatarCustomizacaoContratoTexto(i.customizacao) : ""}
                 Quantidade: ${i.qtd} unidade(s)<br>
                 Valor: ${formatMoney(i.preco * i.qtd)}<br>
                 Situação do produto: ( ) Produto em estoque &nbsp;&nbsp;&nbsp; ( ) Produto sob fabricação
@@ -919,7 +940,21 @@ function imprimirContratoObj(v) {
         `;
     }).join('');
 
-    const prazoOs = v.servicoDetalhes && v.servicoDetalhes.prazo ? v.servicoDetalhes.prazo.split('-').reverse().join('/') : '___/___/20__';
+    let dataEntregaFormatada = '___/___/20__';
+    const dataEntregaBruta = v.dataEntrega || (v.servicoDetalhes && v.servicoDetalhes.prazo ? v.servicoDetalhes.prazo : '');
+    if (dataEntregaBruta) {
+        if (dataEntregaBruta.includes('-')) {
+            const partes = dataEntregaBruta.split('T')[0].split('-');
+            if (partes.length === 3) {
+                dataEntregaFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+            } else {
+                dataEntregaFormatada = dataEntregaBruta;
+            }
+        } else {
+            dataEntregaFormatada = dataEntregaBruta;
+        }
+    }
+    const prazoOs = dataEntregaFormatada;
     const dataEmissaoOperação = v.data ? new Date(v.data).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
 
     const html = `
@@ -955,8 +990,10 @@ function imprimirContratoObj(v) {
         <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">PRAZO DE ENTREGA E GARANTIA</h3>
         <p style="margin-top: 0; text-align: justify;">Caso o produto esteja disponível em estoque, o prazo de entrega será de até 3 (três) dias úteis após a confirmação do pagamento.<br>Caso o produto seja fabricado sob encomenda, o prazo de produção e entrega será de até 30 (trinta) dias corridos após a confirmação do pedido e pagamento da entrada.<br>O produto/serviço possui garantia legal de 90 (noventa) dias contra defeitos de fabricação.<br>Os prazos poderão sofrer alterações em casos de força maior, problemas logísticos, transporte, fornecedores ou condições climáticas.</p>
 
+        ${dataEntregaFormatada !== '___/___/20__' ? `<p style="margin-top: 8px; font-weight: bold; background-color: #f1f5f9; padding: 6px 10px; border-left: 4px solid #2563eb; border-radius: 2px;">Data Prevista de Entrega Acordada: <span style="font-size: 15px; color: #1e3a8a;">${dataEntregaFormatada}</span></p>` : ''}
+
         <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">LOCAL DE ENTREGA</h3>
-        <p style="margin-top: 0;"><strong>Endereço:</strong> ${cliEndCompleto}<br><strong>Data prevista:</strong> ${prazoOs}</p>
+        <p style="margin-top: 0;"><strong>Endereço:</strong> ${cliEndCompleto}<br><strong>Data prevista de entrega:</strong> <span style="font-weight: bold; ${dataEntregaFormatada !== '___/___/20__' ? 'color: #1e3a8a; font-size: 15px;' : ''}">${dataEntregaFormatada}</span></p>
 
         <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">TRANSPORTE E MONTAGEM</h3>
         <p style="margin-top: 0;">( ) Entrega realizada pela empresa &nbsp;&nbsp;&nbsp; ( ) Retirada pelo cliente<br>Montagem: ( ) Inclusa &nbsp;&nbsp;&nbsp; ( ) Não inclusa<br>Caso a entrega seja realizada pela empresa, o cliente deve garantir acesso adequado ao local.</p>
@@ -1061,6 +1098,18 @@ function prepararPDV() {
     }
     
     togglePanelServico();
+    
+    const elDataEntPdv = document.getElementById('pdv-data-entrega');
+    const elOsPrazoPdv = document.getElementById('os-prazo');
+    if (elDataEntPdv && elOsPrazoPdv && !elDataEntPdv._syncAttached) {
+        elDataEntPdv._syncAttached = true;
+        elDataEntPdv.addEventListener('change', () => {
+            if (!elOsPrazoPdv.value) elOsPrazoPdv.value = elDataEntPdv.value;
+        });
+        elOsPrazoPdv.addEventListener('change', () => {
+            if (!elDataEntPdv.value) elDataEntPdv.value = elOsPrazoPdv.value;
+        });
+    }
 }
 
 function togglePanelServico() {
@@ -1190,6 +1239,7 @@ function pdvMudarObsItem(i, val) {
 }
 
 function renderCarrinho() {
+    window.cart = cart;
     document.getElementById('pdv-carrinho-body').innerHTML = cart.map((item, i) => { 
         const fHtml = item.foto ? `<img src="${item.foto}" onclick="event.stopPropagation(); abrirZoom(this.src)" class="w-10 h-10 rounded object-cover border border-slate-200 dark:border-slate-700 mx-auto cursor-zoom-in hover:opacity-80 transition img-zoom-trigger" title="Ver foto em tela cheia">` : `<div class="w-10 h-10 mx-auto rounded bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-400 text-xs border border-slate-200 dark:border-slate-700"><i class="fa-regular fa-image"></i></div>`; 
         return `
@@ -1197,8 +1247,8 @@ function renderCarrinho() {
             <td class="py-2 text-center">${fHtml}</td>
             <td class="py-2 text-slate-800 dark:text-slate-100 font-medium">
                 ${item.nome}
-                ${item.id ? `<button onclick="abrirModalProduto('${item.id}')" class="ml-1 text-slate-400 hover:text-blue-500 transition-colors" title="Editar Cadastro do Produto"><i class="fa-solid fa-pencil text-xs"></i></button>` : ''}
-                <input type="text" placeholder="Obs do item (cor, lado, etc...)" value="${item.obsVenda || ''}" onchange="pdvMudarObsItem(${i}, this.value)" class="w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-[10px] outline-none focus:border-blue-400 placeholder:text-slate-300 dark:text-white">
+                ${(item.id && (typeof window.podeCadastrarProdutos === 'function' ? window.podeCadastrarProdutos() : true)) ? `<button onclick="abrirModalProduto('${item.id}')" class="ml-1 text-slate-400 hover:text-blue-500 transition-colors" title="Editar Cadastro do Produto"><i class="fa-solid fa-pencil text-xs"></i></button>` : ''}
+                <div class="flex items-center gap-1.5 mt-1"><input type="text" placeholder="Obs rapida..." value="${item.obsVenda || ''}" onchange="pdvMudarObsItem(${i}, this.value)" class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-[10px] outline-none focus:border-blue-400 placeholder:text-slate-300 dark:text-white"><button type="button" onclick="abrirModalPersonalizacao(${i})" class="px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 transition ${item.customizacao ? 'bg-amber-500 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-amber-100 dark:hover:bg-amber-950/50 hover:text-amber-700'}" title="Personalizar Madeira, Tecido e Medidas"><i class="fa-solid fa-couch"></i> ${item.customizacao ? 'Personalizado' : 'Personalizar'}</button></div>${typeof formatarResumoCustomizacaoHtml === 'function' ? formatarResumoCustomizacaoHtml(item.customizacao) : ''}
             </td>
             <td class="py-2 text-center">
                 <div class="inline-flex items-center justify-center bg-slate-100 dark:bg-slate-700/60 rounded-lg p-0.5 border border-slate-300 dark:border-slate-600">
@@ -1283,6 +1333,9 @@ function pdvLimpar() {
     
     if(document.getElementById('pdv-obs')) {
         document.getElementById('pdv-obs').value = ''; 
+    }
+    if(document.getElementById('pdv-data-entrega')) {
+        document.getElementById('pdv-data-entrega').value = '';
     }
     if(document.getElementById('os-prazo')) { 
         document.getElementById('os-prazo').value = ''; 
@@ -1577,7 +1630,7 @@ async function finalizarVendaMultipla() {
     
     const isEdicao = window.vendaEmEdicao != null;
     const vendaId = isEdicao ? window.vendaEmEdicao.id : Date.now();
-    const dataIso = (isEdicao && window.vendaEmEdicao && window.vendaEmEdicao.data) ? window.vendaEmEdicao.data : new Date().toISOString();
+    const dataIso = (isEdicao && window.vendaEmEdicao && window.vendaEmEdicao.data && !(window.vendaEmEdicao.tipo === 'ORÇAMENTO' && tipoVenda !== 'ORÇAMENTO')) ? window.vendaEmEdicao.data : new Date().toISOString();
     
     let numeroPedido = 1;
     if (isEdicao && window.vendaEmEdicao && window.vendaEmEdicao.numeroPedido) {
@@ -1589,7 +1642,11 @@ async function finalizarVendaMultipla() {
     }
     const numPedStr = String(numeroPedido).padStart(4, '0');
 
-    const osPrazo = document.getElementById('os-prazo') ? document.getElementById('os-prazo').value : ''; 
+    const osPrazo = document.getElementById('os-prazo') ? document.getElementById('os-prazo').value : '';
+    const elDataEnt = document.getElementById('pdv-data-entrega');
+    const dataEntregaInput = elDataEnt ? elDataEnt.value : '';
+    const dataEntregaFinal = dataEntregaInput || osPrazo || '';
+    const dataEntregaFormatadaRecibo = dataEntregaFinal ? (dataEntregaFinal.includes('-') ? dataEntregaFinal.split('-').reverse().join('/') : dataEntregaFinal) : ''; 
     const osGarantia = document.getElementById('os-garantia') ? document.getElementById('os-garantia').value : ''; 
     const osDesc = document.getElementById('os-desc') ? document.getElementById('os-desc').value.trim() : ''; 
     const osFotosParaSalvar = [...osFotosArray]; 
@@ -1619,6 +1676,9 @@ async function finalizarVendaMultipla() {
                 <strong>DADOS DA OPERAÇÃO</strong><br>
                 Nº: #${numPedStr}<br>
                 Data Orig: ${dataIso ? new Date(dataIso).toLocaleString('pt-BR') : '-'}<br>
+
+                ${dataEntregaFormatadaRecibo ? `Previsão Entrega: <strong>${dataEntregaFormatadaRecibo}</strong><br>` : ''}
+
                 Op: VENDA PDV
             </div>
         </div>
@@ -1743,6 +1803,7 @@ async function finalizarVendaMultipla() {
             custo: i.custo || 0,
             qtd: i.qtd || 1,
             obsVenda: i.obsVenda || '',
+              customizacao: i.customizacao || null,
             ncm: p.ncm || i.ncm || '',
             cfop: p.cfop || i.cfop || '5102',
             csosn: p.csosn || i.csosn || '102',
@@ -1773,8 +1834,9 @@ async function finalizarVendaMultipla() {
         pagamentos: pagamentosVendaAtual ? JSON.parse(JSON.stringify(pagamentosVendaAtual)) : [],
         vendedor: vend || '', 
         obs: obsTexto || '', 
-        tipo: tipoVenda || 'VENDA', 
-        servicoDetalhes: isServico ? { prazo: osPrazo || '', garantia: osGarantia || '', desc: osDesc || '', fotos: osFotosParaSalvar || [] } : null, 
+        tipo: tipoVenda || 'VENDA',
+        dataEntrega: dataEntregaFinal || '', 
+        servicoDetalhes: isServico ? { prazo: dataEntregaFinal || osPrazo || '', garantia: osGarantia || '', desc: osDesc || '', fotos: osFotosParaSalvar || [] } : null, 
         itens: itensLimpados 
     };
     
@@ -2129,7 +2191,7 @@ function renderVendas() {
             <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
                 <td class="p-3 text-slate-500 dark:text-slate-400 text-xs">${dataRender}</td>
                 <td class="p-3 font-mono font-bold text-slate-700 dark:text-slate-200">${badgeTipo}#${numPedStr}</td>
-                <td class="p-3 font-bold text-slate-800 dark:text-slate-100">${clienteRender} <br> <span class="text-[10px] text-slate-400 font-normal">Vend: ${vendRender}</span></td>
+                <td class="p-3 font-bold text-slate-800 dark:text-slate-100">${clienteRender}${(v.dataEntrega || (v.servicoDetalhes && v.servicoDetalhes.prazo)) ? `<br><span class="text-[10px] text-blue-600 dark:text-blue-400 font-semibold inline-flex items-center gap-1 mt-0.5"><i class="fa-solid fa-truck text-[9px]"></i> Entrega: ${(v.dataEntrega || v.servicoDetalhes.prazo).includes('-') ? (v.dataEntrega || v.servicoDetalhes.prazo).split('-').reverse().join('/') : (v.dataEntrega || v.servicoDetalhes.prazo)}</span>` : ''} <br> <span class="text-[10px] text-slate-400 font-normal">Vend: ${vendRender}</span></td>
                 <td class="p-3"><span class="bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap">${pagRender}</span></td>
                 <td class="p-3 text-right font-black text-slate-700 dark:text-slate-200">${typeof formatMoney === 'function' ? formatMoney(v.tot || 0) : (v.tot || 0)}</td>
                 <td class="p-3 text-center flex flex-wrap justify-center gap-1 print:hidden">
@@ -2189,7 +2251,7 @@ function renderOrcamentos() {
             <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
                 <td class="p-3 text-slate-500 dark:text-slate-400 text-xs">${dataRender}</td>
                 <td class="p-3 font-mono font-bold text-slate-700 dark:text-slate-200">#${numPedStr}</td>
-                <td class="p-3 font-bold text-slate-800 dark:text-slate-100">${clienteRender} <br> <span class="text-[10px] text-slate-400 font-normal">Vend: ${vendRender}</span></td>
+                <td class="p-3 font-bold text-slate-800 dark:text-slate-100">${clienteRender}${(v.dataEntrega || (v.servicoDetalhes && v.servicoDetalhes.prazo)) ? `<br><span class="text-[10px] text-blue-600 dark:text-blue-400 font-semibold inline-flex items-center gap-1 mt-0.5"><i class="fa-solid fa-truck text-[9px]"></i> Entrega: ${(v.dataEntrega || v.servicoDetalhes.prazo).includes('-') ? (v.dataEntrega || v.servicoDetalhes.prazo).split('-').reverse().join('/') : (v.dataEntrega || v.servicoDetalhes.prazo)}</span>` : ''} <br> <span class="text-[10px] text-slate-400 font-normal">Vend: ${vendRender}</span></td>
                 <td class="p-3 text-center"><span class="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-[10px] font-bold">${qtdItens} itens</span></td>
                 <td class="p-3 text-right font-black text-slate-700 dark:text-slate-200">${typeof formatMoney === 'function' ? formatMoney(v.tot || 0) : (v.tot || 0)}</td>
                 <td class="p-3 text-center flex flex-wrap justify-center gap-1 print:hidden">
@@ -2246,7 +2308,14 @@ function verDetalhesVenda(id) {
             </div>`;
     }
     
-    document.getElementById('det-venda-obs').innerHTML = (v.obs ? v.obs : '<span class="text-slate-400 italic">Nenhuma observa\u00e7\u00e3o geral vinculada a esta venda.</span>') + osInfoHtml;
+    let entregaInfoModal = '';
+    const dEntVal = v.dataEntrega || (v.servicoDetalhes ? v.servicoDetalhes.prazo : '');
+    if (dEntVal) {
+        const dEntFormat = dEntVal.includes('-') ? dEntVal.split('-').reverse().join('/') : dEntVal;
+        entregaInfoModal = `<div class="mt-3 bg-blue-50 dark:bg-blue-900/20 p-2.5 rounded-lg border border-blue-200 dark:border-blue-800/40 text-xs text-blue-900 dark:text-blue-200 flex items-center gap-2"><i class="fa-solid fa-truck-fast text-blue-600 dark:text-blue-400 text-sm"></i> <strong>Previsão de Entrega:</strong> <span class="font-bold text-sm text-blue-700 dark:text-blue-300">${dEntFormat}</span></div>`;
+    }
+    
+    document.getElementById('det-venda-obs').innerHTML = (v.obs ? v.obs : '<span class="text-slate-400 italic">Nenhuma observação geral vinculada a esta venda.</span>') + entregaInfoModal + osInfoHtml;
     
     let totalCusto = 0;
     document.getElementById('det-venda-itens').innerHTML = (v.itens || []).map(i => {
@@ -2524,3 +2593,219 @@ document.addEventListener('click', function(e) {
 });
 
 
+
+
+// =======================================================
+// CONTROLE DO MODAL DE PERSONALIZACAO DE MOVEIS E ESTOFADOS
+// =======================================================
+window.atualizarSelectsModalPersonalizacao = function(catAlterada, valorSelecionar) {
+    const persConfig = (typeof window.getPersonalizacaoConfig === 'function') 
+        ? window.getPersonalizacaoConfig() 
+        : ((window.db && window.db.config && window.db.config.personalizacao) || {});
+
+    const popularSelect = (idSelect, lista, selecionado) => {
+        const sel = document.getElementById(idSelect);
+        if (!sel) return;
+        const valorAtual = selecionado !== undefined ? selecionado : sel.value;
+        let html = '<option value="">(Padrão / Não se aplica)</option>';
+        (lista || []).forEach(opt => {
+            const val = typeof opt === 'string' ? opt : (opt.nome || '');
+            const isSel = (valorAtual && valorAtual === val) ? 'selected' : '';
+            html += `<option value="${val}" ${isSel}>${val}</option>`;
+        });
+        if (valorAtual && !(lista || []).some(o => (typeof o === 'string' ? o : o.nome) === valorAtual)) {
+            html += `<option value="${valorAtual}" selected>${valorAtual}</option>`;
+        }
+        sel.innerHTML = html;
+    };
+
+    const selMadeira = document.getElementById('modal-pers-madeira');
+    const selCorMadeira = document.getElementById('modal-pers-cor-madeira');
+    const selEstofado = document.getElementById('modal-pers-estofado');
+    const selCorEstofado = document.getElementById('modal-pers-cor-estofado');
+
+    if (selMadeira) popularSelect('modal-pers-madeira', persConfig.madeiras, catAlterada === 'madeiras' ? valorSelecionar : selMadeira.value);
+    if (selCorMadeira) popularSelect('modal-pers-cor-madeira', persConfig.cores_madeira, catAlterada === 'cores_madeira' ? valorSelecionar : selCorMadeira.value);
+    if (selEstofado) popularSelect('modal-pers-estofado', persConfig.tecidos, catAlterada === 'tecidos' ? valorSelecionar : selEstofado.value);
+    if (selCorEstofado) popularSelect('modal-pers-cor-estofado', persConfig.cores_estofado, catAlterada === 'cores_estofado' ? valorSelecionar : selCorEstofado.value);
+};
+
+window.abrirModalPersonalizacao = function(idx) {
+    const currentCart = (typeof cart !== 'undefined' && Array.isArray(cart)) ? cart : (window.cart || []);
+    if (!currentCart || !currentCart[idx]) {
+        console.error('Item não encontrado no carrinho para personalizar. Índice:', idx);
+        return;
+    }
+    const item = currentCart[idx];
+    
+    const idxInput = document.getElementById('modal-pers-item-idx');
+    if (idxInput) idxInput.value = idx;
+
+    const nomeEl = document.getElementById('modal-pers-prod-nome');
+    if (nomeEl) nomeEl.innerText = item.nome || 'Produto';
+    
+    const fotoDiv = document.getElementById('modal-pers-prod-foto');
+    if (fotoDiv) {
+        if (item.foto) {
+            fotoDiv.innerHTML = `<img src="${item.foto}" class="w-full h-full object-cover">`;
+        } else {
+            fotoDiv.innerHTML = `<i class="fa-solid fa-couch text-lg text-amber-600"></i>`;
+        }
+    }
+
+    const persConfig = (typeof window.getPersonalizacaoConfig === 'function')
+        ? window.getPersonalizacaoConfig()
+        : ((window.db && window.db.config && window.db.config.personalizacao) || {});
+
+    const popularSelect = (idSelect, lista, selecionado) => {
+        const sel = document.getElementById(idSelect);
+        if (!sel) return;
+        let html = '<option value="">(Padrão / Não se aplica)</option>';
+        (lista || []).forEach(opt => {
+            const val = typeof opt === 'string' ? opt : (opt.nome || '');
+            const isSel = (selecionado && selecionado === val) ? 'selected' : '';
+            html += `<option value="${val}" ${isSel}>${val}</option>`;
+        });
+        if (selecionado && !(lista || []).some(o => (typeof o === 'string' ? o : o.nome) === selecionado)) {
+            html += `<option value="${selecionado}" selected>${selecionado}</option>`;
+        }
+        sel.innerHTML = html;
+    };
+
+    const c = item.customizacao || {};
+    popularSelect('modal-pers-madeira', persConfig.madeiras, c.madeira || '');
+    popularSelect('modal-pers-cor-madeira', persConfig.cores_madeira, c.corMadeira || '');
+    popularSelect('modal-pers-estofado', persConfig.tecidos, c.estofado || '');
+    popularSelect('modal-pers-cor-estofado', persConfig.cores_estofado, c.corEstofado || '');
+
+    const m = c.medidas || {};
+    const medL = document.getElementById('modal-pers-med-l');
+    const medA = document.getElementById('modal-pers-med-a');
+    const medP = document.getElementById('modal-pers-med-p');
+    const obsEl = document.getElementById('modal-pers-obs');
+    if (medL) medL.value = m.largura || '';
+    if (medA) medA.value = m.altura || '';
+    if (medP) medP.value = m.profundidade || '';
+    if (obsEl) obsEl.value = c.obsExtra || '';
+
+    const modal = document.getElementById('modal-personalizacao-item');
+    if (modal) {
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            const fTarget = document.getElementById('modal-pers-madeira');
+            if (fTarget) fTarget.focus();
+        }, 50);
+    }
+};
+
+window.fecharModalPersonalizacao = function() {
+    const modal = document.getElementById('modal-personalizacao-item');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.salvarPersonalizacaoItem = function() {
+    const currentCart = (typeof cart !== 'undefined' && Array.isArray(cart)) ? cart : (window.cart || []);
+    const idxInput = document.getElementById('modal-pers-item-idx');
+    const idx = idxInput ? parseInt(idxInput.value, 10) : NaN;
+    if (isNaN(idx) || !currentCart || !currentCart[idx]) return;
+
+    const madeira = (document.getElementById('modal-pers-madeira')?.value || '').trim();
+    const corMadeira = (document.getElementById('modal-pers-cor-madeira')?.value || '').trim();
+    const estofado = (document.getElementById('modal-pers-estofado')?.value || '').trim();
+    const corEstofado = (document.getElementById('modal-pers-cor-estofado')?.value || '').trim();
+    const medL = (document.getElementById('modal-pers-med-l')?.value || '').trim();
+    const medA = (document.getElementById('modal-pers-med-a')?.value || '').trim();
+    const medP = (document.getElementById('modal-pers-med-p')?.value || '').trim();
+    const obsExtra = (document.getElementById('modal-pers-obs')?.value || '').trim();
+
+    const temDados = madeira || corMadeira || estofado || corEstofado || medL || medA || medP || obsExtra;
+
+    if (temDados) {
+        currentCart[idx].customizacao = {
+            madeira: madeira,
+            corMadeira: corMadeira,
+            estofado: estofado,
+            corEstofado: corEstofado,
+            medidas: {
+                largura: medL,
+                altura: medA,
+                profundidade: medP
+            },
+            obsExtra: obsExtra
+        };
+    } else {
+        delete currentCart[idx].customizacao;
+    }
+
+    window.fecharModalPersonalizacao();
+    if (typeof renderCarrinho === 'function') renderCarrinho();
+    if (typeof showToast === 'function') showToast('Personalização aplicada ao item!', 'success');
+};
+
+window.removerPersonalizacaoItem = function() {
+    const currentCart = (typeof cart !== 'undefined' && Array.isArray(cart)) ? cart : (window.cart || []);
+    const idxInput = document.getElementById('modal-pers-item-idx');
+    const idx = idxInput ? parseInt(idxInput.value, 10) : NaN;
+    if (!isNaN(idx) && currentCart && currentCart[idx]) {
+        delete currentCart[idx].customizacao;
+    }
+    window.fecharModalPersonalizacao();
+    if (typeof renderCarrinho === 'function') renderCarrinho();
+    if (typeof showToast === 'function') showToast('Personalização removida.', 'info');
+};
+
+function formatarResumoCustomizacaoHtml(c) {
+    if (!c) return '';
+    const badges = [];
+    if (c.madeira || c.corMadeira) {
+        const txt = [c.madeira, c.corMadeira].filter(Boolean).join(' - ');
+        badges.push(`<span class="inline-flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 px-1.5 py-0.5 rounded text-[10px] font-bold"><i class="fa-solid fa-tree text-[9px]"></i> ${txt}</span>`);
+    }
+    if (c.estofado || c.corEstofado) {
+        const txt = [c.estofado, c.corEstofado].filter(Boolean).join(' - ');
+        badges.push(`<span class="inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50 px-1.5 py-0.5 rounded text-[10px] font-bold"><i class="fa-solid fa-rug text-[9px]"></i> ${txt}</span>`);
+    }
+    const m = c.medidas || {};
+    const partesMed = [];
+    if (m.largura) partesMed.push(`L:${m.largura}`);
+    if (m.altura) partesMed.push(`A:${m.altura}`);
+    if (m.profundidade) partesMed.push(`P:${m.profundidade}`);
+    if (partesMed.length > 0) {
+        badges.push(`<span class="inline-flex items-center gap-1 bg-purple-50 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50 px-1.5 py-0.5 rounded text-[10px] font-bold"><i class="fa-solid fa-ruler-combined text-[9px]"></i> ${partesMed.join(' x ')}</span>`);
+    }
+    if (c.obsExtra) {
+        badges.push(`<span class="inline-flex items-center gap-1 bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded text-[10px] font-semibold" title="Obs do Móvel: ${c.obsExtra}"><i class="fa-solid fa-note-sticky text-[9px] text-amber-600"></i> Obs Móvel: ${c.obsExtra}</span>`);
+    }
+    if (badges.length === 0) return '';
+    return `<div class="flex flex-wrap gap-1 mt-1">${badges.join('')}</div>`;
+}
+
+function formatarCustomizacaoContratoTexto(c) {
+    if (!c) return '';
+    const linhas = [];
+    if (c.madeira || c.corMadeira) {
+        const part = [];
+        if (c.madeira) part.push(`Madeira: <strong>${c.madeira}</strong>`);
+        if (c.corMadeira) part.push(`Acabamento/Cor: <strong>${c.corMadeira}</strong>`);
+        linhas.push(part.join(' | '));
+    }
+    if (c.estofado || c.corEstofado) {
+        const part = [];
+        if (c.estofado) part.push(`Estofado/Tecido: <strong>${c.estofado}</strong>`);
+        if (c.corEstofado) part.push(`Cor: <strong>${c.corEstofado}</strong>`);
+        linhas.push(part.join(' | '));
+    }
+    const m = c.medidas || {};
+    const medArr = [];
+    if (m.largura) medArr.push(`Largura: ${m.largura}`);
+    if (m.altura) medArr.push(`Altura: ${m.altura}`);
+    if (m.profundidade) medArr.push(`Profundidade: ${m.profundidade}`);
+    if (medArr.length > 0) {
+        linhas.push(`Medidas: <strong>${medArr.join(' x ')}</strong>`);
+    }
+    if (c.obsExtra) {
+        linhas.push(`Detalhes/Extras: <strong>${c.obsExtra}</strong>`);
+    }
+    if (linhas.length === 0) return '';
+    return `<div style="margin-top: 4px; padding: 4px 8px; background: #fafafa; border-left: 3px solid #d97706; font-size: 11px; color: #333;">${linhas.join('<br>')}</div>`;
+}

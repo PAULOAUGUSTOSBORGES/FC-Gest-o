@@ -21,6 +21,28 @@
         :root { color-scheme: dark; background-color: #0f172a; }
         html, body { background-color: #0f172a; }
         html.light, html.light body, html[data-theme="light"], html[data-theme="light"] body { background-color: #f1f5f9; color-scheme: light; }
+    
+        /* Correcao de hover para modo escuro em todas as tabelas e modais */
+        html.dark tr:hover,
+        html[data-theme="dark"] tr:hover,
+        body.dark tr:hover,
+        .dark tr:hover,
+        html.dark table tbody tr:hover,
+        html[data-theme="dark"] table tbody tr:hover {
+            background-color: #1e293b !important;
+        }
+
+        html.dark tr:hover td,
+        html[data-theme="dark"] tr:hover td,
+        .dark tr:hover td {
+            color: #f8fafc !important;
+        }
+
+        html.light tr:hover,
+        html[data-theme="light"] tr:hover {
+            background-color: #f1f5f9 !important;
+        }
+
     </style>
     <!-- PWA Configurações e Ícones -->
     <link rel="manifest" href="../manifest.json">
@@ -38,8 +60,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    <link rel="stylesheet" href="../style.css?v=20260921143823">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260921143823">
+    <link rel="stylesheet" href="../style.css?v=20260923172910">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260923172910">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="relatorios">
 
@@ -337,10 +359,24 @@
                                         </div>
                                     </div>
                                 </div>
+                                
+                                <!-- Campo Destinado ao Relatório -->
+                                <div class="mt-8 pt-6 border-t border-slate-200/50 dark:border-slate-700/50">
+                                    <h4 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2"><i class="fa-solid fa-wand-magic-sparkles text-indigo-400"></i> Área do Relatório</h4>
+                                    <div id="ia-rel-resultado" class="bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 rounded-2xl p-5 md:p-6 min-h-[160px] flex flex-col transition-all shadow-inner shadow-slate-900/5 dark:shadow-black/10">
+                                        <div class="flex-1 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 opacity-60 text-center py-6">
+                                            <div class="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-700/50 flex items-center justify-center mb-3">
+                                                <i class="fa-solid fa-robot text-xl"></i>
+                                            </div>
+                                            <p class="text-sm font-medium text-slate-500 dark:text-slate-400">O relatório gerado aparecerá neste espaço</p>
+                                            <p class="text-[10px] mt-1 max-w-xs mx-auto">Selecione uma sugestão acima ou digite sua pergunta para começar.</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             
                             <!-- Direita: Histórico -->
-                            <div class="xl:w-[380px] shrink-0 flex flex-col">
+                            <div class="w-full lg:w-96 shrink-0 flex flex-col max-w-full">
                                 <div class="bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-md rounded-2xl border border-slate-200/80 dark:border-slate-700/50 flex flex-col overflow-hidden shadow-inner shadow-slate-900/5 dark:shadow-black/20" style="max-height: 420px;">
                                     <div class="px-5 py-4 border-b border-slate-200/80 dark:border-slate-700/50 bg-white/50 dark:bg-slate-800/50 flex items-center justify-between shrink-0">
                                         <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-indigo-500"></i> Suas Análises</h4>
@@ -359,7 +395,7 @@
                         </div>
 
                         <!-- Onde o relatório gerado vai aparecer -->
-                        <div id="ia-rel-resultado" class="mt-8 transition-all"></div>
+                        <!-- O relatório agora aparece no campo dedicado acima -->
                     </div>
 
                     <div id="print-area-relatorios" class="space-y-6">
@@ -979,6 +1015,15 @@
                                             <input type="date" id="filtro-vendas-ini" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs rounded-lg px-2 py-1.5 outline-none focus:border-blue-500 dark:text-white" onchange="renderVendas()" title="Data Inicial">
                                             <input type="date" id="filtro-vendas-fim" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs rounded-lg px-2 py-1.5 outline-none focus:border-blue-500 dark:text-white" onchange="renderVendas()" title="Data Final">
                                         </div>
+                                        <div class="w-full sm:w-44">
+                                            <select id="filtro-vendas-limite" onchange="renderVendas()" class="w-full py-1.5 px-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold outline-none focus:border-blue-500 dark:text-white" title="Quantidade de movimentações a exibir">
+                                                <option value="10" selected>Exibir 10 (Padrão)</option>
+                                                <option value="25">Exibir 25</option>
+                                                <option value="50">Exibir 50</option>
+                                                <option value="100">Exibir 100</option>
+                                                <option value="TODOS">Exibir Todas</option>
+                                            </select>
+                                        </div>
                                     </div>
                                     <div class="text-right flex items-center justify-end gap-2 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
                                         <i class="fa-solid fa-receipt text-blue-500"></i>
@@ -1008,7 +1053,106 @@
                                 </div>
                             </div>
 
-                            <!-- Relatório de Estoque & Kardex de Movimentações -->
+                            
+                            <!-- RELATÓRIO DETALHADO DE COMISSÃO DE VENDEDORES -->
+                            <div id="card-comissao-vendedores" data-relatorio-id="rel_comissao" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 md:col-span-2 scroll-mt-6 transition-all duration-300">
+                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 dark:border-slate-700 pb-4 mb-5 gap-3">
+                                    <div>
+                                        <h3 class="font-bold text-base md:text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                            <i class="fa-solid fa-hand-holding-dollar text-emerald-500"></i> Relatório Detalhado de Comissões por Vendedor
+                                        </h3>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Cálculo de comissões por venda, ticket médio da equipe, extrato detalhado por colaborador e recibo de pagamento.</p>
+                                    </div>
+                                    <div class="flex items-center gap-2 print:hidden flex-wrap">
+                                        <button onclick="imprimirRelatorioComissoes()" class="bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border border-slate-300 dark:border-slate-600">
+                                            <i class="fa-solid fa-print text-indigo-500"></i> Imprimir Extrato Geral
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Filtros de Comissão -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-6 p-4 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-100 dark:border-slate-700/60 print:hidden">
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">Filtrar por Vendedor</label>
+                                        <select id="filtro-comissao-vendedor" onchange="renderizarRelatorioComissoes()" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:border-emerald-500">
+                                            <option value="TODOS">Todos os Vendedores</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">Data Início</label>
+                                        <input type="date" id="filtro-comissao-data-ini" onchange="renderizarRelatorioComissoes()" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:border-emerald-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">Data Fim</label>
+                                        <input type="date" id="filtro-comissao-data-fim" onchange="renderizarRelatorioComissoes()" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:border-emerald-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">Exibição na Tabela</label>
+                                        <select id="filtro-comissao-limite" onchange="renderizarRelatorioComissoes()" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:border-emerald-500">
+                                            <option value="10" selected>Exibir 10 (Padrão)</option>
+                                            <option value="25">Exibir 25</option>
+                                            <option value="50">Exibir 50</option>
+                                            <option value="TODOS">Exibir Todos</option>
+                                        </select>
+                                    </div>
+                                    <div class="flex items-end">
+                                        <button onclick="renderizarRelatorioComissoes()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold p-2 rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm">
+                                            <i class="fa-solid fa-filter"></i> Filtrar Comissões
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- KPIs do Período -->
+                                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                                    <div class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-100 dark:border-slate-700/60">
+                                        <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total em Vendas</div>
+                                        <div id="kpi-comissao-total-vendas" class="text-xl md:text-2xl font-black text-slate-800 dark:text-white mt-1">R$ 0,00</div>
+                                        <div class="text-[10px] text-slate-400 mt-0.5" id="kpi-comissao-qtd-pedidos">0 vendas no período</div>
+                                    </div>
+                                    <div class="bg-emerald-50 dark:bg-emerald-950/30 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/40">
+                                        <div class="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Total de Comissões</div>
+                                        <div id="kpi-comissao-total-valor" class="text-xl md:text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">R$ 0,00</div>
+                                        <div class="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 mt-0.5">Valor total a pagar</div>
+                                    </div>
+                                    <div class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-100 dark:border-slate-700/60">
+                                        <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ticket Médio p/ Venda</div>
+                                        <div id="kpi-comissao-ticket-medio" class="text-xl md:text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">R$ 0,00</div>
+                                        <div class="text-[10px] text-slate-400 mt-0.5">Média por pedido</div>
+                                    </div>
+                                    <div class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-100 dark:border-slate-700/60">
+                                        <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Top Vendedor</div>
+                                        <div id="kpi-comissao-top-vendedor" class="text-sm md:text-base font-black text-purple-600 dark:text-purple-400 mt-1 truncate">-</div>
+                                        <div class="text-[10px] text-slate-400 mt-0.5" id="kpi-comissao-top-valor">R$ 0,00 em comissão</div>
+                                    </div>
+                                </div>
+
+                                <!-- Gráfico Comparativo de Comissões -->
+                                <div class="mb-6 p-4 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-100 dark:border-slate-700/60">
+                                    <div class="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2 flex items-center gap-2">
+                                        <i class="fa-solid fa-chart-column text-indigo-500"></i> Comparativo de Comissões por Vendedor
+                                    </div>
+                                    <div id="grafico-comissao-vendedores" class="w-full" style="min-height: 220px;"></div>
+                                </div>
+
+                                <!-- Tabela Resumo de Vendedores -->
+                                <div class="overflow-x-auto custom-scrollbar border border-slate-100 dark:border-slate-700/60 rounded-xl mb-2">
+                                    <table class="w-full text-left border-collapse text-xs">
+                                        <thead class="bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 uppercase font-black text-[10px] border-b border-slate-200 dark:border-slate-700">
+                                            <tr>
+                                                <th class="p-3">Vendedor</th>
+                                                <th class="p-3 text-center">Nº Vendas</th>
+                                                <th class="p-3 text-right">Total Faturado (R$)</th>
+                                                <th class="p-3 text-center">% Comissão</th>
+                                                <th class="p-3 text-right text-emerald-600 dark:text-emerald-400 font-black">Comissão a Pagar</th>
+                                                <th class="p-3 text-center w-28 print:hidden">Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tabela-comissao-vendedores-body" class="divide-y divide-slate-100 dark:divide-slate-700/50"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+<!-- Relatório de Estoque & Kardex de Movimentações -->
                             <div id="card-estoque-kardex" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 md:col-span-2 scroll-mt-6 transition-all duration-300">
                                 <!-- Topo do Card -->
                                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 dark:border-slate-700 pb-3 mb-5 gap-3">
@@ -1078,6 +1222,15 @@
                                                 <option value="ENTRADA">Apenas Entradas / Compras</option>
                                                 <option value="SAIDA">Apenas Saídas / Vendas</option>
                                                 <option value="AJUSTE">Apenas Ajustes / Balanço</option>
+                                            </select>
+                                        </div>
+                                        <div class="w-full sm:w-44">
+                                            <select id="kardex-filtro-limite" onchange="filtrarKardexRelatorio()" class="w-full py-1.5 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 dark:text-white" title="Quantidade de movimentações a exibir">
+                                                <option value="10" selected>Exibir 10 (Padrão)</option>
+                                                <option value="25">Exibir 25</option>
+                                                <option value="50">Exibir 50</option>
+                                                <option value="100">Exibir 100</option>
+                                                <option value="TODOS">Exibir Todas</option>
                                             </select>
                                         </div>
                                     </div>
@@ -1993,20 +2146,112 @@
             </div>
             
             <!-- FOOTER -->
-            <div class="bg-white dark:bg-slate-900 p-4 md:p-5 border-t border-slate-200 dark:border-slate-800 flex justify-end shrink-0 rounded-b-2xl">
+            <div class="bg-white dark:bg-slate-900 p-4 md:p-5 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0 rounded-b-2xl">
+                <div class="flex items-center gap-2">
+                    <button id="btn-iniciar-edicao-custo" type="button" onclick="habilitarEdicaoCustoVenda()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold px-4 py-2 rounded-xl text-xs sm:text-sm shadow-sm transition-all flex items-center gap-2 active:scale-95 cursor-pointer" title="Editar custos dos itens e anotações desta venda">
+                        <i class="fa-solid fa-pen-to-square"></i> <span>Ajustar Custos & Observações</span>
+                    </button>
+                    <div id="acoes-edicao-custo" class="hidden flex items-center gap-2">
+                        <button id="btn-cancelar-edicao-custo" type="button" onclick="cancelarEdicaoCustoVenda()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 font-bold px-4 py-2 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer">
+                            <i class="fa-solid fa-xmark"></i> <span>Cancelar</span>
+                        </button>
+                        <button id="btn-salvar-edicao-custo" type="button" onclick="salvarAjusteCustoVenda()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2 rounded-xl text-xs sm:text-sm shadow-md transition-all flex items-center gap-2 active:scale-95 cursor-pointer">
+                            <i class="fa-solid fa-floppy-disk"></i> <span>Salvar Alterações</span>
+                        </button>
+                    </div>
+                </div>
                 <button onclick="fecharModalDetalhesVenda()" class="bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-bold tracking-wide px-8 py-2.5 rounded-xl text-sm shadow-md transition-all active:scale-95"><i class="fa-solid fa-check mr-2"></i> Fechar Janela</button>
             </div>
         </div>
     </div>
 
+    <!-- MODAL DE EXTRATO DETALHADO DO VENDEDOR -->
+    <div id="modal-extrato-comissao" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-hidden no-print">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col" style="max-height: calc(100vh - 2rem);">
+            <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3 shrink-0">
+                <div>
+                    <h3 class="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
+                        <i class="fa-solid fa-receipt text-emerald-500"></i> Extrato de Comissões: <span id="modal-extrato-nome-vendedor" class="text-emerald-600 dark:text-emerald-400 font-black"></span>
+                    </h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400" id="modal-extrato-periodo-info"></p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="imprimirExtratoIndividualVendedor()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm">
+                        <i class="fa-solid fa-print"></i> Imprimir Recibo
+                    </button>
+                    <button onclick="fecharModalExtratoComissao()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+
+            <div id="modal-extrato-conteudo-impressao" class="overflow-y-auto custom-scrollbar py-3 flex-1 space-y-4">
+                <!-- KPIs do Vendedor -->
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div class="text-[10px] font-bold uppercase text-slate-400">Total de Vendas</div>
+                        <div id="modal-extrato-qtd-vendas" class="text-lg font-black text-slate-800 dark:text-white">0</div>
+                    </div>
+                    <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div class="text-[10px] font-bold uppercase text-slate-400">Total Faturado</div>
+                        <div id="modal-extrato-total-faturado" class="text-lg font-black text-blue-600 dark:text-blue-400">R$ 0,00</div>
+                    </div>
+                    <div class="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                        <div class="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400">Comissão a Pagar</div>
+                        <div id="modal-extrato-total-comissao" class="text-lg font-black text-emerald-600 dark:text-emerald-400">R$ 0,00</div>
+                    </div>
+                </div>
+
+                <!-- Filtro de Quantidade no Extrato do Vendedor -->
+                <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
+                    <span class="font-bold text-slate-600 dark:text-slate-300"><i class="fa-solid fa-list-ol text-emerald-500 mr-1.5"></i> Vendas no Extrato:</span>
+                    <div class="flex items-center gap-2">
+                        <label class="text-[11px] text-slate-400">Mostrar:</label>
+                        <select id="modal-extrato-filtro-limite" onchange="atualizarLimiteExtratoVendedor()" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs rounded-lg px-2 py-1 font-bold outline-none focus:border-emerald-500 dark:text-white">
+                            <option value="10" selected>10 vendas (Padrão)</option>
+                            <option value="25">25 vendas</option>
+                            <option value="50">50 vendas</option>
+                            <option value="100">100 vendas</option>
+                            <option value="TODOS">Todas as vendas</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Tabela de Vendas Individuais -->
+                <div class="overflow-x-auto custom-scrollbar border border-slate-200 dark:border-slate-700 rounded-xl">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[10px]">
+                            <tr>
+                                <th class="p-2.5">Data</th>
+                                <th class="p-2.5">Pedido #</th>
+                                <th class="p-2.5">Cliente</th>
+                                <th class="p-2.5">Forma Pgto</th>
+                                <th class="p-2.5 text-right">Valor Venda</th>
+                                <th class="p-2.5 text-center">% Com.</th>
+                                <th class="p-2.5 text-right font-black text-emerald-600 dark:text-emerald-400">Comissão (R$)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modal-extrato-tabela-vendas" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end shrink-0">
+                <button onclick="fecharModalExtratoComissao()" class="px-5 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20260921143823"></script>
-    <script src="saas_licenca.js?v=20260921143823"></script>
-    <script src="../global.js?v=20260921143823"></script>
-    <script src="fc_cache.js?v=20260921143823"></script>
-    <script src="relatorios_v2.js?v=20260921143823"></script>
+    <script src="../sistema/config_banco.js?v=20260923172910"></script>
+    <script src="saas_licenca.js?v=20260923172910"></script>
+    <script src="../global.js?v=20260923172910"></script>
+    <script src="fc_cache.js?v=20260923172910"></script>
+    <script src="relatorios_v2.js?v=20260923172910"></script>
 </body>
 </html>
 

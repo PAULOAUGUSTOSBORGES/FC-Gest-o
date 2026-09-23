@@ -557,6 +557,10 @@ async function migrarBancoAntigo() {
 }
 
 function inicializarDashboard() {
+    if (window.__paginaBloqueadaPorPermissao || (typeof window.verificarPermissaoRota === 'function' && !window.verificarPermissaoRota(window.location.pathname).permitido)) {
+        console.warn('Bloqueando execução: usuário sem permissão para esta rota.');
+        return;
+    }
     migrarBancoAntigo();
 
     // Cache inteligente: serve dados instantaneamente do sessionStorage

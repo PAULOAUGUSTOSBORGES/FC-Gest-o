@@ -118,8 +118,39 @@ async function fazerLogin() {
                 }
             }
         }
+        let rotaInicial = 'index.html';
+        try {
+            const empAtivaFinal = localStorage.getItem('fc_empresa_ativa');
+            if (empAtivaFinal && cred && cred.user) {
+                const funcDoc = await firebase.firestore().collection('empresas').doc(empAtivaFinal).collection('funcionarios').doc(cred.user.uid).get();
+                if (funcDoc.exists) {
+                    const uData = funcDoc.data();
+                    if (typeof window.obterRotaInicialUsuario === 'function') {
+                        rotaInicial = window.obterRotaInicialUsuario(uData);
+                    } else {
+                        if (uData.isAdmin || uData.perm_dashboard) rotaInicial = 'index.html';
+                        else if (uData.perm_pdv) rotaInicial = 'pdv.html';
+                        else if (uData.perm_vendas_op) rotaInicial = 'vendas_operacao.html';
+                        else if (uData.perm_orcamentos) rotaInicial = 'orcamentos.html';
+                        else if (uData.perm_produtos) rotaInicial = 'produtos.html';
+                        else if (uData.perm_clientes) rotaInicial = 'clientes.html';
+                        else if (uData.perm_fornecedores) rotaInicial = 'fornecedores.html';
+                        else if (uData.perm_financeiro || uData.perm_gestao) rotaInicial = 'financeiro.html';
+                        else if (uData.perm_caixa) rotaInicial = 'caixa.html';
+                        else if (uData.perm_compras) rotaInicial = 'compras.html';
+                        else if (uData.perm_relatorios) rotaInicial = 'relatorios.html';
+                        else if (uData.perm_agenda) rotaInicial = 'agenda.html';
+                        else if (uData.perm_marketing) rotaInicial = 'marketing.html';
+                        else if (uData.perm_fiscal) rotaInicial = 'fiscal.html';
+                        else if (uData.perm_config) rotaInicial = 'sistema.html';
+                    }
+                }
+            }
+        } catch(eRota) {
+            console.warn('Aviso rota inicial:', eRota);
+        }
         showToast('Acesso liberado! Entrando...', 'success');
-        window.location.href = 'index.html';
+        window.location.href = rotaInicial;
     } catch (e) { 
         window._fazendoLogin = false;
         document.getElementById('btn-acao').innerText = 'Entrar'; document.getElementById('btn-acao').disabled = false;

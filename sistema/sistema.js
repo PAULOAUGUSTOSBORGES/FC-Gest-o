@@ -3,6 +3,10 @@
 // ==========================================
 
 function inicializarSistema() {
+    if (window.__paginaBloqueadaPorPermissao || (typeof window.verificarPermissaoRota === 'function' && !window.verificarPermissaoRota(window.location.pathname).permitido)) {
+        console.warn('Bloqueando execução: usuário sem permissão para esta rota.');
+        return;
+    }
     // 1. Tenta preencher a tela imediatamente com o que já estiver no db.config
     carregarConfiguracoesNaTela();
 
@@ -34,6 +38,7 @@ function inicializarSistema() {
     });
 
     carregarCategorias();
+    renderPainelPersonalizacaoSistema();
     
     // Configura sincronização do color picker
     const picker = document.getElementById('loja-cor-primaria');
@@ -264,8 +269,7 @@ function carregarConfiguracoesNaTela() {
         { prop: 'proximoNumeroNFe', id: 'emp-numero-nfe', default: 1 },
         { prop: 'serieNFCe', id: 'emp-serie-nfce', default: '1' },
         { prop: 'proximoNumeroNFCe', id: 'emp-numero-nfce', default: 1 },
-        { prop: 'naturezaOperacao', id: 'emp-natureza-operacao', default: 'VENDA DE MERCADORIA' },
-        { prop: 'geminiKey', id: 'emp-gemini-key' }
+        { prop: 'naturezaOperacao', id: 'emp-natureza-operacao', default: 'VENDA DE MERCADORIA' }
     ];
 
     mapaCampos.forEach(({ prop, id, default: defVal }) => {
@@ -325,7 +329,7 @@ function carregarConfiguracoesNaTela() {
             const valBoleto = db.config.custoBoleto !== undefined ? db.config.custoBoleto : 0;
             document.getElementById('tx-boleto-custo').value = typeof formatMoneyInput === 'function' ? formatMoneyInput(valBoleto) : valBoleto;
         }
-        const txDeb = db.config.taxas['Cartão Débito'] !== undefined ? db.config.taxas['Cartão Débito'] : db.config.taxas['Cartao Debito'];
+        const txDeb = db.config.taxas['Cartão Débito'] !== undefined ? db.config.taxas['Cartão Débito'] : (db.config.taxas['Cartao Debito'] !== undefined ? db.config.taxas['Cartao Debito'] : 0);
         if (document.getElementById('tx-deb') && txDeb !== undefined) {
             document.getElementById('tx-deb').value = typeof formatMoneyInput === 'function' ? formatMoneyInput(txDeb) : txDeb;
         }
@@ -406,6 +410,18 @@ function carregarConfiguracoesNaTela() {
                 el.disabled = false;
                 el.classList.remove('opacity-60', 'cursor-not-allowed');
             });
+        }
+    }
+
+    // Oculta a secao de loja online se o plano nao permitir
+    const secaoLoja = document.getElementById('secao-config-loja-online');
+    if (secaoLoja) {
+        if (window.modulosLiberadosEmpresa && Array.isArray(window.modulosLiberadosEmpresa)) {
+            if (!window.modulosLiberadosEmpresa.includes('site')) {
+                secaoLoja.style.display = 'none';
+            } else {
+                secaoLoja.style.display = 'block';
+            }
         }
     }
 }
@@ -534,16 +550,21 @@ async function salvarConfiguracoes() {
         serieNFCe: document.getElementById('emp-serie-nfce') ? document.getElementById('emp-serie-nfce').value.trim() : '1',
         proximoNumeroNFCe: document.getElementById('emp-numero-nfce') ? (parseInt(document.getElementById('emp-numero-nfce').value.trim(), 10) || 1) : 1,
         naturezaOperacao: document.getElementById('emp-natureza-operacao') ? document.getElementById('emp-natureza-operacao').value.trim() : 'VENDA DE MERCADORIA',
-        geminiKey: document.getElementById('emp-gemini-key') ? document.getElementById('emp-gemini-key').value.trim() : (db.config?.empresa?.geminiKey || ''),
+        geminiKey: (db.config?.empresa?.geminiKey || ''),
         logo: (document.getElementById('emp-logo-base64') && document.getElementById('emp-logo-base64').value) ? document.getElementById('emp-logo-base64').value : (db.config?.empresa?.logo || '')
     };
 
     // Salva as 12 Taxas Separadas
-    db.config.custoBoleto = parseInputMoney(document.getElementById('tx-boleto-custo').value) || 0;
-    const tDeb = parseInputMoney(document.getElementById('tx-deb').value) || 0;
+    const getTaxaNum = (id) => {
+        const el = document.getElementById(id);
+        if (!el || el.value === '' || el.value === null || el.value === undefined) return 0;
+        return parseInputMoney(el.value) || 0;
+    };
+    db.config.custoBoleto = getTaxaNum('tx-boleto-custo');
+    const tDeb = getTaxaNum('tx-deb');
     const taxasCredito = {};
     for(let i=1; i<=12; i++) {
-        taxasCredito[i] = parseInputMoney(document.getElementById('tx-c'+i).value) || 0;
+        taxasCredito[i] = getTaxaNum('tx-c' + i);
     }
 
     db.config.taxas = {
@@ -733,3 +754,77 @@ async function excluirSubcategoria(catId, index) {
 
 
 
+
+
+// =======================================================
+// GESTAO DE OPCOES DE PERSONALIZACAO NO SISTEMA (CONFIGURACOES)
+// =======================================================
+function renderPainelPersonalizacaoSistema() {
+    const pers = (typeof window.getPersonalizacaoConfig === 'function') 
+        ? window.getPersonalizacaoConfig() 
+        : ((window.db && window.db.config && window.db.config.personalizacao) || {});
+
+    const renderLista = (catKey) => {
+        const lista = pers[catKey] || [];
+        const countEl = document.getElementById('sis-count-' + catKey);
+        if (countEl) countEl.innerText = lista.length + (lista.length === 1 ? ' cadastrada' : ' cadastradas');
+
+        const box = document.getElementById('sis-lista-' + catKey);
+        if (!box) return;
+
+        if (lista.length === 0) {
+            box.innerHTML = '<span class="text-slate-400 text-[11px] italic">Nenhuma opção cadastrada.</span>';
+            return;
+        }
+
+        box.innerHTML = lista.map((val, idx) => {
+            const txt = typeof val === 'string' ? val : (val.nome || '');
+            return `<span class="inline-flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-1 rounded-md text-[11px] font-medium text-slate-700 dark:text-slate-200 shadow-2xs group">
+                <span>${txt}</span>
+                <button type="button" onclick="sisRemoverOpcaoPers('${catKey}', ${idx})" class="text-slate-400 hover:text-red-500 transition p-0.5" title="Remover"><i class="fa-solid fa-xmark text-[10px]"></i></button>
+            </span>`;
+        }).join('');
+    };
+
+    renderLista('madeiras');
+    renderLista('cores_madeira');
+    renderLista('tecidos');
+    renderLista('cores_estofado');
+}
+
+async function sisAdicionarOpcaoPers(catKey) {
+    const inp = document.getElementById('sis-input-' + catKey);
+    if (!inp) return;
+    const val = inp.value.trim();
+    if (!val) return;
+
+    const pers = window.getPersonalizacaoConfig();
+    if (!pers[catKey]) pers[catKey] = [];
+
+    const jaExiste = pers[catKey].some(o => (typeof o === 'string' ? o : o.nome).toLowerCase() === val.toLowerCase());
+    if (jaExiste) {
+        if (typeof showToast === 'function') showToast('Esta opção já está cadastrada!', 'error');
+        return;
+    }
+
+    pers[catKey].push(val);
+    inp.value = '';
+    renderPainelPersonalizacaoSistema();
+    await window.salvarConfiguracaoPersonalizacaoNoBanco();
+    if (typeof showToast === 'function') showToast('Opção cadastrada!', 'success');
+}
+
+async function sisRemoverOpcaoPers(catKey, idx) {
+    const pers = window.getPersonalizacaoConfig();
+    if (!pers[catKey] || !pers[catKey][idx]) return;
+    const nome = typeof pers[catKey][idx] === 'string' ? pers[catKey][idx] : pers[catKey][idx].nome;
+
+    pers[catKey].splice(idx, 1);
+    renderPainelPersonalizacaoSistema();
+    await window.salvarConfiguracaoPersonalizacaoNoBanco();
+    if (typeof showToast === 'function') showToast(`"${nome}" removida.`, 'info');
+}
+
+window.renderPainelPersonalizacaoSistema = renderPainelPersonalizacaoSistema;
+window.sisAdicionarOpcaoPers = sisAdicionarOpcaoPers;
+window.sisRemoverOpcaoPers = sisRemoverOpcaoPers;
