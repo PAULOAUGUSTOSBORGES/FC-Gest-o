@@ -53,6 +53,8 @@ function renderTabelaLembretes() {
         lembretes.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
     }
     
+    window.lembretesFiltradosAtuais = lembretes;
+    
     if (lembretes.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400">Nenhum lembrete de WhatsApp configurado.</td></tr>`;
         return;

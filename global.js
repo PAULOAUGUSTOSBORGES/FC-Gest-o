@@ -213,6 +213,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 2. Botão no Header (acesso instantâneo direto no celular e PC sem precisar abrir menu)
     const headerActions = document.querySelector('header .flex.items-center.gap-2, header .flex.items-center.gap-4');
+    if (headerActions) { headerActions.classList.add('flex-nowrap', 'shrink-0'); }
     if (headerActions && !document.getElementById('header-btn-tema')) {
         const isDark = document.documentElement.classList.contains('dark');
         const headerBtn = document.createElement('button');
@@ -236,11 +237,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 window.showToast('Repositório local já atualizado.', 'info');
             }
         };
-        syncBtn.className = 'h-9 px-2.5 sm:px-3 flex items-center gap-1.5 sm:gap-2 rounded-lg bg-slate-700 hover:bg-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-[11px] sm:text-xs font-bold tracking-wider transition-all cursor-pointer shadow-sm select-none border border-slate-600 shrink-0';
+        syncBtn.className = 'h-9 w-9 sm:w-auto px-0 sm:px-3 flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg bg-slate-700 hover:bg-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-[11px] sm:text-xs font-bold tracking-wider transition-all cursor-pointer shadow-sm select-none border border-slate-600 shrink-0 relative';
         syncBtn.title = 'Sincronizar banco de dados local com o Firebase';
         syncBtn.innerHTML = `
-            <span id="header-btn-sync-text">SINCRONIZAR</span>
-            <span id="header-btn-sync-box" class="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded bg-white/10 text-white text-xs">
+            <span id="header-btn-sync-text" class="hidden sm:inline">SINCRONIZAR</span>
+            <span id="header-btn-sync-box" class="w-full h-full sm:w-6 sm:h-6 flex items-center justify-center rounded bg-transparent sm:bg-white/10 text-white text-xs">
                 <i id="header-btn-sync-icon" class="fa-solid fa-arrows-rotate"></i>
             </span>
             <span id="header-btn-sync-badge" class="hidden px-1.5 py-0.2 text-[10px] font-bold bg-amber-500 text-slate-900 rounded-full">0</span>
@@ -307,7 +308,7 @@ if (window.location.protocol === 'http:' || window.location.protocol === 'https:
 const auth = firebase.auth();
 
 // Stub Global do DB (para não quebrar as outras telas enquanto são migradas)
-let db = {
+var db = {
     produtos: [], categorias: [], clientes: [], fornecedores: [], vendas: [], movimentacoes: [],
     financeiro: [], compras: [], funcionarios: [], caixa: { status: 'FECHADO', saldo: 0, historico: [] },
     config: { 
@@ -316,6 +317,7 @@ let db = {
         prazos: { 'Fiado': 30, 'Boleto': 30, 'Cartão Crédito': 1, 'Cartão Débito': 1 }
     }
 };
+window.db = db;
 
 // ==========================================
 // PRÃ‰-CARGA DO CACHE: popula o db com dados do
@@ -425,6 +427,29 @@ function parseInputMoney(val) {
     let parsed = parseFloat(str);
     return isNaN(parsed) ? 0 : parsed;
 }
+
+// ==========================================
+// MOTOR DE CAIXA INDIVIDUAL POR CONTA DE FUNCIONÁRIO
+// ==========================================
+window.obterOperadorAtual = function() {
+    const user = window.currentUser || (typeof firebase !== 'undefined' && firebase.auth ? firebase.auth().currentUser : null);
+    const uid = user ? user.uid : localStorage.getItem('fc_sessao_uid');
+    const nome = window.currentUserInfo?.nome || (user?.email ? user.email.split('@')[0] : 'Operador');
+    const email = user ? user.email : '';
+    const isAdmin = !!window.currentUserInfo?.isAdmin;
+    return { uid, nome, email, isAdmin };
+};
+
+window.obterCaixaDocId = function(operadorUid) {
+    const op = window.obterOperadorAtual();
+    const uid = operadorUid || op.uid;
+    return uid ? 'caixa_' + uid : 'caixa_atual';
+};
+
+window.obterCaixaDocRef = function(operadorUid) {
+    const docId = window.obterCaixaDocId(operadorUid);
+    return window.getEmpresaRef().collection('caixa').doc(docId);
+};
 
 function formatMoneyInput(val) {
     let num = Number(val) || 0;
@@ -629,6 +654,7 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
     } catch (e) {}
 
     auth.onAuthStateChanged(async (user) => {
+        window.currentUser = user;
         const isLoginPage = window.location.pathname.toLowerCase().includes('login.html') || window.location.href.toLowerCase().includes('login.html');
 
         if (!user) {
@@ -952,11 +978,17 @@ window.podeCadastrarFornecedores = function(user = window.currentUserInfo) {
     return window.checarPermissaoUsuario(user, 'perm_fornecedores', 'perm_cadastros');
 };
 
+window.podeCadastrarFuncionarios = function(user = window.currentUserInfo) {
+    if (!user) return false;
+    if (user.isAdmin) return true;
+    return window.checarPermissaoUsuario(user, 'perm_funcionarios');
+};
+
 window.podeAcessarCadastrosGerais = function(user = window.currentUserInfo) {
     if (!user) return false;
     if (user.isAdmin) return true;
     if (user.perm_cadastros === true || user.perm_cadastros === 'true') return true;
-    return window.podeCadastrarProdutos(user) || window.podeCadastrarClientes(user) || window.podeCadastrarFornecedores(user);
+    return window.podeCadastrarProdutos(user) || window.podeCadastrarClientes(user) || window.podeCadastrarFornecedores(user) || window.podeCadastrarFuncionarios(user);
 };
 
 window.verificarPermissaoRota = function(rota, user = window.currentUserInfo) {
@@ -1025,6 +1057,13 @@ window.verificarPermissaoRota = function(rota, user = window.currentUserInfo) {
         return { permitido: true };
     }
 
+    if (path.includes('funcionarios.html') || path.includes('view=funcionarios')) {
+        if (!window.podeCadastrarFuncionarios(user)) {
+            return { permitido: false, motivo: 'Acesso Negado ao Cadastro de Funcionários.' };
+        }
+        return { permitido: true };
+    }
+
     if (path.includes('cadastro.html')) {
         if (!window.podeAcessarCadastrosGerais(user)) {
             return { permitido: false, motivo: 'Acesso Negado aos Cadastros.' };
@@ -1032,9 +1071,15 @@ window.verificarPermissaoRota = function(rota, user = window.currentUserInfo) {
         return { permitido: true };
     }
 
-    // 4. Funcionários (Apenas Admin Geral da Empresa)
-    if (path.includes('funcionarios.html') || path.includes('view=funcionarios')) {
-        return { permitido: false, motivo: 'Acesso Negado: Apenas o Administrador pode gerenciar Funcionários.' };
+    // 4. Caixa da Loja
+    if (path.includes('caixa_loja.html')) {
+        const permitidoCaixaLoja = user.perm_caixa_loja !== undefined
+            ? (user.perm_caixa_loja === true || user.perm_caixa_loja === 'true')
+            : (check('perm_caixa') || check('perm_gestao'));
+        if (!permitidoCaixaLoja) {
+            return { permitido: false, motivo: 'Acesso Negado ao Caixa da Loja.' };
+        }
+        return { permitido: true };
     }
 
     // 5. Caixa Físico
@@ -1113,6 +1158,8 @@ window.obterRotaInicialUsuario = function(user = window.currentUserInfo) {
     if (window.podeCadastrarProdutos(user)) return 'produtos.html';
     if (window.podeCadastrarClientes(user)) return 'clientes.html';
     if (window.podeCadastrarFornecedores(user)) return 'fornecedores.html';
+    if (window.podeCadastrarFuncionarios(user)) return 'funcionarios.html';
+    if (user.perm_caixa_loja !== undefined ? (user.perm_caixa_loja === true || user.perm_caixa_loja === 'true') : (check('perm_caixa') || check('perm_gestao'))) return 'caixa_loja.html';
     if (check('perm_financeiro', 'perm_gestao')) return 'financeiro.html';
     if (user.perm_caixa !== undefined ? (user.perm_caixa === true || user.perm_caixa === 'true') : (check('perm_pdv') || check('perm_gestao'))) return 'caixa.html';
     if (check('perm_compras', 'perm_gestao')) return 'compras.html';
@@ -1217,12 +1264,20 @@ function aplicarControleDeAcesso() {
         else el.classList.remove('hidden');
     });
     document.querySelectorAll('a[href*="funcionarios.html"], a[href*="view=funcionarios"], [data-target="funcionarios"]').forEach(el => {
-        el.classList.add('hidden');
+        if (!window.podeCadastrarFuncionarios(p)) el.classList.add('hidden');
+        else el.classList.remove('hidden');
     });
 
     // 2.4 Gestão
     document.querySelectorAll('a[href*="financeiro.html"], [data-target="financeiro"], a[href*="vendas_gestao.html"], [data-target="vendas_gestao"]').forEach(el => {
         if (!check('perm_financeiro', 'perm_gestao')) el.classList.add('hidden');
+        else el.classList.remove('hidden');
+    });
+    document.querySelectorAll('a[href*="caixa_loja.html"], [data-target="caixa_loja"]').forEach(el => {
+        const permCaixaLoja = p.perm_caixa_loja !== undefined
+            ? (p.perm_caixa_loja === true || p.perm_caixa_loja === 'true')
+            : (check('perm_caixa') || check('perm_gestao'));
+        if (!permCaixaLoja) el.classList.add('hidden');
         else el.classList.remove('hidden');
     });
     document.querySelectorAll('a[href*="caixa.html"], [data-target="caixa"]').forEach(el => {
@@ -1284,6 +1339,10 @@ function aplicarControleDeAcesso() {
                 inputCliBusca.classList.add('rounded-l-lg');
             }
         }
+    }
+
+    if (typeof window.ajustarOpcoesOperacaoPDV === 'function') {
+        try { window.ajustarOpcoesOperacaoPDV(); } catch(eOp) {}
     }
 
     if (typeof window.renderCarrinho === 'function' && typeof window.cart !== 'undefined' && Array.isArray(window.cart) && window.cart.length > 0) {
@@ -1958,7 +2017,26 @@ window.excluirVenda = function(id) {
             const vendaRef = window.getEmpresaRef().collection('vendas').doc(String(id));
             batch.delete(vendaRef);
 
+            // Atualiza memoria local e cache imediatamente
+            if (typeof db !== 'undefined' && Array.isArray(db.vendas)) {
+                db.vendas = db.vendas.filter(x => String(x.id) !== String(id));
+            }
+            if (typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) {
+                window.db.vendas = window.db.vendas.filter(x => String(x.id) !== String(id));
+            }
+            if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.removerItem === 'function') {
+                await window.FCCache.removerItem('vendas', id);
+            }
+
             await batch.commit();
+
+            try {
+                const trExcluir = document.querySelector('button[onclick*="excluirVenda(\'' + id + '\')"]')?.closest('tr');
+                if (trExcluir) trExcluir.remove();
+            } catch(e) {}
+
+            if (typeof renderVendas === 'function') renderVendas();
+            if (typeof renderOrcamentos === 'function') renderOrcamentos();
             window.fecharModalConfirmacao();
             showToast('Operação excluída com sucesso!', 'success');
         } catch (err) {
@@ -2164,11 +2242,8 @@ window.initResponsiveTables = initResponsiveTables;
 // Observa mutações no DOM para aplicar labels automaticamente
 // quando as tabelas são preenchidas via JS assíncrono
 (function() {
-    const observer = new MutationObserver(() => {
-        if (window.innerWidth <= 640) {
-            initResponsiveTables();
-        }
-    });
+    // MutationObserver desativado: tabelas agora usam touch-scroll nativo preservando integridade das colunas
+    const observer = { observe: () => {} };
     document.addEventListener('DOMContentLoaded', () => {
         observer.observe(document.body, { childList: true, subtree: true });
         if (window.innerWidth <= 640) initResponsiveTables();
@@ -3394,4 +3469,875 @@ window.cadastrarOpcaoRapida = function(cat) {
 
     if (typeof showToast === 'function') showToast(`"${val}" adicionado às opções!`, 'success');
 };
+
+// =======================================================
+// MOTOR UNIVERSAL DE EXPORTAÇÃO E RELATÓRIOS (EXCEL, WORD, PDF)
+// Suporte completo em todas as páginas:
+// Produtos, Vendas, Clientes, Funcionários, Fornecedores, Compras, Marketing, etc.
+// =======================================================
+
+(function() {
+    function obterDadosEmpresa() {
+        const conf = (window.db && window.db.config) ? window.db.config : {};
+        const emp = conf.empresa || {};
+        return {
+            nome: emp.nome || emp.fantasia || 'FC Móveis e Interiores',
+            fantasia: emp.fantasia || emp.nome || 'FC Móveis',
+            cnpj: emp.cnpj || emp.doc || '',
+            telefone: emp.telefone || emp.wpp || emp.whatsapp || '',
+            email: emp.email || '',
+            cidade: emp.cidade || '',
+            uf: emp.uf || '',
+            endereco: emp.endereco || emp.rua || ''
+        };
+    }
+
+    function formatarMoedaLocal(valor) {
+        if (typeof formatMoney === 'function') {
+            try { return formatMoney(valor); } catch(e){}
+        }
+        const n = Number(valor) || 0;
+        return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function formatarDataHoraAtual() {
+        const d = new Date();
+        return d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // ----------------------------------------------------
+    // 1. EXPORTADOR PARA EXCEL (.XLS / HTML Spreadsheet)
+    // ----------------------------------------------------
+    window.exportarParaExcel = function(opts) {
+        try {
+            opts = opts || {};
+            const emp = obterDadosEmpresa();
+            const titulo = opts.titulo || 'Relatório Gerencial';
+            const subtitulo = opts.subtitulo || '';
+            const nomeArquivo = (opts.nomeArquivo || 'Relatorio').replace(/[^a-zA-Z0-9_\-]/g, '_');
+            const dataHora = formatarDataHoraAtual();
+
+            let colunas = opts.colunas || [];
+            let dados = opts.dados || [];
+
+            // Se recebeu tabelaId e não recebeu dados estruturados, extrai da tabela DOM
+            if ((!colunas.length || !dados.length) && opts.tabelaId) {
+                const tabela = document.getElementById(opts.tabelaId);
+                if (tabela) {
+                    const extraido = extrairDadosDeTabelaDOM(tabela);
+                    colunas = extraido.colunas;
+                    dados = extraido.dados;
+                }
+            }
+
+            if (!dados.length) {
+                if (typeof showToast === 'function') showToast('Nenhum dado encontrado para exportar.', 'warning');
+                return;
+            }
+
+            let thsHtml = colunas.map(c => 
+                `<th style="background-color:#0f172a; color:#ffffff; font-weight:bold; border:0.5pt solid #94a3b8; padding:8px 12px; text-align:${c.align || 'left'}; font-size:11pt;">${c.label}</th>`
+            ).join('');
+
+            let trsHtml = dados.map((row, idx) => {
+                const bg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+                const tds = colunas.map(c => {
+                    const val = row[c.key] !== undefined && row[c.key] !== null ? row[c.key] : '';
+                    let align = c.align || (c.tipo === 'moeda' || c.tipo === 'numero' ? 'right' : 'left');
+                    let msoFormat = '';
+                    if (c.tipo === 'moeda') msoFormat = 'mso-number-format:"\\0022R$\\0022\\ #\\,##0\\.00";';
+                    else if (c.tipo === 'numero') msoFormat = 'mso-number-format:"#,##0";';
+                    else msoFormat = 'mso-number-format:"\\@";';
+
+                    return `<td style="border:0.5pt solid #cbd5e1; padding:6px 10px; background-color:${bg}; text-align:${align}; ${msoFormat} font-size:10pt;">${val}</td>`;
+                }).join('');
+                return `<tr>${tds}</tr>`;
+            }).join('');
+
+            let resumoHtml = '';
+            if (opts.totais) {
+                resumoHtml = `<tr><td colspan="${colunas.length}" style="background-color:#e2e8f0; font-weight:bold; padding:8px 10px; border:0.5pt solid #94a3b8; font-size:10pt;">${opts.totais}</td></tr>`;
+            }
+
+            const excelHTML = `
+                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+                <head>
+                    <meta http-equiv="content-type" content="application/vnd.ms-excel; charset=UTF-8">
+                    <!--[if gte mso 9]>
+                    <xml>
+                    <x:ExcelWorkbook>
+                        <x:ExcelWorksheets>
+                        <x:ExcelWorksheet>
+                            <x:Name>${(titulo || 'Planilha').substring(0, 30)}</x:Name>
+                            <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+                        </x:ExcelWorksheet>
+                        </x:ExcelWorksheets>
+                    </x:ExcelWorkbook>
+                    </xml>
+                    <![endif]-->
+                    <style>
+                        body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #1e293b; }
+                        table { border-collapse: collapse; width: 100%; }
+                    </style>
+                </head>
+                <body>
+                    <table>
+                        <tr>
+                            <td colspan="${colunas.length}" style="font-size:15pt; font-weight:bold; color:#0f172a; padding:10px 0;">${emp.nome}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="${colunas.length}" style="font-size:12pt; font-weight:bold; color:#2563eb; padding-bottom:4px;">${titulo}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="${colunas.length}" style="font-size:9pt; color:#64748b; padding-bottom:12px;">Gerado em: ${dataHora} ${subtitulo ? ' • Filtro: ' + subtitulo : ''} • Total de registros: ${dados.length}</td>
+                        </tr>
+                        <tr></tr>
+                        <thead><tr>${thsHtml}</tr></thead>
+                        <tbody>${trsHtml}</tbody>
+                        ${resumoHtml ? `<tfoot>${resumoHtml}</tfoot>` : ''}
+                    </table>
+                </body>
+                </html>
+            `;
+
+            const blob = new Blob(['\uFEFF' + excelHTML], { type: 'application/vnd.ms-excel;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${nomeArquivo}_${Date.now()}.xls`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+
+            if (typeof showToast === 'function') showToast('Planilha Excel gerada com sucesso!', 'success');
+        } catch(err) {
+            console.error('Erro ao exportar Excel:', err);
+            if (typeof showToast === 'function') showToast('Erro ao exportar Excel.', 'error');
+        }
+    };
+
+    // ----------------------------------------------------
+    // 2. EXPORTADOR PARA WORD (.DOC)
+    // ----------------------------------------------------
+    window.exportarParaWord = function(opts) {
+        try {
+            opts = opts || {};
+            const emp = obterDadosEmpresa();
+            const titulo = opts.titulo || 'Relatório Gerencial';
+            const subtitulo = opts.subtitulo || '';
+            const nomeArquivo = (opts.nomeArquivo || 'Relatorio').replace(/[^a-zA-Z0-9_\-]/g, '_');
+            const dataHora = formatarDataHoraAtual();
+
+            let colunas = opts.colunas || [];
+            let dados = opts.dados || [];
+
+            if ((!colunas.length || !dados.length) && opts.tabelaId) {
+                const tabela = document.getElementById(opts.tabelaId);
+                if (tabela) {
+                    const extraido = extrairDadosDeTabelaDOM(tabela);
+                    colunas = extraido.colunas;
+                    dados = extraido.dados;
+                }
+            }
+
+            let tabelaHtml = '';
+            if (opts.htmlConteudo) {
+                tabelaHtml = `<div style="margin-top:15pt; line-height:1.6;">${opts.htmlConteudo}</div>`;
+            } else if (dados.length > 0) {
+                let ths = colunas.map(c => 
+                    `<th style="background-color:#1e293b; color:#ffffff; font-weight:bold; border:1pt solid #94a3b8; padding:6pt 8pt; text-align:${c.align || 'left'}; font-size:9.5pt;">${c.label}</th>`
+                ).join('');
+
+                let trs = dados.map((row, idx) => {
+                    const bg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+                    const tds = colunas.map(c => {
+                        const val = row[c.key] !== undefined && row[c.key] !== null ? row[c.key] : '';
+                        const align = c.align || (c.tipo === 'moeda' || c.tipo === 'numero' ? 'right' : 'left');
+                        return `<td style="border:1pt solid #cbd5e1; padding:5pt 7pt; background-color:${bg}; text-align:${align}; font-size:9pt; vertical-align:middle;">${val}</td>`;
+                    }).join('');
+                    return `<tr>${tds}</tr>`;
+                }).join('');
+
+                let tfoot = '';
+                if (opts.totais) {
+                    tfoot = `<tfoot><tr><td colspan="${colunas.length}" style="background-color:#e2e8f0; font-weight:bold; padding:7pt 8pt; border:1pt solid #94a3b8; font-size:9.5pt;">${opts.totais}</td></tr></tfoot>`;
+                }
+
+                tabelaHtml = `
+                    <table style="border-collapse:collapse; width:100%; margin-top:12pt; font-family:Calibri, Arial, sans-serif;">
+                        <thead><tr>${ths}</tr></thead>
+                        <tbody>${trs}</tbody>
+                        ${tfoot}
+                    </table>
+                `;
+            } else {
+                if (typeof showToast === 'function') showToast('Nenhum dado encontrado para exportar.', 'warning');
+                return;
+            }
+
+            const wordHTML = `
+                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+                <head>
+                    <meta charset="utf-8">
+                    <title>${titulo}</title>
+                    <style>
+                        @page { size: A4; margin: 20mm 15mm; }
+                        body { font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #1e293b; line-height: 1.4; }
+                        .doc-header { border-bottom: 2pt solid #2563eb; padding-bottom: 8pt; margin-bottom: 12pt; }
+                        .company-name { font-size: 16pt; font-weight: bold; color: #0f172a; margin: 0; }
+                        .company-sub { font-size: 9pt; color: #64748b; margin: 2pt 0 0 0; }
+                        .doc-title { font-size: 15pt; font-weight: bold; color: #1e40af; margin-top: 10pt; margin-bottom: 3pt; }
+                        .doc-meta { font-size: 9pt; color: #64748b; margin-bottom: 12pt; }
+                        .doc-footer { margin-top: 25pt; border-top: 1pt solid #cbd5e1; padding-top: 8pt; font-size: 8pt; color: #94a3b8; text-align: center; }
+                        .kpi-box { background-color: #f1f5f9; border-left: 3pt solid #2563eb; padding: 6pt 10pt; margin: 8pt 0; font-size: 9.5pt; font-weight: bold; }
+                    </style>
+                </head>
+                <body>
+                    <div class="doc-header">
+                        <table style="border:none; margin:0; width:100%;">
+                            <tr style="border:none;">
+                                <td style="border:none; padding:0;">
+                                    <p class="company-name">${emp.nome}</p>
+                                    <p class="company-sub">${emp.cnpj ? 'CNPJ: ' + emp.cnpj + ' • ' : ''}${emp.telefone ? 'Tel: ' + emp.telefone : ''}</p>
+                                </td>
+                                <td style="border:none; padding:0; text-align:right; vertical-align:top;">
+                                    <p style="font-size:9pt; font-weight:bold; color:#2563eb; margin:0;">FC GESTÃO</p>
+                                    <p style="font-size:8pt; color:#64748b; margin:0;">${dataHora}</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div class="doc-title">${titulo}</div>
+                    <div class="doc-meta">
+                        <strong>Emissão:</strong> ${dataHora}
+                        ${subtitulo ? ` • <strong>Filtro:</strong> ${subtitulo}` : ''}
+                        ${dados.length ? ` • <strong>Total:</strong> ${dados.length} registros` : ''}
+                    </div>
+
+                    ${opts.totais ? `<div class="kpi-box">${opts.totais}</div>` : ''}
+
+                    ${tabelaHtml}
+
+                    <div class="doc-footer">
+                        Documento gerado eletronicamente pelo Sistema FC Gestão em ${dataHora}. Confidencial e de uso interno.
+                    </div>
+                </body>
+                </html>
+            `;
+
+            const blob = new Blob(['\uFEFF' + wordHTML], { type: 'application/msword;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${nomeArquivo}_${Date.now()}.doc`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+
+            if (typeof showToast === 'function') showToast('Documento Word gerado com sucesso!', 'success');
+        } catch(err) {
+            console.error('Erro ao exportar Word:', err);
+            if (typeof showToast === 'function') showToast('Erro ao exportar Word.', 'error');
+        }
+    };
+
+    // ----------------------------------------------------
+    // 3. EXPORTADOR PARA PDF / PREVIEW DE IMPRESSÃO PROFISSIONAL
+    // ----------------------------------------------------
+    window.exportarParaPDF = function(opts) {
+        try {
+            opts = opts || {};
+            const emp = obterDadosEmpresa();
+            const titulo = opts.titulo || 'Relatório Gerencial';
+            const subtitulo = opts.subtitulo || '';
+            const nomeArquivo = (opts.nomeArquivo || 'Relatorio').replace(/[^a-zA-Z0-9_\-]/g, '_');
+            const orientacao = opts.orientacao || 'portrait'; // portrait | landscape
+            const dataHora = formatarDataHoraAtual();
+
+            let colunas = opts.colunas || [];
+            let dados = opts.dados || [];
+
+            if ((!colunas.length || !dados.length) && opts.tabelaId) {
+                const tabela = document.getElementById(opts.tabelaId);
+                if (tabela) {
+                    const extraido = extrairDadosDeTabelaDOM(tabela);
+                    colunas = extraido.colunas;
+                    dados = extraido.dados;
+                }
+            }
+
+            let conteudoCorpo = '';
+            if (opts.htmlConteudo) {
+                conteudoCorpo = `<div class="p-6 bg-white rounded-xl shadow-sm border border-slate-200">${opts.htmlConteudo}</div>`;
+            } else if (dados.length > 0) {
+                let ths = colunas.map(c => 
+                    `<th class="p-2.5 bg-slate-900 text-white font-bold text-[10px] md:text-xs uppercase border border-slate-700 text-${c.align || 'left'}">${c.label}</th>`
+                ).join('');
+
+                let trs = dados.map((row, idx) => {
+                    const bg = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50';
+                    const tds = colunas.map(c => {
+                        const val = row[c.key] !== undefined && row[c.key] !== null ? row[c.key] : '';
+                        const align = c.align || (c.tipo === 'moeda' || c.tipo === 'numero' ? 'right' : 'left');
+                        return `<td class="p-2 border border-slate-200 text-${align} text-xs text-slate-800">${val}</td>`;
+                    }).join('');
+                    return `<tr class="${bg}">${tds}</tr>`;
+                }).join('');
+
+                let tfoot = '';
+                if (opts.totais) {
+                    tfoot = `<tfoot class="bg-slate-100 font-bold border-t-2 border-slate-300"><tr><td colspan="${colunas.length}" class="p-2.5 text-xs text-slate-800">${opts.totais}</td></tr></tfoot>`;
+                }
+
+                conteudoCorpo = `
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse border border-slate-300">
+                            <thead><tr>${ths}</tr></thead>
+                            <tbody>${trs}</tbody>
+                            ${tfoot}
+                        </table>
+                    </div>
+                `;
+            } else {
+                if (typeof showToast === 'function') showToast('Nenhum dado encontrado para gerar PDF.', 'warning');
+                return;
+            }
+
+            const win = window.open('', '_blank');
+            if (!win) {
+                if (typeof showToast === 'function') showToast('O navegador bloqueou a abertura do PDF. Permita pop-ups.', 'error');
+                return;
+            }
+
+            win.document.open();
+            win.document.write(`
+                <!DOCTYPE html>
+                <html lang="pt-BR">
+                <head>
+                    <meta charset="utf-8">
+                    <title>${titulo} - ${emp.nome}</title>
+                    <script src="https://cdn.tailwindcss.com"></script>
+                    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+                    <style>
+                        @page {
+                            margin: 10mm 8mm;
+                            size: A4 ${orientacao};
+                        }
+                        body {
+                            font-family: Arial, Helvetica, sans-serif;
+                            background-color: #f8fafc;
+                            color: #0f172a;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
+                        }
+                        @media print {
+                            .no-print { display: none !important; }
+                            body { background-color: #ffffff !important; padding: 0 !important; }
+                            .print-container { max-width: none !important; width: 100% !important; padding: 0 !important; box-shadow: none !important; border: none !important; }
+                            table { page-break-inside: auto; }
+                            tr { page-break-inside: avoid; page-break-after: auto; }
+                            thead { display: table-header-group; }
+                            tfoot { display: table-footer-group; }
+                        }
+                    </style>
+                </head>
+                <body class="p-4 md:p-8">
+                    <!-- BARRA DE AÇÕES FLUTUANTE (NÃO SAI NA IMPRESSÃO) -->
+                    <div class="no-print max-w-5xl mx-auto mb-6 bg-slate-900 text-white p-3.5 px-5 rounded-2xl shadow-xl flex items-center justify-between border border-slate-700">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl bg-rose-600/30 text-rose-400 border border-rose-500/40 flex items-center justify-center font-bold">
+                                <i class="fa-solid fa-file-pdf text-base"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-sm leading-tight">${titulo}</h3>
+                                <p class="text-[11px] text-slate-400">${dados.length ? dados.length + ' registros' : 'Relatório formatado'} • Pronto para impressão</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="window.print()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow transition active:scale-95 cursor-pointer">
+                                <i class="fa-solid fa-print"></i> Imprimir / Salvar PDF
+                            </button>
+                            <button onclick="window.close()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-3 py-2 rounded-xl text-xs transition cursor-pointer">
+                                Fechar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- FOLHA DO RELATÓRIO A4 -->
+                    <div class="print-container max-w-5xl mx-auto bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
+                        <!-- CABEÇALHO DA EMPRESA -->
+                        <div class="flex items-start justify-between border-b-2 border-slate-800 pb-4 mb-4">
+                            <div>
+                                <h1 class="text-xl md:text-2xl font-black text-slate-900 tracking-tight">${emp.nome}</h1>
+                                <p class="text-xs text-slate-500 mt-0.5">
+                                    ${emp.cnpj ? 'CNPJ: ' + emp.cnpj + ' • ' : ''}
+                                    ${emp.telefone ? 'Contato: ' + emp.telefone + ' • ' : ''}
+                                    ${emp.cidade ? emp.cidade + '/' + emp.uf : ''}
+                                </p>
+                            </div>
+                            <div class="text-right">
+                                <span class="bg-blue-100 text-blue-800 text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider">FC Gestão</span>
+                                <p class="text-[11px] text-slate-500 mt-1 font-mono">${dataHora}</p>
+                            </div>
+                        </div>
+
+                        <!-- TÍTULO E METADADOS DO RELATÓRIO -->
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                            <div>
+                                <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                                    <i class="fa-solid fa-file-lines text-blue-600"></i> ${titulo}
+                                </h2>
+                                ${subtitulo ? `<p class="text-xs text-slate-500 mt-0.5">${subtitulo}</p>` : ''}
+                            </div>
+                            ${dados.length ? `<span class="text-xs font-bold bg-white text-slate-700 px-3 py-1 rounded-lg border border-slate-200 shadow-xs">${dados.length} itens listados</span>` : ''}
+                        </div>
+
+                        ${opts.totais ? `<div class="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-800">${opts.totais}</div>` : ''}
+
+                        <!-- CONTEÚDO DO RELATÓRIO (TABELA OU TEXTO) -->
+                        ${conteudoCorpo}
+
+                        <!-- RODAPÉ DA FOLHA -->
+                        <div class="mt-8 pt-3 border-t border-slate-200 flex justify-between items-center text-[10px] text-slate-400">
+                            <span>Documento gerado via FC Gestão Empresarial</span>
+                            <span>Página 1 de 1</span>
+                        </div>
+                    </div>
+
+                    <script>
+                        // Auto-print após carregamento dos estilos
+                        window.onload = function() {
+                            setTimeout(() => {
+                                window.focus();
+                                window.print();
+                            }, 800);
+                        };
+                    </script>
+                </body>
+                </html>
+            `);
+            win.document.close();
+
+        } catch(err) {
+            console.error('Erro ao gerar PDF:', err);
+            if (typeof showToast === 'function') showToast('Erro ao gerar PDF.', 'error');
+        }
+    };
+
+    // Helper para extrair dados limpos de qualquer elemento <table> DOM
+    function extrairDadosDeTabelaDOM(tabela) {
+        const colunas = [];
+        const dados = [];
+        if (!tabela) return { colunas, dados };
+
+        const ths = tabela.querySelectorAll('thead th');
+        const indicesValidos = [];
+
+        ths.forEach((th, idx) => {
+            // Ignora colunas de ações, botões, checkbox ou marcadas com .print:hidden/.no-export
+            if (th.classList.contains('print:hidden') || th.classList.contains('no-export') || th.innerText.toLowerCase().includes('ação') || th.innerText.toLowerCase().includes('ações') || th.innerText.trim() === '') {
+                return;
+            }
+            const key = 'col_' + idx;
+            indicesValidos.push(idx);
+            colunas.push({
+                key: key,
+                label: th.innerText.trim(),
+                align: th.classList.contains('text-right') ? 'right' : (th.classList.contains('text-center') ? 'center' : 'left'),
+                tipo: th.innerText.toLowerCase().includes('valor') || th.innerText.toLowerCase().includes('preço') || th.innerText.toLowerCase().includes('custo') || th.innerText.toLowerCase().includes('total') ? 'moeda' : 'texto'
+            });
+        });
+
+        const trs = tabela.querySelectorAll('tbody tr');
+        trs.forEach(tr => {
+            if (tr.innerText.includes('Nenhum') || tr.innerText.includes('Carregando')) return;
+            const tds = tr.querySelectorAll('td');
+            if (!tds.length) return;
+            const obj = {};
+            let preenchido = false;
+
+            indicesValidos.forEach((colIdx, i) => {
+                if (tds[colIdx]) {
+                    const texto = tds[colIdx].innerText.trim().replace(/\s+/g, ' ');
+                    obj[colunas[i].key] = texto;
+                    if (texto) preenchido = true;
+                }
+            });
+
+            if (preenchido) dados.push(obj);
+        });
+
+        return { colunas, dados };
+    }
+
+    // ----------------------------------------------------
+    // 4. DISPATCHER GERAL: window.puxarRelatorio(modulo, formato, opcoes)
+    // ----------------------------------------------------
+    window.puxarRelatorio = function(modulo, formato, opts) {
+        opts = opts || {};
+        formato = (formato || 'excel').toLowerCase(); // 'excel' | 'word' | 'pdf'
+        modulo = (modulo || '').toLowerCase();
+
+        let configExport = null;
+
+        // 4.1 PRODUTOS E ESTOQUE
+        if (modulo === 'produtos') {
+            const lista = window.produtosFiltradosAtuais || (window.db && Array.isArray(window.db.produtos) ? window.db.produtos : []);
+            let totalCusto = 0;
+            let totalVenda = 0;
+            let totalPecas = 0;
+
+            const dados = lista.map(p => {
+                const qtd = Number(p.estoque) || 0;
+                const custo = Number(p.custo) || 0;
+                const preco = Number(p.preco) || 0;
+                totalPecas += qtd;
+                totalCusto += (qtd * custo);
+                totalVenda += (qtd * preco);
+
+                const margem = custo > 0 ? (((preco - custo) / custo) * 100).toFixed(1) + '%' : '-';
+                let status = 'Ativo';
+                if (p.ativo === false) status = 'Inativo';
+                else if (qtd <= 0) status = 'Estoque Zerado';
+                else if (qtd <= Number(p.min || 0)) status = 'Alerta / Baixo';
+
+                return {
+                    codigo: p.codigo || p.ean || p.id || '-',
+                    nome: p.nome || 'Sem Nome',
+                    categoria: p.categoria || '-',
+                    marca: p.marca || '-',
+                    custo: formatarMoedaLocal(custo),
+                    preco: formatarMoedaLocal(preco),
+                    margem: margem,
+                    estoque: `${qtd} ${p.unidade || 'UN'}`,
+                    status: status
+                };
+            });
+
+            configExport = {
+                titulo: 'Relatório Geral de Produtos & Estoque',
+                subtitulo: 'Catálogo de Produtos Cadastrados e Saldo em Almoxarifado',
+                nomeArquivo: 'Relatorio_Produtos_Estoque',
+                orientacao: 'landscape',
+                colunas: [
+                    { key: 'codigo', label: 'Cód/EAN', align: 'left', tipo: 'texto' },
+                    { key: 'nome', label: 'Nome do Produto', align: 'left', tipo: 'texto' },
+                    { key: 'categoria', label: 'Categoria', align: 'left', tipo: 'texto' },
+                    { key: 'marca', label: 'Marca', align: 'left', tipo: 'texto' },
+                    { key: 'custo', label: 'Custo', align: 'right', tipo: 'moeda' },
+                    { key: 'preco', label: 'Preço Venda', align: 'right', tipo: 'moeda' },
+                    { key: 'margem', label: 'Margem', align: 'center', tipo: 'texto' },
+                    { key: 'estoque', label: 'Estoque', align: 'right', tipo: 'numero' },
+                    { key: 'status', label: 'Situação', align: 'center', tipo: 'texto' }
+                ],
+                dados: dados,
+                totais: `Total de Itens: ${dados.length} • Saldo Total de Peças: ${totalPecas} un • Patrimônio em Estoque: Custo: ${formatarMoedaLocal(totalCusto)} | Venda Estimada: ${formatarMoedaLocal(totalVenda)}`
+            };
+        }
+
+        // 4.2 CLIENTES
+        else if (modulo === 'clientes') {
+            const lista = window.clientesFiltradosAtuais || (window.db && Array.isArray(window.db.clientes) ? window.db.clientes : []);
+            const dados = lista.map(c => {
+                const end = [c.rua || c.endereco || '', c.numero ? 'nº ' + c.numero : '', c.bairro || ''].filter(Boolean).join(', ');
+                const cidUf = [c.cidade || '', c.uf || ''].filter(Boolean).join(' - ');
+                return {
+                    nome: c.nome || 'Sem Nome',
+                    doc: c.doc || c.cpf || c.cnpj || '-',
+                    contato: c.wpp || c.whatsapp || c.telefone || '-',
+                    email: c.email || '-',
+                    cidade_uf: cidUf || '-',
+                    endereco: end || '-',
+                    limite: c.limite_credito ? formatarMoedaLocal(c.limite_credito) : '-'
+                };
+            });
+
+            configExport = {
+                titulo: 'Relatório Cadastral de Clientes',
+                subtitulo: 'Relação de Clientes, Contatos e Endereços',
+                nomeArquivo: 'Relatorio_Clientes',
+                orientacao: 'landscape',
+                colunas: [
+                    { key: 'nome', label: 'Nome / Razão Social', align: 'left', tipo: 'texto' },
+                    { key: 'doc', label: 'CPF / CNPJ', align: 'left', tipo: 'texto' },
+                    { key: 'contato', label: 'WhatsApp / Telefone', align: 'left', tipo: 'texto' },
+                    { key: 'email', label: 'E-mail', align: 'left', tipo: 'texto' },
+                    { key: 'cidade_uf', label: 'Cidade / UF', align: 'left', tipo: 'texto' },
+                    { key: 'endereco', label: 'Endereço', align: 'left', tipo: 'texto' },
+                    { key: 'limite', label: 'Limite de Crédito', align: 'right', tipo: 'moeda' }
+                ],
+                dados: dados,
+                totais: `Total de Clientes Cadastrados: ${dados.length}`
+            };
+        }
+
+        // 4.3 FUNCIONÁRIOS / COLABORADORES
+        else if (modulo === 'funcionarios') {
+            const lista = window.funcionariosFiltradosAtuais || (window.db && Array.isArray(window.db.funcionarios) ? window.db.funcionarios : []);
+            const dados = lista.map(f => {
+                let perm = 'Padrão';
+                if (f.isAdmin) perm = 'Acesso Total (Admin)';
+                else if (f.perm_vendas_op) perm = 'Operador de Vendas';
+
+                return {
+                    nome: f.nome || 'Sem Nome',
+                    cargo: f.cargo || 'Colaborador',
+                    doc: f.doc || f.cpf || '-',
+                    contato: f.wpp || f.telefone || '-',
+                    email: f.email || '-',
+                    pix: f.chave_pix || f.pix || '-',
+                    salario: f.salario_base ? formatarMoedaLocal(f.salario_base) : (f.salario ? formatarMoedaLocal(f.salario) : '-'),
+                    permissoes: perm
+                };
+            });
+
+            configExport = {
+                titulo: 'Quadro de Colaboradores & Funcionários',
+                subtitulo: 'Lista de Funcionários, Cargos e Informações de Acesso',
+                nomeArquivo: 'Relatorio_Funcionarios',
+                orientacao: 'landscape',
+                colunas: [
+                    { key: 'nome', label: 'Nome do Colaborador', align: 'left', tipo: 'texto' },
+                    { key: 'cargo', label: 'Cargo / Função', align: 'left', tipo: 'texto' },
+                    { key: 'doc', label: 'CPF / Doc', align: 'left', tipo: 'texto' },
+                    { key: 'contato', label: 'WhatsApp / Telefone', align: 'left', tipo: 'texto' },
+                    { key: 'email', label: 'E-mail de Login', align: 'left', tipo: 'texto' },
+                    { key: 'pix', label: 'Chave PIX', align: 'left', tipo: 'texto' },
+                    { key: 'salario', label: 'Salário Base', align: 'right', tipo: 'moeda' },
+                    { key: 'permissoes', label: 'Nível de Permissão', align: 'center', tipo: 'texto' }
+                ],
+                dados: dados,
+                totais: `Total de Colaboradores: ${dados.length}`
+            };
+        }
+
+        // 4.4 FORNECEDORES
+        else if (modulo === 'fornecedores') {
+            const lista = window.fornecedoresFiltradosAtuais || (window.db && Array.isArray(window.db.fornecedores) ? window.db.fornecedores : []);
+            const dados = lista.map(f => {
+                const cidUf = [f.cidade || '', f.uf || ''].filter(Boolean).join(' - ');
+                return {
+                    nome: f.nome || f.razao_social || 'Sem Razão Social',
+                    fantasia: f.fantasia || f.nome_fantasia || '-',
+                    doc: f.doc || f.cnpj || '-',
+                    ie: f.ie || '-',
+                    contato: f.contato || f.responsavel || '-',
+                    telefone: f.wpp || f.telefone || '-',
+                    email: f.email || '-',
+                    cidade_uf: cidUf || '-'
+                };
+            });
+
+            configExport = {
+                titulo: 'Relatório Geral de Fornecedores',
+                subtitulo: 'Catálogo de Parceiros e Fornecedores Homologados',
+                nomeArquivo: 'Relatorio_Fornecedores',
+                orientacao: 'landscape',
+                colunas: [
+                    { key: 'nome', label: 'Razão Social', align: 'left', tipo: 'texto' },
+                    { key: 'fantasia', label: 'Nome Fantasia', align: 'left', tipo: 'texto' },
+                    { key: 'doc', label: 'CNPJ', align: 'left', tipo: 'texto' },
+                    { key: 'ie', label: 'Inscr. Estadual', align: 'left', tipo: 'texto' },
+                    { key: 'contato', label: 'Pessoa Contato', align: 'left', tipo: 'texto' },
+                    { key: 'telefone', label: 'WhatsApp / Telefone', align: 'left', tipo: 'texto' },
+                    { key: 'email', label: 'E-mail Comercial', align: 'left', tipo: 'texto' },
+                    { key: 'cidade_uf', label: 'Cidade / UF', align: 'left', tipo: 'texto' }
+                ],
+                dados: dados,
+                totais: `Total de Fornecedores Cadastrados: ${dados.length}`
+            };
+        }
+
+        // 4.5 COMPRAS
+        else if (modulo === 'compras') {
+            const lista = window.comprasFiltradasAtuais || (window.db && Array.isArray(window.db.compras) ? window.db.compras : []);
+            let totalGasto = 0;
+
+            const dados = lista.map(c => {
+                const total = Number(c.totalNF) || 0;
+                totalGasto += total;
+
+                const dataEntrada = c.data ? (c.data.includes('T') ? c.data.split('T')[0].split('-').reverse().join('/') : c.data) : '-';
+                const dataEmissao = c.dataEmissao ? (c.dataEmissao.includes('T') ? c.dataEmissao.split('T')[0].split('-').reverse().join('/') : c.dataEmissao) : '-';
+                const tipo = c.numeroNF === 'S/N' || !c.numeroNF ? 'Manual' : 'XML NF-e';
+
+                return {
+                    data_entrada: dataEntrada,
+                    data_emissao: dataEmissao,
+                    fornecedor: c.fornecedor || 'Não Informado',
+                    numero_nf: c.numeroNF || 'S/N',
+                    tipo: tipo,
+                    valor: formatarMoedaLocal(total)
+                };
+            });
+
+            configExport = {
+                titulo: 'Relatório de Compras & Entradas de Mercadoria',
+                subtitulo: 'Histórico de Aquisições e Notas Fiscais Recebidas',
+                nomeArquivo: 'Relatorio_Compras',
+                orientacao: 'portrait',
+                colunas: [
+                    { key: 'data_entrada', label: 'Data Entrada', align: 'center', tipo: 'texto' },
+                    { key: 'data_emissao', label: 'Data Emissão', align: 'center', tipo: 'texto' },
+                    { key: 'fornecedor', label: 'Fornecedor', align: 'left', tipo: 'texto' },
+                    { key: 'numero_nf', label: 'NF / Ref', align: 'center', tipo: 'texto' },
+                    { key: 'tipo', label: 'Origem', align: 'center', tipo: 'texto' },
+                    { key: 'valor', label: 'Valor Total', align: 'right', tipo: 'moeda' }
+                ],
+                dados: dados,
+                totais: `Total de Compras: ${dados.length} • Montante Gasto: ${formatarMoedaLocal(totalGasto)}`
+            };
+        }
+
+        // 4.6 VENDAS
+        else if (modulo === 'vendas') {
+            const lista = window.vendasFiltradasAtuais || (window.db && Array.isArray(window.db.vendas) ? window.db.vendas : []);
+            let totalFaturado = 0;
+
+            const dados = lista.map(v => {
+                const total = Number(v.tot !== undefined ? v.tot : (v.total_liquido !== undefined ? v.total_liquido : (v.total || v.valor || 0))) || 0;
+                totalFaturado += total;
+
+                let dataFmt = '-';
+                if (v.data) {
+                    dataFmt = typeof formatData === 'function' ? formatData(v.data).replace(',', '') : v.data.replace('T', ' ').substring(0, 16);
+                }
+
+                let itensResumo = '-';
+                if (Array.isArray(v.itens) && v.itens.length > 0) {
+                    itensResumo = v.itens.map(i => `${i.qtd || 1}x ${i.nome || i.produto || ''}`).join(', ');
+                } else if (v.descricao) {
+                    itensResumo = v.descricao;
+                }
+
+                const pedStr = v.numeroPedido ? '#' + String(v.numeroPedido).padStart(4, '0') : (v.id ? String(v.id).substring(0, 10).toUpperCase() : '-');
+
+                return {
+                    data: dataFmt,
+                    pedido: pedStr,
+                    cliente: v.clienteNome || v.cliente_nome || v.cliente || 'Consumidor Final',
+                    pagamento: v.pag || v.forma_pagamento || v.formaPagamento || v.pagamento || 'Diversos',
+                    itens: itensResumo,
+                    total: formatarMoedaLocal(total)
+                };
+            });
+
+            configExport = {
+                titulo: 'Relatório Gerencial de Vendas e Operações',
+                subtitulo: 'Histórico Completo de Pedidos, Clientes e Recebimentos',
+                nomeArquivo: 'Relatorio_Vendas_Operacoes',
+                orientacao: 'landscape',
+                colunas: [
+                    { key: 'data', label: 'Data/Hora', align: 'center', tipo: 'texto' },
+                    { key: 'pedido', label: 'Pedido / ID', align: 'center', tipo: 'texto' },
+                    { key: 'cliente', label: 'Cliente', align: 'left', tipo: 'texto' },
+                    { key: 'pagamento', label: 'Forma Pagamento', align: 'left', tipo: 'texto' },
+                    { key: 'itens', label: 'Itens da Venda', align: 'left', tipo: 'texto' },
+                    { key: 'total', label: 'Valor Líquido', align: 'right', tipo: 'moeda' }
+                ],
+                dados: dados,
+                totais: `Total de Vendas: ${dados.length} • Faturamento Total: ${formatarMoedaLocal(totalFaturado)}`
+            };
+        }
+
+        // 4.7 MARKETING (LEMBRETES WHATSAPP)
+        else if (modulo === 'marketing' || modulo === 'lembretes') {
+            const clientesBase = window.todosClientes || (window.db && Array.isArray(window.db.clientes) ? window.db.clientes : []);
+            const lista = window.lembretesFiltradosAtuais || clientesBase.filter(c => c.lembrete_wpp === true);
+
+            const dados = lista.map(c => {
+                let status = 'Pendente';
+                if (typeof formatarDataHoje === 'function' && c.lembrete_last_sent === formatarDataHoje()) {
+                    status = 'Enviado Hoje';
+                }
+                return {
+                    cliente: c.nome || 'Sem Nome',
+                    whatsapp: c.wpp ? (typeof formatarCelular === 'function' ? formatarCelular(c.wpp) : c.wpp) : 'Sem número',
+                    mensagem: c.lembrete_msg || 'Mensagem Padrão',
+                    status: status
+                };
+            });
+
+            configExport = {
+                titulo: 'Relatório de Marketing & Lembretes de WhatsApp',
+                subtitulo: 'Lista de Clientes com Automação de Lembretes Recorrentes',
+                nomeArquivo: 'Relatorio_Marketing_Lembretes',
+                orientacao: 'portrait',
+                colunas: [
+                    { key: 'cliente', label: 'Nome do Cliente', align: 'left', tipo: 'texto' },
+                    { key: 'whatsapp', label: 'WhatsApp', align: 'left', tipo: 'texto' },
+                    { key: 'mensagem', label: 'Mensagem Configurada', align: 'left', tipo: 'texto' },
+                    { key: 'status', label: 'Status Envio', align: 'center', tipo: 'texto' }
+                ],
+                dados: dados,
+                totais: `Total de Lembretes Configurados: ${dados.length}`
+            };
+        }
+
+        // 4.8 EXPORTAÇÃO DIRETA POR ID DE TABELA DOM
+        else if (modulo.startsWith('tabela-') || document.getElementById(modulo)) {
+            const tabId = modulo.startsWith('tabela-') ? modulo : modulo;
+            configExport = {
+                titulo: opts.titulo || 'Relatório Gerencial',
+                subtitulo: opts.subtitulo || '',
+                nomeArquivo: opts.nomeArquivo || 'Exportacao_Tabela',
+                tabelaId: tabId
+            };
+        }
+
+        // Se não conseguiu montar configuração, tenta fallback pela tabela da página
+        if (!configExport) {
+            console.warn('Módulo de exportação não identificado:', modulo);
+            if (typeof showToast === 'function') showToast('Módulo não identificado para exportação.', 'warning');
+            return;
+        }
+
+        // Aplica o formato solicitado
+        if (formato === 'word' || formato === 'doc') {
+            window.exportarParaWord(configExport);
+        } else if (formato === 'pdf') {
+            window.exportarParaPDF(configExport);
+        } else {
+            window.exportarParaExcel(configExport);
+        }
+    };
+
+    // Helper específico para exportar o texto gerado pela IA no Marketing
+    window.exportarMarketingIAConsultoria = function(formato) {
+        formato = (formato || 'word').toLowerCase();
+        const container = document.getElementById('ia-resultado-container');
+        if (!container || !container.innerText.trim() || container.innerText.includes('Preencha os dados')) {
+            if (typeof showToast === 'function') showToast('Gere primeiro uma consultoria de IA antes de exportar.', 'warning');
+            return;
+        }
+
+        const nicho = document.getElementById('ia-nicho')?.value || '';
+        const objetivo = document.getElementById('ia-objetivo')?.value || '';
+        const html = container.innerHTML;
+
+        const config = {
+            titulo: 'Consultoria de Marketing Digital - Ideias & Copywriting',
+            subtitulo: (nicho ? `Nicho: ${nicho}` : '') + (objetivo ? ` • Objetivo: ${objetivo}` : ''),
+            nomeArquivo: 'Marketing_IA_' + (nicho ? nicho.replace(/\s+/g, '_') : 'Consultoria'),
+            htmlConteudo: html
+        };
+
+        if (formato === 'pdf') {
+            window.exportarParaPDF(config);
+        } else if (formato === 'excel') {
+            window.exportarParaExcel({
+                titulo: config.titulo,
+                subtitulo: config.subtitulo,
+                nomeArquivo: config.nomeArquivo,
+                colunas: [{ key: 'conteudo', label: 'Consultoria e Estratégia de Conteúdo' }],
+                dados: [{ conteudo: container.innerText }]
+            });
+        } else {
+            window.exportarParaWord(config);
+        }
+    };
+
+})();
+
 

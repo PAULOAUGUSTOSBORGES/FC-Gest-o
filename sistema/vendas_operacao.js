@@ -2251,6 +2251,7 @@ function renderVendas() {
     if (dataFim) { const dFim = new Date(dataFim + 'T23:59:59').getTime(); filtrados = filtrados.filter(v => v.data && new Date(v.data).getTime() <= dFim); }
     
     filtrados.sort((a,b) => new Date(b.data || 0) - new Date(a.data || 0));
+    window.vendasFiltradasAtuais = filtrados;
 
     let totalLucro = 0;
     
@@ -2660,15 +2661,20 @@ window.excluirVenda = function(id) {
             batch.delete(vendaRef);
             
             // Atualiza repositório local imediatamente
+            if (typeof db !== 'undefined' && Array.isArray(db.vendas)) {
+                db.vendas = db.vendas.filter(x => String(x.id) !== String(id));
+            }
             if (typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) {
                 window.db.vendas = window.db.vendas.filter(x => String(x.id) !== String(id));
             }
-            if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
-                window.FCCache.set('vendas', window.db ? window.db.vendas : []);
-                if (typeof window.FCCache.enfileirarOperacao === 'function') {
-                    window.FCCache.enfileirarOperacao('vendas', id, 'delete', null);
-                }
+            if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.removerItem === 'function') {
+                await window.FCCache.removerItem('vendas', id);
             }
+
+            try {
+                const trExcluir = document.querySelector('button[onclick*="excluirVenda(\'' + id + '\')"]')?.closest('tr');
+                if (trExcluir) trExcluir.remove();
+            } catch(e) {}
 
             try {
                 await batch.commit();

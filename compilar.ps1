@@ -66,7 +66,7 @@ Write-Host "Concluido! $arquivosAtualizados arquivos HTML atualizados." -Foregro
 Write-Host "Sempre que voce publicar na nuvem, o navegador dos seus clientes"
 Write-Host "baixara automaticamente a nova versao."
 try {
-    if ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
+    if ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected -and -not ($args -contains "-noWait")) {
         Write-Host "Pressione qualquer tecla para continuar..." -ForegroundColor Yellow
         $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
     }

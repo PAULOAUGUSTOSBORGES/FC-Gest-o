@@ -24,7 +24,7 @@
     </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- PWA Configurações e Ícones -->
-    <link rel="manifest" href="../manifest.json">
+    <script>if (window.location.protocol.startsWith('http')) { const l = document.createElement('link'); l.rel = 'manifest'; l.href = '../manifest.json'; document.head.appendChild(l); }</script>
     <meta name="theme-color" content="#0f172a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -38,7 +38,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link rel="stylesheet" href="../style.css?v=20260923172910">
+    <link rel="stylesheet" href="../style.css?v=20260924180755">
     
     
 
@@ -62,7 +62,7 @@
         .dark .fc-daygrid-more-link { color: #60a5fa !important; font-weight: bold; }
         .fc-daygrid-more-link { color: #2563eb !important; font-weight: bold; }
     </style>
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260923172910">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260924180755">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="financeiro">
 
@@ -194,14 +194,14 @@
                             <div class="flex flex-col sm:flex-row gap-2 w-full lg:w-auto flex-1">
                                 <div class="relative w-full sm:w-64">
                                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-sm"></i>
-                                    <input type="text" id="busca-fin-receber" list="lista-clientes-fin-receber" placeholder="Buscar Cliente, CPF, Pedido, Ref..." class="w-full pl-10 pr-4 py-2 md:py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderFinAbas('receber')">
+                                    <input type="text" id="busca-fin-receber" list="lista-clientes-fin-receber" placeholder="Buscar Cliente, Categoria, Desc., CPF..." class="w-full pl-10 pr-4 py-2 md:py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderFinAbas('receber')">
                                     <datalist id="lista-clientes-fin-receber"></datalist>
                                 </div>
-                                <div class="flex gap-2 w-full sm:w-auto flex-wrap">
-                                    <select id="filtro-receber-cliente" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white max-w-[180px]" onchange="renderFinAbas('receber')">
+                                <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2 w-full">
+                                    <select id="filtro-receber-cliente" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 w-full dark:text-white" onchange="renderFinAbas('receber')">
                                         <option value="">Todos os Clientes</option>
                                     </select>
-                                    <select id="filtro-receber-forma-pagamento" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white max-w-[150px]" onchange="renderFinAbas('receber')">
+                                    <select id="filtro-receber-forma-pagamento" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 w-full dark:text-white" onchange="renderFinAbas('receber')">
                                         <option value="">Forma de Pgto</option>
                                         <option value="Dinheiro">Dinheiro</option>
                                         <option value="PIX">PIX</option>
@@ -212,14 +212,14 @@
                                         <option value="Fiado">Fiado</option>
                                         <option value="Transferência">Transferência</option>
                                     </select>
-                                    <select id="filtro-receber-status" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('receber')">
+                                    <select id="filtro-receber-status" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 w-full dark:text-white" onchange="renderFinAbas('receber')">
                                         <option value="TODOS">Todos os Status</option>
                                         <option value="PENDENTE" selected>Em Aberto / Pendente</option>
                                         <option value="PAGO">Recebido / Pago</option>
                                         <option value="ATRASADO">Vencido / Atrasado</option>
                                         <option value="CANCELADO">Cancelado</option>
                                     </select>
-                                    <select id="filtro-receber-periodo" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('receber')">
+                                    <select id="filtro-receber-periodo" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 w-full dark:text-white" onchange="renderFinAbas('receber')">
                                         <option value="MES" selected>Este Mês</option>
                                         <option value="7">Próximos 7 dias</option>
                                         <option value="30">Próximos 30 dias</option>
@@ -228,8 +228,8 @@
                                         <option value="ANO">Este Ano</option>
                                         <option value="TUDO">Histórico Completo</option>
                                     </select>
-                                    <input type="date" id="filtro-receber-ini" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('receber')" title="Data Inicial">
-                                    <input type="date" id="filtro-receber-fim" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('receber')" title="Data Final">
+                                    <input type="date" id="filtro-receber-ini" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 w-full dark:text-white" onchange="renderFinAbas('receber')" title="Data Inicial">
+                                    <input type="date" id="filtro-receber-fim" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 w-full dark:text-white" onchange="renderFinAbas('receber')" title="Data Final">
                                 </div>
                             </div>
                             <div class="flex gap-2 w-full lg:w-auto">
@@ -256,14 +256,14 @@
                             <div class="flex flex-col sm:flex-row gap-2 w-full lg:w-auto flex-1">
                                 <div class="relative w-full sm:w-64">
                                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-sm"></i>
-                                    <input type="text" id="busca-fin-pagar" list="lista-fornecedores-fin-pagar" placeholder="Buscar Fornecedor, Ref, NF..." class="w-full pl-10 pr-4 py-2 md:py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderFinAbas('pagar')">
+                                    <input type="text" id="busca-fin-pagar" list="lista-fornecedores-fin-pagar" placeholder="Buscar Fornecedor, Categoria, Desc., CNPJ..." class="w-full pl-10 pr-4 py-2 md:py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderFinAbas('pagar')">
                                     <datalist id="lista-fornecedores-fin-pagar"></datalist>
                                 </div>
-                                <div class="flex gap-2 w-full sm:w-auto flex-wrap">
-                                    <select id="filtro-pagar-fornecedor" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white max-w-[180px]" onchange="renderFinAbas('pagar')">
+                                <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2 w-full">
+                                    <select id="filtro-pagar-fornecedor" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 w-full dark:text-white" onchange="renderFinAbas('pagar')">
                                         <option value="">Todos os Fornecedores</option>
                                     </select>
-                                    <select id="filtro-pagar-forma-pagamento" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white max-w-[150px]" onchange="renderFinAbas('pagar')">
+                                    <select id="filtro-pagar-forma-pagamento" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 w-full dark:text-white" onchange="renderFinAbas('pagar')">
                                         <option value="">Forma de Pgto</option>
                                         <option value="Dinheiro">Dinheiro</option>
                                         <option value="PIX">PIX</option>
@@ -274,14 +274,14 @@
                                         <option value="Fiado">Fiado</option>
                                         <option value="Transferência">Transferência</option>
                                     </select>
-                                    <select id="filtro-pagar-status" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('pagar')">
+                                    <select id="filtro-pagar-status" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 w-full dark:text-white" onchange="renderFinAbas('pagar')">
                                         <option value="TODOS">Todos os Status</option>
                                         <option value="PENDENTE" selected>Em Aberto / A Pagar</option>
                                         <option value="PAGO">Pago</option>
                                         <option value="ATRASADO">Vencido / Atrasado</option>
                                         <option value="RENEGOCIADO">Renegociado</option>
                                     </select>
-                                    <select id="filtro-pagar-periodo" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('pagar')">
+                                    <select id="filtro-pagar-periodo" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 w-full dark:text-white" onchange="renderFinAbas('pagar')">
                                         <option value="MES" selected>Este Mês</option>
                                         <option value="7">Próximos 7 dias</option>
                                         <option value="30">Próximos 30 dias</option>
@@ -290,8 +290,8 @@
                                         <option value="ANO">Este Ano</option>
                                         <option value="TUDO">Histórico Completo</option>
                                     </select>
-                                    <input type="date" id="filtro-pagar-ini" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('pagar')" title="Data Inicial">
-                                    <input type="date" id="filtro-pagar-fim" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 flex-1 dark:text-white" onchange="renderFinAbas('pagar')" title="Data Final">
+                                    <input type="date" id="filtro-pagar-ini" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 w-full dark:text-white" onchange="renderFinAbas('pagar')" title="Data Inicial">
+                                    <input type="date" id="filtro-pagar-fim" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs md:text-sm rounded-lg px-2 md:px-3 py-2 md:py-2.5 outline-none focus:border-blue-500 w-full dark:text-white" onchange="renderFinAbas('pagar')" title="Data Final">
                                 </div>
                             </div>
                             <div class="flex gap-2 w-full lg:w-auto">
@@ -1622,11 +1622,11 @@
 <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20260923172910"></script>
-    <script src="saas_licenca.js?v=20260923172910"></script>
-    <script src="../global.js?v=20260923172910"></script>
-    <script src="fc_cache.js?v=20260923172910"></script>
-    <script src="financeiro.js?v=20260923172910"></script>
+    <script src="../sistema/config_banco.js?v=20260924180755"></script>
+    <script src="saas_licenca.js?v=20260924180755"></script>
+    <script src="../global.js?v=20260924180755"></script>
+    <script src="fc_cache.js?v=20260924180755"></script>
+    <script src="financeiro.js?v=20260924180755"></script>
 </body>
 </html>
 

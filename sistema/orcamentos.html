@@ -24,7 +24,7 @@
     </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- PWA Configurações e Ícones -->
-    <link rel="manifest" href="../manifest.json">
+    <script>if (window.location.protocol.startsWith('http')) { const l = document.createElement('link'); l.rel = 'manifest'; l.href = '../manifest.json'; document.head.appendChild(l); }</script>
     <meta name="theme-color" content="#0f172a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -39,8 +39,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- CORRIGIDO: Removido o ?v=20260831113500 que estava quebrando o carregamento offline -->
-    <link rel="stylesheet" href="../style.css?v=20260923172910">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260923172910">
+    <link rel="stylesheet" href="../style.css?v=20260924180755">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260924180755">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="vendas">
 
@@ -84,6 +84,7 @@
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
                 <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
                 <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
+                <a href="caixa_loja.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa_loja"><i class="fa-solid fa-chart-bar w-5 text-center"></i> Caixa da Loja</a>
                 <a href="compras.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & NF-e XML</a>
                 <a href="relatorios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
                 <a href="agenda.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="agenda"><i class="fa-regular fa-calendar w-5 text-center"></i> Agenda</a>
@@ -291,9 +292,11 @@
                 <div id="view-orcamentos" class="view-section max-w-7xl mx-auto space-y-4 md:space-y-6 active">
                     <div class="flex flex-col lg:flex-row justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 gap-4">
                         <div class="flex flex-col sm:flex-row flex-wrap md:flex-nowrap gap-2 w-full lg:w-auto flex-1">
-                            <div class="relative w-full sm:w-64">
-                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-sm"></i>
-                                <input type="text" id="busca-orcamentos" placeholder="Buscar Cliente ou Orçamento..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderOrcamentos()">
+                            <div class="flex items-center gap-1.5 w-full sm:w-64">
+                                <input type="text" id="busca-orcamentos" placeholder="Buscar Cliente ou Orçamento..." class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderOrcamentos()">
+                                <button type="button" onclick="renderOrcamentos()" class="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2.5 rounded-lg text-sm font-bold transition-colors flex items-center justify-center shrink-0 shadow-xs" title="Buscar Orçamento">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                </button>
                             </div>
                             <div class="flex gap-2 w-full sm:w-auto">
                                 <input type="date" id="filtro-orcamentos-ini" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm rounded-lg px-3 py-2.5 outline-none focus:border-blue-500 w-full sm:w-auto dark:text-white" onchange="renderOrcamentos()" title="Data Inicial">
@@ -351,28 +354,27 @@
 
     <!-- OPÇÕES DE RECIBO E CONTRATO -->
     <div id="modal-opcoes-recibo" class="fixed inset-0 bg-slate-900/80 z-[200] hidden flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
-            <div class="bg-emerald-500 p-4 md:p-5 text-white text-center">
-                <i class="fa-solid fa-circle-check text-4xl md:text-5xl mb-2"></i>
-                <h2 class="font-bold text-lg md:text-xl">Documento Gerado</h2>
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden max-h-[92vh]">
+            <div class="bg-emerald-500 p-4 text-white text-center shrink-0">
+                <i class="fa-solid fa-circle-check text-4xl mb-1"></i>
+                <h2 class="font-bold text-lg">Documento Gerado</h2>
             </div>
             <div id="print-area" class="hidden bg-white dark:bg-slate-800 text-black font-mono"></div>
-            <div class="p-4 md:p-5 bg-slate-50 dark:bg-slate-900 flex flex-col gap-3 max-h-[80vh] overflow-y-auto custom-scrollbar">
-
+            
+            <!-- CORPO COM ROLAGEM PRINCIPAL -->
+            <div class="p-4 bg-slate-50 dark:bg-slate-900 flex flex-col gap-3 flex-1 overflow-y-auto custom-scrollbar">
+                
                 <!-- [RESERVADO PARA FUTURA EMISSÃO FISCAL] -->
                 <div id="fiscal-container" class="hidden">
-                    <div id="fiscal-status-container" class="hidden mb-2 text-center p-3 rounded-lg border">
-                        <!-- Será preenchido via JS (loader, sucesso, erro) -->
-                    </div>
+                    <div id="fiscal-status-container" class="hidden mb-2 text-center p-3 rounded-lg border"></div>
 
                     <div class="grid grid-cols-2 gap-2 mb-2">
                         <button onclick="emitirNota('nfce')" id="btn-emitir-nfce" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white p-3 rounded-xl font-bold flex flex-col items-center justify-center gap-1 transition-colors text-xs"><i class="fa-solid fa-receipt text-lg"></i> Emitir NFC-e</button>
                         <button onclick="emitirNota('nfe')" id="btn-emitir-nfe" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white p-3 rounded-xl font-bold flex flex-col items-center justify-center gap-1 transition-colors text-xs"><i class="fa-solid fa-file-invoice text-lg"></i> Emitir NF-e</button>
                     </div>
-
+                    
                     <div class="border-t border-slate-200 dark:border-slate-700 my-1"></div>
                 </div>
-                <!-- [/RESERVADO PARA FUTURA EMISSÃO FISCAL] -->
 
                 <!-- BOTÕES DE IMPRESSÃO / RECIBO -->
                 <div>
@@ -385,57 +387,68 @@
                     </div>
                 </div>
 
-                <!-- CARD DE LEMBRETE NA AGENDA -->
-                <div class="bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-800/60 rounded-xl p-3.5 shadow-sm space-y-2.5">
-                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2">
-                        <span class="text-xs font-bold text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
-                            <i class="fa-regular fa-calendar-check text-blue-500"></i> Agendar Lembrete na Agenda
+                <!-- CARD DE LEMBRETE NA AGENDA (COM SCROLL INTERNO DEDICADO) -->
+                <details class="group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xs overflow-hidden">
+                    <summary class="p-3 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors select-none">
+                        <span class="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+                            <i class="fa-regular fa-calendar-check"></i> Agendar Lembrete na Agenda (Opcional)
                         </span>
-                        <span id="badge-lembrete-status" class="hidden text-[10px] bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <i class="fa-solid fa-check"></i> Agendado
-                        </span>
-                    </div>
-
-                    <!-- TIPO DE LEMBRETE -->
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Tipo de Lembrete</label>
-                        <div class="grid grid-cols-2 gap-2">
-                            <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 cursor-pointer hover:border-emerald-500 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50 dark:has-[:checked]:bg-emerald-900/30 transition-colors">
-                                <input type="radio" name="pdv-lembrete-tipo" value="ENTREGA" checked class="text-emerald-600 focus:ring-emerald-500">
-                                <span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5"><i class="fa-solid fa-truck text-emerald-500"></i> Entrega</span>
-                            </label>
-                            <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 cursor-pointer hover:border-amber-500 has-[:checked]:border-amber-500 has-[:checked]:bg-amber-50 dark:has-[:checked]:bg-amber-900/30 transition-colors">
-                                <input type="radio" name="pdv-lembrete-tipo" value="COBRANCA" class="text-amber-600 focus:ring-amber-500">
-                                <span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5"><i class="fa-solid fa-hand-holding-dollar text-amber-500"></i> Cobrança</span>
-                            </label>
+                        <div class="flex items-center gap-2">
+                            <span id="badge-lembrete-status" class="hidden text-[10px] bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <i class="fa-solid fa-check"></i> Agendado
+                            </span>
+                            <i class="fa-solid fa-chevron-down text-slate-400 group-open:rotate-180 transition-transform"></i>
                         </div>
-                    </div>
+                    </summary>
 
-                    <!-- DATA E HORA -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <!-- CONTAINER DO AGENDAR -->
+                    <div class="p-3.5 border-t border-slate-100 dark:border-slate-700 space-y-3">
+                        <!-- TIPO DE LEMBRETE -->
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Data do Lembrete *</label>
-                            <input type="date" id="pdv-lembrete-data" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs font-bold outline-none focus:border-blue-500 dark:text-white">
+                            <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Tipo de Lembrete</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 cursor-pointer hover:border-emerald-500 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50 dark:has-[:checked]:bg-emerald-900/30 transition-colors">
+                                    <input type="radio" name="pdv-lembrete-tipo" value="ENTREGA" checked class="text-emerald-600 focus:ring-emerald-500">
+                                    <span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5"><i class="fa-solid fa-truck text-emerald-500"></i> Entrega</span>
+                                </label>
+                                <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 cursor-pointer hover:border-amber-500 has-[:checked]:border-amber-500 has-[:checked]:bg-amber-50 dark:has-[:checked]:bg-amber-900/30 transition-colors">
+                                    <input type="radio" name="pdv-lembrete-tipo" value="COBRANCA" class="text-amber-600 focus:ring-amber-500">
+                                    <span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5"><i class="fa-solid fa-hand-holding-dollar text-amber-500"></i> Cobrança</span>
+                                </label>
+                            </div>
                         </div>
+
+                        <!-- DATA E HORA -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Data do Lembrete *</label>
+                                <input type="date" id="pdv-lembrete-data" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs font-bold outline-none focus:border-blue-500 dark:text-white">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Horário (opcional)</label>
+                                <input type="time" id="pdv-lembrete-hora" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs font-bold outline-none focus:border-blue-500 dark:text-white">
+                            </div>
+                        </div>
+
+                        <!-- OBSERVAÇÃO ADICIONAL -->
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Horário (opcional)</label>
-                            <input type="time" id="pdv-lembrete-hora" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs font-bold outline-none focus:border-blue-500 dark:text-white">
+                            <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Observação do Lembrete</label>
+                            <textarea id="pdv-lembrete-obs" rows="2" placeholder="Ex: Entregar à tarde, cobrar restante via PIX..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white resize-none"></textarea>
                         </div>
+
+                        <!-- BOTÃO AGENDAR -->
+                        <button type="button" id="btn-salvar-lembrete-pdv" onclick="salvarLembretePDV()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-3 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors shadow-sm">
+                            <i class="fa-solid fa-calendar-plus"></i> Salvar Lembrete na Agenda
+                        </button>
                     </div>
+                </details>
+            </div>
 
-                    <!-- OBSERVAÇÃO ADICIONAL -->
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Observação do Lembrete</label>
-                        <input type="text" id="pdv-lembrete-obs" placeholder="Ex: Entregar à tarde, cobrar restante via PIX..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white">
-                    </div>
-
-                    <!-- BOTÃO AGENDAR -->
-                    <button type="button" id="btn-salvar-lembrete-pdv" onclick="salvarLembretePDV()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-3 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors shadow-sm">
-                        <i class="fa-solid fa-calendar-plus"></i> Salvar Lembrete na Agenda
-                    </button>
-                </div>
-
-                <button onclick="fecharModalOpcoesRecibo()" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 p-3 rounded-xl font-bold transition-colors text-sm">Fechar Janela</button>
+            <!-- RODAPÉ FIXO COM FECHAR JANELA (SEMPRE VISÍVEL) -->
+            <div class="p-3 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 shrink-0">
+                <button onclick="fecharModalOpcoesRecibo()" class="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 p-2.5 rounded-xl font-bold transition-colors text-xs sm:text-sm flex items-center justify-center gap-1.5 border border-slate-300 dark:border-slate-600">
+                    <i class="fa-solid fa-xmark"></i> Fechar Janela
+                </button>
             </div>
         </div>
     </div>
@@ -942,11 +955,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
 
-    <script src="../sistema/config_banco.js?v=20260923172910"></script>
-    <script src="saas_licenca.js?v=20260923172910"></script>
-    <script src="../global.js?v=20260923172910"></script>
-    <script src="fc_cache.js?v=20260923172910"></script>
-    <script src="orcamentos.js?v=20260923172910"></script>
+    <script src="../sistema/config_banco.js?v=20260924180755"></script>
+    <script src="saas_licenca.js?v=20260924180755"></script>
+    <script src="../global.js?v=20260924180755"></script>
+    <script src="fc_cache.js?v=20260924180755"></script>
+    <script src="orcamentos.js?v=20260924180755"></script>
 </body>
 </html>
 

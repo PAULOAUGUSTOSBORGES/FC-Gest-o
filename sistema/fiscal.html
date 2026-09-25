@@ -305,8 +305,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <link rel="stylesheet" href="../style.css?v=20260923172910">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260923172910">
+    <link rel="stylesheet" href="../style.css?v=20260924180755">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260924180755">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="fiscal">
 
@@ -349,6 +349,7 @@
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
                 <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
                 <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
+                <a href="caixa_loja.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa_loja"><i class="fa-solid fa-chart-bar w-5 text-center"></i> Caixa da Loja</a>
                 <a href="compras.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & NF-e XML</a>
                 <a href="relatorios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
                 <a href="agenda.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="agenda"><i class="fa-regular fa-calendar w-5 text-center"></i> Agenda</a>
@@ -517,11 +518,15 @@
                     <!-- LINHA 2: BUSCA RÁPIDA & FILTROS INTEGRADOS -->
                     <div class="flex flex-wrap items-center gap-2.5">
                         <!-- Campo de Busca Amplo -->
-                        <div class="relative flex-1 min-w-[260px]">
-                            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
-                            <input type="text" id="busca-fiscal" oninput="filtrarNotasFiscais()" placeholder="Buscar por Nº da nota, chave de acesso, cliente ou CPF/CNPJ..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 pl-9 pr-8 py-2 rounded-xl text-xs outline-none focus:border-blue-500 transition-colors">
-                            <button type="button" onclick="document.getElementById('busca-fiscal').value = ''; filtrarNotasFiscais();" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs" title="Limpar busca">
-                                <i class="fa-solid fa-xmark"></i>
+                        <div class="flex items-center gap-1.5 flex-1 min-w-[260px]">
+                            <div class="relative flex-1">
+                                <input type="text" id="busca-fiscal" oninput="filtrarNotasFiscais()" placeholder="Buscar por Nº da nota, chave de acesso, cliente ou CPF/CNPJ..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-3.5 pr-8 py-2 rounded-xl text-xs outline-none focus:border-blue-500 transition-colors">
+                                <button type="button" onclick="document.getElementById('busca-fiscal').value = ''; filtrarNotasFiscais();" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs" title="Limpar busca">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                            <button type="button" onclick="filtrarNotasFiscais()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-center shrink-0 shadow-xs" title="Buscar Nota Fiscal">
+                                <i class="fa-solid fa-magnifying-glass"></i>
                             </button>
                         </div>
 
@@ -1294,10 +1299,10 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20260923172910"></script>
-    <script src="saas_licenca.js?v=20260923172910"></script>
-    <script src="../global.js?v=20260923172910"></script>
-    <script src="fc_cache.js?v=20260923172910"></script>
-    <script src="fiscal.js?v=20260923172910"></script>
+    <script src="../sistema/config_banco.js?v=20260924180755"></script>
+    <script src="saas_licenca.js?v=20260924180755"></script>
+    <script src="../global.js?v=20260924180755"></script>
+    <script src="fc_cache.js?v=20260924180755"></script>
+    <script src="fiscal.js?v=20260924180755"></script>
 </body>
 </html>

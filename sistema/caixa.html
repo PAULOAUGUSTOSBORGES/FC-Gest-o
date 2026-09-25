@@ -24,7 +24,7 @@
     </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- PWA Configurações e Ícones -->
-    <link rel="manifest" href="../manifest.json">
+    <script>if (window.location.protocol.startsWith('http')) { const l = document.createElement('link'); l.rel = 'manifest'; l.href = '../manifest.json'; document.head.appendChild(l); }</script>
     <meta name="theme-color" content="#0f172a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -37,8 +37,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link rel="stylesheet" href="../style.css?v=20260923172910">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260923172910">
+    <link rel="stylesheet" href="../style.css?v=20260924180755">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260924180755">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="caixa">
 
@@ -80,6 +80,7 @@
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
                 <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
                 <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
+                <a href="caixa_loja.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa_loja"><i class="fa-solid fa-chart-bar w-5 text-center"></i> Caixa da Loja</a>
                 <a href="compras.html" id="nav-compras" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & Estoque</a>
                 <a href="relatorios.html" id="nav-relatorios" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
                 <a href="agenda.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="agenda"><i class="fa-regular fa-calendar w-5 text-center"></i> Agenda</a>
@@ -110,6 +111,27 @@
 
                 <div id="view-caixa" class="view-section max-w-7xl mx-auto space-y-4 md:space-y-6 active">
                     
+                    <!-- BARRA DE OPERADOR / SELETOR DE CAIXA INDIVIDUAL -->
+                    <div class="bg-white dark:bg-slate-800 p-3 md:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 flex items-center justify-center font-bold text-lg">
+                                <i class="fa-solid fa-user-tie"></i>
+                            </div>
+                            <div>
+                                <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Conta do Operador</span>
+                                <h3 class="text-base font-black text-slate-800 dark:text-white uppercase leading-none" id="caixa-operador-ativo-nome">Carregando...</h3>
+                            </div>
+                        </div>
+
+                        <!-- Seletor exclusivo para Admin para gerenciar caixas de outros funcionários -->
+                        <div id="seletor-operador-caixa-container" class="hidden flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-500"><i class="fa-solid fa-shield text-purple-600 mr-1"></i> Ver Caixa de:</span>
+                            <select id="seletor-operador-caixa" onchange="trocarOperadorCaixa(this.value)" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-bold text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-blue-500">
+                                <option value="MEU">Meu Caixa (Operador Atual)</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <!-- RESUMO DO CAIXA LOCAL -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
                         <div class="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-center items-center text-center">
@@ -132,9 +154,42 @@
                             <button onclick="abrirModalCaixa('sangria')" class="w-full bg-amber-50 text-amber-700 hover:bg-amber-100 py-2 md:py-2.5 rounded-lg font-bold text-xs md:text-sm transition-colors border border-amber-200 flex items-center justify-center gap-2"><i class="fa-solid fa-arrow-up"></i> Sangria (Retirada)</button>
                         </div>
 
-                        <div class="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-center gap-2 md:gap-3">
-                            <button onclick="abrirModalTransferenciaCaixa()" class="w-full bg-purple-50 text-purple-700 hover:bg-purple-100 py-2 md:py-2.5 rounded-lg font-bold text-xs md:text-sm transition-colors border border-purple-200 flex items-center justify-center gap-2"><i class="fa-solid fa-money-bill-transfer"></i> Transferir p/ Banco</button>
-                            <button onclick="abrirUltimoMapaCaixa()" class="w-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 py-2 md:py-2.5 rounded-lg font-bold text-xs md:text-sm transition-colors flex items-center justify-center gap-2"><i class="fa-solid fa-receipt"></i> Mapa de Fechamento</button>
+                        <div class="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-center">
+                            <button onclick="abrirUltimoMapaCaixa()" class="w-full h-full min-h-[52px] bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 py-3 rounded-xl font-bold text-xs md:text-sm transition-colors flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-600">
+                                <i class="fa-solid fa-receipt text-blue-500 text-base"></i> Mapa de Fechamento
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- SEÇÃO DE VENDAS / PEDIDOS PENDENTES DO PDV (AGUARDANDO PAGAMENTO) -->
+                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                        <div class="p-3 md:p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex justify-between items-center flex-wrap gap-2">
+                            <div class="flex items-center gap-3">
+                                <span class="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-300 flex items-center justify-center font-bold text-base shadow-xs">
+                                    <i class="fa-solid fa-cart-shopping"></i>
+                                </span>
+                                <div>
+                                    <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm md:text-base flex items-center gap-2">
+                                        Pedidos / Vendas Pendentes do PDV
+                                        <span id="badge-vendas-pendentes-qtd" class="bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 text-[10px] md:text-xs font-black px-2.5 py-0.5 rounded-full">0 aguardando</span>
+                                    </h3>
+                                    <p class="text-[11px] text-slate-400">Vendas lançadas no balcão/PDV para recebimento financeiro no caixa</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <div class="relative">
+                                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                                    <input type="text" id="busca-vendas-pendentes" oninput="renderVendasPendentesPDV()" placeholder="Buscar nº pedido ou cliente..." class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-blue-500 w-48 sm:w-60">
+                                </div>
+                                <button type="button" onclick="renderVendasPendentesPDV()" class="bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-600 dark:text-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5" title="Atualizar Lista">
+                                    <i class="fa-solid fa-rotate"></i> Atualizar
+                                </button>
+                            </div>
+                        </div>
+                        <div id="lista-vendas-pendentes-container" class="p-3 md:p-4 max-h-[380px] overflow-y-auto custom-scrollbar">
+                            <div class="text-center py-8 text-slate-400 text-xs md:text-sm">
+                                <i class="fa-solid fa-spinner fa-spin mr-2"></i> Carregando vendas pendentes...
+                            </div>
                         </div>
                     </div>
 
@@ -145,10 +200,16 @@
                                 <i class="fa-solid fa-clock-rotate-left text-blue-600"></i>
                                 <h3 class="font-bold text-slate-700 dark:text-slate-200 text-sm md:text-base">Histórico de Movimentações do Caixa</h3>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <label class="text-xs font-bold text-slate-500">Filtrar Data:</label>
-                                <input type="date" id="filtro-data-caixa" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-xs md:text-sm text-slate-700 dark:text-slate-200 outline-none" onchange="renderCaixaDiario()">
-                                <button onclick="imprimirArea('print-area-caixa')" class="bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 px-3 py-1 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300"><i class="fa-solid fa-print"></i></button>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <div class="flex items-center bg-slate-200 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-bold">
+                                    <button type="button" id="btn-filtro-turno" onclick="trocarModoFiltroHistorico('TURNO')" class="px-2.5 py-1 rounded-md transition-colors bg-white dark:bg-slate-700 text-blue-600 shadow-sm">Turno Atual</button>
+                                    <button type="button" id="btn-filtro-todos" onclick="trocarModoFiltroHistorico('TODOS')" class="px-2.5 py-1 rounded-md transition-colors text-slate-600 dark:text-slate-400 hover:text-slate-900">Todos</button>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <label class="text-xs font-bold text-slate-500">Data:</label>
+                                    <input type="date" id="filtro-data-caixa" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-xs md:text-sm text-slate-700 dark:text-slate-200 outline-none" onchange="trocarModoFiltroHistorico('DATA')">
+                                </div>
+                                <button type="button" onclick="imprimirArea('print-area-caixa')" class="bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300" title="Imprimir Histórico"><i class="fa-solid fa-print"></i></button>
                             </div>
                         </div>
                         <div class="overflow-x-auto max-h-[500px] custom-scrollbar">
@@ -314,6 +375,237 @@
         </div>
     </div>
 
+    <!-- MODAL RECEBIMENTO DE PEDIDO DO PDV NO CAIXA -->
+    <div id="modal-receber-pdv-caixa" class="fixed inset-0 bg-slate-900/70 z-[160] hidden flex items-center justify-center p-3 md:p-4 backdrop-blur-sm overflow-y-auto">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden animate-fadeIn max-h-[92vh] my-auto">
+            <div class="bg-gradient-to-r from-emerald-600 to-teal-600 p-4 text-white flex justify-between items-center shrink-0">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-cash-register text-xl"></i>
+                    <div>
+                        <h3 class="font-black text-base md:text-lg leading-tight" id="modal-receber-titulo">Receber Pedido #0000</h3>
+                        <span class="text-xs text-emerald-100" id="modal-receber-subtitulo">Cliente: Consumidor Final</span>
+                    </div>
+                </div>
+                <button onclick="fecharModalReceberPDV()" class="text-white/80 hover:text-white transition-colors p-1"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+
+            <div class="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 space-y-4 overflow-y-auto flex-1 min-h-0 custom-scrollbar">
+                <input type="hidden" id="modal-receber-venda-id">
+
+                <!-- Card Total do Pedido -->
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center shadow-xs">
+                    <div>
+                        <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Total a Receber</span>
+                        <span class="text-2xl md:text-3xl font-black text-emerald-600 dark:text-emerald-400" id="modal-receber-total-display">R$ 0,00</span>
+                    </div>
+                    <div class="text-right text-xs text-slate-500 dark:text-slate-400">
+                        <span id="modal-receber-itens-resumo" class="block font-semibold">0 itens</span>
+                        <span id="modal-receber-vendedor-nome" class="block text-[11px] text-slate-400">Vend: -</span>
+                        <span id="modal-receber-condicao-vendedor" class="block text-[11px] font-bold text-amber-600 dark:text-amber-400"></span>
+                    </div>
+                </div>
+
+                <!-- Resumo compacto dos itens -->
+                <div id="modal-receber-itens-lista" class="bg-slate-100 dark:bg-slate-800/60 p-2.5 rounded-lg text-xs space-y-1 max-h-32 overflow-y-auto border border-slate-200 dark:border-slate-700"></div>
+
+                <!-- Seleção de Forma de Pagamento Principal -->
+                <div>
+                    <label class="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">Forma de Pagamento:</label>
+                    <div class="grid grid-cols-3 sm:grid-cols-4 gap-2" id="grid-metodos-pagamento-caixa">
+                        <button type="button" onclick="selecionarMetodoCaixa('Dinheiro')" class="btn-metodo-cx flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold text-xs transition shadow-xs" data-metodo="Dinheiro">
+                            <i class="fa-solid fa-money-bill-wave text-lg mb-1"></i> Dinheiro
+                        </button>
+                        <button type="button" onclick="selecionarMetodoCaixa('PIX')" class="btn-metodo-cx flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs transition hover:border-blue-400" data-metodo="PIX">
+                            <i class="fa-brands fa-pix text-lg mb-1 text-teal-500"></i> PIX
+                        </button>
+                        <button type="button" onclick="selecionarMetodoCaixa('Cartão Crédito')" class="btn-metodo-cx flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs transition hover:border-blue-400" data-metodo="Cartão Crédito">
+                            <i class="fa-solid fa-credit-card text-lg mb-1 text-blue-500"></i> Crédito
+                        </button>
+                        <button type="button" onclick="selecionarMetodoCaixa('Cartão Débito')" class="btn-metodo-cx flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs transition hover:border-blue-400" data-metodo="Cartão Débito">
+                            <i class="fa-solid fa-credit-card text-lg mb-1 text-indigo-500"></i> Débito
+                        </button>
+                        <button type="button" onclick="selecionarMetodoCaixa('Boleto')" class="btn-metodo-cx flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs transition hover:border-blue-400" data-metodo="Boleto">
+                            <i class="fa-solid fa-barcode text-lg mb-1 text-amber-500"></i> Boleto
+                        </button>
+                        <button type="button" onclick="selecionarMetodoCaixa('Fiado')" class="btn-metodo-cx flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs transition hover:border-blue-400" data-metodo="Fiado">
+                            <i class="fa-solid fa-user-clock text-lg mb-1 text-purple-500"></i> Fiado
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Campos Condicionais: Dinheiro (Valor Recebido & Troco) -->
+                <div id="box-dinheiro-caixa" class="bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 space-y-2">
+                    <div class="flex items-center gap-3">
+                        <div class="flex-1">
+                            <label class="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 block mb-1">Valor Entregue pelo Cliente:</label>
+                            <input type="text" data-mask="money" inputmode="numeric" id="modal-receber-valor-pago" oninput="calcularTrocoReceberCaixa()" placeholder="R$ 0,00" class="w-full bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-700 rounded-lg p-2.5 text-base font-black text-slate-800 dark:text-white outline-none">
+                        </div>
+                        <div class="text-right shrink-0">
+                            <span class="text-[10px] uppercase font-bold text-slate-500 block">Troco a Devolver</span>
+                            <span class="text-lg md:text-xl font-black text-emerald-600 dark:text-emerald-400" id="modal-receber-troco-display">R$ 0,00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Campos Condicionais: Parcelamento (Fiado, Boleto, Crédito, Débito) -->
+                <div id="box-parcelamento-caixa" class="hidden bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
+                        <span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                            <i class="fa-solid fa-calendar-days text-blue-500"></i> Condições de Parcelamento
+                        </span>
+                        <span id="cx-parcelas-resumo-topo" class="text-xs font-extrabold text-blue-600 dark:text-blue-400">1x de R$ 0,00</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1">Quantidade de Parcelas:</label>
+                            <select id="modal-receber-parcelas" onchange="renderizarParcelasCaixa()" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-xs font-bold text-slate-800 dark:text-white outline-none focus:border-blue-500">
+                                <option value="1">1x (À Vista)</option>
+                                <option value="2">2x</option>
+                                <option value="3">3x</option>
+                                <option value="4">4x</option>
+                                <option value="5">5x</option>
+                                <option value="6">6x</option>
+                                <option value="7">7x</option>
+                                <option value="8">8x</option>
+                                <option value="9">9x</option>
+                                <option value="10">10x</option>
+                                <option value="11">11x</option>
+                                <option value="12">12x</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1">1º Vencimento:</label>
+                            <input type="date" id="modal-receber-vencimento-base" onchange="recalcularDatasParcelasCaixa('inputBase')" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-xs font-bold text-slate-800 dark:text-white outline-none focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <!-- Lista de Parcelas Dinâmicas (Data e Valor de Cada Parcela) -->
+                    <div class="space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Detalhamento das Parcelas (Vencimento & Valor)</label>
+                            <span class="text-[10px] text-slate-400">Edite datas ou valores se necessário</span>
+                        </div>
+                        <div id="modal-receber-datas-parcelas" class="space-y-1.5 max-h-36 overflow-y-auto pr-1 custom-scrollbar"></div>
+                    </div>
+                </div>
+
+                <!-- Observação do Recebimento -->
+                <div>
+                    <label class="text-xs font-bold text-slate-500 mb-1 block">Observação do Recebimento (Opcional):</label>
+                    <input type="text" id="modal-receber-obs" placeholder="Ex: Recebido no balcão pelo operador..." class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-xs text-slate-700 dark:text-white outline-none">
+                </div>
+            </div>
+
+            <div class="p-4 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex gap-2 shrink-0">
+                <button onclick="fecharModalReceberPDV()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300 py-3 rounded-xl font-bold text-xs md:text-sm transition">Cancelar</button>
+                <button id="btn-confirmar-recebimento-caixa" onclick="confirmarRecebimentoPDVNoCaixa()" class="flex-2 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl text-sm md:text-base shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-circle-check text-lg"></i> Confirmar e Baixar Venda
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ÁREA DE IMPRESSÃO DE CUPOM / RECIBO DO CAIXA -->
+    <div id="print-area-recibo-caixa" class="hidden"></div>
+
+    <!-- OPÇÕES DE RECIBO E CONTRATO (DOCUMENTO GERADO APÓS FINALIZAR CAIXA) -->
+    <div id="modal-opcoes-recibo" class="fixed inset-0 bg-slate-900/80 z-[200] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden max-h-[92vh]">
+            <div id="modal-recibo-header" class="bg-emerald-500 p-4 text-white text-center shrink-0">
+                <i id="modal-recibo-icone" class="fa-solid fa-circle-check text-4xl mb-1"></i>
+                <h2 id="modal-recibo-titulo" class="font-bold text-lg">Documento Gerado</h2>
+                <p id="modal-recibo-subtitulo" class="text-xs text-emerald-100 hidden mt-1 font-semibold"></p>
+            </div>
+            <div id="print-area" class="hidden bg-white dark:bg-slate-800 text-black font-mono"></div>
+            
+            <!-- CORPO COM ROLAGEM PRINCIPAL -->
+            <div class="p-4 bg-slate-50 dark:bg-slate-900 flex flex-col gap-3 flex-1 overflow-y-auto custom-scrollbar">
+                
+                <!-- EMISSÃO FISCAL -->
+                <div id="fiscal-container" class="hidden">
+                    <div id="fiscal-status-container" class="hidden mb-2 text-center p-3 rounded-lg border"></div>
+
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <button onclick="emitirNota('nfce')" id="btn-emitir-nfce" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white p-3 rounded-xl font-bold flex flex-col items-center justify-center gap-1 transition-colors text-xs"><i class="fa-solid fa-receipt text-lg"></i> Emitir NFC-e</button>
+                        <button onclick="emitirNota('nfe')" id="btn-emitir-nfe" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white p-3 rounded-xl font-bold flex flex-col items-center justify-center gap-1 transition-colors text-xs"><i class="fa-solid fa-file-invoice text-lg"></i> Emitir NF-e</button>
+                    </div>
+                    
+                    <div class="border-t border-slate-200 dark:border-slate-700 my-1"></div>
+                </div>
+
+                <!-- BOTÕES DE IMPRESSÃO / RECIBO -->
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1.5"><i class="fa-solid fa-print mr-1"></i> Imprimir / Exportar Comprovante</label>
+                    <div class="grid grid-cols-2 gap-2" id="grid-botoes-recibo">
+                        <button onclick="printAction('thermal')" id="btn-recibo-bobina" class="w-full bg-slate-800 hover:bg-slate-900 text-white p-2.5 md:p-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors text-xs"><i class="fa-solid fa-receipt text-base"></i> <span id="txt-recibo-bobina">Recibo Bobina</span></button>
+                        <button onclick="printAction('a4')" id="btn-recibo-a4" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-2.5 md:p-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors text-xs"><i class="fa-solid fa-print text-base"></i> <span id="txt-recibo-a4">Recibo A4</span></button>
+                        <button onclick="imprimirContratoAtual()" id="btn-recibo-contrato" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white p-2.5 md:p-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors text-xs"><i class="fa-solid fa-file-contract text-base"></i> Contrato</button>
+                        <button onclick="downloadPDF('print-area', 'Recibo')" id="btn-recibo-pdf" class="w-full bg-red-600 hover:bg-red-700 text-white p-2.5 md:p-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors text-xs"><i class="fa-solid fa-file-pdf text-base"></i> Baixar PDF</button>
+                    </div>
+                </div>
+
+                <!-- CARD DE LEMBRETE NA AGENDA -->
+                <details class="group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xs overflow-hidden">
+                    <summary class="p-3 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors select-none">
+                        <span class="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+                            <i class="fa-regular fa-calendar-check"></i> Agendar Lembrete na Agenda (Opcional)
+                        </span>
+                        <div class="flex items-center gap-2">
+                            <span id="badge-lembrete-status" class="hidden text-[10px] bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <i class="fa-solid fa-check"></i> Agendado
+                            </span>
+                            <i class="fa-solid fa-chevron-down text-slate-400 group-open:rotate-180 transition-transform"></i>
+                        </div>
+                    </summary>
+
+                    <div class="p-3.5 border-t border-slate-100 dark:border-slate-700 space-y-3">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Tipo de Lembrete</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 cursor-pointer hover:border-emerald-500 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50 dark:has-[:checked]:bg-emerald-900/30 transition-colors">
+                                    <input type="radio" name="pdv-lembrete-tipo" value="ENTREGA" checked class="text-emerald-600 focus:ring-emerald-500">
+                                    <span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5"><i class="fa-solid fa-truck text-emerald-500"></i> Entrega</span>
+                                </label>
+                                <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 cursor-pointer hover:border-amber-500 has-[:checked]:border-amber-500 has-[:checked]:bg-amber-50 dark:has-[:checked]:bg-amber-900/30 transition-colors">
+                                    <input type="radio" name="pdv-lembrete-tipo" value="COBRANCA" class="text-amber-600 focus:ring-amber-500">
+                                    <span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5"><i class="fa-solid fa-hand-holding-dollar text-amber-500"></i> Cobrança</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Data do Lembrete *</label>
+                                <input type="date" id="pdv-lembrete-data" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs font-bold outline-none focus:border-blue-500 dark:text-white">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Horário (opcional)</label>
+                                <input type="time" id="pdv-lembrete-hora" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs font-bold outline-none focus:border-blue-500 dark:text-white">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Observação do Lembrete</label>
+                            <textarea id="pdv-lembrete-obs" rows="2" placeholder="Ex: Entregar à tarde, cobrar restante via PIX..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white resize-none"></textarea>
+                        </div>
+
+                        <button type="button" id="btn-salvar-lembrete-pdv" onclick="salvarLembreteCaixa()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-3 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors shadow-sm">
+                            <i class="fa-solid fa-calendar-plus"></i> Salvar Lembrete na Agenda
+                        </button>
+                    </div>
+                </details>
+            </div>
+
+            <!-- RODAPÉ FIXO COM FECHAR JANELA -->
+            <div class="p-3 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 shrink-0">
+                <button onclick="fecharModalOpcoesRecibo()" class="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 p-2.5 rounded-xl font-bold transition-colors text-xs sm:text-sm flex items-center justify-center gap-1.5 border border-slate-300 dark:border-slate-600">
+                    <i class="fa-solid fa-xmark"></i> Fechar Janela
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL CONFIRMA??O DO SISTEMA -->
     <div id="modal-confirmacao" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden text-center p-6">
@@ -330,11 +622,12 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20260923172910"></script>
-    <script src="saas_licenca.js?v=20260923172910"></script>
-    <script src="../global.js?v=20260923172910"></script>
-    <script src="fc_cache.js?v=20260923172910"></script>
-    <script src="caixa.js?v=20260923172910"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
+    <script src="../sistema/config_banco.js?v=20260924180755"></script>
+    <script src="saas_licenca.js?v=20260924180755"></script>
+    <script src="../global.js?v=20260924180755"></script>
+    <script src="fc_cache.js?v=20260924180755"></script>
+    <script src="caixa.js?v=20260924180755"></script>
 </body>
 </html>
 

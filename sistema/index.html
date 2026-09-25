@@ -24,7 +24,7 @@
     </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- PWA Configurações e Ícones -->
-    <link rel="manifest" href="../manifest.json">
+    <script>if (window.location.protocol.startsWith('http')) { const l = document.createElement('link'); l.rel = 'manifest'; l.href = '../manifest.json'; document.head.appendChild(l); }</script>
     <meta name="theme-color" content="#0f172a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -36,8 +36,8 @@
         
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css?v=20260923172910">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260923172910">
+    <link rel="stylesheet" href="../style.css?v=20260924180755">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260924180755">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -84,6 +84,7 @@
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
                 <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
                 <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
+                <a href="caixa_loja.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa_loja"><i class="fa-solid fa-chart-bar w-5 text-center"></i> Caixa da Loja</a>
                 <a href="compras.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & NF-e XML</a>
                 <a href="relatorios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
                 <a href="agenda.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="agenda"><i class="fa-regular fa-calendar w-5 text-center"></i> Agenda</a>
@@ -383,11 +384,11 @@
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     
     <!-- Scripts -->
-    <script src="../sistema/config_banco.js?v=20260923172910"></script>
-    <script src="saas_licenca.js?v=20260923172910"></script>
-    <script src="../global.js?v=20260923172910"></script>
-    <script src="fc_cache.js?v=20260923172910"></script>
-    <script src="index.js?v=20260923172910"></script>
+    <script src="../sistema/config_banco.js?v=20260924180755"></script>
+    <script src="saas_licenca.js?v=20260924180755"></script>
+    <script src="../global.js?v=20260924180755"></script>
+    <script src="fc_cache.js?v=20260924180755"></script>
+    <script src="index.js?v=20260924180755"></script>
 </body>
 </html>
 

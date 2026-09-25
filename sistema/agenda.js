@@ -52,6 +52,8 @@ function renderizarTodosEventosAgenda() {
     if (financeiroEventsData && Array.isArray(financeiroEventsData)) {
         financeiroEventsData.forEach(f => {
             if (f.status === 'CANCELADO' || f.status === 'RENEGOCIADO') return;
+            // NUNCA agendar vendas automaticamente na agenda!
+            if (f.origemVendaId || f.categoria === 'Vendas' || f.tipo === 'RECEITA' || (f.ref && (f.ref.includes('Venda') || f.ref.includes('Pedido')))) return;
             
             let color = '#ef4444'; 
             if (f.tipo === 'RECEITA') color = '#10b981';
@@ -72,7 +74,7 @@ function renderizarTodosEventosAgenda() {
                     backgroundColor: color,
                     borderColor: color,
                     extendedProps: {
-                        descricao: 'Evento do módulo financeiro.',
+                        descricao: 'Evento do mï¿½dulo financeiro.',
                         tipoEvento: 'FINANCEIRO',
                         originalId: f.id
                     }
@@ -94,7 +96,7 @@ function initCalendar() {
         },
         buttonText: {
             today: 'Hoje',
-            month: 'Mês',
+            month: 'Mï¿½s',
             week: 'Semana',
             day: 'Dia',
             list: 'Lista'
@@ -113,9 +115,9 @@ function initCalendar() {
         eventClick: function(info) {
             if (info.event.extendedProps && info.event.extendedProps.tipoEvento === 'FINANCEIRO') {
                 if (typeof showToast === 'function') {
-                    showToast('Conta a pagar/receber. Acesse o módulo Financeiro para visualizar.', 'info');
+                    showToast('Conta a pagar/receber. Acesse o mï¿½dulo Financeiro para visualizar.', 'info');
                 } else {
-                    alert('Acesse o módulo Financeiro para visualizar esta conta.');
+                    alert('Acesse o mï¿½dulo Financeiro para visualizar esta conta.');
                 }
                 return;
             }
@@ -125,7 +127,7 @@ function initCalendar() {
         eventDrop: function(info) {
             if (info.event.extendedProps && info.event.extendedProps.tipoEvento === 'FINANCEIRO') {
                 info.revert();
-                if (typeof showToast === 'function') showToast('Não é possível reagendar contas por aqui.', 'error');
+                if (typeof showToast === 'function') showToast('Nï¿½o ï¿½ possï¿½vel reagendar contas por aqui.', 'error');
                 return;
             }
             atualizarDataEvento(info.event);
@@ -134,7 +136,7 @@ function initCalendar() {
         eventResize: function(info) {
             if (info.event.extendedProps && info.event.extendedProps.tipoEvento === 'FINANCEIRO') {
                 info.revert();
-                if (typeof showToast === 'function') showToast('Não é possível reagendar contas por aqui.', 'error');
+                if (typeof showToast === 'function') showToast('Nï¿½o ï¿½ possï¿½vel reagendar contas por aqui.', 'error');
                 return;
             }
             atualizarDataEvento(info.event);

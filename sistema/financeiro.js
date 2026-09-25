@@ -115,35 +115,114 @@ async function confirmarBaixa() {
     const vf = calcularAcrescimos();
     const metodo = document.getElementById('baixa-metodo')?.value || 'Pix';
     const batch = firestore.batch();
+
+    const opAtual = (typeof window.obterOperadorAtual === 'function') ? window.obterOperadorAtual() : null;
+    const opNome = (opAtual && opAtual.nome) || (window.currentUserInfo && window.currentUserInfo.nome) || 'Operador';
+    const caixaRef = (typeof window.obterCaixaDocRef === 'function') 
+        ? window.obterCaixaDocRef() 
+        : window.getEmpresaRef().collection('caixa').doc('caixa_atual');
+    const caixaDocId = (typeof window.obterCaixaDocId === 'function') ? window.obterCaixaDocId() : 'caixa_atual';
     
-    if (metodo === 'Dinheiro') {
-        let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
-        let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
-        let cxSaldoNovo = cxAtual.saldo || 0;
-        
-        if (cxAtual.status !== 'ABERTO') return showToast('Abra o Caixa Físico primeiro!', 'error');
+    let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
+    let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
+    let cxSaldoNovo = cxAtual.saldo || 0;
+    const nowIso = new Date().toISOString();
+
+    const isDinheiro = (metodo === 'Dinheiro');
+
+    if (isDinheiro) {
+        if (cxAtual.status !== 'ABERTO') return showToast('Abra o Caixa Físico primeiro antes de movimentar dinheiro!', 'error');
         if (f.tipo === 'RECEITA') {
             cxSaldoNovo += vf;
-            cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Recbto. Título: ${f.pessoa}`, valor: vf });
+            cxHistoricoNovo.unshift({ 
+                data: nowIso, 
+                tipo: 'ENTRADA', 
+                metodo: 'Dinheiro', 
+                desc: `Recbto. Título: ${f.pessoa}`, 
+                valor: vf,
+                operador: opNome,
+                saldoApos: cxSaldoNovo
+            });
         } else {
-            if (vf > cxSaldoNovo) return showToast('Saldo do Caixa insuficiente!', 'error');
+            if (vf > cxSaldoNovo) return showToast('Saldo em dinheiro do Caixa insuficiente na gaveta!', 'error');
             cxSaldoNovo -= vf;
-            cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Pgto. Título: ${f.pessoa}`, valor: vf });
+            cxHistoricoNovo.unshift({ 
+                data: nowIso, 
+                tipo: 'SAIDA', 
+                metodo: 'Dinheiro', 
+                desc: `Pgto. Título: ${f.pessoa}`, 
+                valor: vf,
+                operador: opNome,
+                saldoApos: cxSaldoNovo
+            });
         }
-        batch.set(window.getEmpresaRef().collection('caixa').doc('caixa_atual'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+        batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+    } else {
+        // Registra também no histórico do turno do operador para controle com tag informativa
+        if (f.tipo === 'RECEITA') {
+            cxHistoricoNovo.unshift({ 
+                data: nowIso, 
+                tipo: `ENTRADA (${metodo})`, 
+                metodo: metodo, 
+                desc: `Recbto. Título: ${f.pessoa}`, 
+                valor: vf,
+                operador: opNome,
+                saldoApos: cxSaldoNovo,
+                naoAfetaGaveta: true
+            });
+        } else {
+            cxHistoricoNovo.unshift({ 
+                data: nowIso, 
+                tipo: `SAIDA (${metodo})`, 
+                metodo: metodo, 
+                desc: `Pgto. Título: ${f.pessoa}`, 
+                valor: vf,
+                operador: opNome,
+                saldoApos: cxSaldoNovo,
+                naoAfetaGaveta: true
+            });
+        }
+        batch.set(caixaRef, { ...cxAtual, historico: cxHistoricoNovo }, { merge: true });
     }
     
     const finRef = window.getEmpresaRef().collection('financeiro').doc(String(id));
-    batch.update(finRef, { status: 'PAGO', valorPago: vf, metodoPagamento: metodo, dataPagamento: new Date().toISOString(), ultimaAlteracao: Date.now() });
+    batch.update(finRef, { 
+        status: 'PAGO', 
+        valorPago: vf, 
+        metodoPagamento: metodo, 
+        dataPagamento: nowIso, 
+        operadorBaixa: opNome,
+        caixaId: caixaDocId,
+        ultimaAlteracao: Date.now() 
+    });
     
     try {
         await batch.commit();
+        f.status = 'PAGO';
+        f.valorPago = vf;
+        f.metodoPagamento = metodo;
+        f.dataPagamento = nowIso;
+        f.operadorBaixa = opNome;
+        f.caixaId = caixaDocId;
+        f.ultimaAlteracao = Date.now();
+
+        if (db.caixa) {
+            db.caixa.saldo = cxSaldoNovo;
+            db.caixa.historico = cxHistoricoNovo;
+            if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+                window.FCCache.set('fc_moveis_' + caixaDocId, db.caixa);
+                window.FCCache.set('fc_moveis_caixa', db.caixa);
+            }
+        }
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+            window.FCCache.set('financeiro', db.financeiro);
+        }
         fecharModalBaixa();
         renderFinAbas(f.tipo === 'RECEITA' ? 'receber' : 'pagar');
         showToast('Baixa realizada com sucesso!', 'success');
     } catch(e) {
         console.error(e);
-        showToast('Erro ao realizar baixa.', 'error');
+        showToast('Erro ao realizar baixa: ' + (e.message || e), 'error');
     }
 }
 
@@ -537,9 +616,10 @@ async function confirmarRenegociacaoAvancada() {
         });
 
         // 2. Se houver Entrada, gerar lançamento liquidado (PAGO)
+        const novosTitulosLocal = [];
         if (entrada > 0) {
             const refEntrada = window.getEmpresaRef().collection('financeiro').doc();
-            batch.set(refEntrada, {
+            const docEntrada = {
                 tipo: tipoOriginal,
                 pessoa: pessoaOriginal,
                 clienteId: fOriginal.clienteId || null,
@@ -559,7 +639,9 @@ async function confirmarRenegociacaoAvancada() {
                 observacao: `Entrada da renegociação do título ${fOriginal.ref || idOriginal}. ${obsAcordo}`.trim(),
                 criadoEm: agoraIso,
                 ultimaAlteracao: Date.now()
-            });
+            };
+            batch.set(refEntrada, docEntrada);
+            novosTitulosLocal.push({ ...docEntrada, id: String(refEntrada.id) });
         }
 
         // 3. Gerar cada uma das parcelas pendentes com datas e valores personalizados
@@ -567,7 +649,7 @@ async function confirmarRenegociacaoAvancada() {
             const refParcela = window.getEmpresaRef().collection('financeiro').doc();
             const dataParcelaIso = new Date(p.dataVencimento + 'T12:00:00').toISOString();
 
-            batch.set(refParcela, {
+            const docParcela = {
                 tipo: tipoOriginal,
                 pessoa: pessoaOriginal,
                 clienteId: fOriginal.clienteId || null,
@@ -585,10 +667,30 @@ async function confirmarRenegociacaoAvancada() {
                 observacao: `Parcela ${p.numero}/${p.totalParcelas} da renegociação do título ${fOriginal.ref || idOriginal}. ${obsAcordo}`.trim(),
                 criadoEm: agoraIso,
                 ultimaAlteracao: Date.now()
-            });
+            };
+            batch.set(refParcela, docParcela);
+            novosTitulosLocal.push({ ...docParcela, id: String(refParcela.id) });
         });
 
         await batch.commit();
+
+        // Atualização imediata em memória e cache local
+        if (fOriginal) {
+            fOriginal.status = 'RENEGOCIADO';
+            fOriginal.observacao = (fOriginal.observacao || '') + historicoTexto;
+            fOriginal.renegociadoEm = agoraIso;
+            fOriginal.renegociacaoJuros = juros;
+            fOriginal.renegociacaoDesconto = desconto;
+            fOriginal.renegociacaoEntrada = entrada;
+            fOriginal.renegociacaoQtdParcelas = parcelas.length;
+            fOriginal.ultimaAlteracao = Date.now();
+        }
+        if (Array.isArray(db.financeiro)) {
+            novosTitulosLocal.forEach(nt => db.financeiro.unshift(nt));
+        }
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+            window.FCCache.set('financeiro', db.financeiro);
+        }
 
         fecharModalRenegociacao();
         showToast(`Título renegociado com sucesso em ${entrada > 0 ? 'Entrada + ' : ''}${parcelas.length} parcelas!`, 'success');
@@ -1598,6 +1700,7 @@ function renderTitulos(tipo) {
                 f.numBoleto,
                 f.observacao,
                 f.obs,
+                f.descricao,
                 f.centroCusto,
                 f.contaBancaria,
                 f.cartorioNome,
@@ -2214,7 +2317,7 @@ function salvarConta() {
                 const ref = window.getEmpresaRef().collection('financeiro').doc(String(idExistente));
                 batch.set(ref, contaObj, { merge: true });
                 
-                // Atualização otimista imediata no array local db.financeiro
+                // Atualização imediata no array local db.financeiro
                 if (Array.isArray(db.financeiro)) {
                     const idx = db.financeiro.findIndex(x => String(x.id).trim() === String(idExistente).trim());
                     if (idx !== -1) {
@@ -2225,10 +2328,16 @@ function salvarConta() {
                 const ref = window.getEmpresaRef().collection('financeiro').doc();
                 batch.set(ref, contaObj);
                 contasGeradas++;
+                if (Array.isArray(db.financeiro)) {
+                    db.financeiro.unshift({ ...contaObj, id: String(ref.id) });
+                }
             }
         }
 
         batch.commit().then(() => {
+            if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+                window.FCCache.set('financeiro', db.financeiro);
+            }
             fecharModalConta(); 
             renderFinAbas(tipo === 'RECEITA' ? 'receber' : 'pagar'); 
             
@@ -2250,8 +2359,14 @@ function salvarConta() {
 
 function excluirTitulo(id) { 
     abrirConfirmacao('Excluir Título', 'Deseja apagar permanentemente?', () => { 
-        const tit = db.financeiro.find(f => String(f.id) === String(id)); 
+        const tit = db.financeiro?.find(f => String(f.id) === String(id)); 
         window.getEmpresaRef().collection('financeiro').doc(String(id)).delete().then(() => {
+            if (Array.isArray(db.financeiro)) {
+                db.financeiro = db.financeiro.filter(x => String(x.id) !== String(id));
+                if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+                    window.FCCache.set('financeiro', db.financeiro);
+                }
+            }
             if(tit) renderFinAbas(tit.tipo === 'RECEITA' ? 'receber' : 'pagar'); 
             showToast('Excluído!'); 
         }).catch(e => { console.error(e); showToast('Erro', 'error'); });
@@ -2264,11 +2379,11 @@ async function estornarTitulo(id) {
 
     abrirConfirmacao('Estornar Pagamento', 'Voltará para PENDENTE e reverterá o caixa.', async () => {
         const batch = firestore.batch();
+        let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
+        let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
+        let cxSaldoNovo = cxAtual.saldo || 0;
+
         if (f.metodoPagamento === 'Dinheiro') {
-            let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
-            let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
-            let cxSaldoNovo = cxAtual.saldo || 0;
-            
             if (f.tipo === 'RECEITA') {
                 cxSaldoNovo -= f.valorPago;
                 cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno: ${f.pessoa}`, valor: f.valorPago });
@@ -2276,7 +2391,8 @@ async function estornarTitulo(id) {
                 cxSaldoNovo += f.valorPago;
                 cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Estorno: ${f.pessoa}`, valor: f.valorPago });
             }
-            batch.set(window.getEmpresaRef().collection('caixa').doc('caixa_atual'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+            const cxRefEstorno = (typeof window.obterCaixaDocRef === 'function') ? window.obterCaixaDocRef() : window.getEmpresaRef().collection('caixa').doc('caixa_atual');
+        batch.set(cxRefEstorno, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
         }
         
         const finRef = window.getEmpresaRef().collection('financeiro').doc(String(id));
@@ -2284,6 +2400,20 @@ async function estornarTitulo(id) {
         
         try {
             await batch.commit();
+            f.status = 'PENDENTE';
+            f.dataPagamento = '';
+            f.metodoPagamento = '';
+            f.ultimaAlteracao = Date.now();
+            if (f.metodoPagamento === 'Dinheiro' && db.caixa) {
+                db.caixa.saldo = cxSaldoNovo;
+                db.caixa.historico = cxHistoricoNovo;
+                if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+                    window.FCCache.set('fc_moveis_caixa', db.caixa);
+                }
+            }
+            if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+                window.FCCache.set('financeiro', db.financeiro);
+            }
             renderFinAbas(f.tipo === 'RECEITA' ? 'receber' : 'pagar');
             showToast('Estorno concluído!', 'success');
         } catch (e) {
@@ -3701,7 +3831,8 @@ async function confirmarTransferenciaFin() {
     }
 
     if (atualizouCaixa) {
-        batch.set(window.getEmpresaRef().collection('caixa').doc('caixa_atual'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+        const cxRefEstorno = (typeof window.obterCaixaDocRef === 'function') ? window.obterCaixaDocRef() : window.getEmpresaRef().collection('caixa').doc('caixa_atual');
+        batch.set(cxRefEstorno, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
     }
 
     const transfRef = window.getEmpresaRef().collection('financeiro').doc();
@@ -3727,6 +3858,12 @@ async function confirmarTransferenciaFin() {
 
     try {
         await batch.commit();
+        if (Array.isArray(db.financeiro)) {
+            db.financeiro.unshift({ ...transfObj, id: String(transfRef.id) });
+            if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+                window.FCCache.set('financeiro', db.financeiro);
+            }
+        }
         fecharModalTransferenciaFin();
         renderTransferenciasFin();
         showToast('Transferência realizada com sucesso!', 'success');
@@ -3759,10 +3896,13 @@ async function excluirTransferenciaFin(id) {
 
     abrirConfirmacao('Cancelar', 'Cancelar transferência de ' + formatMoney(t.valor) + '?', async () => {
         const batch = firestore.batch();
+        let cxSaldoNovo = 0;
+        let cxHistoricoNovo = [];
+        let mexeuNoCaixa = false;
         if (t.origem === 'Caixa Físico' || t.destino === 'Caixa Físico') {
             let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
-            let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
-            let cxSaldoNovo = cxAtual.saldo || 0;
+            cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
+            cxSaldoNovo = cxAtual.saldo || 0;
             if (t.origem === 'Caixa Físico') {
                 cxSaldoNovo += (t.valor || 0);
                 cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: 'Estorno Transf: para ' + t.destino, valor: t.valor });
@@ -3770,11 +3910,26 @@ async function excluirTransferenciaFin(id) {
                 cxSaldoNovo -= (t.valor || 0);
                 cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: 'Estorno Transf: de ' + t.origem, valor: t.valor });
             }
-            batch.set(window.getEmpresaRef().collection('caixa').doc('caixa_atual'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+            const cxRefEstorno = (typeof window.obterCaixaDocRef === 'function') ? window.obterCaixaDocRef() : window.getEmpresaRef().collection('caixa').doc('caixa_atual');
+        batch.set(cxRefEstorno, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+            mexeuNoCaixa = true;
         }
         batch.delete(window.getEmpresaRef().collection('financeiro').doc(String(id)));
         try {
             await batch.commit();
+            if (mexeuNoCaixa && db.caixa) {
+                db.caixa.saldo = cxSaldoNovo;
+                db.caixa.historico = cxHistoricoNovo;
+                if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+                    window.FCCache.set('fc_moveis_caixa', db.caixa);
+                }
+            }
+            if (Array.isArray(db.financeiro)) {
+                db.financeiro = db.financeiro.filter(x => String(x.id) !== String(id));
+                if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+                    window.FCCache.set('financeiro', db.financeiro);
+                }
+            }
             renderTransferenciasFin();
             showToast('Transferência estornada!', 'success');
         } catch (e) {
@@ -4650,7 +4805,7 @@ function renderCalendarFin() {
             },
             buttonText: {
                 today: 'Hoje',
-                month: 'M�s',
+                month: 'M�s',
                 week: 'Semana',
                 list: 'Lista'
             },

@@ -413,6 +413,8 @@ function renderClientes() {
         filtrados.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
     }
 
+    window.clientesFiltradosAtuais = filtrados;
+
     document.getElementById('tabela-clientes').innerHTML = filtrados.map(c => `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 font-bold text-slate-800 dark:text-slate-100">${c.nome}</td><td class="p-4 text-slate-600 dark:text-slate-300 font-mono">${c.doc || '-'}</td><td class="p-4 text-slate-800 dark:text-slate-100"><i class="fa-brands fa-whatsapp text-emerald-500 mr-1"></i> ${c.wpp || '-'}</td><td class="p-4 text-slate-600 dark:text-slate-300">${c.cidade || '-'}</td><td class="p-4 text-center"><button onclick="editarCliente('${c.id}')" class="text-blue-500 hover:text-blue-700 p-2"><i class="fa-solid fa-pen"></i></button><button onclick="excluirCliente('${c.id}')" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || '<tr><td colspan="5" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum cliente encontrado.</td></tr>';
 }
 
@@ -858,8 +860,11 @@ function abrirModalFuncionario(id = null) {
             const temProd = f.perm_produtos !== undefined ? !!f.perm_produtos : !!f.perm_cadastros;
             const temCli = f.perm_clientes !== undefined ? !!f.perm_clientes : !!f.perm_cadastros;
             const temForn = f.perm_fornecedores !== undefined ? !!f.perm_fornecedores : !!f.perm_cadastros;
+            const temFunc = f.perm_funcionarios !== undefined ? !!f.perm_funcionarios : !!f.isAdmin;
 
             const temPdv = !!f.perm_pdv;
+            const temPdvCaixa = f.perm_pdv_lancar_caixa !== undefined ? !!f.perm_pdv_lancar_caixa : temPdv;
+            const temPdvBalcao = f.perm_pdv_venda_balcao !== undefined ? !!f.perm_pdv_venda_balcao : temPdv;
             const temVendasOp = f.perm_vendas_op !== undefined ? !!f.perm_vendas_op : temPdv;
             const temOrcamentos = f.perm_orcamentos !== undefined ? !!f.perm_orcamentos : temPdv;
             const temFiscal = f.perm_fiscal !== undefined ? !!f.perm_fiscal : !!f.perm_gestao;
@@ -867,6 +872,7 @@ function abrirModalFuncionario(id = null) {
             const temGestao = !!f.perm_gestao;
             const temFinanceiro = f.perm_financeiro !== undefined ? !!f.perm_financeiro : temGestao;
             const temCaixa = f.perm_caixa !== undefined ? !!f.perm_caixa : (temPdv || temGestao);
+            const temCaixaLoja = f.perm_caixa_loja !== undefined ? !!f.perm_caixa_loja : (temCaixa || temGestao);
             const temCompras = f.perm_compras !== undefined ? !!f.perm_compras : temGestao;
             const temRelatorios = f.perm_relatorios !== undefined ? !!f.perm_relatorios : temGestao;
             const temAgenda = f.perm_agenda !== undefined ? !!f.perm_agenda : temGestao;
@@ -874,14 +880,18 @@ function abrirModalFuncionario(id = null) {
 
             setCheck('func-perm-dashboard', f.perm_dashboard);
             setCheck('func-perm-pdv', f.perm_pdv);
+            setCheck('func-perm-pdv-caixa', temPdvCaixa);
+            setCheck('func-perm-pdv-balcao', temPdvBalcao);
             setCheck('func-perm-vendas-op', temVendasOp);
             setCheck('func-perm-orcamentos', temOrcamentos);
             setCheck('func-perm-fiscal', temFiscal);
             setCheck('func-perm-produtos', temProd);
             setCheck('func-perm-clientes', temCli);
             setCheck('func-perm-fornecedores', temForn);
+            setCheck('func-perm-funcionarios', temFunc);
             setCheck('func-perm-financeiro', temFinanceiro);
             setCheck('func-perm-caixa', temCaixa);
+            setCheck('func-perm-caixa-loja', temCaixaLoja);
             setCheck('func-perm-compras', temCompras);
             setCheck('func-perm-relatorios', temRelatorios);
             setCheck('func-perm-agenda', temAgenda);
@@ -890,7 +900,7 @@ function abrirModalFuncionario(id = null) {
             setCheck('func-perm-admin', f.isAdmin);
         }
     } else {
-        document.getElementById('modal-funcionario-title').innerText = 'Novo Funcionrio';
+        document.getElementById('modal-funcionario-title').innerText = 'Novo Funcionário';
         document.getElementById('func-email').value = '';
         document.getElementById('func-email').disabled = false;
         document.getElementById('func-senha').value = '';
@@ -908,14 +918,18 @@ function abrirModalFuncionario(id = null) {
 
         setCheck('func-perm-dashboard', true);
         setCheck('func-perm-pdv', true);
+        setCheck('func-perm-pdv-caixa', true);
+        setCheck('func-perm-pdv-balcao', true);
         setCheck('func-perm-vendas-op', true);
         setCheck('func-perm-orcamentos', true);
         setCheck('func-perm-fiscal', false);
         setCheck('func-perm-produtos', false);
         setCheck('func-perm-clientes', false);
         setCheck('func-perm-fornecedores', false);
+        setCheck('func-perm-funcionarios', false);
         setCheck('func-perm-financeiro', false);
         setCheck('func-perm-caixa', false);
+        setCheck('func-perm-caixa-loja', false);
         setCheck('func-perm-compras', false);
         setCheck('func-perm-relatorios', false);
         setCheck('func-perm-agenda', false);
@@ -932,14 +946,18 @@ function marcarTodasPermissoes(estado) {
     const ids = [
         'func-perm-dashboard',
         'func-perm-pdv',
+        'func-perm-pdv-caixa',
+        'func-perm-pdv-balcao',
         'func-perm-vendas-op',
         'func-perm-orcamentos',
         'func-perm-fiscal',
         'func-perm-produtos',
         'func-perm-clientes',
         'func-perm-fornecedores',
+        'func-perm-funcionarios',
         'func-perm-financeiro',
         'func-perm-caixa',
+        'func-perm-caixa-loja',
         'func-perm-compras',
         'func-perm-relatorios',
         'func-perm-agenda',
@@ -979,14 +997,18 @@ async function salvarFuncionario() {
 
     const perm_dashboard = getCheck('func-perm-dashboard');
     const perm_pdv = getCheck('func-perm-pdv');
+    const perm_pdv_lancar_caixa = getCheck('func-perm-pdv-caixa');
+    const perm_pdv_venda_balcao = getCheck('func-perm-pdv-balcao');
     const perm_vendas_op = getCheck('func-perm-vendas-op');
     const perm_orcamentos = getCheck('func-perm-orcamentos');
     const perm_fiscal = getCheck('func-perm-fiscal');
     const perm_produtos = getCheck('func-perm-produtos');
     const perm_clientes = getCheck('func-perm-clientes');
     const perm_fornecedores = getCheck('func-perm-fornecedores');
+    const perm_funcionarios = getCheck('func-perm-funcionarios');
     const perm_financeiro = getCheck('func-perm-financeiro');
     const perm_caixa = getCheck('func-perm-caixa');
+    const perm_caixa_loja = getCheck('func-perm-caixa-loja');
     const perm_compras = getCheck('func-perm-compras');
     const perm_relatorios = getCheck('func-perm-relatorios');
     const perm_agenda = getCheck('func-perm-agenda');
@@ -994,8 +1016,8 @@ async function salvarFuncionario() {
     const perm_config = getCheck('func-perm-config');
     const isAdmin = getCheck('func-perm-admin');
 
-    const perm_cadastros = perm_produtos || perm_clientes || perm_fornecedores;
-    const perm_gestao = perm_financeiro || perm_caixa || perm_compras || perm_relatorios || perm_agenda || perm_marketing || perm_fiscal;
+    const perm_cadastros = perm_produtos || perm_clientes || perm_fornecedores || perm_funcionarios;
+    const perm_gestao = perm_financeiro || perm_caixa || perm_caixa_loja || perm_compras || perm_relatorios || perm_agenda || perm_marketing || perm_fiscal;
 
     const obj = {
         nome: document.getElementById('func-nome').value.trim().toUpperCase(),
@@ -1005,14 +1027,18 @@ async function salvarFuncionario() {
         telefone: document.getElementById('func-telefone').value.trim(),
         perm_dashboard: perm_dashboard,
         perm_pdv: perm_pdv,
+        perm_pdv_lancar_caixa: perm_pdv_lancar_caixa,
+        perm_pdv_venda_balcao: perm_pdv_venda_balcao,
         perm_vendas_op: perm_vendas_op,
         perm_orcamentos: perm_orcamentos,
         perm_fiscal: perm_fiscal,
         perm_produtos: perm_produtos,
         perm_clientes: perm_clientes,
         perm_fornecedores: perm_fornecedores,
+        perm_funcionarios: perm_funcionarios,
         perm_financeiro: perm_financeiro,
         perm_caixa: perm_caixa,
+        perm_caixa_loja: perm_caixa_loja,
         perm_compras: perm_compras,
         perm_relatorios: perm_relatorios,
         perm_agenda: perm_agenda,

@@ -4637,6 +4637,7 @@ function renderVendas() {
     if (dataFim) { const dFim = new Date(dataFim + 'T23:59:59').getTime(); filtrados = filtrados.filter(v => v.data && new Date(v.data).getTime() <= dFim); }
     
     filtrados.sort((a,b) => new Date(b.data || 0) - new Date(a.data || 0));
+    window.vendasFiltradasAtuais = filtrados;
 
     let totalLucro = 0;
     let totalFaturamento = 0;

@@ -24,7 +24,7 @@
     </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- PWA Configurações e Ícones -->
-    <link rel="manifest" href="../manifest.json">
+    <script>if (window.location.protocol.startsWith('http')) { const l = document.createElement('link'); l.rel = 'manifest'; l.href = '../manifest.json'; document.head.appendChild(l); }</script>
     <meta name="theme-color" content="#0f172a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -36,8 +36,8 @@
         
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css?v=20260923172910">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260923172910">
+    <link rel="stylesheet" href="../style.css?v=20260924180755">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260924180755">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="estoque">
 
@@ -81,6 +81,7 @@
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
                 <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
                 <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
+                <a href="caixa_loja.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa_loja"><i class="fa-solid fa-chart-bar w-5 text-center"></i> Caixa da Loja</a>
                 <a href="compras.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & NF-e XML</a>
                 <a href="relatorios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
                 <a href="agenda.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="agenda"><i class="fa-regular fa-calendar w-5 text-center"></i> Agenda</a>
@@ -141,20 +142,43 @@
                                 </label>
                             </div>
                         </div>
+
+                        <!-- Botão Puxar Relatórios (Excel, Word, PDF) -->
+                        <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl shadow-lg p-6 text-white flex flex-col items-center justify-center text-center relative overflow-hidden transition-transform hover:-translate-y-1 border border-slate-700/80">
+                            <div class="absolute -right-4 -bottom-4 opacity-10 pointer-events-none"><i class="fa-solid fa-file-export text-9xl"></i></div>
+                            <i class="fa-solid fa-file-invoice text-3xl md:text-4xl mb-3 text-blue-400 relative z-10"></i>
+                            <h2 class="text-lg md:text-xl font-bold mb-1 relative z-10">Puxar Relatório</h2>
+                            <p class="text-slate-300 text-[10px] md:text-xs mb-4 max-w-sm relative z-10">Baixe os produtos e estoque em Excel, Word ou PDF com 1 clique.</p>
+                            <div class="flex flex-wrap gap-2 relative z-10 justify-center">
+                                <button type="button" onclick="puxarRelatorio('produtos', 'excel')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg font-bold shadow-md transition text-xs flex items-center gap-1.5 active:scale-95 cursor-pointer">
+                                    <i class="fa-solid fa-file-excel"></i> Excel
+                                </button>
+                                <button type="button" onclick="puxarRelatorio('produtos', 'word')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-bold shadow-md transition text-xs flex items-center gap-1.5 active:scale-95 cursor-pointer">
+                                    <i class="fa-solid fa-file-word"></i> Word
+                                </button>
+                                <button type="button" onclick="puxarRelatorio('produtos', 'pdf')" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-2 rounded-lg font-bold shadow-md transition text-xs flex items-center gap-1.5 active:scale-95 cursor-pointer">
+                                    <i class="fa-solid fa-file-pdf"></i> PDF
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Barra de Filtros e Busca de Produtos -->
                     <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-3 mb-4 mt-6">
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
                             <!-- Campo de Busca Textual -->
-                            <div class="lg:col-span-4 relative">
-                                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
-                                <input type="text" id="busca-produto-lista" placeholder="Buscar por nome, código de barras (EAN), marca, ID..." 
-                                    class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-lg pl-10 pr-9 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm" 
-                                    oninput="renderProdutos()">
-                                <button type="button" id="btn-limpar-busca-produto" onclick="document.getElementById('busca-produto-lista').value=''; renderProdutos();" 
-                                    class="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 hidden" title="Limpar busca">
-                                    <i class="fa-solid fa-xmark text-sm"></i>
+                            <div class="lg:col-span-4 flex items-center gap-1.5">
+                                <div class="relative flex-1">
+                                    <input type="text" id="busca-produto-lista" placeholder="Buscar por nome, código de barras (EAN), marca, ID..." 
+                                        class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm" 
+                                        oninput="renderProdutos()">
+                                    <button type="button" id="btn-limpar-busca-produto" onclick="document.getElementById('busca-produto-lista').value=''; renderProdutos();" 
+                                        class="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 hidden" title="Limpar busca">
+                                        <i class="fa-solid fa-xmark text-sm"></i>
+                                    </button>
+                                </div>
+                                <button type="button" onclick="renderProdutos()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-lg text-sm font-bold transition-colors flex items-center justify-center shrink-0 shadow-xs" title="Buscar Produtos">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
                                 </button>
                             </div>
 
@@ -238,7 +262,20 @@
                             </div>
 
                             <!-- Direita: Ordenação e Limpeza -->
-                            <div class="flex items-center gap-3 shrink-0">
+                            <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+                                <!-- Puxar Relatórios (Excel, Word, PDF) -->
+                                <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-900/60 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase px-1.5 hidden sm:inline">Puxar:</span>
+                                    <button type="button" onclick="puxarRelatorio('produtos', 'excel')" class="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition-colors" title="Exportar para Excel (.xls/.csv)">
+                                        <i class="fa-solid fa-file-excel text-emerald-600 dark:text-emerald-400"></i> <span class="hidden md:inline">Excel</span>
+                                    </button>
+                                    <button type="button" onclick="puxarRelatorio('produtos', 'word')" class="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors" title="Exportar para Word (.doc)">
+                                        <i class="fa-solid fa-file-word text-blue-600 dark:text-blue-400"></i> <span class="hidden md:inline">Word</span>
+                                    </button>
+                                    <button type="button" onclick="puxarRelatorio('produtos', 'pdf')" class="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors" title="Gerar Relatório em PDF">
+                                        <i class="fa-solid fa-file-pdf text-rose-600 dark:text-rose-400"></i> <span class="hidden md:inline">PDF</span>
+                                    </button>
+                                </div>
                                 <button type="button" onclick="toggleSortProdutos()" class="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium cursor-pointer transition-colors" title="Alternar ordem alfabética rápida (A-Z / Z-A)">
                                     <i id="btn-ordem-icon" class="fa-solid fa-arrow-down-a-z"></i>
                                     <span id="btn-ordem-label">A - Z</span>
@@ -252,7 +289,7 @@
 
                       <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                           <div class="overflow-x-auto custom-scrollbar">
-                              <table class="w-full text-left border-collapse min-w-[700px]">
+                              <table class="w-full text-left border-collapse min-w-[700px]" id="tabela-produtos-export">
                                 <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold border-b border-slate-200 dark:border-slate-700">
                                     <tr>
                                         <th class="p-3 w-16 text-center"><i class="fa-regular fa-image text-lg"></i></th>
@@ -299,9 +336,11 @@
                 <!-- CLIENTES -->
                 <div id="view-clientes" class="view-section hidden max-w-7xl mx-auto space-y-4 md:space-y-6 hidden">
                     <div class="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 gap-3">
-                        <div class="relative w-full md:w-96">
-                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-sm"></i>
-                            <input type="text" id="busca-cliente-lista" placeholder="Buscar Cliente..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderClientes()">
+                        <div class="flex items-center gap-1.5 w-full md:w-96">
+                            <input type="text" id="busca-cliente-lista" placeholder="Buscar Cliente..." class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderClientes()">
+                            <button type="button" onclick="renderClientes()" class="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2.5 rounded-lg text-sm font-bold transition-colors flex items-center justify-center shrink-0 shadow-xs" title="Buscar Cliente">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                            </button>
                         </div>
                         <button onclick="abrirModalCliente()" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"><i class="fa-solid fa-user-plus text-lg"></i> Novo Cliente</button>
                     </div>
@@ -326,9 +365,11 @@
                 <!-- FORNECEDORES -->
                 <div id="view-fornecedores" class="view-section hidden max-w-7xl mx-auto space-y-4 md:space-y-6 hidden">
                     <div class="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 gap-3">
-                        <div class="relative w-full md:w-96">
-                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-sm"></i>
-                            <input type="text" id="busca-fornecedor-lista" placeholder="Buscar Fornecedor..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderFornecedores()">
+                        <div class="flex items-center gap-1.5 w-full md:w-96">
+                            <input type="text" id="busca-fornecedor-lista" placeholder="Buscar Fornecedor..." class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderFornecedores()">
+                            <button type="button" onclick="renderFornecedores()" class="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2.5 rounded-lg text-sm font-bold transition-colors flex items-center justify-center shrink-0 shadow-xs" title="Buscar Fornecedor">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                            </button>
                         </div>
                         <button onclick="abrirModalFornecedor()" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"><i class="fa-solid fa-truck-fast text-lg"></i> Novo Fornecedor</button>
                     </div>
@@ -352,9 +393,11 @@
                 <!-- FUNCIONÁRIOS -->
                 <div id="view-funcionarios" class="view-section hidden max-w-7xl mx-auto space-y-4 md:space-y-6 hidden">
                     <div class="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 gap-3">
-                        <div class="relative w-full md:w-96">
-                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-sm"></i>
-                            <input type="text" id="busca-funcionario-lista" placeholder="Buscar Funcionário..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderFuncionarios()">
+                        <div class="flex items-center gap-1.5 w-full md:w-96">
+                            <input type="text" id="busca-funcionario-lista" placeholder="Buscar Funcionário..." class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" oninput="renderFuncionarios()">
+                            <button type="button" onclick="renderFuncionarios()" class="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2.5 rounded-lg text-sm font-bold transition-colors flex items-center justify-center shrink-0 shadow-xs" title="Buscar Funcionário">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                            </button>
                         </div>
                         <button onclick="abrirModalFuncionario()" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"><i class="fa-solid fa-user-plus text-lg"></i> Novo Funcionário</button>
                     </div>
@@ -824,7 +867,7 @@
                           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-dashboard" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Dashboard</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📊 Dashboard</span>
                               </label>
                           </div>
                       </div>
@@ -835,19 +878,27 @@
                           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-pdv" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Frente de Caixa (PDV)</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">🖥️ Frente de Caixa (PDV Geral)</span>
+                              </label>
+                              <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700 bg-amber-50/50 dark:bg-amber-950/20">
+                                  <input type="checkbox" id="func-perm-pdv-caixa" class="w-4 h-4 accent-blue-600 rounded">
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">🚀 Venda Finalizada no Caixa (F9)</span>
+                              </label>
+                              <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700 bg-emerald-50/50 dark:bg-emerald-950/20">
+                                  <input type="checkbox" id="func-perm-pdv-balcao" class="w-4 h-4 accent-blue-600 rounded">
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">✅ Venda Feita Tudo por PDV (Balcão)</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-vendas-op" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Histórico Vendas/Serviços</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📜 Histórico Vendas/Serviços</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-orcamentos" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Meus Orçamentos</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📑 Meus Orçamentos</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-fiscal" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Emissor Fiscal (NF-e)</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">🧾 Emissor Fiscal (NF-e)</span>
                               </label>
                           </div>
                       </div>
@@ -858,15 +909,19 @@
                           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-produtos" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Produtos & Serviços</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📦 Produtos & Serviços</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-clientes" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Clientes</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">👥 Clientes</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-fornecedores" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Fornecedores</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">🚚 Fornecedores</span>
+                              </label>
+                              <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                  <input type="checkbox" id="func-perm-funcionarios" class="w-4 h-4 accent-blue-600 rounded">
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">👔 Funcionários / Vendedores</span>
                               </label>
                           </div>
                       </div>
@@ -877,27 +932,31 @@
                           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-financeiro" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Contas a Pagar/Receber</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">💰 Contas a Pagar/Receber</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-caixa" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Caixa Físico</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">💵 Caixa Físico</span>
+                              </label>
+                              <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700 bg-blue-50/50 dark:bg-blue-950/20">
+                                  <input type="checkbox" id="func-perm-caixa-loja" class="w-4 h-4 accent-blue-600 rounded">
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">🏪 Caixa da Loja</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-compras" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Compras & NF-e XML</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📥 Compras & NF-e XML</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-relatorios" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Relatórios & DRE</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📈 Relatórios & DRE</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-agenda" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Agenda</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📅 Agenda</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-marketing" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Marketing & Lembretes</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📢 Marketing & Lembretes</span>
                               </label>
                           </div>
                       </div>
@@ -908,7 +967,7 @@
                           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-config" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Configurações Gerais</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">⚙️ Configurações Gerais</span>
                               </label>
                           </div>
                       </div>
@@ -985,11 +1044,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20260923172910"></script>
-    <script src="saas_licenca.js?v=20260923172910"></script>
-    <script src="../global.js?v=20260923172910"></script>
-    <script src="fc_cache.js?v=20260923172910"></script>
-    <script src="produtos.js?v=20260923172910"></script>
+    <script src="../sistema/config_banco.js?v=20260924180755"></script>
+    <script src="saas_licenca.js?v=20260924180755"></script>
+    <script src="../global.js?v=20260924180755"></script>
+    <script src="fc_cache.js?v=20260924180755"></script>
+    <script src="produtos.js?v=20260924180755"></script>
 <!-- MODAL DE GERENCIAMENTO DE OPCOES PERSONALIZADAS (MADEIRAS, TECIDOS, CORES) -->
     <div id="modal-opcoes-personalizadas" class="fixed inset-0 bg-slate-900/70 z-[170] hidden flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in duration-150 max-h-[90vh]">

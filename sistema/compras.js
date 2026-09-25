@@ -981,7 +981,8 @@ async function estornarTitulo(id) {
                 cxSaldoNovo += f.valorPago;
                 cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Estorno: ${f.pessoa}`, valor: f.valorPago });
             }
-            batch.set(window.getEmpresaRef().collection('caixa').doc('caixa_atual'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+            const cxRefCompras = (typeof window.obterCaixaDocRef === 'function') ? window.obterCaixaDocRef() : window.getEmpresaRef().collection('caixa').doc('caixa_atual');
+        batch.set(cxRefCompras, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
         }
         
         const finRef = window.getEmpresaRef().collection('financeiro').doc(String(id));
@@ -1415,7 +1416,8 @@ async function confirmarBaixa() {
         if(f.tipo === 'RECEITA') { cxSaldoNovo += vf; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Recbto. Ttulo: ${f.pessoa}`, valor: vf }); } 
         else { if(vf > cxSaldoNovo) return showToast('Saldo do Caixa insuficiente!', 'error'); cxSaldoNovo -= vf; cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Pgto. Ttulo: ${f.pessoa}`, valor: vf }); }
         
-        batch.set(window.getEmpresaRef().collection('caixa').doc('caixa_atual'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+        const cxRefCompras = (typeof window.obterCaixaDocRef === 'function') ? window.obterCaixaDocRef() : window.getEmpresaRef().collection('caixa').doc('caixa_atual');
+        batch.set(cxRefCompras, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
     }
     
     const finRef = window.getEmpresaRef().collection('financeiro').doc(String(id));
@@ -2053,6 +2055,7 @@ function renderComprasHist() {
     }
 
     let totalCompras = 0;
+    window.comprasFiltradasAtuais = filtrados;
 
     document.getElementById('tabela-compras-hist').innerHTML = filtrados.map(c => {
         totalCompras += (Number(c.totalNF) || 0);

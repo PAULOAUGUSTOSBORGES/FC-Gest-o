@@ -24,7 +24,7 @@
     </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- PWA Configurações e Ícones -->
-    <link rel="manifest" href="../manifest.json">
+    <script>if (window.location.protocol.startsWith('http')) { const l = document.createElement('link'); l.rel = 'manifest'; l.href = '../manifest.json'; document.head.appendChild(l); }</script>
     <meta name="theme-color" content="#0f172a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -35,8 +35,8 @@
     <title>Configurações do Sistema</title>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css?v=20260923172910">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260923172910">
+    <link rel="stylesheet" href="../style.css?v=20260924180755">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260924180755">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -81,6 +81,7 @@
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
                 <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
                 <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
+                <a href="caixa_loja.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa_loja"><i class="fa-solid fa-chart-bar w-5 text-center"></i> Caixa da Loja</a>
                 <a href="compras.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & NF-e XML</a>
                 <a href="relatorios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
                 <a href="agenda.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="agenda"><i class="fa-regular fa-calendar w-5 text-center"></i> Agenda</a>
@@ -386,6 +387,31 @@
                         </div>
                     </div>
 
+                    <!-- CONFIGURAÇÕES DO PDV E MARGEM DE LUCRO -->
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3"><i class="fa-solid fa-cash-register text-blue-600"></i> Configurações do PDV (Vendas e Alertas de Lucro)</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Configure a porcentagem mínima de lucro dos produtos para vendas no PDV. Se for concedido um desconto onde o lucro do produto fique abaixo dessa porcentagem, o PDV emitirá um alerta imediato de ATENÇÃO.</p>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[10px] md:text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1.5"><i class="fa-solid fa-percent text-blue-500 mr-1"></i> Margem Mínima de Lucro no PDV (%)</label>
+                                <div class="relative">
+                                    <input type="number" step="0.1" min="0" max="1000" id="pdv-margem-minima" placeholder="Ex: 20" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm font-bold text-slate-700 dark:text-slate-200 dark:text-white pr-10" value="15">
+                                    <span class="absolute right-3 top-2.5 font-bold text-slate-400 text-sm">%</span>
+                                </div>
+                                <p class="text-[11px] text-slate-400 mt-1.5">Exemplo: 20% significa que qualquer produto vendido com desconto deve render no mínimo 20% de lucro sobre o custo.</p>
+                            </div>
+                            <div>
+                                <label class="text-[10px] md:text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1.5"><i class="fa-solid fa-shield-halved text-amber-500 mr-1"></i> Ação ao Ultrapassar Limite de Desconto</label>
+                                <select id="pdv-acao-alerta-margem" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm font-bold text-slate-700 dark:text-slate-200 dark:text-white">
+                                    <option value="alerta">Apenas Alertar visualmente e Solicitar Confirmação</option>
+                                    <option value="bloquear">Bloquear Finalização (Exigir ajuste no desconto)</option>
+                                </select>
+                                <p class="text-[11px] text-slate-400 mt-1.5">Define se o PDV apenas destaca e pede confirmação do vendedor ou se impede a conclusão da venda.</p>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- TAXAS DE CARTÃO -->
                     <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                         <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3"><i class="fa-solid fa-credit-card text-blue-600"></i> Taxas da Maquininha (%)</h3>
@@ -645,11 +671,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
     
-    <script src="../sistema/config_banco.js?v=20260923172910"></script>
-    <script src="saas_licenca.js?v=20260923172910"></script>
-    <script src="../global.js?v=20260923172910"></script>
-    <script src="fc_cache.js?v=20260923172910"></script>
-    <script src="sistema.js?v=20260923172910"></script>
+    <script src="../sistema/config_banco.js?v=20260924180755"></script>
+    <script src="saas_licenca.js?v=20260924180755"></script>
+    <script src="../global.js?v=20260924180755"></script>
+    <script src="fc_cache.js?v=20260924180755"></script>
+    <script src="sistema.js?v=20260924180755"></script>
 <!-- MODAL DE GERENCIAMENTO DE OPCOES PERSONALIZADAS (MADEIRAS, TECIDOS, CORES) -->
     <div id="modal-opcoes-personalizadas" class="fixed inset-0 bg-slate-900/70 z-[170] hidden flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in duration-150 max-h-[90vh]">

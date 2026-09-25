@@ -850,6 +850,49 @@
         },
 
         /**
+         * Atualiza ou insere um item nas camadas de cache (memória, session e IndexedDB)
+         */
+        atualizarItem: async function (colecao, docId, dados) {
+            const idStr = String(docId);
+            if (typeof window.db !== 'undefined' && Array.isArray(window.db[colecao])) {
+                const idx = window.db[colecao].findIndex(x => String(x.id) === idStr);
+                if (idx >= 0) {
+                    window.db[colecao][idx] = Object.assign({}, window.db[colecao][idx], dados, { id: docId });
+                } else {
+                    window.db[colecao].unshift(Object.assign({ id: docId }, dados));
+                }
+            }
+            if (Array.isArray(_memoria[colecao])) {
+                const idx = _memoria[colecao].findIndex(x => String(x.id) === idStr);
+                if (idx >= 0) {
+                    _memoria[colecao][idx] = Object.assign({}, _memoria[colecao][idx], dados, { id: docId });
+                } else {
+                    _memoria[colecao].unshift(Object.assign({ id: docId }, dados));
+                }
+                _salvarSession(colecao, _memoria[colecao]);
+                await _idbSalvarColecao(colecao, _memoria[colecao]);
+            }
+            _notificarListeners(colecao, _memoria[colecao] || (window.db ? window.db[colecao] : []));
+        },
+
+        /**
+         * Remove um item das camadas de cache (memória, session e IndexedDB)
+         */
+        removerItem: async function (colecao, docId) {
+            const idStr = String(docId);
+            if (typeof window.db !== 'undefined' && Array.isArray(window.db[colecao])) {
+                window.db[colecao] = window.db[colecao].filter(x => String(x.id) !== idStr);
+            }
+            if (Array.isArray(_memoria[colecao])) {
+                _memoria[colecao] = _memoria[colecao].filter(x => String(x.id) !== idStr);
+                _salvarSession(colecao, _memoria[colecao]);
+                await _idbSalvarColecao(colecao, _memoria[colecao]);
+            }
+            await _idbRemoverDaFila(colecao, docId);
+            _notificarListeners(colecao, _memoria[colecao] || (window.db ? window.db[colecao] : []));
+        },
+
+        /**
          * Retorna se a sincronização está em andamento
          */
         isSyncing: function () {
@@ -1111,7 +1154,7 @@
                     let ref;
                     if (typeof window.getEmpresaRef === 'function') {
                         if (colecao === 'fc_moveis' && docId === 'caixa') {
-                            ref = window.getEmpresaRef().collection('caixa').doc('caixa_atual');
+                            ref = typeof window.obterCaixaDocRef === 'function' ? window.obterCaixaDocRef() : window.getEmpresaRef().collection('caixa').doc('caixa_atual');
                         } else if (colecao === 'fc_moveis' && (docId === 'config' || docId === 'config_loja')) {
                             ref = window.getEmpresaRef().collection('configuracoes').doc('config');
                         } else {

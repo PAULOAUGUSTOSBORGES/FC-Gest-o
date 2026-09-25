@@ -529,89 +529,92 @@ html, body {
 }
 
 /* ================================================================
-   TABELAS RESPONSIVAS EM MOBILE — SEM SCROLL HORIZONTAL
-   Em telas pequenas, cada linha da tabela vira um card empilhado.
-   As colunas aparecem como label: valor um abaixo do outro.
+   TABELAS RESPONSIVAS EM MOBILE & TABLET (TOUCH SCROLL NATIVO & FLUIDO)
+   Garante visualização perfeita de dados em celulares sem deformação.
    ================================================================ */
-@media (max-width: 640px) {
+.overflow-x-auto {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-x: contain !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: block !important;
+    position: relative !important;
+}
 
-    /* Desativa overflow horizontal nos wrappers de tabela */
-    .overflow-x-auto {
-        overflow-x: visible !important;
-    }
+/* Mantém tabelas com espaçamento legível e organizado */
+.overflow-x-auto table,
+table[class*="min-w-"] {
+    border-collapse: collapse !important;
+    width: 100% !important;
+}
 
-    /* Tabela ocupa 100% sem min-width fixo */
-    .overflow-x-auto table,
-    table[class*="min-w-"] {
-        min-width: 0 !important;
-        width: 100% !important;
-    }
+.overflow-x-auto thead,
+table[class*="min-w-"] thead {
+    display: table-header-group !important;
+}
 
-    /* Esconde o cabeçalho da tabela — os labels viram dados nos cards */
-    .overflow-x-auto thead,
-    table[class*="min-w-"] thead {
-        display: none !important;
-    }
+.overflow-x-auto thead th,
+table[class*="min-w-"] thead th {
+    white-space: nowrap !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 2 !important;
+    font-size: 11px !important;
+    padding: 10px 12px !important;
+}
 
-    /* Cada <tr> vira um card */
-    .overflow-x-auto tbody tr,
-    table[class*="min-w-"] tbody tr {
-        display: flex !important;
-        flex-direction: column !important;
-        border-radius: 0.75rem;
-        margin: 0.5rem 0;
-        border: 1px solid #e2e8f0;
-        padding: 0.75rem;
-        background-color: #fff;
-        box-shadow: 0 1px 4px 0 rgba(0,0,0,0.06);
-        gap: 0.35rem;
-    }
-    .dark .overflow-x-auto tbody tr,
-    .dark table[class*="min-w-"] tbody tr,
-    [data-theme="dark"] .overflow-x-auto tbody tr,
-    [data-theme="dark"] table[class*="min-w-"] tbody tr {
-        border-color: #334155;
-        background-color: #1e293b;
-    }
+.overflow-x-auto tbody,
+table[class*="min-w-"] tbody {
+    display: table-row-group !important;
+}
 
-    /* Cada <td> mostra o label (data-label) e o valor */
-    .overflow-x-auto tbody td,
-    table[class*="min-w-"] tbody td {
-        display: flex !important;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 0.5rem;
-        padding: 0.25rem 0 !important;
-        border: none !important;
-        font-size: 0.8125rem;
-        text-align: left !important;
-        min-height: unset !important;
-    }
+.overflow-x-auto tbody tr,
+table[class*="min-w-"] tbody tr {
+    display: table-row !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+}
 
-    /* Oculta células completamente vazias */
-    .overflow-x-auto tbody td:empty,
-    table[class*="min-w-"] tbody td:empty {
-        display: none !important;
-    }
+.dark .overflow-x-auto tbody tr,
+[data-theme="dark"] .overflow-x-auto tbody tr {
+    border-bottom-color: #334155 !important;
+}
 
-    /* Prefixo do label gerado via JS (data-label) */
-    .overflow-x-auto tbody td::before,
-    table[class*="min-w-"] tbody td::before {
-        content: attr(data-label);
-        font-weight: 700;
-        font-size: 0.7rem;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: #64748b;
-        flex-shrink: 0;
-        min-width: 90px;
-    }
-    .dark .overflow-x-auto tbody td::before,
-    .dark table[class*="min-w-"] tbody td::before,
-    [data-theme="dark"] .overflow-x-auto tbody td::before,
-    [data-theme="dark"] table[class*="min-w-"] tbody td::before {
-        color: #94a3b8;
-    }
+.overflow-x-auto tbody td,
+table[class*="min-w-"] tbody td {
+    display: table-cell !important;
+    vertical-align: middle !important;
+    padding: 10px 12px !important;
+    border: none !important;
+    white-space: normal !important;
+}
+
+/* Desativa prefixo data-label para não poluir nem empurrar células */
+.overflow-x-auto tbody td::before,
+table[class*="min-w-"] tbody td::before {
+    display: none !important;
+    content: none !important;
+}
+
+.overflow-x-auto tfoot,
+table[class*="min-w-"] tfoot {
+    display: table-footer-group !important;
+}
+
+.overflow-x-auto tfoot tr,
+table[class*="min-w-"] tfoot tr {
+    display: table-row !important;
+}
+
+.overflow-x-auto tfoot td,
+table[class*="min-w-"] tfoot td {
+    display: table-cell !important;
+    padding: 10px 12px !important;
+    white-space: nowrap !important;
 }
 
 /* ================================================================
@@ -691,20 +694,13 @@ html[data-theme="light"] #mobile-bottom-nav .mob-nav-item.active {
 
 @media (max-width: 768px) {
     #mobile-bottom-nav {
-        display: flex;
-        align-items: stretch;
+        display: none;
     }
 
-    /* Compensar a bottom nav para o conteúdo scrollável não ficar embaixo */
-    main > div.flex-1.overflow-y-auto,
-    #app-container > main > div.flex-1 {
-        padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px) + 1rem) !important;
-    }
-
-    /* Toast no mobile: mover para baixo (acima da bottom nav) */
+    /* Toast no mobile: bem posicionado na parte inferior com margem segura */
     #toast-container {
         top: auto;
-        bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+        bottom: calc(20px + env(safe-area-inset-bottom, 0px));
         right: 12px;
         left: 12px;
         align-items: flex-end;
@@ -720,33 +716,29 @@ html[data-theme="light"] #mobile-bottom-nav .mob-nav-item.active {
 }
 
 /* ================================================================
-   TOUCH TARGETS — Mínimo 44px para botões e links de ação
+   TOUCH TARGETS — Tamanho confortável sem deformar botões pequenos
    ================================================================ */
 @media (max-width: 768px) {
-    /* Botões primários de ação */
-    button,
-    a.nav-btn,
-    .mob-nav-item {
-        min-height: 44px;
-    }
-
-    /* Exceção: botões muito pequenos de ícone apenas */
-    button.text-xs.px-2,
-    button[title] {
-        min-width: 44px;
+    /* Botões primários de ação e navegação */
+    .btn-primary,
+    .btn-acao,
+    a.nav-btn {
+        min-height: 42px;
     }
 
     /* Inputs e selects — tamanho confortável ao toque */
-    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="color"]):not([type="hidden"]),
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="color"]):not([type="hidden"]):not([class*="w-12"]):not([class*="w-16"]):not([class*="w-20"]),
     select,
     textarea {
-        min-height: 44px;
-        font-size: 16px !important; /* Evita zoom automático no iOS */
+        min-height: 40px;
+        font-size: 16px !important; /* Evita zoom indesejado no iOS */
     }
 
-    /* Selects e inputs menores que o layout pede — manter legíveis */
+    /* Inputs e selects compactos */
     input[class*="text-xs"],
-    select[class*="text-xs"] {
+    select[class*="text-xs"],
+    input[class*="text-[10px]"],
+    select[class*="text-[10px]"] {
         font-size: 14px !important;
     }
 }
@@ -756,8 +748,8 @@ html[data-theme="light"] #mobile-bottom-nav .mob-nav-item.active {
    ================================================================ */
 @media (max-width: 768px) {
     #sidebar {
-        /* Sidebar ocupa toda a largura menos 60px (para fechar tocando fora) */
-        width: min(280px, calc(100vw - 60px));
+        /* Sidebar ocupa largura segura */
+        width: min(280px, calc(100vw - 56px));
     }
 
     /* Links do menu maiores em mobile */
@@ -771,7 +763,7 @@ html[data-theme="light"] #mobile-bottom-nav .mob-nav-item.active {
         font-size: 16px;
     }
 
-    /* Botão sair maior */
+    /* Botão sair */
     #sidebar button[onclick*="fazerLogout"] {
         padding: 12px 16px;
         min-height: 44px;
@@ -779,27 +771,183 @@ html[data-theme="light"] #mobile-bottom-nav .mob-nav-item.active {
 }
 
 /* ================================================================
-   HEADER — Mobile refinements
+   HEADER — Layout Mobile Perfeito & À Prova de Quebras (Single Line)
    ================================================================ */
-@media (max-width: 768px) {
+header {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    height: 56px !important;
+    min-height: 56px !important;
+    max-height: 56px !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    gap: 8px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+}
+
+@media (min-width: 768px) {
     header {
-        /* Previne que o título empurre os botões */
-        gap: 8px;
+        height: 64px !important;
+        min-height: 64px !important;
+        max-height: 64px !important;
+        padding-left: 20px !important;
+        padding-right: 20px !important;
     }
+}
 
-    header h2 {
-        font-size: 16px;
-        max-width: calc(100vw - 160px);
-    }
+/* Lado Esquerdo do Header: Botão Hamburger + Título da Página */
+header > div:first-child,
+header .flex.items-center.gap-3 {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    overflow: hidden !important;
+}
 
-    /* Botão hamburguer maior */
-    header button[onclick="toggleMenu()"] {
-        min-width: 44px;
-        min-height: 44px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+header button[onclick="toggleMenu()"] {
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    max-height: 38px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    border-radius: 8px !important;
+}
+
+header h2,
+#header-title {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+}
+
+@media (min-width: 768px) {
+    header h2,
+    #header-title {
+        font-size: 18px !important;
     }
+}
+
+/* Lado Direito do Header: Ações Rápidas (Sync, Tema, PDV, Avatar) */
+header > div:last-child,
+header .flex.items-center.gap-2,
+header .flex.items-center.gap-4 {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
+}
+
+/* Botão SINCRONIZAR no Header */
+#header-btn-sync {
+    height: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
+}
+
+@media (max-width: 767px) {
+    #header-btn-sync {
+        width: 36px !important;
+        min-width: 36px !important;
+        max-width: 36px !important;
+        padding: 0 !important;
+    }
+    #header-btn-sync-text {
+        display: none !important;
+    }
+    #header-btn-sync-box {
+        width: 100% !important;
+        height: 100% !important;
+        background: transparent !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 14px !important;
+    }
+    #header-btn-sync-badge {
+        position: absolute !important;
+        top: -4px !important;
+        right: -4px !important;
+        font-size: 9px !important;
+        padding: 1px 4px !important;
+    }
+}
+
+/* Botão Tema no Header */
+#header-btn-tema {
+    width: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    flex-shrink: 0 !important;
+}
+
+/* Botão Abrir PDV no Header */
+header a[href*="pdv"] {
+    height: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+    border-radius: 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+}
+
+@media (max-width: 767px) {
+    header a[href*="pdv"] {
+        width: 36px !important;
+        min-width: 36px !important;
+        max-width: 36px !important;
+        padding: 0 !important;
+    }
+    header a[href*="pdv"] span {
+        display: none !important;
+    }
+}
+
+/* Avatar no Header */
+header .rounded-full.bg-blue-600 {
+    width: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+    font-size: 11px !important;
+    flex-shrink: 0 !important;
 }
 
 /* ================================================================
@@ -810,12 +958,14 @@ html[data-theme="light"] #mobile-bottom-nav .mob-nav-item.active {
 @media (max-width: 1023px) {
     /* O layout do PDV stacks verticalmente */
     #view-pdv > .flex.flex-col.lg\\:flex-row {
-        flex-direction: column;
+        flex-direction: column !important;
+        min-height: auto !important;
+        height: auto !important;
     }
 
-    /* Coluna da direita (totais/pagamento): largura total em tablet, escondida em mobile */
+    /* Coluna da direita (totais/pagamento): largura total em tablet e mobile */
     #view-pdv .w-full.lg\\:w-96 {
-        width: 100%;
+        width: 100% !important;
     }
 }
 
@@ -962,66 +1112,29 @@ html[data-theme="light"] #pdv-drawer-carrinho .drawer-footer {
 }
 
 /* ================================================================
-   PDV — Itens do carrinho em mobile: layout mais compacto
+   PDV — Itens do carrinho em mobile: layout limpo sem sobreposição
    ================================================================ */
 @media (max-width: 768px) {
-    /* Tabela do carrinho PDV no drawer */
     #pdv-carrinho-body tr {
-        display: grid !important;
-        grid-template-columns: 40px 1fr auto;
-        grid-template-rows: auto auto;
-        gap: 4px 8px;
-        padding: 10px 0;
-        border-bottom: 1px solid #334155;
+        display: table-row !important;
     }
-
-    html.light #pdv-carrinho-body tr,
-    html[data-theme="light"] #pdv-carrinho-body tr {
-        border-bottom-color: #e2e8f0;
+    #pdv-carrinho-body tr td {
+        display: table-cell !important;
+        vertical-align: middle !important;
+        padding: 8px 6px !important;
+        font-size: 12px !important;
+        border-bottom: 1px solid #334155 !important;
     }
-
-    #pdv-carrinho-body tr td:first-child { /* imagem */
-        grid-row: 1 / 3;
-        grid-column: 1;
-        display: flex !important;
-        align-items: center;
-        padding: 0 !important;
-        border: none !important;
+    html.light #pdv-carrinho-body tr td,
+    html[data-theme="light"] #pdv-carrinho-body tr td {
+        border-bottom-color: #e2e8f0 !important;
     }
-
-    #pdv-carrinho-body tr td:nth-child(2) { /* descrição */
-        grid-row: 1;
-        grid-column: 2;
-        font-size: 13px;
-        font-weight: 600;
-        padding: 0 !important;
-        border: none !important;
-        align-items: flex-start !important;
-    }
-
-    #pdv-carrinho-body tr td:nth-child(3) { /* quantidade */
-        grid-row: 1;
-        grid-column: 3;
-        padding: 0 !important;
-        border: none !important;
-    }
-
-    #pdv-carrinho-body tr td:nth-child(4), /* preço */
-    #pdv-carrinho-body tr td:nth-child(5), /* desconto */
-    #pdv-carrinho-body tr td:nth-child(6) { /* total */
-        grid-row: 2;
-        grid-column: 2;
-        font-size: 11px;
-        padding: 0 !important;
-        border: none !important;
-        color: #94a3b8;
-    }
-
-    #pdv-carrinho-body tr td:nth-child(7) { /* ações */
-        grid-row: 2;
-        grid-column: 3;
-        padding: 0 !important;
-        border: none !important;
+    #pdv-carrinho-body input[type="text"],
+    #pdv-carrinho-body input[type="number"] {
+        min-height: 32px !important;
+        height: 32px !important;
+        font-size: 12px !important;
+        padding: 2px 4px !important;
     }
 }
 
@@ -1053,8 +1166,10 @@ html[data-theme="light"] #pdv-drawer-carrinho .drawer-footer {
         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     }
 
-    /* Grupos de botões: wrap em mobile */
-    .flex.items-center.gap-2:not(.no-wrap-mobile) {
+    /* Grupos de botões em filtros e toolbars: wrap em mobile (NUNCA no header nem tabelas) */
+    .filter-bar .flex.items-center.gap-2,
+    .toolbar-actions,
+    .flex.items-center.gap-2.flex-wrap-mobile {
         flex-wrap: wrap;
     }
 }
@@ -1251,3 +1366,72 @@ html[data-theme="light"] #pdv-drawer-carrinho .drawer-footer {
 }
 
 
+
+
+/* =============================================
+   BADGES DE ESTOQUE E ALERTA DE MARGEM NO PDV
+   ============================================= */
+.badge-estoque-ok {
+    background-color: rgba(16, 185, 129, 0.15) !important;
+    color: #10b981 !important;
+    border: 1px solid rgba(16, 185, 129, 0.3) !important;
+}
+html.light .badge-estoque-ok,
+html[data-theme="light"] .badge-estoque-ok,
+body.light .badge-estoque-ok {
+    background-color: #ecfdf5 !important;
+    color: #047857 !important;
+    border: 1px solid #a7f3d0 !important;
+}
+
+.badge-estoque-baixo {
+    background-color: rgba(245, 158, 11, 0.15) !important;
+    color: #f59e0b !important;
+    border: 1px solid rgba(245, 158, 11, 0.35) !important;
+}
+html.light .badge-estoque-baixo,
+html[data-theme="light"] .badge-estoque-baixo,
+body.light .badge-estoque-baixo {
+    background-color: #fffbeb !important;
+    color: #b45309 !important;
+    border: 1px solid #fde68a !important;
+}
+
+.badge-estoque-zerado {
+    background-color: rgba(239, 68, 68, 0.15) !important;
+    color: #ef4444 !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+}
+html.light .badge-estoque-zerado,
+html[data-theme="light"] .badge-estoque-zerado,
+body.light .badge-estoque-zerado {
+    background-color: #fef2f2 !important;
+    color: #b91c1c !important;
+    border: 1px solid #fecaca !important;
+}
+
+.badge-estoque-servico {
+    background-color: rgba(168, 85, 247, 0.15) !important;
+    color: #a855f7 !important;
+    border: 1px solid rgba(168, 85, 247, 0.3) !important;
+}
+html.light .badge-estoque-servico,
+html[data-theme="light"] .badge-estoque-servico,
+body.light .badge-estoque-servico {
+    background-color: #faf5ff !important;
+    color: #7e22ce !important;
+    border: 1px solid #e9d5ff !important;
+}
+
+.alerta-margem-pdv {
+    background-color: rgba(245, 158, 11, 0.12) !important;
+    color: #fcd34d !important;
+    border: 1px solid rgba(245, 158, 11, 0.35) !important;
+}
+html.light .alerta-margem-pdv,
+html[data-theme="light"] .alerta-margem-pdv,
+body.light .alerta-margem-pdv {
+    background-color: #fffbeb !important;
+    color: #b45309 !important;
+    border: 1px solid #fcd34d !important;
+}

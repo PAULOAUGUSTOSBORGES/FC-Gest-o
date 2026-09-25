@@ -323,6 +323,16 @@ function carregarConfiguracoesNaTela() {
         if (elPDeb) elPDeb.value = pDeb;
     }
 
+    // Carrega Configurações do PDV (Margem Mínima de Lucro e Ação de Alerta)
+    const elPdvMargem = document.getElementById('pdv-margem-minima');
+    if (elPdvMargem) {
+        elPdvMargem.value = db.config.pdvMargemMinima !== undefined ? db.config.pdvMargemMinima : 15;
+    }
+    const elPdvAcao = document.getElementById('pdv-acao-alerta-margem');
+    if (elPdvAcao) {
+        elPdvAcao.value = db.config.pdvAcaoAlertaMargem || 'alerta';
+    }
+
     // Carrega as 12 Taxas Separadas
     if (db.config.taxas) {
         if (document.getElementById('tx-boleto-custo')) {
@@ -585,6 +595,16 @@ async function salvarConfiguracoes() {
         'Cartão Crédito': getPrazo('prazo-credito', 1),
         'Cartão Débito': getPrazo('prazo-debito', 1)
     };
+
+    // Salva Configurações do PDV (Margem Mínima de Lucro e Ação de Alerta)
+    const elPdvMargem = document.getElementById('pdv-margem-minima');
+    if (elPdvMargem) {
+        db.config.pdvMargemMinima = Math.max(0, parseFloat(elPdvMargem.value) || 0);
+    }
+    const elPdvAcao = document.getElementById('pdv-acao-alerta-margem');
+    if (elPdvAcao) {
+        db.config.pdvAcaoAlertaMargem = elPdvAcao.value || 'alerta';
+    }
 
     // Salva Dados da Loja
     db.config.loja = {

@@ -52,6 +52,7 @@ function mudarVisaoLocal(viewId) {
     
     if (viewId === 'caixa') {
         renderCaixaDiario();
+        if (typeof renderVendasPendentesPDV === 'function') renderVendasPendentesPDV();
     }
 }
 
@@ -142,6 +143,7 @@ function inicializarGestao() {
 
     _listen('vendas', function(dados) {
         db.vendas = dados;
+        if (typeof renderVendasPendentesPDV === 'function') renderVendasPendentesPDV();
         tentarRefresh(); // CORRECAO: adicionado tentarRefresh()
     });
     _listen('financeiro', function(dados) {
@@ -166,15 +168,153 @@ function inicializarGestao() {
     });
     _listen('funcionarios', function(dados) {
         db.funcionarios = dados;
-        // Nao conta no tentarRefresh (colecao adicional)
+        if (typeof atualizarHeaderOperadorCaixa === 'function') {
+            atualizarHeaderOperadorCaixa();
+        }
     });
-    // Caixa: sempre ativo pois e critico (saldo em tempo real)
-    _listenDoc('fc_moveis', 'caixa', function(data) {
+
+    // Inicia listener em tempo real do caixa do operador ativo
+    configurarListenerCaixa(window.operadorCaixaVisualizadoUid);
+    atualizarHeaderOperadorCaixa();
+}
+
+// ==========================================
+// CONTROLE DE CAIXA INDIVIDUAL POR OPERADOR
+// ==========================================
+window.operadorCaixaVisualizadoUid = null;
+let unsubCaixaOperador = null;
+
+function configurarListenerCaixa(uid) {
+    if (typeof unsubCaixaOperador === 'function') {
+        unsubCaixaOperador();
+        unsubCaixaOperador = null;
+    }
+    const targetRef = (typeof window.obterCaixaDocRef === 'function')
+        ? window.obterCaixaDocRef(uid)
+        : window.getEmpresaRef().collection('caixa').doc('caixa_atual');
+
+    unsubCaixaOperador = targetRef.onSnapshot(async doc => {
+        let data = doc.exists ? doc.data() : null;
+
+        // Se o caixa específico do operador ainda não tem dados, mas caixa_atual legado tem dados existentes
+        if (!data && (!uid || uid === (window.currentUser && window.currentUser.uid))) {
+            try {
+                const legadoSnap = await window.getEmpresaRef().collection('caixa').doc('caixa_atual').get();
+                if (legadoSnap.exists && legadoSnap.data()) {
+                    const legadoData = legadoSnap.data();
+                    await targetRef.set(legadoData, { merge: true });
+                    data = legadoData;
+                }
+            } catch (e) {
+                console.warn('Migração inicial de caixa legado:', e);
+            }
+        }
+
         db.caixa = data || { status: 'FECHADO', saldo: 0, historico: [] };
-        renderCaixaDiario(); // Renderiza caixa sempre que o saldo mudar
+        if (!Array.isArray(db.caixa.historico)) db.caixa.historico = [];
+        renderCaixaDiario();
+    }, err => {
+        console.warn('Erro ao escutar caixa do operador:', err);
     });
 }
 
+function atualizarHeaderOperadorCaixa() {
+    const opAtual = (typeof window.obterOperadorAtual === 'function') ? window.obterOperadorAtual() : null;
+    const nomeEl = document.getElementById('caixa-operador-ativo-nome');
+    const containerSeletor = document.getElementById('seletor-operador-caixa-container');
+    const selectEl = document.getElementById('seletor-operador-caixa');
+
+    const meuNome = (opAtual && opAtual.nome) || (window.currentUserInfo && window.currentUserInfo.nome) || 'Meu Caixa';
+    const meuUid = (opAtual && opAtual.uid) || (window.currentUser && window.currentUser.uid) || null;
+    const targetUid = window.operadorCaixaVisualizadoUid;
+
+    let visualizandoNome = meuNome;
+    let isMeuCaixa = !targetUid || (meuUid && targetUid === meuUid);
+
+    if (!isMeuCaixa && Array.isArray(db.funcionarios)) {
+        const fEncontrado = db.funcionarios.find(f => (f.uid === targetUid || f.id === targetUid));
+        if (fEncontrado) {
+            visualizandoNome = fEncontrado.nome || fEncontrado.email || 'Operador';
+        }
+    }
+
+    if (nomeEl) {
+        nomeEl.textContent = isMeuCaixa ? `MEU CAIXA (${meuNome})` : `CAIXA DE: ${visualizandoNome}`;
+    }
+
+    // Apenas Administrador tem permissão para visualizar/trocar caixas de terceiros
+    const isAdmin = !!((opAtual && opAtual.isAdmin) || (window.currentUserInfo && window.currentUserInfo.isAdmin));
+    if (isAdmin && containerSeletor && selectEl) {
+        containerSeletor.classList.remove('hidden');
+        containerSeletor.style.display = 'flex';
+
+        let optionsHtml = `<option value="MEU">Meu Caixa (${meuNome})</option>`;
+        if (Array.isArray(db.funcionarios)) {
+            db.funcionarios.forEach(f => {
+                const fUid = f.uid || f.id;
+                if (!fUid || (meuUid && fUid === meuUid)) return;
+                const fNome = f.nome || f.email || 'Funcionário';
+                const fCargo = f.cargo ? ` (${f.cargo})` : '';
+                optionsHtml += `<option value="${fUid}">${fNome}${fCargo}</option>`;
+            });
+        }
+
+        selectEl.innerHTML = optionsHtml;
+        if (targetUid && targetUid !== meuUid) {
+            selectEl.value = targetUid;
+        } else {
+            selectEl.value = 'MEU';
+        }
+    } else {
+        // Usuário comum é estritamente restrito ao seu próprio caixa
+        window.operadorCaixaVisualizadoUid = null;
+        if (containerSeletor) {
+            containerSeletor.classList.add('hidden');
+            containerSeletor.style.display = 'none';
+        }
+    }
+}
+
+window.trocarOperadorCaixa = function(val) {
+    const opAtual = (typeof window.obterOperadorAtual === 'function') ? window.obterOperadorAtual() : null;
+    const isAdmin = !!((opAtual && opAtual.isAdmin) || (window.currentUserInfo && window.currentUserInfo.isAdmin));
+    
+    // Blindagem de segurança: rejeita tentativa de não-admin
+    if (!isAdmin) {
+        window.operadorCaixaVisualizadoUid = null;
+        atualizarHeaderOperadorCaixa();
+        if (typeof showToast === 'function') {
+            showToast('Acesso restrito: apenas o administrador pode acessar caixas de outros operadores.', 'warning');
+        }
+        return;
+    }
+
+    if (!val || val === 'MEU') {
+        window.operadorCaixaVisualizadoUid = null;
+    } else {
+        window.operadorCaixaVisualizadoUid = val;
+    }
+    configurarListenerCaixa(window.operadorCaixaVisualizadoUid);
+    atualizarHeaderOperadorCaixa();
+
+    let nomeOp = 'Meu Caixa';
+    if (window.operadorCaixaVisualizadoUid && Array.isArray(db.funcionarios)) {
+        const f = db.funcionarios.find(x => (x.uid === window.operadorCaixaVisualizadoUid || x.id === window.operadorCaixaVisualizadoUid));
+        if (f) nomeOp = f.nome || 'Operador';
+    }
+    if (typeof showToast === 'function') {
+        showToast(`Visualizando caixa: ${nomeOp}`, 'info');
+    }
+};if (typeof firebase !== 'undefined' && firebase.auth) {
+    firebase.auth().onAuthStateChanged(function(u) {
+        if (u) {
+            atualizarHeaderOperadorCaixa();
+            if (!window.operadorCaixaVisualizadoUid) {
+                configurarListenerCaixa(null);
+            }
+        }
+    });
+}
 
 window.addEventListener('load', () => { initGlobalData(inicializarGestao); });
 
@@ -383,19 +523,147 @@ function renderFinAbas(aba) {
     atualizarCardsFluxoDeCaixa();
 }
 
-function renderCaixaDiario() {
-    document.getElementById('caixa-saldo-display').innerText = formatMoney(db.caixa.saldo); const b = document.getElementById('caixa-status-badge');
-    if(db.caixa.status === 'ABERTO') { b.innerText = 'ABERTO'; b.className = 'px-4 py-2 rounded-lg font-black text-lg mb-4 bg-emerald-100 text-emerald-700 border border-emerald-300'; } else { b.innerText = 'FECHADO'; b.className = 'px-4 py-2 rounded-lg font-black text-lg mb-4 bg-red-100 text-red-700 border border-red-300'; }
+let modoFiltroCaixa = 'TURNO'; // 'TURNO' | 'DATA' | 'TODOS'
+
+function trocarModoFiltroHistorico(modo) {
+    modoFiltroCaixa = modo;
+    const btnTurno = document.getElementById('btn-filtro-turno');
+    const btnTodos = document.getElementById('btn-filtro-todos');
     
-    let dataFiltroEl = document.getElementById('filtro-data-caixa');
-    let dataFiltro = dataFiltroEl ? dataFiltroEl.value : null;
-    if (!dataFiltro) {
-        dataFiltro = new Date().toISOString().split('T')[0];
-        if (dataFiltroEl) dataFiltroEl.value = dataFiltro;
+    if (btnTurno && btnTodos) {
+        if (modo === 'TURNO') {
+            btnTurno.className = 'px-2.5 py-1 rounded-md transition-colors bg-white dark:bg-slate-700 text-blue-600 shadow-sm';
+            btnTodos.className = 'px-2.5 py-1 rounded-md transition-colors text-slate-600 dark:text-slate-400 hover:text-slate-900';
+        } else if (modo === 'TODOS') {
+            btnTodos.className = 'px-2.5 py-1 rounded-md transition-colors bg-white dark:bg-slate-700 text-blue-600 shadow-sm';
+            btnTurno.className = 'px-2.5 py-1 rounded-md transition-colors text-slate-600 dark:text-slate-400 hover:text-slate-900';
+        } else {
+            btnTurno.className = 'px-2.5 py-1 rounded-md transition-colors text-slate-600 dark:text-slate-400 hover:text-slate-900';
+            btnTodos.className = 'px-2.5 py-1 rounded-md transition-colors text-slate-600 dark:text-slate-400 hover:text-slate-900';
+        }
+    }
+    renderCaixaDiario();
+}
+window.trocarModoFiltroHistorico = trocarModoFiltroHistorico;
+
+function extrairDataLocalMov(dataStr) {
+    if (!dataStr) return '';
+    try {
+        const d = new Date(dataStr);
+        if (isNaN(d.getTime())) return String(dataStr).split('T')[0];
+        const ano = d.getFullYear();
+        const mes = String(d.getMonth() + 1).padStart(2, '0');
+        const dia = String(d.getDate()).padStart(2, '0');
+        return ano + '-' + mes + '-' + dia;
+    } catch(e) {
+        return String(dataStr).split('T')[0];
+    }
+}
+
+function formatarHoraOuData(dataStr) {
+    if (!dataStr) return '--:--';
+    try {
+        const d = new Date(dataStr);
+        if (isNaN(d.getTime())) return '--:--';
+        const hojeStr = extrairDataLocalMov(new Date().toISOString());
+        const dataMovStr = extrairDataLocalMov(dataStr);
+        const horaStr = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        if (dataMovStr === hojeStr) {
+            return '<span class="font-bold text-slate-700 dark:text-slate-200">' + horaStr + '</span>';
+        } else {
+            const dataFmt = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+            return '<span class="text-slate-400 text-[10px] block leading-tight">' + dataFmt + '</span><span class="font-bold text-slate-700 dark:text-slate-200">' + horaStr + '</span>';
+        }
+    } catch(e) {
+        return '--:--';
+    }
+}
+
+function renderCaixaDiario() {
+    const disp = document.getElementById('caixa-saldo-display');
+    if (!disp) return;
+    disp.innerText = formatMoney(db.caixa.saldo || 0);
+    const b = document.getElementById('caixa-status-badge');
+    if (!b) return;
+    if(db.caixa.status === 'ABERTO') { 
+        b.innerText = 'ABERTO'; 
+        b.className = 'px-4 py-2 rounded-lg font-black text-lg mb-4 bg-emerald-100 text-emerald-700 border border-emerald-300'; 
+    } else { 
+        b.innerText = 'FECHADO'; 
+        b.className = 'px-4 py-2 rounded-lg font-black text-lg mb-4 bg-red-100 text-red-700 border border-red-300'; 
     }
     
-    const movs = db.caixa.historico.filter(m => m.data && m.data.startsWith(dataFiltro));
-    document.getElementById('tabela-caixa-historico').innerHTML = movs.map(m => `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-3 text-slate-500 dark:text-slate-400 font-mono text-[10px]">${formatData(m.data).split(' ')[1]}</td><td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${m.tipo==='ENTRADA' || m.tipo==='ABERTURA' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">${m.tipo}</span></td><td class="p-3 text-slate-700 dark:text-slate-200 text-xs font-bold">${m.desc}</td><td class="p-3 text-right font-black ${m.tipo==='ENTRADA' || m.tipo==='ABERTURA' ? 'text-emerald-500' : 'text-red-500'}">${m.tipo==='ENTRADA' || m.tipo==='ABERTURA' ? '+ ' : '- '}${formatMoney(m.valor)}</td></tr>`).join('') || `<tr><td colspan="4" class="p-6 text-center text-slate-500 dark:text-slate-400">Sem movimentos registrados para ${dataFiltro.split('-').reverse().join('/')}.</td></tr>`;
+    let dataFiltroEl = document.getElementById('filtro-data-caixa');
+    if (dataFiltroEl && !dataFiltroEl.value) {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        dataFiltroEl.value = y + '-' + m + '-' + d;
+    }
+    const dataFiltro = dataFiltroEl ? dataFiltroEl.value : '';
+
+    const todosHistorico = Array.isArray(db.caixa?.historico) ? db.caixa.historico : [];
+    let movs = [];
+
+    if (modoFiltroCaixa === 'TURNO') {
+        const dtAbertura = db.caixa?.ultimaAbertura ? new Date(db.caixa.ultimaAbertura).getTime() : 0;
+        if (db.caixa?.status === 'ABERTO' && dtAbertura > 0) {
+            movs = todosHistorico.filter(m => new Date(m.data || 0).getTime() >= (dtAbertura - 60000));
+        } else {
+            const hojeLocal = extrairDataLocalMov(new Date().toISOString());
+            movs = todosHistorico.filter(m => extrairDataLocalMov(m.data) === hojeLocal);
+            if (movs.length === 0 && todosHistorico.length > 0) {
+                movs = todosHistorico.slice(0, 30);
+            }
+        }
+    } else if (modoFiltroCaixa === 'TODOS') {
+        movs = [...todosHistorico];
+    } else {
+        movs = todosHistorico.filter(m => extrairDataLocalMov(m.data) === dataFiltro);
+    }
+
+    const tbody = document.getElementById('tabela-caixa-historico');
+    if (!tbody) return;
+
+    if (movs.length > 0) {
+        tbody.innerHTML = movs.map(m => {
+            let badgeClass = 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300';
+            if (m.tipo === 'ABERTURA') badgeClass = 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300';
+            else if (m.tipo === 'SAIDA' || m.tipo === 'SANGRIA' || m.tipo === 'FECHAMENTO') badgeClass = 'bg-red-100 text-red-700 dark:bg-red-900/60 dark:text-red-300';
+            else if (m.tipo && m.tipo.startsWith('ENTRADA')) {
+                if (m.desc && m.desc.includes('PIX')) badgeClass = 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/60 dark:text-cyan-300';
+                else if (m.desc && (m.desc.includes('Crédito') || m.desc.includes('Débito'))) badgeClass = 'bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300';
+                else badgeClass = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300';
+            }
+
+            const isEntrada = (m.tipo === 'ENTRADA' || m.tipo === 'ABERTURA' || (m.tipo && m.tipo.startsWith('ENTRADA')));
+            const corValor = isEntrada ? 'text-emerald-500' : 'text-red-500';
+            const sinalValor = isEntrada ? '+ ' : '- ';
+
+            return '<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">' +
+                '<td class="p-3 text-slate-500 dark:text-slate-400 font-mono text-[10px]">' + formatarHoraOuData(m.data) + '</td>' +
+                '<td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold ' + badgeClass + '">' + (m.tipo || 'MOV') + '</span></td>' +
+                '<td class="p-3 text-slate-700 dark:text-slate-200 text-xs font-bold">' + (m.desc || '-') + 
+                    (m.operador ? '<span class="text-[10px] text-slate-400 block font-normal">Operador: ' + m.operador + '</span>' : '') + 
+                '</td>' +
+                '<td class="p-3 text-right font-black ' + corValor + '">' + 
+                    sinalValor + formatMoney(m.valor || 0) + 
+                    (m.naoAfetaGaveta ? '<span class="text-[9px] text-slate-400 block font-normal">(não afeta gaveta)</span>' : '') +
+                '</td>' +
+            '</tr>';
+        }).join('');
+    } else {
+        const textoMsg = (modoFiltroCaixa === 'DATA')
+            ? 'Sem movimentos registrados para ' + dataFiltro.split('-').reverse().join('/') + '.'
+            : (modoFiltroCaixa === 'TURNO' ? 'Nenhuma movimentação registrada no turno atual.' : 'Nenhum movimento registrado.');
+        
+        const btnVerTodos = (todosHistorico.length > 0 && modoFiltroCaixa !== 'TODOS')
+            ? '<br><button type="button" onclick="trocarModoFiltroHistorico(\'TODOS\')" class="mt-2 text-xs text-blue-600 hover:underline font-bold"><i class="fa-solid fa-list mr-1"></i>Ver histórico completo (' + todosHistorico.length + ' movimentos)</button>'
+            : '';
+
+        tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-slate-500 dark:text-slate-400">' + textoMsg + btnVerTodos + '</td></tr>';
+    }
 }
 
 function abrirModalCaixa(op) {
@@ -416,7 +684,12 @@ async function confirmarMovCaixa() {
     let novoStatus = cxAtual.status;
     let novoSaldo = cxAtual.saldo || 0;
     const dataIso = new Date().toISOString();
-    const operadorNome = window.currentUserInfo?.nome || 'Operador Caixa';
+    const targetUid = window.operadorCaixaVisualizadoUid || (window.currentUser && window.currentUser.uid) || null;
+    let operadorNome = window.currentUserInfo?.nome || (window.currentUser && window.currentUser.displayName) || 'Operador Caixa';
+    if (window.operadorCaixaVisualizadoUid && Array.isArray(db.funcionarios)) {
+        const funcAlvo = db.funcionarios.find(f => (f.uid === window.operadorCaixaVisualizadoUid || f.id === window.operadorCaixaVisualizadoUid));
+        if (funcAlvo && funcAlvo.nome) operadorNome = funcAlvo.nome;
+    }
 
     if (op === 'ABRIR') {
         novoStatus = 'ABERTO';
@@ -453,14 +726,30 @@ async function confirmarMovCaixa() {
     }
     
     try {
-        await window.getEmpresaRef().collection('caixa').doc('caixa_atual').set({
+        const targetCaixaRef = (typeof window.obterCaixaDocRef === 'function')
+            ? window.obterCaixaDocRef(window.operadorCaixaVisualizadoUid)
+            : window.getEmpresaRef().collection('caixa').doc('caixa_atual');
+
+        const novoCaixaDados = {
             ...cxAtual,
             status: novoStatus,
             saldo: novoSaldo,
             historico: cxHistoricoNovo,
             ultimaAbertura: op === 'ABRIR' ? dataIso : (cxAtual.ultimaAbertura || dataIso),
-            operadorAtual: op === 'ABRIR' ? operadorNome : (cxAtual.operadorAtual || operadorNome)
-        }, { merge: true });
+            operadorAtual: op === 'ABRIR' ? operadorNome : (cxAtual.operadorAtual || operadorNome),
+            operadorUid: targetUid || ''
+        };
+
+        await targetCaixaRef.set(novoCaixaDados, { merge: true });
+
+        // Atualiza memória viva imediatamente
+        db.caixa = novoCaixaDados;
+        if (typeof FCCache !== 'undefined' && typeof FCCache.set === 'function') {
+            const cacheKey = (typeof window.obterCaixaDocId === 'function') 
+                ? 'fc_moveis_' + window.obterCaixaDocId(window.operadorCaixaVisualizadoUid) 
+                : 'fc_moveis_caixa';
+            FCCache.set(cacheKey, novoCaixaDados);
+        }
 
         fecharModalCaixa();
         renderCaixaDiario();
@@ -515,13 +804,29 @@ async function confirmarFechamentoCego() {
     let cxAtual = db.caixa || { status: 'ABERTO', saldo: 0, historico: [] };
     const dataAbertura = cxAtual.ultimaAbertura || (new Date(Date.now() - 86400000).toISOString());
     const dataFechamento = new Date().toISOString();
-    const operador = cxAtual.operadorAtual || window.currentUserInfo?.nome || 'Operador Caixa';
+    const targetUid = window.operadorCaixaVisualizadoUid || (window.currentUser && window.currentUser.uid) || null;
+    const targetDocId = (typeof window.obterCaixaDocId === 'function') ? window.obterCaixaDocId(targetUid) : 'caixa_atual';
+    let operador = cxAtual.operadorAtual || window.currentUserInfo?.nome || (window.currentUser && window.currentUser.displayName) || 'Operador Caixa';
+    if (window.operadorCaixaVisualizadoUid && Array.isArray(db.funcionarios)) {
+        const funcAlvo = db.funcionarios.find(f => (f.uid === window.operadorCaixaVisualizadoUid || f.id === window.operadorCaixaVisualizadoUid));
+        if (funcAlvo && funcAlvo.nome) operador = funcAlvo.nome;
+    }
 
-    // 1. Apura dados de vendas do sistema desde a abertura do turno
+    // 1. Apura dados de vendas do sistema desde a abertura do turno do operador
     const vendasTurno = (db.vendas || []).filter(v => {
         if (v.tipo === 'ORÇAMENTO') return false;
         const dt = new Date(v.data || 0).getTime();
-        return dt >= new Date(dataAbertura).getTime();
+        if (dt < new Date(dataAbertura).getTime()) return false;
+        if (targetUid && v.operadorId) {
+            return v.operadorId === targetUid;
+        }
+        if (targetDocId && v.caixaId) {
+            return v.caixaId === targetDocId;
+        }
+        if (operador && v.operador) {
+            return v.operador === operador;
+        }
+        return true;
     });
 
     let sysDinheiro = 0;
@@ -532,14 +837,30 @@ async function confirmarFechamentoCego() {
     let sysFiado = 0;
 
     vendasTurno.forEach(v => {
-        const pag = String(v.pag || '');
-        const tot = Number(v.tot || 0);
-        if (pag.includes('Dinheiro')) sysDinheiro += tot;
-        else if (pag.includes('Débito') || pag.includes('Debito')) sysDebito += tot;
-        else if (pag.includes('Crédito') || pag.includes('Credito')) sysCredito += tot;
-        else if (pag.includes('PIX') || pag.includes('Pix')) sysPix += tot;
-        else if (pag.includes('Boleto')) sysBoleto += tot;
-        else if (pag.includes('Fiado')) sysFiado += tot;
+        if (Array.isArray(v.pagamentos) && v.pagamentos.length > 0) {
+            v.pagamentos.forEach(p => {
+                const metodo = String(p.metodo || '');
+                let val = Number(p.valor || 0);
+                if (metodo.includes('Dinheiro') && Number(v.troco || 0) > 0) {
+                    val = Math.max(0, val - Number(v.troco || 0));
+                }
+                if (metodo.includes('Dinheiro')) sysDinheiro += val;
+                else if (metodo.includes('Débito') || metodo.includes('Debito')) sysDebito += val;
+                else if (metodo.includes('Crédito') || metodo.includes('Credito')) sysCredito += val;
+                else if (metodo.includes('PIX') || metodo.includes('Pix')) sysPix += val;
+                else if (metodo.includes('Boleto')) sysBoleto += val;
+                else if (metodo.includes('Fiado')) sysFiado += val;
+            });
+        } else {
+            const pag = String(v.pag || '');
+            const tot = Number(v.tot || 0);
+            if (pag.includes('Dinheiro')) sysDinheiro += tot;
+            else if (pag.includes('Débito') || pag.includes('Debito')) sysDebito += tot;
+            else if (pag.includes('Crédito') || pag.includes('Credito')) sysCredito += tot;
+            else if (pag.includes('PIX') || pag.includes('Pix')) sysPix += tot;
+            else if (pag.includes('Boleto')) sysBoleto += tot;
+            else if (pag.includes('Fiado')) sysFiado += tot;
+        }
     });
 
     // 2. Apura movimentações físicas de caixa (Abertura, Suprimentos, Sangrias)
@@ -562,6 +883,8 @@ async function confirmarFechamentoCego() {
 
     const mapaDados = {
         id: 'FECH-' + Date.now(),
+        caixaId: targetDocId,
+        operadorId: targetUid || '',
         dataAbertura: dataAbertura,
         dataFechamento: dataFechamento,
         operador: operador,
@@ -606,7 +929,9 @@ async function confirmarFechamentoCego() {
         });
 
         const batch = firestore.batch();
-        const caixaRef = window.getEmpresaRef().collection('caixa').doc('caixa_atual');
+        const caixaRef = (typeof window.obterCaixaDocRef === 'function')
+            ? window.obterCaixaDocRef(window.operadorCaixaVisualizadoUid)
+            : window.getEmpresaRef().collection('caixa').doc('caixa_atual');
         const novoCaixaDados = {
             ...cxAtual,
             status: 'FECHADO',
@@ -625,7 +950,10 @@ async function confirmarFechamentoCego() {
         // Atualiza memória viva e cache local imediatamente
         db.caixa = novoCaixaDados;
         if (typeof FCCache !== 'undefined' && typeof FCCache.set === 'function') {
-            FCCache.set('fc_moveis_caixa', novoCaixaDados);
+            const cacheKey = (typeof window.obterCaixaDocId === 'function') 
+                ? 'fc_moveis_' + window.obterCaixaDocId(window.operadorCaixaVisualizadoUid) 
+                : 'fc_moveis_caixa';
+            FCCache.set(cacheKey, novoCaixaDados);
         }
 
         fecharModalFechamentoCego();
@@ -765,7 +1093,9 @@ async function confirmarTransferenciaCaixa() {
     });
 
     const batch = firestore.batch();
-    const caixaRef = window.getEmpresaRef().collection('caixa').doc('caixa_atual');
+    const caixaRef = (typeof window.obterCaixaDocRef === 'function')
+        ? window.obterCaixaDocRef(window.operadorCaixaVisualizadoUid)
+        : window.getEmpresaRef().collection('caixa').doc('caixa_atual');
     batch.set(caixaRef, { ...cxAtual, saldo: novoSaldo, historico: cxHistoricoNovo }, { merge: true });
 
     // Registra entrada na conta destino no financeiro
@@ -1568,7 +1898,10 @@ async function estornarTitulo(id) {
                 cxSaldoNovo += f.valorPago;
                 cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'ENTRADA', desc: `Estorno: ${f.pessoa}`, valor: f.valorPago });
             }
-            batch.set(window.getEmpresaRef().collection('caixa').doc('caixa_atual'), { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+            const caixaRef = (typeof window.obterCaixaDocRef === 'function')
+                ? window.obterCaixaDocRef()
+                : window.getEmpresaRef().collection('caixa').doc('caixa_atual');
+            batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
         }
         
         const finRef = window.getEmpresaRef().collection('financeiro').doc(String(id));
@@ -2867,13 +3200,30 @@ window.calcularValorFinalFormulario = calcularValorFinalFormulario;
 window.fecharModalConta = fecharModalConta;
 window.salvarConta = salvarConta;
 window.excluirTitulo = excluirTitulo;
-window.abrirModalRenegociacao = abrirModalRenegociacao;
-window.fecharModalRenegociacao = fecharModalRenegociacao;
-window.verDetalhesTitulo = verDetalhesTitulo;
-window.fecharModalDetalhesTitulo = fecharModalDetalhesTitulo;
-window.abrirModalBaixa = abrirModalBaixa;
-window.fecharModalBaixa = fecharModalBaixa;
-window.calcularAcrescimos = calcularAcrescimos;
+window.abrirModalRenegociacao = typeof abrirModalRenegociacao !== 'undefined' ? abrirModalRenegociacao : function(id) {
+    if (typeof showToast === 'function') showToast('Para renegociar títulos, acesse o módulo Financeiro.', 'info');
+};
+window.fecharModalRenegociacao = typeof fecharModalRenegociacao !== 'undefined' ? fecharModalRenegociacao : function() {
+    const el = document.getElementById('modal-renegociacao');
+    if (el) el.classList.add('hidden');
+};
+window.verDetalhesTitulo = typeof verDetalhesTitulo !== 'undefined' ? verDetalhesTitulo : function(id) {
+    if (typeof showToast === 'function') showToast('Para ver detalhes completos, acesse o módulo Financeiro.', 'info');
+};
+window.fecharModalDetalhesTitulo = typeof fecharModalDetalhesTitulo !== 'undefined' ? fecharModalDetalhesTitulo : function() {
+    const el = document.getElementById('modal-detalhes-titulo');
+    if (el) el.classList.add('hidden');
+};
+window.abrirModalBaixa = typeof abrirModalBaixa !== 'undefined' ? abrirModalBaixa : function(id) {
+    if (typeof showToast === 'function') showToast('Para dar baixa em títulos, acesse o módulo Financeiro.', 'info');
+};
+window.fecharModalBaixa = typeof fecharModalBaixa !== 'undefined' ? fecharModalBaixa : function() {
+    const el = document.getElementById('modal-baixa-conta');
+    if (el) el.classList.add('hidden');
+};
+window.calcularAcrescimos = typeof calcularAcrescimos !== 'undefined' ? calcularAcrescimos : function() {
+    return 0;
+};
 window.processarXMLReal = processarXMLReal;
 window.lerXMLCTe = lerXMLCTe;
 window.recalcularRateioXML = recalcularRateioXML;
@@ -2949,3 +3299,1350 @@ window.fecharModalConfirmacao = fecharModalConfirmacao;
 
 
 
+
+
+// =========================================================================
+// GESTÃO DE VENDAS E PEDIDOS PENDENTES DO PDV (RECEBIMENTO CENTRAL NO CAIXA)
+// =========================================================================
+window.metodoSelecionadoCaixa = 'Dinheiro';
+window.vendaPendenteRecebendoAtual = null;
+
+function renderVendasPendentesPDV() {
+    const container = document.getElementById('lista-vendas-pendentes-container');
+    const badgeQtd = document.getElementById('badge-vendas-pendentes-qtd');
+    const inputBusca = document.getElementById('busca-vendas-pendentes');
+    if (!container) return;
+
+    const termo = inputBusca && inputBusca.value ? inputBusca.value.trim().toLowerCase() : '';
+    const todasVendas = Array.isArray(db.vendas) ? db.vendas : [];
+
+    // Filtra vendas com status pendente de pagamento
+    const pendentes = todasVendas.filter(v => {
+        if (!v) return false;
+        const st = String(v.status || '').toUpperCase().trim();
+        const tp = String(v.tipo || '').toUpperCase().trim();
+        if (st === 'CANCELADA' || st === 'CONCLUIDA' || st === 'PAGO' || tp === 'ORÇAMENTO') return false;
+        return st === 'AGUARDANDO_PAGAMENTO' || st === 'PENDENTE' || st === 'AGUARDANDO' || v.origem === 'PDV' || v.origem === 'PDV_BALCAO';
+    });
+
+    if (badgeQtd) {
+        badgeQtd.textContent = `${pendentes.length} aguardando`;
+        if (pendentes.length > 0) {
+            badgeQtd.className = "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 text-[10px] md:text-xs font-black px-2.5 py-0.5 rounded-full animate-pulse";
+        } else {
+            badgeQtd.className = "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400 text-[10px] md:text-xs font-bold px-2.5 py-0.5 rounded-full";
+        }
+    }
+
+    let filtradas = pendentes;
+    if (termo) {
+        filtradas = pendentes.filter(v => {
+            const num = String(v.numeroPedido || v.id || '').toLowerCase();
+            const cli = String(v.clienteNome || v.cliente || '').toLowerCase();
+            const vend = String(v.vendedor || '').toLowerCase();
+            return num.includes(termo) || cli.includes(termo) || vend.includes(termo);
+        });
+    }
+
+    // Ordena as mais recentes primeiro
+    filtradas.sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0));
+
+    if (filtradas.length === 0) {
+        if (termo) {
+            container.innerHTML = `
+                <div class="text-center py-8 text-slate-400 text-xs md:text-sm">
+                    <i class="fa-solid fa-filter text-slate-300 text-2xl mb-2 block"></i>
+                    Nenhum pedido pendente corresponde à busca "<strong>${termo}</strong>".
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="text-center py-8 text-slate-400 text-xs md:text-sm">
+                    <i class="fa-solid fa-circle-check text-emerald-500 text-3xl mb-2 block"></i>
+                    <p class="font-bold text-slate-600 dark:text-slate-300">Tudo em dia!</p>
+                    <p class="text-[11px] text-slate-400 mt-0.5">Nenhum pedido pendente de recebimento do PDV no momento.</p>
+                </div>
+            `;
+        }
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            ${filtradas.map(v => {
+                const numPedStr = String(v.numeroPedido || v.id || '0').padStart(4, '0');
+                const cliNome = v.clienteNome || v.cliente || 'Consumidor Final';
+                const vendNome = v.vendedor || 'PDV Balcão';
+                const totalValor = Number(v.tot || v.subtotal || 0);
+                const qtdItens = Array.isArray(v.itens) ? v.itens.reduce((acc, i) => acc + (Number(i.qtd) || 1), 0) : 0;
+                
+                let dataFormatada = '-';
+                if (v.data) {
+                    try {
+                        const d = new Date(v.data);
+                        dataFormatada = d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                    } catch(e) {}
+                }
+
+                // Resumo rápido dos primeiros itens
+                const itensNomes = Array.isArray(v.itens) 
+                    ? v.itens.slice(0, 2).map(i => `${i.qtd || 1}x ${i.nome || 'Item'}`).join(', ') + (v.itens.length > 2 ? ` (+ ${v.itens.length - 2})` : '')
+                    : 'Itens da venda';
+
+                // Previsão do vendedor para exibir no card
+                let prevVendTexto = '';
+                if (v.condicaoPagamentoVendedor && v.condicaoPagamentoVendedor.metodo) {
+                    const c = v.condicaoPagamentoVendedor;
+                    prevVendTexto = `${c.metodo}${c.parcelas > 1 ? ' (' + c.parcelas + 'x)' : ''}`;
+                } else if (Array.isArray(v.pagamentos) && v.pagamentos[0] && v.pagamentos[0].metodo) {
+                    const c = v.pagamentos[0];
+                    prevVendTexto = `${c.metodo}${c.parcelas > 1 ? ' (' + c.parcelas + 'x)' : ''}`;
+                } else if (v.pag && v.pag.includes('(')) {
+                    const m = v.pag.match(/\(([^)]+)\)/);
+                    if (m && m[1]) prevVendTexto = m[1];
+                }
+
+                return `
+                    <div class="bg-slate-50 dark:bg-slate-900 border border-amber-200 dark:border-amber-900/50 rounded-xl p-3.5 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow">
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-black text-xs px-2.5 py-1 rounded-lg font-mono">
+                                    PEDIDO #${numPedStr}
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-medium">
+                                    <i class="fa-regular fa-clock mr-1"></i>${dataFormatada}
+                                </span>
+                            </div>
+                            
+                            <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm truncate" title="${cliNome}">
+                                ${cliNome}
+                            </h4>
+                            <div class="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                <span class="truncate"><i class="fa-solid fa-user-tag text-slate-400 mr-1"></i>Vend: <strong>${vendNome}</strong></span>
+                                ${prevVendTexto ? `<span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-800 shrink-0 ml-1" title="Condição prevista pelo vendedor"><i class="fa-solid fa-hand-holding-dollar text-[9px] mr-1"></i>${prevVendTexto}</span>` : ''}
+                            </div>
+                            
+                            <div class="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700 my-2 text-[11px] text-slate-600 dark:text-slate-300">
+                                <span class="font-bold block text-slate-400 text-[10px] uppercase">${qtdItens} ${qtdItens === 1 ? 'item' : 'itens'}:</span>
+                                <span class="truncate block" title="${itensNomes}">${itensNomes}</span>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 mt-2">
+                            <div>
+                                <span class="text-[10px] uppercase font-bold text-slate-400 block leading-none">Total</span>
+                                <span class="text-base font-black text-emerald-600 dark:text-emerald-400">
+                                    ${typeof formatMoney === 'function' ? formatMoney(totalValor) : 'R$ ' + totalValor.toFixed(2)}
+                                </span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <button type="button" onclick="cancelarVendaPendentePDV('${v.id}')" class="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 text-xs transition" title="Cancelar este Pedido">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                                <button type="button" onclick="abrirModalReceberPDV('${v.id}')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs px-3.5 py-2 rounded-lg shadow-sm transition flex items-center gap-1.5">
+                                    <i class="fa-solid fa-cash-register"></i> Receber
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+window.renderVendasPendentesPDV = renderVendasPendentesPDV;
+
+window.abrirModalReceberPDV = function(vendaId) {
+    const v = (db.vendas || []).find(x => String(x.id) === String(vendaId));
+    if (!v) return showToast('Pedido não localizado!', 'error');
+
+    window.vendaPendenteRecebendoAtual = v;
+    const numPedStr = String(v.numeroPedido || v.id || '0').padStart(4, '0');
+    const cliNome = v.clienteNome || v.cliente || 'Consumidor Final';
+    const vendNome = v.vendedor || 'PDV Balcão';
+    const total = Number(v.tot || v.subtotal || 0);
+
+    const inputId = document.getElementById('modal-receber-venda-id');
+    const titEl = document.getElementById('modal-receber-titulo');
+    const subEl = document.getElementById('modal-receber-subtitulo');
+    const totalEl = document.getElementById('modal-receber-total-display');
+    const itensResumoEl = document.getElementById('modal-receber-itens-resumo');
+    const vendEl = document.getElementById('modal-receber-vendedor-nome');
+    const itensListaEl = document.getElementById('modal-receber-itens-lista');
+
+    if (inputId) inputId.value = v.id;
+    if (titEl) titEl.textContent = `Receber Pedido #${numPedStr}`;
+    if (subEl) subEl.textContent = `Cliente: ${cliNome}`;
+    if (totalEl) totalEl.textContent = typeof formatMoney === 'function' ? formatMoney(total) : 'R$ ' + total.toFixed(2);
+    if (vendEl) vendEl.textContent = `Vend: ${vendNome}`;
+
+    const qtdItens = Array.isArray(v.itens) ? v.itens.reduce((acc, i) => acc + (Number(i.qtd) || 1), 0) : 0;
+    if (itensResumoEl) itensResumoEl.textContent = `${qtdItens} ${qtdItens === 1 ? 'item' : 'itens'}`;
+
+    if (itensListaEl) {
+        if (Array.isArray(v.itens) && v.itens.length > 0) {
+            itensListaEl.innerHTML = v.itens.map(i => `
+                <div class="flex justify-between items-center py-0.5 border-b border-slate-200/50 dark:border-slate-700/50 last:border-none">
+                    <span class="truncate mr-2">▪ ${i.qtd || 1}x ${i.nome || 'Produto'}</span>
+                    <strong class="font-mono shrink-0">${typeof formatMoney === 'function' ? formatMoney((i.preco || 0) * (i.qtd || 1)) : 'R$ ' + ((i.preco || 0) * (i.qtd || 1)).toFixed(2)}</strong>
+                </div>
+            `).join('');
+        } else {
+            itensListaEl.innerHTML = '<span class="text-slate-400 italic">Sem itens listados</span>';
+        }
+    }
+
+    // 1. Identificar condição de pagamento prévia definida pelo vendedor no PDV
+    let condVendedor = v.condicaoPagamentoVendedor || (v.pagamentos && v.pagamentos.length > 0 ? v.pagamentos[0] : null);
+    
+    let metodoPre = 'Dinheiro';
+    let parcelasPre = 1;
+    let vencimentoBasePre = '';
+    let vencimentosPersonalizadosPre = [];
+
+    if (condVendedor && condVendedor.metodo) {
+        metodoPre = condVendedor.metodo;
+        parcelasPre = parseInt(condVendedor.parcelas) || 1;
+        vencimentoBasePre = condVendedor.vencimentoBase || '';
+        vencimentosPersonalizadosPre = Array.isArray(condVendedor.vencimentosPersonalizados) ? condVendedor.vencimentosPersonalizados : [];
+    } else if (typeof v.pag === 'string' && v.pag) {
+        const pagUpper = v.pag.toUpperCase();
+        if (pagUpper.includes('FIADO')) metodoPre = 'Fiado';
+        else if (pagUpper.includes('BOLETO')) metodoPre = 'Boleto';
+        else if (pagUpper.includes('DÉBITO') || pagUpper.includes('DEBITO')) metodoPre = 'Cartão Débito';
+        else if (pagUpper.includes('CRÉDITO') || pagUpper.includes('CREDITO')) metodoPre = 'Cartão Crédito';
+        else if (pagUpper.includes('PIX')) metodoPre = 'PIX';
+        else if (pagUpper.includes('DINHEIRO')) metodoPre = 'Dinheiro';
+
+        const matchParc = v.pag.match(/(\d+)\s*x/i);
+        if (matchParc && matchParc[1]) {
+            parcelasPre = parseInt(matchParc[1]) || 1;
+        }
+    }
+
+    // Armazenar a condição do vendedor no estado global temporário
+    window.condicaoVendedorAtual = {
+        metodo: metodoPre,
+        parcelas: parcelasPre,
+        vencimentoBase: vencimentoBasePre,
+        vencimentosPersonalizados: vencimentosPersonalizadosPre
+    };
+
+    // Atualizar badge da condição do vendedor no modal
+    const condEl = document.getElementById('modal-receber-condicao-vendedor');
+    if (condEl) {
+        if (metodoPre && (metodoPre !== 'Dinheiro' || (condVendedor && condVendedor.metodo))) {
+            condEl.innerHTML = `<i class="fa-solid fa-hand-holding-dollar mr-1"></i>Previsão: <strong>${metodoPre}${parcelasPre > 1 ? ' (' + parcelasPre + 'x)' : ''}</strong>`;
+            condEl.classList.remove('hidden');
+        } else {
+            condEl.textContent = '';
+            condEl.classList.add('hidden');
+        }
+    }
+
+    // Limpar lista de parcelas geradas anteriormente para não herdar de outro pedido
+    const contDatas = document.getElementById('modal-receber-datas-parcelas');
+    if (contDatas) contDatas.innerHTML = '';
+
+    // Pré-configurar o seletor de parcelas e campo de vencimento base
+    const selParc = document.getElementById('modal-receber-parcelas');
+    if (selParc) selParc.value = String(parcelasPre);
+
+    const inpBase = document.getElementById('modal-receber-vencimento-base');
+    if (inpBase) inpBase.value = vencimentoBasePre || '';
+
+    // Pré-seleciona método
+    window.selecionarMetodoCaixa(metodoPre);
+
+    const inputPago = document.getElementById('modal-receber-valor-pago');
+    if (inputPago) {
+        inputPago.value = total > 0 ? (typeof formatMoney === 'function' ? formatMoney(total).replace('R$', '').trim() : total.toFixed(2)) : '';
+    }
+    const trocoEl = document.getElementById('modal-receber-troco-display');
+    if (trocoEl) trocoEl.textContent = 'R$ 0,00';
+    const obsEl = document.getElementById('modal-receber-obs');
+    if (obsEl) obsEl.value = '';
+
+    const modal = document.getElementById('modal-receber-pdv-caixa');
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.fecharModalReceberPDV = function() {
+    const modal = document.getElementById('modal-receber-pdv-caixa');
+    if (modal) modal.classList.add('hidden');
+    window.vendaPendenteRecebendoAtual = null;
+    window.condicaoVendedorAtual = null;
+};
+
+window.selecionarMetodoCaixa = function(metodo) {
+    window.metodoSelecionadoCaixa = metodo;
+    document.querySelectorAll('.btn-metodo-cx').forEach(btn => {
+        if (btn.getAttribute('data-metodo') === metodo) {
+            btn.className = "btn-metodo-cx flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold text-xs transition shadow-xs";
+        } else {
+            btn.className = "btn-metodo-cx flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs transition hover:border-blue-400";
+        }
+    });
+
+    const boxDinheiro = document.getElementById('box-dinheiro-caixa');
+    const boxParcelamento = document.getElementById('box-parcelamento-caixa');
+
+    if (boxDinheiro) {
+        if (metodo === 'Dinheiro') {
+            boxDinheiro.classList.remove('hidden');
+        } else {
+            boxDinheiro.classList.add('hidden');
+        }
+    }
+
+    if (boxParcelamento) {
+        if (metodo === 'Cartão Crédito' || metodo === 'Cartão Débito' || metodo === 'Boleto' || metodo === 'Fiado') {
+            boxParcelamento.classList.remove('hidden');
+            window.renderizarParcelasCaixa();
+        } else {
+            boxParcelamento.classList.add('hidden');
+        }
+    }
+
+    window.calcularTrocoReceberCaixa();
+};
+
+window.renderizarParcelasCaixa = function() {
+    const v = window.vendaPendenteRecebendoAtual;
+    if (!v) return;
+    const total = Number(v.tot || v.subtotal || 0);
+    const selParc = document.getElementById('modal-receber-parcelas');
+    const qtd = parseInt(selParc?.value) || 1;
+    const metodo = window.metodoSelecionadoCaixa || 'Fiado';
+    const contDatas = document.getElementById('modal-receber-datas-parcelas');
+    const resumoTopo = document.getElementById('cx-parcelas-resumo-topo');
+    const inpBase = document.getElementById('modal-receber-vencimento-base');
+
+    const valParc = qtd > 0 ? (total / qtd) : total;
+    const fm = (val) => typeof formatMoney === 'function' ? formatMoney(val) : 'R$ ' + Number(val || 0).toFixed(2);
+
+    if (resumoTopo) {
+        resumoTopo.textContent = `${qtd}x de ${fm(valParc)} (Total: ${fm(total)})`;
+    }
+
+    // Prazo padrão do método em dias
+    let prazoPadrao = 30;
+    if (typeof db !== 'undefined' && db.config && db.config.prazos && db.config.prazos[metodo] !== undefined) {
+        prazoPadrao = parseInt(db.config.prazos[metodo]);
+    } else if (metodo === 'Cartão Débito') {
+        prazoPadrao = 0;
+    }
+
+    // Data de vencimento base (1ª parcela)
+    let baseDate = new Date();
+    if (inpBase && inpBase.value) {
+        baseDate = new Date(inpBase.value + 'T12:00:00');
+    } else if (window.condicaoVendedorAtual && window.condicaoVendedorAtual.vencimentoBase) {
+        baseDate = new Date(window.condicaoVendedorAtual.vencimentoBase + 'T12:00:00');
+        if (inpBase) inpBase.value = window.condicaoVendedorAtual.vencimentoBase;
+    } else {
+        baseDate.setDate(baseDate.getDate() + prazoPadrao);
+        if (inpBase) inpBase.value = baseDate.toISOString().split('T')[0];
+    }
+
+    if (!contDatas) return;
+
+    // Preservar datas e valores digitados anteriormente se existirem
+    let existingDates = [];
+    let existingVals = [];
+    for (let i = 1; i <= 12; i++) {
+        const dEl = document.getElementById(`cx-parc-data-${i}`);
+        const vEl = document.getElementById(`cx-parc-valor-${i}`);
+        if (dEl && dEl.value) existingDates.push(dEl.value);
+        if (vEl && vEl.value) existingVals.push(vEl.value);
+    }
+
+    contDatas.innerHTML = '';
+
+    const vendDates = (window.condicaoVendedorAtual && Array.isArray(window.condicaoVendedorAtual.vencimentosPersonalizados)) 
+        ? window.condicaoVendedorAtual.vencimentosPersonalizados 
+        : [];
+
+    for (let i = 1; i <= qtd; i++) {
+        let valDate = '';
+        if (existingDates[i - 1]) {
+            valDate = existingDates[i - 1];
+        } else if (vendDates[i - 1]) {
+            valDate = vendDates[i - 1];
+        } else {
+            let d = new Date(baseDate);
+            d.setDate(d.getDate() + (prazoPadrao * (i - 1)));
+            valDate = d.toISOString().split('T')[0];
+        }
+
+        let valFormatado = existingVals[i - 1] || fm(valParc).replace('R$', '').trim();
+
+        contDatas.innerHTML += `
+        <div class="flex items-center gap-2 bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs">
+            <span class="text-xs font-bold text-slate-600 dark:text-slate-300 w-16 shrink-0 flex items-center gap-1">
+                <i class="fa-solid fa-receipt text-slate-400 text-[10px]"></i> Parc. ${i}/${qtd}
+            </span>
+            <input type="date" id="cx-parc-data-${i}" value="${valDate}" onchange="if(${i}===1) window.recalcularDatasParcelasCaixa('parc1')" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-1.5 rounded-lg text-xs font-semibold dark:text-white outline-none focus:border-blue-500">
+            <div class="flex items-center gap-1 w-28 shrink-0">
+                <span class="text-[11px] text-slate-400 font-bold">R$</span>
+                <input type="text" data-mask="money" inputmode="numeric" id="cx-parc-valor-${i}" value="${valFormatado}" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-1.5 rounded-lg text-xs font-black text-right dark:text-white outline-none focus:border-blue-500" placeholder="0,00">
+            </div>
+        </div>
+        `;
+    }
+};
+
+window.recalcularDatasParcelasCaixa = function(origem) {
+    const inpBase = document.getElementById('modal-receber-vencimento-base');
+    const dataPrimeiraEl = document.getElementById('cx-parc-data-1');
+    let baseValue = '';
+
+    if (origem === 'inputBase' && inpBase && inpBase.value) {
+        baseValue = inpBase.value;
+        if (dataPrimeiraEl) dataPrimeiraEl.value = baseValue;
+    } else if (dataPrimeiraEl && dataPrimeiraEl.value) {
+        baseValue = dataPrimeiraEl.value;
+        if (inpBase) inpBase.value = baseValue;
+    } else if (inpBase && inpBase.value) {
+        baseValue = inpBase.value;
+        if (dataPrimeiraEl) dataPrimeiraEl.value = baseValue;
+    }
+
+    if (!baseValue) return;
+
+    const selParc = document.getElementById('modal-receber-parcelas');
+    const qtd = parseInt(selParc?.value) || 1;
+    const metodo = window.metodoSelecionadoCaixa || 'Fiado';
+
+    let prazoPadrao = 30;
+    if (typeof db !== 'undefined' && db.config && db.config.prazos && db.config.prazos[metodo] !== undefined) {
+        prazoPadrao = parseInt(db.config.prazos[metodo]);
+    } else if (metodo === 'Cartão Débito') {
+        prazoPadrao = 0;
+    }
+
+    const baseDate = new Date(baseValue + 'T12:00:00');
+    for (let i = 2; i <= qtd; i++) {
+        const el = document.getElementById(`cx-parc-data-${i}`);
+        if (el) {
+            let d = new Date(baseDate);
+            d.setDate(d.getDate() + (prazoPadrao * (i - 1)));
+            el.value = d.toISOString().split('T')[0];
+        }
+    }
+};
+
+window.calcularTrocoReceberCaixa = function() {
+    const v = window.vendaPendenteRecebendoAtual;
+    if (!v) return;
+    const total = Number(v.tot || v.subtotal || 0);
+    const inputPago = document.getElementById('modal-receber-valor-pago');
+    const trocoEl = document.getElementById('modal-receber-troco-display');
+    if (!inputPago || !trocoEl) return;
+
+    if (window.metodoSelecionadoCaixa !== 'Dinheiro') {
+        trocoEl.textContent = 'R$ 0,00';
+        return;
+    }
+
+    const valorDigitado = typeof parseInputMoney === 'function' ? parseInputMoney(inputPago.value) : parseFloat(String(inputPago.value).replace(',', '.'));
+    const valorPago = isNaN(valorDigitado) ? 0 : valorDigitado;
+    const troco = valorPago > total ? valorPago - total : 0;
+
+    trocoEl.textContent = typeof formatMoney === 'function' ? formatMoney(troco) : 'R$ ' + troco.toFixed(2);
+};
+
+window.confirmarRecebimentoPDVNoCaixa = async function() {
+    const v = window.vendaPendenteRecebendoAtual;
+    if (!v) return showToast('Nenhum pedido selecionado!', 'error');
+
+    // 1. O Caixa do operador ativo deve estar ABERTO
+    if (!db.caixa || db.caixa.status !== 'ABERTO') {
+        return showToast('O seu Caixa Físico está FECHADO! Abra o caixa antes de efetuar recebimentos.', 'error');
+    }
+
+    const btn = document.getElementById('btn-confirmar-recebimento-caixa');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Gravando recebimento...';
+    }
+
+    try {
+        const metodo = window.metodoSelecionadoCaixa || 'Dinheiro';
+        const totalVenda = Number(v.tot || v.subtotal || 0);
+        let parcelas = 1;
+        let parcelasArray = [];
+        let vencimentosPersonalizados = [];
+
+        if (metodo === 'Cartão Crédito' || metodo === 'Cartão Débito' || metodo === 'Boleto' || metodo === 'Fiado') {
+            parcelas = parseInt(document.getElementById('modal-receber-parcelas')?.value) || 1;
+            for (let i = 1; i <= parcelas; i++) {
+                const dataEl = document.getElementById(`cx-parc-data-${i}`);
+                const valEl = document.getElementById(`cx-parc-valor-${i}`);
+                const dataVal = dataEl?.value || '';
+                const valorDigitado = valEl ? (typeof parseInputMoney === 'function' ? parseInputMoney(valEl.value) : parseFloat(String(valEl.value).replace(',', '.'))) : (totalVenda / parcelas);
+                const valorVal = isNaN(valorDigitado) ? (totalVenda / parcelas) : valorDigitado;
+
+                parcelasArray.push({
+                    parcela: i,
+                    vencimento: dataVal,
+                    valor: valorVal
+                });
+                vencimentosPersonalizados.push(dataVal);
+            }
+        }
+
+        const inputPago = document.getElementById('modal-receber-valor-pago');
+        const valorDigitado = inputPago ? (typeof parseInputMoney === 'function' ? parseInputMoney(inputPago.value) : parseFloat(String(inputPago.value).replace(',', '.'))) : totalVenda;
+        const valorPago = (metodo === 'Dinheiro' && !isNaN(valorDigitado) && valorDigitado > 0) ? valorDigitado : totalVenda;
+        const troco = (metodo === 'Dinheiro' && valorPago > totalVenda) ? valorPago - totalVenda : 0;
+        const obsCaixa = document.getElementById('modal-receber-obs')?.value.trim() || '';
+
+        const opAtual = (typeof window.obterOperadorAtual === 'function') ? window.obterOperadorAtual() : null;
+        const opNome = (opAtual && opAtual.nome) || (window.currentUserInfo && window.currentUserInfo.nome) || 'Operador Caixa';
+        const opUid = (opAtual && opAtual.uid) || (window.currentUser && window.currentUser.uid) || null;
+        const caixaDocId = (typeof window.obterCaixaDocId === 'function') ? window.obterCaixaDocId() : 'caixa_atual';
+        const caixaRef = (typeof window.obterCaixaDocRef === 'function') ? window.obterCaixaDocRef() : window.getEmpresaRef().collection('caixa').doc('caixa_atual');
+
+        const now = new Date().toISOString();
+        const numPedStr = String(v.numeroPedido || v.id || '0').padStart(4, '0');
+        const cliNome = v.clienteNome || v.cliente || 'Consumidor Final';
+
+        const batch = firestore.batch();
+
+        // 1. Atualizar Venda com pagamentos completos
+        const pagTexto = `${metodo}${parcelas > 1 ? ' (' + parcelas + 'x)' : ''} (${typeof formatMoney === 'function' ? formatMoney(totalVenda) : totalVenda})`;
+        const vendaRef = window.getEmpresaRef().collection('vendas').doc(String(v.id));
+
+        const pagamentosObj = [{
+            metodo: metodo,
+            valor: totalVenda,
+            parcelas: parcelas,
+            vencimentoBase: parcelasArray[0]?.vencimento || '',
+            vencimentosPersonalizados: vencimentosPersonalizados,
+            detalhesParcelas: parcelasArray,
+            valorRecebido: valorPago,
+            troco: troco
+        }];
+
+        const updateVendaObj = {
+            status: 'CONCLUIDA',
+            pag: pagTexto,
+            pagamentos: pagamentosObj,
+            valorRecebido: valorPago,
+            troco: troco,
+            operadorCaixa: opNome,
+            operadorCaixaId: opUid,
+            caixaId: caixaDocId,
+            dataRecebimento: now,
+            obsCaixa: obsCaixa,
+            ultimaAlteracao: Date.now()
+        };
+        batch.update(vendaRef, updateVendaObj);
+
+        // 2. Dar baixa de estoque e kardex se não foi baixado na pré-venda
+        if (Array.isArray(v.itens) && v.estoqueBaixado !== true) {
+            v.itens.forEach(item => {
+                if (item && item.id) {
+                    const pRef = window.getEmpresaRef().collection('produtos').doc(String(item.id));
+                    batch.update(pRef, { estoque: firebase.firestore.FieldValue.increment(-Number(item.qtd || 1)) });
+
+                    const kardexRef = window.getEmpresaRef().collection('movimentacoes').doc();
+                    batch.set(kardexRef, {
+                        data: now,
+                        ref: `Venda #${numPedStr}`,
+                        prodId: item.id,
+                        prodNome: item.nome || 'Produto',
+                        qtd: -(item.qtd || 1),
+                        tipo: 'VENDA'
+                    });
+                }
+            });
+            updateVendaObj.estoqueBaixado = true;
+        }
+
+        // 3. Atualizar Caixa Físico do Operador
+        let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
+        let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
+        let cxSaldoNovo = cxAtual.saldo || 0;
+
+        const descMov = `Venda #${numPedStr} (${metodo}${parcelas > 1 ? ' ' + parcelas + 'x' : ''}) - ${cliNome}`;
+
+        if (metodo === 'Dinheiro') {
+            cxSaldoNovo += totalVenda;
+            cxHistoricoNovo.unshift({
+                data: now,
+                tipo: 'ENTRADA',
+                metodo: 'Dinheiro',
+                desc: descMov,
+                valor: totalVenda,
+                operador: opNome,
+                saldoApos: cxSaldoNovo
+            });
+        } else {
+            cxHistoricoNovo.unshift({
+                data: now,
+                tipo: `ENTRADA (${metodo})`,
+                metodo: metodo,
+                desc: descMov,
+                valor: totalVenda,
+                operador: opNome,
+                saldoApos: cxSaldoNovo,
+                naoAfetaGaveta: true
+            });
+        }
+
+        const cxFinalData = { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo };
+        batch.set(caixaRef, cxFinalData, { merge: true });
+
+        // 4. Lançar registros no Financeiro
+        let novosRegistrosFinanceiro = [];
+        if (metodo === 'Fiado' || metodo === 'Boleto') {
+            for (let i = 0; i < parcelasArray.length; i++) {
+                const p = parcelasArray[i];
+                const finRef = window.getEmpresaRef().collection('financeiro').doc();
+                const finDataVenc = p.vencimento ? new Date(p.vencimento + 'T12:00:00').toISOString() : now;
+                const finObj = {
+                    id: finRef.id,
+                    ref: `Venda #${numPedStr} (${metodo}) [${p.parcela}/${parcelas}]`,
+                    data: finDataVenc,
+                    dataVencimento: finDataVenc,
+                    pessoa: cliNome,
+                    wpp: '',
+                    valor: p.valor,
+                    status: 'PENDENTE',
+                    tipo: 'RECEITA',
+                    categoria: 'Vendas',
+                    metodoPagamento: metodo,
+                    origemVendaId: String(v.id),
+                    operador: opNome,
+                    caixaId: caixaDocId
+                };
+                batch.set(finRef, finObj);
+                novosRegistrosFinanceiro.push(finObj);
+            }
+        } else if (metodo === 'Cartão Crédito' || metodo === 'Cartão Débito') {
+            const isDebitoAVista = (metodo === 'Cartão Débito' && parcelas === 1);
+            for (let i = 0; i < parcelasArray.length; i++) {
+                const p = parcelasArray[i];
+                const finRef = window.getEmpresaRef().collection('financeiro').doc();
+                const finDataVenc = p.vencimento ? new Date(p.vencimento + 'T12:00:00').toISOString() : now;
+                const finObj = {
+                    id: finRef.id,
+                    ref: `Venda #${numPedStr} (${metodo})${parcelas > 1 ? ` [${p.parcela}/${parcelas}]` : ''}`,
+                    data: isDebitoAVista ? now : finDataVenc,
+                    dataPagamento: isDebitoAVista ? now : null,
+                    dataVencimento: finDataVenc,
+                    pessoa: cliNome,
+                    wpp: '',
+                    valor: p.valor,
+                    valorPago: isDebitoAVista ? p.valor : 0,
+                    status: isDebitoAVista ? 'PAGO' : 'PENDENTE',
+                    tipo: 'RECEITA',
+                    categoria: 'Vendas',
+                    metodoPagamento: metodo,
+                    origemVendaId: String(v.id),
+                    operador: opNome,
+                    caixaId: caixaDocId
+                };
+                batch.set(finRef, finObj);
+                novosRegistrosFinanceiro.push(finObj);
+            }
+        } else {
+            // Dinheiro ou PIX
+            const finRef = window.getEmpresaRef().collection('financeiro').doc();
+            const finObj = {
+                id: finRef.id,
+                ref: `Venda #${numPedStr} (${metodo})`,
+                data: now,
+                dataPagamento: now,
+                pessoa: cliNome,
+                valor: totalVenda,
+                valorPago: totalVenda,
+                status: 'PAGO',
+                tipo: 'RECEITA',
+                categoria: 'Vendas',
+                metodoPagamento: metodo,
+                origemVendaId: String(v.id),
+                operador: opNome,
+                caixaId: caixaDocId
+            };
+            batch.set(finRef, finObj);
+            novosRegistrosFinanceiro.push(finObj);
+        }
+
+        await batch.commit();
+
+        // 5. Atualizar repositório local e cache
+        db.caixa = cxFinalData;
+        if (typeof window.db !== 'undefined') {
+            window.db.caixa = cxFinalData;
+        }
+        if (typeof FCCache !== 'undefined' && typeof FCCache.set === 'function') {
+            FCCache.set('fc_moveis_' + caixaDocId, cxFinalData);
+            FCCache.set('fc_moveis_caixa', cxFinalData);
+        }
+
+        // Atualiza venda na lista local e no cache
+        const vendaAtualizada = { ...v, ...updateVendaObj };
+        const idxVenda = (db.vendas || []).findIndex(x => String(x.id) === String(v.id));
+        if (idxVenda !== -1) {
+            db.vendas[idxVenda] = vendaAtualizada;
+        } else if (Array.isArray(db.vendas)) {
+            db.vendas.unshift(vendaAtualizada);
+        }
+        if (typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) {
+            const idxW = window.db.vendas.findIndex(x => String(x.id) === String(v.id));
+            if (idxW !== -1) {
+                window.db.vendas[idxW] = vendaAtualizada;
+            } else {
+                window.db.vendas.unshift(vendaAtualizada);
+            }
+        }
+        if (typeof FCCache !== 'undefined' && typeof FCCache.atualizarItem === 'function') {
+            await FCCache.atualizarItem('vendas', v.id, updateVendaObj);
+            for (const fItem of novosRegistrosFinanceiro) {
+                await FCCache.atualizarItem('financeiro', fItem.id, fItem);
+            }
+        }
+
+        // Atualiza financeiro local
+        if (Array.isArray(db.financeiro)) {
+            db.financeiro.unshift(...novosRegistrosFinanceiro);
+        }
+        if (typeof window.db !== 'undefined' && Array.isArray(window.db.financeiro)) {
+            window.db.financeiro.unshift(...novosRegistrosFinanceiro);
+        }
+
+        try {
+            localStorage.setItem('fc_sync_trigger', Date.now());
+            window.dispatchEvent(new CustomEvent('venda-recebida-caixa', { detail: { id: v.id, venda: vendaAtualizada } }));
+        } catch(e) {}
+
+        // 6. Fecha o modal de receber pedido e atualiza o histórico do Caixa
+        fecharModalReceberPDV();
+        renderCaixaDiario();
+        renderVendasPendentesPDV();
+
+        // 7. Configura e Abre o Modal Completo de Documento Gerado (Recibo/Fiscal/Contrato)
+        window.vendaAtualImpressao = vendaAtualizada;
+        const htmlRecibo = window.gerarHtmlReciboParaImpressao(vendaAtualizada);
+        const printArea = document.getElementById('print-area');
+        if (printArea) printArea.innerHTML = htmlRecibo;
+        const printAreaCaixa = document.getElementById('print-area-recibo-caixa');
+        if (printAreaCaixa) printAreaCaixa.innerHTML = htmlRecibo;
+
+        const modalRecibo = document.getElementById('modal-opcoes-recibo');
+        if (modalRecibo) {
+            modalRecibo.classList.remove('hidden');
+
+            const fContainer = document.getElementById('fiscal-container');
+            if (fContainer) {
+                if (db.config?.empresa?.fiscalAtivo !== false) {
+                    fContainer.classList.remove('hidden');
+                    const fStatus = document.getElementById('fiscal-status-container');
+                    if (fStatus) { fStatus.classList.add('hidden'); fStatus.innerHTML = ''; }
+                    const bNfce = document.getElementById('btn-emitir-nfce'); if (bNfce) bNfce.disabled = false;
+                    const bNfe = document.getElementById('btn-emitir-nfe'); if (bNfe) bNfe.disabled = false;
+                } else {
+                    fContainer.classList.add('hidden');
+                }
+            }
+
+            // Inicializar campos de lembrete
+            const inputLembreteData = document.getElementById('pdv-lembrete-data');
+            if (inputLembreteData) inputLembreteData.value = new Date().toISOString().split('T')[0];
+            const inputLembreteHora = document.getElementById('pdv-lembrete-hora');
+            if (inputLembreteHora) inputLembreteHora.value = '';
+            const inputLembreteObs = document.getElementById('pdv-lembrete-obs');
+            if (inputLembreteObs) inputLembreteObs.value = '';
+            const radioEntrega = document.querySelector('input[name="pdv-lembrete-tipo"][value="ENTREGA"]');
+            if (radioEntrega) radioEntrega.checked = true;
+            const badgeStatus = document.getElementById('badge-lembrete-status');
+            if (badgeStatus) badgeStatus.classList.add('hidden');
+            const btnSalvarLembrete = document.getElementById('btn-salvar-lembrete-pdv');
+            if (btnSalvarLembrete) {
+                btnSalvarLembrete.disabled = false;
+                btnSalvarLembrete.innerHTML = '<i class="fa-solid fa-calendar-plus"></i> Salvar Lembrete na Agenda';
+                btnSalvarLembrete.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
+                btnSalvarLembrete.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            }
+        }
+
+        showToast(`Venda #${numPedStr} recebida com sucesso (${metodo})!`, 'success');
+
+    } catch(err) {
+        console.error('Erro ao confirmar recebimento no caixa:', err);
+        showToast('Erro ao processar recebimento: ' + (err.message || err), 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-circle-check text-lg"></i> Confirmar e Baixar Venda';
+        }
+    }
+};
+
+window.gerarHtmlReciboParaImpressao = function(v) {
+    if (!v) return '';
+    const emp = (typeof obterDadosEmpresa === 'function') ? obterDadosEmpresa() : { nome: 'FC Gestão', cnpj: '', tel: '', end: '', logoHtml: '' };
+    const isOrcamento = v.tipo === 'ORÇAMENTO';
+    const isServico = v.tipo === 'SERVIÇO';
+    const tituloRecibo = isOrcamento ? 'ORÇAMENTO - VÁLIDO POR 7 DIAS' : (isServico ? 'ORDEM DE PRESTAÇÃO DE SERVIÇO' : 'CUPOM NÃO FISCAL - SEM VALOR LEGAL');
+    const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id || '').slice(-4);
+    const vend = v.vendedor || '-';
+
+    const cliNome = v.clienteNome || v.cliente || 'Consumidor Final';
+    const cliDoc = v.clienteDoc || 'Não informado';
+    const cliTel = v.clienteTel || 'Não informado';
+    const cliEnd = v.clienteEnd || 'Não informado';
+
+    const frete = v.taxaFrete || 0;
+    const tot = v.tot || 0;
+    const troco = v.troco || v.valorTroco || 0;
+
+    const obsTexto = v.obs || v.obsCaixa || '';
+    const pagTexto = v.pag || '';
+    const pagamentos = (v.pagamentos && v.pagamentos.length > 0) ? v.pagamentos : [{ metodo: pagTexto || 'Não Informado', parcelas: 1, valor: tot }];
+
+    const servDetails = v.servicoDetalhes || {};
+    const osPrazo = servDetails.prazo || '';
+    const osGarantia = servDetails.garantia || '';
+    const osDesc = servDetails.desc || '';
+
+    const fm = (val) => typeof formatMoney === 'function' ? formatMoney(val) : 'R$ ' + Number(val || 0).toFixed(2);
+
+    return `
+    <div style="font-family: Arial, sans-serif; color: #000; max-width: 800px; margin: 0 auto; padding: 10px;">
+        <div style="border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 15px; text-align: center;">
+            ${emp.logoHtml || ''}
+            <h1 style="margin: 0; font-size: 22px; text-transform: uppercase; font-weight: 900;">${emp.nome}</h1>
+            <p style="margin: 5px 0; font-size: 13px;">CNPJ: ${emp.cnpj}<br>${emp.end}<br>Tel: ${emp.tel} | Vend: ${vend}</p>
+        </div>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="margin: 0; font-size: 16px; font-weight: 900; border: 2px solid #000; display: inline-block; padding: 6px 15px; border-radius: 4px;">${tituloRecibo}</h2>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-bottom: 20px; font-size: 13px;">
+            <div>
+                <strong>DADOS DO CLIENTE</strong><br>
+                Nome: ${cliNome}<br>
+                CPF/CNPJ: ${cliDoc}<br>
+                Telefone: ${cliTel}<br>
+                Endereço: ${cliEnd}
+            </div>
+            <div style="text-align: right; border-left: 1px solid #ccc; padding-left: 15px;">
+                <strong>DADOS DA OPERAÇÃO</strong><br>
+                Nº: #${numPedStr}<br>
+                Data Orig: ${v.data ? new Date(v.data).toLocaleString('pt-BR') : '-'}<br>
+                Data Caixa: ${v.dataRecebimento ? new Date(v.dataRecebimento).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR')}<br>
+                Op: VENDA CAIXA / RECEBIMENTO
+            </div>
+        </div>
+
+        ${isServico ? `
+        <div style="border: 1px solid #6b21a8; border-radius: 5px; padding: 12px; margin-bottom: 20px; font-size: 13px; background-color: #faf5ff;">
+            <h3 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #d8b4fe; padding-bottom: 5px; color: #6b21a8; text-transform: uppercase;">Dados da Ordem de Serviço</h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+                <div style="flex: 1; min-width: 150px;"><strong>Previsão de Entrega:</strong> ${osPrazo ? osPrazo.split('-').reverse().join('/') : 'Não informada'}</div>
+                <div style="flex: 1; min-width: 150px;"><strong>Garantia do Serviço:</strong> ${osGarantia || 'Não informada'}</div>
+            </div>
+            ${osDesc ? `<div><strong>Escopo / Defeito:</strong><br>${osDesc}</div>` : ''}
+        </div>
+        ` : ''}
+
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px;">
+            <thead>
+                <tr style="background-color: #f1f5f9; border-bottom: 2px solid #000;">
+                    <th style="padding: 8px; text-align: left;">Descrição do Item</th>
+                    <th style="padding: 8px; text-align: center;">Qtd</th>
+                    <th style="padding: 8px; text-align: right;">V. Unit</th>
+                    <th style="padding: 8px; text-align: center;">Desc.</th>
+                    <th style="padding: 8px; text-align: right;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${(v.itens || []).map(i => `
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            ${i.foto ? `<img src="${i.foto}" style="width: 30px; height: 30px; object-fit: cover; border-radius: 4px; border: 1px solid #ccc; flex-shrink: 0;">` : ''}
+                            <div>
+                                <strong>${i.nome || 'Produto/Serviço'}</strong>
+                                ${i.obsVenda ? `<br><span style="font-size: 11px; color: #475569; font-style: italic;">Obs: ${i.obsVenda}</span>` : ''}
+                            </div>
+                        </div>
+                    </td>
+                    <td style="padding: 8px; text-align: center;">${i.qtd || 1}</td>
+                    <td style="padding: 8px; text-align: right;">${fm(i.preco || 0)}</td>
+                    <td style="padding: 8px; text-align: center; white-space: nowrap;">${(i.desconto && i.desconto > 0) ? '- ' + fm(i.desconto) : '-'}</td>
+                    <td style="padding: 8px; text-align: right; font-weight: bold;">${fm(((i.preco || 0) * (i.qtd || 1)) - (i.desconto || 0))}</td>
+                </tr>
+                `).join('')}
+            </tbody>
+        </table>
+
+        <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; margin-bottom: 20px; font-size: 13px;">
+            <div style="flex: 1; min-width: 280px; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-right: 5px; margin-bottom: 5px;">
+                <h3 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">PAGAMENTOS REGISTRADOS</h3>
+                ${pagamentos.map(p => `
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span>▪ ${p.metodo} ${p.parcelas > 1 ? `(${p.parcelas}x)` : ''}</span> 
+                        <strong>${fm(p.valor)}</strong>
+                    </div>
+                    ${(p.detalhesParcelas && p.detalhesParcelas.length > 1) ? `
+                        <div style="font-size: 11px; color: #475569; padding-left: 8px; margin-bottom: 6px; border-left: 2px solid #cbd5e1;">
+                            ${p.detalhesParcelas.map(dp => `<div>Parc. ${dp.parcela}: ${fm(dp.valor)} - Venc: ${dp.vencimento ? dp.vencimento.split('-').reverse().join('/') : '-'}</div>`).join('')}
+                        </div>
+                    ` : (p.vencimentoBase ? `<div style="font-size: 11px; color: #475569; padding-left: 8px;">Vencimento: ${p.vencimentoBase.split('-').reverse().join('/')}</div>` : '')}
+                `).join('')}
+                ${troco > 0 ? `<div style="display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #000;"><span>Troco Devolvido:</span> <strong style="color: red;">${fm(troco)}</strong></div>` : ''}
+            </div>
+            <div style="flex: 1; min-width: 280px; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-left: 5px; margin-bottom: 5px;">
+                <h3 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">RESUMO DOS VALORES</h3>
+                ${(function(){
+                    const grossSub = (v.itens || []).reduce((a, i) => a + ((i.preco || 0) * (i.qtd || 1)), 0);
+                    const calcDesc = Math.max(0, (grossSub + frete) - tot);
+                    return `
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Subtotal:</span> <span>${fm(grossSub)}</span></div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Taxas / Desloc (+):</span> <span>${fm(frete)}</span></div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Descontos (-):</span> <span>-${fm(calcDesc)}</span></div>
+                    `;
+                })()}
+                <div style="display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 2px solid #000; font-size: 16px; font-weight: bold;"><span>TOTAL GERAL:</span> <span>${fm(tot)}</span></div>
+            </div>
+        </div>
+        
+        ${obsTexto ? `
+        <div style="border: 1px solid #000; border-radius: 5px; padding: 12px; margin-bottom: 30px; font-size: 13px; background-color: #f8fafc;">
+            <strong>Observações do Pedido / Recebimento:</strong><br>
+            ${obsTexto}
+        </div>
+        ` : ''}
+
+        <div style="display: flex; justify-content: space-around; margin-top: 60px; text-align: center; font-size: 13px;">
+            <div style="width: 40%;">
+                <div style="border-top: 1px solid #000; padding-top: 5px;">Assinatura do Cliente</div>
+                <div style="font-size: 11px; margin-top: 3px; color: #475569;">${isOrcamento ? 'Reconheço o orçamento acima' : (isServico ? 'Aprovo a execução do serviço.' : 'Declaro ter recebido os itens acima.')}</div>
+            </div>
+            <div style="width: 40%;">
+                <div style="border-top: 1px solid #000; padding-top: 5px;">Assinatura da Empresa</div>
+                <div style="font-size: 11px; margin-top: 3px; color: #475569; font-weight: bold;">${emp.nome}</div>
+            </div>
+        </div>
+    </div>
+    `;
+};
+
+window.printAction = function(type) { 
+    const area = document.getElementById('print-area');
+    if (!area) return;
+    const printContent = area.innerHTML; 
+    const widthStyle = type === 'thermal' ? 'width: 80mm; font-size: 12px; font-family: monospace; padding: 2mm; margin: 0 auto;' : 'width: 210mm; font-size: 14px; font-family: Arial, sans-serif; padding: 15mm; margin: 0 auto;'; 
+    const htmlCompleto = `<div style="${widthStyle} background: #fff; color: #000;">${printContent}</div>`; 
+    printHtmlSeguro(htmlCompleto);
+};
+
+window.fecharModalOpcoesRecibo = function() { 
+    const m = document.getElementById('modal-opcoes-recibo');
+    if (m) m.classList.add('hidden'); 
+    const fStatus = document.getElementById('fiscal-status-container');
+    if (fStatus) {
+        fStatus.classList.add('hidden');
+        fStatus.innerHTML = '';
+    }
+};
+
+window.emitirNota = async function(tipo) {
+    if(!window.vendaAtualImpressao || !window.vendaAtualImpressao.id) {
+        return showToast("Erro: Venda não identificada.", "error");
+    }
+    
+    const btnNfce = document.getElementById('btn-emitir-nfce');
+    const btnNfe = document.getElementById('btn-emitir-nfe');
+    const statusContainer = document.getElementById('fiscal-status-container');
+    
+    if (btnNfce) btnNfce.disabled = true;
+    if (btnNfe) btnNfe.disabled = true;
+    if (statusContainer) {
+        statusContainer.classList.remove('hidden');
+        statusContainer.classList.remove('border-red-500', 'bg-red-50', 'border-emerald-500', 'bg-emerald-50', 'border-amber-500', 'bg-amber-50');
+        statusContainer.classList.add('border-blue-500', 'bg-blue-50');
+        statusContainer.innerHTML = `<p class="text-blue-700 font-bold animate-pulse text-xs"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Transmitindo ${tipo === 'nfce' ? 'NFC-e' : 'NF-e'} à SEFAZ... aguarde.</p>`;
+    }
+
+    try {
+        const emitirFunc = firebase.functions().httpsCallable(tipo === 'nfce' ? 'emitirNFCe' : 'emitirNFe');
+        const empIdAtual = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+        const response = await emitirFunc({ 
+            vendaId: window.vendaAtualImpressao.id,
+            empId: empIdAtual
+        });
+        const res = response.data;
+        const d = res.data || {};
+        
+        if (window.vendaAtualImpressao) {
+            window.vendaAtualImpressao[tipo === 'nfce' ? 'nfce' : 'nfe'] = d;
+            window.vendaAtualImpressao.status_fiscal = d.status_sefaz;
+            if (d.chave_nfe || d.chave_nfce) window.vendaAtualImpressao.fiscal_chave = d.chave_nfe || d.chave_nfce;
+            if (d.xml_conteudo) window.vendaAtualImpressao.fiscal_xml = d.xml_conteudo;
+            if (d.qr_code_url) window.vendaAtualImpressao.fiscal_qrcode_url = d.qr_code_url;
+        }
+
+        if (statusContainer) {
+            statusContainer.classList.remove('border-blue-500', 'bg-blue-50');
+            statusContainer.classList.add('border-emerald-500', 'bg-emerald-50');
+            
+            const linkDanfe = d.danfe_url_completa || (d.caminho_danfe ? `https://api.focusnfe.com.br${d.caminho_danfe}` : '');
+            const linkXml = d.xml_url_completa || (d.caminho_xml_nota_fiscal ? `https://api.focusnfe.com.br${d.caminho_xml_nota_fiscal}` : '');
+            
+            statusContainer.innerHTML = `
+                <div class="text-emerald-700 font-bold text-xs mb-2">
+                    <i class="fa-solid fa-circle-check text-emerald-600 mr-1"></i> ${tipo === 'nfce' ? 'NFC-e' : 'NF-e'} Emitida com Sucesso! (Série: ${d.serie || '1'} | Nº: ${d.numero || '-'})
+                </div>
+                <div class="flex items-center justify-center gap-2">
+                    ${linkDanfe ? `<a href="${linkDanfe}" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-lg font-bold transition-colors inline-flex items-center gap-1 shadow-sm"><i class="fa-solid fa-file-pdf"></i> Abrir DANFE</a>` : ''}
+                    ${linkXml ? `<a href="${linkXml}" target="_blank" class="bg-slate-700 hover:bg-slate-800 text-white text-xs px-3 py-1.5 rounded-lg font-bold transition-colors inline-flex items-center gap-1 shadow-sm"><i class="fa-solid fa-code"></i> Baixar XML</a>` : ''}
+                </div>
+            `;
+        }
+        showToast(`${tipo === 'nfce' ? 'NFC-e' : 'NF-e'} emitida com sucesso!`, 'success');
+    } catch (err) {
+        console.error(`Erro ao emitir ${tipo}:`, err);
+        if (statusContainer) {
+            statusContainer.classList.remove('border-blue-500', 'bg-blue-50');
+            statusContainer.classList.add('border-red-500', 'bg-red-50');
+            statusContainer.innerHTML = `<p class="text-red-700 font-bold text-xs"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Erro na Emissão: ${err.message || 'Falha de comunicação com a SEFAZ.'}</p>`;
+        }
+        showToast(`Erro ao emitir ${tipo}: ${err.message || err}`, 'error');
+    } finally {
+        if (btnNfce) btnNfce.disabled = false;
+        if (btnNfe) btnNfe.disabled = false;
+    }
+};
+
+window.salvarLembreteCaixa = async function() {
+    const dataStr = document.getElementById('pdv-lembrete-data')?.value;
+    if (!dataStr) {
+        return showToast("Selecione a data para o lembrete.", "warning");
+    }
+
+    const tipoEl = document.querySelector('input[name="pdv-lembrete-tipo"]:checked');
+    const tipo = tipoEl ? tipoEl.value : 'ENTREGA';
+    const horaStr = document.getElementById('pdv-lembrete-hora')?.value || '';
+    const obsLembrete = document.getElementById('pdv-lembrete-obs')?.value.trim() || '';
+
+    const venda = window.vendaAtualImpressao || {};
+    const numPedStr = venda.numeroPedido ? String(venda.numeroPedido).padStart(4, '0') : '';
+    const clienteNome = venda.clienteNome || 'Cliente';
+    const clienteTel = venda.clienteTel || '';
+    const clienteEnd = venda.clienteEnd || '';
+    const totalFormatado = typeof formatMoney === 'function' ? formatMoney(venda.tot || 0) : 'R$ ' + (venda.tot || 0);
+
+    const tipoLabel = tipo === 'ENTREGA' ? 'Entrega' : 'Cobrança';
+    const cor = tipo === 'ENTREGA' ? '#10b981' : '#f59e0b';
+
+    let titulo = `[${tipoLabel.toUpperCase()}] Pedido #${numPedStr || '-'} - ${clienteNome}`;
+    
+    let inicio = dataStr;
+    let diaInteiro = true;
+    if (horaStr) {
+        inicio = `${dataStr}T${horaStr}:00`;
+        diaInteiro = false;
+    }
+
+    let descricao = `Lembrete de ${tipoLabel}:\n`;
+    descricao += `• Pedido: #${numPedStr || '-'}\n`;
+    descricao += `• Cliente: ${clienteNome}\n`;
+    if (clienteTel && clienteTel !== 'Não informado') descricao += `• Telefone: ${clienteTel}\n`;
+    if (clienteEnd && clienteEnd !== 'Não informado') descricao += `• Endereço: ${clienteEnd}\n`;
+    descricao += `• Valor Total: ${totalFormatado}\n`;
+    if (venda.pag) descricao += `• Pagamento: ${venda.pag}\n`;
+    if (obsLembrete) descricao += `• Detalhes/Obs: ${obsLembrete}\n`;
+
+    const newId = 'lembrete_' + Date.now();
+    const eventoData = {
+        titulo: titulo,
+        inicio: inicio,
+        diaInteiro: diaInteiro,
+        descricao: descricao,
+        cor: cor,
+        tipoLembrete: tipo,
+        vendaId: venda.id || '',
+        numeroPedido: numPedStr,
+        clienteNome: clienteNome,
+        criadoEm: new Date().toISOString(),
+        atualizadoEm: new Date().toISOString()
+    };
+
+    const btnSalvar = document.getElementById('btn-salvar-lembrete-pdv');
+    const badge = document.getElementById('badge-lembrete-status');
+    if (btnSalvar) {
+        btnSalvar.disabled = true;
+        btnSalvar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Agendando...';
+    }
+
+    try {
+        await window.getEmpresaRef().collection('configuracoes').doc('config').set({
+            agenda_eventos: {
+                [newId]: eventoData
+            }
+        }, { merge: true });
+
+        showToast(`Lembrete de ${tipoLabel} agendado na Agenda!`, "success");
+
+        if (btnSalvar) {
+            btnSalvar.innerHTML = '<i class="fa-solid fa-circle-check"></i> Agendado com Sucesso!';
+            btnSalvar.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+            btnSalvar.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
+        }
+        if (badge) {
+            badge.classList.remove('hidden');
+        }
+    } catch (err) {
+        console.error("Erro ao salvar lembrete:", err);
+        showToast("Erro ao agendar lembrete: " + err.message, "error");
+        if (btnSalvar) {
+            btnSalvar.disabled = false;
+            btnSalvar.innerHTML = '<i class="fa-solid fa-calendar-plus"></i> Tentar Novamente';
+        }
+    }
+};
+
+window.imprimirContratoAtual = function() {
+    if (window.vendaAtualImpressao) {
+        window.imprimirContratoObj(window.vendaAtualImpressao);
+    } else {
+        showToast("Nenhuma venda selecionada para imprimir.", "error");
+    }
+};
+
+window.imprimirContratoObj = function(v) {
+    if (!v) return;
+    const emp = (typeof obterDadosEmpresa === 'function') ? obterDadosEmpresa() : { nome: 'FC MÓVEIS', cnpj: '', end: '', tel: '', logoHtml: '' };
+    const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id || '').slice(-4);
+    const cliNome = v.clienteNome || v.cliente || 'Consumidor Final';
+    const cliCpf = v.clienteDoc || 'Não informado';
+    const cliTel = v.clienteTel || 'Não informado';
+    const cliEndCompleto = v.clienteEnd || 'Não informado';
+
+    let itensHtml = (v.itens || []).map((i, idx) => `
+        <div style="margin-bottom: 15px; display: flex; align-items: flex-start; border-bottom: 1px dashed #eee; padding-bottom: 10px;">
+            <div style="flex: 1;">
+                <strong>PRODUTO/SERVIÇO ${idx + 1}</strong><br>
+                Descrição: ${i.nome || 'Item'} ${i.obsVenda ? ` - Obs: ${i.obsVenda}` : ''}<br>
+                Quantidade: ${i.qtd || 1} unidade(s)<br>
+                Valor: ${typeof formatMoney === 'function' ? formatMoney((i.preco || 0) * (i.qtd || 1)) : ((i.preco || 0) * (i.qtd || 1))}<br>
+            </div>
+        </div>
+    `).join('');
+
+    const html = `
+    <div style="font-family: Arial, sans-serif; color: #000; width: 100%; max-width: 800px; margin: 0 auto; line-height: 1.5; font-size: 14px;">
+        <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 20px;">
+            ${emp.logoHtml || ''}
+            <h1 style="margin: 0; font-size: 24px; font-weight: bold; text-transform: uppercase;">${emp.nome}</h1>
+            <p style="margin: 5px 0 0 0; font-size: 12px;">CNPJ: ${emp.cnpj}<br>Endereço: ${emp.end}<br>Telefone / WhatsApp: ${emp.tel}</p>
+        </div>
+
+        <h2 style="text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 5px;">CONTRATO DE COMPRA E VENDA E PRESTAÇÃO DE SERVIÇOS</h2>
+        <p style="text-align: center; font-weight: bold; margin-top: 0; margin-bottom: 20px;">PEDIDO Nº ${numPedStr}</p>
+
+        <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">DADOS DO CLIENTE (COMPRADOR)</h3>
+        <p style="margin-top: 0;">
+            <strong>Nome completo:</strong> ${cliNome}<br>
+            <strong>CPF/CNPJ:</strong> ${cliCpf}<br>
+            <strong>Telefone / WhatsApp:</strong> ${cliTel}<br>
+            <strong>Endereço:</strong> ${cliEndCompleto}
+        </p>
+
+        <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">OBJETO DO CONTRATO</h3>
+        ${itensHtml}
+
+        <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px; margin-top: 20px;">VALOR E FORMA DE PAGAMENTO</h3>
+        <p style="margin-top: 0;">
+            <strong>Valor Total:</strong> ${typeof formatMoney === 'function' ? formatMoney(v.tot || 0) : (v.tot || 0)}<br>
+            <strong>Pagamento:</strong> ${v.pag || 'Conforme acordado'}<br>
+        </p>
+
+        <div style="display: flex; justify-content: space-around; margin-top: 60px; text-align: center; font-size: 13px;">
+            <div style="width: 40%;">
+                <div style="border-top: 1px solid #000; padding-top: 5px;">Assinatura do Cliente</div>
+                <div style="font-size: 11px; margin-top: 3px; color: #475569;">${cliNome}</div>
+            </div>
+            <div style="width: 40%;">
+                <div style="border-top: 1px solid #000; padding-top: 5px;">Assinatura da Empresa</div>
+                <div style="font-size: 11px; margin-top: 3px; color: #475569; font-weight: bold;">${emp.nome}</div>
+            </div>
+        </div>
+    </div>
+    `;
+
+    printHtmlSeguro(`<div style="width: 210mm; margin: 0 auto; padding: 15mm; background: #fff;">${html}</div>`);
+};
+
+function obterDadosEmpresa() {
+    const defaultName = 'FC Móveis';
+    const defaultCnpj = '';
+    const defaultTel = '';
+    const defaultEnd = '';
+    
+    if (typeof db !== 'undefined' && db && db.config && db.config.empresa) {
+        return {
+            nome: db.config.empresa.nome || defaultName,
+            cnpj: db.config.empresa.cnpj || defaultCnpj,
+            tel: db.config.empresa.telefone || defaultTel,
+            end: db.config.empresa.endereco || defaultEnd,
+            logoHtml: db.config.empresa.logo ? `<img src="${db.config.empresa.logo}" style="max-height: 80px; margin-bottom: 10px; border-radius: 8px; object-fit: contain;">` : ''
+        };
+    }
+    return { nome: defaultName, cnpj: defaultCnpj, tel: defaultTel, end: defaultEnd, logoHtml: '' };
+}
+window.obterDadosEmpresa = obterDadosEmpresa;
+
+window.cancelarVendaPendentePDV = function(vendaId) {
+    const v = (db.vendas || []).find(x => String(x.id) === String(vendaId));
+    if (!v) return;
+    const numPedStr = String(v.numeroPedido || v.id || '0').padStart(4, '0');
+
+    if (typeof abrirConfirmacao === 'function') {
+        abrirConfirmacao('Cancelar Pedido', `Deseja realmente cancelar o Pedido #${numPedStr} do PDV?`, async () => {
+            try {
+                const cancelObj = {
+                    status: 'CANCELADA',
+                    motivoCancelamento: 'Cancelado pelo operador de caixa',
+                    dataCancelamento: new Date().toISOString()
+                };
+                await window.getEmpresaRef().collection('vendas').doc(String(vendaId)).update(cancelObj);
+                Object.assign(v, cancelObj);
+                if (typeof FCCache !== 'undefined' && typeof FCCache.atualizarItem === 'function') {
+                    await FCCache.atualizarItem('vendas', vendaId, cancelObj);
+                }
+                if (typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) {
+                    const idx = window.db.vendas.findIndex(x => String(x.id) === String(vendaId));
+                    if (idx !== -1) Object.assign(window.db.vendas[idx], cancelObj);
+                }
+                try { localStorage.setItem('fc_sync_trigger', Date.now()); } catch(e) {}
+                renderVendasPendentesPDV();
+                showToast(`Pedido #${numPedStr} cancelado.`, 'info');
+            } catch(e) {
+                console.error(e);
+                showToast('Erro ao cancelar pedido.', 'error');
+            }
+        });
+    } else {
+        if (confirm(`Deseja cancelar o Pedido #${numPedStr}?`)) {
+            const cancelObj = {
+                status: 'CANCELADA',
+                dataCancelamento: new Date().toISOString()
+            };
+            window.getEmpresaRef().collection('vendas').doc(String(vendaId)).update(cancelObj).then(async () => {
+                Object.assign(v, cancelObj);
+                if (typeof FCCache !== 'undefined' && typeof FCCache.atualizarItem === 'function') {
+                    await FCCache.atualizarItem('vendas', vendaId, cancelObj);
+                }
+                if (typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) {
+                    const idx = window.db.vendas.findIndex(x => String(x.id) === String(vendaId));
+                    if (idx !== -1) Object.assign(window.db.vendas[idx], cancelObj);
+                }
+                try { localStorage.setItem('fc_sync_trigger', Date.now()); } catch(e) {}
+                renderVendasPendentesPDV();
+                showToast(`Pedido #${numPedStr} cancelado.`, 'info');
+            });
+        }
+    }
+};
+
+window.imprimirReciboRecebimentoCaixa = function(venda) {
+    if (!venda) return;
+    const emp = (typeof obterDadosEmpresa === 'function') ? obterDadosEmpresa() : { nome: 'FC Gestão', cnpj: '', tel: '', end: '', logoHtml: '' };
+    const numPedStr = String(venda.numeroPedido || venda.id || '0').padStart(4, '0');
+    const cliNome = venda.clienteNome || venda.cliente || 'Consumidor Final';
+    const vendNome = venda.vendedor || 'PDV Balcão';
+    const cxOp = venda.operadorCaixa || 'Operador Caixa';
+    const total = Number(venda.tot || venda.subtotal || 0);
+    const pag = venda.pag || 'Dinheiro';
+    const troco = Number(venda.troco || 0);
+    const vPago = Number(venda.valorRecebido || total);
+    const dataHoraStr = venda.dataRecebimento ? new Date(venda.dataRecebimento).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR');
+
+    const itensHtml = Array.isArray(venda.itens) ? venda.itens.map(i => `
+        <tr>
+            <td style="padding: 4px 0; text-align: left; font-size: 11px;">${i.qtd || 1}x ${i.nome || 'Produto'}</td>
+            <td style="padding: 4px 0; text-align: right; font-size: 11px; font-weight: bold;">${typeof formatMoney === 'function' ? formatMoney((i.preco || 0) * (i.qtd || 1)) : 'R$ ' + ((i.preco || 0) * (i.qtd || 1)).toFixed(2)}</td>
+        </tr>
+    `).join('') : '';
+
+    const cupomHtml = `
+        <div style="font-family: 'Courier New', Courier, monospace; width: 280px; margin: 0 auto; color: #000; padding: 10px; font-size: 12px; line-height: 1.3;">
+            <div style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 8px; margin-bottom: 8px;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: bold; text-transform: uppercase;">${emp.nome}</h3>
+                ${emp.cnpj ? `<p style="margin: 2px 0; font-size: 10px;">CNPJ: ${emp.cnpj}</p>` : ''}
+                ${emp.end ? `<p style="margin: 2px 0; font-size: 10px;">${emp.end}</p>` : ''}
+                ${emp.tel ? `<p style="margin: 2px 0; font-size: 10px;">Tel: ${emp.tel}</p>` : ''}
+            </div>
+
+            <div style="text-align: center; margin-bottom: 8px;">
+                <strong style="font-size: 13px; text-transform: uppercase;">COMPROVANTE DE VENDA</strong><br>
+                <span style="font-size: 15px; font-weight: 900;">PEDIDO #${numPedStr}</span>
+            </div>
+
+            <div style="border-bottom: 1px dashed #000; padding-bottom: 6px; margin-bottom: 6px; font-size: 10px;">
+                <div>Data/Hora: ${dataHoraStr}</div>
+                <div>Cliente: ${cliNome}</div>
+                <div>Vendedor: ${vendNome}</div>
+                <div>Operador Caixa: ${cxOp}</div>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 6px; border-bottom: 1px dashed #000;">
+                <thead>
+                    <tr style="border-bottom: 1px solid #000;">
+                        <th style="text-align: left; font-size: 10px;">ITEM</th>
+                        <th style="text-align: right; font-size: 10px;">TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${itensHtml}
+                </tbody>
+            </table>
+
+            <div style="margin-bottom: 8px; font-size: 12px;">
+                <div style="display: flex; justify-content: space-between; font-weight: 900; font-size: 14px; margin-bottom: 4px;">
+                    <span>TOTAL:</span>
+                    <span>${typeof formatMoney === 'function' ? formatMoney(total) : 'R$ ' + total.toFixed(2)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 11px;">
+                    <span>Forma Pagto:</span>
+                    <strong>${pag}</strong>
+                </div>
+                ${troco > 0 ? `
+                    <div style="display: flex; justify-content: space-between; font-size: 11px;">
+                        <span>Valor Entregue:</span>
+                        <span>${typeof formatMoney === 'function' ? formatMoney(vPago) : 'R$ ' + vPago.toFixed(2)}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: bold;">
+                        <span>Troco:</span>
+                        <span>${typeof formatMoney === 'function' ? formatMoney(troco) : 'R$ ' + troco.toFixed(2)}</span>
+                    </div>
+                ` : ''}
+            </div>
+
+            <div style="text-align: center; border-top: 1px dashed #000; padding-top: 8px; font-size: 10px;">
+                <p style="margin: 0;">OBRIGADO PELA PREFERÊNCIA!</p>
+                <p style="margin: 2px 0;">FC Gestão Comercial</p>
+            </div>
+        </div>
+    `;
+
+    if (typeof printHtmlSeguro === 'function') {
+        printHtmlSeguro(cupomHtml, `Comprovante_Venda_${numPedStr}`);
+    } else {
+        const area = document.getElementById('print-area-recibo-caixa');
+        if (area) {
+            area.innerHTML = cupomHtml;
+            area.classList.remove('hidden');
+            window.print();
+            area.classList.add('hidden');
+        }
+    }
+};
