@@ -1,4 +1,4 @@
-// cadastro.js - Lógica de Produtos, Clientes, Fornecedores e Estoque
+// cadastro.js - Lï¿½gica de Produtos, Clientes, Fornecedores e Estoque
 
 let acaoConfirmacaoPendente = null;
 
@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ==========================================
-// NAVEGAÇÃO E INICIALIZAÇÃO
+// NAVEGAï¿½ï¿½O E INICIALIZAï¿½ï¿½O
 // ==========================================
 function mudarVisaoLocal(viewId) {
     document.querySelectorAll('.view-section').forEach(el => { el.classList.add('hidden'); el.classList.remove('active'); });
@@ -89,7 +89,7 @@ function inicializarCadastro() {
 window.addEventListener('load', () => { initGlobalData(inicializarCadastro); });
 
 // ==========================================
-// FUNÇÕES GENÉRICAS DE UI
+// FUNï¿½ï¿½ES GENï¿½RICAS DE UI
 // ==========================================
 function abaModal(prefix, nomeAba) {
     const modalId = `#modal-${prefix === 'cli' ? 'cliente' : (prefix === 'forn' ? 'fornecedor' : 'produto')}`;
@@ -126,12 +126,12 @@ async function buscarCEP(prefix) {
 }
 
 async function buscarCNPJ(prefix) {
-    const elDoc = document.getElementById(`${prefix}-doc`); if (!elDoc) return; let cnpj = elDoc.value.replace(/\D/g, ''); if (cnpj.length !== 14) return showToast('Digite os 14 números do CNPJ', 'error');
+    const elDoc = document.getElementById(`${prefix}-doc`); if (!elDoc) return; let cnpj = elDoc.value.replace(/\D/g, ''); if (cnpj.length !== 14) return showToast('Digite os 14 nï¿½meros do CNPJ', 'error');
     showToast('Consultando Receita...', 'info');
     try {
         let res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`); let data = await res.json();
         if (data.razao_social) { document.getElementById(`${prefix}-nome`).value = data.razao_social || ''; document.getElementById(`${prefix}-wpp`).value = data.ddd_telefone_1 || ''; document.getElementById(`${prefix}-cep`).value = data.cep || ''; document.getElementById(`${prefix}-rua`).value = data.logradouro || ''; document.getElementById(`${prefix}-bairro`).value = data.bairro || ''; document.getElementById(`${prefix}-cidade`).value = `${data.municipio || ''} - ${data.uf || ''}`; showToast('Empresa Importada!', 'success'); }
-    } catch (e) { showToast('Serviço indisponível.', 'error'); }
+    } catch (e) { showToast('Serviï¿½o indisponï¿½vel.', 'error'); }
 }
 
 // ==========================================
@@ -218,7 +218,7 @@ function abrirModalProduto() {
     ['id', 'nome', 'ean', 'marca', 'custo', 'preco', 'margem', 'estoque', 'minimo', 'obs', 'ncm', 'cfop', 'csosn', 'origem', 'cest'].forEach(id => { const el = document.getElementById(`prod-${id}`); if (el) el.value = ''; });
     document.getElementById('prod-ativo').value = 'true'; document.getElementById('prod-foto-base64').value = '';
     document.getElementById('preview-foto').src = ''; document.getElementById('preview-foto').classList.add('hidden'); document.getElementById('texto-sem-foto').classList.remove('hidden');
-    document.getElementById('prod-historico-body').innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-500 dark:text-slate-400">Cadastre para ver o histórico.</td></tr>';
+    document.getElementById('prod-historico-body').innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-500 dark:text-slate-400">Cadastre para ver o histï¿½rico.</td></tr>';
     const modalProd = document.getElementById('modal-produto');
     modalProd.classList.remove('hidden');
     modalProd.style.display = 'flex';
@@ -280,7 +280,7 @@ async function salvarProduto() {
     const nome = document.getElementById('prod-nome').value.trim();
     const preco = parseInputMoney(document.getElementById('prod-preco').value);
 
-    if (!nome || isNaN(preco)) return showToast('Preencha Nome e Preço de Venda!', 'error');
+    if (!nome || isNaN(preco)) return showToast('Preencha Nome e Preï¿½o de Venda!', 'error');
 
     const p = {
         nome, preco,
@@ -338,7 +338,7 @@ async function editarProduto(id) {
         }
     }
     
-    if (!p) return showToast('Produto não encontrado!', 'error');
+    if (!p) return showToast('Produto nï¿½o encontrado!', 'error');
 
     abrirModalProduto(); document.getElementById('modal-produto-title').innerText = 'Editar Produto';
 
@@ -367,14 +367,14 @@ async function editarProduto(id) {
     else { document.getElementById('preview-foto').src = ''; document.getElementById('preview-foto').classList.add('hidden'); document.getElementById('texto-sem-foto').classList.remove('hidden'); }
 
     const hist = db.movimentacoes ? db.movimentacoes.filter(m => String(m.prodId) === idStr) : [];
-    document.getElementById('prod-historico-body').innerHTML = hist.length > 0 ? hist.map(m => `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-3">${formatData(m.data).split(' ')[0]}</td><td class="p-3 font-bold">${m.tipo}</td><td class="p-3">${m.ref}</td><td class="p-3 text-right font-bold ${m.qtd > 0 ? 'text-indigo-600' : 'text-red-500'}">${m.qtd > 0 ? '+' + m.qtd : m.qtd}</td></tr>`).join('') : '<tr><td colspan="4" class="p-6 text-center text-slate-500 dark:text-slate-400">Sem movimentações.</td></tr>';
+    document.getElementById('prod-historico-body').innerHTML = hist.length > 0 ? hist.map(m => `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-3">${formatData(m.data).split(' ')[0]}</td><td class="p-3 font-bold">${m.tipo}</td><td class="p-3">${m.ref}</td><td class="p-3 text-right font-bold ${m.qtd > 0 ? 'text-indigo-600' : 'text-red-500'}">${m.qtd > 0 ? '+' + m.qtd : m.qtd}</td></tr>`).join('') : '<tr><td colspan="4" class="p-6 text-center text-slate-500 dark:text-slate-400">Sem movimentaï¿½ï¿½es.</td></tr>';
 }
 
 function excluirProduto(id) {
     abrirConfirmacao('Excluir Produto', 'Remover produto permanentemente?', async () => {
         try {
             await firestore.collection('produtos').doc(id).delete();
-            showToast('Produto excluído!');
+            showToast('Produto excluï¿½do!');
         } catch (e) {
             showToast('Erro ao excluir', 'error');
         }
@@ -419,7 +419,7 @@ function abrirModalCliente() {
         const el = document.getElementById(`cli-${campo}`);
         if (el) el.value = '';
     });
-    document.getElementById('cli-historico-body').innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-500 dark:text-slate-400">Cadastre para ver o histórico.</td></tr>';
+    document.getElementById('cli-historico-body').innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-500 dark:text-slate-400">Cadastre para ver o histï¿½rico.</td></tr>';
     document.getElementById('modal-cliente-title').innerText = 'Novo Cliente';
     // Fix: remover hidden E garantir display flex (conflito Tailwind)
     const modal = document.getElementById('modal-cliente');
@@ -436,7 +436,7 @@ function fecharModalCliente() {
 async function salvarCliente() {
     const id = document.getElementById('cli-id').value;
     const nome = document.getElementById('cli-nome').value.trim();
-    if (!nome) return showToast('Nome é obrigatório!', 'error');
+    if (!nome) return showToast('Nome ï¿½ obrigatï¿½rio!', 'error');
 
     const c = {
         nome:    nome,
@@ -479,7 +479,7 @@ async function editarCliente(id) {
     // Tenta encontrar no cache local primeiro
     let c = db.clientes.find(x => String(x.id).trim() === idStr);
 
-    // Se não encontrou (cache vazio), busca diretamente no Firestore
+    // Se nï¿½o encontrou (cache vazio), busca diretamente no Firestore
     if (!c) {
         try {
             const snap = await firestore.collection('clientes').doc(idStr).get();
@@ -492,7 +492,7 @@ async function editarCliente(id) {
         }
     }
 
-    if (!c) return showToast('Cliente não encontrado!', 'error');
+    if (!c) return showToast('Cliente nï¿½o encontrado!', 'error');
 
     abrirModalCliente();
     document.getElementById('modal-cliente-title').innerText = `Editar: ${c.nome}`;
@@ -501,7 +501,15 @@ async function editarCliente(id) {
     // Preenche todos os campos com os dados do cliente
     ['nome', 'doc', 'rg', 'nasc', 'wpp', 'fixo', 'email', 'cep', 'rua', 'numero', 'complemento', 'bairro', 'cidade', 'ibge', 'obs'].forEach(campo => {
         const el = document.getElementById(`cli-${campo}`);
-        if (el) el.value = c[campo] || '';
+        if (el) {
+            if (campo === 'doc' && !c['doc']) el.value = c['cpf'] || c['cnpj'] || c['documento'] || '';
+            else if (campo === 'wpp' && !c['wpp']) el.value = c['telefone'] || c['celular'] || c['contato'] || '';
+            else if (campo === 'rua' && !c['rua']) el.value = c['endereco'] || c['logradouro'] || '';
+            else if (campo === 'numero' && !c['numero']) el.value = c['num'] || '';
+            else if (campo === 'obs' && !c['obs']) el.value = c['observacao'] || c['historico'] || '';
+            else if (campo === 'fixo' && !c['fixo']) el.value = c['telefone_fixo'] || c['tel'] || '';
+            else el.value = c[campo] || '';
+        }
     });
 
     const hist = db.vendas ? db.vendas.filter(v => String(v.clienteId) === idStr) : [];
@@ -514,7 +522,7 @@ function excluirCliente(id) {
     abrirConfirmacao('Excluir Cliente', 'Remover cliente?', async () => {
         try {
             await firestore.collection('clientes').doc(id).delete();
-            showToast('Cliente Excluído!');
+            showToast('Cliente Excluï¿½do!');
         } catch (e) { showToast('Erro', 'error'); }
     });
 }
@@ -554,7 +562,7 @@ function abrirModalFornecedor() {
     abaModal('forn', 'dados');
     document.getElementById('forn-id').value = '';
     ['nome', 'doc', 'ie', 'contato', 'wpp', 'email', 'cep', 'rua', 'numero', 'bairro', 'cidade', 'condicoes', 'produtos'].forEach(id => { const el = document.getElementById(`forn-${id}`); if (el) el.value = ''; });
-    document.getElementById('forn-historico-body').innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-500 dark:text-slate-400">Cadastre para ver histórico.</td></tr>';
+    document.getElementById('forn-historico-body').innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-500 dark:text-slate-400">Cadastre para ver histï¿½rico.</td></tr>';
     document.getElementById('modal-fornecedor-title').innerText = 'Novo Fornecedor';
     const modalForn = document.getElementById('modal-fornecedor');
     modalForn.classList.remove('hidden');
@@ -569,7 +577,7 @@ function fecharModalFornecedor() {
 async function salvarFornecedor() {
     const id = document.getElementById('forn-id').value;
     const nome = document.getElementById('forn-nome').value.trim();
-    if (!nome) return showToast('Razão Social obrigatória!', 'error');
+    if (!nome) return showToast('Razï¿½o Social obrigatï¿½ria!', 'error');
 
     const f = {
         nome: nome, doc: document.getElementById('forn-doc').value, cnpj: document.getElementById('forn-doc').value,
@@ -601,10 +609,10 @@ function editarFornecedor(id) {
 }
 
 function excluirFornecedor(id) {
-    abrirConfirmacao('Excluir', 'Isso não apagará as Notas. Continuar?', async () => {
+    abrirConfirmacao('Excluir', 'Isso nï¿½o apagarï¿½ as Notas. Continuar?', async () => {
         try {
             await firestore.collection('fornecedores').doc(id).delete();
-            showToast('Excluído!');
+            showToast('Excluï¿½do!');
         } catch (e) { showToast('Erro', 'error'); }
     });
 }
@@ -618,7 +626,7 @@ function renderKardex() {
         let tipoHtml = String(m.tipo || '').split('<br>').map(t => `<span class="px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 ${badgeClass}">${t}</span>`).join('<br>');
         let dataFormatada = (m.data && typeof formatData === 'function') ? formatData(m.data).replace(',', '') : (m.data || '-');
         return `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 text-xs text-slate-500 dark:text-slate-400">${dataFormatada}</td><td class="p-4 whitespace-nowrap">${tipoHtml}</td><td class="p-4 font-bold text-slate-800 dark:text-slate-100">${m.prodNome}</td><td class="p-4 text-slate-600 dark:text-slate-300 text-xs">${m.ref}</td><td class="p-4 text-right font-black ${m.qtd > 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-red-500 dark:text-red-400'}">${m.qtd > 0 ? '+' + m.qtd : m.qtd}</td></tr>`;
-    }).join('') || '<tr><td colspan="5" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhuma movimentação de estoque.</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhuma movimentaï¿½ï¿½o de estoque.</td></tr>';
 }
 
 async function gerarDescricaoIA(event) {
@@ -628,11 +636,11 @@ async function gerarDescricaoIA(event) {
 
     if (!nome) return showToast('Preencha o Nome do Produto primeiro!', 'error');
 
-    const prompt = `Atue como um especialista em marketing de móveis de alto padrão e artigos para casa. Escreva uma descrição comercial curta, elegante, atraente e persuasiva (máximo de 3 parágrafos curtos) para o seguinte produto pronto para entrega:
+    const prompt = `Atue como um especialista em marketing de mï¿½veis de alto padrï¿½o e artigos para casa. Escreva uma descriï¿½ï¿½o comercial curta, elegante, atraente e persuasiva (mï¿½ximo de 3 parï¿½grafos curtos) para o seguinte produto pronto para entrega:
     Nome: ${nome}
     Categoria: ${categoria}
-    Marca/Fornecedor: ${marca || 'Genérica'}
-    Destaque o design, conforto e crie desejo imediato de compra no cliente. Não use formatação em negrito.`;
+    Marca/Fornecedor: ${marca || 'Genï¿½rica'}
+    Destaque o design, conforto e crie desejo imediato de compra no cliente. Nï¿½o use formataï¿½ï¿½o em negrito.`;
 
     const btn = event.currentTarget;
     const textoOriginal = btn.innerHTML;
@@ -643,7 +651,7 @@ async function gerarDescricaoIA(event) {
 
     if (resposta) {
         document.getElementById('prod-obs').value = resposta;
-        showToast('Ficha técnica gerada com sucesso!', 'success');
+        showToast('Ficha tï¿½cnica gerada com sucesso!', 'success');
     }
 
     btn.innerHTML = textoOriginal;
@@ -651,11 +659,11 @@ async function gerarDescricaoIA(event) {
 }
 
 // ==========================================
-// IMPORTAÇÃO DE PLANILHA
+// IMPORTAï¿½ï¿½O DE PLANILHA
 // ==========================================
 function baixarPlanilhaModeloProduto() {
     const cabecalho = "Nome do Produto;EAN (Codigo de Barras);Categoria;Custo;Preco de Venda;Estoque Atual\n";
-    const exemplo1 = "Mesa de Jantar Madeira Maciça;78900000000;Mesas;500,00;750,00;10\n";
+    const exemplo1 = "Mesa de Jantar Madeira Maciï¿½a;78900000000;Mesas;500,00;750,00;10\n";
     const exemplo2 = "Cadeira Estofada;78900000001;Cadeiras;120,50;241,00;40\n";
     const csvContent = "\uFEFF" + cabecalho + exemplo1 + exemplo2;
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -675,9 +683,9 @@ async function processarPlanilhaProdutos(event) {
 
     showToast("Lendo planilha, aguarde...", "info");
 
-    // Verifica se não é csv
+    // Verifica se nï¿½o ï¿½ csv
     if (!file.name.toLowerCase().endsWith('.csv')) {
-        showToast("Por favor, envie um arquivo .csv (separado por vírgulas ou ponto e vírgula).", "error");
+        showToast("Por favor, envie um arquivo .csv (separado por vï¿½rgulas ou ponto e vï¿½rgula).", "error");
         event.target.value = '';
         return;
     }
@@ -690,7 +698,7 @@ async function processarPlanilhaProdutos(event) {
             const linhas = text.split(/\r\n|\n|\r/).filter(linha => linha.trim() !== '');
             
             if (linhas.length <= 1) {
-                showToast("A planilha parece estar vazia ou só tem o cabeçalho.", "error");
+                showToast("A planilha parece estar vazia ou sï¿½ tem o cabeï¿½alho.", "error");
                 return;
             }
 
@@ -699,7 +707,7 @@ async function processarPlanilhaProdutos(event) {
 
             const batch = firestore.batch();
             
-            // Leitura dinâmica do cabeçalho para suportar planilha velha ou nova
+            // Leitura dinï¿½mica do cabeï¿½alho para suportar planilha velha ou nova
             let colIndex = { nome: 0, ean: 1, categoria: 2, marca: 3, custo: 4, margem: 5, preco: 6, estoque: 7, min: 8 };
             const hCols = linhas[0].toLowerCase().split(separador).map(c => c.trim().replace(/^"|"$/g, ''));
             if (hCols[0].includes('nome')) {
@@ -709,9 +717,9 @@ async function processarPlanilhaProdutos(event) {
                 colIndex.marca = hCols.findIndex(c => c.includes('marca'));
                 colIndex.custo = hCols.findIndex(c => c.includes('custo'));
                 colIndex.margem = hCols.findIndex(c => c.includes('margem'));
-                colIndex.preco = hCols.findIndex(c => c.includes('preco') || c.includes('preço') || c.includes('venda'));
+                colIndex.preco = hCols.findIndex(c => c.includes('preco') || c.includes('preï¿½o') || c.includes('venda'));
                 colIndex.estoque = hCols.findIndex(c => c.includes('estoque') || c.includes('atual') || c.includes('qtd'));
-                colIndex.min = hCols.findIndex(c => c.includes('minimo') || c.includes('mínimo'));
+                colIndex.min = hCols.findIndex(c => c.includes('minimo') || c.includes('mï¿½nimo'));
             }
 
             for (let i = 1; i < linhas.length; i++) {
@@ -760,7 +768,7 @@ async function processarPlanilhaProdutos(event) {
 
                     if (estoque > 0) {
                         const karRef = firestore.collection('movimentacoes').doc();
-                        batch.set(karRef, { data: new Date().toISOString(), ref: "Importação de Planilha", prodId: docRef.id, prodNome: nome, qtd: estoque, tipo: "INICIAL" });
+                        batch.set(karRef, { data: new Date().toISOString(), ref: "Importaï¿½ï¿½o de Planilha", prodId: docRef.id, prodNome: nome, qtd: estoque, tipo: "INICIAL" });
                     }
                     produtosAdicionados++;
                 }
@@ -782,7 +790,7 @@ async function processarPlanilhaProdutos(event) {
 }
 
 // ==========================================
-// FUNCIONÁRIOS / VENDEDORES E PERMISSÕES
+// FUNCIONï¿½RIOS / VENDEDORES E PERMISSï¿½ES
 // ==========================================
 
 function renderFuncionarios() {
@@ -802,7 +810,7 @@ function renderFuncionarios() {
         let permissoesStr = [];
         if (f.perm_pdv) permissoesStr.push('PDV');
         if (f.perm_cadastros) permissoesStr.push('Cadastros');
-        if (f.perm_gestao) permissoesStr.push('Gestão');
+        if (f.perm_gestao) permissoesStr.push('Gestï¿½o');
         if (f.perm_config) permissoesStr.push('Config');
         
         let permissoesBadge = permissoesStr.length > 0 ? permissoesStr.join(', ') : 'Nenhum Acesso';
@@ -812,7 +820,7 @@ function renderFuncionarios() {
         <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700 transition-colors">
             <td class="p-3">
                 <div class="font-bold text-slate-800 dark:text-slate-100 uppercase">${f.nome || 'Sem Nome'}</div>
-                <div class="text-[10px] text-slate-400 mt-0.5">Permissões: <span class="text-blue-500 font-bold">${permissoesBadge}</span></div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Permissï¿½es: <span class="text-blue-500 font-bold">${permissoesBadge}</span></div>
             </td>
             <td class="p-3 text-slate-600 dark:text-slate-300 font-medium">${f.email}</td>
             <td class="p-3 text-slate-600 dark:text-slate-300">
@@ -826,18 +834,18 @@ function renderFuncionarios() {
                 <button onclick="excluirFuncionario('${f.id}')" class="text-slate-400 hover:text-red-500 p-2" title="Excluir"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
-    }).join('') || `<tr><td colspan="5" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum funcionário cadastrado.</td></tr>`;
+    }).join('') || `<tr><td colspan="5" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum funcionï¿½rio cadastrado.</td></tr>`;
 }
 
 function abrirModalFuncionario(id = null) {
     document.getElementById('func-id').value = id || '';
     
     if (id) {
-        document.getElementById('modal-funcionario-title').innerText = 'Editar Funcionário';
+        document.getElementById('modal-funcionario-title').innerText = 'Editar Funcionï¿½rio';
         const f = (db.funcionarios || []).find(x => x.id === id);
         if (f) {
             document.getElementById('func-email').value = f.email || '';
-            document.getElementById('func-email').disabled = true; // Email não muda após criar
+            document.getElementById('func-email').disabled = true; // Email nï¿½o muda apï¿½s criar
             document.getElementById('func-senha').value = '';
             document.getElementById('func-senha-aviso').classList.remove('hidden');
             
@@ -853,7 +861,7 @@ function abrirModalFuncionario(id = null) {
             document.getElementById('func-perm-config').checked = !!f.perm_config;
         }
     } else {
-        document.getElementById('modal-funcionario-title').innerText = 'Novo Funcionário';
+        document.getElementById('modal-funcionario-title').innerText = 'Novo Funcionï¿½rio';
         document.getElementById('func-email').value = '';
         document.getElementById('func-email').disabled = false;
         document.getElementById('func-senha').value = '';
@@ -880,7 +888,7 @@ function fecharModalFuncionario() {
     document.getElementById('modal-funcionario').style.display = 'none';
 }
 
-// Inicializa a instância secundária para criar contas sem deslogar o Admin
+// Inicializa a instï¿½ncia secundï¿½ria para criar contas sem deslogar o Admin
 let secondaryAuthApp = null;
 function getSecondaryApp() {
     if (!secondaryAuthApp) {
@@ -914,8 +922,8 @@ async function salvarFuncionario() {
 
     try {
         if (!id) {
-            // CRIAR NOVO FUNCIONÁRIO
-            if (!senha || senha.length < 6) return showToast('Para novos funcionários, informe uma senha de no mínimo 6 caracteres.', 'error');
+            // CRIAR NOVO FUNCIONï¿½RIO
+            if (!senha || senha.length < 6) return showToast('Para novos funcionï¿½rios, informe uma senha de no mï¿½nimo 6 caracteres.', 'error');
             
             showToast('Criando conta de acesso...', 'info');
             
@@ -923,23 +931,23 @@ async function salvarFuncionario() {
             const userCredential = await secApp.auth().createUserWithEmailAndPassword(email, senha);
             const uid = userCredential.user.uid;
             
-            // Faz logout na instância secundária para não afetar nada
+            // Faz logout na instï¿½ncia secundï¿½ria para nï¿½o afetar nada
             await secApp.auth().signOut();
             
             obj.id = uid;
             await firestore.collection('funcionarios').doc(uid).set(obj);
-            showToast('Funcionário e acesso criados com sucesso!', 'success');
+            showToast('Funcionï¿½rio e acesso criados com sucesso!', 'success');
             
         } else {
-            // ATUALIZAR FUNCIONÁRIO EXISTENTE
+            // ATUALIZAR FUNCIONï¿½RIO EXISTENTE
             if (senha) {
-                showToast('Aviso: Alteração de senha por aqui ainda não está implementada nesta versão.', 'info');
+                showToast('Aviso: Alteraï¿½ï¿½o de senha por aqui ainda nï¿½o estï¿½ implementada nesta versï¿½o.', 'info');
                 // Se precisar mudar senha, teria que usar cloud functions ou Admin SDK.
-                // Como workaround, o usuário pode usar a recuperação de senha na tela de login.
+                // Como workaround, o usuï¿½rio pode usar a recuperaï¿½ï¿½o de senha na tela de login.
             }
             
             await firestore.collection('funcionarios').doc(id).set(obj, { merge: true });
-            showToast('Funcionário atualizado com sucesso!', 'success');
+            showToast('Funcionï¿½rio atualizado com sucesso!', 'success');
         }
         
         fecharModalFuncionario();
@@ -948,7 +956,7 @@ async function salvarFuncionario() {
     } catch (error) {
         console.error(error);
         if (error.code === 'auth/email-already-in-use') {
-            showToast('Este e-mail já possui uma conta no sistema.', 'error');
+            showToast('Este e-mail jï¿½ possui uma conta no sistema.', 'error');
         } else {
             showToast('Erro ao salvar: ' + error.message, 'error');
         }
@@ -956,10 +964,10 @@ async function salvarFuncionario() {
 }
 
 function excluirFuncionario(id) {
-    abrirConfirmacao('Excluir Funcionário', 'ATENÇÃO: O cadastro será apagado do sistema, mas a conta de login continuará ativa no Firebase (devido a restrições de segurança do cliente). O usuário não poderá mais acessar o sistema. Continuar?', async () => {
+    abrirConfirmacao('Excluir Funcionï¿½rio', 'ATENï¿½ï¿½O: O cadastro serï¿½ apagado do sistema, mas a conta de login continuarï¿½ ativa no Firebase (devido a restriï¿½ï¿½es de seguranï¿½a do cliente). O usuï¿½rio nï¿½o poderï¿½ mais acessar o sistema. Continuar?', async () => {
         try {
             await firestore.collection('funcionarios').doc(id).delete();
-            showToast('Funcionário excluído! Acesso revogado.', 'success');
+            showToast('Funcionï¿½rio excluï¿½do! Acesso revogado.', 'success');
             renderFuncionarios();
         } catch (e) {
             console.error(e);
@@ -973,7 +981,7 @@ window.verDetalhesVenda = function(id) {
     try {
         const v = db.vendas.find(x => String(x.id) === String(id)); 
         if(!v) { 
-            alert("Venda não encontrada no banco de dados local: " + id);
+            alert("Venda nï¿½o encontrada no banco de dados local: " + id);
             return; 
         }
         
@@ -982,34 +990,34 @@ window.verDetalhesVenda = function(id) {
         
         document.getElementById('det-venda-cliente').innerText = v.clienteNome || 'Desconhecido'; 
         document.getElementById('det-venda-data').innerText = `${v.data ? formatData(v.data).split(' ')[0] : '-'} | #${numPedStr}`; 
-        document.getElementById('det-venda-pag').innerText = tipoTexto === 'ORÇAMENTO' ? 'Orçamento' : (v.pag || '-'); 
+        document.getElementById('det-venda-pag').innerText = tipoTexto === 'ORï¿½AMENTO' ? 'Orï¿½amento' : (v.pag || '-'); 
         
         let osInfoHtml = '';
-        if (tipoTexto === 'SERVIÇO' && v.servicoDetalhes) {
+        if (tipoTexto === 'SERVIï¿½O' && v.servicoDetalhes) {
             let galeriaHtml = '';
             if (v.servicoDetalhes.fotos && v.servicoDetalhes.fotos.length > 0) { 
-                galeriaHtml = `<p class="mt-2"><strong>Fotos de Referência:</strong></p><div class="flex gap-2 flex-wrap mt-1">${v.servicoDetalhes.fotos.map(f => `<img src="${f}" onclick="abrirZoom('${f}')" class="h-20 rounded border border-purple-300 cursor-zoom-in shadow-sm hover:opacity-80 transition" title="Clique para ampliar">`).join('')}</div>`; 
+                galeriaHtml = `<p class="mt-2"><strong>Fotos de Referï¿½ncia:</strong></p><div class="flex gap-2 flex-wrap mt-1">${v.servicoDetalhes.fotos.map(f => `<img src="${f}" onclick="abrirZoom('${f}')" class="h-20 rounded border border-purple-300 cursor-zoom-in shadow-sm hover:opacity-80 transition" title="Clique para ampliar">`).join('')}</div>`; 
             } else if (v.servicoDetalhes.foto) { 
-                galeriaHtml = `<p class="mt-2"><strong>Foto de Referência:</strong></p><img src="${v.servicoDetalhes.foto}" onclick="abrirZoom('${v.servicoDetalhes.foto}')" class="mt-1 h-24 rounded border border-purple-300 cursor-zoom-in shadow-sm hover:opacity-80 transition" title="Clique para ampliar">`; 
+                galeriaHtml = `<p class="mt-2"><strong>Foto de Referï¿½ncia:</strong></p><img src="${v.servicoDetalhes.foto}" onclick="abrirZoom('${v.servicoDetalhes.foto}')" class="mt-1 h-24 rounded border border-purple-300 cursor-zoom-in shadow-sm hover:opacity-80 transition" title="Clique para ampliar">`; 
             }
             osInfoHtml = `
                 <div class="mt-4 bg-purple-50 p-3 md:p-4 rounded-lg border border-purple-200 text-xs md:text-sm text-purple-900">
-                    <h4 class="font-bold mb-2 uppercase text-purple-700 border-b border-purple-200 pb-2"><i class="fa-solid fa-clipboard-list"></i> Ficha da Ordem de Serviço</h4>
+                    <h4 class="font-bold mb-2 uppercase text-purple-700 border-b border-purple-200 pb-2"><i class="fa-solid fa-clipboard-list"></i> Ficha da Ordem de Serviï¿½o</h4>
                     <div class="grid grid-cols-2 gap-2 mb-2">
-                        <p><strong>Prazo de Entrega:</strong> ${v.servicoDetalhes.prazo ? v.servicoDetalhes.prazo.split('-').reverse().join('/') : 'Não informado'}</p>
+                        <p><strong>Prazo de Entrega:</strong> ${v.servicoDetalhes.prazo ? v.servicoDetalhes.prazo.split('-').reverse().join('/') : 'Nï¿½o informado'}</p>
                         <p><strong>Garantia:</strong> ${v.servicoDetalhes.garantia || 'Nenhuma'}</p>
                     </div>
-                    <p class="mb-2"><strong>Escopo / Diagnóstico:</strong><br> ${v.servicoDetalhes.desc || 'Nenhum detalhe adicional.'}</p>
+                    <p class="mb-2"><strong>Escopo / Diagnï¿½stico:</strong><br> ${v.servicoDetalhes.desc || 'Nenhum detalhe adicional.'}</p>
                     ${galeriaHtml}
                 </div>`;
         }
         
-        document.getElementById('det-venda-obs').innerHTML = (v.obs ? v.obs : '<span class="text-slate-400">Nenhuma observação geral.</span>') + osInfoHtml;
+        document.getElementById('det-venda-obs').innerHTML = (v.obs ? v.obs : '<span class="text-slate-400">Nenhuma observaï¿½ï¿½o geral.</span>') + osInfoHtml;
         document.getElementById('det-venda-total').innerText = formatMoney(v.tot || 0);
         document.getElementById('det-venda-itens').innerHTML = (v.itens || []).map(i => `
             <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-50">
                 <td class="p-3 font-medium text-slate-700 dark:text-slate-200 text-xs">
-                    ${i.nome || 'Produto/Serviço'} ${i.obsVenda ? `<br><span class="text-[10px] text-slate-400">Obs: ${i.obsVenda}</span>` : ''}
+                    ${i.nome || 'Produto/Serviï¿½o'} ${i.obsVenda ? `<br><span class="text-[10px] text-slate-400">Obs: ${i.obsVenda}</span>` : ''}
                 </td>
                 <td class="p-3 text-center text-xs font-bold text-slate-600 dark:text-slate-300">${i.qtd || 1}</td>
                 <td class="p-3 text-right text-xs text-slate-500 dark:text-slate-400">${formatMoney(i.preco || 0)}</td>
@@ -1030,14 +1038,14 @@ window.fecharModalDetalhesVenda = function() {
     document.getElementById('modal-detalhes-venda').style.display = '';
 }
 
-// Event Delegation para clique no histórico (muito mais robusto que onclick inline)
+// Event Delegation para clique no histï¿½rico (muito mais robusto que onclick inline)
 document.addEventListener('click', function(e) {
     const tr = e.target.closest('tr.linha-historico');
     if (tr && tr.dataset.vendaId) {
         if (window.verDetalhesVenda) {
             window.verDetalhesVenda(tr.dataset.vendaId);
         } else {
-            alert('Função de detalhes não está carregada!');
+            alert('Funï¿½ï¿½o de detalhes nï¿½o estï¿½ carregada!');
         }
     }
 });
@@ -1045,7 +1053,7 @@ document.addEventListener('click', function(e) {
 
 
 
-// NOVO: Funções auxiliares para Vínculo de XML
+// NOVO: Funï¿½ï¿½es auxiliares para Vï¿½nculo de XML
 function alternarAcaoVinculoXML() {
     const acao = document.getElementById('prod-acao-vinculo').value;
     if(acao === 'VINCULAR') {

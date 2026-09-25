@@ -510,7 +510,15 @@ async function editarCliente(id) {
     // Preenche todos os campos com os dados do cliente
     ['nome', 'doc', 'rg', 'nasc', 'wpp', 'fixo', 'email', 'cep', 'rua', 'numero', 'complemento', 'bairro', 'cidade', 'ibge', 'obs'].forEach(campo => {
         const el = document.getElementById(`cli-${campo}`);
-        if (el) el.value = c[campo] || '';
+        if (el) {
+            if (campo === 'doc' && !c['doc']) el.value = c['cpf'] || c['cnpj'] || c['documento'] || '';
+            else if (campo === 'wpp' && !c['wpp']) el.value = c['telefone'] || c['celular'] || c['contato'] || '';
+            else if (campo === 'rua' && !c['rua']) el.value = c['endereco'] || c['logradouro'] || '';
+            else if (campo === 'numero' && !c['numero']) el.value = c['num'] || '';
+            else if (campo === 'obs' && !c['obs']) el.value = c['observacao'] || c['historico'] || '';
+            else if (campo === 'fixo' && !c['fixo']) el.value = c['telefone_fixo'] || c['tel'] || '';
+            else el.value = c[campo] || '';
+        }
     });
 
     const hist = db.vendas ? db.vendas.filter(v => String(v.clienteId) === idStr) : [];
