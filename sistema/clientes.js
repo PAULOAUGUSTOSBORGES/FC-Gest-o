@@ -395,13 +395,15 @@ function renderClientes() {
 
     let filtrados = (db.clientes || []).filter(c => {
         if (!termoNorm) return true;
+        const docVal = c.doc || c.cpf || c.cnpj || '';
+        const telVal = c.wpp || c.telefone || c.celular || '';
         const textoNorm = typeof normalizarTexto === 'function'
-            ? normalizarTexto([c.nome, c.razaoSocial, c.doc, c.rg, c.wpp, c.fixo, c.email, c.cidade, c.bairro, c.obs].filter(Boolean).join(' '))
-            : [c.nome, c.razaoSocial, c.doc, c.rg, c.wpp, c.fixo, c.email, c.cidade, c.bairro, c.obs].filter(Boolean).join(' ').toLowerCase();
+            ? normalizarTexto([c.nome, c.razaoSocial, docVal, c.rg, telVal, c.fixo, c.email, c.cidade, c.bairro, c.obs].filter(Boolean).join(' '))
+            : [c.nome, c.razaoSocial, docVal, c.rg, telVal, c.fixo, c.email, c.cidade, c.bairro, c.obs].filter(Boolean).join(' ').toLowerCase();
         
         if (textoNorm.includes(termoNorm)) return true;
         if (termoDigitos && termoDigitos.length >= 2) {
-            const digitos = [c.doc, c.rg, c.wpp, c.fixo].filter(Boolean).map(x => String(x).replace(/\D/g, '')).join(' ');
+            const digitos = [docVal, c.rg, telVal, c.fixo].filter(Boolean).map(x => String(x).replace(/\D/g, '')).join(' ');
             if (digitos.includes(termoDigitos)) return true;
         }
         return false;
@@ -415,7 +417,11 @@ function renderClientes() {
 
     window.clientesFiltradosAtuais = filtrados;
 
-    document.getElementById('tabela-clientes').innerHTML = filtrados.map(c => `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 font-bold text-slate-800 dark:text-slate-100">${c.nome}</td><td class="p-4 text-slate-600 dark:text-slate-300 font-mono">${c.doc || '-'}</td><td class="p-4 text-slate-800 dark:text-slate-100"><i class="fa-brands fa-whatsapp text-emerald-500 mr-1"></i> ${c.wpp || '-'}</td><td class="p-4 text-slate-600 dark:text-slate-300">${c.cidade || '-'}</td><td class="p-4 text-center"><button onclick="editarCliente('${c.id}')" class="text-blue-500 hover:text-blue-700 p-2"><i class="fa-solid fa-pen"></i></button><button onclick="excluirCliente('${c.id}')" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || '<tr><td colspan="5" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum cliente encontrado.</td></tr>';
+    document.getElementById('tabela-clientes').innerHTML = filtrados.map(c => {
+        const docExib = c.doc || c.cpf || c.cnpj || '-';
+        const telExib = c.wpp || c.telefone || c.celular || '-';
+        return `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 font-bold text-slate-800 dark:text-slate-100">${c.nome}</td><td class="p-4 text-slate-600 dark:text-slate-300 font-mono">${docExib}</td><td class="p-4 text-slate-800 dark:text-slate-100"><i class="fa-brands fa-whatsapp text-emerald-500 mr-1"></i> ${telExib}</td><td class="p-4 text-slate-600 dark:text-slate-300">${c.cidade || '-'}</td><td class="p-4 text-center"><button onclick="editarCliente('${c.id}')" class="text-blue-500 hover:text-blue-700 p-2"><i class="fa-solid fa-pen"></i></button><button onclick="excluirCliente('${c.id}')" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash"></i></button></td></tr>`;
+    }).join('') || '<tr><td colspan="5" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum cliente encontrado.</td></tr>';
 }
 
 function abrirModalCliente() {
@@ -507,7 +513,12 @@ async function editarCliente(id) {
     // Preenche todos os campos com os dados do cliente
     ['nome', 'doc', 'rg', 'nasc', 'wpp', 'fixo', 'email', 'cep', 'rua', 'numero', 'complemento', 'bairro', 'cidade', 'ibge', 'obs'].forEach(campo => {
         const el = document.getElementById(`cli-${campo}`);
-        if (el) el.value = c[campo] || '';
+        if (el) {
+            let val = c[campo] || '';
+            if (!val && campo === 'doc') val = c.cpf || c.cnpj || '';
+            if (!val && campo === 'wpp') val = c.telefone || c.celular || '';
+            el.value = val;
+        }
     });
 
     const hist = db.vendas ? db.vendas.filter(v => String(v.clienteId) === idStr) : [];
