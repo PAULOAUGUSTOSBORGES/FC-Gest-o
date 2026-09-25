@@ -641,6 +641,16 @@ window.normalizarTexto = normalizarTexto;
 function showToast(msg, type = 'info') {
     const container = document.getElementById('toast-container');
     if (!container) return;
+
+    // Evita exibir toasts idênticos repetidos simultaneamente na tela
+    const toastsVisiveis = container.querySelectorAll('.toast');
+    const msgLimpa = String(msg || '').trim().replace(/\s+/g, ' ');
+    for (let el of toastsVisiveis) {
+        if (el.textContent.trim().replace(/\s+/g, ' ').includes(msgLimpa)) {
+            return;
+        }
+    }
+
     const t = document.createElement('div');
     t.className = `toast show ${type}`;
     t.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-circle-exclamation' : 'fa-info-circle')}"></i> ${msg}`;

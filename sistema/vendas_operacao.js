@@ -10,6 +10,8 @@ let pdvTotalAtual = 0;
 let osFotosArray = []; 
 window.vendaEmEdicao = null; 
 window.vendaAtualImpressao = null;
+window._pdvCarregandoInicial = true;
+setTimeout(() => { window._pdvCarregandoInicial = false; }, 3000);
 
 // ==========================================
 // PROTECAO ANTI-VENDA DUPLICADA

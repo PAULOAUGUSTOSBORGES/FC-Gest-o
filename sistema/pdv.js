@@ -10,6 +10,8 @@ let pdvTotalAtual = 0;
 let osFotosArray = []; 
 window.vendaEmEdicao = null; 
 window.vendaAtualImpressao = null;
+window._pdvCarregandoInicial = true;
+setTimeout(() => { window._pdvCarregandoInicial = false; }, 3000);
 
 // ==========================================
 // PROTECAO ANTI-VENDA DUPLICADA
@@ -323,7 +325,7 @@ function abrirZoomCart(index) {
 // ==========================================
 // 4. CADASTRO E BUSCA DE CLIENTE RÁPIDO NO PDV
 // ==========================================
-function selecionarClientePDV(clienteOuId) {
+function selecionarClientePDV(clienteOuId, silencioso = false) {
     let c = null;
     if (typeof clienteOuId === 'object' && clienteOuId !== null) {
         c = clienteOuId;
@@ -368,9 +370,15 @@ function selecionarClientePDV(clienteOuId) {
                 vendSelect.appendChild(opt);
             }
 
+            const vendedorAnterior = (vendSelect.value || '').replace(/^Vend:\s*/i, '').trim().toLowerCase();
+            const novoVendedor = opt.value.trim().toLowerCase();
+            const nomeSemPrefixo = vendedorNome.toLowerCase();
+            const mudouVendedor = (vendedorAnterior !== novoVendedor && vendedorAnterior !== nomeSemPrefixo);
+
             vendSelect.value = opt.value;
 
-            if (typeof showToast === 'function') {
+            // Só notifica se não for silencioso, se o vendedor realmente mudou e não estiver na carga inicial da página
+            if (!silencioso && mudouVendedor && !window._pdvCarregandoInicial && typeof showToast === 'function') {
                 showToast(`Vendedor "${vendedorNome}" preenchido automaticamente pelo cadastro do cliente.`, 'info');
             }
         }
@@ -388,7 +396,7 @@ function autoSelecionarClientePorNome() {
     if (!inputBusca) return;
     const txt = inputBusca.value.trim().toLowerCase();
     if (!txt) {
-        selecionarClientePDV(null);
+        selecionarClientePDV(null, true);
         return;
     }
     if (hiddenId && hiddenId.value && hiddenId.value !== '0') {
@@ -423,9 +431,9 @@ function autoSelecionarPrimeiroCliente() {
 }
 window.autoSelecionarPrimeiroCliente = autoSelecionarPrimeiroCliente;
 
-function atualizarListaClientesPDV(selecionarId = null) {
+function atualizarListaClientesPDV(selecionarId = null, silencioso = true) {
     if (selecionarId && selecionarId !== '0') {
-        selecionarClientePDV(selecionarId);
+        selecionarClientePDV(selecionarId, silencioso);
     } else if (selecionarId === null) {
         const hiddenId = document.getElementById('pdv-cliente');
         const inputBusca = document.getElementById('pdv-cliente-busca');
@@ -434,7 +442,7 @@ function atualizarListaClientesPDV(selecionarId = null) {
             if (c) {
                 if (inputBusca && !inputBusca.value) inputBusca.value = c.nome || '';
                 if (c.vendedor) {
-                    selecionarClientePDV(c);
+                    selecionarClientePDV(c, true);
                 }
                 return;
             }
@@ -442,7 +450,7 @@ function atualizarListaClientesPDV(selecionarId = null) {
         if (hiddenId) hiddenId.value = '0';
         if (inputBusca) inputBusca.value = '';
     } else {
-        selecionarClientePDV(null);
+        selecionarClientePDV(null, true);
     }
 }
 
