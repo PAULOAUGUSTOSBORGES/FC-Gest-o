@@ -22,13 +22,13 @@
         pdv:        'Frente de Caixa (PDV)',
         vendas:     'Vendas & Orçamentos',
         fiscal:     'Emissor Fiscal (NF-e/NFC-e)',
-        estoque:    'Produtos & Estoque',
+        estoque:    'Controle de Estoque & Produtos',
         financeiro: 'Financeiro & Fluxo de Caixa',
-        relatorios: 'Relatórios & DRE',
-        caixa:      'Caixa Físico',
+        relatorios: 'Central de Relatórios Gerenciais',
+        caixa:      'Caixa da Loja / Central & Caixas PDV',
         compras:    'Compras & NF-e XML',
         site:       'Loja Virtual & Catálogo Online',
-        ia:         'Inteligência Artificial (IA Gemini)',
+        ia:         'Inteligência Artificial (IA Gemini Comercial)',
         agenda:     'Agenda & Compromissos',
         marketing:  'Marketing & Lembretes',
         suporte:    'Suporte VIP WhatsApp'
@@ -36,17 +36,21 @@
 
     // Planos padrão — espelha PLANOS_PADRAO do master.js
     const PLANOS_INFO = {
-        'plano_start':      { nome: 'Start (Frente de Caixa)', preco: 'R$ 69,90/mês',  cor: '#64748b' },
-        'plano_fiscal':     { nome: 'Fiscal & Vendas',         preco: 'R$ 119,90/mês', cor: '#0ea5e9' },
-        'plano_pro':        { nome: 'Profissional',            preco: 'R$ 169,90/mês', cor: '#f59e0b' },
-        'plano_enterprise': { nome: 'Enterprise',              preco: 'R$ 249,90/mês', cor: '#8b5cf6' },
-        'plano_ultra':      { nome: 'Ultra Completo',          preco: 'R$ 349,90/mês', cor: '#10b981' },
-        'START':            { nome: 'Start',                  preco: 'R$ 69,90/mês',  cor: '#64748b' },
-        'FISCAL':           { nome: 'Fiscal & Vendas',         preco: 'R$ 119,90/mês', cor: '#0ea5e9' },
-        'PRO':              { nome: 'Profissional',            preco: 'R$ 169,90/mês', cor: '#f59e0b' },
-        'ENTERPRISE':       { nome: 'Enterprise',              preco: 'R$ 249,90/mês', cor: '#8b5cf6' },
-        'ULTRA':            { nome: 'Ultra Completo',          preco: 'R$ 349,90/mês', cor: '#10b981' },
-        'FREE':             { nome: 'Gratuito (Trial)',        preco: 'Trial',         cor: '#64748b' }
+        'plano_start':        { nome: 'Start Express (PDV Direto)',             preco: 'R$ 69,90/mês',  cor: '#64748b' },
+        'plano_balcao_caixa': { nome: 'Varejo Balcão (Pré-Venda + Caixa)',      preco: 'R$ 99,90/mês',  cor: '#3b82f6' },
+        'plano_fiscal':       { nome: 'Fiscal & Vendas',                        preco: 'R$ 119,90/mês', cor: '#0ea5e9' },
+        'plano_pro':          { nome: 'Profissional',                           preco: 'R$ 169,90/mês', cor: '#f59e0b' },
+        'plano_enterprise':   { nome: 'Enterprise',                             preco: 'R$ 249,90/mês', cor: '#8b5cf6' },
+        'plano_ultra':        { nome: 'Ultra Completo',                         preco: 'R$ 349,90/mês', cor: '#10b981' },
+        'START':              { nome: 'Start Express',                         preco: 'R$ 69,90/mês',  cor: '#64748b' },
+        'BALCAO_CAIXA':       { nome: 'Varejo Balcão',                         preco: 'R$ 99,90/mês',  cor: '#3b82f6' },
+        'BALCAO':             { nome: 'Varejo Balcão',                         preco: 'R$ 99,90/mês',  cor: '#3b82f6' },
+        'VAREJO_BALCAO':      { nome: 'Varejo Balcão',                         preco: 'R$ 99,90/mês',  cor: '#3b82f6' },
+        'FISCAL':             { nome: 'Fiscal & Vendas',                        preco: 'R$ 119,90/mês', cor: '#0ea5e9' },
+        'PRO':                { nome: 'Profissional',                           preco: 'R$ 169,90/mês', cor: '#f59e0b' },
+        'ENTERPRISE':         { nome: 'Enterprise',                             preco: 'R$ 249,90/mês', cor: '#8b5cf6' },
+        'ULTRA':              { nome: 'Ultra Completo',                         preco: 'R$ 349,90/mês', cor: '#10b981' },
+        'FREE':               { nome: 'Gratuito (Trial)',                       preco: 'Trial',         cor: '#64748b' }
     };
 
     // Tabela comparativa de módulos por plano para exibir no overlay (do mais caro para o mais barato)
@@ -81,8 +85,15 @@
             modulos: ['pdv', 'vendas', 'fiscal', 'estoque', 'caixa', 'suporte']
         },
         {
+            id: 'plano_balcao_caixa',
+            nome: 'Varejo Balcão',
+            preco: 'R$ 99,90',
+            cor: 'blue',
+            modulos: ['pdv', 'vendas', 'estoque', 'caixa', 'suporte']
+        },
+        {
             id: 'plano_start',
-            nome: 'Start',
+            nome: 'Start Express',
             preco: 'R$ 69,90',
             cor: 'slate',
             modulos: ['pdv', 'vendas', 'estoque', 'caixa', 'suporte']
@@ -94,31 +105,35 @@
     // Estes IDs são usados pelo controle granular por plano.
     // -----------------------------------------------------------------------
     const CATALOGO_RELATORIOS = [
-        { id: 'rel_ia_assistente',     nome: 'Assistente IA de Relatórios',      icone: 'fa-robot',            categoria: 'IA' },
-        { id: 'rel_dre',               nome: 'DRE — Demonstrativo de Resultado',  icone: 'fa-table-columns',    categoria: 'Financeiro' },
-        { id: 'rel_raio_x',            nome: 'Raio-X Executivo & Break-Even',     icone: 'fa-chart-line',       categoria: 'Financeiro' },
-        { id: 'rel_top_produtos',      nome: 'Top Produtos Mais Vendidos',         icone: 'fa-ranking-star',     categoria: 'Vendas' },
-        { id: 'rel_top_clientes',      nome: 'Top Clientes (Ranking)',            icone: 'fa-users',            categoria: 'Vendas' },
-        { id: 'rel_top_compras',       nome: 'Top Compras por Produto',           icone: 'fa-boxes-stacked',    categoria: 'Compras' },
-        { id: 'rel_top_fornecedores',   nome: 'Top Fornecedores',                  icone: 'fa-truck',            categoria: 'Compras' },
-        { id: 'rel_despesas',          nome: 'Despesas por Centro de Custo',      icone: 'fa-money-bill-wave',  categoria: 'Financeiro' },
-        { id: 'rel_curva_abc',         nome: 'Curva ABC de Produtos',             icone: 'fa-chart-pie',        categoria: 'Estoque' },
-        { id: 'rel_kardex',            nome: 'Estoque & Kardex Detalhado',        icone: 'fa-warehouse',        categoria: 'Estoque' },
-        { id: 'rel_historico_vendas',  nome: 'Histórico Completo de Vendas',      icone: 'fa-receipt',          categoria: 'Vendas' },
-        { id: 'rel_comissao',          nome: 'Comissão Detalhada de Vendedores',  icone: 'fa-hand-holding-dollar', categoria: 'Vendas' },
-        { id: 'rel_vendedores',        nome: 'Desempenho por Vendedor',           icone: 'fa-user-tie',         categoria: 'Vendas' },
-        { id: 'rel_sugestor_compras',  nome: 'Sugestor Inteligente de Compras',   icone: 'fa-cart-plus',        categoria: 'Compras' },
-        { id: 'rel_evolucao_custos',   nome: 'Evolução de Custos',                icone: 'fa-arrow-trend-up',   categoria: 'Financeiro' },
-        { id: 'rel_mapa_calor',        nome: 'Mapa de Calor de Vendas',           icone: 'fa-fire',             categoria: 'Vendas' },
+        { id: 'rel_dre',               nome: 'DRE - Demonstrativo de Resultado',       icone: 'fa-table-columns',    categoria: 'Financeiro & Gestão' },
+        { id: 'rel_raio_x',            nome: 'Raio-X Executivo & Ponto de Equilíbrio',  icone: 'fa-chart-line',       categoria: 'Financeiro & Gestão' },
+        { id: 'rel_despesas',          nome: 'Despesas por Centro de Custo',           icone: 'fa-money-bill-wave',  categoria: 'Financeiro & Gestão' },
+        { id: 'rel_evolucao_custos',   nome: 'Evolução de Custos & Inflação',          icone: 'fa-arrow-trend-up',   categoria: 'Financeiro & Gestão' },
+
+        { id: 'rel_top_produtos',      nome: 'Top Produtos Mais Vendidos',             icone: 'fa-ranking-star',     categoria: 'Vendas & Clientes' },
+        { id: 'rel_top_clientes',      nome: 'Top Clientes (Ranking)',                 icone: 'fa-users',            categoria: 'Vendas & Clientes' },
+        { id: 'rel_historico_vendas',  nome: 'Histórico Analítico de Vendas',          icone: 'fa-receipt',          categoria: 'Vendas & Clientes' },
+        { id: 'rel_comissao',          nome: 'Comissão Detalhada de Vendedores',       icone: 'fa-hand-holding-dollar', categoria: 'Vendas & Clientes' },
+        { id: 'rel_vendedores',        nome: 'Desempenho & Metas de Vendedores',       icone: 'fa-user-tie',         categoria: 'Vendas & Clientes' },
+        { id: 'rel_mapa_calor',        nome: 'Mapa de Calor de Vendas (Horários)',     icone: 'fa-fire',             categoria: 'Vendas & Clientes' },
+
+        { id: 'rel_curva_abc',         nome: 'Curva ABC de Produtos & Lucro',          icone: 'fa-chart-pie',        categoria: 'Estoque & Compras' },
+        { id: 'rel_kardex',            nome: 'Ficha Kardex (Movimentação de Estoque)', icone: 'fa-warehouse',       categoria: 'Estoque & Compras' },
+        { id: 'rel_top_compras',       nome: 'Top Compras por Produto & Valor',        icone: 'fa-boxes-stacked',    categoria: 'Estoque & Compras' },
+        { id: 'rel_top_fornecedores',   nome: 'Top Fornecedores & Prazos',              icone: 'fa-truck',            categoria: 'Estoque & Compras' },
+        { id: 'rel_sugestor_compras',  nome: 'Sugestor Inteligente de Reposição',      icone: 'fa-cart-plus',        categoria: 'Estoque & Compras' },
+
+        { id: 'rel_ia_assistente',     nome: 'Análise Preditiva & Insights IA (Gemini)', icone: 'fa-robot',          categoria: 'Inteligência Artificial' }
     ];
 
     // Relatórios padrão por plano (fallback quando o admin não configurou no Master)
     const RELATORIOS_POR_PLANO_PADRAO = {
-        plano_ultra:      ['rel_ia_assistente','rel_dre','rel_raio_x','rel_top_produtos','rel_top_clientes','rel_top_compras','rel_top_fornecedores','rel_despesas','rel_curva_abc','rel_kardex','rel_historico_vendas','rel_comissao','rel_vendedores','rel_sugestor_compras','rel_evolucao_custos','rel_mapa_calor'],
-        plano_enterprise: ['rel_ia_assistente','rel_dre','rel_raio_x','rel_top_produtos','rel_top_clientes','rel_top_compras','rel_top_fornecedores','rel_despesas','rel_curva_abc','rel_kardex','rel_historico_vendas','rel_comissao','rel_vendedores','rel_sugestor_compras','rel_evolucao_custos','rel_mapa_calor'],
-        plano_pro:        ['rel_dre','rel_raio_x','rel_top_produtos','rel_top_clientes','rel_top_compras','rel_top_fornecedores','rel_despesas','rel_curva_abc','rel_kardex','rel_historico_vendas','rel_comissao','rel_vendedores','rel_sugestor_compras','rel_evolucao_custos'],
-        plano_fiscal:     ['rel_dre','rel_top_produtos','rel_historico_vendas','rel_comissao'],
-        plano_start:      ['rel_top_produtos','rel_historico_vendas','rel_comissao'],
+        plano_ultra:        ['rel_ia_assistente','rel_dre','rel_raio_x','rel_top_produtos','rel_top_clientes','rel_top_compras','rel_top_fornecedores','rel_despesas','rel_curva_abc','rel_kardex','rel_historico_vendas','rel_comissao','rel_vendedores','rel_sugestor_compras','rel_evolucao_custos','rel_mapa_calor'],
+        plano_enterprise:   ['rel_ia_assistente','rel_dre','rel_raio_x','rel_top_produtos','rel_top_clientes','rel_top_compras','rel_top_fornecedores','rel_despesas','rel_curva_abc','rel_kardex','rel_historico_vendas','rel_comissao','rel_vendedores','rel_sugestor_compras','rel_evolucao_custos','rel_mapa_calor'],
+        plano_pro:          ['rel_dre','rel_raio_x','rel_top_produtos','rel_top_clientes','rel_top_compras','rel_top_fornecedores','rel_despesas','rel_curva_abc','rel_kardex','rel_historico_vendas','rel_comissao','rel_vendedores','rel_sugestor_compras','rel_evolucao_custos'],
+        plano_fiscal:       ['rel_dre','rel_top_produtos','rel_historico_vendas','rel_comissao'],
+        plano_balcao_caixa: ['rel_top_produtos','rel_historico_vendas','rel_vendedores','rel_comissao'],
+        plano_start:        ['rel_top_produtos','rel_historico_vendas','rel_comissao'],
     };
 
     let saasApp = null;
@@ -224,6 +239,8 @@
             return ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'caixa', 'compras', 'relatorios', 'agenda', 'site', 'suporte'];
         } else if (plano.includes('fiscal')) {
             return ['pdv', 'vendas', 'fiscal', 'estoque', 'caixa', 'suporte'];
+        } else if (plano.includes('balcao') || plano.includes('caixa_central')) {
+            return ['pdv', 'vendas', 'estoque', 'caixa', 'suporte'];
         } else if (plano.includes('start') || plano.includes('basico') || plano === 'free') {
             return ['pdv', 'vendas', 'estoque', 'caixa', 'suporte'];
         }
@@ -269,6 +286,10 @@
         // IA e Marketing referem-se a mesma funcionalidade contratada no SaaS
         if (modulo === 'ia' || modulo === 'marketing') {
             return mods.includes('ia') || mods.includes('marketing');
+        }
+        // Caixa físico e Caixa da Loja pertencem à mesma permissão de caixa
+        if (modulo === 'caixa' || modulo === 'caixa_loja') {
+            return mods.includes('caixa') || mods.includes('caixa_loja');
         }
         return mods.includes(modulo);
     }
@@ -498,7 +519,7 @@
                             { rotas: ['relatorios.html'],      modulo: 'relatorios' },
                             { rotas: ['agenda.html'],          modulo: 'agenda' },
                             { rotas: ['marketing.html'],       modulo: 'ia' },
-                            { rotas: ['caixa.html'],           modulo: 'caixa' },
+                            { rotas: ['caixa.html', 'caixa_loja.html'], modulo: 'caixa' },
                             { rotas: ['pdv.html'],             modulo: 'pdv' },
                             { rotas: ['vendas_operacao.html', 'vendas_gestao.html', 'orcamentos.html'], modulo: 'vendas' },
                         ];
@@ -581,6 +602,7 @@
         else if (planoId.includes('enterprise')) chave = 'plano_enterprise';
         else if (planoId.includes('pro') || planoId.includes('profissional')) chave = 'plano_pro';
         else if (planoId.includes('fiscal')) chave = 'plano_fiscal';
+        else if (planoId.includes('balcao')) chave = 'plano_balcao_caixa';
         else if (planoId.includes('start') || planoId.includes('basico') || planoId === 'free') chave = 'plano_start';
         else {
             // Tenta matching direto (ex: 'plano_pro', 'plano_start')
@@ -634,7 +656,7 @@
         const plano = (licenca.plano || '').toLowerCase();
         let limite = 2; // Default start
         let ilimitado = false;
-        let planoNome = 'Start';
+        let planoNome = 'Start Express';
 
         if (plano.includes('ultra') || plano.includes('completo') || plano.includes('ilimitado')) {
             limite = 999999;
@@ -649,9 +671,12 @@
         } else if (plano.includes('fiscal')) {
             limite = 3;
             planoNome = 'Fiscal & Vendas';
+        } else if (plano.includes('balcao')) {
+            limite = 4;
+            planoNome = 'Varejo Balcão';
         } else {
             limite = 2;
-            planoNome = 'Start';
+            planoNome = 'Start Express';
         }
 
         return { limite: limite, ilimitado: ilimitado, planoNome: planoNome };
@@ -717,6 +742,18 @@
     }
 
     // -----------------------------------------------------------------------
+    // CONTROLE DE MODELO OPERACIONAL DO PDV (Fluxo de Venda)
+    // -----------------------------------------------------------------------
+    function obterFluxoPDV(licenca) {
+        licenca = licenca || window.currentSaaSLicense || window.currentEmpresaData || {};
+        if (licenca.fluxoPDV) return licenca.fluxoPDV;
+        const plano = (licenca.plano || '').toLowerCase();
+        if (plano.includes('start')) return 'direto';
+        if (plano.includes('balcao')) return 'caixa';
+        return 'ambos';
+    }
+
+    // -----------------------------------------------------------------------
     // EXPORTS GLOBAIS
     // -----------------------------------------------------------------------
     window.consultarLicencaCentral = consultarLicencaCentral;
@@ -736,4 +773,5 @@
     window.obterLimiteUsuarios = obterLimiteUsuarios;
     window.verificarLimiteUsuarios = verificarLimiteUsuarios;
     window.exibirModalLimiteUsuarios = exibirModalLimiteUsuarios;
+    window.obterFluxoPDV = obterFluxoPDV;
 })();

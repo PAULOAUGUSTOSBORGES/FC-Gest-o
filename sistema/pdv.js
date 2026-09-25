@@ -213,12 +213,13 @@ function inicializarOperacao() {
     
     // Cache inteligente: serve dados instantaneamente do sessionStorage
     const _listen = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb, opts) {
-        let ref = firestore.collection(col);
+        let ref = (typeof window.getEmpresaRef === 'function') ? window.getEmpresaRef().collection(col) : firestore.collection(col);
         if (opts && typeof opts.query === 'function') ref = opts.query(ref);
         return ref.onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
     };
     const _listenDoc = (typeof window.fcListenDoc === 'function') ? window.fcListenDoc : function(col, id, cb) {
-        return firestore.collection(col).doc(id).onSnapshot(doc => cb(doc.exists ? doc.data() : null));
+        let ref = (typeof window.getEmpresaRef === 'function') ? window.getEmpresaRef().collection(col).doc(id) : firestore.collection(col).doc(id);
+        return ref.onSnapshot(doc => cb(doc.exists ? doc.data() : null));
     };
 
     _listen('produtos', function(dados) {
@@ -227,7 +228,7 @@ function inicializarOperacao() {
     _listen('clientes', function(dados) {
         db.clientes = dados;
         atualizarListaClientesPDV();
-    });
+    }, { realtime: true });
     _listen('vendas', function(dados) {
         db.vendas = dados;
         const v = document.getElementById('view-vendas');
@@ -243,7 +244,7 @@ function inicializarOperacao() {
         }
     });
     // Caixa: sempre ativo pois é crítico (saldo em tempo real)
-    _listenDoc('fc_moveis', 'caixa', function(data) {
+    _listenDoc('caixa', 'caixa_atual', function(data) {
         db.caixa = data || { status: 'FECHADO', saldo: 0, historico: [] };
         const badgeCaixa = document.getElementById('pdv-status-caixa');
         if (badgeCaixa) prepararPDV();
@@ -269,6 +270,12 @@ function inicializarOperacao() {
     _listen('funcionarios', function(dados) {
         db.funcionarios = dados;
         atualizarVendedoresPDV();
+    }, { realtime: true });
+    _listenDoc('configuracoes', 'config', function(dados) {
+        if (dados) {
+            db.config = { ...(db.config || {}), ...dados };
+            if (typeof ajustarOpcoesOperacaoPDV === 'function') ajustarOpcoesOperacaoPDV();
+        }
     });
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -316,21 +323,126 @@ function abrirZoomCart(index) {
 // ==========================================
 // 4. CADASTRO E BUSCA DE CLIENTE RÁPIDO NO PDV
 // ==========================================
-function atualizarListaClientesPDV(selecionarId = null) {
+function selecionarClientePDV(clienteOuId) {
+    let c = null;
+    if (typeof clienteOuId === 'object' && clienteOuId !== null) {
+        c = clienteOuId;
+    } else if (clienteOuId && clienteOuId !== '0') {
+        const idStr = String(clienteOuId).trim();
+        c = (db.clientes || []).find(x => String(x.id || x._id || '').trim() === idStr);
+    }
+
     const hiddenId = document.getElementById('pdv-cliente');
     const inputBusca = document.getElementById('pdv-cliente-busca');
-    
-    if (!hiddenId || !inputBusca) return;
+    const dropdown = document.getElementById('pdv-cliente-resultados');
+    const vendSelect = document.getElementById('pdv-vendedor');
 
-    if(selecionarId && selecionarId !== '0') {
-        const c = (db.clientes || []).find(x => String(x.id) === String(selecionarId));
-        if(c) {
-            hiddenId.value = c.id;
-            inputBusca.value = c.nome;
+    if (dropdown) dropdown.classList.add('hidden');
+
+    if (!c || c.id === '0' || c.id === 0) {
+        if (hiddenId) hiddenId.value = '0';
+        if (inputBusca) inputBusca.value = '';
+        if (vendSelect) vendSelect.value = 'Balcão';
+        return;
+    }
+
+    if (hiddenId) hiddenId.value = c.id || c._id || '';
+    if (inputBusca) inputBusca.value = c.nome || '';
+
+    if (c.vendedor && String(c.vendedor).trim()) {
+        const vendedorNome = String(c.vendedor).trim();
+        if (vendSelect) {
+            if (typeof atualizarVendedoresPDV === 'function') {
+                atualizarVendedoresPDV();
+            }
+
+            let opt = Array.from(vendSelect.options).find(o => 
+                o.value.trim().toLowerCase() === vendedorNome.toLowerCase() ||
+                o.textContent.replace(/^Vend:\s*/i, '').trim().toLowerCase() === vendedorNome.toLowerCase()
+            );
+
+            if (!opt) {
+                opt = document.createElement('option');
+                opt.value = vendedorNome;
+                opt.textContent = `Vend: ${vendedorNome}`;
+                vendSelect.appendChild(opt);
+            }
+
+            vendSelect.value = opt.value;
+
+            if (typeof showToast === 'function') {
+                showToast(`Vendedor "${vendedorNome}" preenchido automaticamente pelo cadastro do cliente.`, 'info');
+            }
         }
     } else {
-        hiddenId.value = '0';
-        inputBusca.value = '';
+        if (vendSelect && !vendSelect.value) {
+            vendSelect.value = 'Balcão';
+        }
+    }
+}
+window.selecionarClientePDV = selecionarClientePDV;
+
+function autoSelecionarClientePorNome() {
+    const inputBusca = document.getElementById('pdv-cliente-busca');
+    const hiddenId = document.getElementById('pdv-cliente');
+    if (!inputBusca) return;
+    const txt = inputBusca.value.trim().toLowerCase();
+    if (!txt) {
+        selecionarClientePDV(null);
+        return;
+    }
+    if (hiddenId && hiddenId.value && hiddenId.value !== '0') {
+        const atual = (db.clientes || []).find(x => String(x.id || x._id || '').trim() === String(hiddenId.value).trim());
+        if (atual && (atual.nome || '').trim().toLowerCase() === txt) return;
+    }
+    const exato = (db.clientes || []).find(x => (x.nome || '').trim().toLowerCase() === txt);
+    if (exato) {
+        selecionarClientePDV(exato);
+        return;
+    }
+    const parcial = (db.clientes || []).find(x => (x.nome || '').trim().toLowerCase().startsWith(txt));
+    if (parcial) {
+        selecionarClientePDV(parcial);
+    }
+}
+window.autoSelecionarClientePorNome = autoSelecionarClientePorNome;
+
+function autoSelecionarPrimeiroCliente() {
+    const dropdown = document.getElementById('pdv-cliente-resultados');
+    if (dropdown && !dropdown.classList.contains('hidden')) {
+        const divs = dropdown.querySelectorAll('div');
+        if (divs.length > 1 && divs[1].onclick) {
+            divs[1].onclick();
+            return;
+        } else if (divs.length === 1 && divs[0].onclick) {
+            divs[0].onclick();
+            return;
+        }
+    }
+    autoSelecionarClientePorNome();
+}
+window.autoSelecionarPrimeiroCliente = autoSelecionarPrimeiroCliente;
+
+function atualizarListaClientesPDV(selecionarId = null) {
+    if (selecionarId && selecionarId !== '0') {
+        selecionarClientePDV(selecionarId);
+    } else if (selecionarId === null) {
+        const hiddenId = document.getElementById('pdv-cliente');
+        const inputBusca = document.getElementById('pdv-cliente-busca');
+        if (hiddenId && hiddenId.value && hiddenId.value !== '0') {
+            const c = (db.clientes || []).find(x => String(x.id || x._id || '').trim() === String(hiddenId.value).trim());
+            if (c) {
+                if (inputBusca && !inputBusca.value) inputBusca.value = c.nome || '';
+                if (c.vendedor) {
+                    selecionarClientePDV(c);
+                }
+                return;
+            }
+        }
+        if (hiddenId) hiddenId.value = '0';
+        if (inputBusca) inputBusca.value = '';
+    } else {
+        selecionarClientePDV(null);
     }
 }
 
@@ -348,6 +460,7 @@ function filtrarClientesPDV(termo) {
             (c.nome && c.nome.toLowerCase().includes(busca)) || 
             (c.wpp && c.wpp.includes(busca)) || 
             (c.documento && c.documento.includes(busca)) ||
+            (c.doc && c.doc.includes(busca)) ||
             (c.cpfCnpj && c.cpfCnpj.includes(busca))
         );
     }
@@ -362,9 +475,7 @@ function filtrarClientesPDV(termo) {
     divConsumidor.className = 'p-3 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-900';
     divConsumidor.innerHTML = `<i class="fa-solid fa-user text-slate-400 mr-2"></i>Consumidor Final (Padrão)`;
     divConsumidor.onclick = () => {
-        document.getElementById('pdv-cliente').value = '0';
-        document.getElementById('pdv-cliente-busca').value = '';
-        dropdown.classList.add('hidden');
+        selecionarClientePDV(null);
     };
     dropdown.appendChild(divConsumidor);
 
@@ -372,13 +483,17 @@ function filtrarClientesPDV(termo) {
         const div = document.createElement('div');
         div.className = 'p-3 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-700 text-sm flex flex-col transition-colors';
         
-        const docs = c.cpfCnpj || c.documento || 'Sem documento';
+        const docs = c.cpfCnpj || c.documento || c.doc || 'Sem documento';
         const fone = c.wpp || c.telefone || 'Sem telefone';
         const end = c.endereco || c.cidade || 'Sem endereço';
+        const vendBadge = c.vendedor ? `<span class="bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 px-1.5 py-0.5 rounded whitespace-nowrap font-bold"><i class="fa-solid fa-user-tie mr-1"></i>Vend: ${c.vendedor}</span>` : '';
         
         div.innerHTML = `
             <div class="flex flex-col">
-                <span class="font-bold text-slate-800 dark:text-slate-100">${c.nome}</span>
+                <div class="flex items-center justify-between gap-2">
+                    <span class="font-bold text-slate-800 dark:text-slate-100">${c.nome}</span>
+                    ${vendBadge}
+                </div>
                 <div class="flex items-center gap-2 mt-1.5 flex-wrap text-[10px] text-slate-500 dark:text-slate-400">
                     <span class="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded whitespace-nowrap"><i class="fa-solid fa-id-card mr-1 text-slate-400"></i>${docs}</span>
                     <span class="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded whitespace-nowrap"><i class="fa-brands fa-whatsapp mr-1 text-emerald-500"></i>${fone}</span>
@@ -387,9 +502,7 @@ function filtrarClientesPDV(termo) {
             </div>
         `;
         div.onclick = () => {
-            document.getElementById('pdv-cliente').value = c.id;
-            document.getElementById('pdv-cliente-busca').value = c.nome;
-            dropdown.classList.add('hidden');
+            selecionarClientePDV(c);
         };
         dropdown.appendChild(div);
     });
@@ -410,6 +523,18 @@ function abrirModalClienteRapido() {
     document.getElementById('cli-wpp').value = '';
     document.getElementById('cli-fixo').value = '';
     document.getElementById('cli-email').value = '';
+    const selVend = document.getElementById('cli-vendedor');
+    if (selVend) {
+        const vendedores = (db.funcionarios || [])
+            .filter(f => f.vendedor === 'SIM' || f.vendedor === 'Sim' || f.vendedor === true || f.cargo === 'Vendedor')
+            .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+        let html = '<option value="">Sem Vendedor Fixo (Padrão: Balcão)</option>';
+        vendedores.forEach(v => {
+            html += `<option value="${v.nome}">${v.nome}</option>`;
+        });
+        selVend.innerHTML = html;
+        selVend.value = '';
+    }
     document.getElementById('cli-cep').value = '';
     document.getElementById('cli-rua').value = '';
     document.getElementById('cli-numero').value = '';
@@ -459,6 +584,7 @@ async function salvarCliente() {
         wpp: document.getElementById('cli-wpp').value.trim(),
         fixo: document.getElementById('cli-fixo').value.trim(),
         email: document.getElementById('cli-email').value.trim(),
+        vendedor: document.getElementById('cli-vendedor') ? document.getElementById('cli-vendedor').value.trim() : '',
         cep: document.getElementById('cli-cep').value.trim(),
         rua: document.getElementById('cli-rua').value.trim(),
         numero: document.getElementById('cli-numero').value.trim(),
@@ -1209,10 +1335,27 @@ function ajustarOpcoesOperacaoPDV() {
     const user = window.currentUserInfo;
     const isAdmin = !user || !!user.isAdmin;
 
-    const podeLancarCaixa = isAdmin || (typeof window.checarPermissaoUsuario === 'function' ? window.checarPermissaoUsuario(user, 'perm_pdv_lancar_caixa', 'perm_pdv') : true);
-    const podeVendaBalcao = isAdmin || (typeof window.checarPermissaoUsuario === 'function' ? window.checarPermissaoUsuario(user, 'perm_pdv_venda_balcao', 'perm_pdv') : true);
+    // Resolução do Fluxo Operacional: SaaS vs Configuração da Loja
+    const fluxoPlano = (typeof window.SaaSLicenca !== 'undefined' && typeof window.SaaSLicenca.obterFluxoPDV === 'function')
+        ? window.SaaSLicenca.obterFluxoPDV(window.saasLicencaAtual)
+        : ((window.saasLicencaAtual && window.saasLicencaAtual.fluxoPDV) || 'ambos');
+
+    const fluxoConfig = (window.db && window.db.config && window.db.config.fluxoPDV) || 'ambos';
+    const fluxoEfetivo = (fluxoPlano === 'ambos') ? fluxoConfig : fluxoPlano;
+
+    let podeLancarCaixa = isAdmin || (typeof window.checarPermissaoUsuario === 'function' ? window.checarPermissaoUsuario(user, 'perm_pdv_lancar_caixa', 'perm_pdv') : true);
+    let podeVendaBalcao = isAdmin || (typeof window.checarPermissaoUsuario === 'function' ? window.checarPermissaoUsuario(user, 'perm_pdv_venda_balcao', 'perm_pdv') : true);
     const podeOrcamentos = isAdmin || (typeof window.checarPermissaoUsuario === 'function' ? window.checarPermissaoUsuario(user, 'perm_orcamentos', 'perm_pdv') : true);
     const podeServico = isAdmin || podeLancarCaixa || podeVendaBalcao;
+
+    // Regras estritas do fluxo operacional:
+    if (fluxoEfetivo === 'caixa') {
+        // Pré-Venda obrigatória para Caixa Central
+        podeVendaBalcao = false;
+    } else if (fluxoEfetivo === 'direto') {
+        // Venda Balcão direta obrigatória no PDV
+        podeLancarCaixa = false;
+    }
 
     const optMap = {
         'Venda': podeLancarCaixa,
@@ -1224,7 +1367,25 @@ function ajustarOpcoesOperacaoPDV() {
     let valorValido = false;
     let primeiroValido = null;
 
+    // Operação padrão preferida da loja
+    const operacaoPadraoConfig = (window.db && window.db.config && window.db.config.pdvOperacaoPadrao !== undefined)
+        ? window.db.config.pdvOperacaoPadrao
+        : (fluxoEfetivo === 'direto' ? 'VendaBalcao' : 'Venda');
+
+    const placeholderOpt = document.getElementById('pdv-operacao-placeholder');
+    if (placeholderOpt) {
+        if (operacaoPadraoConfig === 'nenhum') {
+            placeholderOpt.classList.remove('hidden');
+            placeholderOpt.style.display = '';
+            placeholderOpt.disabled = true;
+        } else {
+            placeholderOpt.classList.add('hidden');
+            placeholderOpt.style.display = 'none';
+        }
+    }
+
     Array.from(opSelect.options).forEach(opt => {
+        if (opt.id === 'pdv-operacao-placeholder') return;
         const permitido = optMap[opt.value] !== false;
         opt.disabled = !permitido;
         if (!permitido) {
@@ -1238,8 +1399,16 @@ function ajustarOpcoesOperacaoPDV() {
         }
     });
 
-    if (!valorValido && primeiroValido) {
-        opSelect.value = primeiroValido;
+    if (operacaoPadraoConfig === 'nenhum' && !opSelect.dataset.usuarioAlterou) {
+        opSelect.value = '';
+        atualizarResumoPagamentosVenda();
+        togglePanelServico();
+    } else if (!valorValido && primeiroValido) {
+        opSelect.value = (optMap[operacaoPadraoConfig] ? operacaoPadraoConfig : primeiroValido);
+        atualizarResumoPagamentosVenda();
+        togglePanelServico();
+    } else if (valorValido && !opSelect.dataset.usuarioAlterou && optMap[operacaoPadraoConfig] && opSelect.value !== operacaoPadraoConfig) {
+        opSelect.value = operacaoPadraoConfig;
         atualizarResumoPagamentosVenda();
         togglePanelServico();
     }
@@ -1252,12 +1421,14 @@ function prepararPDV() {
     const opSelect = document.getElementById('pdv-operacao'); 
     if(opSelect) { 
         opSelect.addEventListener('change', () => { 
+            opSelect.dataset.usuarioAlterou = 'true';
             atualizarResumoPagamentosVenda(); 
             togglePanelServico(); 
         }); 
     }
     
     ajustarOpcoesOperacaoPDV();
+    if (typeof atualizarVendedoresPDV === 'function') atualizarVendedoresPDV();
     atualizarListaClientesPDV();
     const badgeMargemTopo = document.getElementById('pdv-badge-margem-min');
     if (badgeMargemTopo) badgeMargemTopo.innerText = (typeof obterMargemMinimaConfigurada === 'function' ? obterMargemMinimaConfigurada() : 15) + '%';
@@ -1634,6 +1805,16 @@ function pdvLimpar() {
     pagamentosVendaAtual = []; 
     window.vendaEmEdicao = null; 
     atualizarListaClientesPDV(null);
+    
+    const vendSelect = document.getElementById('pdv-vendedor');
+    if (vendSelect) vendSelect.value = 'Balcão';
+
+    const opSelect = document.getElementById('pdv-operacao');
+    if (opSelect) {
+        delete opSelect.dataset.usuarioAlterou;
+        ajustarOpcoesOperacaoPDV();
+    }
+
     renderCarrinho(); 
 }
 
@@ -1897,7 +2078,15 @@ function atualizarResumoPagamentosVenda() {
             btnFinalizar.disabled = true; 
             btnFinalizar.classList.add('opacity-50', 'cursor-not-allowed'); 
             btnFinalizar.classList.remove('active:scale-95'); 
-            btnFinalizar.innerHTML = isOrcamento ? '<i class="fa-solid fa-file-invoice"></i> GERAR ORÇAMENTO COMPLETO' : '<i class="fa-solid fa-paper-plane"></i> LANÇAR VENDA P/ O CAIXA (F9)'; 
+            if (!op) {
+                btnFinalizar.innerHTML = '<i class="fa-solid fa-hand-pointer"></i> SELECIONE A OPERAÇÃO';
+            } else if (isOrcamento) {
+                btnFinalizar.innerHTML = '<i class="fa-solid fa-file-invoice"></i> GERAR ORÇAMENTO COMPLETO';
+            } else if (isVendaBalcao) {
+                btnFinalizar.innerHTML = '<i class="fa-solid fa-circle-check"></i> FINALIZAR VENDA NO BALCÃO';
+            } else {
+                btnFinalizar.innerHTML = '<i class="fa-solid fa-paper-plane"></i> LANÇAR VENDA P/ O CAIXA (F9)';
+            }
             btnFinalizar.classList.remove('bg-blue-600', 'hover:bg-blue-700'); 
             btnFinalizar.classList.add('bg-emerald-500', 'hover:bg-emerald-600'); 
         } 
@@ -1953,12 +2142,32 @@ async function finalizarVendaMultipla() {
         btnFinalizar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Aguarde...';
     }
 
-    const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : 'Venda';
+    const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : '';
+    if (!op) {
+        liberarBotaoFinalizar();
+        return showToast('Por favor, selecione o tipo de operação (Venda, Orçamento, Serviço ou Venda Balcão).', 'warning');
+    }
     const isOrcamento = op === 'Orçamento'; 
     const isServico = op === 'Serviço';
     const isVendaBalcao = op === 'VendaBalcao';
     const isLancarCaixa = (op === 'Venda' || isServico) && !isVendaBalcao;
     
+    // Validação de conformidade com o Fluxo Operacional do Plano SaaS / Configuração
+    const fluxoPlano = (typeof window.SaaSLicenca !== 'undefined' && typeof window.SaaSLicenca.obterFluxoPDV === 'function')
+        ? window.SaaSLicenca.obterFluxoPDV(window.saasLicencaAtual)
+        : ((window.saasLicencaAtual && window.saasLicencaAtual.fluxoPDV) || 'ambos');
+    const fluxoConfig = (window.db && window.db.config && window.db.config.fluxoPDV) || 'ambos';
+    const fluxoEfetivo = (fluxoPlano === 'ambos') ? fluxoConfig : fluxoPlano;
+
+    if (fluxoEfetivo === 'caixa' && isVendaBalcao) {
+        liberarBotaoFinalizar();
+        return showToast('O modelo operacional contratado ou configurado exige lançar as vendas para o Caixa Central.', 'warning');
+    }
+    if (fluxoEfetivo === 'direto' && isLancarCaixa && op === 'Venda') {
+        liberarBotaoFinalizar();
+        return showToast('O modelo operacional contratado ou configurado exige recebimento direto no PDV.', 'warning');
+    }
+
     const user = window.currentUserInfo;
     const isAdmin = !user || !!user.isAdmin;
 
@@ -2697,7 +2906,7 @@ async function emitirNota(tipo) {
 
     try {
         const emitirFunc = firebase.functions().httpsCallable(tipo === 'nfce' ? 'emitirNFCe' : 'emitirNFe');
-        const empIdAtual = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+        const empIdAtual = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
         const response = await emitirFunc({ 
             vendaId: window.vendaAtualImpressao.id,
             empId: empIdAtual
@@ -3314,19 +3523,28 @@ function atualizarVendedoresPDV() {
     const select = document.getElementById('pdv-vendedor');
     if (!select) return;
     
-    // Guarda o valor selecionado atualmente para não perder ao atualizar a lista
     const selectedValue = select.value;
     
-    // Filtra apenas os que são marcados como vendedor = "SIM"
+    // Filtra funcionários vendedores de forma abrangente
     const vendedores = (db.funcionarios || [])
-        .filter(f => f.vendedor === 'SIM' || f.vendedor === 'Sim' || f.vendedor === true)
+        .filter(f => (f.vendedor && String(f.vendedor).toUpperCase() === 'SIM') || f.vendedor === true || (f.cargo && String(f.cargo).toLowerCase().includes('vendedor')))
         .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
         
     let html = `<option value="Balcão">Vend: Balcão</option>`;
     
+    const nomesAdicionados = new Set(['balcão', 'balcao']);
+    
     vendedores.forEach(v => {
-        html += `<option value="${v.nome}">Vend: ${v.nome}</option>`;
+        if (v && v.nome && !nomesAdicionados.has(v.nome.trim().toLowerCase())) {
+            nomesAdicionados.add(v.nome.trim().toLowerCase());
+            html += `<option value="${v.nome.trim()}">Vend: ${v.nome.trim()}</option>`;
+        }
     });
+
+    // Se houver um valor selecionado anteriormente que não esteja nos funcionários, preserva-o
+    if (selectedValue && !nomesAdicionados.has(selectedValue.trim().toLowerCase())) {
+        html += `<option value="${selectedValue.trim()}">Vend: ${selectedValue.trim()}</option>`;
+    }
     
     select.innerHTML = html;
     
@@ -3959,6 +4177,8 @@ async function salvarConfigMargemRapidaPDV() {
             }, { merge: true });
         }
         if (typeof window.FCCache !== 'undefined') {
+            window.FCCache.set('config', window.db.config);
+            window.FCCache.set('configuracoes_config', window.db.config);
             window.FCCache.set('fc_moveis_config', window.db.config);
         }
         fecharModalConfigMargemPDV();

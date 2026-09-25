@@ -39,7 +39,7 @@ function inicializarCadastro() {
     }
     // Liga os listeners do Firestore com cache inteligente (FCCache)
     const _listen = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb, opts) {
-        let ref = firestore.collection(col);
+        let ref = (typeof window.getEmpresaRef === 'function') ? window.getEmpresaRef().collection(col) : firestore.collection(col);
         if (opts && typeof opts.query === 'function') ref = opts.query(ref);
         return ref.onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
     };
@@ -69,7 +69,7 @@ function inicializarCadastro() {
         if (typeof window.obterInstanciaSaaS === 'function') {
             try {
                 const sDb = window.obterInstanciaSaaS();
-                const empId = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+                const empId = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
                 if (sDb && empId && Array.isArray(dados) && dados.length > 0) {
                     dados.forEach(f => {
                         sDb.collection('empresas').doc(empId).collection('funcionarios').doc(f.id).set(f, { merge: true }).catch(() => {});
@@ -1080,7 +1080,7 @@ async function salvarFuncionario() {
             await window.getEmpresaRef().collection('funcionarios').doc(uid).set(obj);
             
             // 2. Salva no índice global de usuários para o login identificar a empresa dele
-            const empAtiva = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+            const empAtiva = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
             await firestore.collection('usuarios').doc(uid).set({
                 email: email,
                 empresaId: empAtiva,
@@ -1091,7 +1091,7 @@ async function salvarFuncionario() {
             });
 
             // 3. Sincroniza diretamente com o SaaS Master
-            if (typeof window.obterInstanciaSaaS === 'function') {
+            if (typeof window.obterInstanciaSaaS === 'function' && empAtiva) {
                 try {
                     const sDb = window.obterInstanciaSaaS();
                     if (sDb) await sDb.collection('empresas').doc(empAtiva).collection('funcionarios').doc(uid).set(obj);
@@ -1114,8 +1114,8 @@ async function salvarFuncionario() {
             if (typeof window.obterInstanciaSaaS === 'function') {
                 try {
                     const sDb = window.obterInstanciaSaaS();
-                    const empAtiva = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
-                    if (sDb) await sDb.collection('empresas').doc(empAtiva).collection('funcionarios').doc(id).set(obj, { merge: true });
+                    const empAtiva = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
+                    if (sDb && empAtiva) await sDb.collection('empresas').doc(empAtiva).collection('funcionarios').doc(id).set(obj, { merge: true });
                 } catch(e) {}
             }
 
@@ -1144,8 +1144,8 @@ function excluirFuncionario(id) {
             if (typeof window.obterInstanciaSaaS === 'function') {
                 try {
                     const sDb = window.obterInstanciaSaaS();
-                    const empAtiva = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
-                    if (sDb) await sDb.collection('empresas').doc(empAtiva).collection('funcionarios').doc(id).delete();
+                    const empAtiva = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
+                    if (sDb && empAtiva) await sDb.collection('empresas').doc(empAtiva).collection('funcionarios').doc(id).delete();
                 } catch(e) {}
             }
 

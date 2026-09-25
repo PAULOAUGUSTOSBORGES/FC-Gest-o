@@ -282,7 +282,7 @@ if (typeof firebase !== 'undefined' && firebase.functions) {
                 return async function(data) {
                     const payload = (typeof data === 'object' && data !== null) ? { ...data } : {};
                     if (!payload.empId) {
-                        payload.empId = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+                        payload.empId = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
                     }
                     return callable(payload);
                 };
@@ -312,8 +312,8 @@ var db = {
     produtos: [], categorias: [], clientes: [], fornecedores: [], vendas: [], movimentacoes: [],
     financeiro: [], compras: [], funcionarios: [], caixa: { status: 'FECHADO', saldo: 0, historico: [] },
     config: { 
-        empresa: { nome: 'FC Móveis e Interiores', fantasia: 'FC Móveis' },
-        taxas: { 'Dinheiro': 0, 'PIX': 0, 'Cartão Débito': 1.99, 'Boleto': 0, 'Fiado': 0, 'Cartão Crédito': { 1: 4.99, 2: 5.49, 3: 5.99, 4: 6.49, 5: 6.99, 6: 7.49, 7: 7.99, 8: 8.49, 9: 8.99, 10: 9.49, 11: 9.99, 12: 10.49 } },
+        empresa: { nome: '', fantasia: '', cnpj: '', telefone: '', logo: '' },
+        taxas: { 'Dinheiro': 0, 'PIX': 0, 'Cartão Débito': 0, 'Boleto': 0, 'Fiado': 0, 'Cartão Crédito': { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0 } },
         prazos: { 'Fiado': 30, 'Boleto': 30, 'Cartão Crédito': 1, 'Cartão Débito': 1 }
     }
 };
@@ -342,12 +342,18 @@ window.db = db;
             }
         });
         // Carrega config do cache
-        if (window.FCCache.isValido('fc_moveis_config')) {
+        if (window.FCCache.isValido('config')) {
+            const configCache = window.FCCache.get('config');
+            if (configCache) db.config = configCache;
+        } else if (window.FCCache.isValido('fc_moveis_config')) {
             const configCache = window.FCCache.get('fc_moveis_config');
             if (configCache) db.config = configCache;
         }
         // Carrega caixa do cache
-        if (window.FCCache.isValido('fc_moveis_caixa')) {
+        if (window.FCCache.isValido('caixa')) {
+            const caixaCache = window.FCCache.get('caixa');
+            if (caixaCache) db.caixa = caixaCache;
+        } else if (window.FCCache.isValido('fc_moveis_caixa')) {
             const caixaCache = window.FCCache.get('fc_moveis_caixa');
             if (caixaCache) db.caixa = caixaCache;
         }
@@ -763,7 +769,7 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
         iniciarMonitorSessaoDiaria();
 
             // Pré-carrega Config e Permissões do cache para inicialização instantânea
-            const configCache = (typeof window.FCCache !== 'undefined') && window.FCCache.get('fc_moveis_config');
+            const configCache = (typeof window.FCCache !== 'undefined') && (window.FCCache.get('config') || window.FCCache.get('fc_moveis_config'));
             if (configCache) db.config = configCache;
 
             const userCacheKey = 'funcionario_' + user.uid;
@@ -795,18 +801,49 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                     ]);
 
                     if (confSnap && confSnap.exists) {
-                        const dados = confSnap.data();
-                        db.config = {
-                            ...db.config,
-                            ...dados,
-                            empresa: { ...(db.config?.empresa || {}), ...(dados.empresa || {}) },
-                            taxas: dados.taxas || db.config?.taxas,
-                            prazos: dados.prazos || db.config?.prazos,
-                            loja: { ...(db.config?.loja || {}), ...(dados.loja || {}) }
+                        const dados = confSnap.data() || {};
+                        const baseConfig = {
+                            empresa: {
+                                nome: window.currentEmpresaData?.nomeEmpresa || '',
+                                fantasia: window.currentEmpresaData?.nomeEmpresa || '',
+                                cnpj: '', telefone: '', logo: ''
+                            },
+                            taxas: { 'Dinheiro': 0, 'PIX': 0, 'Cartão Débito': 0, 'Boleto': 0, 'Fiado': 0, 'Cartão Crédito': { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0 } },
+                            prazos: { 'Fiado': 30, 'Boleto': 30, 'Cartão Crédito': 1, 'Cartão Débito': 1 },
+                            loja: {}
                         };
-                        if (typeof window.FCCache !== 'undefined') window.FCCache.set('fc_moveis_config', db.config);
+                        db.config = {
+                            ...baseConfig,
+                            ...dados,
+                            empresa: { ...baseConfig.empresa, ...(dados.empresa || {}) },
+                            taxas: dados.taxas || baseConfig.taxas,
+                            prazos: dados.prazos || baseConfig.prazos,
+                            loja: { ...baseConfig.loja, ...(dados.loja || {}) }
+                        };
+                        if (typeof window.FCCache !== 'undefined') {
+                            window.FCCache.set('config', db.config);
+                            window.FCCache.set('fc_moveis_config', db.config);
+                        }
+                        if (typeof window.ajustarOpcoesOperacaoPDV === 'function') {
+                            try { window.ajustarOpcoesOperacaoPDV(); } catch (e) {}
+                        }
                     } else if (confSnap && !confSnap.exists) {
-                        await window.getEmpresaRef().collection('configuracoes').doc('config').set(db.config).catch(() => {});
+                        const novaConfig = {
+                            empresa: {
+                                nome: window.currentEmpresaData?.nomeEmpresa || '',
+                                fantasia: window.currentEmpresaData?.nomeEmpresa || '',
+                                cnpj: '', telefone: '', logo: ''
+                            },
+                            taxas: { 'Dinheiro': 0, 'PIX': 0, 'Cartão Débito': 0, 'Boleto': 0, 'Fiado': 0, 'Cartão Crédito': { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0 } },
+                            prazos: { 'Fiado': 30, 'Boleto': 30, 'Cartão Crédito': 1, 'Cartão Débito': 1 },
+                            pdv: { permite_estoque_negativo: false }
+                        };
+                        db.config = novaConfig;
+                        await window.getEmpresaRef().collection('configuracoes').doc('config').set(novaConfig).catch(() => {});
+                        if (typeof window.FCCache !== 'undefined') {
+                            window.FCCache.set('config', db.config);
+                            window.FCCache.set('fc_moveis_config', db.config);
+                        }
                     }
 
                     if (userSnap && userSnap.exists) {
@@ -1394,13 +1431,17 @@ function aplicarControleDeModulosSaaS(empData, user) {
     if (!mods || !Array.isArray(mods) || mods.length === 0) {
         const plano = (empData.plano || '').toUpperCase();
         if (plano.includes('START') || plano.includes('BASICO') || plano === 'FREE') {
-            mods = ['pdv', 'vendas', 'estoque'];
+            mods = ['pdv', 'vendas', 'estoque', 'caixa'];
+        } else if (plano.includes('BALCAO')) {
+            mods = ['pdv', 'vendas', 'estoque', 'caixa'];
+        } else if (plano.includes('FISCAL')) {
+            mods = ['pdv', 'vendas', 'fiscal', 'estoque', 'caixa'];
         } else if (plano.includes('PRO') || plano.includes('PROFISSIONAL')) {
-            mods = ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'site'];
-        } else if (plano.includes('ENTERPRISE') || plano.includes('ILIMITADO')) {
-            mods = ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'site', 'ia'];
+            mods = ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'caixa', 'compras', 'relatorios', 'site'];
+        } else if (plano.includes('ENTERPRISE') || plano.includes('ULTRA') || plano.includes('ILIMITADO')) {
+            mods = ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'caixa', 'compras', 'relatorios', 'site', 'ia', 'agenda', 'marketing', 'suporte'];
         } else {
-            mods = ['pdv', 'vendas', 'estoque', 'financeiro'];
+            mods = ['pdv', 'vendas', 'estoque', 'caixa', 'financeiro'];
         }
     }
     window.modulosLiberadosEmpresa = mods;
@@ -1415,7 +1456,7 @@ function aplicarControleDeModulosSaaS(empData, user) {
         { rotas: ['relatorios.html'],      modulo: 'relatorios', nome: 'Relatorios & DRE' },
         { rotas: ['agenda.html'],          modulo: 'agenda',     nome: 'Agenda & Lembretes' },
         { rotas: ['marketing.html'],       modulo: 'ia',         nome: 'Marketing & IA' },
-        { rotas: ['caixa.html'],           modulo: 'caixa',      nome: 'Caixa Fisico' },
+        { rotas: ['caixa.html', 'caixa_loja.html'], modulo: 'caixa', nome: 'Caixa Fisico & Caixa da Loja' },
         { rotas: ['pdv.html'],             modulo: 'pdv',        nome: 'Frente de Caixa (PDV)' },
         { rotas: ['vendas_operacao.html', 'vendas_gestao.html', 'orcamentos.html', 'operacao.html'], modulo: 'vendas', nome: 'Historico de Vendas & Orcamentos' },
         { rotas: ['produtos.html', 'cadastro.html', 'estoque.html', 'fornecedores.html'], modulo: 'estoque', nome: 'Produtos, Estoque & Cadastros' }
@@ -1425,6 +1466,7 @@ function aplicarControleDeModulosSaaS(empData, user) {
     const _checar = typeof window.temPermissaoModulo === 'function' ? window.temPermissaoModulo : function(m, l) {
         if (!l || !Array.isArray(l)) return false;
         if (m === 'ia' || m === 'marketing') return l.includes('ia') || l.includes('marketing');
+        if (m === 'caixa' || m === 'caixa_loja') return l.includes('caixa') || l.includes('caixa_loja');
         return l.includes(m);
     };
     for (const item of mapaPaginas) {
@@ -1490,6 +1532,7 @@ function atualizarMenuLateralPorPlanoSaaS(modulosLiberados) {
     const checarPerm = typeof window.temPermissaoModulo === 'function' ? window.temPermissaoModulo : function(m, list) {
         if (!list || !Array.isArray(list)) return false;
         if (m === 'ia' || m === 'marketing') return list.includes('ia') || list.includes('marketing');
+        if (m === 'caixa' || m === 'caixa_loja') return list.includes('caixa') || list.includes('caixa_loja');
         return list.includes(m);
     };
 
@@ -1498,6 +1541,7 @@ function atualizarMenuLateralPorPlanoSaaS(modulosLiberados) {
         { href: 'financeiro.html',      modulo: 'financeiro', nome: 'Financeiro & Contas' },
         { href: 'compras.html',         modulo: 'compras',    nome: 'Compras & NF-e XML' },
         { href: 'caixa.html',           modulo: 'caixa',      nome: 'Caixa Fisico' },
+        { href: 'caixa_loja.html',      modulo: 'caixa',      nome: 'Caixa da Loja' },
         { href: 'relatorios.html',      modulo: 'relatorios', nome: 'Relatorios & DRE' },
         { href: 'pdv.html',             modulo: 'pdv',        nome: 'Frente de Caixa (PDV)' },
         { href: 'vendas_operacao.html', modulo: 'vendas',     nome: 'Vendas & Orcamentos' },
@@ -1685,7 +1729,7 @@ async function fazerLogout() {
     // Limpa todo o cache ao fazer logout para garantir que outro usuário
     // não veja dados em cache do usuário anterior
     if (typeof window.FCCache !== 'undefined') {
-        window.FCCache.invalidarTudo();
+        try { await window.FCCache.invalidarTudo(); } catch (e) {}
     }
     try {
         await auth.signOut();
@@ -1699,9 +1743,9 @@ window.logout = fazerLogout;
 
 // Funções da Loja Virtual Multi-Tenant
 window.gerarLinkLojaVirtual = function() {
-    const empId = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+    const empId = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
     const baseUrl = window.location.href.split('/sistema/')[0] + '/site/index.html';
-    return `${baseUrl}?loja=${encodeURIComponent(empId)}`;
+    return empId ? `${baseUrl}?loja=${encodeURIComponent(empId)}` : baseUrl;
 };
 
 window.copiarLinkLojaVirtual = function() {

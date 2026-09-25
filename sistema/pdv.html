@@ -39,8 +39,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- CORRIGIDO: Removido o ?v=20260831113500 que estava quebrando o carregamento offline -->
-    <link rel="stylesheet" href="../style.css?v=20260925085308">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260925085308">
+    <link rel="stylesheet" href="../style.css?v=20260925110619">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260925110619">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="pdv">
 
@@ -118,6 +118,7 @@
                         <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                             <span id="pdv-status-caixa" class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-bold px-3 py-1.5 rounded-lg text-[10px] md:text-xs uppercase tracking-wider whitespace-nowrap"><i class="fa-solid fa-lock mr-1"></i> Verificando Caixa...</span>
                             <select id="pdv-operacao" onchange="if(typeof atualizarResumoPagamentosVenda==='function') atualizarResumoPagamentosVenda(); if(typeof togglePanelServico==='function') togglePanelServico();" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs md:text-sm font-bold text-slate-700 dark:text-slate-200 px-2 py-1.5 md:py-2 rounded-lg outline-none focus:border-blue-500 flex-1 dark:text-white">
+                                <option value="" disabled id="pdv-operacao-placeholder" class="hidden">-- Selecione a Operação --</option>
                                 <option value="Venda">Venda (Lançar p/ Caixa)</option>
                                 <option value="Orçamento">Orçamento Completo</option>
                                 <option value="Serviço">Prestação de Serviço / O.S.</option> 
@@ -129,9 +130,6 @@
                             <button type="button" onclick="abrirModalRelatorioPDV()" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold px-2.5 py-1.5 md:py-2 rounded-lg text-xs transition flex items-center gap-1.5 whitespace-nowrap shadow-xs" title="Relatório de Vendas e Operação do PDV">
                                 <i class="fa-solid fa-chart-pie text-emerald-500"></i> Relatório PDV
                             </button>
-                            <button type="button" onclick="abrirModalConfigMargemPDV()" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold px-2.5 py-1.5 md:py-2 rounded-lg text-xs transition flex items-center gap-1.5 whitespace-nowrap shadow-xs" title="Configurar Margem Mínima de Lucro do PDV">
-                                <i class="fa-solid fa-percent text-blue-500"></i> Lucro Mín: <span id="pdv-badge-margem-min" class="text-blue-600 dark:text-blue-400 font-black">15%</span>
-                            </button>
                             <select id="pdv-vendedor" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs md:text-sm font-bold text-slate-700 dark:text-slate-200 px-2 py-1.5 md:py-2 rounded-lg outline-none focus:border-blue-500 flex-1 dark:text-white">
                                 <option value="Balcão">Vend: Balcão</option>
                             </select>
@@ -140,7 +138,7 @@
                         <!-- BUSCA INTELIGENTE DE CLIENTES NO PDV -->
                         <div class="flex w-full sm:w-64 relative">
                             <input type="hidden" id="pdv-cliente" value="0">
-                            <input type="text" id="pdv-cliente-busca" placeholder="Cliente: Consumidor Final" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-sm font-bold text-slate-700 dark:text-slate-200 px-3 py-2 rounded-l-lg outline-none focus:border-blue-500 w-full dark:text-white" autocomplete="off" onfocus="filtrarClientesPDV(this.value)" oninput="filtrarClientesPDV(this.value)">
+                            <input type="text" id="pdv-cliente-busca" placeholder="Cliente: Consumidor Final" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-sm font-bold text-slate-700 dark:text-slate-200 px-3 py-2 rounded-l-lg outline-none focus:border-blue-500 w-full dark:text-white" autocomplete="off" onfocus="filtrarClientesPDV(this.value)" oninput="filtrarClientesPDV(this.value)" onblur="setTimeout(() => { if (typeof autoSelecionarClientePorNome === 'function') autoSelecionarClientePorNome(); }, 250)" onkeydown="if(event.key==='Enter'){ event.preventDefault(); if (typeof autoSelecionarPrimeiroCliente === 'function') autoSelecionarPrimeiroCliente(); }">
                             <div id="pdv-cliente-resultados" class="absolute z-50 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl rounded-lg top-[42px] hidden max-h-60 overflow-y-auto custom-scrollbar"></div>
                             <button id="btn-pdv-novo-cliente" onclick="abrirModalClienteRapido()" class="bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-200 border-l-0 px-3 py-2 rounded-r-lg font-bold text-sm transition shrink-0" title="Novo Cliente"><i class="fa-solid fa-user-plus"></i></button>
                         </div>
@@ -563,45 +561,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE CONFIGURAÇÃO RÁPIDA DE MARGEM MÍNIMA DO PDV -->
-    <div id="modal-config-margem-pdv" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 dark:border-slate-700">
-            <div class="flex justify-between items-center pb-3 mb-4 border-b border-slate-100 dark:border-slate-700">
-                <h3 class="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                    <i class="fa-solid fa-percent text-blue-600"></i> Margem Mínima de Lucro no PDV
-                </h3>
-                <button type="button" onclick="fecharModalConfigMargemPDV()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-            
-            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
-                Defina a porcentagem mínima de lucro aceitável. Se o desconto concedido deixar o lucro do produto abaixo desta porcentagem, o PDV emitirá um alerta imediato de <strong>ATENÇÃO</strong>.
-            </p>
 
-            <div class="space-y-4 mb-6">
-                <div>
-                    <label class="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">Porcentagem Mínima de Lucro (%)</label>
-                    <div class="relative">
-                        <input type="number" step="0.1" min="0" max="1000" id="modal-pdv-margem-input" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-blue-500 pr-10" placeholder="Ex: 20">
-                        <span class="absolute right-3 top-2.5 font-bold text-slate-400 text-sm">%</span>
-                    </div>
-                </div>
-                <div>
-                    <label class="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">Ação ao Ultrapassar Limite de Desconto</label>
-                    <select id="modal-pdv-acao-input" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 dark:text-white outline-none focus:border-blue-500">
-                        <option value="alerta">Alertar visualmente e solicitar confirmação ao finalizar</option>
-                        <option value="bloquear">Bloquear a finalização da venda (Exigir ajuste no desconto)</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="flex gap-3">
-                <button type="button" onclick="fecharModalConfigMargemPDV()" class="flex-1 px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition text-sm">Cancelar</button>
-                <button type="button" onclick="salvarConfigMargemRapidaPDV()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-lg transition shadow-md text-sm flex items-center justify-center gap-2"><i class="fa-solid fa-save"></i> Salvar</button>
-            </div>
-        </div>
-    </div>
 
     <!-- CONFIRMAÇÃO DO SISTEMA -->
     <div id="modal-confirmacao" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
@@ -642,6 +602,15 @@
                             <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">WhatsApp / Celular</label><input type="text" id="cli-wpp" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                             <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Telefone Fixo</label><input type="text" id="cli-fixo" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                             <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">E-mail</label><input type="email" id="cli-email" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
+                            <div class="md:col-span-3">
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block flex items-center gap-1.5">
+                                    <i class="fa-solid fa-user-tie text-blue-500"></i> Vendedor Fixo / Padrão (Opcional)
+                                </label>
+                                <select id="cli-vendedor" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white font-medium">
+                                    <option value="">Sem Vendedor Fixo (Padrão: Balcão)</option>
+                                </select>
+                                <p class="text-[11px] text-slate-400 mt-1">Ao selecionar este cliente no PDV, o vendedor acima será preenchido automaticamente, podendo ser alterado na hora da venda.</p>
+                            </div>
                         </div>
                         <div class="border-t border-slate-100 dark:border-slate-700 pt-4 mt-6">
                             <h4 class="font-bold text-slate-700 dark:text-slate-200 text-sm mb-3 flex items-center gap-2"><i class="fa-solid fa-location-dot text-blue-500"></i> Endereço</h4>
@@ -1032,11 +1001,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
 
-    <script src="../sistema/config_banco.js?v=20260925085308"></script>
-    <script src="saas_licenca.js?v=20260925085308"></script>
-    <script src="../global.js?v=20260925085308"></script>
-    <script src="fc_cache.js?v=20260925085308"></script>
-    <script src="pdv.js?v=20260925085308"></script>
+    <script src="../sistema/config_banco.js?v=20260925150500"></script>
+    <script src="saas_licenca.js?v=20260925150500"></script>
+    <script src="../global.js?v=20260925150500"></script>
+    <script src="fc_cache.js?v=20260925150500"></script>
+    <script src="pdv.js?v=20260925150500"></script>
 
     <!-- MODAL RELATÓRIO COMPLETO DO PDV -->
     <div id="modal-relatorio-pdv" class="fixed inset-0 bg-slate-900/70 z-[200] hidden flex items-center justify-center p-3 md:p-4 backdrop-blur-sm">

@@ -156,13 +156,15 @@ function carregarEventos() {
     if (unsubscribeFinanceiro) unsubscribeFinanceiro();
     
     const _listenDoc = (typeof window.fcListenDoc === 'function') ? window.fcListenDoc : function(col, id, cb) {
-        return firestore.collection(col).doc(id).onSnapshot(doc => cb(doc.exists ? doc.data() : null));
+        const ref = (typeof window.getEmpresaRef === 'function') ? window.getEmpresaRef().collection(col).doc(id) : firestore.collection(col).doc(id);
+        return ref.onSnapshot(doc => cb(doc.exists ? doc.data() : null));
     };
     const _listenCollection = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb) {
-        return firestore.collection(col).onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+        const ref = (typeof window.getEmpresaRef === 'function') ? window.getEmpresaRef().collection(col) : firestore.collection(col);
+        return ref.onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
     };
     
-    unsubscribeAgenda = _listenDoc('fc_moveis', 'config', function(docData) {
+    unsubscribeAgenda = _listenDoc('configuracoes', 'config', function(docData) {
         agendaEventsData = (docData && docData.agenda_eventos) ? docData.agenda_eventos : {};
         renderizarTodosEventosAgenda();
     });

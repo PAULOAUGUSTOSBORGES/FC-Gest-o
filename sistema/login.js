@@ -68,7 +68,9 @@ async function fazerLogin() {
             
             // Limpa qualquer resíduo de cache de outra conta
             sessionStorage.clear();
-            if (typeof window.FCCache !== 'undefined') window.FCCache.invalidarTudo();
+            if (typeof window.FCCache !== 'undefined') {
+                try { await window.FCCache.invalidarTudo(); } catch(e) {}
+            }
 
             // Buscar empresa do usuario
             try {
@@ -188,7 +190,9 @@ async function fazerCadastro() {
         window._fazendoLogin = true;
         sessionStorage.clear();
         localStorage.removeItem('fc_empresa_ativa');
-        if (typeof window.FCCache !== 'undefined') window.FCCache.invalidarTudo();
+        if (typeof window.FCCache !== 'undefined') {
+            try { await window.FCCache.invalidarTudo(); } catch(e) {}
+        }
 
         const btn = document.getElementById('btn-acao');
         btn.innerText = 'Criando Loja...'; btn.disabled = true;
@@ -240,10 +244,27 @@ async function fazerCadastro() {
                 empresa: {
                     nome: nomeEmpresa,
                     fantasia: nomeEmpresa,
-                    cnpj: ''
+                    cnpj: '',
+                    telefone: '',
+                    logo: '',
+                    cep: '',
+                    rua: '',
+                    numero: '',
+                    bairro: '',
+                    cidade: '',
+                    uf: ''
                 },
+                taxas: {
+                    'Dinheiro': 0, 'PIX': 0, 'Cartão Débito': 0, 'Boleto': 0, 'Fiado': 0,
+                    'Cartão Crédito': { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0 }
+                },
+                prazos: { 'Fiado': 30, 'Boleto': 30, 'Cartão Crédito': 1, 'Cartão Débito': 1 },
                 pdv: {
                     permite_estoque_negativo: false
+                },
+                loja: {
+                    ativa: false,
+                    nome: nomeEmpresa
                 }
             });
 

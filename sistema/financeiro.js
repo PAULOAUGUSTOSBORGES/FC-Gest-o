@@ -210,6 +210,9 @@ async function confirmarBaixa() {
             db.caixa.saldo = cxSaldoNovo;
             db.caixa.historico = cxHistoricoNovo;
             if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+                window.FCCache.set('caixa', db.caixa);
+                window.FCCache.set('caixa_caixa_atual', db.caixa);
+                window.FCCache.set('caixa_' + caixaDocId, db.caixa);
                 window.FCCache.set('fc_moveis_' + caixaDocId, db.caixa);
                 window.FCCache.set('fc_moveis_caixa', db.caixa);
             }
@@ -721,56 +724,11 @@ window.confirmarRenegociacao = confirmarRenegociacaoAvancada;
 window.abrirModalNegociacao = abrirModalRenegociacao;
 
 // ==========================================
-// MIGRAÇÃO AUTOMÁTICA DO BANCO ANTIGO
+// MIGRAÇÃO AUTOMÁTICA DO BANCO ANTIGO (DESATIVADA)
 // ==========================================
 async function migrarDadosSeNecessario() {
-    try {
-        const comprasSnap = await window.getEmpresaRef().collection('compras').limit(1).get();
-        const finSnap = await window.getEmpresaRef().collection('financeiro').limit(1).get();
-        if (!comprasSnap.empty || !finSnap.empty) return;
-        
-        const bancoPrincipalSnap = await firestore.collection('fc_moveis').doc('banco_principal').get();
-        if (!bancoPrincipalSnap.exists) return;
-        
-        const dados = bancoPrincipalSnap.data();
-        if (!dados) return;
-        
-        const temDados = (dados.compras && dados.compras.length > 0) || (dados.financeiro && dados.financeiro.length > 0);
-        if (!temDados) return;
-        
-        showToast('Importando dados do sistema anterior... Aguarde!', 'info');
-        
-        const operations = [];
-        const colecoes = ['produtos', 'clientes', 'fornecedores', 'vendas', 'movimentacoes', 'financeiro', 'compras'];
-        
-        for (let col of colecoes) {
-            if (dados[col] && Array.isArray(dados[col])) {
-                for (let item of dados[col]) {
-                    const id = item.id ? String(item.id) : firestore.collection(col).doc().id;
-                    operations.push({ ref: firestore.collection(col).doc(id), data: item });
-                }
-            }
-        }
-        
-        if (dados.caixa) operations.push({ ref: window.getEmpresaRef().collection('caixa').doc('caixa_atual'), data: dados.caixa });
-        if (dados.config) operations.push({ ref: window.getEmpresaRef().collection('configuracoes').doc('config'), data: dados.config });
-        
-        const BATCH_SIZE = 400;
-        for (let i = 0; i < operations.length; i += BATCH_SIZE) {
-            const batch = firestore.batch();
-            operations.slice(i, i + BATCH_SIZE).forEach(op => {
-                batch.set(op.ref, op.data, { merge: true });
-            });
-            await batch.commit();
-        }
-        
-        try { await firestore.collection('fc_moveis').doc('banco_principal').update({ migrado: true }); } catch (e2) {}
-        showToast('Dados importados com sucesso! Recarregando...', 'success');
-        setTimeout(() => window.location.reload(), 2000);
-    } catch (e) {
-        console.error('Erro na migracao:', e);
-        showToast('Aviso: Erro ao importar dados anteriores.', 'error');
-    }
+    // Desativado: rotina legada que causava loop infinito de recarregamento
+    return;
 }
 
 function inicializarGestao() {
@@ -778,17 +736,17 @@ function inicializarGestao() {
         console.warn('Bloqueando execução: usuário sem permissão para esta rota.');
         return;
     }
-    // Primeiro tenta migrar dados do banco antigo se necessario
-    migrarDadosSeNecessario();
+    // Migração legada desativada (migrarDadosSeNecessario)
 
     // Cache inteligente: serve dados instantaneamente do sessionStorage
     const _listen = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb, opts) {
-        let ref = firestore.collection(col);
+        let ref = (typeof window.getEmpresaRef === 'function') ? window.getEmpresaRef().collection(col) : firestore.collection(col);
         if (opts && typeof opts.query === 'function') ref = opts.query(ref);
         return ref.onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
     };
     const _listenDoc = (typeof window.fcListenDoc === 'function') ? window.fcListenDoc : function(col, id, cb) {
-        return firestore.collection(col).doc(id).onSnapshot(doc => cb(doc.exists ? doc.data() : null));
+        let ref = (typeof window.getEmpresaRef === 'function') ? window.getEmpresaRef().collection(col).doc(id) : firestore.collection(col).doc(id);
+        return ref.onSnapshot(doc => cb(doc.exists ? doc.data() : null));
     };
 
     // Controla quantas colecoes ja carregaram o primeiro snapshot
@@ -828,7 +786,7 @@ function inicializarGestao() {
         // Nao conta no tentarRefresh (colecao adicional)
     });
     // Caixa: sempre ativo pois e critico (saldo em tempo real)
-    _listenDoc('fc_moveis', 'caixa', function(data) {
+    _listenDoc('caixa', 'caixa_atual', function(data) {
         db.caixa = data || { status: 'FECHADO', saldo: 0, historico: [] };
         if (colecoesProntas >= totalColecoes) refreshCurrentView();
     });
@@ -1293,7 +1251,7 @@ async function confirmarFechamentoCego() {
             ultimoFechamento: mapaDados
         }, { merge: true });
 
-        const fechamentoDocRef = firestore.collection('fechamentos_caixa').doc(mapaDados.id);
+        const fechamentoDocRef = window.getEmpresaRef().collection('caixa_fechamentos').doc(mapaDados.id);
         batch.set(fechamentoDocRef, mapaDados);
 
         await batch.commit();
@@ -2408,6 +2366,8 @@ async function estornarTitulo(id) {
                 db.caixa.saldo = cxSaldoNovo;
                 db.caixa.historico = cxHistoricoNovo;
                 if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+                    window.FCCache.set('caixa', db.caixa);
+                    window.FCCache.set('caixa_caixa_atual', db.caixa);
                     window.FCCache.set('fc_moveis_caixa', db.caixa);
                 }
             }
@@ -3921,6 +3881,8 @@ async function excluirTransferenciaFin(id) {
                 db.caixa.saldo = cxSaldoNovo;
                 db.caixa.historico = cxHistoricoNovo;
                 if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+                    window.FCCache.set('caixa', db.caixa);
+                    window.FCCache.set('caixa_caixa_atual', db.caixa);
                     window.FCCache.set('fc_moveis_caixa', db.caixa);
                 }
             }

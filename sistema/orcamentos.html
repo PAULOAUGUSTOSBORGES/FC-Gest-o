@@ -39,8 +39,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- CORRIGIDO: Removido o ?v=20260831113500 que estava quebrando o carregamento offline -->
-    <link rel="stylesheet" href="../style.css?v=20260925085308">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260925085308">
+    <link rel="stylesheet" href="../style.css?v=20260925110619">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260925110619">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="vendas">
 
@@ -130,7 +130,7 @@
                         <!-- BUSCA INTELIGENTE DE CLIENTES NO PDV -->
                         <div class="flex w-full sm:w-64 relative">
                             <input type="hidden" id="pdv-cliente" value="0">
-                            <input type="text" id="pdv-cliente-busca" placeholder="Cliente: Consumidor Final" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-sm font-bold text-slate-700 dark:text-slate-200 px-3 py-2 rounded-l-lg outline-none focus:border-blue-500 w-full dark:text-white" autocomplete="off" onfocus="filtrarClientesPDV(this.value)" oninput="filtrarClientesPDV(this.value)">
+                            <input type="text" id="pdv-cliente-busca" placeholder="Cliente: Consumidor Final" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-sm font-bold text-slate-700 dark:text-slate-200 px-3 py-2 rounded-l-lg outline-none focus:border-blue-500 w-full dark:text-white" autocomplete="off" onfocus="filtrarClientesPDV(this.value)" oninput="filtrarClientesPDV(this.value)" onblur="setTimeout(() => { if (typeof autoSelecionarClientePorNome === 'function') autoSelecionarClientePorNome(); }, 250)" onkeydown="if(event.key==='Enter'){ event.preventDefault(); if (typeof autoSelecionarPrimeiroCliente === 'function') autoSelecionarPrimeiroCliente(); }">
                             <div id="pdv-cliente-resultados" class="absolute z-50 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl rounded-lg top-[42px] hidden max-h-60 overflow-y-auto custom-scrollbar"></div>
                             <button id="btn-pdv-novo-cliente" onclick="abrirModalClienteRapido()" class="bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-200 border-l-0 px-3 py-2 rounded-r-lg font-bold text-sm transition shrink-0" title="Novo Cliente"><i class="fa-solid fa-user-plus"></i></button>
                         </div>
@@ -955,11 +955,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
 
-    <script src="../sistema/config_banco.js?v=20260925085308"></script>
-    <script src="saas_licenca.js?v=20260925085308"></script>
-    <script src="../global.js?v=20260925085308"></script>
-    <script src="fc_cache.js?v=20260925085308"></script>
-    <script src="orcamentos.js?v=20260925085308"></script>
+    <script src="../sistema/config_banco.js?v=20260925150500"></script>
+    <script src="saas_licenca.js?v=20260925150500"></script>
+    <script src="../global.js?v=20260925150500"></script>
+    <script src="fc_cache.js?v=20260925150500"></script>
+    <script src="orcamentos.js?v=20260925150500"></script>
 </body>
 </html>
 

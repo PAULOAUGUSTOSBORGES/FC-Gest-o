@@ -420,8 +420,24 @@ function renderClientes() {
     document.getElementById('tabela-clientes').innerHTML = filtrados.map(c => {
         const docExib = c.doc || c.cpf || c.cnpj || '-';
         const telExib = c.wpp || c.telefone || c.celular || '-';
-        return `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 font-bold text-slate-800 dark:text-slate-100">${c.nome}</td><td class="p-4 text-slate-600 dark:text-slate-300 font-mono">${docExib}</td><td class="p-4 text-slate-800 dark:text-slate-100"><i class="fa-brands fa-whatsapp text-emerald-500 mr-1"></i> ${telExib}</td><td class="p-4 text-slate-600 dark:text-slate-300">${c.cidade || '-'}</td><td class="p-4 text-center"><button onclick="editarCliente('${c.id}')" class="text-blue-500 hover:text-blue-700 p-2"><i class="fa-solid fa-pen"></i></button><button onclick="excluirCliente('${c.id}')" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash"></i></button></td></tr>`;
+        const vendBadge = c.vendedor ? `<span class="inline-block mt-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-800"><i class="fa-solid fa-user-tie mr-1"></i>Vend: ${c.vendedor}</span>` : '';
+        return `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 font-bold text-slate-800 dark:text-slate-100"><div>${c.nome}</div>${vendBadge}</td><td class="p-4 text-slate-600 dark:text-slate-300 font-mono">${docExib}</td><td class="p-4 text-slate-800 dark:text-slate-100"><i class="fa-brands fa-whatsapp text-emerald-500 mr-1"></i> ${telExib}</td><td class="p-4 text-slate-600 dark:text-slate-300">${c.cidade || '-'}</td><td class="p-4 text-center"><button onclick="editarCliente('${c.id}')" class="text-blue-500 hover:text-blue-700 p-2"><i class="fa-solid fa-pen"></i></button><button onclick="excluirCliente('${c.id}')" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash"></i></button></td></tr>`;
     }).join('') || '<tr><td colspan="5" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum cliente encontrado.</td></tr>';
+}
+
+function popularSelectVendedoresCliente(vendedorSelecionado = '') {
+    const sel = document.getElementById('cli-vendedor');
+    if (!sel) return;
+    const vendedores = (db.funcionarios || [])
+        .filter(f => f.vendedor === 'SIM' || f.vendedor === 'Sim' || f.vendedor === true || f.cargo === 'Vendedor')
+        .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+    let html = '<option value="">Sem Vendedor Fixo (Padrão: Balcão)</option>';
+    vendedores.forEach(v => {
+        const isSel = (v.nome === vendedorSelecionado) ? 'selected' : '';
+        html += `<option value="${v.nome}" ${isSel}>${v.nome}</option>`;
+    });
+    sel.innerHTML = html;
+    sel.value = vendedorSelecionado || '';
 }
 
 function abrirModalCliente() {
@@ -431,7 +447,8 @@ function abrirModalCliente() {
         const el = document.getElementById(`cli-${campo}`);
         if (el) el.value = '';
     });
-    document.getElementById('cli-historico-body').innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-500 dark:text-slate-400">Cadastre para ver o histrico.</td></tr>';
+    popularSelectVendedoresCliente('');
+    document.getElementById('cli-historico-body').innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-500 dark:text-slate-400">Cadastre para ver o histórico.</td></tr>';
     document.getElementById('modal-cliente-title').innerText = 'Novo Cliente';
     // Fix: remover hidden E garantir display flex (conflito Tailwind)
     const modal = document.getElementById('modal-cliente');
@@ -448,7 +465,7 @@ function fecharModalCliente() {
 async function salvarCliente() {
     const id = document.getElementById('cli-id').value;
     const nome = document.getElementById('cli-nome').value.trim();
-    if (!nome) return showToast('Nome  obrigatrio!', 'error');
+    if (!nome) return showToast('Nome é obrigatório!', 'error');
 
     const c = {
         nome:    nome,
@@ -458,6 +475,7 @@ async function salvarCliente() {
         wpp:     document.getElementById('cli-wpp').value    || '',
         fixo:    document.getElementById('cli-fixo').value   || '',
         email:   document.getElementById('cli-email').value  || '',
+        vendedor: document.getElementById('cli-vendedor') ? document.getElementById('cli-vendedor').value.trim() : '',
         cep:     document.getElementById('cli-cep').value    || '',
         rua:     document.getElementById('cli-rua').value    || '',
         numero:  document.getElementById('cli-numero').value || '',
@@ -473,11 +491,21 @@ async function salvarCliente() {
     try {
         if (id) {
             await window.getEmpresaRef().collection('clientes').doc(String(id)).set(c, { merge: true });
+            if (Array.isArray(db.clientes)) {
+                const idx = db.clientes.findIndex(x => String(x.id || x._id || '').trim() === String(id).trim());
+                if (idx >= 0) {
+                    db.clientes[idx] = { ...db.clientes[idx], ...c };
+                }
+            }
             showToast('Cliente atualizado!', 'success');
         } else {
-            await window.getEmpresaRef().collection('clientes').add(c);
+            const docRef = await window.getEmpresaRef().collection('clientes').add(c);
+            if (Array.isArray(db.clientes)) {
+                db.clientes.unshift({ id: docRef.id, ...c });
+            }
             showToast('Cliente cadastrado!', 'success');
         }
+        if (typeof renderClientes === 'function') renderClientes();
         fecharModalCliente();
     } catch (e) {
         console.error('[salvarCliente] ERRO:', e);
@@ -491,7 +519,7 @@ async function editarCliente(id) {
     // Tenta encontrar no cache local primeiro
     let c = db.clientes.find(x => String(x.id).trim() === idStr);
 
-    // Se no encontrou (cache vazio), busca diretamente no Firestore
+    // Se não encontrou (cache vazio), busca diretamente no Firestore
     if (!c) {
         try {
             const snap = await window.getEmpresaRef().collection('clientes').doc(idStr).get();
@@ -504,7 +532,7 @@ async function editarCliente(id) {
         }
     }
 
-    if (!c) return showToast('Cliente no encontrado!', 'error');
+    if (!c) return showToast('Cliente não encontrado!', 'error');
 
     abrirModalCliente();
     document.getElementById('modal-cliente-title').innerText = `Editar: ${c.nome}`;
@@ -520,6 +548,7 @@ async function editarCliente(id) {
             el.value = val;
         }
     });
+    popularSelectVendedoresCliente(c.vendedor || '');
 
     const hist = db.vendas ? db.vendas.filter(v => String(v.clienteId) === idStr) : [];
     document.getElementById('cli-historico-body').innerHTML = hist.length > 0

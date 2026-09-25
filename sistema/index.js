@@ -512,48 +512,8 @@ function renderizarNotificacoes(prodVazios, prodBaixo, recVencidas, pagVencidas,
 }
 
 async function migrarBancoAntigo() {
-    try {
-        if (localStorage.getItem('fc_banco_migrado') === 'true') return;
-        const docRef = firestore.collection("fc_moveis").doc("banco_principal");
-        const docSnap = await docRef.get();
-        if (docSnap.exists) {
-            const dados = docSnap.data();
-            if (dados.migrado) {
-                localStorage.setItem('fc_banco_migrado', 'true');
-                return;
-            }
-            
-            showToast("Sincronizando banco de dados para a nova versão...", "info");
-            
-            const colecoes = ['produtos', 'clientes', 'fornecedores', 'vendas', 'movimentacoes', 'financeiro', 'compras'];
-            let count = 0;
-            const promessas = [];
-            
-            for (let col of colecoes) {
-                if (dados[col] && Array.isArray(dados[col])) {
-                    for (let item of dados[col]) {
-                        const id = item.id ? String(item.id) : firestore.collection(col).doc().id;
-                        promessas.push(firestore.collection(col).doc(id).set(item));
-                        count++;
-                    }
-                }
-            }
-            
-            if (dados.caixa) promessas.push(window.getEmpresaRef().collection('caixa').doc('caixa_atual').set(dados.caixa));
-            if (dados.config) promessas.push(window.getEmpresaRef().collection('configuracoes').doc('config').set(dados.config, {merge: true}));
-            
-            await Promise.all(promessas);
-            await docRef.update({ migrado: true });
-            localStorage.setItem('fc_banco_migrado', 'true');
-            
-            showToast(`Migração concluída! ${count} registros importados.`, "success");
-            setTimeout(() => window.location.reload(), 1500);
-        } else {
-            localStorage.setItem('fc_banco_migrado', 'true');
-        }
-    } catch (e) {
-        console.error("Erro ao migrar dados: ", e);
-    }
+    // Desativado: rotina legada de migração de documento único antigo
+    return;
 }
 
 function inicializarDashboard() {
@@ -561,16 +521,17 @@ function inicializarDashboard() {
         console.warn('Bloqueando execução: usuário sem permissão para esta rota.');
         return;
     }
-    migrarBancoAntigo();
+    // migrarBancoAntigo desativado
 
     // Cache inteligente: serve dados instantaneamente do sessionStorage
     const _listen = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb, opts) {
-        let ref = firestore.collection(col);
+        let ref = (typeof window.getEmpresaRef === 'function') ? window.getEmpresaRef().collection(col) : firestore.collection(col);
         if (opts && typeof opts.query === 'function') ref = opts.query(ref);
         return ref.onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
     };
     const _listenDoc = (typeof window.fcListenDoc === 'function') ? window.fcListenDoc : function(col, id, cb) {
-        return firestore.collection(col).doc(id).onSnapshot(doc => cb(doc.exists ? doc.data() : null));
+        let ref = (typeof window.getEmpresaRef === 'function') ? window.getEmpresaRef().collection(col).doc(id) : firestore.collection(col).doc(id);
+        return ref.onSnapshot(doc => cb(doc.exists ? doc.data() : null));
     };
 
     // Listeners para todas as coleções que afetam os KPIs com suporte a cache
@@ -595,7 +556,7 @@ function inicializarDashboard() {
         db.financeiro = dados;
         renderDashboard();
     });
-    _listenDoc('fc_moveis', 'caixa', function(data) {
+    _listenDoc('caixa', 'caixa_atual', function(data) {
         db.caixa = data || { saldo: 0 };
         renderDashboard();
     });
@@ -1016,10 +977,11 @@ if (typeof window.currentUserInfo !== 'undefined' && window.currentUserInfo !== 
 
 function carregarLembretesDashboard() {
     const _listenDoc = (typeof window.fcListenDoc === 'function') ? window.fcListenDoc : function(col, id, cb) {
-        return firestore.collection(col).doc(id).onSnapshot(doc => cb(doc.exists ? doc.data() : null));
+        let ref = (typeof window.getEmpresaRef === 'function') ? window.getEmpresaRef().collection(col).doc(id) : firestore.collection(col).doc(id);
+        return ref.onSnapshot(doc => cb(doc.exists ? doc.data() : null));
     };
 
-    _listenDoc('fc_moveis', 'config', function(docData) {
+    _listenDoc('configuracoes', 'config', function(docData) {
         const container = document.getElementById('dash-lembretes');
         if (!container) return;
         

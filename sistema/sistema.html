@@ -389,9 +389,36 @@
 
                     <!-- CONFIGURAÇÕES DO PDV E MARGEM DE LUCRO -->
                     <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                        <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3"><i class="fa-solid fa-cash-register text-blue-600"></i> Configurações do PDV (Vendas e Alertas de Lucro)</h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Configure a porcentagem mínima de lucro dos produtos para vendas no PDV. Se for concedido um desconto onde o lucro do produto fique abaixo dessa porcentagem, o PDV emitirá um alerta imediato de ATENÇÃO.</p>
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700 pb-3 mb-4">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><i class="fa-solid fa-cash-register text-blue-600"></i> Configurações do PDV (Vendas e Alertas de Lucro)</h3>
+                            <div id="pdv-badge-plano-fluxo" class="hidden"></div>
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Configure o fluxo operacional do PDV (se pré-venda com envio ao Caixa Central ou recebimento direto), a operação padrão e os limites de margem de lucro.</p>
                         
+                        <!-- FLUXO OPERACIONAL E OPERAÇÃO PADRÃO -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5 p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700">
+                            <div>
+                                <label class="text-[10px] md:text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1.5"><i class="fa-solid fa-arrows-split-up-and-left text-blue-500 mr-1"></i> Fluxo Operacional de Vendas</label>
+                                <select id="pdv-fluxo-operacional" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm font-bold text-slate-700 dark:text-slate-200 dark:text-white">
+                                    <option value="ambos">Flexível (Pré-Venda p/ Caixa Central e Recebimento no PDV)</option>
+                                    <option value="caixa">Pré-Venda + Caixa Central (Vendedores lançam pedidos; Caixa Central liquida)</option>
+                                    <option value="direto">PDV Direto (Recebimento imediato no Balcão)</option>
+                                </select>
+                                <p class="text-[11px] text-slate-400 mt-1.5">No modelo <b>Pré-Venda + Caixa Central</b>, os vendedores apenas montam o pedido no PDV e enviam para liquidação no Caixa da Loja.</p>
+                            </div>
+                            <div>
+                                <label class="text-[10px] md:text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1.5"><i class="fa-solid fa-list-check text-indigo-500 mr-1"></i> Operação Pré-selecionada no PDV</label>
+                                <select id="pdv-operacao-padrao" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm font-bold text-slate-700 dark:text-slate-200 dark:text-white">
+                                    <option value="Venda">Venda (Lançar p/ Caixa Central) — Pré-selecionada</option>
+                                    <option value="VendaBalcao">Venda Balcão (Receber no PDV) — Pré-selecionada</option>
+                                    <option value="Orçamento">Orçamento Completo — Pré-selecionado</option>
+                                    <option value="Serviço">Prestação de Serviço / O.S. — Pré-selecionada</option>
+                                    <option value="nenhum">Não pré-selecionar (Operador escolhe no momento da venda)</option>
+                                </select>
+                                <p class="text-[11px] text-slate-400 mt-1.5">Escolha se deseja deixar a venda pré-selecionada automaticamente ao abrir o PDV ou não (o operador poderá alterar livremente a qualquer momento).</p>
+                            </div>
+                        </div>
+
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="text-[10px] md:text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1.5"><i class="fa-solid fa-percent text-blue-500 mr-1"></i> Margem Mínima de Lucro no PDV (%)</label>
@@ -671,11 +698,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
     
-    <script src="../sistema/config_banco.js?v=20260925085308"></script>
-    <script src="saas_licenca.js?v=20260925085308"></script>
-    <script src="../global.js?v=20260925085308"></script>
-    <script src="fc_cache.js?v=20260925085308"></script>
-    <script src="sistema.js?v=20260925085308"></script>
+    <script src="../sistema/config_banco.js?v=20260925150500"></script>
+    <script src="saas_licenca.js?v=20260925150500"></script>
+    <script src="../global.js?v=20260925150500"></script>
+    <script src="fc_cache.js?v=20260925150500"></script>
+    <script src="sistema.js?v=20260925150500"></script>
 <!-- MODAL DE GERENCIAMENTO DE OPCOES PERSONALIZADAS (MADEIRAS, TECIDOS, CORES) -->
     <div id="modal-opcoes-personalizadas" class="fixed inset-0 bg-slate-900/70 z-[170] hidden flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in duration-150 max-h-[90vh]">

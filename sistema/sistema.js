@@ -10,24 +10,39 @@ function inicializarSistema() {
     // 1. Tenta preencher a tela imediatamente com o que já estiver no db.config
     carregarConfiguracoesNaTela();
 
-    // 2. Conecta listener em tempo real com suporte a cache para fc_moveis/config:
-    // Se o cache for válido, o callback roda na mesma hora.
-    // Assim que o Firestore sincronizar ou mudar, a tela se atualiza automaticamente!
+    // 2. Conecta listener em tempo real com suporte a cache para as configurações da empresa ativa:
     const _listenDoc = (typeof window.fcListenDoc === 'function') ? window.fcListenDoc : function(col, id, cb) {
-        return firestore.collection(col).doc(id).onSnapshot(doc => cb(doc.exists ? doc.data() : null));
+        let ref;
+        if (typeof window.getEmpresaRef === 'function') {
+            ref = window.getEmpresaRef().collection(col === 'config' || col === 'fc_moveis' ? 'configuracoes' : col).doc(id === 'fc_moveis' ? 'config' : id);
+        } else {
+            ref = firestore.collection(col).doc(id);
+        }
+        return ref.onSnapshot(doc => cb(doc.exists ? doc.data() : null));
     };
 
-    _listenDoc('fc_moveis', 'config', function(dados) {
+    _listenDoc('configuracoes', 'config', function(dados) {
         if (dados) {
+            const baseConfig = {
+                empresa: {
+                    nome: window.currentEmpresaData?.nomeEmpresa || '',
+                    fantasia: window.currentEmpresaData?.nomeEmpresa || '',
+                    cnpj: '', telefone: '', logo: ''
+                },
+                taxas: { 'Dinheiro': 0, 'PIX': 0, 'Cartão Débito': 0, 'Boleto': 0, 'Fiado': 0, 'Cartão Crédito': { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0 } },
+                prazos: { 'Fiado': 30, 'Boleto': 30, 'Cartão Crédito': 1, 'Cartão Débito': 1 },
+                loja: {}
+            };
             db.config = {
-                ...db.config,
+                ...baseConfig,
                 ...dados,
-                empresa: { ...(db.config?.empresa || {}), ...(dados.empresa || {}) },
-                taxas: dados.taxas || db.config?.taxas,
-                prazos: dados.prazos || db.config?.prazos,
-                loja: { ...(db.config?.loja || {}), ...(dados.loja || {}) }
+                empresa: { ...baseConfig.empresa, ...(dados.empresa || {}) },
+                taxas: dados.taxas || baseConfig.taxas,
+                prazos: dados.prazos || baseConfig.prazos,
+                loja: { ...baseConfig.loja, ...(dados.loja || {}) }
             };
             if (typeof window.FCCache !== 'undefined') {
+                window.FCCache.set('config', db.config);
                 window.FCCache.set('fc_moveis_config', db.config);
             }
             carregarConfiguracoesNaTela();
@@ -232,7 +247,10 @@ window.buscarCEPEmpresa = buscarCEPEmpresa;
 
 function carregarConfiguracoesNaTela() {
     if (!db.config) db.config = {};
-    if (!db.config.empresa) db.config.empresa = { nome: 'FC Móveis e Interiores', fantasia: 'FC Móveis' };
+    const nomePadrao = (window.currentEmpresaData && window.currentEmpresaData.nomeEmpresa) || '';
+    if (!db.config.empresa) db.config.empresa = { nome: nomePadrao, fantasia: nomePadrao, cnpj: '', telefone: '', logo: '' };
+    if (!db.config.empresa.nome && nomePadrao) db.config.empresa.nome = nomePadrao;
+    if (!db.config.empresa.fantasia && nomePadrao) db.config.empresa.fantasia = nomePadrao;
 
     // Carrega Tema Ativo nos Cards de Configuração
     const temaSalvo = localStorage.getItem('fc_theme_sistema') || (db.config && db.config.tema) || 'dark';
@@ -323,7 +341,39 @@ function carregarConfiguracoesNaTela() {
         if (elPDeb) elPDeb.value = pDeb;
     }
 
-    // Carrega Configurações do PDV (Margem Mínima de Lucro e Ação de Alerta)
+    // Carrega Configurações do PDV (Fluxo Operacional, Operação Padrão, Margem Mínima e Ação de Alerta)
+    const elPdvFluxo = document.getElementById('pdv-fluxo-operacional');
+    const elPdvOpPadrao = document.getElementById('pdv-operacao-padrao');
+    const elBadgePlanoFluxo = document.getElementById('pdv-badge-plano-fluxo');
+
+    const fluxoPlanoSaaS = (typeof window.SaaSLicenca !== 'undefined' && typeof window.SaaSLicenca.obterFluxoPDV === 'function')
+        ? window.SaaSLicenca.obterFluxoPDV(window.saasLicencaAtual)
+        : ((window.saasLicencaAtual && window.saasLicencaAtual.fluxoPDV) || 'ambos');
+
+    if (elPdvFluxo) {
+        if (fluxoPlanoSaaS !== 'ambos') {
+            elPdvFluxo.value = fluxoPlanoSaaS;
+            elPdvFluxo.disabled = true;
+            if (elBadgePlanoFluxo) {
+                elBadgePlanoFluxo.classList.remove('hidden');
+                elBadgePlanoFluxo.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800";
+                elBadgePlanoFluxo.innerHTML = `<i class="fa-solid fa-lock text-[10px]"></i> Definido pelo plano SaaS (${fluxoPlanoSaaS === 'caixa' ? 'Pré-Venda + Caixa Central' : 'PDV Direto'})`;
+            }
+        } else {
+            elPdvFluxo.disabled = false;
+            elPdvFluxo.value = db.config.fluxoPDV || 'ambos';
+            if (elBadgePlanoFluxo) {
+                elBadgePlanoFluxo.classList.remove('hidden');
+                elBadgePlanoFluxo.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800";
+                elBadgePlanoFluxo.innerHTML = `<i class="fa-solid fa-circle-check text-[10px]"></i> Plano Multi-Fluxo (Livre para configurar)`;
+            }
+        }
+    }
+
+    if (elPdvOpPadrao) {
+        elPdvOpPadrao.value = (db.config.pdvOperacaoPadrao !== undefined) ? db.config.pdvOperacaoPadrao : ((elPdvFluxo && elPdvFluxo.value === 'direto') ? 'VendaBalcao' : 'Venda');
+    }
+
     const elPdvMargem = document.getElementById('pdv-margem-minima');
     if (elPdvMargem) {
         elPdvMargem.value = db.config.pdvMargemMinima !== undefined ? db.config.pdvMargemMinima : 15;
@@ -596,7 +646,15 @@ async function salvarConfiguracoes() {
         'Cartão Débito': getPrazo('prazo-debito', 1)
     };
 
-    // Salva Configurações do PDV (Margem Mínima de Lucro e Ação de Alerta)
+    // Salva Configurações do PDV (Fluxo Operacional, Operação Padrão, Margem Mínima e Ação de Alerta)
+    const elPdvFluxo = document.getElementById('pdv-fluxo-operacional');
+    if (elPdvFluxo) {
+        db.config.fluxoPDV = elPdvFluxo.value || 'ambos';
+    }
+    const elPdvOpPadrao = document.getElementById('pdv-operacao-padrao');
+    if (elPdvOpPadrao) {
+        db.config.pdvOperacaoPadrao = elPdvOpPadrao.value || 'Venda';
+    }
     const elPdvMargem = document.getElementById('pdv-margem-minima');
     if (elPdvMargem) {
         db.config.pdvMargemMinima = Math.max(0, parseFloat(elPdvMargem.value) || 0);
@@ -620,6 +678,7 @@ async function salvarConfiguracoes() {
     try {
         await window.getEmpresaRef().collection('configuracoes').doc('config').set(db.config, { merge: true });
         if (typeof window.FCCache !== 'undefined') {
+            window.FCCache.set('config', db.config);
             window.FCCache.set('fc_moveis_config', db.config);
         }
         if (typeof aplicarIdentidadeVisualGlobal === 'function') {
@@ -640,7 +699,13 @@ async function salvarConfiguracoes() {
 
 function carregarCategorias() {
     const _listen = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb) {
-        return firestore.collection(col).onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+        let ref;
+        if (typeof window.getEmpresaRef === 'function') {
+            ref = window.getEmpresaRef().collection(col);
+        } else {
+            ref = firestore.collection(col);
+        }
+        return ref.onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
     };
 
     _listen('categorias', function(dados) {

@@ -48,8 +48,8 @@
         'fc_moveis_caixa':   2 * 60 * 1000,
     };
 
-    // Cache síncrono em memória para resposta instantânea (< 1ms)
-    const _memoria = {};
+    // Cache síncrono em memória estritamente isolado por empresa para resposta instantânea (< 1ms)
+    const _memoriaPorEmpresa = {};
     const _listeners = {};
     const _syncStateListeners = [];
     let _isSyncing = false;
@@ -61,14 +61,65 @@
 
     function _obterEmpresaId() {
         try {
-            return localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+            return localStorage.getItem('fc_empresa_ativa') || '';
         } catch (e) {
-            return 'emp_fc_moveis';
+            return '';
         }
     }
 
+    function _getMemoria() {
+        const empId = _obterEmpresaId() || '__sem_empresa__';
+        if (!_memoriaPorEmpresa[empId]) {
+            _memoriaPorEmpresa[empId] = {};
+        }
+        return _memoriaPorEmpresa[empId];
+    }
+
+    // Normaliza nomes legados de coleção/doc para compatibilidade
+    function _normalizarColecao(col) {
+        if (col === 'fc_moveis_config' || col === 'configuracoes') return 'config';
+        if (col === 'fc_moveis_caixa') return 'caixa';
+        return col;
+    }
+
+    // Proxy para _memoria que roteia automaticamente para a empresa ativa
+    const _memoria = new Proxy({}, {
+        get: function(target, prop) {
+            const mem = _getMemoria();
+            const norm = _normalizarColecao(prop);
+            return mem[norm] !== undefined ? mem[norm] : mem[prop];
+        },
+        set: function(target, prop, value) {
+            const mem = _getMemoria();
+            const norm = _normalizarColecao(prop);
+            mem[norm] = value;
+            if (norm !== prop) mem[prop] = value;
+            return true;
+        },
+        deleteProperty: function(target, prop) {
+            const mem = _getMemoria();
+            const norm = _normalizarColecao(prop);
+            delete mem[norm];
+            delete mem[prop];
+            return true;
+        },
+        has: function(target, prop) {
+            const mem = _getMemoria();
+            const norm = _normalizarColecao(prop);
+            return (norm in mem) || (prop in mem);
+        },
+        ownKeys: function() {
+            return Object.keys(_getMemoria());
+        },
+        getOwnPropertyDescriptor: function(target, prop) {
+            return Object.getOwnPropertyDescriptor(_getMemoria(), prop);
+        }
+    });
+
     function _chave(colecao) {
-        return _obterEmpresaId() + '_' + colecao;
+        const norm = _normalizarColecao(colecao);
+        const empId = _obterEmpresaId();
+        return empId ? (empId + '_' + norm) : norm;
     }
 
     function _abrirIndexedDB() {
@@ -448,6 +499,12 @@
     // ----------------------------------------------------------------------
 
     async function _carregarTudoDoIndexedDB() {
+        const empId = _obterEmpresaId();
+        if (!empId) {
+            console.log('[FCRepo] Nenhuma empresa ativa definida no momento. Carga do repositório adiada.');
+            return;
+        }
+
         try {
             const promessas = PRINCIPAIS_COLECOES.map(async function (col) {
                 const dados = await _idbLerColecao(col);
@@ -463,28 +520,32 @@
                 }
             });
 
-            // Carrega docs especiais
+            // Carrega docs especiais da empresa ativa
             promessas.push((async function () {
-                const cfg = await _idbLerColecao('fc_moveis_config');
+                const cfg = await _idbLerColecao('config');
                 if (cfg) {
+                    _memoria['config'] = cfg;
                     _memoria['fc_moveis_config'] = cfg;
                     if (typeof window.db !== 'undefined') window.db.config = cfg;
+                    _notificarListeners('config', cfg);
                     _notificarListeners('fc_moveis_config', cfg);
                 }
             })());
 
             promessas.push((async function () {
-                const cx = await _idbLerColecao('fc_moveis_caixa');
+                const cx = await _idbLerColecao('caixa');
                 if (cx) {
+                    _memoria['caixa'] = cx;
                     _memoria['fc_moveis_caixa'] = cx;
                     if (typeof window.db !== 'undefined') window.db.caixa = cx;
+                    _notificarListeners('caixa', cx);
                     _notificarListeners('fc_moveis_caixa', cx);
                 }
             })());
 
             await Promise.all(promessas);
             _atualizarBadgePendencias();
-            console.log('[FCRepo] ⚡ Repositório Local carregado instantaneamente do IndexedDB.');
+            console.log(`[FCRepo] ⚡ Repositório Local carregado instantaneamente do IndexedDB para a empresa [${empId}].`);
 
             // Se for a primeira vez neste dispositivo (nunca sincronizado), realiza carga inicial silenciosa
             const ultimaSinc = await _idbLerMeta('ultima_sincronizacao');
@@ -499,8 +560,8 @@
         }
     }
 
-    // Dispara carregamento assíncrono em background de imediato
-    if (typeof window !== 'undefined') {
+    // Dispara carregamento assíncrono em background de imediato apenas se houver empresa ativa
+    if (typeof window !== 'undefined' && _obterEmpresaId()) {
         _carregarTudoDoIndexedDB();
     }
 
@@ -727,8 +788,10 @@
          * Verifica se o cache da coleção existe e está pronto
          */
         isValido: function (colecao) {
-            if (_memoria[colecao] && Array.isArray(_memoria[colecao]) && _memoria[colecao].length >= 0) {
-                return true;
+            const val = _memoria[colecao];
+            if (val !== undefined && val !== null) {
+                if (Array.isArray(val)) return true;
+                if (typeof val === 'object') return true;
             }
             const sess = _lerSession(colecao);
             return sess !== null;
@@ -773,12 +836,23 @@
          * Limpa todo o repositório local
          */
         invalidarTudo: async function () {
-            Object.keys(_memoria).forEach(k => delete _memoria[k]);
+            Object.keys(_memoriaPorEmpresa).forEach(k => delete _memoriaPorEmpresa[k]);
             try {
                 const chaves = Object.keys(sessionStorage).filter(k => k.startsWith(SESSION_PREFIX));
                 chaves.forEach(k => sessionStorage.removeItem(k));
             } catch (e) {}
-            console.log('[FCRepo] Repositório limpo completamente.');
+            try {
+                const db = await _abrirIndexedDB();
+                if (db) {
+                    const tx = db.transaction(['colecoes', 'fila_pendente', 'metadados'], 'readwrite');
+                    tx.objectStore('colecoes').clear();
+                    tx.objectStore('fila_pendente').clear();
+                    tx.objectStore('metadados').clear();
+                }
+            } catch (idbErr) {
+                console.warn('[FCRepo] Erro ao limpar IndexedDB em invalidarTudo:', idbErr);
+            }
+            console.log('[FCRepo] Repositório e IndexedDB limpos completamente.');
         },
 
         /**
@@ -1131,54 +1205,95 @@
     window.fcListenDoc = function (colecao, docId, callback, semCache) {
         if (typeof callback !== 'function') return function () {};
 
-        const cacheKey = colecao + '_' + docId;
+        // Normalização estrita para subcoleções multi-tenant da empresa ativa
+        let normalCol = colecao;
+        let normalDoc = docId;
+        if (colecao === 'fc_moveis' && (docId === 'config' || docId === 'config_loja')) {
+            normalCol = 'configuracoes';
+            normalDoc = 'config';
+        } else if (colecao === 'fc_moveis' && docId === 'caixa') {
+            normalCol = 'caixa';
+            normalDoc = 'caixa_atual';
+        } else if (colecao === 'config') {
+            normalCol = 'configuracoes';
+            normalDoc = 'config';
+        }
+
+        const cacheKey = normalCol + '_' + normalDoc;
 
         if (!_listeners[cacheKey]) {
             _listeners[cacheKey] = [];
         }
         _listeners[cacheKey].push(callback);
 
-        // Serve da memória imediatamente se existir
-        if (!semCache && _memoria[cacheKey] !== undefined) {
+        // 1. Entrega instantânea da memória isolada da empresa ativa se existir
+        if (!semCache && _memoria[cacheKey] !== undefined && _memoria[cacheKey] !== null) {
             try {
                 callback(_memoria[cacheKey]);
             } catch (e) {}
-        } else {
-            // Tenta IndexedDB
-            _idbLerColecao(cacheKey).then(function (dadosIdb) {
-                if (dadosIdb !== null && !semCache) {
-                    _memoria[cacheKey] = dadosIdb;
-                    try { callback(dadosIdb); } catch (e) {}
-                } else if (typeof firestore !== 'undefined') {
-                    // Busca pontual do Firestore
-                    let ref;
-                    if (typeof window.getEmpresaRef === 'function') {
-                        if (colecao === 'fc_moveis' && docId === 'caixa') {
-                            ref = typeof window.obterCaixaDocRef === 'function' ? window.obterCaixaDocRef() : window.getEmpresaRef().collection('caixa').doc('caixa_atual');
-                        } else if (colecao === 'fc_moveis' && (docId === 'config' || docId === 'config_loja')) {
-                            ref = window.getEmpresaRef().collection('configuracoes').doc('config');
-                        } else {
-                            ref = window.getEmpresaRef().collection(colecao).doc(docId);
-                        }
-                    } else {
-                        ref = firestore.collection(colecao).doc(docId);
+        } else if (!semCache) {
+            // Tenta sessionStorage ou IndexedDB
+            const sess = _lerSession(cacheKey);
+            if (sess !== null) {
+                _memoria[cacheKey] = sess;
+                try { callback(sess); } catch (e) {}
+            } else {
+                _idbLerColecao(cacheKey).then(function (dadosIdb) {
+                    if (dadosIdb !== null && !semCache) {
+                        _memoria[cacheKey] = dadosIdb;
+                        try { callback(dadosIdb); } catch (e) {}
                     }
+                });
+            }
+        }
 
-                    ref.get().then(function (doc) {
-                        const dados = doc.exists ? doc.data() : null;
-                        _memoria[cacheKey] = dados;
-                        _salvarSession(cacheKey, dados);
-                        _idbSalvarColecao(cacheKey, dados);
-                        try { callback(dados); } catch (e) {}
-                    }).catch(function (e) {});
+        // 2. Conecta listener em tempo real garantindo o escopo da empresa ativa
+        let unsubFirestore = null;
+        if (typeof firestore !== 'undefined') {
+            let ref;
+            if (typeof window.getEmpresaRef === 'function') {
+                if (normalCol === 'caixa' && normalDoc === 'caixa_atual') {
+                    ref = typeof window.obterCaixaDocRef === 'function' ? window.obterCaixaDocRef() : window.getEmpresaRef().collection('caixa').doc('caixa_atual');
+                } else {
+                    ref = window.getEmpresaRef().collection(normalCol).doc(normalDoc);
                 }
-            });
+            } else {
+                const empId = _obterEmpresaId();
+                if (empId) {
+                    ref = firestore.collection('empresas').doc(empId).collection(normalCol).doc(normalDoc);
+                } else {
+                    ref = firestore.collection(normalCol).doc(normalDoc);
+                }
+            }
+
+            try {
+                unsubFirestore = ref.onSnapshot(function (doc) {
+                    const dados = doc.exists ? doc.data() : null;
+                    _memoria[cacheKey] = dados;
+                    _salvarSession(cacheKey, dados);
+                    _idbSalvarColecao(cacheKey, dados);
+                    if (normalCol === 'configuracoes' && normalDoc === 'config' && typeof window.db !== 'undefined' && dados) {
+                        window.db.config = { ...window.db.config, ...dados };
+                    }
+                    if (normalCol === 'caixa' && normalDoc === 'caixa_atual' && typeof window.db !== 'undefined' && dados) {
+                        window.db.caixa = dados;
+                    }
+                    try { callback(dados); } catch (e) {}
+                }, function (err) {
+                    console.warn('[FCRepo] Erro no listener do doc ' + cacheKey + ':', err);
+                });
+            } catch (errSnap) {
+                console.warn('[FCRepo] Falha ao iniciar snapshot do doc ' + cacheKey + ':', errSnap);
+            }
         }
 
         return function unsubscribe() {
             if (_listeners[cacheKey]) {
                 const idx = _listeners[cacheKey].indexOf(callback);
                 if (idx >= 0) _listeners[cacheKey].splice(idx, 1);
+            }
+            if (typeof unsubFirestore === 'function') {
+                unsubFirestore();
             }
         };
     };
@@ -1189,7 +1304,7 @@
     // ----------------------------------------------------------------------
     // 9. Hidratação Instantânea de `window.db`
     // ----------------------------------------------------------------------
-    if (typeof window.db !== 'undefined') {
+    if (typeof window.db !== 'undefined' && _obterEmpresaId()) {
         PRINCIPAIS_COLECOES.forEach(function (col) {
             if (window.FCCache.isValido(col)) {
                 const dados = window.FCCache.get(col);
@@ -1201,12 +1316,12 @@
                 }
             }
         });
-        if (window.FCCache.isValido('fc_moveis_config')) {
-            const cfg = window.FCCache.get('fc_moveis_config');
+        if (window.FCCache.isValido('config')) {
+            const cfg = window.FCCache.get('config');
             if (cfg) window.db.config = cfg;
         }
-        if (window.FCCache.isValido('fc_moveis_caixa')) {
-            const cx = window.FCCache.get('fc_moveis_caixa');
+        if (window.FCCache.isValido('caixa')) {
+            const cx = window.FCCache.get('caixa');
             if (cx) window.db.caixa = cx;
         }
     }

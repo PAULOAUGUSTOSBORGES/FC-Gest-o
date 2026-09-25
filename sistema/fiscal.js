@@ -26,7 +26,7 @@ function inicializarFiscal() {
         return ref.onSnapshot(doc => cb(doc.exists ? doc.data() : null));
     };
 
-    _listenDoc('fc_moveis', 'config', function(dados) {
+    _listenDoc('configuracoes', 'config', function(dados) {
         if (dados && dados.empresa) {
             db.config = { ...db.config, empresa: { ...(db.config?.empresa || {}), ...dados.empresa } };
             atualizarBadgeAmbiente();
@@ -716,7 +716,7 @@ async function reemitirNota(vendaId, tipo) {
 
     try {
         const emitirFunc = firebase.functions().httpsCallable(tipoFuncao);
-        const empIdAtual = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+        const empIdAtual = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
         const resp = await emitirFunc({ vendaId, empId: empIdAtual });
         const res = resp.data;
 
@@ -1175,7 +1175,7 @@ async function emitirNotaDireta(vendaId, tipo, contingencia = false) {
 
     try {
         const func = firebase.functions().httpsCallable(tipo === 'nfce' ? 'emitirNFCe' : 'emitirNFe');
-        const empIdAtual = localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+        const empIdAtual = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
         const res = await func({ vendaId, contingencia: Boolean(contingencia), empId: empIdAtual });
         showToast(res.data?.message || `${label} emitida com sucesso!`, 'success');
         document.getElementById('modal-selecionar-venda').classList.add('hidden');

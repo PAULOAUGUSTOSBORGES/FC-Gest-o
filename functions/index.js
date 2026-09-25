@@ -243,23 +243,17 @@ async function obterConfigEmpresaComFallback(empresaRef) {
     let configSnap = await empresaRef.collection("configuracoes").doc("config").get();
     let config = configSnap.data() || {};
     
-    // Se a empresa nao tiver os dados fiscais / certificado, busca na empresa padrao ou na raiz
-    if (!config.empresa || !config.empresa.certificadoBase64) {
-        try {
-            const padraoSnap = await db.collection("empresas").doc("emp_fc_moveis").collection("configuracoes").doc("config").get();
-            if (padraoSnap.exists && padraoSnap.data()?.empresa?.certificadoBase64) {
-                config = { ...padraoSnap.data(), ...config, empresa: { ...(padraoSnap.data().empresa || {}), ...(config.empresa || {}) } };
-            }
-        } catch (e) {}
-    }
-    
-    if (!config.empresa || !config.empresa.certificadoBase64) {
-        try {
-            const raizConfigSnap = await db.collection("configuracoes").doc("config").get();
-            if (raizConfigSnap.exists && raizConfigSnap.data()?.empresa?.certificadoBase64) {
-                config = { ...raizConfigSnap.data(), ...config, empresa: { ...(raizConfigSnap.data().empresa || {}), ...(config.empresa || {}) } };
-            }
-        } catch (e) {}
+    // ATENÇÃO MULTI-TENANT: Fallback para doc padrão/raiz SOMENTE é permitido para a empresa legada 'emp_fc_moveis'.
+    // Empresas terceiras/filiais NUNCA podem herdar certificado ou dados fiscais de outra empresa!
+    if (empresaRef && empresaRef.id === 'emp_fc_moveis') {
+        if (!config.empresa || !config.empresa.certificadoBase64) {
+            try {
+                const raizConfigSnap = await db.collection("configuracoes").doc("config").get();
+                if (raizConfigSnap.exists && raizConfigSnap.data()?.empresa?.certificadoBase64) {
+                    config = { ...raizConfigSnap.data(), ...config, empresa: { ...(raizConfigSnap.data().empresa || {}), ...(config.empresa || {}) } };
+                }
+            } catch (e) {}
+        }
     }
     
     return config;
