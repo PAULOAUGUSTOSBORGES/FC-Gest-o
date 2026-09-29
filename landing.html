@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FC Gestão | Sistema ERP, PDV e Emissor Fiscal para Varejo</title>
+    <meta name="description" content="O sistema de gestão empresarial e PDV frente de caixa mais ágil e completo para o seu comércio. Emissão fiscal nativa SEFAZ, controle de estoque, financeiro DRE e loja virtual integrada.">
+    <link rel="icon" type="image/png" href="./icons/favicon.png">
+    <link rel="apple-touch-icon" href="./icons/icon-apple-touch.png">
+    <meta name="theme-color" content="#0f172a">
+
+    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- FontAwesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Tailwind CSS (Play CDN for complete utility set + custom theme colors) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            300: '#a5b4fc',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            color: #f1f5f9;
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #60a5fa 0%, #a855f7 50%, #ec4899 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero-glow {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.05) 50%, transparent 70%);
+            top: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .glass-card {
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-card:hover {
+            border-color: rgba(99, 102, 241, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-[#0b0f19] text-slate-100 antialiased selection:bg-indigo-500 selection:text-white">
+
+    <!-- Top Announcement Bar -->
+    <div class="bg-gradient-to-r from-blue-700 via-indigo-600 to-purple-600 text-white text-xs font-semibold py-2 px-4 text-center">
+        <span>🚀 <strong>Novo Emissor Fiscal SEFAZ Nativo:</strong> Emita NFC-e e NF-e sem intermediários e economize mensalidades! </span>
+        <a href="./sistema/login.html?tab=cadastro" class="underline ml-2 hover:text-amber-200 transition font-bold">Começar Teste Grátis →</a>
+    </div>
+
+    <!-- Navigation Bar -->
+    <header class="sticky top-0 z-50 glass-card border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <!-- Brand -->
+            <a href="#" class="flex items-center gap-3">
+                <div class="w-11 h-11 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center text-white text-xl shadow-lg shadow-blue-500/30">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+                <div>
+                    <span class="text-xl font-extrabold tracking-tight text-white flex items-center gap-1.5">
+                        FC Gestão
+                        <span class="text-[10px] uppercase font-black bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full border border-blue-500/30">SaaS</span>
+                    </span>
+                    <span class="text-[11px] text-slate-400 block -mt-1">ERP, PDV & Fiscal</span>
+                </div>
+            </a>
+
+            <!-- Nav Links (Desktop) -->
+            <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
+                <a href="#recursos" class="hover:text-blue-400 transition">Recursos</a>
+                <a href="#pdv" class="hover:text-blue-400 transition">Frente de Caixa</a>
+                <a href="#fiscal" class="hover:text-blue-400 transition">Módulo Fiscal</a>
+                <a href="#planos" class="hover:text-blue-400 transition">Planos & Preços</a>
+                <a href="#faq" class="hover:text-blue-400 transition">Dúvidas</a>
+            </nav>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-3">
+                <a href="./sistema/login.html" class="text-sm font-semibold text-slate-300 hover:text-white px-3 py-2 transition">
+                    Entrar
+                </a>
+                <a href="./sistema/login.html?tab=cadastro" class="text-sm font-bold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-600/30 transition transform active:scale-95 flex items-center gap-2">
+                    <i class="fa-solid fa-bolt text-amber-300"></i>
+                    <span>Testar 7 Dias Grátis</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="relative pt-20 pb-24 overflow-hidden">
+        <div class="hero-glow"></div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+            
+            <!-- Badge -->
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-800/80 border border-slate-700 text-slate-300 text-xs font-semibold mb-8 shadow-inner">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Plataforma 100% em Nuvem com Operação Contínua</span>
+            </div>
+
+            <!-- Main Heading -->
+            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white max-w-4xl mx-auto leading-tight sm:leading-tight lg:leading-tight">
+                O ERP e PDV mais ágil para <br class="hidden sm:inline">
+                <span class="gradient-text">acelerar as vendas da sua loja.</span>
+            </h1>
+
+            <!-- Subtitle -->
+            <p class="mt-6 text-lg sm:text-xl text-slate-300 max-w-2xl mx-auto font-normal leading-relaxed">
+                Frente de caixa ultra-rápido, controle rigoroso de estoque, emissão fiscal nativa direta na SEFAZ (NFC-e e NF-e sem mensalidades extras), DRE financeiro e catálogo online integrado.
+            </p>
+
+            <!-- CTA Buttons -->
+            <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+                <a href="./sistema/login.html?tab=cadastro" class="w-full sm:w-auto px-8 py-4 rounded-xl font-extrabold text-base bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-xl shadow-indigo-600/40 transition transform hover:-translate-y-0.5 flex items-center justify-center gap-3">
+                    <i class="fa-solid fa-rocket text-yellow-300"></i>
+                    <span>Começar Teste Grátis de 7 Dias</span>
+                </a>
+                <a href="#recursos" class="w-full sm:w-auto px-8 py-4 rounded-xl font-bold text-base bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-circle-play text-blue-400"></i>
+                    <span>Conhecer Recursos</span>
+                </a>
+            </div>
+
+            <!-- Trust Highlights -->
+            <div class="mt-12 flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-xs sm:text-sm text-slate-400">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-check text-emerald-400"></i>
+                    <span>Sem necessidade de cartão para testar</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-check text-emerald-400"></i>
+                    <span>Ativação imediata em 2 minutos</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-check text-emerald-400"></i>
+                    <span>Conformidade total com a SEFAZ</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-check text-emerald-400"></i>
+                    <span>Suporte a impressoras térmicas 80mm/58mm</span>
+                </div>
+            </div>
+
+            <!-- Preview Showcase Mockup -->
+            <div class="mt-16 max-w-5xl mx-auto rounded-2xl p-2 sm:p-4 bg-gradient-to-b from-indigo-500/20 via-slate-800/50 to-slate-900 border border-slate-700/60 shadow-2xl">
+                <div class="rounded-xl overflow-hidden bg-slate-900 border border-slate-800">
+                    <!-- Browser Chrome Header -->
+                    <div class="bg-slate-800/90 px-4 py-3 flex items-center gap-2 border-b border-slate-700/80">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-full bg-red-500/80 inline-block"></span>
+                            <span class="w-3 h-3 rounded-full bg-yellow-500/80 inline-block"></span>
+                            <span class="w-3 h-3 rounded-full bg-green-500/80 inline-block"></span>
+                        </div>
+                        <div class="flex-1 max-w-md mx-auto bg-slate-950/70 rounded-md py-1 px-3 text-[11px] text-slate-400 text-center font-mono truncate">
+                            fcgestao.app/sistema/pdv.html • Frente de Caixa Inteligente
+                        </div>
+                    </div>
+                    <!-- Mockup Content -->
+                    <div class="p-6 sm:p-10 grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                        <div class="glass-card p-5 rounded-xl border border-slate-800">
+                            <div class="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center text-lg mb-3">
+                                <i class="fa-solid fa-cash-register"></i>
+                            </div>
+                            <h4 class="font-bold text-white text-base">PDV Frente de Caixa</h4>
+                            <p class="text-xs text-slate-400 mt-1">Venda em menos de 10 segundos, com leitor de código de barras, controle de sangria/suprimento e múltiplos caixas.</p>
+                            <div class="mt-4 flex items-center justify-between text-xs font-semibold text-emerald-400 bg-emerald-950/40 px-3 py-1.5 rounded-lg border border-emerald-800/40">
+                                <span>Total Vendas Hoje</span>
+                                <span>R$ 14.890,50</span>
+                            </div>
+                        </div>
+
+                        <div class="glass-card p-5 rounded-xl border border-slate-800">
+                            <div class="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg mb-3">
+                                <i class="fa-solid fa-file-invoice-dollar"></i>
+                            </div>
+                            <h4 class="font-bold text-white text-base">SEFAZ Direto (Zero Custos)</h4>
+                            <p class="text-xs text-slate-400 mt-1">Emita NFC-e de balcão e NF-e de atacado com assinatura digital A1 direta. Zero dependência de intermediários.</p>
+                            <div class="mt-4 flex items-center justify-between text-xs font-semibold text-blue-400 bg-blue-950/40 px-3 py-1.5 rounded-lg border border-blue-800/40">
+                                <span>Status SEFAZ</span>
+                                <span>100% Operacional</span>
+                            </div>
+                        </div>
+
+                        <div class="glass-card p-5 rounded-xl border border-slate-800">
+                            <div class="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center text-lg mb-3">
+                                <i class="fa-solid fa-chart-pie"></i>
+                            </div>
+                            <h4 class="font-bold text-white text-base">Controle de Margem & DRE</h4>
+                            <p class="text-xs text-slate-400 mt-1">Alerta em tempo real se o desconto do vendedor comer o lucro. DRE completo com custos, despesas e lucro líquido.</p>
+                            <div class="mt-4 flex items-center justify-between text-xs font-semibold text-purple-400 bg-purple-950/40 px-3 py-1.5 rounded-lg border border-purple-800/40">
+                                <span>Margem Líquida</span>
+                                <span>34,8% Saudável</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Core Features Section -->
+    <section id="recursos" class="py-24 bg-slate-950 border-t border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto">
+                <span class="text-xs uppercase font-extrabold tracking-wider text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">Recursos Completos</span>
+                <h2 class="mt-4 text-3xl sm:text-4xl font-extrabold text-white">Tudo o que seu comércio precisa em um único sistema</h2>
+                <p class="mt-3 text-slate-400 text-base">Esqueça planilhas confusas e sistemas lentos. O FC Gestão reúne todas as pontas do seu negócio com elegância e velocidade.</p>
+            </div>
+
+            <div class="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                
+                <!-- Card 1: PDV -->
+                <div id="pdv" class="glass-card p-8 rounded-2xl">
+                    <div class="w-12 h-12 bg-blue-600/20 text-blue-400 rounded-xl flex items-center justify-center text-2xl mb-5">
+                        <i class="fa-solid fa-cash-register"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">PDV Frente de Caixa Ágil</h3>
+                    <p class="text-sm text-slate-400 leading-relaxed">
+                        Atalhos no teclado (F9 finalizar), leitor de código de barras, múltiplos meios de pagamento (Pix, Cartão, Dinheiro e Crediário), controle de troco e impressão automática de cupom em 80mm e 58mm.
+                    </p>
+                    <ul class="mt-4 space-y-2 text-xs text-slate-300">
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-blue-400"></i> Bloqueio anti-venda duplicada</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-blue-400"></i> Controle de sangria e suprimento</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-blue-400"></i> Venda rápida ou vinculada a cliente</li>
+                    </ul>
+                </div>
+
+                <!-- Card 2: Fiscal SEFAZ -->
+                <div id="fiscal" class="glass-card p-8 rounded-2xl border-indigo-500/30 bg-gradient-to-b from-indigo-950/20 to-slate-900">
+                    <div class="w-12 h-12 bg-indigo-600/20 text-indigo-400 rounded-xl flex items-center justify-center text-2xl mb-5">
+                        <i class="fa-solid fa-stamp"></i>
+                    </div>
+                    <div class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 mb-2">100% Nativo</div>
+                    <h3 class="text-xl font-bold text-white mb-2">Emissor Fiscal NFC-e & NF-e</h3>
+                    <p class="text-sm text-slate-400 leading-relaxed">
+                        Conexão direta aos servidores da SEFAZ de todos os estados. Assinatura digital do XML com certificado A1, cálculo de ICMS, PIS, COFINS e transmissão em 1 clique com geração do DANFE.
+                    </p>
+                    <ul class="mt-4 space-y-2 text-xs text-slate-300">
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-indigo-400"></i> Sem pagar taxas por nota emitida</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-indigo-400"></i> Monitor de validade do Certificado A1</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-indigo-400"></i> Contingência offline inteligente</li>
+                    </ul>
+                </div>
+
+                <!-- Card 3: Estoque -->
+                <div class="glass-card p-8 rounded-2xl">
+                    <div class="w-12 h-12 bg-emerald-600/20 text-emerald-400 rounded-xl flex items-center justify-center text-2xl mb-5">
+                        <i class="fa-solid fa-boxes-stacked"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Controle Rigoroso de Estoque</h3>
+                    <p class="text-sm text-slate-400 leading-relaxed">
+                        Entrada automatizada via XML de fornecedores, alerta de estoque mínimo para reposição, cálculo automático de custo médio e baixa atômica a cada venda efetuada.
+                    </p>
+                    <ul class="mt-4 space-y-2 text-xs text-slate-300">
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> Importação de NFe de compra</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> Alerta de ruptura de estoque</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> Histórico detalhado de movimentações</li>
+                    </ul>
+                </div>
+
+                <!-- Card 4: Financeiro e DRE -->
+                <div class="glass-card p-8 rounded-2xl">
+                    <div class="w-12 h-12 bg-amber-600/20 text-amber-400 rounded-xl flex items-center justify-center text-2xl mb-5">
+                        <i class="fa-solid fa-coins"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Financeiro & DRE Gerencial</h3>
+                    <p class="text-sm text-slate-400 leading-relaxed">
+                        Contas a pagar e a receber com controle de juros e descontos. Fluxo de caixa diário projetado, comissionamento automático de vendedores e DRE em tempo real.
+                    </p>
+                    <ul class="mt-4 space-y-2 text-xs text-slate-300">
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> DRE Gerencial de lucros e perdas</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> Fechamento e conciliação de caixa</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> Relatório de inadimplência</li>
+                    </ul>
+                </div>
+
+                <!-- Card 5: Loja Virtual Integrada -->
+                <div class="glass-card p-8 rounded-2xl">
+                    <div class="w-12 h-12 bg-pink-600/20 text-pink-400 rounded-xl flex items-center justify-center text-2xl mb-5">
+                        <i class="fa-solid fa-store"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Catálogo & Loja Virtual</h3>
+                    <p class="text-sm text-slate-400 leading-relaxed">
+                        Tenha sua própria loja virtual sem complicação. Seus produtos cadastrados no ERP ficam visíveis para seus clientes comprarem online, com pedidos caindo direto no seu caixa.
+                    </p>
+                    <ul class="mt-4 space-y-2 text-xs text-slate-300">
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-pink-400"></i> Envio de pedido direto no WhatsApp</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-pink-400"></i> Sincronização em tempo real de estoque</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-pink-400"></i> Sem comissão por venda online</li>
+                    </ul>
+                </div>
+
+                <!-- Card 6: Multi-usuário & Auditoria -->
+                <div class="glass-card p-8 rounded-2xl">
+                    <div class="w-12 h-12 bg-cyan-600/20 text-cyan-400 rounded-xl flex items-center justify-center text-2xl mb-5">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Segurança & Permissões</h3>
+                    <p class="text-sm text-slate-400 leading-relaxed">
+                        Crie acessos sob medida para cada colaborador. O caixa só opera o PDV, os vendedores só veem seus próprios orçamentos e o financeiro fica restrito à administração.
+                    </p>
+                    <ul class="mt-4 space-y-2 text-xs text-slate-300">
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-cyan-400"></i> Regras de isolamento multi-tenant</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-cyan-400"></i> Registro de auditoria por usuário</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-cyan-400"></i> Backup diário e automático na nuvem</li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparison Section -->
+    <section class="py-20 bg-[#0e1424] border-t border-slate-800">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-2xl mx-auto mb-14">
+                <h2 class="text-3xl font-extrabold text-white">Por que o FC Gestão é diferente?</h2>
+                <p class="mt-2 text-slate-400 text-sm">Compare as vantagens de ter um sistema moderno feito para a velocidade do varejo.</p>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-300 border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-700 bg-slate-900/80">
+                            <th class="p-4 font-bold text-white">Funcionalidade</th>
+                            <th class="p-4 font-bold text-indigo-400 bg-indigo-950/30 border-x border-indigo-800/40 text-center">FC Gestão</th>
+                            <th class="p-4 font-bold text-slate-400 text-center">Sistemas Antigos</th>
+                            <th class="p-4 font-bold text-slate-400 text-center">Planilhas Excel</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800">
+                        <tr>
+                            <td class="p-4 font-medium">Emissor Fiscal Integrado (NFC-e / NF-e)</td>
+                            <td class="p-4 text-center text-emerald-400 bg-indigo-950/20 border-x border-indigo-800/30 font-bold"><i class="fa-solid fa-check-circle text-base"></i> Incluso e Nativo</td>
+                            <td class="p-4 text-center text-amber-400">Custo extra por nota</td>
+                            <td class="p-4 text-center text-red-400"><i class="fa-solid fa-xmark"></i> Não emite</td>
+                        </tr>
+                        <tr>
+                            <td class="p-4 font-medium">Acesso de Qualquer Lugar (Nuvem / PWA)</td>
+                            <td class="p-4 text-center text-emerald-400 bg-indigo-950/20 border-x border-indigo-800/30 font-bold"><i class="fa-solid fa-check-circle text-base"></i> Sim (PC, Celular e Tablet)</td>
+                            <td class="p-4 text-center text-red-400">Preso a um computador</td>
+                            <td class="p-4 text-center text-amber-400">Difícil no celular</td>
+                        </tr>
+                        <tr>
+                            <td class="p-4 font-medium">Alerta de Margem de Lucro no PDV</td>
+                            <td class="p-4 text-center text-emerald-400 bg-indigo-950/20 border-x border-indigo-800/30 font-bold"><i class="fa-solid fa-check-circle text-base"></i> Em tempo real</td>
+                            <td class="p-4 text-center text-red-400"><i class="fa-solid fa-xmark"></i> Não tem</td>
+                            <td class="p-4 text-center text-red-400"><i class="fa-solid fa-xmark"></i> Não tem</td>
+                        </tr>
+                        <tr>
+                            <td class="p-4 font-medium">Loja Virtual e Catálogo Integrados</td>
+                            <td class="p-4 text-center text-emerald-400 bg-indigo-950/20 border-x border-indigo-800/30 font-bold"><i class="fa-solid fa-check-circle text-base"></i> Direto no WhatsApp/Caixa</td>
+                            <td class="p-4 text-center text-amber-400">Integração paga e cara</td>
+                            <td class="p-4 text-center text-red-400"><i class="fa-solid fa-xmark"></i> Não tem</td>
+                        </tr>
+                        <tr>
+                            <td class="p-4 font-medium">Backup Automático Contínuo</td>
+                            <td class="p-4 text-center text-emerald-400 bg-indigo-950/20 border-x border-indigo-800/30 font-bold"><i class="fa-solid fa-check-circle text-base"></i> Google Cloud Seguro</td>
+                            <td class="p-4 text-center text-amber-400">Manual em pendrive</td>
+                            <td class="p-4 text-center text-red-400">Risco de perda total</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="planos" class="py-24 bg-slate-950 border-t border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto">
+                <span class="text-xs uppercase font-extrabold tracking-wider text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">Preços Transparentes</span>
+                <h2 class="mt-4 text-3xl sm:text-4xl font-extrabold text-white">Escolha o plano ideal para a sua empresa</h2>
+                <p class="mt-3 text-slate-400 text-base">Todos os planos contam com <strong>7 dias de teste grátis</strong> sem necessidade de cartão de crédito. Cancele quando quiser.</p>
+            </div>
+
+            <div class="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                
+                <!-- Plano 1: Start -->
+                <div class="glass-card p-6 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-lg font-bold text-white">Plano Start</h3>
+                        <p class="text-xs text-slate-400 mt-1">Para autônomos e pequenos pontos de venda.</p>
+                        
+                        <div class="mt-6 flex items-baseline">
+                            <span class="text-xs text-slate-400 mr-1">R$</span>
+                            <span class="text-4xl font-extrabold text-white">69</span>
+                            <span class="text-sm font-bold text-slate-300">,90</span>
+                            <span class="text-xs text-slate-400 ml-1">/mês</span>
+                        </div>
+
+                        <ul class="mt-6 space-y-3 text-xs text-slate-300 border-t border-slate-800 pt-6">
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-blue-400"></i> PDV Frente de Caixa Rápido</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-blue-400"></i> Cadastro de Produtos e Clientes</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-blue-400"></i> Controle de Estoque Básico</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-blue-400"></i> 1 Usuário / Acesso</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-blue-400"></i> Impressão Térmica 80mm/58mm</li>
+                        </ul>
+                    </div>
+
+                    <a href="./sistema/login.html?tab=cadastro&plano=start" class="mt-8 w-full py-3 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-center transition">
+                        Começar 7 Dias Grátis
+                    </a>
+                </div>
+
+                <!-- Plano 2: Balcão -->
+                <div class="glass-card p-6 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-lg font-bold text-white">Plano Balcão</h3>
+                        <p class="text-xs text-slate-400 mt-1">Para lojas com equipe de atendimento e vendas.</p>
+                        
+                        <div class="mt-6 flex items-baseline">
+                            <span class="text-xs text-slate-400 mr-1">R$</span>
+                            <span class="text-4xl font-extrabold text-white">99</span>
+                            <span class="text-sm font-bold text-slate-300">,90</span>
+                            <span class="text-xs text-slate-400 ml-1">/mês</span>
+                        </div>
+
+                        <ul class="mt-6 space-y-3 text-xs text-slate-300 border-t border-slate-800 pt-6">
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-blue-400"></i> <strong>Tudo do Plano Start</strong></li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-blue-400"></i> Até 5 Usuários e Vendedores</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-blue-400"></i> Financeiro (Contas Pagar/Receber)</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-blue-400"></i> DRE Gerencial de Lucros</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-blue-400"></i> Comissões de Vendedores</li>
+                        </ul>
+                    </div>
+
+                    <a href="./sistema/login.html?tab=cadastro&plano=balcao" class="mt-8 w-full py-3 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-center transition">
+                        Começar 7 Dias Grátis
+                    </a>
+                </div>
+
+                <!-- Plano 3: Fiscal SEFAZ (Destaque) -->
+                <div class="glass-card p-6 rounded-2xl flex flex-col justify-between relative border-2 border-indigo-500 bg-gradient-to-b from-indigo-950/40 to-slate-900 shadow-2xl shadow-indigo-600/20 transform lg:-translate-y-2">
+                    <div class="absolute -top-3.5 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[11px] font-black uppercase tracking-wider px-3.5 py-1 rounded-full shadow-md">
+                        Mais Recomendado
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-white mt-1">Plano Fiscal SEFAZ</h3>
+                        <p class="text-xs text-indigo-300 mt-1">Emissão fiscal sem limites e sem intermediários.</p>
+                        
+                        <div class="mt-6 flex items-baseline">
+                            <span class="text-xs text-slate-400 mr-1">R$</span>
+                            <span class="text-4xl font-extrabold text-white">139</span>
+                            <span class="text-sm font-bold text-slate-300">,90</span>
+                            <span class="text-xs text-slate-400 ml-1">/mês</span>
+                        </div>
+
+                        <ul class="mt-6 space-y-3 text-xs text-slate-300 border-t border-slate-800 pt-6">
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400 font-bold"></i> <strong>Tudo do Plano Balcão</strong></li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400 font-bold"></i> Emissor NFC-e e NF-e Nativo</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400 font-bold"></i> Emissão Ilimitada sem custos extras</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400 font-bold"></i> Importação de XML de Fornecedor</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400 font-bold"></i> Certificado Digital A1 Integrado</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400 font-bold"></i> Armazenamento Seguro de XMLs</li>
+                        </ul>
+                    </div>
+
+                    <a href="./sistema/login.html?tab=cadastro&plano=fiscal" class="mt-8 w-full py-3.5 rounded-xl font-extrabold text-xs bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-center shadow-lg shadow-indigo-600/40 transition">
+                        Começar 7 Dias Grátis
+                    </a>
+                </div>
+
+                <!-- Plano 4: Pro Ilimitado -->
+                <div class="glass-card p-6 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-lg font-bold text-white">Plano Pro Ilimitado</h3>
+                        <p class="text-xs text-slate-400 mt-1">Para empresas com múltiplos caixas e loja virtual.</p>
+                        
+                        <div class="mt-6 flex items-baseline">
+                            <span class="text-xs text-slate-400 mr-1">R$</span>
+                            <span class="text-4xl font-extrabold text-white">199</span>
+                            <span class="text-sm font-bold text-slate-300">,90</span>
+                            <span class="text-xs text-slate-400 ml-1">/mês</span>
+                        </div>
+
+                        <ul class="mt-6 space-y-3 text-xs text-slate-300 border-t border-slate-800 pt-6">
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-blue-400"></i> <strong>Tudo do Plano Fiscal</strong></li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-blue-400"></i> Usuários & Caixas Ilimitados</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-blue-400"></i> Loja Virtual Integrada Própria</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-blue-400"></i> Recebimento de Pedidos no PDV</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-blue-400"></i> Suporte Prioritário VIP WhatsApp</li>
+                        </ul>
+                    </div>
+
+                    <a href="./sistema/login.html?tab=cadastro&plano=pro" class="mt-8 w-full py-3 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-center transition">
+                        Começar 7 Dias Grátis
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="py-20 bg-[#0e1424] border-t border-slate-800">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-extrabold text-white">Perguntas Frequentes</h2>
+                <p class="mt-2 text-slate-400 text-sm">Tire suas dúvidas antes de começar seu teste.</p>
+            </div>
+
+            <div class="space-y-4">
+                <div class="glass-card p-5 rounded-xl">
+                    <h4 class="font-bold text-white text-base flex items-center justify-between">
+                        <span>Preciso informar cartão de crédito para fazer o teste grátis?</span>
+                        <i class="fa-solid fa-chevron-down text-xs text-slate-400"></i>
+                    </h4>
+                    <p class="mt-2 text-xs sm:text-sm text-slate-300">
+                        Não! O teste de 7 dias é totalmente livre de cartão e sem compromisso. Você cria sua conta com e-mail e senha, define o nome da sua loja e começa a usar imediatamente.
+                    </p>
+                </div>
+
+                <div class="glass-card p-5 rounded-xl">
+                    <h4 class="font-bold text-white text-base flex items-center justify-between">
+                        <span>O que acontece após o período de 7 dias de teste?</span>
+                        <i class="fa-solid fa-chevron-down text-xs text-slate-400"></i>
+                    </h4>
+                    <p class="mt-2 text-xs sm:text-sm text-slate-300">
+                        Seus dados, produtos, clientes e configurações permanecem 100% preservados e seguros. Ao final dos 7 dias, basta escolher e ativar o plano que melhor atende sua empresa para continuar operando.
+                    </p>
+                </div>
+
+                <div class="glass-card p-5 rounded-xl">
+                    <h4 class="font-bold text-white text-base flex items-center justify-between">
+                        <span>Como funciona a emissão fiscal direta na SEFAZ?</span>
+                        <i class="fa-solid fa-chevron-down text-xs text-slate-400"></i>
+                    </h4>
+                    <p class="mt-2 text-xs sm:text-sm text-slate-300">
+                        O FC Gestão possui motor fiscal nativo. Você instala seu certificado digital A1 (.pfx) diretamente no painel fiscal, e o sistema assina, valida e transmite suas notas (NFC-e e NF-e) diretamente para a SEFAZ do seu estado sem precisar pagar mensalidades intermediárias para APIs terceiras.
+                    </p>
+                </div>
+
+                <div class="glass-card p-5 rounded-xl">
+                    <h4 class="font-bold text-white text-base flex items-center justify-between">
+                        <span>Posso utilizar leitor de código de barras e impressora térmica?</span>
+                        <i class="fa-solid fa-chevron-down text-xs text-slate-400"></i>
+                    </h4>
+                    <p class="mt-2 text-xs sm:text-sm text-slate-300">
+                        Sim! O PDV suporta qualquer leitor USB ou Bluetooth de código de barras e emite cupons para impressoras térmicas padrão de 80mm e 58mm (ESC/POS ou Spooler do Windows).
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Bottom CTA Bar -->
+    <section class="py-16 bg-gradient-to-r from-blue-900 via-indigo-900 to-purple-900 border-t border-indigo-700/40 text-center relative overflow-hidden">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <h2 class="text-3xl sm:text-4xl font-extrabold text-white">Pronto para transformar a gestão do seu comércio?</h2>
+            <p class="mt-4 text-indigo-200 text-base">Crie sua loja no FC Gestão em menos de 2 minutos e experimente todos os recursos.</p>
+            <div class="mt-8">
+                <a href="./sistema/login.html?tab=cadastro" class="inline-flex items-center gap-3 px-8 py-4 rounded-xl font-extrabold text-base bg-white text-indigo-900 hover:bg-slate-100 shadow-2xl transition transform hover:scale-105">
+                    <i class="fa-solid fa-bolt text-indigo-600"></i>
+                    <span>Começar Agora Mesmo (7 Dias Grátis)</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-[#080b12] py-12 border-t border-slate-800 text-slate-400 text-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white text-sm">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+                <div>
+                    <span class="font-bold text-white text-sm">FC Gestão</span>
+                    <span class="block text-[11px] text-slate-400">© 2026 Todos os direitos reservados.</span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-6">
+                <a href="./sistema/login.html" class="hover:text-white transition">Área do Cliente</a>
+                <a href="./sistema/login.html?tab=cadastro" class="hover:text-white transition">Criar Conta</a>
+                <a href="#recursos" class="hover:text-white transition">Recursos</a>
+                <a href="#planos" class="hover:text-white transition">Planos</a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

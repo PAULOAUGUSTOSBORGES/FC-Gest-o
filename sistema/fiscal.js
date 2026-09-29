@@ -137,17 +137,55 @@ window.addEventListener('load', () => {
 // ==========================================
 function atualizarBadgeAmbiente() {
     const el = document.getElementById('badge-ambiente-fiscal');
-    if (!el) return;
-    const amb = (db.config?.empresa?.ambienteFiscal || 'producao').toLowerCase();
-    if (amb === 'contingencia') {
-        el.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-900/60 dark:text-amber-200 border border-amber-300 dark:border-amber-600 flex items-center gap-1 animate-pulse';
-        el.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-600 dark:text-amber-400"></i> CONTINGÊNCIA SEFAZ';
-    } else if (amb === 'producao') {
-        el.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1';
-        el.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-600"></i> Produção SEFAZ';
-    } else {
-        el.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center gap-1';
-        el.innerHTML = '<i class="fa-solid fa-vial text-blue-600"></i> Homologação (Testes)';
+    if (el) {
+        const amb = (db.config?.empresa?.ambienteFiscal || 'producao').toLowerCase();
+        if (amb === 'contingencia') {
+            el.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-900/60 dark:text-amber-200 border border-amber-300 dark:border-amber-600 flex items-center gap-1 animate-pulse';
+            el.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-600 dark:text-amber-400"></i> CONTINGÊNCIA SEFAZ';
+        } else if (amb === 'producao') {
+            el.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1';
+            el.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-600"></i> Produção SEFAZ';
+        } else {
+            el.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center gap-1';
+            el.innerHTML = '<i class="fa-solid fa-vial text-blue-600"></i> Homologação (Testes)';
+        }
+    }
+
+    // Atualiza status do Certificado Digital A1 no cabeçalho
+    const certEl = document.getElementById('badge-cert-validade');
+    if (certEl) {
+        const emp = db.config?.empresa || {};
+        const validadeStr = emp.certificadoValidade;
+        const temCert = Boolean(emp.certificadoBase64 || emp.certificadoNome);
+
+        if (!temCert) {
+            certEl.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-300 dark:border-slate-700 flex items-center gap-1';
+            certEl.innerHTML = '<i class="fa-solid fa-certificate text-slate-400"></i> Sem Certificado';
+            certEl.classList.remove('hidden');
+        } else if (validadeStr) {
+            const dataValidade = new Date(validadeStr);
+            if (!isNaN(dataValidade.getTime())) {
+                const hoje = new Date();
+                const diffDias = Math.ceil((dataValidade - hoje) / (1000 * 60 * 60 * 24));
+                const dataFormatada = dataValidade.toLocaleDateString('pt-BR');
+
+                if (diffDias < 0) {
+                    certEl.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200 border border-red-300 dark:border-red-700 flex items-center gap-1 animate-pulse';
+                    certEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-red-600"></i> A1 Expirado (${dataFormatada})`;
+                } else if (diffDias <= 30) {
+                    certEl.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200 border border-amber-300 dark:border-amber-700 flex items-center gap-1';
+                    certEl.innerHTML = `<i class="fa-solid fa-clock text-amber-600"></i> A1 Vence em ${diffDias}d`;
+                } else {
+                    certEl.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1';
+                    certEl.innerHTML = `<i class="fa-solid fa-shield-halved text-emerald-600"></i> A1 Válido (${dataFormatada})`;
+                }
+                certEl.classList.remove('hidden');
+            }
+        } else {
+            certEl.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1';
+            certEl.innerHTML = '<i class="fa-solid fa-shield-halved text-emerald-600"></i> A1 Ativo';
+            certEl.classList.remove('hidden');
+        }
     }
 }
 
@@ -480,131 +518,232 @@ function renderNotasFiscais() {
                 </td>
             </tr>
         `;
+        setTimeout(sincronizarRolagemFiscal, 50);
         return;
     }
 
     tbody.innerHTML = filtradas.map(n => {
-        const dataFmt = n.data ? new Date(n.data).toLocaleString('pt-BR') : '-';
+        const dObj = n.data ? new Date(n.data) : null;
+        const dataDia = dObj && !isNaN(dObj) ? dObj.toLocaleDateString('pt-BR') : '-';
+        const dataHora = dObj && !isNaN(dObj) ? dObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+
         const isNFe = n.tipo === 'NF-e';
         const isNFSe = n.tipo === 'NFS-e';
         const isDev = n.isDevolucao || n.tipo === 'NF-e Devolução';
+
         const badgeMod = isNFSe 
-            ? `<span class="bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 font-bold px-2 py-0.5 rounded text-[10px] whitespace-nowrap"><i class="fa-solid fa-screwdriver-wrench"></i> NFS-e (Serviço)</span>`
+            ? `<span class="inline-flex items-center gap-1 bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 font-bold px-2.5 py-0.5 rounded-full text-[10px] whitespace-nowrap"><i class="fa-solid fa-screwdriver-wrench text-[9px]"></i> NFS-e (Serviço)</span>`
             : (isDev
-                ? `<span class="bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-bold px-2 py-0.5 rounded text-[10px] whitespace-nowrap"><i class="fa-solid fa-rotate-left"></i> Devolução (55)</span>`
+                ? `<span class="inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-bold px-2.5 py-0.5 rounded-full text-[10px] whitespace-nowrap"><i class="fa-solid fa-rotate-left text-[9px]"></i> Devolução (55)</span>`
                 : (isNFe 
-                    ? `<span class="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 font-bold px-2 py-0.5 rounded text-[10px] whitespace-nowrap"><i class="fa-solid fa-file-invoice"></i> NF-e (55)${n.isAvulsa ? ' <span class="text-[9px] opacity-80">(Avulsa)</span>' : ''}</span>`
-                    : `<span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 font-bold px-2 py-0.5 rounded text-[10px] whitespace-nowrap"><i class="fa-solid fa-store"></i> NFC-e (65)${n.isAvulsa ? ' <span class="text-[9px] opacity-80">(Avulsa)</span>' : ''}</span>`));
+                    ? `<span class="inline-flex items-center gap-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 font-bold px-2.5 py-0.5 rounded-full text-[10px] whitespace-nowrap"><i class="fa-solid fa-file-invoice text-[9px]"></i> NF-e (55)${n.isAvulsa ? ' <span class="text-[9px] opacity-80">(Avulsa)</span>' : ''}</span>`
+                    : `<span class="inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 font-bold px-2.5 py-0.5 rounded-full text-[10px] whitespace-nowrap"><i class="fa-solid fa-store text-[9px]"></i> NFC-e (65)${n.isAvulsa ? ' <span class="text-[9px] opacity-80">(Avulsa)</span>' : ''}</span>`));
 
         const isHomol = n.ambiente === 'homologacao';
         let badgeStatus = '';
         if (n.status === 'devolvido' || n.estornadaPorDevolucao) {
-            badgeStatus = `<span class="bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold px-2 py-0.5 rounded text-[10px]" title="Venda estornada perante a SEFAZ via NF-e de Devolução Nº ${n.numeroDevolucao || ''}"><i class="fa-solid fa-rotate-left"></i> Estornada (Devolvida)</span>`;
+            badgeStatus = `<span class="inline-flex items-center gap-1 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap" title="Venda estornada perante a SEFAZ via NF-e de Devolução Nº ${n.numeroDevolucao || ''}"><i class="fa-solid fa-rotate-left text-[9px]"></i> Estornada</span>`;
         } else if (n.status === 'autorizado') {
             if (isDev) {
-                badgeStatus = `<span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold px-2 py-0.5 rounded text-[10px]"><i class="fa-solid fa-circle-check"></i> Autorizada (Devolução)</span>`;
+                badgeStatus = `<span class="inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap"><i class="fa-solid fa-circle-check text-[9px]"></i> Autorizada</span>`;
             } else {
                 badgeStatus = isHomol 
-                    ? `<span class="bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-bold px-2 py-0.5 rounded text-[10px]" title="Nota emitida em ambiente de Homologação (Testes SEFAZ) - Sem valor legal na base nacional."><i class="fa-solid fa-flask"></i> Teste (Homologação)</span>`
-                    : `<span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold px-2 py-0.5 rounded text-[10px]"><i class="fa-solid fa-circle-check"></i> Autorizada</span>`;
+                    ? `<span class="inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-bold px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap" title="Nota emitida em ambiente de Homologação (Testes SEFAZ) - Sem valor legal na base nacional."><i class="fa-solid fa-flask text-[9px]"></i> Homologação</span>`
+                    : `<span class="inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap"><i class="fa-solid fa-circle-check text-[9px]"></i> Autorizada</span>`;
             }
         } else if (n.status === 'contingencia') {
-            badgeStatus = `<span class="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold px-2 py-0.5 rounded text-[10px]" title="NFC-e emitida em contingência off-line. Pendente de autorização pela SEFAZ."><i class="fa-solid fa-triangle-exclamation"></i> Contingência</span>`;
+            badgeStatus = `<span class="inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap" title="NFC-e emitida em contingência off-line. Pendente de autorização pela SEFAZ."><i class="fa-solid fa-triangle-exclamation text-[9px]"></i> Contingência</span>`;
         } else if (n.status === 'cancelado') {
-            badgeStatus = `<span class="bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-bold px-2 py-0.5 rounded text-[10px]"><i class="fa-solid fa-ban"></i> Cancelada (SEFAZ)</span>`;
+            badgeStatus = `<span class="inline-flex items-center gap-1 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-bold px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap"><i class="fa-solid fa-ban text-[9px]"></i> Cancelada</span>`;
         } else if (n.status === 'cancelado_interno') {
-            badgeStatus = `<span class="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold px-2 py-0.5 rounded text-[10px]" title="Cancelamento apenas interno sem transmissão para a SEFAZ. Use o botão de Devolução (laranja) para estornar oficialmente na SEFAZ."><i class="fa-solid fa-triangle-exclamation"></i> Cancelada (Interno - Pendente SEFAZ)</span>`;
+            badgeStatus = `<span class="inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap" title="Cancelamento apenas interno sem transmissão para a SEFAZ. Use o botão de Devolução para estornar oficialmente na SEFAZ."><i class="fa-solid fa-triangle-exclamation text-[9px]"></i> Cancelada (Interno)</span>`;
         } else if (n.status === 'processando') {
-            badgeStatus = `<span class="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold px-2 py-0.5 rounded text-[10px]"><i class="fa-solid fa-spinner fa-spin"></i> Processando</span>`;
+            badgeStatus = `<span class="inline-flex items-center gap-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-bold px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap"><i class="fa-solid fa-spinner fa-spin text-[9px]"></i> Processando</span>`;
         } else {
             const msgLimpa = (n.mensagemSefaz || 'Rejeição na SEFAZ').replace(/"/g, '&quot;');
             const encMsg = encodeURIComponent(n.mensagemSefaz || 'Erro retornado pela SEFAZ durante a validação da nota.');
-            badgeStatus = `<button type="button" onclick="mostrarErroSefaz('${encMsg}')" title="${msgLimpa}" class="bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/70 font-bold px-2 py-0.5 rounded text-[10px] inline-flex items-center gap-1 cursor-pointer transition-colors shadow-sm"><i class="fa-solid fa-circle-exclamation text-red-500"></i> ${n.status === 'erro_autorizacao' ? 'Rejeitada' : n.status.toUpperCase()}</button>`;
+            badgeStatus = `<button type="button" onclick="mostrarErroSefaz('${encMsg}')" title="${msgLimpa}" class="inline-flex items-center gap-1 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/70 font-bold px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap cursor-pointer transition-colors shadow-xs"><i class="fa-solid fa-circle-exclamation text-red-500 text-[9px]"></i> ${n.status === 'erro_autorizacao' ? 'Rejeitada' : String(n.status || 'ERRO').toUpperCase()}</button>`;
         }
 
         const chaveAbrev = n.chave ? `${n.chave.slice(0, 6)}...${n.chave.slice(-6)}` : '-';
-        const btnCopiarChave = n.chave ? `<button onclick="navigator.clipboard.writeText('${n.chave}'); showToast('Chave copiada!', 'success');" class="text-slate-400 hover:text-blue-500 ml-1" title="Copiar Chave Completa"><i class="fa-regular fa-copy"></i></button>` : '';
+        const chipChave = n.chave ? `
+            <button type="button" onclick="navigator.clipboard.writeText('${n.chave}'); showToast('Chave de acesso copiada!', 'success');" 
+                    title="Copiar chave: ${n.chave}"
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 font-mono text-[11px] transition-colors cursor-pointer group">
+                <span>${chaveAbrev}</span>
+                <i class="fa-regular fa-copy text-[10px] opacity-40 group-hover:opacity-100"></i>
+            </button>
+        ` : `<span class="text-slate-400 font-mono text-[11px]">-</span>`;
 
         const vRaw = n.rawVenda || (db.vendas || []).find(x => String(x.id) === String(n.vendaId));
         const numPedFmt = n.isAvulsa
-            ? `<div class="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-center gap-1"><i class="fa-solid fa-bolt text-[10px]"></i> Nota Avulsa</div>`
-            : `<div class="text-[11px] font-semibold text-blue-600 dark:text-blue-400 mt-0.5 flex items-center gap-1"><i class="fa-solid fa-receipt text-[10px]"></i> Pedido ${vRaw?.numeroPedido ? `#${String(vRaw.numeroPedido).padStart(4, '0')}` : (vRaw?.numero ? `#${String(vRaw.numero).padStart(4, '0')}` : (n.numeroPedido ? `#${String(n.numeroPedido).padStart(4, '0')}` : `#${String(n.vendaId || '0').slice(-6)}`))}</div>`;
+            ? `<div class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-center gap-1"><i class="fa-solid fa-bolt text-[9px]"></i> Avulsa</div>`
+            : `<div class="text-[10px] font-semibold text-blue-600 dark:text-blue-400 mt-0.5 flex items-center gap-1"><i class="fa-solid fa-receipt text-[9px]"></i> Pedido ${vRaw?.numeroPedido ? `#${String(vRaw.numeroPedido).padStart(4, '0')}` : (vRaw?.numero ? `#${String(vRaw.numero).padStart(4, '0')}` : (n.numeroPedido ? `#${String(n.numeroPedido).padStart(4, '0')}` : `#${String(n.vendaId || '0').slice(-6)}`))}</div>`;
+
+        // Botões de Ação
+        let btnDanfe = '';
+        let btnXml = '';
+
+        if (isNFSe) {
+            btnDanfe = `<button type="button" onclick="imprimirDanfse('${n.numero}', '${n.vendaId}')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/60 font-bold text-xs transition-colors border border-purple-200 dark:border-purple-800 shadow-xs" title="Imprimir / Visualizar NFS-e"><i class="fa-solid fa-print"></i> DANFSE</button>`;
+        } else if (isDev) {
+            btnDanfe = `<button type="button" onclick="imprimirDanfeNativo('${n.vendaId}', 'NF-e Devolução')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60 font-bold text-xs transition-colors border border-amber-200 dark:border-amber-800 shadow-xs" title="Imprimir DANFE da Devolução (A4)"><i class="fa-solid fa-print"></i> DANFE</button>`;
+            btnXml = `<button type="button" onclick="baixarXmlNativo('${n.vendaId}', 'NF-e Devolução')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 font-bold text-xs transition-colors border border-slate-200 dark:border-slate-600 shadow-xs" title="Baixar Arquivo XML da Devolução"><i class="fa-solid fa-code"></i> XML</button>`;
+        } else {
+            if (n.danfeUrl) {
+                btnDanfe = `<a href="${n.danfeUrl}" target="_blank" class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 font-bold text-xs transition-colors border border-blue-200 dark:border-blue-800 shadow-xs" title="Imprimir / Visualizar DANFE (PDF)"><i class="fa-solid fa-print"></i> DANFE</a>`;
+            } else if (n.status === 'autorizado' || n.status === 'contingencia' || n.status === 'devolvido') {
+                btnDanfe = `<button type="button" onclick="imprimirDanfeNativo('${n.vendaId}', '${n.tipo}')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 font-bold text-xs transition-colors border border-blue-200 dark:border-blue-800 shadow-xs" title="Imprimir DANFE"><i class="fa-solid fa-print"></i> DANFE</button>`;
+            }
+
+            if (n.xmlUrl) {
+                btnXml = `<a href="${n.xmlUrl}" target="_blank" download class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 font-bold text-xs transition-colors border border-slate-200 dark:border-slate-600 shadow-xs" title="Baixar Arquivo XML"><i class="fa-solid fa-code"></i> XML</a>`;
+            } else if (n.xmlConteudo || n.status === 'autorizado' || n.status === 'contingencia' || n.status === 'devolvido') {
+                btnXml = `<button type="button" onclick="baixarXmlNativo('${n.vendaId}', '${n.tipo}')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 font-bold text-xs transition-colors border border-slate-200 dark:border-slate-600 shadow-xs" title="Baixar Arquivo XML"><i class="fa-solid fa-code"></i> XML</button>`;
+            }
+        }
+
+        // Ações extras
+        let btnTransmitir = '';
+        if (n.status === 'contingencia') {
+            btnTransmitir = `<button type="button" onclick="transmitirNotaContingencia('${n.vendaId}')" class="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded font-bold text-xs transition-colors shadow-xs" title="Transmitir NFC-e em Contingência para a SEFAZ"><i class="fa-solid fa-cloud-arrow-up"></i> Transmitir</button>`;
+        }
+
+        let btnReemitir = '';
+        if (((n.status !== 'autorizado' && n.status !== 'contingencia' && n.status !== 'devolvido') || isHomol) && !isNFSe && !isDev) {
+            btnReemitir = `<button type="button" onclick="reemitirNota('${n.vendaId}', '${n.tipo}')" class="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded font-bold text-xs transition-colors shadow-xs" title="${isHomol ? 'Emitir esta nota agora na SEFAZ Oficial (Produção com Valor Legal)' : 'Reemitir com a nova numeração na SEFAZ'}"><i class="fa-solid fa-paper-plane"></i> ${isHomol ? 'Oficial' : 'Reemitir'}</button>`;
+        }
+
+        // Toolbar de ícones compacta
+        const icones = [];
+        if (!isNFSe && !isDev) {
+            icones.push(`<button type="button" onclick="consultarSefaz('${n.vendaId}', '${n.tipo}')" class="w-7 h-7 flex items-center justify-center rounded text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors" title="Sincronizar Status SEFAZ"><i class="fa-solid fa-arrows-rotate text-xs"></i></button>`);
+        }
+        if (isNFe && n.status === 'autorizado' && !isDev && !isHomol) {
+            icones.push(`<button type="button" onclick="abrirModalCCe('${n.vendaId}', '${n.numero}')" class="w-7 h-7 flex items-center justify-center rounded text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors" title="Carta de Correção (CC-e)"><i class="fa-solid fa-file-pen text-xs"></i></button>`);
+        }
+        if ((isNFe || n.tipo === 'NFC-e') && (n.status === 'autorizado' || n.status === 'cancelado_interno') && !n.estornadaPorDevolucao && n.status !== 'devolvido' && !isDev && !isHomol) {
+            icones.push(`<button type="button" onclick="abrirModalDevolucaoVenda('${n.vendaId}', '${n.chave || ''}')" class="w-7 h-7 flex items-center justify-center rounded text-orange-500 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-900/30 transition-colors" title="Emitir NF-e de Devolução / Estorno na SEFAZ (Ref. ${n.tipo})"><i class="fa-solid fa-rotate-left text-xs"></i></button>`);
+        }
+        if (n.status === 'cancelado_interno') {
+            icones.push(`<button type="button" onclick="reverterCancelamentoInterno('${n.vendaId}', '${n.tipo}')" class="w-7 h-7 flex items-center justify-center rounded text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors" title="Restaurar para Autorizada (Vincular à SEFAZ via Devolução)"><i class="fa-solid fa-arrow-rotate-left text-xs"></i></button>`);
+        }
+        if (n.status === 'autorizado' && !n.estornadaPorDevolucao && !isHomol) {
+            icones.push(`<button type="button" onclick="abrirModalCancelamento('${n.vendaId}', '${n.tipo}', '${n.numero}', '${n.chave || ''}')" class="w-7 h-7 flex items-center justify-center rounded text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="Cancelar Nota na SEFAZ"><i class="fa-solid fa-ban text-xs"></i></button>`);
+        }
+        if (((n.status !== 'autorizado' && n.status !== 'contingencia' && n.status !== 'cancelado' && n.status !== 'devolvido') || isHomol) && !isDev) {
+            icones.push(`<button type="button" onclick="excluirNotaFiscal('${n.vendaId}', '${n.tipo}')" class="w-7 h-7 flex items-center justify-center rounded text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="Excluir registro desta nota do sistema"><i class="fa-solid fa-trash-can text-xs"></i></button>`);
+        }
+
+        const toolbarIcones = icones.length > 0 
+            ? `<div class="inline-flex items-center p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/80 shadow-xs">${icones.join('')}</div>`
+            : '';
 
         return `
-            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">
-                <td class="p-3 text-slate-500 dark:text-slate-400 whitespace-nowrap">${dataFmt}</td>
-                <td class="p-3">${badgeMod}</td>
-                <td class="p-3 font-mono text-slate-800 dark:text-slate-100 whitespace-nowrap">
-                    <div class="font-bold">Nº ${n.numero} <span class="text-[10px] text-slate-400 font-normal">(Série ${n.serie})</span></div>
+            <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-700/40 transition-colors">
+                <td class="py-3 px-4 whitespace-nowrap">
+                    <div class="font-semibold text-slate-800 dark:text-slate-200 text-xs">${dataDia}</div>
+                    <div class="text-[10px] text-slate-400 font-mono">${dataHora}</div>
+                </td>
+                <td class="py-3 px-3 text-center whitespace-nowrap">${badgeMod}</td>
+                <td class="py-3 px-3 font-mono whitespace-nowrap">
+                    <div class="font-bold text-slate-800 dark:text-slate-100 text-xs flex items-center gap-1.5">
+                        <span>Nº ${n.numero}</span>
+                        <span class="text-[10px] font-normal px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">Série ${n.serie}</span>
+                    </div>
                     ${numPedFmt}
                 </td>
-                <td class="p-3">
-                    <strong class="text-slate-800 dark:text-slate-100 block max-w-[180px] truncate">${n.clienteNome}</strong>
-                    <span class="text-[10px] text-slate-400 font-mono">${n.clienteDoc || 'Consumidor'}</span>
+                <td class="py-3 px-4">
+                    <div class="font-semibold text-slate-800 dark:text-slate-100 text-xs max-w-[200px] truncate" title="${n.clienteNome || 'Consumidor Final'}">${n.clienteNome || 'Consumidor Final'}</div>
+                    <div class="text-[10px] text-slate-400 font-mono">${n.clienteDoc || 'Consumidor'}</div>
                 </td>
-                <td class="p-3 font-mono text-[11px] text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                    ${chaveAbrev} ${btnCopiarChave}
+                <td class="py-3 px-3 text-center whitespace-nowrap">
+                    ${chipChave}
                 </td>
-                <td class="p-3 text-right font-black text-slate-800 dark:text-slate-100 whitespace-nowrap">
-                    ${typeof formatMoney === 'function' ? formatMoney(n.valor) : `R$ ${n.valor.toFixed(2)}`}
+                <td class="py-3 px-3 text-right font-black text-slate-800 dark:text-slate-100 whitespace-nowrap text-xs">
+                    ${typeof formatMoney === 'function' ? formatMoney(n.valor) : `R$ ${Number(n.valor || 0).toFixed(2)}`}
                 </td>
-                <td class="p-3 text-center whitespace-nowrap">
+                <td class="py-3 px-3 text-center whitespace-nowrap">
                     ${badgeStatus}
                 </td>
-                <td class="p-3 text-center whitespace-nowrap">
-                    <div class="flex items-center justify-center gap-1.5">
-                        ${isNFSe ? `
-                            <button onclick="imprimirDanfse('${n.numero}', '${n.vendaId}')" class="bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/60 px-2.5 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1 shadow-sm" title="Imprimir / Visualizar Espelho da NFS-e"><i class="fa-solid fa-print"></i> Imprimir NFS-e</button>
-                        ` : `
-                            ${isDev ? `
-                                <button onclick="imprimirDanfeNativo('${n.vendaId}', 'NF-e Devolução')" class="bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/60 px-2 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1 shadow-sm" title="Imprimir DANFE da Devolução (A4)"><i class="fa-solid fa-print"></i> DANFE</button>
-                                <button onclick="baixarXmlNativo('${n.vendaId}', 'NF-e Devolução')" class="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 px-2 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1 shadow-sm" title="Baixar Arquivo XML da Devolução"><i class="fa-solid fa-code"></i> XML</button>
-                            ` : `
-                                ${n.danfeUrl 
-                                    ? `<a href="${n.danfeUrl}" target="_blank" class="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 px-2 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1" title="Imprimir / Visualizar DANFE (PDF)"><i class="fa-solid fa-print"></i> DANFE</a>` 
-                                    : (n.status === 'autorizado' || n.status === 'contingencia' || n.status === 'devolvido' ? `<button onclick="imprimirDanfeNativo('${n.vendaId}', '${n.tipo}')" class="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 px-2 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1" title="Imprimir DANFE"><i class="fa-solid fa-print"></i> DANFE</button>` : '')}
-                                
-                                ${n.xmlUrl 
-                                    ? `<a href="${n.xmlUrl}" target="_blank" download class="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 px-2 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1" title="Baixar Arquivo XML"><i class="fa-solid fa-code"></i> XML</a>` 
-                                    : (n.xmlConteudo || n.status === 'autorizado' || n.status === 'contingencia' || n.status === 'devolvido' ? `<button onclick="baixarXmlNativo('${n.vendaId}', '${n.tipo}')" class="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 px-2 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1" title="Baixar Arquivo XML"><i class="fa-solid fa-code"></i> XML</button>` : '')}
-                            `}
-                        `}
-                        
-                        ${(n.estornadaPorDevolucao || n.status === 'devolvido') ? `
-                            <span class="text-[10px] text-purple-700 dark:text-purple-300 font-bold px-2 py-1 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded flex items-center gap-1" title="Estornada pela NF-e Devolução Nº ${n.numeroDevolucao || ''}"><i class="fa-solid fa-check-double text-emerald-500"></i> Estornada</span>
-                        ` : ''}
-
-                        ${n.status === 'contingencia' ? `
-                            <button onclick="transmitirNotaContingencia('${n.vendaId}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1 shadow-sm" title="Transmitir NFC-e em Contingência para a SEFAZ">
-                                <i class="fa-solid fa-cloud-arrow-up"></i> Transmitir
-                            </button>
-                        ` : ''}
-
-                        ${((n.status !== 'autorizado' && n.status !== 'contingencia' && n.status !== 'devolvido') || isHomol) && !isNFSe && !isDev ? `
-                            <button onclick="reemitirNota('${n.vendaId}', '${n.tipo}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded font-bold text-xs transition-colors flex items-center gap-1 shadow-sm" title="${isHomol ? 'Emitir esta nota agora na SEFAZ Oficial (Produção com Valor Legal)' : 'Reemitir com a nova numeração na SEFAZ'}">
-                                <i class="fa-solid fa-paper-plane"></i> ${isHomol ? 'Emitir Oficial' : 'Reemitir'}
-                            </button>
-                        ` : ''}
-
-                        ${!isNFSe && !isDev ? `<button onclick="consultarSefaz('${n.vendaId}', '${n.tipo}')" class="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 p-1.5" title="Sincronizar Status SEFAZ"><i class="fa-solid fa-arrows-rotate"></i></button>` : ''}
-                        
-                        ${isNFe && n.status === 'autorizado' && !isDev && !isHomol ? `<button onclick="abrirModalCCe('${n.vendaId}', '${n.numero}')" class="text-indigo-500 hover:text-indigo-700 p-1.5" title="Carta de Correção (CC-e)"><i class="fa-solid fa-file-pen"></i></button>` : ''}
-                        
-                        ${(isNFe || n.tipo === 'NFC-e') && (n.status === 'autorizado' || n.status === 'cancelado_interno') && !n.estornadaPorDevolucao && n.status !== 'devolvido' && !isDev && !isHomol ? `<button onclick="abrirModalDevolucaoVenda('${n.vendaId}', '${n.chave || ''}')" class="text-orange-500 hover:text-orange-700 p-1.5" title="Emitir NF-e de Devolução / Estorno na SEFAZ (Ref. ${n.tipo})"><i class="fa-solid fa-rotate-left"></i></button>` : ''}
-
-                        ${n.status === 'cancelado_interno' ? `<button onclick="reverterCancelamentoInterno('${n.vendaId}', '${n.tipo}')" class="text-emerald-500 hover:text-emerald-700 p-1.5" title="Restaurar para Autorizada (Vincular à SEFAZ via Devolução)"><i class="fa-solid fa-arrow-rotate-left"></i></button>` : ''}
-
-                        ${n.status === 'autorizado' && !n.estornadaPorDevolucao && !isHomol ? `<button onclick="abrirModalCancelamento('${n.vendaId}', '${n.tipo}', '${n.numero}', '${n.chave || ''}')" class="text-red-500 hover:text-red-700 p-1.5" title="Cancelar Nota na SEFAZ"><i class="fa-solid fa-ban"></i></button>` : ''}
-
-                        ${((n.status !== 'autorizado' && n.status !== 'contingencia' && n.status !== 'cancelado' && n.status !== 'devolvido') || isHomol) && !isDev ? `
-                            <button onclick="excluirNotaFiscal('${n.vendaId}', '${n.tipo}')" class="text-red-400 hover:text-red-600 p-1.5" title="Excluir registro desta nota do sistema">
-                                <i class="fa-solid fa-trash-can"></i>
-                            </button>
-                        ` : ''}
+                <td class="py-3 px-4 whitespace-nowrap text-right">
+                    <div class="inline-flex items-center justify-end gap-1.5 flex-nowrap">
+                        ${btnDanfe}
+                        ${btnXml}
+                        ${btnTransmitir}
+                        ${btnReemitir}
+                        ${toolbarIcones}
                     </div>
                 </td>
+            </tr>
         `;
     }).join('');
+
+    setTimeout(sincronizarRolagemFiscal, 50);
+}
+
+// ==========================================
+// ROLAGEM HORIZONTAL SINCRONIZADA (SUPERIOR & INFERIOR)
+// ==========================================
+let _rolagemFiscalIniciada = false;
+
+function sincronizarRolagemFiscal() {
+    const topScroll = document.getElementById('scroll-fiscal-top');
+    const topInner = document.getElementById('scroll-fiscal-top-inner');
+    const tableContainer = document.getElementById('tabela-notas-container');
+    const table = document.getElementById('tabela-notas-fiscal');
+
+    if (!topScroll || !topInner || !tableContainer || !table) return;
+
+    const scrollWidth = Math.max(table.scrollWidth, table.offsetWidth, 1180);
+    const clientWidth = tableContainer.clientWidth;
+
+    topInner.style.width = scrollWidth + 'px';
+
+    if (scrollWidth > clientWidth + 2) {
+        topScroll.style.display = 'block';
+    } else {
+        topScroll.style.display = 'none';
+    }
+
+    if (!_rolagemFiscalIniciada) {
+        _rolagemFiscalIniciada = true;
+
+        let isSyncing = false;
+
+        topScroll.addEventListener('scroll', () => {
+            if (isSyncing) return;
+            isSyncing = true;
+            tableContainer.scrollLeft = topScroll.scrollLeft;
+            requestAnimationFrame(() => { isSyncing = false; });
+        }, { passive: true });
+
+        tableContainer.addEventListener('scroll', () => {
+            if (isSyncing) return;
+            isSyncing = true;
+            topScroll.scrollLeft = tableContainer.scrollLeft;
+            requestAnimationFrame(() => { isSyncing = false; });
+        }, { passive: true });
+
+        topScroll.addEventListener('wheel', (e) => {
+            if (e.deltaY && !e.deltaX) {
+                e.preventDefault();
+                topScroll.scrollLeft += e.deltaY;
+            }
+        }, { passive: false });
+
+        window.addEventListener('resize', () => {
+            sincronizarRolagemFiscal();
+        });
+
+        if (window.ResizeObserver) {
+            const ro = new ResizeObserver(() => {
+                sincronizarRolagemFiscal();
+            });
+            ro.observe(tableContainer);
+            ro.observe(table);
+        }
+    }
 }
 
 function filtrarNotasFiscais() {

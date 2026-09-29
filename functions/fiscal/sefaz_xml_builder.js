@@ -346,9 +346,17 @@ function construirXmlNota(dados) {
         const xProd = tpAmb === '2' && nItem === 1 
             ? 'NOTA FISCAL EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL' 
             : limparTexto(item.nome || item.descricao || `PRODUTO ${nItem}`);
-        
-        const ncm = apenasDigitos(item.ncm || '21069090').padStart(8, '0');
-        const cfop = apenasDigitos(item.cfop || '5102').padStart(4, '0');
+        let ncmLimpo = apenasDigitos(item.ncm || '');
+        if (!ncmLimpo || ncmLimpo.length < 8 || ncmLimpo === '00000000') {
+            ncmLimpo = '94036000'; // Fallback defensivo: NCM padrão de mercadorias gerais
+        }
+        const ncm = ncmLimpo.substring(0, 8);
+
+        let cfopLimpo = apenasDigitos(item.cfop || '');
+        if (!cfopLimpo || cfopLimpo.length < 4 || cfopLimpo === '0000') {
+            cfopLimpo = '5102'; // Fallback defensivo: Venda de mercadorias de terceiros no estado
+        }
+        const cfop = cfopLimpo.substring(0, 4);
         const uCom = limparTexto(item.unidade || 'UN').toUpperCase();
         const qtdVal = parseFloat(item.quantidade !== undefined ? item.quantidade : (item.qtd !== undefined ? item.qtd : 1)) || 1;
         const precoVal = parseFloat(item.preco !== undefined ? item.preco : (item.precoUnitario !== undefined ? item.precoUnitario : 0)) || 0;
@@ -362,8 +370,11 @@ function construirXmlNota(dados) {
         const tagVDesc = itemDesconto > 0.001 ? `\n            <vDesc>${itemDesconto.toFixed(2)}</vDesc>` : '';
         
         totalProdutos += subtotalItem;
-        totalDesconto += itemDesconto;
-        const csosn = apenasDigitos(item.csosn || '102');
+        let csosnLimpo = apenasDigitos(item.csosn || '');
+        if (!csosnLimpo || csosnLimpo.length < 3) {
+            csosnLimpo = '102'; // Simples Nacional sem permissão de crédito
+        }
+        const csosn = csosnLimpo;
         const origem = String(item.origem || '0').trim();
 
         // ICMS Simples Nacional ou Normal

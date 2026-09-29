@@ -750,17 +750,27 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                 if (empData) {
                     window.currentEmpresaData = empData;
 
-                    if (empData.status === 'BLOQUEADO') {
+                    // Checagem de expiracao e bloqueio da assinatura / trial
+                    const expInfo = typeof window._verificarExpiracaoSaaS === 'function'
+                        ? window._verificarExpiracaoSaaS(empData)
+                        : (empData.status === 'BLOQUEADO' ? { expirado: true, motivo: 'O acesso da sua empresa foi suspenso por pendencia financeira.' } : { expirado: false });
+
+                    if (expInfo.expirado) {
                         if (typeof window.aplicarBloqueioTotal === 'function') {
-                            window.aplicarBloqueioTotal('O acesso da sua empresa foi suspenso por pendencia financeira.');
+                            window.aplicarBloqueioTotal(expInfo.motivo, empData);
                             return;
                         }
                         sessionStorage.clear();
                         localStorage.removeItem('fc_empresa_ativa');
-                        alert('O acesso da sua empresa esta suspenso temporariamente por pendencia financeira. Entre em contato com o suporte.');
+                        alert(expInfo.motivo || 'O acesso da sua empresa esta suspenso temporariamente. Entre em contato com o suporte.');
                         await auth.signOut();
                         window.location.href = 'login.html';
                         return;
+                    }
+
+                    // Se estiver em trial valido, exibir o banner de dias restantes
+                    if (expInfo.isTrial && typeof window.renderizarBannerTrial === 'function') {
+                        window.renderizarBannerTrial(expInfo.diasRestantes, empData);
                     }
 
                     // Aplica controle real dos modulos contratados pelo plano da loja
@@ -2091,6 +2101,7 @@ window.excluirVenda = function(id) {
 
             if (typeof renderVendas === 'function') renderVendas();
             if (typeof renderOrcamentos === 'function') renderOrcamentos();
+            if (typeof renderVendasPendentesPDV === 'function') renderVendasPendentesPDV();
             window.fecharModalConfirmacao();
             showToast('Operação excluída com sucesso!', 'success');
         } catch (err) {
@@ -2276,32 +2287,72 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ==========================================
 // TABELAS RESPONSIVAS MOBILE (data-label)
-// Injeta atributo data-label em cada <td> com base
-// no cabeçalho correspondente da coluna, para que
-// o CSS mobile exiba os labels sem scroll horizontal.
 // ==========================================
-function initResponsiveTables() {
-    document.querySelectorAll('table').forEach(table => {
-        const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.innerText.trim());
-        if (!headers.length) return;
-        table.querySelectorAll('tbody tr').forEach(tr => {
-            Array.from(tr.querySelectorAll('td')).forEach((td, i) => {
-                if (headers[i]) td.setAttribute('data-label', headers[i]);
-            });
-        });
-    });
-}
-window.initResponsiveTables = initResponsiveTables;
+// TABELAS RESPONSIVAS GLOBAIS — .table-wrapper
+// Envolve dinamicamente todas as <table> e .list-container
+// com <div class="table-wrapper"> para garantir scroll horizontal
+// sem cortar preços ou botões de ação na borda direita.
+// ==========================================
+(function () {
+    const SKIP_SELECTORS = [
+        '.tabela-itens',          // Recibos térmicos
+        '.no-wrap-table',         // Escape manual
+        '[data-no-wrap]',         // Escape manual
+        '#pdv-carrinho-body',     // Layout próprio do PDV
+        '.print-area table'       // Impressão
+    ];
 
-// Observa mutações no DOM para aplicar labels automaticamente
-// quando as tabelas são preenchidas via JS assíncrono
-(function() {
-    // MutationObserver desativado: tabelas agora usam touch-scroll nativo preservando integridade das colunas
-    const observer = { observe: () => {} };
+    function deveIgnorar(el) {
+        if (el.closest('.table-wrapper, .fc-table-wrap')) return true; // Previne duplicidade
+        return SKIP_SELECTORS.some(sel => el.matches(sel) || el.closest(sel.replace(' table', '')));
+    }
+
+    function wrapElement(el) {
+        if (deveIgnorar(el)) return;
+
+        const pai = el.parentElement;
+        if (pai && (pai.classList.contains('overflow-x-auto') || pai.classList.contains('table-wrapper'))) {
+            pai.classList.add('table-wrapper', 'fc-table-wrap');
+            return;
+        }
+
+        const wrap = document.createElement('div');
+        wrap.className = 'table-wrapper fc-table-wrap';
+        pai.insertBefore(wrap, el);
+        wrap.appendChild(el);
+    }
+
+    function initTableWrappers() {
+        document.querySelectorAll('table, .list-container, .tabela-dados').forEach(wrapElement);
+    }
+
+    // Executa no DOMContentLoaded
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initTableWrappers);
+    } else {
+        initTableWrappers();
+    }
+
+    // Observa dados assíncronos injetados pelo Firebase
+    const observer = new MutationObserver(mutations => {
+        let hasNew = false;
+        for (const m of mutations) {
+            for (const node of m.addedNodes) {
+                if (node.nodeType === 1 && (node.tagName === 'TABLE' || node.querySelector?.('table, .list-container'))) {
+                    hasNew = true;
+                    break;
+                }
+            }
+            if (hasNew) break;
+        }
+        if (hasNew) initTableWrappers();
+    });
+
     document.addEventListener('DOMContentLoaded', () => {
         observer.observe(document.body, { childList: true, subtree: true });
-        if (window.innerWidth <= 640) initResponsiveTables();
     });
+
+    window.fcWrapTables = initTableWrappers;
 })();
 
 // ==========================================

@@ -3,12 +3,13 @@
 // Cache inteligente, carregamento ultra-rápido e suporte Offline
 // ==============================================================
 
-const CACHE_NAME = 'fc-gestao-cache-v23';
+const CACHE_NAME = 'fc-gestao-cache-v26';
 
 // Arquivos do App Shell para pré-armazenamento em cache
 const SHELL_ASSETS = [
     '/',
     '/index.html',
+    '/favicon.ico',
     '/style.css',
     '/tailwind-built.css',
     '/global.js',
@@ -84,11 +85,12 @@ self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((cacheNames) => {
             return Promise.all(
-                cacheNames.map((name) => {
-                    // REMOVE TODOS OS CACHES (KILL SWITCH)
-                    console.log('[Service Worker] Removendo cache:', name);
-                    return caches.delete(name);
-                })
+                cacheNames
+                    .filter((name) => name !== CACHE_NAME)
+                    .map((name) => {
+                        console.log('[Service Worker] Removendo cache antigo:', name);
+                        return caches.delete(name);
+                    })
             );
         }).then(() => self.clients.claim())
     );
@@ -99,58 +101,94 @@ self.addEventListener('fetch', (event) => {
     const request = event.request;
     const url = new URL(request.url);
 
-    // Ignora chamadas que não sejam GET ou que sejam de APIs do Firebase/Firestore
+    // Ignora chamadas que não sejam GET ou que não sejam HTTP/HTTPS (extensões do browser, chrome-extension://, etc.)
     if (request.method !== 'GET') return;
+    if (!url.protocol.startsWith('http')) return;
+
+    // Ignora chamadas de APIs do Firebase/Firestore/Google (persistência nativa offline do Firebase)
     if (
         url.hostname.includes('firestore.googleapis.com') ||
         url.hostname.includes('identitytoolkit.googleapis.com') ||
         url.hostname.includes('firebaseinstallations.googleapis.com') ||
         url.hostname.includes('securetoken.googleapis.com') ||
-        url.protocol.startsWith('chrome-extension')
+        url.hostname.includes('googleapis.com') ||
+        url.hostname.includes('firebaseio.com') ||
+        url.hostname.includes('google.com')
     ) {
-        return; // Deixa o SDK do Firebase lidar nativamente com a sua própria persistência offline
+        return;
     }
 
-    // Para navegações de página (HTML): Rede primeiro, fallback para o cache
+    // Para navegações de página (HTML): Rede primeiro, fallback resiliente para cache
     if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) {
         event.respondWith(
             fetch(request)
                 .then((networkResponse) => {
-                    if (networkResponse.ok) {
+                    if (networkResponse && networkResponse.ok) {
                         const responseClone = networkResponse.clone();
-                        caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+                        caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone)).catch(() => {});
                     }
                     return networkResponse;
                 })
-                .catch(() => {
-                    return caches.match(request).then((cachedResponse) => {
-                        if (cachedResponse) return cachedResponse;
-                        return caches.match('/sistema/index.html').then(idxResp => {
-                            return idxResp || Response.error();
-                        });
-                    });
+                .catch(async () => {
+                    // 1. Tenta correspondência exata do request
+                    const cachedResponse = await caches.match(request);
+                    if (cachedResponse) return cachedResponse;
+
+                    // 2. Tenta pelo pathname exato (sem query string)
+                    const pathnameResponse = await caches.match(url.pathname);
+                    if (pathnameResponse) return pathnameResponse;
+
+                    // 3. Fallback para index do sistema
+                    const idxSistema = await caches.match('/sistema/index.html');
+                    if (idxSistema) return idxSistema;
+
+                    // 4. Fallback para raiz
+                    const idxRoot = await caches.match('/index.html');
+                    if (idxRoot) return idxRoot;
+
+                    // 5. Fallback seguro amigável
+                    return new Response(
+                        '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Offline - FC Gestão</title></head><body style="font-family:sans-serif;text-align:center;padding:50px;"><h2>Modo Offline</h2><p>Página não encontrada no cache local. Conecte-se à internet para carregá-la.</p><button onclick="window.location.reload()" style="padding:10px 20px;border-radius:8px;background:#2563eb;color:#fff;border:none;cursor:pointer;">Tentar Novamente</button></body></html>',
+                        { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+                    );
                 })
         );
         return;
     }
 
-    // Para arquivos estáticos (JS, CSS, Imagens, Fontes, CDN): Stale-While-Revalidate
+    // Para arquivos estáticos (JS, CSS, Imagens, Fontes, CDN): Stale-While-Revalidate resiliente
     event.respondWith(
-        caches.match(request).then((cachedResponse) => {
+        caches.match(request).then(async (cachedResponse) => {
+            // Inicia o fetch em segundo plano para revalidar
             const fetchPromise = fetch(request)
                 .then((networkResponse) => {
                     if (networkResponse && networkResponse.ok) {
                         const responseClone = networkResponse.clone();
-                        caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+                        caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone)).catch(() => {});
                     }
                     return networkResponse;
                 })
-                .catch((err) => {
-                    // Se falhar a rede e não tiver no cache, retorna Response.error() para evitar o TypeError de 'undefined'
-                    throw err;
-                });
+                .catch(() => null); // Silencia o erro da rede para nunca gerar 'Uncaught (in promise) TypeError: Failed to fetch'
 
-            return cachedResponse || fetchPromise.catch(() => Response.error());
+            if (cachedResponse) {
+                // Retorna do cache instantaneamente enquanto a revalidação ocorre em background
+                return cachedResponse;
+            }
+
+            // Não estava no cache por URL completa: aguarda a rede
+            const networkResponse = await fetchPromise;
+            if (networkResponse) {
+                return networkResponse;
+            }
+
+            // Se a rede falhou e não tinha no cache com query string, tenta achar sem query string
+            const fallbackCached = await caches.match(url.pathname);
+            if (fallbackCached) {
+                return fallbackCached;
+            }
+
+            // Retorna 204 No Content para não sujar o console com erros vermelhos de 404
+            return new Response(null, { status: 204, statusText: 'No Content' });
         })
     );
 });

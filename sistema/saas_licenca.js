@@ -205,17 +205,50 @@
                     }
                 }
                 dados._cacheTimestamp = Date.now();
+                const expInfo = _verificarExpiracao(dados);
+                dados._expInfo = expInfo;
                 localStorage.setItem(cacheKey, JSON.stringify(dados));
                 window.currentSaaSLicense = dados;
+
+                if (expInfo.expirado) {
+                    aplicarBloqueioTotal(expInfo.motivo, dados);
+                } else if (expInfo.isTrial) {
+                    renderizarBannerTrial(expInfo.diasRestantes, dados);
+                } else {
+                    removerBannerTrial();
+                }
+
                 return dados;
             } else if (licencaCached) {
+                const expInfo = _verificarExpiracao(licencaCached);
+                licencaCached._expInfo = expInfo;
                 window.currentSaaSLicense = licencaCached;
+
+                if (expInfo.expirado) {
+                    aplicarBloqueioTotal(expInfo.motivo, licencaCached);
+                } else if (expInfo.isTrial) {
+                    renderizarBannerTrial(expInfo.diasRestantes, licencaCached);
+                } else {
+                    removerBannerTrial();
+                }
+
                 return licencaCached;
             }
         } catch (err) {
             console.warn('[SaaS Licença] Erro ao consultar servidor central:', err);
             if (licencaCached) {
+                const expInfo = _verificarExpiracao(licencaCached);
+                licencaCached._expInfo = expInfo;
                 window.currentSaaSLicense = licencaCached;
+
+                if (expInfo.expirado) {
+                    aplicarBloqueioTotal(expInfo.motivo, licencaCached);
+                } else if (expInfo.isTrial) {
+                    renderizarBannerTrial(expInfo.diasRestantes, licencaCached);
+                } else {
+                    removerBannerTrial();
+                }
+
                 return licencaCached;
             }
         }
@@ -397,49 +430,302 @@
     }
 
     // -----------------------------------------------------------------------
-    // OVERLAY DE BLOQUEIO TOTAL (empresa BLOQUEADA / inadimplente)
     // -----------------------------------------------------------------------
-    function aplicarBloqueioTotal(motivo) {
+    // VERIFICAÇÃO DE EXPIRAÇÃO (Trial 7 dias e Mensalidades)
+    // -----------------------------------------------------------------------
+    function _verificarExpiracao(empData) {
+        if (!empData) return { expirado: false, diasRestantes: 999, isTrial: false };
+
+        // Bypass de segurança para fundadores
+        const emailAtual = typeof firebase !== 'undefined' && firebase.auth().currentUser ? (firebase.auth().currentUser.email || '').toLowerCase() : '';
+        if (emailAtual === 'pauloaugusto.silvaborges@gmail.com' || emailAtual === 'fabricadecoresgoiania@gmail.com') {
+            return { expirado: false, diasRestantes: 999, isTrial: false };
+        }
+
+        if (empData.status === 'BLOQUEADO') {
+            return {
+                expirado: true,
+                motivo: 'O acesso à sua loja foi temporariamente suspenso pelo administrador.',
+                diasRestantes: -1,
+                isTrial: false
+            };
+        }
+
+        let dataVenc = null;
+        if (empData.dataVencimento) {
+            if (typeof empData.dataVencimento === 'string') {
+                const parts = empData.dataVencimento.split('T')[0].split('-');
+                if (parts.length === 3) {
+                    dataVenc = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 23, 59, 59);
+                } else {
+                    dataVenc = new Date(empData.dataVencimento);
+                }
+            } else if (empData.dataVencimento.toDate && typeof empData.dataVencimento.toDate === 'function') {
+                dataVenc = empData.dataVencimento.toDate();
+                dataVenc.setHours(23, 59, 59, 999);
+            } else if (empData.dataVencimento instanceof Date) {
+                dataVenc = new Date(empData.dataVencimento);
+                dataVenc.setHours(23, 59, 59, 999);
+            }
+        }
+
+        const isTrial = empData.status === 'TRIAL' || (empData.plano || '').toUpperCase() === 'FREE';
+
+        // Se não houver dataVencimento explícita e for TRIAL, calcula 7 dias a partir da criação
+        if (!dataVenc || isNaN(dataVenc.getTime())) {
+            if (isTrial) {
+                let base = new Date();
+                if (empData.dataCriacao && empData.dataCriacao.toDate) {
+                    base = empData.dataCriacao.toDate();
+                }
+                dataVenc = new Date(base.getTime() + (7 * 24 * 60 * 60 * 1000));
+                dataVenc.setHours(23, 59, 59, 999);
+            }
+        }
+
+        if (dataVenc && !isNaN(dataVenc.getTime())) {
+            const agora = new Date();
+            const diffMs = dataVenc.getTime() - agora.getTime();
+            const diasRestantes = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+            if (diffMs < 0) {
+                const motivo = isTrial
+                    ? 'Seu período de teste gratuito de 7 dias chegou ao fim. Ative seu plano para continuar operando sua loja sem interrupções.'
+                    : 'A sua assinatura mensal expirou. Regularize o pagamento via PIX para reativar seu acesso imediatamente.';
+                return {
+                    expirado: true,
+                    motivo: motivo,
+                    diasRestantes: diasRestantes,
+                    dataVenc: dataVenc,
+                    isTrial: isTrial
+                };
+            } else {
+                return {
+                    expirado: false,
+                    diasRestantes: Math.max(0, diasRestantes),
+                    dataVenc: dataVenc,
+                    isTrial: isTrial
+                };
+            }
+        }
+
+        return { expirado: false, diasRestantes: 999, isTrial: isTrial };
+    }
+
+    // -----------------------------------------------------------------------
+    // BANNER DE CONTAGEM REGRESSIVA DO TRIAL (Topo da Tela)
+    // -----------------------------------------------------------------------
+    function renderizarBannerTrial(diasRestantes, licenca) {
+        if (!document.body) {
+            document.addEventListener('DOMContentLoaded', () => renderizarBannerTrial(diasRestantes, licenca));
+            return;
+        }
+
+        if (document.getElementById('fc-saas-overlay-bloqueio')) return;
+
+        let banner = document.getElementById('fc-saas-trial-banner');
+        const dias = Math.max(0, diasRestantes);
+        const textoDias = dias === 0 ? 'Último dia de teste!' : (dias === 1 ? 'Resta apenas 1 dia de avaliação' : `Restam ${dias} dias de teste gratuito`);
+
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'fc-saas-trial-banner';
+            banner.style.cssText = `
+                position: sticky; top: 0; left: 0; right: 0; z-index: 9998;
+                background: linear-gradient(90deg, #d97706, #f59e0b, #d97706);
+                color: #0f172a; padding: 6px 16px;
+                display: flex; align-items: center; justify-content: space-between;
+                font-family: 'Inter', system-ui, sans-serif;
+                font-size: 0.75rem; font-weight: 800;
+                box-shadow: 0 2px 10px rgba(245, 158, 11, 0.35);
+            `;
+            document.body.prepend(banner);
+        }
+
+        banner.innerHTML = `
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+                <span style="background:rgba(15,23,42,0.15);padding:2px 8px;border-radius:12px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.05em;color:#0f172a;border:1px solid rgba(15,23,42,0.2);">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Modo Avaliação
+                </span>
+                <span>${textoDias} — Aproveite todos os recursos da sua loja!</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+                <button onclick="window.abrirModalContratarPlano && window.abrirModalContratarPlano()" style="background:#0f172a;color:#fbbf24;border:none;padding:4px 12px;border-radius:6px;font-size:0.7rem;font-weight:900;cursor:pointer;display:flex;align-items:center;gap:0.3rem;transition:all .2s;">
+                    <i class="fa-solid fa-crown"></i> Ativar Assinatura
+                </button>
+            </div>
+        `;
+    }
+
+    function removerBannerTrial() {
+        const banner = document.getElementById('fc-saas-trial-banner');
+        if (banner) banner.remove();
+    }
+
+    // -----------------------------------------------------------------------
+    // MODAL DE CONTRATAÇÃO DE PLANOS & PAGAMENTO PIX
+    // -----------------------------------------------------------------------
+    function abrirModalContratarPlano() {
+        const antigo = document.getElementById('fc-saas-modal-contratar');
+        if (antigo) antigo.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'fc-saas-modal-contratar';
+        modal.style.cssText = `
+            position: fixed; inset: 0; z-index: 99999;
+            background: rgba(15,23,42,0.85); backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center;
+            padding: 16px; font-family: 'Inter', system-ui, sans-serif;
+        `;
+
+        const cardsPlanosHtml = TABELA_PLANOS.map(p => `
+            <div style="background:#1e293b;border:1px solid ${p.destaque ? '#f59e0b' : '#334155'};border-radius:0.75rem;padding:0.75rem;display:flex;flex-direction:column;justify-content:space-between;min-width:130px;flex:1;">
+                <div>
+                    <div style="font-size:0.75rem;font-weight:900;color:${p.destaque ? '#fbbf24' : '#f8fafc'};">${p.nome}</div>
+                    <div style="font-size:0.85rem;font-weight:900;color:#4ade80;margin:0.25rem 0;">${p.preco}<span style="font-size:0.65rem;color:#94a3b8;">/mês</span></div>
+                </div>
+                <a href="https://wa.me/${SUPORTE_WHATSAPP}?text=${encodeURIComponent('Olá! Gostaria de contratar o plano ' + p.nome + ' (' + p.preco + '/mês) para minha loja.')}" target="_blank" style="margin-top:0.5rem;padding:0.4rem 0.5rem;background:${p.destaque ? '#f59e0b' : '#334155'};color:${p.destaque ? '#0f172a' : '#f8fafc'};border-radius:0.5rem;font-size:0.68rem;font-weight:800;text-decoration:none;text-align:center;display:block;">
+                    Escolher
+                </a>
+            </div>
+        `).join('');
+
+        modal.innerHTML = `
+            <div style="max-width:540px;width:100%;background:#0f172a;border:1px solid #334155;border-radius:1.5rem;padding:1.75rem;box-shadow:0 25px 50px -12px rgba(0,0,0,0.8);position:relative;">
+                <button onclick="document.getElementById('fc-saas-modal-contratar').remove()" style="position:absolute;top:1rem;right:1rem;background:transparent;border:none;color:#94a3b8;font-size:1.2rem;cursor:pointer;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+
+                <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;">
+                    <div style="width:42px;height:42px;border-radius:12px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);display:flex;align-items:center;justify-content:center;color:#fbbf24;font-size:1.2rem;">
+                        <i class="fa-solid fa-crown"></i>
+                    </div>
+                    <div>
+                        <h3 style="color:#f8fafc;font-size:1.1rem;font-weight:900;margin:0;">Planos & Assinatura</h3>
+                        <p style="color:#94a3b8;font-size:0.72rem;margin:0;">Escolha o plano ideal para a sua operação</p>
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:0.5rem;overflow-x:auto;padding-bottom:0.5rem;margin-bottom:1.25rem;">
+                    ${cardsPlanosHtml}
+                </div>
+
+                <div style="background:#1e293b;border:1px solid #334155;border-radius:1rem;padding:0.9rem;margin-bottom:1.25rem;">
+                    <div style="font-size:0.72rem;font-weight:800;color:#38bdf8;margin-bottom:0.4rem;"><i class="fa-brands fa-pix"></i> Chave PIX Oficial (Ativação Imediata)</div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;background:#0f172a;border:1px solid #475569;border-radius:0.5rem;padding:0.5rem 0.75rem;">
+                        <span style="font-family:monospace;font-size:0.8rem;color:#f8fafc;font-weight:700;">62993341774</span>
+                        <button type="button" onclick="navigator.clipboard.writeText('62993341774').then(()=>{ this.innerText='Copiado!'; setTimeout(()=>this.innerText='Copiar', 2000); })" style="padding:0.3rem 0.6rem;background:#38bdf8;border:none;border-radius:0.4rem;color:#0f172a;font-size:0.68rem;font-weight:800;cursor:pointer;">
+                            Copiar
+                        </button>
+                    </div>
+                    <div style="font-size:0.68rem;color:#94a3b8;margin-top:0.4rem;">
+                        Paulo Augusto Silva Borges • Envie o comprovante pelo WhatsApp para liberação imediata.
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:0.5rem;">
+                    <a href="https://wa.me/${SUPORTE_WHATSAPP}?text=${encodeURIComponent('Olá! Quero tirar dúvidas sobre a assinatura do sistema.')}" target="_blank" style="flex:1;padding:0.65rem;background:#22c55e;color:white;border-radius:0.75rem;font-size:0.78rem;font-weight:900;text-decoration:none;text-align:center;display:flex;align-items:center;justify-content:center;gap:0.4rem;">
+                        <i class="fa-brands fa-whatsapp text-sm"></i> Falar com Suporte WhatsApp
+                    </a>
+                    <button onclick="document.getElementById('fc-saas-modal-contratar').remove()" style="padding:0.65rem 1rem;background:#334155;color:#cbd5e1;border:none;border-radius:0.75rem;font-size:0.75rem;font-weight:700;cursor:pointer;">
+                        Fechar
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+    }
+
+    // -----------------------------------------------------------------------
+    // OVERLAY DE BLOQUEIO TOTAL COM PAGAMENTO PIX DIRETO (Trial Expirado / Inadimplência)
+    // -----------------------------------------------------------------------
+    function aplicarBloqueioTotal(motivo, licenca) {
+        if (!document.body) {
+            document.addEventListener('DOMContentLoaded', () => aplicarBloqueioTotal(motivo, licenca));
+            return;
+        }
+
+        licenca = licenca || window.currentSaaSLicense || window.currentEmpresaData || {};
         const antigo = document.getElementById('fc-saas-overlay-bloqueio');
         if (antigo) antigo.remove();
+
+        // Remove também banner de trial quando bloqueado
+        removerBannerTrial();
 
         const overlay = document.createElement('div');
         overlay.id = 'fc-saas-overlay-bloqueio';
 
-        const msgMotivo = motivo || 'O acesso à sua conta foi temporariamente suspenso por pendência financeira.';
-        const msgWpp = encodeURIComponent('Olá! Quero regularizar minha situação e reativar o acesso ao sistema.');
+        const isTrialExpirado = (licenca.status === 'TRIAL' || (licenca.plano || '').toUpperCase() === 'FREE');
+        const titulo = isTrialExpirado ? 'Período de Teste Concluído' : 'Acesso Suspenso - Mensalidade';
+        const msgMotivo = motivo || (isTrialExpirado 
+            ? 'Seu período de avaliação de 7 dias terminou. Ative seu plano para continuar vendendo.' 
+            : 'O acesso à sua loja está temporariamente suspenso por pendência na mensalidade.');
+
+        const chavePix = '62993341774';
+        const chavePixEmail = 'fabricadecoresgoiania@gmail.com';
+        const nomeEmpresa = licenca.nomeEmpresa || licenca.nome || 'Minha Loja';
+        const plano = licenca.plano || 'Start Express';
+        const valorSugerido = licenca.valorMensalidade ? `R$ ${Number(licenca.valorMensalidade).toFixed(2).replace('.', ',')}` : 'R$ 99,90';
+
+        const msgWpp = encodeURIComponent(`Olá! Gostaria de ativar/renovar o sistema para a minha loja "${nomeEmpresa}" (Plano: ${plano}, Valor: ${valorSugerido}). Segue o comprovante do PIX:`);
 
         overlay.style.cssText = `
-            position: fixed; inset: 0; z-index: 99999;
+            position: fixed; inset: 0; z-index: 999999;
             background: rgba(15,23,42,0.98);
             display: flex; align-items: center; justify-content: center;
             padding: 16px;
+            overflow-y: auto;
             font-family: 'Inter', system-ui, sans-serif;
         `;
 
         overlay.innerHTML = `
-            <div style="max-width:460px;width:100%;text-align:center;padding:2.5rem 2rem;background:#1e293b;border-radius:1.5rem;border:1px solid #ef444440;box-shadow:0 25px 50px -12px rgba(0,0,0,0.8);">
+            <div style="max-width:480px;width:100%;text-align:center;padding:2.2rem 1.8rem;background:#1e293b;border-radius:1.5rem;border:1px solid #ef444450;box-shadow:0 25px 60px -12px rgba(0,0,0,0.85);margin:auto;">
                 
                 <!-- Ícone -->
-                <div style="width:80px;height:80px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;font-size:2rem;color:#ef4444;">
+                <div style="width:72px;height:72px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-size:1.8rem;color:#ef4444;">
                     <i class="fa-solid fa-lock"></i>
                 </div>
 
                 <!-- Título -->
-                <h2 style="color:#f8fafc;font-size:1.4rem;font-weight:900;margin:0 0 0.625rem;">⛔ Acesso Suspenso</h2>
-                <p style="color:#94a3b8;font-size:0.82rem;line-height:1.7;margin:0 0 0.75rem;">${msgMotivo}</p>
-                <p style="color:#64748b;font-size:0.75rem;margin:0 0 2rem;">Para reativar seu acesso imediatamente, regularize sua situação entrando em contato com o suporte.</p>
+                <h2 style="color:#f8fafc;font-size:1.35rem;font-weight:900;margin:0 0 0.5rem;">⛔ ${titulo}</h2>
+                <p style="color:#cbd5e1;font-size:0.83rem;line-height:1.6;margin:0 0 1.25rem;">${msgMotivo}</p>
 
-                <!-- Botões -->
-                <div style="display:flex;flex-direction:column;gap:0.75rem;align-items:center;">
-                    <a href="https://wa.me/${SUPORTE_WHATSAPP}?text=${msgWpp}" target="_blank" style="display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;padding:0.8rem 2rem;width:100%;max-width:300px;background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:0.75rem;color:white;font-size:0.82rem;font-weight:900;text-decoration:none;box-shadow:0 4px 15px rgba(34,197,94,0.25);">
-                        <i class="fa-brands fa-whatsapp" style="font-size:1.1rem;"></i> Regularizar via WhatsApp
+                <!-- Box de Pagamento PIX Direto -->
+                <div style="background:#0f172a;border:1px solid #334155;border-radius:1rem;padding:1rem;margin-bottom:1.5rem;text-align:left;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+                        <span style="font-size:0.75rem;font-weight:800;color:#38bdf8;text-transform:uppercase;letter-spacing:0.05em;"><i class="fa-brands fa-pix"></i> Pagamento Rápido via PIX</span>
+                        <span style="font-size:0.8rem;font-weight:900;color:#4ade80;">${valorSugerido}<span style="font-size:0.68rem;color:#94a3b8;font-weight:600;">/mês</span></span>
+                    </div>
+
+                    <div style="background:#1e293b;border:1px solid #475569;border-radius:0.75rem;padding:0.6rem 0.8rem;display:flex;align-items:center;justify-content:space-between;gap:0.5rem;margin-bottom:0.5rem;">
+                        <div style="overflow:hidden;">
+                            <div style="font-size:0.65rem;color:#94a3b8;font-weight:600;">Chave PIX (Telefone Celular):</div>
+                            <div style="font-size:0.85rem;font-family:monospace;font-weight:700;color:#f8fafc;" id="fc-pix-key-val">${chavePix}</div>
+                        </div>
+                        <button type="button" onclick="navigator.clipboard.writeText('${chavePix}').then(()=>{ this.innerHTML='<i class=\\'fa-solid fa-check\\'></i> Copiado!'; setTimeout(()=>this.innerHTML='<i class=\\'fa-solid fa-copy\\'></i> Copiar', 2000); })" style="padding:0.45rem 0.8rem;background:#38bdf8;border:none;border-radius:0.5rem;color:#0f172a;font-size:0.72rem;font-weight:800;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:0.35rem;">
+                            <i class="fa-solid fa-copy"></i> Copiar
+                        </button>
+                    </div>
+
+                    <div style="font-size:0.7rem;color:#94a3b8;line-height:1.4;">
+                        👤 <strong>Titular:</strong> Paulo Augusto Silva Borges<br>
+                        🔑 <strong>Chave alternativa (E-mail):</strong> ${chavePixEmail}
+                    </div>
+                </div>
+
+                <!-- Botões de Ação -->
+                <div style="display:flex;flex-direction:column;gap:0.65rem;align-items:center;">
+                    <a href="https://wa.me/${SUPORTE_WHATSAPP}?text=${msgWpp}" target="_blank" style="display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;padding:0.75rem 1.5rem;width:100%;background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:0.75rem;color:white;font-size:0.82rem;font-weight:900;text-decoration:none;box-shadow:0 4px 15px rgba(34,197,94,0.3);">
+                        <i class="fa-brands fa-whatsapp" style="font-size:1.1rem;"></i> Enviar Comprovante no WhatsApp
                     </a>
-                    <button onclick="window.__fcSaasRevalidar && window.__fcSaasRevalidar()" style="display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;padding:0.6rem 1.5rem;background:transparent;border:1px solid #334155;border-radius:0.625rem;color:#94a3b8;font-size:0.75rem;font-weight:600;cursor:pointer;width:100%;max-width:300px;">
-                        <i class="fa-solid fa-rotate-right"></i> Já regularizei — Verificar novamente
+                    
+                    <button onclick="window.__fcSaasRevalidar && window.__fcSaasRevalidar()" style="display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;padding:0.6rem 1.5rem;background:#334155;border:1px solid #475569;border-radius:0.625rem;color:#f1f5f9;font-size:0.75rem;font-weight:700;cursor:pointer;width:100%;">
+                        <i class="fa-solid fa-rotate-right"></i> Já realizei o pagamento — Verificar Acesso
                     </button>
-                    <button onclick="firebase.auth().signOut().then(()=>window.location.href='login.html')" style="display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;padding:0.5rem 1.25rem;background:transparent;border:none;color:#475569;font-size:0.72rem;font-weight:500;cursor:pointer;">
-                        <i class="fa-solid fa-right-from-bracket"></i> Sair / Trocar conta
+
+                    <button onclick="firebase.auth().signOut().then(()=>window.location.href='login.html')" style="display:inline-flex;align-items:center;justify-content:center;gap:0.4rem;padding:0.45rem 1rem;background:transparent;border:none;color:#64748b;font-size:0.72rem;font-weight:500;cursor:pointer;">
+                        <i class="fa-solid fa-right-from-bracket"></i> Sair / Trocar de conta
                     </button>
                 </div>
             </div>
@@ -451,7 +737,7 @@
     }
 
     // -----------------------------------------------------------------------
-    // LISTENER EM TEMPO REAL — Detecta bloqueio sem precisar recarregar
+    // LISTENER EM TEMPO REAL — Detecta bloqueio, expiração ou renovação instantânea
     // -----------------------------------------------------------------------
     function iniciarListenerBloqueioTempoReal(empresaId, userEmail) {
         if (_isSuperAdmin(userEmail)) return; // Super admins: sem listener
@@ -469,8 +755,6 @@
                 const statusAtual = dados.status || 'ATIVO';
 
                 // Atualiza licença em memória
-                // IMPORTANTE: Respeita modulosLiberados definidos pelo master (fonte da verdade).
-                // Só usa _resolverModulos se o master nunca definiu a lista manualmente.
                 const licAtual = window.currentSaaSLicense || {};
                 const novaLicenca = { ...licAtual, ...dados, id: empresaId };
                 if (!dados.modulosLiberados || !Array.isArray(dados.modulosLiberados)) {
@@ -478,6 +762,10 @@
                 } else {
                     novaLicenca.modulosLiberados = dados.modulosLiberados;
                 }
+
+                const expInfo = _verificarExpiracao(novaLicenca);
+                novaLicenca._expInfo = expInfo;
+
                 const modsAnterior = JSON.stringify(licAtual.modulosLiberados || []);
                 const modsNovos = JSON.stringify(novaLicenca.modulosLiberados || []);
                 const modulosMudaram = modsAnterior !== modsNovos;
@@ -485,11 +773,11 @@
                 window.currentEmpresaData = novaLicenca;
                 localStorage.setItem(`saas_licenca_${empresaId}`, JSON.stringify(novaLicenca));
 
-                // Aplica bloqueio total em tempo real se status mudou
-                if (statusAtual === 'BLOQUEADO') {
+                // Aplica bloqueio total em tempo real se status mudou ou se venceu
+                if (statusAtual === 'BLOQUEADO' || expInfo.expirado) {
                     const overlayBloq = document.getElementById('fc-saas-overlay-bloqueio');
                     if (!overlayBloq) {
-                        aplicarBloqueioTotal('O acesso da sua loja foi suspenso pelo administrador por pendência financeira.');
+                        aplicarBloqueioTotal(expInfo.motivo, novaLicenca);
                     }
                 } else {
                     // Remove overlay de bloqueio se foi reativado
@@ -500,6 +788,13 @@
                         if (main) main.style.visibility = 'visible';
                         if (typeof showToast === 'function') showToast('✅ Acesso reativado com sucesso!', 'success');
                     }
+
+                    if (expInfo.isTrial) {
+                        renderizarBannerTrial(expInfo.diasRestantes, novaLicenca);
+                    } else {
+                        removerBannerTrial();
+                    }
+
                     // Reaplica controle de módulos em tempo real se o master alterou os módulos
                     if (modulosMudaram) {
                         if (typeof window.atualizarMenuLateralPorPlanoSaaS === 'function') {
@@ -508,7 +803,7 @@
                         if (typeof window.aplicarControleDeModulosSaaS === 'function') {
                             const userAtual = typeof firebase !== 'undefined' ? firebase.auth().currentUser : null;
                             if (userAtual) window.aplicarControleDeModulosSaaS(novaLicenca, userAtual);
-                        if (typeof window.aplicarControleAcessoRelatoriosPorPlano === 'function') window.aplicarControleAcessoRelatoriosPorPlano();
+                            if (typeof window.aplicarControleAcessoRelatoriosPorPlano === 'function') window.aplicarControleAcessoRelatoriosPorPlano();
                         }
                         // Verifica se a página atual agora está bloqueada
                         const pathAtual = window.location.pathname.toLowerCase();
@@ -542,30 +837,33 @@
     }
 
     // -----------------------------------------------------------------------
-    // REVALIDAÇÃO MANUAL (botão "Já paguei")
+    // REVALIDAÇÃO MANUAL (botão "Já realizei o pagamento")
     // -----------------------------------------------------------------------
     window.__fcSaasRevalidar = async function() {
         const empresaId = localStorage.getItem('fc_empresa_ativa');
         if (!empresaId) return;
 
         const overlay = document.getElementById('fc-saas-overlay-bloqueio');
-        if (overlay) {
-            overlay.querySelector('button').innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verificando...';
+        const btnRevalidar = overlay ? overlay.querySelector('button[onclick*="__fcSaasRevalidar"]') : null;
+        if (btnRevalidar) {
+            btnRevalidar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verificando...';
         }
 
         const licenca = await consultarLicencaCentral(empresaId, 'fc_gestao');
-        if (licenca && licenca.status !== 'BLOQUEADO') {
+        const expInfo = _verificarExpiracao(licenca);
+
+        if (licenca && licenca.status !== 'BLOQUEADO' && !expInfo.expirado) {
             if (overlay) overlay.remove();
             const main = document.querySelector('main');
             if (main) main.style.visibility = 'visible';
             if (typeof showToast === 'function') showToast('✅ Acesso reativado! Recarregando...', 'success');
-            setTimeout(() => window.location.reload(), 1500);
+            setTimeout(() => window.location.reload(), 1200);
         } else {
-            if (overlay) {
-                const btn = overlay.querySelector('button');
-                if (btn) btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Já regularizei — Verificar novamente';
+            if (btnRevalidar) {
+                btnRevalidar.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Já realizei o pagamento — Verificar Acesso';
             }
-            if (typeof showToast === 'function') showToast('Acesso ainda suspenso. Contate o suporte.', 'error');
+            if (typeof showToast === 'function') showToast('Pagamento ainda não confirmado no sistema. Envie o comprovante via WhatsApp.', 'error');
+            else alert('Pagamento ainda não confirmado no sistema. Envie o comprovante via WhatsApp para liberação imediata.');
         }
     };
 
@@ -774,4 +1072,8 @@
     window.verificarLimiteUsuarios = verificarLimiteUsuarios;
     window.exibirModalLimiteUsuarios = exibirModalLimiteUsuarios;
     window.obterFluxoPDV = obterFluxoPDV;
+    window._verificarExpiracaoSaaS = _verificarExpiracao;
+    window.renderizarBannerTrial = renderizarBannerTrial;
+    window.removerBannerTrial = removerBannerTrial;
+    window.abrirModalContratarPlano = abrirModalContratarPlano;
 })();

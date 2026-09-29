@@ -2560,7 +2560,8 @@ async function finalizarVendaMultipla() {
         dataEntrega: dataEntregaFinal || '', 
         servicoDetalhes: isServico ? { prazo: dataEntregaFinal || osPrazo || '', garantia: osGarantia || '', desc: osDesc || '', fotos: osFotosParaSalvar || [] } : null, 
         itens: itensLimpados,
-        idempotencyKey: chaveIdempotencia || null
+        idempotencyKey: chaveIdempotencia || null,
+        estoqueBaixado: !isOrcamento
     };
     
     batch.set(vendaRef, novaVendaObj, { merge: true });
@@ -2934,12 +2935,12 @@ async function emitirNota(tipo) {
             statusContainer.classList.remove('border-blue-500', 'bg-blue-50');
             statusContainer.classList.add('border-emerald-500', 'bg-emerald-50');
             
-            const linkDanfe = d.danfe_url_completa || (d.caminho_danfe ? `https://api.focusnfe.com.br${d.caminho_danfe}` : '');
-            const linkXml = d.xml_url_completa || (d.caminho_xml_nota_fiscal ? `https://api.focusnfe.com.br${d.caminho_xml_nota_fiscal}` : '');
+            const linkDanfe = d.danfe_url_completa || '';
+            const linkXml = d.xml_url_completa || '';
             const numNota = d.numero ? ` Nº ${d.numero}` : '';
             const statusTexto = (d.status_sefaz || 'autorizado').toUpperCase();
             const vendaId = window.vendaAtualImpressao ? (window.vendaAtualImpressao.id || '') : '';
-            const isSefazDireto = d.motor === 'sefaz_direto' || (!linkDanfe && (d.status_sefaz === 'autorizado' || d.chave_nfe || d.chave_nfce));
+            const isSefazDireto = true;
 
             let botoesFiscais = '';
             if (linkDanfe) {
@@ -4242,3 +4243,67 @@ if (!window._listenerF9Attached) {
         }
     });
 }
+
+// ==========================================
+// IMPORTAÇÃO DE PEDIDOS DA LOJA VIRTUAL / SITE
+// ==========================================
+function carregarPedidoDoSite(pedido) {
+    if (!pedido || !pedido.itens || !Array.isArray(pedido.itens) || pedido.itens.length === 0) {
+        if (typeof showToast === 'function') showToast('Pedido do site inválido ou sem itens.', 'error');
+        return;
+    }
+    
+    // Limpar carrinho atual ou confirmar se já houver itens
+    if (cart.length > 0) {
+        if (!confirm('O carrinho do PDV já possui itens. Deseja substituir pelos itens do pedido do site?')) {
+            return;
+        }
+    }
+    
+    cart = [];
+    pedido.itens.forEach(it => {
+        const prodDb = (window.db && window.db.produtos) ? window.db.produtos.find(p => String(p.id) === String(it.id)) : null;
+        cart.push({
+            id: it.id || (prodDb ? prodDb.id : ('prod_' + Date.now())),
+            nome: it.nome || (prodDb ? prodDb.nome : 'Produto'),
+            preco: Number(it.preco) || (prodDb ? Number(prodDb.precoVenda || prodDb.preco || 0) : 0),
+            custo: prodDb ? Number(prodDb.precoCusto || prodDb.custo || 0) : 0,
+            desconto: Number(it.desconto) || 0,
+            qtd: Number(it.qtd) || 1,
+            foto: it.foto || (prodDb ? prodDb.foto : '') || '',
+            obsVenda: it.obs || (pedido.numero ? `Site #${pedido.numero}` : 'Pedido Loja Virtual'),
+            ncm: prodDb ? (prodDb.ncm || '') : '',
+            cfop: prodDb ? (prodDb.cfop || '') : '',
+            csosn: prodDb ? (prodDb.csosn || '') : '',
+            origem: prodDb ? (prodDb.origem || '0') : '0',
+            unidade: prodDb ? (prodDb.unidade || 'UN') : 'UN'
+        });
+    });
+
+    window.cart = cart;
+    if (typeof renderCarrinho === 'function') renderCarrinho();
+
+    // Preenche cliente se houver
+    if (pedido.cliente) {
+        const cNome = typeof pedido.cliente === 'string' ? pedido.cliente : (pedido.cliente.nome || '');
+        const inputBusca = document.getElementById('pdv-cliente-busca');
+        if (inputBusca && cNome) {
+            inputBusca.value = cNome;
+            if (typeof autoSelecionarClientePorNome === 'function') {
+                autoSelecionarClientePorNome();
+            }
+        }
+    }
+
+    // Observação do pedido
+    const obsEl = document.getElementById('pdv-obs');
+    if (obsEl && (pedido.observacoes || pedido.numero)) {
+        obsEl.value = `[Pedido Site ${pedido.numero ? '#' + pedido.numero : ''}] ${pedido.observacoes || ''}`.trim();
+    }
+
+    if (typeof showToast === 'function') {
+        showToast(`Pedido ${pedido.numero ? '#' + pedido.numero : ''} importado para o PDV com sucesso!`, 'success');
+    }
+}
+window.carregarPedidoDoSite = carregarPedidoDoSite;
+

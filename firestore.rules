@@ -81,8 +81,12 @@ service cloud.firestore {
         isSuperAdmin() ||
         (getEmpresaUsuario() != null && getEmpresaUsuario() == request.resource.data.empresaId && isAdmin(getEmpresaUsuario()))
       );
-      // Apenas admin geral ou admin da empresa pode atualizar/deletar seus funcionarios
-      allow update, delete: if isAutenticado() && (
+      // Apenas admin geral ou admin da empresa pode atualizar/deletar seus funcionarios (sem alterar empresaId)
+      allow update: if isAutenticado() && (
+        isSuperAdmin() ||
+        (getEmpresaUsuario() != null && getEmpresaUsuario() == resource.data.empresaId && isAdmin(getEmpresaUsuario()) && request.resource.data.empresaId == resource.data.empresaId)
+      );
+      allow delete: if isAutenticado() && (
         isSuperAdmin() ||
         (getEmpresaUsuario() != null && getEmpresaUsuario() == resource.data.empresaId && isAdmin(getEmpresaUsuario()))
       );
@@ -111,6 +115,11 @@ service cloud.firestore {
         allow read: if true;
         allow write: if (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_config') || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
         allow create: if isDonoNoOnboarding(empresaId) || isSuperAdmin(); // Permite no batch de criacao
+      }
+
+      // Segredos Fiscais (Certificado A1 .pfx e senha privada) - Restrito a Administradores
+      match /segredos_fiscais/{docId} {
+        allow read, write: if (getEmpresaUsuario() == empresaId && isAdmin(empresaId)) || isSuperAdmin();
       }
 
       match /caixa/{docId} {
@@ -171,7 +180,8 @@ service cloud.firestore {
       }
 
       match /financeiro/{finId} {
-        allow read, create: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_gestao') || temPermissao(empresaId, 'perm_pdv'));
+        allow read: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+        allow create: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao') || temPermissao(empresaId, 'perm_pdv'));
         allow update, delete: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
       }
 
@@ -218,8 +228,8 @@ service cloud.firestore {
       // ==========================================
       match /funcionarios/{userId} {
         allow read: if (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || request.auth.uid == userId)) || isSuperAdmin();
-        // Regra para auto-cadastro simplificada para o tenant default durante a migracao, ou para o dono no onboarding
-        allow create: if getEmpresaUsuario() == empresaId || isDonoNoOnboarding(empresaId) || (empresaId == 'emp_fc_moveis' && isAutenticado()) || isSuperAdmin();
+        // Permite criacao pelo admin da empresa, pelo dono no onboarding ou pelo super admin
+        allow create: if (getEmpresaUsuario() == empresaId && isAdmin(empresaId)) || isDonoNoOnboarding(empresaId) || isSuperAdmin();
         allow update, delete: if (getEmpresaUsuario() == empresaId && isAdmin(empresaId)) || isSuperAdmin();
       }
 
@@ -254,27 +264,27 @@ service cloud.firestore {
       allow write: if isSuperAdmin();
     }
 
-    // Regras antigas mantidas TEMPORARIAMENTE apenas para o script de migracao poder rodar e nao quebrar na hora
-    match /fc_moveis/{doc=**} { allow read, write: if true; }
-    match /produtos/{doc=**} { allow read, write: if true; }
-    match /vendas/{doc=**} { allow read, write: if true; }
-    match /clientes/{doc=**} { allow read, write: if true; }
-    match /fornecedores/{doc=**} { allow read, write: if true; }
-    match /funcionarios/{doc=**} { allow read, write: if true; }
-    match /orcamentos/{doc=**} { allow read, write: if true; }
-    match /pedidos_site/{doc=**} { allow read, write: if true; }
-    match /financeiro/{doc=**} { allow read, write: if true; }
-    match /compras/{doc=**} { allow read, write: if true; }
-    match /categorias/{doc=**} { allow read, write: if true; }
-    match /movimentacoes/{doc=**} { allow read, write: if true; }
-    match /notas_servico/{doc=**} { allow read, write: if true; }
-    match /notas_devolucao/{doc=**} { allow read, write: if true; }
-    match /notas_avulsas/{doc=**} { allow read, write: if true; }
-    match /marketing_historico/{doc=**} { allow read, write: if true; }
-    match /relatorios_ia_historico/{doc=**} { allow read, write: if true; }
-    match /caixa/{doc=**} { allow read, write: if true; }
-    match /caixa_fechamentos/{doc=**} { allow read, write: if true; }
-    match /fechamentos_caixa/{doc=**} { allow read, write: if true; }
-    match /notas_fiscais/{doc=**} { allow read, write: if true; }
+    // Regras legadas de raiz bloqueadas contra acesso publico (apenas Super Admin para manutencao)
+    match /fc_moveis/{doc=**} { allow read, write: if isSuperAdmin(); }
+    match /produtos/{doc=**} { allow read, write: if isSuperAdmin(); }
+    match /vendas/{doc=**} { allow read, write: if isSuperAdmin(); }
+    match /clientes/{doc=**} { allow read, write: if isSuperAdmin(); }
+    match /fornecedores/{doc=**} { allow read, write: if isSuperAdmin(); }
+    match /funcionarios/{doc=**} { allow read, write: if isSuperAdmin(); }
+    match /orcamentos/{doc=**} { allow read, write: if isSuperAdmin(); }
+    match /pedidos_site/{doc=**} { allow read, write: if isSuperAdmin(); }
+    match /financeiro/{doc=**} { allow read, write: if isSuperAdmin(); }
+    match /compras/{doc=**} { allow read, write: if isSuperAdmin(); }
+    match /categorias/{doc=**} { allow read, write: if isSuperAdmin(); }
+    match /movimentacoes/{doc=**} { allow read, write: if isSuperAdmin(); }
+    match /notas_servico/{doc=**} { allow read, write: if isSuperAdmin(); }
+    match /notas_devolucao/{doc=**} { allow read, write: if isSuperAdmin(); }
+    match /notas_avulsas/{doc=**} { allow read, write: if isSuperAdmin(); }
+    match /marketing_historico/{doc=**} { allow read, write: if isSuperAdmin(); }
+    match /relatorios_ia_historico/{doc=**} { allow read, write: if isSuperAdmin(); }
+    match /caixa/{doc=**} { allow read, write: if isSuperAdmin(); }
+    match /caixa_fechamentos/{doc=**} { allow read, write: if isSuperAdmin(); }
+    match /fechamentos_caixa/{doc=**} { allow read, write: if isSuperAdmin(); }
+    match /notas_fiscais/{doc=**} { allow read, write: if isSuperAdmin(); }
   }
 }

@@ -16,11 +16,29 @@
     <link rel="apple-touch-icon" href="./icons/icon-apple-touch.png">
     <link rel="icon" type="image/png" href="./icons/favicon.png">
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0; url=./sistema/index.html">
-    <title>Redirecionando...</title>
-    <link rel="stylesheet" href="./tailwind-built.css?v=20260925120728">
+    <title>FC Gestão | Sistema ERP, PDV e Fiscal</title>
+    <script>
+        (function() {
+            try {
+                var emp = localStorage.getItem('fc_empresa_ativa');
+                var uid = localStorage.getItem('fc_sessao_uid');
+                var user = localStorage.getItem('fc_usuario_ativo');
+                if (emp && (uid || user)) {
+                    window.location.replace('./sistema/index.html');
+                    return;
+                }
+            } catch(e) {
+                console.warn('Erro ao verificar sessão ativa:', e);
+            }
+            window.location.replace('./landing.html');
+        })();
+    </script>
+    <noscript>
+        <meta http-equiv="refresh" content="0; url=./landing.html">
+    </noscript>
+    <link rel="stylesheet" href="./tailwind-built.css?v=20260929103753">
 </head>
 <body class="bg-slate-900 text-slate-400 flex items-center justify-center min-h-screen">
-    <p>Redirecionando para o sistema... Se não for redirecionado automaticamente, <a href="./sistema/index.html" class="text-blue-400 underline">clique aqui</a>.</p>
+    <p>Redirecionando... Se não for redirecionado automaticamente, <a href="./landing.html" class="text-blue-400 underline">clique aqui</a>.</p>
 </body>
 </html>

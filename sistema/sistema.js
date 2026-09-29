@@ -282,6 +282,7 @@ function carregarConfiguracoesNaTela() {
         { prop: 'cscToken', id: 'emp-csc-token' },
         { prop: 'cscId', id: 'emp-csc-id' },
         { prop: 'certificadoSenha', id: 'emp-cert-senha' },
+        { prop: 'certificadoValidade', id: 'emp-cert-validade' },
         { prop: 'ambienteFiscal', id: 'emp-fiscal-ambiente', default: 'producao' },
         { prop: 'serieNFe', id: 'emp-serie-nfe', default: '1' },
         { prop: 'proximoNumeroNFe', id: 'emp-numero-nfe', default: 1 },
@@ -297,15 +298,71 @@ function carregarConfiguracoesNaTela() {
         }
     });
 
+    function formatarStatusCertificado(nome, validadeStr) {
+        let validadeTexto = '';
+        if (validadeStr) {
+            const dataValidade = new Date(validadeStr);
+            if (!isNaN(dataValidade.getTime())) {
+                const hoje = new Date();
+                const diffDias = Math.ceil((dataValidade - hoje) / (1000 * 60 * 60 * 24));
+                const dataFormatada = dataValidade.toLocaleDateString('pt-BR');
+                if (diffDias < 0) {
+                    validadeTexto = ` <span class="text-red-600 dark:text-red-400 font-bold">(Expirado em ${dataFormatada})</span>`;
+                } else if (diffDias <= 30) {
+                    validadeTexto = ` <span class="text-amber-600 dark:text-amber-400 font-bold">(Expira em ${diffDias} dias - ${dataFormatada})</span>`;
+                } else {
+                    validadeTexto = ` <span class="text-emerald-600 dark:text-emerald-400 font-normal">(Válido até ${dataFormatada})</span>`;
+                }
+            }
+        }
+        return `<i class="fa-solid fa-circle-check text-emerald-500"></i> Certificado A1 ativo: <strong>${nome || 'Arquivo .pfx salvo'}</strong>${validadeTexto}`;
+    }
+
     if (emp.certificadoBase64 && document.getElementById('emp-cert-base64')) {
         document.getElementById('emp-cert-base64').value = emp.certificadoBase64;
         if (document.getElementById('emp-cert-nome')) {
             document.getElementById('emp-cert-nome').value = emp.certificadoNome || 'certificado.pfx';
         }
+        if (emp.certificadoValidade && document.getElementById('emp-cert-validade')) {
+            document.getElementById('emp-cert-validade').value = emp.certificadoValidade;
+        }
         const statusEl = document.getElementById('emp-cert-status');
         if (statusEl) {
-            statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> Certificado A1 ativo: <strong>${emp.certificadoNome || 'Arquivo .pfx salvo'}</strong>`;
+            statusEl.innerHTML = formatarStatusCertificado(emp.certificadoNome, emp.certificadoValidade);
         }
+    }
+
+    // Carrega segredos fiscais adicionais da subcoleção protegida
+    if (typeof window.getEmpresaRef === 'function') {
+        try {
+            window.getEmpresaRef().collection('segredos_fiscais').doc('config').get().then(snap => {
+                if (snap.exists && snap.data()) {
+                    const seg = snap.data();
+                    if (seg.certificadoBase64 && document.getElementById('emp-cert-base64')) {
+                        document.getElementById('emp-cert-base64').value = seg.certificadoBase64;
+                        if (document.getElementById('emp-cert-nome')) {
+                            document.getElementById('emp-cert-nome').value = seg.certificadoNome || 'certificado.pfx';
+                        }
+                        if (seg.certificadoValidade && document.getElementById('emp-cert-validade')) {
+                            document.getElementById('emp-cert-validade').value = seg.certificadoValidade;
+                        }
+                        const statusEl = document.getElementById('emp-cert-status');
+                        if (statusEl) {
+                            statusEl.innerHTML = formatarStatusCertificado(seg.certificadoNome, seg.certificadoValidade || emp.certificadoValidade);
+                        }
+                    }
+                    if (seg.certificadoSenha && document.getElementById('emp-cert-senha')) {
+                        document.getElementById('emp-cert-senha').value = seg.certificadoSenha;
+                    }
+                    if (seg.cscToken && document.getElementById('emp-csc-token')) {
+                        document.getElementById('emp-csc-token').value = seg.cscToken;
+                    }
+                    if (seg.cscId && document.getElementById('emp-csc-id')) {
+                        document.getElementById('emp-csc-id').value = seg.cscId;
+                    }
+                }
+            }).catch(() => {});
+        } catch(eSegLoad) {}
     }
 
     if (document.getElementById('emp-fiscal-ativo')) {
@@ -552,9 +609,58 @@ async function testarCertificadoA1() {
         const resp = await func({ pfxBase64: b64, senha: senha });
         const d = resp.data;
         if (d.sucesso) {
+            let validadeInfo = '';
+            let boxClass = 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
+            let iconClass = 'fa-circle-check text-emerald-600';
+
+            if (d.validade) {
+                if (document.getElementById('emp-cert-validade')) {
+                    document.getElementById('emp-cert-validade').value = d.validade;
+                }
+                const dataVal = new Date(d.validade);
+                if (!isNaN(dataVal.getTime())) {
+                    const hoje = new Date();
+                    const diffDias = Math.ceil((dataVal - hoje) / (1000 * 60 * 60 * 24));
+                    const dataFormatada = dataVal.toLocaleDateString('pt-BR');
+
+                    if (diffDias < 0) {
+                        boxClass = 'bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-300 border-red-300 dark:border-red-800';
+                        iconClass = 'fa-triangle-exclamation text-red-600';
+                        validadeInfo = `<div class="mt-1 text-red-700 dark:text-red-400 font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> ATENÇÃO: Certificado EXPIRADO em ${dataFormatada}!</div>`;
+                    } else if (diffDias <= 30) {
+                        boxClass = 'bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200 border-amber-300 dark:border-amber-700';
+                        iconClass = 'fa-clock text-amber-600';
+                        validadeInfo = `<div class="mt-1 text-amber-700 dark:text-amber-300 font-bold"><i class="fa-solid fa-clock mr-1"></i> Atenção: Expira em breve! Vence em ${dataFormatada} (${diffDias} dias restantes).</div>`;
+                    } else {
+                        validadeInfo = `<div class="mt-1 text-emerald-700 dark:text-emerald-300 font-medium"><i class="fa-regular fa-calendar-check mr-1"></i> Válido até ${dataFormatada} (${diffDias} dias restantes).</div>`;
+                    }
+                }
+            }
+
             if (resDiv) {
-                resDiv.className = 'mt-2 text-xs font-semibold p-2.5 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 flex items-center gap-1.5 border border-emerald-200 dark:border-emerald-800';
-                resDiv.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600 text-sm"></i> <div><strong>Senha Correta!</strong><br><span class="font-normal text-[11px]">${d.titular}</span></div>`;
+                resDiv.className = `mt-2 text-xs font-semibold p-2.5 rounded-lg flex items-start gap-2 border ${boxClass}`;
+                resDiv.innerHTML = `<i class="fa-solid ${iconClass} text-base mt-0.5 shrink-0"></i> <div><strong>Certificado e Senha Válidos!</strong><br><span class="font-normal text-[11px] text-slate-600 dark:text-slate-300">${d.titular || 'Certificado A1'}</span>${validadeInfo}</div>`;
+            }
+            const statusEl = document.getElementById('emp-cert-status');
+            if (statusEl) {
+                const certNome = document.getElementById('emp-cert-nome')?.value || 'Arquivo .pfx';
+                let validadeTexto = '';
+                if (d.validade) {
+                    const dataVal = new Date(d.validade);
+                    if (!isNaN(dataVal.getTime())) {
+                        const hoje = new Date();
+                        const diffDias = Math.ceil((dataVal - hoje) / (1000 * 60 * 60 * 24));
+                        const dataFormatada = dataVal.toLocaleDateString('pt-BR');
+                        if (diffDias < 0) {
+                            validadeTexto = ` <span class="text-red-600 dark:text-red-400 font-bold">(Expirado em ${dataFormatada})</span>`;
+                        } else if (diffDias <= 30) {
+                            validadeTexto = ` <span class="text-amber-600 dark:text-amber-400 font-bold">(Expira em ${diffDias} dias - ${dataFormatada})</span>`;
+                        } else {
+                            validadeTexto = ` <span class="text-emerald-600 dark:text-emerald-400 font-normal">(Válido até ${dataFormatada})</span>`;
+                        }
+                    }
+                }
+                statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> Certificado A1 ativo: <strong>${certNome}</strong>${validadeTexto}`;
             }
             showToast('Certificado e Senha válidos com sucesso!', 'success');
         }
@@ -603,6 +709,7 @@ async function salvarConfiguracoes() {
         motorFiscal: 'sefaz_direto',
         certificadoBase64: document.getElementById('emp-cert-base64') ? document.getElementById('emp-cert-base64').value : '',
         certificadoNome: document.getElementById('emp-cert-nome') ? document.getElementById('emp-cert-nome').value : '',
+        certificadoValidade: document.getElementById('emp-cert-validade') ? document.getElementById('emp-cert-validade').value : (db.config?.empresa?.certificadoValidade || ''),
         certificadoSenha: document.getElementById('emp-cert-senha') ? document.getElementById('emp-cert-senha').value.trim() : '',
         ambienteFiscal: document.getElementById('emp-fiscal-ambiente') ? document.getElementById('emp-fiscal-ambiente').value : 'producao',
         serieNFe: document.getElementById('emp-serie-nfe') ? document.getElementById('emp-serie-nfe').value.trim() : '1',
@@ -677,6 +784,23 @@ async function salvarConfiguracoes() {
 
     try {
         await window.getEmpresaRef().collection('configuracoes').doc('config').set(db.config, { merge: true });
+
+        // Salva os segredos fiscais confidenciais na subcoleção protegida
+        try {
+            if (db.config.empresa?.certificadoBase64 || db.config.empresa?.certificadoSenha || db.config.empresa?.cscToken) {
+                await window.getEmpresaRef().collection('segredos_fiscais').doc('config').set({
+                    certificadoBase64: db.config.empresa.certificadoBase64 || '',
+                    certificadoNome: db.config.empresa.certificadoNome || '',
+                    certificadoValidade: db.config.empresa.certificadoValidade || '',
+                    certificadoSenha: db.config.empresa.certificadoSenha || '',
+                    cscToken: db.config.empresa.cscToken || '',
+                    cscId: db.config.empresa.cscId || '',
+                    ultimaAtualizacao: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+            }
+        } catch(eSegSave) {
+            console.warn("Aviso ao salvar segredos_fiscais:", eSegSave);
+        }
         if (typeof window.FCCache !== 'undefined') {
             window.FCCache.set('config', db.config);
             window.FCCache.set('fc_moveis_config', db.config);

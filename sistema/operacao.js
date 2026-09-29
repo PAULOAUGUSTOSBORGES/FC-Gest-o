@@ -2233,12 +2233,12 @@ async function emitirNota(tipo) {
             statusContainer.classList.remove('border-blue-500', 'bg-blue-50');
             statusContainer.classList.add('border-emerald-500', 'bg-emerald-50');
             
-            const linkDanfe = d.danfe_url_completa || (d.caminho_danfe ? `https://api.focusnfe.com.br${d.caminho_danfe}` : '');
-            const linkXml = d.xml_url_completa || (d.caminho_xml_nota_fiscal ? `https://api.focusnfe.com.br${d.caminho_xml_nota_fiscal}` : '');
+            const linkDanfe = d.danfe_url_completa || '';
+            const linkXml = d.xml_url_completa || '';
             const numNota = d.numero ? ` Nº ${d.numero}` : '';
             const statusTexto = (d.status_sefaz || 'autorizado').toUpperCase();
             const vendaId = window.vendaAtualImpressao ? (window.vendaAtualImpressao.id || '') : '';
-            const isSefazDireto = d.motor === 'sefaz_direto' || (!linkDanfe && (d.status_sefaz === 'autorizado' || d.chave_nfe || d.chave_nfce));
+            const isSefazDireto = true;
 
             let botoesFiscais = '';
             if (linkDanfe) {

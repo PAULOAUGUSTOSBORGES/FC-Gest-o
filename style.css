@@ -1435,3 +1435,539 @@ body.light .alerta-margem-pdv {
     color: #b45309 !important;
     border: 1px solid #fcd34d !important;
 }
+
+/* ================================================================
+   REFATORAÇÃO RESPONSIVA v2 — FC GESTÃO
+   Estratégia: append-only. Estas regras são declaradas APÓS as
+   anteriores, garantindo precedência via ordem de cascata.
+   Breakpoints canônicos:
+     xs  < 480px      smartphones compactos (Galaxy A/S série)
+     sm  480–767px    smartphones grandes (Galaxy S Ultra / iPhone Plus)
+     md  768–1023px   tablets (iPad portrait & landscape)
+     lg  1024–1279px  laptops / tablets landscape grandes
+     xl  1280–1535px  desktops full HD
+     2xl ≥ 1536px     ultrawide / 4K / 27"+
+   ================================================================ */
+
+/* ----------------------------------------------------------------
+   FIX #9 — Layout raiz: garantir min-width: 0 nos flex children
+   Evita que a sidebar extravase o container em ultrawide
+   ---------------------------------------------------------------- */
+#app-container {
+    min-width: 0;
+}
+
+#app-container > aside {
+    flex-shrink: 0;
+}
+
+#app-container > main {
+    min-width: 0;
+    flex: 1 1 0%;
+}
+
+/* ----------------------------------------------------------------
+   FIX #5 — Sidebar fluida com clamp() em tablet (768–1023px)
+   clamp(200px, 22vw, 240px) evita saltos abruptos entre 220px e 280px
+   ---------------------------------------------------------------- */
+@media (min-width: 768px) and (max-width: 1023px) {
+    #sidebar {
+        width: clamp(200px, 22vw, 240px) !important;
+    }
+
+    #sidebar .nav-btn {
+        font-size: 13px !important;
+        padding-top: 10px !important;
+        padding-bottom: 10px !important;
+    }
+}
+
+@media (min-width: 1024px) {
+    #sidebar {
+        width: 260px !important;
+    }
+}
+
+/* ----------------------------------------------------------------
+   FIX #3 — Ultrawide (≥ 1440px): limita expansão do conteúdo
+   Evita espaços em branco excessivos em monitores 27"+
+   ---------------------------------------------------------------- */
+@media (min-width: 1440px) {
+    main > div.flex-1.overflow-y-auto > div.max-w-7xl,
+    main > .flex-1 > .max-w-7xl {
+        max-width: 1400px;
+    }
+
+    #sidebar {
+        width: 280px !important;
+    }
+}
+
+@media (min-width: 1920px) {
+    main > div.flex-1.overflow-y-auto > div.max-w-7xl,
+    main > .flex-1 > .max-w-7xl {
+        max-width: 1600px;
+    }
+}
+
+/* ----------------------------------------------------------------
+   FIX #4 — touch-action: corrige bloqueio de scroll horizontal
+   body tinha pan-y, impedindo tabelas de rolar no mobile.
+   'manipulation' é mais permissivo: permite tap, scroll e zoom padrão
+   ---------------------------------------------------------------- */
+body {
+    touch-action: manipulation;
+}
+
+/* Containers de tabela recebem permissão explícita de scroll bidirecional */
+.overflow-x-auto,
+[class*="overflow-x-auto"] {
+    touch-action: pan-x pan-y;
+}
+
+/* ----------------------------------------------------------------
+   FIX #1 — #mobile-bottom-nav: normaliza o conflito de display
+   Linha 696: display:none dentro do @media ≤768px cancelava a
+   linha 1019: display:flex em outro bloco do mesmo breakpoint.
+   Solução: padrão oculto + exibição explícita em ≤ 767px.
+   ---------------------------------------------------------------- */
+#mobile-bottom-nav {
+    display: none !important;
+}
+
+@media (max-width: 767px) {
+    #mobile-bottom-nav {
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: stretch !important;
+    }
+
+    /* Padding do conteúdo principal para não ficar sob a nav bar */
+    main {
+        padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+}
+
+/* ----------------------------------------------------------------
+   FIX #2 — Breakpoints normalizados: grid de KPIs robusto
+   Usa seletores sem escapamento \\: funciona com qualquer build Tailwind
+   ---------------------------------------------------------------- */
+
+/* xs < 480px: 1 coluna (smartphones compactos) */
+@media (max-width: 479px) {
+    .grid.grid-cols-2 {
+        grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+    }
+}
+
+/* md 768–1023px: 3 colunas no grid de KPIs do dashboard */
+@media (min-width: 768px) and (max-width: 1023px) {
+    main .grid.grid-cols-2 {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+}
+
+/* ----------------------------------------------------------------
+   FIX #6 — Header em tablet: tamanho ligeiramente maior (60px)
+   sem cascata de !important; usa especificidade body + header
+   ---------------------------------------------------------------- */
+@media (min-width: 768px) and (max-width: 1023px) {
+    body header {
+        height: 60px !important;
+        min-height: 60px !important;
+        max-height: 60px !important;
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+    }
+
+    body header h2,
+    body header #header-title {
+        font-size: 16px !important;
+    }
+}
+
+/* ----------------------------------------------------------------
+   FIX #7 — overflow-x: clip no body
+   'clip' não cria stacking context (ao contrário de 'hidden'),
+   evitando que modais e drawers position:fixed fiquem cortados no iOS.
+   ---------------------------------------------------------------- */
+body {
+    overflow-x: clip;
+}
+
+/* Fallback para browsers sem suporte a clip */
+@supports not (overflow-x: clip) {
+    body {
+        overflow-x: hidden;
+    }
+}
+
+/* ----------------------------------------------------------------
+   FIX #8 — Seletores de grid de 4 colunas para tablet (sem \\)
+   ---------------------------------------------------------------- */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .grid-cols-4:not(#pdv-grid-produtos):not(.grid-pdv) {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}
+
+/* ----------------------------------------------------------------
+   ERGONOMIA TOUCH — Tablet (768–1023px)
+   Alvos ≥ 44px conforme WCAG 2.5.5 e Apple HIG
+   ---------------------------------------------------------------- */
+@media (min-width: 768px) and (max-width: 1023px) {
+    button:not(.btn-icon-sm):not([class*="w-6"]):not([class*="w-8"]):not([class*="p-0"]),
+    .nav-btn {
+        min-height: 44px;
+    }
+
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="color"]):not([type="hidden"]):not([class*="w-6"]):not([class*="h-6"]),
+    select:not([class*="w-6"]):not([class*="h-6"]) {
+        min-height: 44px;
+        font-size: 15px !important;
+    }
+
+    table thead th {
+        padding: 11px 14px !important;
+        font-size: 12px !important;
+    }
+
+    table tbody td {
+        padding: 11px 14px !important;
+        font-size: 13px !important;
+    }
+}
+
+/* ----------------------------------------------------------------
+   ERGONOMIA TOUCH — Smartphones (≤ 767px)
+   ---------------------------------------------------------------- */
+@media (max-width: 767px) {
+    /* Tap target mínimo 44px (exceto ícones pequenos) */
+    button:not([class*="p-0"]):not([class*="w-4"]):not([class*="w-5"]):not([class*="w-6"]) {
+        min-height: 44px;
+    }
+
+    /* Evita zoom iOS (font-size ≥ 16px) */
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+    select,
+    textarea {
+        min-height: 44px;
+        font-size: 16px !important;
+    }
+
+    /* Inputs do carrinho PDV permanecem compactos */
+    #pdv-carrinho-body input {
+        min-height: 32px !important;
+        height: 32px !important;
+        font-size: 13px !important;
+    }
+
+    /* Conteúdo: padding compacto mas respirável */
+    main > .flex-1.overflow-y-auto {
+        padding: 12px 10px !important;
+    }
+}
+
+/* ----------------------------------------------------------------
+   MODAIS — Responsividade por breakpoint sem overflow
+   ---------------------------------------------------------------- */
+
+/* xs: modal ocupa quase a tela toda */
+@media (max-width: 479px) {
+    .fixed.inset-0 > div[class*="max-w-"],
+    .fixed.inset-0 > div[class*="rounded"] {
+        width: calc(100vw - 16px) !important;
+        max-width: calc(100vw - 16px) !important;
+        margin: 8px auto !important;
+        border-radius: 12px !important;
+    }
+}
+
+/* sm: modal com margem mínima */
+@media (min-width: 480px) and (max-width: 767px) {
+    .fixed.inset-0 > div[class*="max-w-"],
+    .fixed.inset-0 > div[class*="rounded"] {
+        width: calc(100vw - 24px) !important;
+        max-width: min(560px, calc(100vw - 24px)) !important;
+    }
+}
+
+/* ----------------------------------------------------------------
+   SCROLL VISUAL — Indicador CSS puro de scroll horizontal em tabelas
+   Gradiente sutil nas bordas indica que há mais conteúdo
+   ---------------------------------------------------------------- */
+@media (max-width: 1023px) {
+    .overflow-x-auto {
+        background-image:
+            linear-gradient(to right, transparent, transparent),
+            linear-gradient(to right, transparent, transparent),
+            linear-gradient(to right, rgba(148, 163, 184, 0.15), transparent),
+            linear-gradient(to left,  rgba(148, 163, 184, 0.15), transparent);
+        background-position: left center, right center, left center, right center;
+        background-repeat: no-repeat;
+        background-size: 24px 100%, 24px 100%, 12px 100%, 12px 100%;
+        background-attachment: local, local, scroll, scroll;
+    }
+}
+
+/* ----------------------------------------------------------------
+   PRINT — Garante que padding-bottom mobile não afete impressão
+   ---------------------------------------------------------------- */
+@media print {
+    main {
+        padding-bottom: 0 !important;
+    }
+
+    #mobile-bottom-nav {
+        display: none !important;
+    }
+}
+
+/* ================================================================
+   TABELAS RESPONSIVAS INTELIGENTES & AUTO-ORGANIZADAS — FC GESTÃO
+   Objetivo: mostrar a tabela POR COMPLETO na tela, sem cortar colunas.
+   As coisas se organizam automaticamente:
+   - Textos descritivos (produtos, clientes, obs) quebram linha suavemente (1-2 linhas)
+   - Valores, datas, badges e ações ficam compactos e nunca quebram
+   - Padding e fontes adaptativos para caber perfeitamente no container
+   - Em telas médias/grandes (≥768px), anula min-w-[...] rígidos para caber 100%
+   - Em telas pequenas (<768px), rolagem suave com barra claramente visível
+   ================================================================ */
+
+/* ================================================================
+   TABELAS RESPONSIVAS INTEGRADAS — FC GESTÃO
+   - Rolagem vertical e horizontal livres: scroll horizontal NUNCA trava o scroll vertical
+   - Cores 100% homogêneas: todas as células herdam o fundo do card/linha (sem faixas de cores diferentes)
+   - Layout fluido: colunas descritivas quebram em 1-2 linhas, botões e valores compactos
+   ================================================================ */
+
+/* ── Container da Tabela ─────────────────────────────────────── */
+.table-wrapper,
+.fc-table-wrap,
+.overflow-x-auto {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important; /* Nunca intercepta nem bloqueia rolagem vertical */
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: auto !important; /* Permite propagação livre do scroll para a página */
+    touch-action: pan-x pan-y !important; /* Permite rolar para baixo e para os lados simultaneamente */
+    display: block !important;
+    position: relative !important;
+    border-radius: 8px;
+}
+
+/* ── Comportamento Fluido da Tabela ──────────────────────────── */
+.table-wrapper > table,
+.fc-table-wrap > table,
+.overflow-x-auto > table,
+table[class*="min-w-"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important; /* Anula larguras rígidas que estouravam a tela */
+    border-collapse: collapse !important;
+    table-layout: auto !important;
+    touch-action: pan-x pan-y !important;
+}
+
+/* ── Organização de Células: Cores Uniformes e Sem Conflitos ── */
+
+/* 1. Células de dados: herdam o fundo nativo da linha (zero manchas de cor) */
+.table-wrapper td,
+.fc-table-wrap td,
+.overflow-x-auto td {
+    padding: 8px 10px !important;
+    vertical-align: middle !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    background-color: transparent !important; /* Herda fundo da linha / card perfeitamente */
+    box-shadow: none !important; /* Sem sombras artificiais ou bordas escuras */
+}
+
+/* Cabeçalhos: limpos e alinhados */
+.table-wrapper th,
+.fc-table-wrap th,
+.overflow-x-auto th {
+    padding: 8px 10px !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
+    font-size: 11px !important;
+    letter-spacing: 0.03em;
+    box-shadow: none !important;
+}
+
+/* 2. Coluna de Miniatura / Ícone: compacta */
+.table-wrapper th.w-16,
+.fc-table-wrap th.w-16,
+.overflow-x-auto th.w-16,
+.table-wrapper td:first-child:has(img),
+.fc-table-wrap td:first-child:has(img),
+.overflow-x-auto td:first-child:has(img) {
+    width: 42px !important;
+    min-width: 42px !important;
+    max-width: 46px !important;
+    text-align: center !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+}
+
+/* 3. Colunas de Valores, Preços, Margem e Totais: compactas, alinhadas à direita */
+.table-wrapper td.text-right,
+.fc-table-wrap td.text-right,
+.overflow-x-auto td.text-right,
+.table-wrapper th.text-right,
+.fc-table-wrap th.text-right,
+.overflow-x-auto th.text-right {
+    white-space: nowrap !important;
+    text-align: right !important;
+}
+
+/* 4. Colunas de Datas e Horários: sem quebra indesejada */
+.table-wrapper td[class*="data"],
+.fc-table-wrap td[class*="data"],
+.overflow-x-auto td[class*="data"],
+.table-wrapper td:first-child:not(:has(img)),
+.fc-table-wrap td:first-child:not(:has(img)) {
+    white-space: nowrap;
+}
+
+/* 5. Badges de Status, Tags e Estoque: compactos */
+.table-wrapper td span[class*="rounded"],
+.fc-table-wrap td span[class*="rounded"],
+.overflow-x-auto td span[class*="rounded"],
+.table-wrapper td span[class*="badge"],
+.fc-table-wrap td span[class*="badge"],
+.overflow-x-auto td span[class*="badge"] {
+    white-space: nowrap !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* 6. Colunas de Ações: intactas, sem amassar e com a mesma cor da tabela */
+.table-wrapper td:last-child,
+.fc-table-wrap td:last-child,
+.overflow-x-auto td:last-child,
+.table-wrapper th:last-child,
+.fc-table-wrap th:last-child,
+.overflow-x-auto th:last-child,
+.col-acoes,
+[class*="acoes"],
+[class*="action"] {
+    white-space: nowrap !important;
+    min-width: 76px !important;
+    width: auto !important;
+    text-align: center !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+.table-wrapper td:last-child > div,
+.fc-table-wrap td:last-child > div,
+.overflow-x-auto td:last-child > div,
+.table-wrapper td:last-child.flex,
+.fc-table-wrap td:last-child.flex,
+.overflow-x-auto td:last-child.flex {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    margin-top: 0 !important;
+    flex-wrap: nowrap !important;
+}
+
+.table-wrapper td:last-child button,
+.fc-table-wrap td:last-child button,
+.overflow-x-auto td:last-child button {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    padding: 4px 6px !important;
+}
+
+/* ── Densidade Confortável para Telas Médias e Pequenas (≤900px) ── */
+@media (max-width: 900px) {
+    .table-wrapper th,
+    .table-wrapper td,
+    .fc-table-wrap th,
+    .fc-table-wrap td,
+    .overflow-x-auto th,
+    .overflow-x-auto td {
+        padding: 5px 6px !important;
+        font-size: 11px !important;
+    }
+
+    .table-wrapper th,
+    .fc-table-wrap th,
+    .overflow-x-auto th {
+        font-size: 10px !important;
+        padding: 6px 6px !important;
+    }
+
+    /* Colunas de texto principal (Nome, Produto, Cliente): quebra elegante */
+    .table-wrapper td:nth-child(2):not(.text-right),
+    .fc-table-wrap td:nth-child(2):not(.text-right),
+    .overflow-x-auto td:nth-child(2):not(.text-right),
+    .table-wrapper td:nth-child(3):not(.text-right),
+    .fc-table-wrap td:nth-child(3):not(.text-right),
+    .overflow-x-auto td:nth-child(3):not(.text-right) {
+        max-width: 150px;
+    }
+
+    /* Subtextos menores */
+    .table-wrapper td p,
+    .fc-table-wrap td p,
+    .overflow-x-auto td p {
+        line-height: 1.25 !important;
+    }
+}
+
+/* ── Cabeçalho Fixo (sticky top) ─────────────────────────────── */
+.table-wrapper thead th,
+.fc-table-wrap thead th,
+.overflow-x-auto thead th {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 3 !important;
+}
+
+/* ── Barra de Rolagem Nítida e Elegante ──────────────────────── */
+.table-wrapper::-webkit-scrollbar,
+.fc-table-wrap::-webkit-scrollbar,
+.overflow-x-auto::-webkit-scrollbar {
+    height: 7px !important;
+    width: 7px !important;
+}
+.table-wrapper::-webkit-scrollbar-track,
+.fc-table-wrap::-webkit-scrollbar-track,
+.overflow-x-auto::-webkit-scrollbar-track {
+    background: transparent !important;
+}
+.table-wrapper::-webkit-scrollbar-thumb,
+.fc-table-wrap::-webkit-scrollbar-thumb,
+.overflow-x-auto::-webkit-scrollbar-thumb {
+    background: #64748b !important;
+    border-radius: 4px;
+}
+.table-wrapper::-webkit-scrollbar-thumb:hover,
+.fc-table-wrap::-webkit-scrollbar-thumb:hover,
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+    background: #3b82f6 !important;
+}
+
+/* ── Impressão: expansão natural ─────────────────────────────── */
+@media print {
+    .table-wrapper,
+    .fc-table-wrap,
+    .overflow-x-auto {
+        overflow: visible !important;
+        max-width: none !important;
+        border-radius: 0 !important;
+    }
+    .table-wrapper > table,
+    .fc-table-wrap > table,
+    .overflow-x-auto > table {
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+}

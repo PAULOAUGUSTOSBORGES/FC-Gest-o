@@ -1076,8 +1076,16 @@
         } else {
             ref = firestore.collection(colecao);
         }
+
+        let isIncremental = false;
         if (opcoes && typeof opcoes.query === 'function') {
             ref = opcoes.query(ref);
+        } else if (!opcoes?.ilimitado && (colecao === 'vendas' || colecao === 'movimentacoes')) {
+            const emMem = _memoria[colecao];
+            if (Array.isArray(emMem) && emMem.length > 50) {
+                isIncremental = true;
+                ref = ref.orderBy('data', 'desc').limit(150);
+            }
         }
 
         ref.get().then(async function (snap) {
@@ -1088,7 +1096,12 @@
             const pendentesDestaCol = fila.filter(item => item.colecao === colecao);
 
             const mapa = new Map();
-            // 1. Dados remotos da nuvem
+            // Se for busca incremental (delta), preserva o histórico já em cache no IndexedDB
+            if (isIncremental) {
+                const historicoExistente = _memoria[colecao] || [];
+                historicoExistente.forEach(h => { if (h && h.id) mapa.set(String(h.id), h); });
+            }
+            // 1. Dados remotos da nuvem mais recentes sobrepõem/adicionam
             docsRemotos.forEach(d => { if (d && d.id) mapa.set(String(d.id), d); });
             // 2. Mescla pendências locais (têm prioridade visual)
             pendentesDestaCol.forEach(p => {

@@ -463,7 +463,7 @@ function renderTitulos(tipo) {
     if (termoBusca) { 
         lista = lista.filter(f => 
             (f.pessoa && f.pessoa.toLowerCase().includes(termoBusca)) || 
-            (f.ref && f.ref.toLowerCase().includes(termoBusca)) || 
+            (f.ref && String(f.ref).toLowerCase().includes(termoBusca)) || 
             (f.categoria && f.categoria.toLowerCase().includes(termoBusca)) || 
             (f.numNF && String(f.numNF).includes(termoBusca)) || 
             (f.data && formatData(f.data).toLowerCase().includes(termoBusca))

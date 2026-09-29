@@ -3270,14 +3270,16 @@ function renderVendasPendentesPDV() {
     const termo = inputBusca && inputBusca.value ? inputBusca.value.trim().toLowerCase() : '';
     const todasVendas = Array.isArray(db.vendas) ? db.vendas : [];
 
-    // Filtra vendas com status pendente de pagamento
-    const pendentes = todasVendas.filter(v => {
+    // Filtra vendas do PDV pendentes de pagamento
+    const pendentesVendas = todasVendas.filter(v => {
         if (!v) return false;
         const st = String(v.status || '').toUpperCase().trim();
         const tp = String(v.tipo || '').toUpperCase().trim();
         if (st === 'CANCELADA' || st === 'CONCLUIDA' || st === 'PAGO' || tp === 'ORÇAMENTO') return false;
         return st === 'AGUARDANDO_PAGAMENTO' || st === 'PENDENTE' || st === 'AGUARDANDO' || v.origem === 'PDV' || v.origem === 'PDV_BALCAO';
     });
+
+    const pendentes = [...pendentesVendas];
 
     if (badgeQtd) {
         badgeQtd.textContent = `${pendentes.length} aguardando`;
@@ -3360,9 +3362,13 @@ function renderVendasPendentesPDV() {
                     <div class="bg-slate-50 dark:bg-slate-900 border border-amber-200 dark:border-amber-900/50 rounded-xl p-3.5 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow">
                         <div>
                             <div class="flex justify-between items-start mb-2">
+                                ${v.isPedidoSite ? `
+                                <span class="bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-black text-xs px-2.5 py-1 rounded-lg font-mono flex items-center gap-1">
+                                    <i class="fa-solid fa-globe text-emerald-600"></i> SITE #${numPedStr}
+                                </span>` : `
                                 <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-black text-xs px-2.5 py-1 rounded-lg font-mono">
                                     PEDIDO #${numPedStr}
-                                </span>
+                                </span>`}
                                 <span class="text-[10px] text-slate-400 font-medium">
                                     <i class="fa-regular fa-clock mr-1"></i>${dataFormatada}
                                 </span>
@@ -3390,7 +3396,7 @@ function renderVendasPendentesPDV() {
                                 </span>
                             </div>
                             <div class="flex items-center gap-1.5">
-                                <button type="button" onclick="cancelarVendaPendentePDV('${v.id}')" class="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 text-xs transition" title="Cancelar este Pedido">
+                                <button type="button" onclick="cancelarVendaPendentePDV('${String(v.id || '').replace(/'/g, "\\'")}')" class="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 text-xs transition" title="Cancelar / Excluir Pedido">
                                     <i class="fa-solid fa-trash-can"></i>
                                 </button>
                                 <button type="button" onclick="abrirModalReceberPDV('${v.id}')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs px-3.5 py-2 rounded-lg shadow-sm transition flex items-center gap-1.5">
@@ -4247,16 +4253,25 @@ window.emitirNota = async function(tipo) {
             statusContainer.classList.remove('border-blue-500', 'bg-blue-50');
             statusContainer.classList.add('border-emerald-500', 'bg-emerald-50');
             
-            const linkDanfe = d.danfe_url_completa || (d.caminho_danfe ? `https://api.focusnfe.com.br${d.caminho_danfe}` : '');
-            const linkXml = d.xml_url_completa || (d.caminho_xml_nota_fiscal ? `https://api.focusnfe.com.br${d.caminho_xml_nota_fiscal}` : '');
+            const vendaId = window.vendaAtualImpressao ? (window.vendaAtualImpressao.id || '') : '';
+            const linkDanfe = d.danfe_url_completa || '';
+            const linkXml = d.xml_url_completa || '';
             
+            const btnDanfe = linkDanfe 
+                ? `<a href="${linkDanfe}" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-lg font-bold transition-colors inline-flex items-center gap-1 shadow-sm"><i class="fa-solid fa-print"></i> Abrir DANFE</a>`
+                : `<button type="button" onclick="imprimirDanfeNativo('${vendaId}', '${tipo}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-lg font-bold transition-colors inline-flex items-center gap-1 shadow-sm cursor-pointer"><i class="fa-solid fa-print"></i> Imprimir DANFE</button>`;
+
+            const btnXml = linkXml
+                ? `<a href="${linkXml}" target="_blank" download class="bg-slate-700 hover:bg-slate-800 text-white text-xs px-3 py-1.5 rounded-lg font-bold transition-colors inline-flex items-center gap-1 shadow-sm"><i class="fa-solid fa-code"></i> Baixar XML</a>`
+                : `<button type="button" onclick="baixarXmlNativo('${vendaId}', '${tipo}')" class="bg-slate-700 hover:bg-slate-800 text-white text-xs px-3 py-1.5 rounded-lg font-bold transition-colors inline-flex items-center gap-1 shadow-sm cursor-pointer"><i class="fa-solid fa-code"></i> Baixar XML</button>`;
+
             statusContainer.innerHTML = `
                 <div class="text-emerald-700 font-bold text-xs mb-2">
                     <i class="fa-solid fa-circle-check text-emerald-600 mr-1"></i> ${tipo === 'nfce' ? 'NFC-e' : 'NF-e'} Emitida com Sucesso! (Série: ${d.serie || '1'} | Nº: ${d.numero || '-'})
                 </div>
                 <div class="flex items-center justify-center gap-2">
-                    ${linkDanfe ? `<a href="${linkDanfe}" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-lg font-bold transition-colors inline-flex items-center gap-1 shadow-sm"><i class="fa-solid fa-file-pdf"></i> Abrir DANFE</a>` : ''}
-                    ${linkXml ? `<a href="${linkXml}" target="_blank" class="bg-slate-700 hover:bg-slate-800 text-white text-xs px-3 py-1.5 rounded-lg font-bold transition-colors inline-flex items-center gap-1 shadow-sm"><i class="fa-solid fa-code"></i> Baixar XML</a>` : ''}
+                    ${btnDanfe}
+                    ${btnXml}
                 </div>
             `;
         }
@@ -4455,54 +4470,92 @@ function obterDadosEmpresa() {
 window.obterDadosEmpresa = obterDadosEmpresa;
 
 window.cancelarVendaPendentePDV = function(vendaId) {
-    const v = (db.vendas || []).find(x => String(x.id) === String(vendaId));
-    if (!v) return;
+    const todasVendas = (typeof db !== 'undefined' && Array.isArray(db.vendas)) 
+        ? db.vendas 
+        : ((typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) ? window.db.vendas : []);
+    const v = todasVendas.find(x => String(x.id) === String(vendaId));
+    if (!v) {
+        showToast('Pedido não localizado na memória.', 'warning');
+        return;
+    }
     const numPedStr = String(v.numeroPedido || v.id || '0').padStart(4, '0');
 
-    if (typeof abrirConfirmacao === 'function') {
-        abrirConfirmacao('Cancelar Pedido', `Deseja realmente cancelar o Pedido #${numPedStr} do PDV?`, async () => {
-            try {
-                const cancelObj = {
-                    status: 'CANCELADA',
-                    motivoCancelamento: 'Cancelado pelo operador de caixa',
-                    dataCancelamento: new Date().toISOString()
-                };
-                await window.getEmpresaRef().collection('vendas').doc(String(vendaId)).update(cancelObj);
-                Object.assign(v, cancelObj);
-                if (typeof FCCache !== 'undefined' && typeof FCCache.atualizarItem === 'function') {
-                    await FCCache.atualizarItem('vendas', vendaId, cancelObj);
-                }
-                if (typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) {
-                    const idx = window.db.vendas.findIndex(x => String(x.id) === String(vendaId));
-                    if (idx !== -1) Object.assign(window.db.vendas[idx], cancelObj);
-                }
-                try { localStorage.setItem('fc_sync_trigger', Date.now()); } catch(e) {}
-                renderVendasPendentesPDV();
-                showToast(`Pedido #${numPedStr} cancelado.`, 'info');
-            } catch(e) {
-                console.error(e);
-                showToast('Erro ao cancelar pedido.', 'error');
-            }
-        });
-    } else {
-        if (confirm(`Deseja cancelar o Pedido #${numPedStr}?`)) {
+    const executarCancelamento = async () => {
+        try {
             const cancelObj = {
                 status: 'CANCELADA',
+                motivoCancelamento: 'Cancelado pelo operador de caixa',
                 dataCancelamento: new Date().toISOString()
             };
-            window.getEmpresaRef().collection('vendas').doc(String(vendaId)).update(cancelObj).then(async () => {
-                Object.assign(v, cancelObj);
-                if (typeof FCCache !== 'undefined' && typeof FCCache.atualizarItem === 'function') {
-                    await FCCache.atualizarItem('vendas', vendaId, cancelObj);
+            const dbFirestore = (typeof firebase !== 'undefined' && firebase.firestore) ? firebase.firestore() : (typeof firestore !== 'undefined' ? firestore : null);
+            const empRef = (typeof window.getEmpresaRef === 'function') ? window.getEmpresaRef() : (dbFirestore ? dbFirestore.collection('empresas').doc(localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis') : null);
+            
+            if (dbFirestore && empRef) {
+                const batch = dbFirestore.batch();
+                const vendaRef = empRef.collection('vendas').doc(String(vendaId));
+                batch.update(vendaRef, cancelObj);
+
+                // Estorna o estoque se a pré-venda havia dado baixa
+                if (v.estoqueBaixado === true && Array.isArray(v.itens)) {
+                    v.itens.forEach(item => {
+                        if (item && item.id) {
+                            const pRef = empRef.collection('produtos').doc(String(item.id));
+                            batch.update(pRef, { estoque: firebase.firestore.FieldValue.increment(Number(item.qtd || 1)) });
+
+                            const kardexRef = empRef.collection('movimentacoes').doc();
+                            batch.set(kardexRef, {
+                                data: new Date().toISOString(),
+                                ref: `Estorno Cancelamento #${numPedStr}`,
+                                prodId: item.id,
+                                prodNome: item.nome || 'Produto',
+                                qtd: Number(item.qtd || 1),
+                                tipo: 'CANCELAMENTO'
+                            });
+                        }
+                    });
                 }
-                if (typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) {
-                    const idx = window.db.vendas.findIndex(x => String(x.id) === String(vendaId));
-                    if (idx !== -1) Object.assign(window.db.vendas[idx], cancelObj);
+
+                // Remove títulos financeiros vinculados a este pedido, se houver
+                try {
+                    const snapFin = await empRef.collection('financeiro').where('origemVendaId', '==', String(vendaId)).get();
+                    snapFin.forEach(fDoc => {
+                        batch.delete(fDoc.ref);
+                    });
+                } catch(eFin) {
+                    console.warn('Aviso ao consultar financeiro no cancelamento:', eFin);
                 }
-                try { localStorage.setItem('fc_sync_trigger', Date.now()); } catch(e) {}
-                renderVendasPendentesPDV();
-                showToast(`Pedido #${numPedStr} cancelado.`, 'info');
-            });
+
+                await batch.commit();
+            } else if (empRef) {
+                await empRef.collection('vendas').doc(String(vendaId)).update(cancelObj);
+            }
+
+            Object.assign(v, cancelObj);
+            if (typeof FCCache !== 'undefined' && typeof FCCache.atualizarItem === 'function') {
+                await FCCache.atualizarItem('vendas', vendaId, cancelObj);
+            }
+            if (typeof db !== 'undefined' && Array.isArray(db.vendas)) {
+                const idx = db.vendas.findIndex(x => String(x.id) === String(vendaId));
+                if (idx !== -1) Object.assign(db.vendas[idx], cancelObj);
+            }
+            if (typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) {
+                const idx = window.db.vendas.findIndex(x => String(x.id) === String(vendaId));
+                if (idx !== -1) Object.assign(window.db.vendas[idx], cancelObj);
+            }
+            try { localStorage.setItem('fc_sync_trigger', Date.now()); } catch(e) {}
+            renderVendasPendentesPDV();
+            showToast(`Pedido #${numPedStr} cancelado e removido do caixa.`, 'success');
+        } catch(e) {
+            console.error('Erro ao cancelar pedido:', e);
+            showToast('Erro ao cancelar pedido: ' + (e.message || ''), 'error');
+        }
+    };
+
+    if (typeof abrirConfirmacao === 'function') {
+        abrirConfirmacao('Cancelar / Excluir Pedido', `Deseja realmente cancelar e remover o Pedido #${numPedStr} da fila do caixa? O estoque será estornado se houver reserva.`, executarCancelamento);
+    } else {
+        if (confirm(`Deseja cancelar o Pedido #${numPedStr}? O estoque será estornado e ele sairá da fila do caixa.`)) {
+            executarCancelamento();
         }
     }
 };

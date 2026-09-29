@@ -242,6 +242,23 @@ async function verificarPermissaoUsuario(empresaRef, uid, tiposPermissao = ['isA
 async function obterConfigEmpresaComFallback(empresaRef) {
     let configSnap = await empresaRef.collection("configuracoes").doc("config").get();
     let config = configSnap.data() || {};
+
+    // 1. Tenta carregar segredos fiscais protegidos da subcoleção dedicada
+    try {
+        const segredosSnap = await empresaRef.collection("segredos_fiscais").doc("config").get();
+        if (segredosSnap.exists && segredosSnap.data()) {
+            const seg = segredosSnap.data();
+            config = {
+                ...config,
+                empresa: {
+                    ...(config.empresa || {}),
+                    ...(seg.empresa || seg)
+                }
+            };
+        }
+    } catch (eSeg) {
+        console.warn("[obterConfigEmpresaComFallback] Aviso ao ler segredos_fiscais:", eSeg.message);
+    }
     
     // ATENÇÃO MULTI-TENANT: Fallback para doc padrão/raiz SOMENTE é permitido para a empresa legada 'emp_fc_moveis'.
     // Empresas terceiras/filiais NUNCA podem herdar certificado ou dados fiscais de outra empresa!
@@ -286,10 +303,9 @@ exports.emitirNFCe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
         if (!config || !config.empresa) throw new functions.https.HttpsError("failed-precondition", "Configurações da empresa incompletas.");
         const empresa = config.empresa;
 
-        if (!empresa.ambienteFiscal || empresa.ambienteFiscal !== 'producao') {
-            empresa.ambienteFiscal = 'producao';
-            empresaRef.collection("configuracoes").doc("config").set({ empresa: { ambienteFiscal: 'producao' } }, { merge: true }).catch(console.error);
-        }
+        const ambienteSolicitado = (data && data.ambiente) || empresa.ambienteFiscal || 'producao';
+        const ambienteEfetivo = ambienteSolicitado === 'homologacao' ? 'homologacao' : 'producao';
+        empresa.ambienteFiscal = ambienteEfetivo;
 
         if (!empresa.certificadoBase64) {
             throw new functions.https.HttpsError(
@@ -321,6 +337,8 @@ exports.emitirNFCe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
         }
 
         const resultadoSefaz = await emitirNotaDiretoSefaz('65', venda, empresa, produtos, clienteData, {
+            ambiente: ambienteEfetivo,
+            forcarHomologacao: ambienteEfetivo === 'homologacao',
             contingencia: isContingencia,
             justificativaContingencia: justificativa,
             fallbackContingencia: Boolean(data.fallbackContingencia)
@@ -482,10 +500,9 @@ exports.emitirNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gs
         if (!config || !config.empresa) throw new functions.https.HttpsError("failed-precondition", "Configurações da empresa incompletas.");
         const empresa = config.empresa;
 
-        if (!empresa.ambienteFiscal || empresa.ambienteFiscal !== 'producao') {
-            empresa.ambienteFiscal = 'producao';
-            empresaRef.collection("configuracoes").doc("config").set({ empresa: { ambienteFiscal: 'producao' } }, { merge: true }).catch(console.error);
-        }
+        const ambienteSolicitado = (data && data.ambiente) || empresa.ambienteFiscal || 'producao';
+        const ambienteEfetivo = ambienteSolicitado === 'homologacao' ? 'homologacao' : 'producao';
+        empresa.ambienteFiscal = ambienteEfetivo;
 
         if (!empresa.certificadoBase64) {
             throw new functions.https.HttpsError(
@@ -511,7 +528,10 @@ exports.emitirNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gs
         if (produtos.length === 0) throw new functions.https.HttpsError("invalid-argument", "A venda não possui itens.");
 
         console.log(`Emitindo NF-e (Mod 55) via SEFAZ Direto para a venda ${vendaId}...`);
-        const resultadoSefaz = await emitirNotaDiretoSefaz('55', venda, empresa, produtos, clienteData);
+        const resultadoSefaz = await emitirNotaDiretoSefaz('55', venda, empresa, produtos, clienteData, {
+            ambiente: ambienteEfetivo,
+            forcarHomologacao: ambienteEfetivo === 'homologacao'
+        });
 
         const dadosRetorno = {
             tipo: "NF-e",
@@ -961,11 +981,12 @@ exports.cartaCorrecaoNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
 
         const loc = await localizarVendaEConfig(vendaId, empId);
         const vendaSnap = loc.vendaSnap;
+        const vendaRef = loc.vendaRef;
         if (!vendaSnap.exists) throw new functions.https.HttpsError("not-found", "Venda não encontrada.");
         const venda = vendaSnap.data();
 
-        const configSnap = await empresaRef.collection("configuracoes").doc("config").get();
-        const empresa = configSnap.data()?.empresa || {};
+        const config = await obterConfigEmpresaComFallback(empresaRef);
+        const empresa = config.empresa || {};
 
         if (!empresa.certificadoBase64) {
             throw new functions.https.HttpsError("failed-precondition", "Certificado Digital A1 (.pfx) não configurado. Acesse Configurações > Emissor Fiscal.");
@@ -1207,7 +1228,7 @@ exports.emitirDevolucaoCompra = functions.runWith({ serviceAccount: 'lojafc-a31f
         const configSnap = await empresaRef.collection('configuracoes').doc('config').get();
         const empresa = configSnap.data()?.empresa;
         if (!empresa?.certificadoBase64) throw new functions.https.HttpsError('failed-precondition', 'Certificado A1 não configurado.');
-        empresa.ambienteFiscal = 'producao';
+        if (!empresa.ambienteFiscal) empresa.ambienteFiscal = 'producao';
 
         // Buscar dados do fornecedor (destinatário neste caso)
         let fornecedorData = destinatarioDados || null;
@@ -1391,7 +1412,7 @@ exports.emitirNotaAvulsa = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
         const configSnap = await empresaRef.collection('configuracoes').doc('config').get();
         const empresa = configSnap.data()?.empresa;
         if (!empresa?.certificadoBase64) throw new functions.https.HttpsError('failed-precondition', 'Certificado A1 não configurado.');
-        empresa.ambienteFiscal = 'producao';
+        if (!empresa.ambienteFiscal) empresa.ambienteFiscal = 'producao';
 
         // Calcula total bruto, descontos dos itens e total líquido
         let totalBruto = 0;
@@ -1525,6 +1546,13 @@ exports.emitirNFSe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
     if (!hasPerm) throw new functions.https.HttpsError('permission-denied', 'Sem permissão para emitir NFS-e.');
 
     try {
+        if (!data || !data.permitirHomologacaoInterna) {
+            throw new functions.https.HttpsError(
+                'failed-precondition',
+                'O emissor de NFS-e Municipal encontra-se em processo de homologação técnica junto ao Padrão Nacional ADN. A emissão de notas fiscais de serviço oficiais ainda não está liberada para produção. Para vendas de produtos, utilize NFC-e ou NF-e.'
+            );
+        }
+
         const { vendaId, tomador, servico, observacoes } = data;
 
         if (!servico || !servico.descricao) {

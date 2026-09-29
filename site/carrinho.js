@@ -195,20 +195,62 @@ function renderizarItensCarrinho() {
     if (totalEl) totalEl.innerText = (typeof formatMoney === 'function' ? formatMoney(calcularTotal()) : `R$ ${calcularTotal().toFixed(2)}`);
 }
 
-function finalizarPedidoWhatsApp() {
+async function finalizarPedidoWhatsApp() {
     if (carrinho.length === 0) return;
     
     const nomeCliente = document.getElementById('carrinho-nome-cliente')?.value.trim() || 'Cliente';
+    const totalPedido = calcularTotal();
+    const orcamentoId = 'orc_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
+
+    // 1. Grava a solicitação diretamente como ORÇAMENTO na coleção vendas da empresa
+    try {
+        const empId = window.empresaAtivaSite || localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+        if (typeof firebase !== 'undefined' && firebase.firestore) {
+            const orcamentoDoc = {
+                id: orcamentoId,
+                tipo: 'ORÇAMENTO',
+                status: 'ORÇAMENTO',
+                origem: 'LOJA_VIRTUAL',
+                clienteNome: nomeCliente,
+                vendedor: 'Loja Virtual',
+                data: new Date().toISOString(),
+                tot: totalPedido,
+                subtotal: totalPedido,
+                desconto: 0,
+                pago: false,
+                itens: carrinho.map(item => ({
+                    id: item.id || '',
+                    nome: item.nome || '',
+                    preco: Number(item.preco) || 0,
+                    custo: 0,
+                    desconto: 0,
+                    qtd: item.quantidade || 1,
+                    foto: item.foto || '',
+                    categoria: item.categoria || '',
+                    sobEncomenda: Boolean(item.sobEncomenda)
+                })),
+                obs: 'Solicitação de orçamento recebida via Loja Virtual (WhatsApp)'
+            };
+            await firebase.firestore().collection('empresas').doc(empId).collection('vendas').doc(orcamentoId).set(orcamentoDoc);
+            console.log(`[Site Orçamentos] Orçamento ${orcamentoId} registrado com sucesso em vendas da empresa ${empId}.`);
+        }
+    } catch (eSave) {
+        console.warn('[Site Orçamentos] Aviso ao gravar orçamento em vendas:', eSave);
+    }
     
-    let mensagem = `*NOVO ORÇAMENTO*\r\n\r\n`;
-    mensagem += `*Cliente:* ${nomeCliente}\r\n\r\n`;
-    mensagem += `*Itens do Orçamento:*\r\n`;
+    // 2. Monta mensagem limpa do WhatsApp: SEM NÚMERO DE PEDIDO e SEM VALORES
+    let mensagem = `*📋 SOLICITAÇÃO DE ORÇAMENTO - LOJA VIRTUAL*\r\n\r\n`;
+    mensagem += `*Cliente:* ${nomeCliente}\r\n`;
+    mensagem += `*Data:* ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}\r\n\r\n`;
+    mensagem += `*Itens Solicitados:*\r\n`;
     
     carrinho.forEach(item => {
         const tagEncomenda = item.sobEncomenda ? ' *(Sob Encomenda)*' : '';
         const tagSub = item.subcategoria ? ` (${item.subcategoria})` : '';
-        mensagem += `- ${item.quantidade}x ${item.nome}${tagSub}${tagEncomenda}\r\n`;
+        mensagem += `▪️ ${item.quantidade}x *${item.nome}*${tagSub}${tagEncomenda}\r\n`;
     });
+
+    mensagem += `\r\n_Olá! Gostaria de receber um orçamento para os itens acima e verificar disponibilidade._`;
     
     let wpp = '';
     if (typeof lojaConfig !== 'undefined' && lojaConfig.whatsapp) {
@@ -220,6 +262,9 @@ function finalizarPedidoWhatsApp() {
     const numeroFormatado = formatarNumeroWhatsApp(wpp);
     const url = `https://wa.me/${numeroFormatado || '5511999999999'}?text=${encodeURIComponent(mensagem)}`;
     
+    // 3. Limpa o carrinho e fecha após disparar
+    limparCarrinho();
+    fecharCarrinho();
     window.open(url, '_blank');
 }
 

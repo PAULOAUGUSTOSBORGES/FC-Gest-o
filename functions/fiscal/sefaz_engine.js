@@ -23,8 +23,8 @@ async function emitirNotaDiretoSefaz(modelo, venda, empresa, itens, cliente = nu
         throw new Error('Certificado Digital A1 (.pfx) não configurado. Acesse Configurações > Emissor Fiscal para fazer o upload do seu certificado.');
     }
 
-    // Modalidade exclusiva: Produção Oficial (Com Valor Legal)
-    const ambiente = (opcoes.ambiente === 'homologacao' && opcoes.forcarHomologacao) ? 'homologacao' : 'producao';
+    // Respeita ambiente de homologação para testes ou produção oficial
+    const ambiente = (opcoes.ambiente === 'homologacao' || empresa.ambienteFiscal === 'homologacao') ? 'homologacao' : 'producao';
     const endpoints = obterEndpointsSefaz(modelo, empresa.uf, ambiente);
     const isContingencia = Boolean(opcoes.contingencia || venda.contingencia || opcoes.tpEmis === '9');
 

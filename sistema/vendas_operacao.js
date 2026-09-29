@@ -232,7 +232,7 @@ function abrirZoomCart(index) {
 // ==========================================
 // 4. CADASTRO E BUSCA DE CLIENTE RÁPIDO NO PDV
 // ==========================================
-function selecionarClientePDV(clienteOuId) {
+function selecionarClientePDV(clienteOuId, silencioso = false) {
     let c = null;
     if (typeof clienteOuId === 'object' && clienteOuId !== null) {
         c = clienteOuId;
@@ -277,9 +277,15 @@ function selecionarClientePDV(clienteOuId) {
                 vendSelect.appendChild(opt);
             }
 
+            const vendedorAnterior = (vendSelect.value || '').replace(/^Vend:\s*/i, '').trim().toLowerCase();
+            const novoVendedor = opt.value.trim().toLowerCase();
+            const nomeSemPrefixo = vendedorNome.toLowerCase();
+            const mudouVendedor = (vendedorAnterior !== novoVendedor && vendedorAnterior !== nomeSemPrefixo);
+
             vendSelect.value = opt.value;
 
-            if (typeof showToast === 'function') {
+            // Só notifica se não for silencioso, se o vendedor realmente mudou e não estiver na carga inicial da página
+            if (!silencioso && mudouVendedor && !window._pdvCarregandoInicial && typeof showToast === 'function') {
                 showToast(`Vendedor "${vendedorNome}" preenchido automaticamente pelo cadastro do cliente.`, 'info');
             }
         }
@@ -297,7 +303,7 @@ function autoSelecionarClientePorNome() {
     if (!inputBusca) return;
     const txt = inputBusca.value.trim().toLowerCase();
     if (!txt) {
-        selecionarClientePDV(null);
+        selecionarClientePDV(null, true);
         return;
     }
     if (hiddenId && hiddenId.value && hiddenId.value !== '0') {
@@ -332,9 +338,9 @@ function autoSelecionarPrimeiroCliente() {
 }
 window.autoSelecionarPrimeiroCliente = autoSelecionarPrimeiroCliente;
 
-function atualizarListaClientesPDV(selecionarId = null) {
+function atualizarListaClientesPDV(selecionarId = null, silencioso = true) {
     if (selecionarId && selecionarId !== '0') {
-        selecionarClientePDV(selecionarId);
+        selecionarClientePDV(selecionarId, silencioso);
     } else if (selecionarId === null) {
         const hiddenId = document.getElementById('pdv-cliente');
         const inputBusca = document.getElementById('pdv-cliente-busca');
@@ -343,7 +349,7 @@ function atualizarListaClientesPDV(selecionarId = null) {
             if (c) {
                 if (inputBusca && !inputBusca.value) inputBusca.value = c.nome || '';
                 if (c.vendedor) {
-                    selecionarClientePDV(c);
+                    selecionarClientePDV(c, true);
                 }
                 return;
             }
@@ -351,7 +357,7 @@ function atualizarListaClientesPDV(selecionarId = null) {
         if (hiddenId) hiddenId.value = '0';
         if (inputBusca) inputBusca.value = '';
     } else {
-        selecionarClientePDV(null);
+        selecionarClientePDV(null, true);
     }
 }
 
@@ -2274,12 +2280,12 @@ async function emitirNota(tipo) {
             statusContainer.classList.remove('border-blue-500', 'bg-blue-50');
             statusContainer.classList.add('border-emerald-500', 'bg-emerald-50');
             
-            const linkDanfe = d.danfe_url_completa || (d.caminho_danfe ? `https://api.focusnfe.com.br${d.caminho_danfe}` : '');
-            const linkXml = d.xml_url_completa || (d.caminho_xml_nota_fiscal ? `https://api.focusnfe.com.br${d.caminho_xml_nota_fiscal}` : '');
+            const linkDanfe = d.danfe_url_completa || '';
+            const linkXml = d.xml_url_completa || '';
             const numNota = d.numero ? ` Nº ${d.numero}` : '';
             const statusTexto = (d.status_sefaz || 'autorizado').toUpperCase();
             const vendaId = window.vendaAtualImpressao ? (window.vendaAtualImpressao.id || '') : '';
-            const isSefazDireto = d.motor === 'sefaz_direto' || (!linkDanfe && (d.status_sefaz === 'autorizado' || d.status_sefaz === 'contingencia' || d.chave_nfe || d.chave_nfce));
+            const isSefazDireto = true;
 
             let botoesFiscais = '';
             if (linkDanfe) {
@@ -2995,15 +3001,15 @@ window.reimprimirVenda = function(id) {
                     
                     const docFisc = v.nfe || v.nfce;
                     const chaveFisc = docFisc?.chave_nfe || docFisc?.chave_nfce || v.fiscal_chave;
-                    if (docFisc && (docFisc.danfe_url_completa || docFisc.caminho_danfe || docFisc.status_sefaz === 'autorizado' || chaveFisc)) {
+                    if (docFisc && (docFisc.danfe_url_completa || docFisc.status_sefaz === 'autorizado' || chaveFisc)) {
                         if (fStatus) {
                             fStatus.classList.remove('hidden', 'border-red-500', 'bg-red-50', 'border-blue-500', 'bg-blue-50');
                             fStatus.classList.add('border-emerald-500', 'bg-emerald-50');
-                            const linkDanfe = docFisc.danfe_url_completa || (docFisc.caminho_danfe ? `https://api.focusnfe.com.br${docFisc.caminho_danfe}` : '');
-                            const linkXml = docFisc.xml_url_completa || (docFisc.caminho_xml_nota_fiscal ? `https://api.focusnfe.com.br${docFisc.caminho_xml_nota_fiscal}` : '');
+                            const linkDanfe = docFisc.danfe_url_completa || '';
+                            const linkXml = docFisc.xml_url_completa || '';
                             const numNota = docFisc.numero ? ` Nº ${docFisc.numero}` : '';
                             const statusTexto = (docFisc.status_sefaz || 'autorizado').toUpperCase();
-                            const isSefazDireto = docFisc.motor === 'sefaz_direto' || (!linkDanfe && (docFisc.status_sefaz === 'autorizado' || chaveFisc));
+                            const isSefazDireto = true;
 
                             let botoesFiscais = '';
                             if (linkDanfe) {

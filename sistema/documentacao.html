@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual &amp; Mapa do Sistema &mdash; ERP FC Gestão</title>
+    <style>
+        :root {
+            --bg-body:       #0b1120;
+            --bg-sidebar:    #0f172a;
+            --bg-card:       #131c31;
+            --bg-card-2:     #1a2640;
+            --border:        #24324d;
+            --text-main:     #f1f5f9;
+            --text-muted:    #94a3b8;
+            --accent:        #38bdf8;
+            --accent-dim:    rgba(56,189,248,.12);
+            --green:         #4ade80;
+            --orange:        #fb923c;
+            --red:           #f87171;
+            --purple:        #a78bfa;
+            --yellow:        #fbbf24;
+        }
+        *{box-sizing:border-box;margin:0;padding:0;}
+        html{scroll-behavior:smooth;}
+
+        body{
+            font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+            background:var(--bg-body);
+            color:var(--text-main);
+            display:flex;
+            min-height:100vh;
+            line-height:1.5;
+        }
+
+        /* ── Sidebar ─────────────────────────────────── */
+        aside.sidebar{
+            width:270px;
+            background:var(--bg-sidebar);
+            border-right:1px solid var(--border);
+            position:fixed;top:0;bottom:0;left:0;
+            overflow-y:auto;
+            padding:20px 14px;
+            scrollbar-width:thin;
+            scrollbar-color:var(--border) transparent;
+            flex-shrink:0;
+        }
+        .sidebar-header{margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+        .sidebar-header h2{font-size:1rem;font-weight:700;color:var(--text-main);display:flex;align-items:center;gap:8px;}
+        .sidebar-header p{font-size:.72rem;color:var(--text-muted);margin-top:3px;}
+        .menu-category{margin-bottom:18px;}
+        .category-title{
+            font-size:.63rem;font-weight:800;text-transform:uppercase;
+            letter-spacing:.08em;color:var(--accent);
+            margin-bottom:6px;padding-left:8px;
+        }
+        .menu-list{list-style:none;display:flex;flex-direction:column;gap:1px;}
+        .menu-list a{
+            display:flex;align-items:center;gap:8px;
+            padding:6px 10px;font-size:.8rem;
+            color:var(--text-muted);text-decoration:none;
+            border-radius:6px;transition:all .15s ease;
+        }
+        .menu-list a:hover{background:var(--accent-dim);color:var(--text-main);padding-left:14px;}
+        .menu-list a .mi{font-size:.95rem;width:18px;text-align:center;}
+
+        /* ── Main ────────────────────────────────────── */
+        main.content{margin-left:270px;flex:1;padding:36px 44px;max-width:1100px;}
+        header.doc-header{margin-bottom:36px;border-bottom:1px solid var(--border);padding-bottom:20px;}
+        header.doc-header h1{font-size:1.75rem;font-weight:800;color:#fff;}
+        header.doc-header p{color:var(--text-muted);font-size:.92rem;margin-top:5px;}
+        .section-group{margin-bottom:44px;}
+        .group-header{
+            font-size:1.05rem;font-weight:800;text-transform:uppercase;
+            letter-spacing:.06em;color:var(--accent);
+            padding-bottom:8px;border-bottom:2px solid var(--border);
+            margin-bottom:18px;
+        }
+
+        /* ── Module Card ─────────────────────────────── */
+        .module-card{
+            background:var(--bg-card);
+            border:1px solid var(--border);
+            border-radius:12px;
+            padding:0;
+            margin-bottom:18px;
+            overflow:hidden;
+            transition:border-color .2s;
+        }
+        .module-card:hover{border-color:rgba(56,189,248,.4);}
+
+        .card-top{
+            display:flex;align-items:flex-start;gap:16px;
+            padding:20px 22px 16px;
+        }
+        .card-icon{
+            width:52px;height:52px;border-radius:12px;
+            display:flex;align-items:center;justify-content:center;
+            font-size:1.6rem;flex-shrink:0;
+        }
+        .card-meta{flex:1;}
+        .card-meta h3{font-size:1rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+        .badge{
+            font-size:.62rem;font-weight:700;text-transform:uppercase;
+            letter-spacing:.06em;padding:2px 8px;border-radius:20px;
+            background:var(--accent-dim);color:var(--accent);
+        }
+        .card-meta p{font-size:.85rem;color:var(--text-muted);margin-top:5px;line-height:1.55;}
+        .tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;}
+        .tag{
+            font-size:.72rem;padding:2px 9px;border-radius:20px;
+            border:1px solid var(--border);color:var(--text-muted);
+            background:rgba(255,255,255,.03);
+        }
+
+        /* ── Screen Preview ──────────────────────────── */
+        .screen-preview{
+            margin:0 14px 14px;
+            background:#0a1628;
+            border:1px solid var(--border);
+            border-radius:8px;
+            overflow:hidden;
+        }
+        .sp-bar{
+            background:#111e35;
+            border-bottom:1px solid var(--border);
+            padding:7px 12px;
+            display:flex;align-items:center;gap:6px;
+        }
+        .sp-bar span{font-size:.7rem;color:var(--text-muted);}
+        .sp-dot{width:8px;height:8px;border-radius:50%;}
+        .sp-body{padding:10px 12px;display:flex;flex-direction:column;gap:7px;}
+
+        /* mini UI primitives */
+        .sp-row{display:flex;gap:6px;align-items:center;}
+        .sp-kpi{
+            flex:1;background:var(--bg-card-2);border-radius:6px;
+            padding:8px 10px;
+        }
+        .sp-kpi-label{font-size:.62rem;color:var(--text-muted);}
+        .sp-kpi-val{font-size:.92rem;font-weight:700;color:#fff;}
+        .sp-kpi-val.green{color:var(--green);}
+        .sp-kpi-val.orange{color:var(--orange);}
+        .sp-kpi-val.red{color:var(--red);}
+        .sp-kpi-val.accent{color:var(--accent);}
+
+        .sp-table-row{
+            display:flex;gap:6px;align-items:center;
+            padding:5px 8px;border-radius:5px;
+            background:var(--bg-card-2);font-size:.7rem;
+        }
+        .sp-table-row:nth-child(even){background:#0f1f38;}
+        .sp-col{color:var(--text-muted);flex:1;}
+        .sp-col.bold{color:#fff;font-weight:600;}
+        .sp-col.right{text-align:right;}
+        .sp-col.green{color:var(--green);}
+        .sp-col.red{color:var(--red);}
+        .sp-col.orange{color:var(--orange);}
+        .sp-col.accent{color:var(--accent);}
+
+        .sp-btn{
+            padding:4px 10px;border-radius:5px;font-size:.68rem;font-weight:600;
+            background:var(--accent-dim);color:var(--accent);
+        }
+        .sp-btn.green{background:rgba(74,222,128,.12);color:var(--green);}
+        .sp-btn.red{background:rgba(248,113,113,.12);color:var(--red);}
+        .sp-btn.orange{background:rgba(251,146,60,.12);color:var(--orange);}
+
+        .sp-bar-chart{display:flex;align-items:flex-end;gap:4px;height:44px;padding:4px;}
+        .sp-bar-item{flex:1;border-radius:3px 3px 0 0;min-height:6px;}
+
+        .sp-search{
+            background:var(--bg-card-2);border:1px solid var(--border);
+            border-radius:5px;padding:5px 10px;
+            font-size:.7rem;color:var(--text-muted);
+            display:flex;align-items:center;gap:6px;
+        }
+
+        .sp-input-row{display:flex;gap:6px;}
+        .sp-input{
+            flex:1;background:var(--bg-card-2);border:1px solid var(--border);
+            border-radius:5px;padding:5px 10px;font-size:.7rem;color:var(--text-muted);
+        }
+
+        .sp-cal{display:flex;flex-wrap:wrap;gap:3px;}
+        .sp-day{
+            width:24px;height:22px;border-radius:4px;
+            background:var(--bg-card-2);font-size:.6rem;
+            color:var(--text-muted);display:flex;align-items:center;justify-content:center;
+        }
+        .sp-day.has{background:var(--accent-dim);color:var(--accent);}
+        .sp-day.today{background:var(--accent);color:#000;font-weight:700;}
+
+        /* ── Search Tip ──────────────────────────────── */
+        .search-tip{
+            margin:0 22px 16px;
+            padding:9px 14px;
+            background:var(--accent-dim);
+            border-left:3px solid var(--accent);
+            border-radius:0 6px 6px 0;
+            font-size:.78rem;color:var(--accent);
+        }
+        .search-tip strong{color:#7dd3fc;}
+
+        /* ── Responsivo ──────────────────────────────── */
+        @media(max-width:860px){
+            body{flex-direction:column;}
+            aside.sidebar{position:relative;width:100%;height:auto;border-right:none;border-bottom:1px solid var(--border);}
+            main.content{margin-left:0;padding:20px 16px;}
+        }
+    </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+    <div class="sidebar-header">
+        <h2>&#128218; Mapa do Sistema</h2>
+        <p>Guia de Telas e Busca de Dados</p>
+    </div>
+    <nav>
+        <div class="menu-category">
+            <div class="category-title">Vis&atilde;o Geral</div>
+            <ul class="menu-list">
+                <li><a href="#dashboard"><span class="mi">&#128200;</span>Dashboard</a></li>
+            </ul>
+        </div>
+        <div class="menu-category">
+            <div class="category-title">Opera&ccedil;&atilde;o</div>
+            <ul class="menu-list">
+                <li><a href="#pdv"><span class="mi">&#128722;</span>Frente de Caixa (PDV)</a></li>
+                <li><a href="#historico-vendas"><span class="mi">&#128203;</span>Hist&oacute;rico Vendas/Servi&ccedil;os</a></li>
+                <li><a href="#orcamentos"><span class="mi">&#128196;</span>Meus Or&ccedil;amentos</a></li>
+                <li><a href="#emissor-fiscal"><span class="mi">&#129534;</span>Emissor Fiscal (NF-e)</a></li>
+            </ul>
+        </div>
+        <div class="menu-category">
+            <div class="category-title">Cadastros</div>
+            <ul class="menu-list">
+                <li><a href="#produtos-servicos"><span class="mi">&#128230;</span>Produtos &amp; Servi&ccedil;os</a></li>
+                <li><a href="#clientes"><span class="mi">&#128101;</span>Clientes</a></li>
+                <li><a href="#fornecedores"><span class="mi">&#127981;</span>Fornecedores</a></li>
+                <li><a href="#funcionarios"><span class="mi">&#128100;</span>Funcion&aacute;rios / Vendedores</a></li>
+            </ul>
+        </div>
+        <div class="menu-category">
+            <div class="category-title">Gest&atilde;o</div>
+            <ul class="menu-list">
+                <li><a href="#contas-pagar-receber"><span class="mi">&#128176;</span>Contas a Pagar/Receber</a></li>
+                <li><a href="#caixa-fisico"><span class="mi">&#127968;</span>Caixa F&iacute;sico</a></li>
+                <li><a href="#caixa-loja"><span class="mi">&#128179;</span>Caixa da Loja</a></li>
+                <li><a href="#compras-xml"><span class="mi">&#128229;</span>Compras &amp; NF-e XML</a></li>
+                <li><a href="#relatorios-dre"><span class="mi">&#128202;</span>Relat&oacute;rios &amp; DRE</a></li>
+                <li><a href="#agenda"><span class="mi">&#128197;</span>Agenda</a></li>
+                <li><a href="#marketing-lembretes"><span class="mi">&#128226;</span>Marketing &amp; Lembretes</a></li>
+            </ul>
+        </div>
+        <div class="menu-category">
+            <div class="category-title">Sistema</div>
+            <ul class="menu-list">
+                <li><a href="#configuracoes"><span class="mi">&#9881;</span>Configura&ccedil;&otilde;es</a></li>
+            </ul>
+        </div>
+    </nav>
+</aside>
+
+<!-- CONTEÚDO -->
+<main class="content">
+    <header class="doc-header">
+        <h1>Documenta&ccedil;&atilde;o &amp; Manual do ERP</h1>
+        <p>Consulte a finalidade e as instru&ccedil;&otilde;es de busca r&aacute;pida para cada m&oacute;dulo operacional e gerencial.</p>
+    </header>
+
+    <!-- VISÃO GERAL -->
+    <section class="section-group">
+        <h2 class="group-header">Vis&atilde;o Geral</h2>
+
+        <article id="dashboard" class="module-card">
+            <div class="card-top">
+                <div class="card-icon" style="background:rgba(56,189,248,.12);">&#128200;</div>
+                <div class="card-meta">
+                    <h3>Dashboard <span class="badge">Vis&atilde;o Geral</span></h3>
+                    <p>Painel com indicadores-chave (KPIs), faturamento em tempo real, saldo consolidado e atalhos r&aacute;pidos.</p>
+                    <div class="tags">
+                        <span class="tag">KPIs</span><span class="tag">Gr&aacute;ficos</span>
+                        <span class="tag">Faturamento</span><span class="tag">Saldo</span>
+                        <span class="tag">Atalhos</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-preview">
+                <div class="sp-bar"><span class="sp-dot" style="background:#f87171"></span><span class="sp-dot" style="background:#fbbf24"></span><span class="sp-dot" style="background:#4ade80"></span><span style="margin-left:6px;">&#128200; Dashboard</span></div>
+                <div class="sp-body">
+                    <div class="sp-row">
+                        <div class="sp-kpi"><div class="sp-kpi-label">Faturamento Hoje</div><div class="sp-kpi-val green">R$ 4.820,00</div></div>
+                        <div class="sp-kpi"><div class="sp-kpi-label">Vendas (m&ecirc;s)</div><div class="sp-kpi-val accent">R$ 38.150,00</div></div>
+                        <div class="sp-kpi"><div class="sp-kpi-label">Contas Vencidas</div><div class="sp-kpi-val red">R$ 1.200,00</div></div>
+                        <div class="sp-kpi"><div class="sp-kpi-label">Saldo Caixa</div><div class="sp-kpi-val">R$ 6.340,00</div></div>
+                    </div>
+                    <div class="sp-row">
+                        <div class="sp-kpi" style="flex:2">
+                            <div class="sp-kpi-label" style="margin-bottom:6px">Vendas por dia (semana)</div>
+                            <div class="sp-bar-chart">
+                                <div class="sp-bar-item" style="height:60%;background:var(--accent);opacity:.5"></div>
+                                <div class="sp-bar-item" style="height:80%;background:var(--accent);opacity:.6"></div>
+                                <div class="sp-bar-item" style="height:45%;background:var(--accent);opacity:.5"></div>
+                                <div class="sp-bar-item" style="height:90%;background:var(--accent);opacity:.7"></div>
+                                <div class="sp-bar-item" style="height:70%;background:var(--accent);opacity:.6"></div>
+                                <div class="sp-bar-item" style="height:100%;background:var(--accent)"></div>
+                                <div class="sp-bar-item" style="height:55%;background:var(--accent);opacity:.5"></div>
+                            </div>
+                        </div>
+                        <div class="sp-kpi" style="flex:1">
+                            <div class="sp-kpi-label">Formas de Pagamento</div>
+                            <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px">
+                                <div style="font-size:.68rem;display:flex;justify-content:space-between;"><span style="color:var(--accent)">&#9632; PIX</span><span>42%</span></div>
+                                <div style="font-size:.68rem;display:flex;justify-content:space-between;"><span style="color:var(--green)">&#9632; Cart&atilde;o</span><span>35%</span></div>
+                                <div style="font-size:.68rem;display:flex;justify-content:space-between;"><span style="color:var(--yellow)">&#9632; Dinheiro</span><span>23%</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="search-tip">&#128269; <strong>Como buscar dados:</strong> Alterne os seletores de per&iacute;odo no topo (Hoje, M&ecirc;s, Ano) para atualizar gr&aacute;ficos e totais.</div>
+        </article>
+    </section>
+
+    <!-- OPERAÇÃO -->
+    <section class="section-group">
+        <h2 class="group-header">Opera&ccedil;&atilde;o</h2>
+
+        <article id="pdv" class="module-card">
+            <div class="card-top">
+                <div class="card-icon" style="background:rgba(74,222,128,.1);">&#128722;</div>
+                <div class="card-meta">
+                    <h3>Frente de Caixa (PDV) <span class="badge">Opera&ccedil;&atilde;o</span></h3>
+                    <p>Terminal &aacute;gil de venda direta ao consumidor, emiss&atilde;o de tickets, leitura de c&oacute;digo de barras e pagamentos m&uacute;ltiplos.</p>
+                    <div class="tags">
+                        <span class="tag">C&oacute;d. Barras</span><span class="tag">Pagamento M&uacute;ltiplo</span>
+                        <span class="tag">Cupom</span><span class="tag">Desconto</span><span class="tag">NFC-e</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-preview">
+                <div class="sp-bar"><span class="sp-dot" style="background:#f87171"></span><span class="sp-dot" style="background:#fbbf24"></span><span class="sp-dot" style="background:#4ade80"></span><span style="margin-left:6px;">&#128722; Frente de Caixa &mdash; PDV</span></div>
+                <div class="sp-body">
+                    <div class="sp-search">&#128269; &nbsp; Buscar produto por nome, c&oacute;digo ou EAN...</div>
+                    <div class="sp-table-row" style="font-size:.65rem;color:var(--accent);border-bottom:1px solid var(--border);border-radius:0;background:transparent">
+                        <span class="sp-col">Produto</span><span class="sp-col">Qtd</span><span class="sp-col right">Unit.</span><span class="sp-col right">Total</span>
+                    </div>
+                    <div class="sp-table-row"><span class="sp-col bold">Cadeira Escritório Pro</span><span class="sp-col">2</span><span class="sp-col right">R$480</span><span class="sp-col right green">R$960</span></div>
+                    <div class="sp-table-row"><span class="sp-col bold">Mesa 1,50m Tampo MDF</span><span class="sp-col">1</span><span class="sp-col right">R$720</span><span class="sp-col right green">R$720</span></div>
+                    <div class="sp-row" style="justify-content:flex-end;margin-top:4px;">
+                        <span style="font-size:.78rem;color:var(--text-muted)">Total:</span>
+                        <span style="font-size:1rem;font-weight:800;color:var(--green)">R$ 1.680,00</span>
+                    </div>
+                    <div class="sp-row" style="justify-content:flex-end;gap:8px;">
+                        <span class="sp-btn orange">&#8592; Cancelar</span>
+                        <span class="sp-btn green">&#128179; Finalizar Venda</span>
+                    </div>
+                </div>
+            </div>
+            <div class="search-tip">&#128269; <strong>Como buscar dados:</strong> Digite o nome, c&oacute;digo de barras (EAN) ou use o leitor &oacute;ptico no campo de busca de itens.</div>
+        </article>
+
+        <article id="historico-vendas" class="module-card">
+            <div class="card-top">
+                <div class="card-icon" style="background:rgba(167,139,250,.1);">&#128203;</div>
+                <div class="card-meta">
+                    <h3>Hist&oacute;rico Vendas/Servi&ccedil;os <span class="badge">Opera&ccedil;&atilde;o</span></h3>
+                    <p>Registro completo de transa&ccedil;&otilde;es finalizadas, reimpress&atilde;o de comprovantes, cancelamentos e envio de recibos.</p>
+                    <div class="tags">
+                        <span class="tag">Filtros</span><span class="tag">Reimpress&atilde;o</span>
+                        <span class="tag">Cancelamento</span><span class="tag">WhatsApp</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-preview">
+                <div class="sp-bar"><span class="sp-dot" style="background:#f87171"></span><span class="sp-dot" style="background:#fbbf24"></span><span class="sp-dot" style="background:#4ade80"></span><span style="margin-left:6px;">&#128203; Hist&oacute;rico de Vendas</span></div>
+                <div class="sp-body">
+                    <div class="sp-input-row">
+                        <div class="sp-input">&#128269; Cliente ou n&deg; pedido...</div>
+                        <div class="sp-input" style="max-width:110px">&#128197; 01/09/2026</div>
+                        <div class="sp-input" style="max-width:110px">&#128197; 29/09/2026</div>
+                        <span class="sp-btn">Filtrar</span>
+                    </div>
+                    <div class="sp-table-row" style="font-size:.65rem;color:var(--accent);background:transparent">
+                        <span class="sp-col">#</span><span class="sp-col">Cliente</span><span class="sp-col">Data</span><span class="sp-col right">Total</span><span class="sp-col right">Status</span>
+                    </div>
+                    <div class="sp-table-row"><span class="sp-col bold">#1045</span><span class="sp-col">Jo&atilde;o Silva</span><span class="sp-col">29/09</span><span class="sp-col right">R$1.680</span><span class="sp-col right"><span class="sp-btn green" style="padding:2px 6px;font-size:.6rem">Pago</span></span></div>
+                    <div class="sp-table-row"><span class="sp-col bold">#1044</span><span class="sp-col">Maria Souza</span><span class="sp-col">28/09</span><span class="sp-col right">R$340</span><span class="sp-col right"><span class="sp-btn green" style="padding:2px 6px;font-size:.6rem">Pago</span></span></div>
+                    <div class="sp-table-row"><span class="sp-col bold">#1043</span><span class="sp-col">Carlos Lima</span><span class="sp-col">27/09</span><span class="sp-col right">R$890</span><span class="sp-col right"><span class="sp-btn red" style="padding:2px 6px;font-size:.6rem">Cancelado</span></span></div>
+                </div>
+            </div>
+            <div class="search-tip">&#128269; <strong>Como buscar dados:</strong> Filtre por n&uacute;mero do pedido, nome do cliente, intervalo de datas ou forma de pagamento.</div>
+        </article>
+
+        <article id="orcamentos" class="module-card">
+            <div class="card-top">
+                <div class="card-icon" style="background:rgba(251,191,36,.1);">&#128196;</div>
+                <div class="card-meta">
+                    <h3>Meus Or&ccedil;amentos <span class="badge">Opera&ccedil;&atilde;o</span></h3>
+                    <p>Emiss&atilde;o e acompanhamento de cota&ccedil;&otilde;es comerciais, convers&atilde;o direta em venda e controle de prazos de validade.</p>
+                    <div class="tags">
+                        <span class="tag">Cota&ccedil;&otilde;es</span><span class="tag">Status</span>
+                        <span class="tag">Convers&atilde;o em Venda</span><span class="tag">Validade</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-preview">
+                <div class="sp-bar"><span class="sp-dot" style="background:#f87171"></span><span class="sp-dot" style="background:#fbbf24"></span><span class="sp-dot" style="background:#4ade80"></span><span style="margin-left:6px;">&#128196; Or&ccedil;amentos</span></div>
+                <div class="sp-body">
+                    <div class="sp-row">
+                        <div class="sp-kpi"><div class="sp-kpi-label">Em Aberto</div><div class="sp-kpi-val accent">12</div></div>
+                        <div class="sp-kpi"><div class="sp-kpi-label">Aprovados</div><div class="sp-kpi-val green">8</div></div>
+                        <div class="sp-kpi"><div class="sp-kpi-label">Vencidos</div><div class="sp-kpi-val red">3</div></div>
+                    </div>
+                    <div class="sp-table-row" style="font-size:.65rem;color:var(--accent);background:transparent">
+                        <span class="sp-col">#</span><span class="sp-col">Cliente</span><span class="sp-col">Vendedor</span><span class="sp-col right">Valor</span><span class="sp-col right">Status</span>
+                    </div>
+                    <div class="sp-table-row"><span class="sp-col bold">ORC-042</span><span class="sp-col">Ana Paula</span><span class="sp-col">Carlos</span><span class="sp-col right">R$2.400</span><span class="sp-col right"><span class="sp-btn" style="padding:2px 6px;font-size:.6rem">Aberto</span></span></div>
+                    <div class="sp-table-row"><span class="sp-col bold">ORC-041</span><span class="sp-col">Empresa X</span><span class="sp-col">Fernanda</span><span class="sp-col right">R$8.700</span><span class="sp-col right"><span class="sp-btn green" style="padding:2px 6px;font-size:.6rem">Aprovado</span></span></div>
+                </div>
+            </div>
+            <div class="search-tip">&#128269; <strong>Como buscar dados:</strong> Localize pelo nome do cliente, vendedor respons&aacute;vel, status (aberto/aprovado) ou ID.</div>
+        </article>
+
+        <article id="emissor-fiscal" class="module-card">
+            <div class="card-top">
+                <div class="card-icon" style="background:rgba(248,113,113,.1);">&#129534;</div>
+                <div class="card-meta">
+                    <h3>Emissor Fiscal (NF-e) <span class="badge">Opera&ccedil;&atilde;o</span></h3>
+                    <p>Central de autoriza&ccedil;&atilde;o, cancelamento, inutiliza&ccedil;&atilde;o e download de XML/DANFE para NF-e (mod. 55) e NFC-e (mod. 65).</p>
+                    <div class="tags">
+                        <span class="tag">NF-e Mod. 55</span><span class="tag">NFC-e Mod. 65</span>
+                        <span class="tag">DANFE</span><span class="tag">XML</span><span class="tag">SEFAZ</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-preview">
+                <div class="sp-bar"><span class="sp-dot" style="background:#f87171"></span><span class="sp-dot" style="background:#fbbf24"></span><span class="sp-dot" style="background:#4ade80"></span><span style="margin-left:6px;">&#129534; Emissor Fiscal</span></div>
+                <div class="sp-body">
+                    <div class="sp-input-row">
+                        <div class="sp-input">&#128269; Chave de acesso (44 d&iacute;gitos) ou n&deg; da nota...</div>
+                        <span class="sp-btn">Buscar</span>
+                    </div>
+                    <div class="sp-table-row" style="font-size:.65rem;color:var(--accent);background:transparent">
+                        <span class="sp-col">N&ordm; NF</span><span class="sp-col">Destinat&aacute;rio</span><span class="sp-col">Data</span><span class="sp-col right">Valor</span><span class="sp-col right">SEFAZ</span>
+                    </div>
+                    <div class="sp-table-row"><span class="sp-col bold">NF-000102</span><span class="sp-col">Maria Souza</span><span class="sp-col">29/09</span><span class="sp-col right">R$1.680</span><span class="sp-col right"><span class="sp-btn green" style="padding:2px 6px;font-size:.6rem">Autorizada</span></span></div>
+                    <div class="sp-table-row"><span class="sp-col bold">NF-000101</span><span class="sp-col">Empresa Y</span><span class="sp-col">28/09</span><span class="sp-col right">R$5.200</span><span class="sp-col right"><span class="sp-btn green" style="padding:2px 6px;font-size:.6rem">Autorizada</span></span></div>
+                    <div class="sp-table-row"><span class="sp-col bold">NF-000099</span><span class="sp-col">Comprador Z</span><span class="sp-col">26/09</span><span class="sp-col right">R$900</span><span class="sp-col right"><span class="sp-btn red" style="padding:2px 6px;font-size:.6rem">Cancelada</span></span></div>
+                </div>
+            </div>
+            <div class="search-tip">&#128269; <strong>Como buscar dados:</strong> Pesquise pela chave de acesso de 44 d&iacute;gitos, n&uacute;mero da nota, destinat&aacute;rio ou status SEFAZ.</div>
+        </article>
+    </section>
+
+    <!-- CADASTROS -->
+    <section class="section-group">
+        <h2 class="group-header">Cadastros</h2>
+
+        <article id="produtos-servicos" class="module-card">
+            <div class="card-top">
+                <div class="card-icon" style="background:rgba(56,189,248,.12);">&#128230;</div>
+                <div class="card-meta">
+                    <h3>Produtos &amp; Servi&ccedil;os <span class="badge">Cadastros</span></h3>
+                    <p>Gest&atilde;o de cat&aacute;logo, precifica&ccedil;&atilde;o, margem markup, estoque m&iacute;nimo, varia&ccedil;&otilde;es, tributa&ccedil;&atilde;o (NCM/CFOP) e imagens.</p>
+                    <div class="tags">
+                        <span class="tag">Cat&aacute;logo</span><span class="tag">Estoque</span><span class="tag">Pre&ccedil;o</span>
+                        <span class="tag">Markup</span><span class="tag">NCM/CFOP</span><span class="tag">EAN</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-preview">
+                <div class="sp-bar"><span class="sp-dot" style="background:#f87171"></span><span class="sp-dot" style="background:#fbbf24"></span><span class="sp-dot" style="background:#4ade80"></span><span style="margin-left:6px;">&#128230; Produtos &amp; Servi&ccedil;os</span></div>
+                <div class="sp-body">
+                    <div class="sp-input-row">
+                        <div class="sp-input">&#128269; Nome, c&oacute;digo, EAN ou categoria...</div>
+                        <div class="sp-input" style="max-width:130px">Categoria: Todas</div>
+                        <span class="sp-btn green">+ Novo</span>
+                    </div>
+                    <div class="sp-table-row" style="font-size:.65rem;color:var(--accent);background:transparent">
+                        <span class="sp-col">Produto</span><span class="sp-col">EAN</span><span class="sp-col">Estoque</span><span class="sp-col right">Pre&ccedil;o</span>
+                    </div>
+                    <div class="sp-table-row"><span class="sp-col bold">Cadeira Escritório Pro</span><span class="sp-col">7891234...</span><span class="sp-col green">14 un</span><span class="sp-col right">R$480,00</span></div>
+                    <div class="sp-table-row"><span class="sp-col bold">Mesa 1,50m MDF</span><span class="sp-col">7894561...</span><span class="sp-col orange">2 un</span><span class="sp-col right">R$720,00</span></div>
+                    <div class="sp-table-row"><span class="sp-col bold">Montagem M&oacute;veis (Serv.)</span><span class="sp-col">&mdash;</span><span class="sp-col accent">Servi&ccedil;o</span><span class="sp-col right">R$150,00</span></div>
+                </div>
+            </div>
+            <div class="search-tip">&#128269; <strong>Como buscar dados:</strong> Busque pelo nome do produto, c&oacute;digo interno, EAN, categoria ou use os filtros de estoque baixo.</div>
+        </article>
+
+        <article id="clientes" class="module-card">
+            <div class="card-top">
+                <div class="card-icon" style="background:rgba(74,222,128,.1);">&#128101;</div>
+                <div class="card-meta">
+                    <h3>Clientes <span class="badge">Cadastros</span></h3>
+                    <p>Base unificada de clientes (PF e PJ), hist&oacute;rico de compras, limites de cr&eacute;dito e dados de contato.</p>
+                    <div class="tags">
+                        <span class="tag">CPF/CNPJ</span><span class="tag">Hist&oacute;rico</span>
+                        <span class="tag">Cr&eacute;dito</span><span class="tag">Contato</span><span class="tag">Endere&ccedil;o</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-preview">
+                <div class="sp-bar"><span class="sp-dot" style="background:#f87171"></span><span class="sp-dot" style="background:#fbbf24"></span><span class="sp-dot" style="background:#4ade80"></span><span style="margin-left:6px;">&#128101; Clientes</span></div>
+                <div class="sp-body">
+                    <div class="sp-input-row">
+                        <div class="sp-input">&#128269; Nome, CPF/CNPJ, telefone ou cidade...</div>
+                        <span class="sp-btn green">+ Novo Cliente</span>
+                    </div>
+                    <div class="sp-table-row" style="font-size:.65rem;color:var(--accent);background:transparent">
+                        <span class="sp-col">Nome</span><span class="sp-col">CPF/CNPJ</span><span class="sp-col">Telefone</span><span class="sp-col right">Total Compras</span>
+                    </div>
+                    <div class="sp-table-row"><span class="sp-col bold">Jo&atilde;o Silva</span><span class="sp-col">012.345.678-90</span><span class="sp-col">(11) 99999-0001</span><span class="sp-col right green">R$12.400</span></div>
+                    <div class="sp-table-row"><span class="sp-col bold">M&oacute;veis Express Ltda</span><span class="sp-col">12.345.678/0001-99</span><span class="sp-col">(11) 3333-2222</span><span class="sp-col right green">R$87.000</span></div>
+                    <div class="sp-table-row"><span class="sp-col bold">Ana Lima</span><span class="sp-col">987.654.321-00</span><span class="sp-col">(11) 98888-4444</span><span class="sp-col right green">R$3.200</span></div>
+                </div>
+            </div>
+            <div class="search-tip">&#128269; <strong>Como buscar dados:</strong> Filtre por Raz&atilde;o Social/Nome, CPF/CNPJ, telefone ou cidade/UF.</div>
+        </article>
+
+        <article id="fornecedores" class="module-card">
+            <div class="card-top">
+                <div class="card-icon" style="background:rgba(251,146,60,.1);">&#127981;</div>
+                <div class="card-meta">
+                    <h3>Fornecedores <span class="badge">Cadastros</span></h3>
+                    <p>Controle de parceiros comerciais, distribuidores, prazos de entrega e hist&oacute;ricos de pedidos de compra.</p>
+                    <div class="tags">
+                        <span class="tag">CNPJ</span><span class="tag">Distribuidores</span>
+                        <span class="tag">Prazo</span><span class="tag">Pedidos</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-preview">
+                <div class="sp-bar"><span class="sp-dot" style="background:#f87171"></span><span class="sp-dot" style="background:#fbbf24"></span><span class="sp-dot" style="background:#4ade80"></span><span style="margin-left:6px;">&#127981; Fornecedores</span></div>
+                <div class="sp-body">
+                    <div class="sp-input-row">
+                        <div class="sp-input">&#128269; Raz&atilde;o social, CNPJ ou telefone...</div>
+                        <span class="sp-btn green">+ Novo Fornecedor</span>
+                    </div>
+                    <div class="sp-table-row" style="font-size:.65rem;color:var(--accent);background:transparent">
+                        <span class="sp-col">Empresa</span><span class="sp-col">CNPJ</span><span class="sp-col">Prazo</span><span class="sp-col right">Contato</span>
+                    </div>
+                    <div class="sp-table-row"><span class="sp-col bold">Distribuidora ABC</span><span class="sp-col">11.222.333/0001</span><span class="sp-col">15 dias</span><span class="sp-col right">(11) 4000-1234</span></div>
+                    <div class="sp-table-row"><span class="sp-col bold">F&aacute;brica Madeiras S&atilde;o Paulo</span><span class="sp-col">44.555.666/0001</span><span class="sp-col">30 dias</span><span class="sp-col right">(11) 3500-9876</span></div>
+                </div>
+            </div>
+            <div class="search-tip">&#128269; <strong>Como buscar dados:</strong> Pesquise pelo CNPJ da empresa, nome fantasia ou telefone de suporte comercial.</div>
+        </article>
+
+        <article id="funcionarios" class="module-card">
+            <div class="card-top">
+                <div class="card-icon" style="background:rgba(167,139,250,.1);">&#128100;</div>
+                <div class="card-meta">
+                    <h3>Funcion&aacute;rios / Vendedores <span class="badge">Cadastros</span></h3>
+                    <p>Cadastro da equipe, controle de comissionamento por venda, cargos e defini&ccedil;&atilde;o de n&iacute;veis de acesso ao sistema.</p>
+                    <div class="tags">
+                        <span class="tag">Equipe</span><span class="tag">Comiss&atilde;o</span>
+                        <span class="tag">Cargos</span><span class="tag">N&iacute;vel de Acesso</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-preview">
+                <div class="sp-bar"><span class="sp-dot" style="background:#f87171"></span><span class="sp-dot" style="background:#fbbf24"></span><span class="sp-dot" style="background:#4ade80"></span><span style="margin-left:6px;">&#128100; Funcion&aacute;rios</span></div>
+                <div class="sp-body">
+                    <div class="sp-table-row" style="font-size:.65rem;color:var(--accent);background:transparent">
+                        <span class="sp-col">Nome</span><span class="sp-col">Cargo</span><span class="sp-col">Acesso</span><span class="sp-col right">Comiss&atilde;o</span>
+                    </div>
+                    <div class="sp-table-row"><span class="sp-col bold">Carlos Andrade</span><span class="sp-col">Vendedor</span><span class="sp-col"><span class="sp-btn" style="padding:1px 6px;font-size:.6rem">Operador</span></span><span class="sp-col right accent">3,5%</span></div>
+                    <div class="sp-table-row"><span class="sp-col bold">Fernanda Costa</span><span class="sp-col">Gerente</span><span class="sp-col"><span class="sp-btn green" style="padding:1px 6px;font-size:.6rem">Admin</span></span><span class="sp-col right accent">2%</span></div>
+                    <div class="sp-table-row"><span class="sp-col bold">Paulo Mendes</span><span class="sp-col">Caixa</span><span class="sp-col"><span class="sp-btn" style="padding:1px 6px;font-size:.6rem">Caixa</span></span><span class="sp-col right">&#8212;</span></div>
+                </div>
+            </div>
+            <div class="search-tip">&#128269; <strong>Como buscar dados:</strong> Digite o nome do colaborador, cargo ou visualize a lista organizada por setor.</div>
+        </article>
+    </section>
+
+    <!-- GESTÃO -->
+    <section class="section-group">
+        <h2 class="group-header">Gest&atilde;o</h2>
+
+        <article id="contas-pagar-receber" class="module-card">
+            <div class="card-top">
+                <div class="card-icon" style="background:rgba(251,191,36,.1);">&#128176;</div>
+                <div class="card-meta">
+                    <h3>Contas a Pagar/Receber <span class="badge">Gest&atilde;o</span></h3>
+                    <p>Gest&atilde;o financeira de obriga&ccedil;&otilde;es e receb&iacute;veis, controle de inadimpl&ecirc;ncia, juros, baixas parciais e fluxo de vencimentos.</p>
+                    <div class="tags">
+                        <span class="tag">Pagar</span><span class="tag">Receber</span><span class="tag">Inadimpl&ecirc;ncia</span>
+                        <span class="tag">Baixa Parcial</span><span class="tag">Vencimentos</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-preview">
+                <div class="sp-bar"><span class="sp-dot" style="background:#f87171"></span><span class="sp-dot" style="background:#fbbf24"></span><span class="sp-dot" style="background:#4ade80"></span><span style="margin-left:6px;">&#128176; Contas a Pagar/Receber</span></div>
+                <div class="sp-body">
+                    <div class="sp-row">
+                        <div class="sp-kpi"><div class="sp-kpi-label">A Receber (30 dias)</div><div class="sp-kpi-val green">R$ 18.400</div></div>
+                        <div class="sp-kpi"><div class="sp-kpi-label">A Pagar (30 dias)</div><div class="sp-kpi-val red">R$ 9.200</div></div>
+                        <div class="sp-kpi"><div class="sp-kpi-label">Vencidos</div><div class="sp-kpi-val orange">R$ 1.200</div></div>
+                    </div>
+                    <div class="sp-table-row" style="font-size:.65rem;color:var(--accent);background:transparent">
+                        <span class="sp-col">Descri&ccedil;&atilde;o</span><span class="sp-col">Vencimento</span><span class="sp-col right">Valor</span><span class="sp-col right">Status</span>
+                    </div>
+                    <div class="sp-table-row"><span class="sp-col bold">Aluguel Out/26</span><span class="sp-col">05/10</span><span class="sp-col right">R$3.500</span><span class="sp-col right"><span class="sp-btn orange" style="padding:2px 6px;font-size:.6rem">Pendente</span></span></div>
+                    <div class="sp-table-row"><span class="sp-col bold">Cliente Jo&atilde;o &mdash; Parcela 2/3</span><span class="sp-col">10/10</span><span class="sp-col right">R$560</span><span class="sp-col right"><span class="sp-btn green" style="padding:2px 6px;font-size:.6rem">Pago</span></span></div>
+                </div>
+            </div>
+            <div class="search-tip">&#128269; <strong>Como buscar dados:</strong> Filtre por status (pendente, pago, vencido), per&iacute;odo de vencimento ou favorecido/cliente.</div>
+        </article>
+
+        <article id="caixa-fisico" class="module-card">
+            <div class="card-top">
+                <div class="card-icon" style="background:rgba(74,222,128,.1);">&#127968;</div>
+                <div class="card-meta">
+                    <h3>Caixa F&iacute;sico <span class="badge">Gest&atilde;o</span></h3>
+                    <p>Controle da gaveta e numer&aacute;rio em esp&eacute;cie, sangrias, suprimentos de troco e confer&ecirc;ncia de fechamento di&aacute;rio.</p>
+                    <div class="tags">
+                        <span class="tag">Numer&aacute;rio</span><span class="tag">Sangria</span>
+                        <span class="tag">Suprimento</span><span class="tag">Fechamento</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-preview">
+                <div class="sp-bar"><span class="sp-dot" style="background:#f87171"></span><span class="sp-dot" style="background:#fbbf24"></span><span class="sp-dot" style="background:#4ade80"></span><span style="margin-left:6px;">&#127968; Caixa F&iacute;sico</span></div>
+                <div class="sp-body">
+                    <div class="sp-row">
+                        <div class="sp-kpi"><div class="sp-kpi-label">Saldo Atual</div><div class="sp-kpi-val green">R$ 2.340,00</div></div>
+                        <div class="sp-kpi"><div class="sp-kpi-label">Entradas Hoje</div><div class="sp-kpi-val accent">R$ 4.820,00</div></div>
+                        <div class="sp-kpi"><div class="sp-kpi-label">Sangrias</div><div class="sp-kpi-val red">- R$ 500,00</div></div>
+                    </div>
+                    <div class="sp-table-row" style="font-size:.65rem;color:var(--accent);background:transparent">
+                        <span class="sp-col">Tipo</span><span class="sp-col">Hora</span><span class="sp-col">Operador</span><span class="sp-col right">Valor</span>
+                    </div>
+                    <div class="sp-table-row"><span class="sp-col bold">Abertura</span><span class="sp-col">08:00</span><span class="sp-col">Paulo</span><span class="sp-col right green">+ R$500</span></div>
+                    <div class="sp-table-row"><span class="sp-col bold">Venda #1045</span><span class="sp-col">10:22</span><span class="sp-col">Carlos</span><span class="sp-col right green">+ R$1.680</span></div>
+                    <div class="sp-table-row"><span class="sp-col bold">Sangria</span><span class="sp-col">12:00</span><span class="sp-col">Paulo</span><span class="sp-col right red">- R$500</span></div>
+                </div>
+            </div>
+            <div class="search-tip">&#128269; <strong>Como buscar dados:</strong> Localize movimenta&ccedil;&otilde;es por data, tipo (entrada/sa&iacute;da) ou operador de caixa.</div>
+        </article>
+
+        <article id="caixa-loja" class="module-card">
+            <div class="card-top">
+                <div class="card-icon" style="background:rgba(56,189,248,.12);">&#128179;</div>
+                <div class="card-meta">
+                    <h3>Caixa da Loja <span class="badge">Gest&atilde;o</span></h3>
+                    <p>Vis&atilde;o financeira geral consolidando entradas digitais (PIX, Cart&atilde;o de Cr&eacute;dito/D&eacute;bito) e concilia&ccedil;&atilde;o banc&aacute;ria.</p>
+                    <div class="tags">
+                        <span class="tag">PIX</span><span class="tag">Cart&atilde;o</span>
+                        <span class="tag">Concilia&ccedil;&atilde;o</span><span class="tag">Consolidado</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-preview">
+                <div class="sp-bar"><span class="sp-dot" style="background:#f87171"></span><span class="sp-dot" style="background:#fbbf24"></span><span class="sp-dot" style="background:#4ade80"></span><span style="margin-left:6px;">&#128179; Caixa da Loja &mdash; 29/09/2026</span></div>
+                <div class="sp-body">
+                    <div class="sp-row">
+                        <div class="sp-kpi"><div class="sp-kpi-label">Dinheiro</div><div class="sp-kpi-val">R$ 2.340</div></div>
+                        <div class="sp-kpi"><div class="sp-kpi-label">PIX</div><div class="sp-kpi-val accent">R$ 8.400</div></div>
+                        <div class="sp-kpi"><div class="sp-kpi-label">Cr&eacute;dito</div><div class="sp-kpi-val purple">R$ 5.200</div></div>
+                        <div class="sp-kpi"><div class="sp-kpi-label">D&eacute;bito</div><div class="sp-kpi-val" style="color:var(--yellow)">R$ 3.100</div></div>
+                    </div>
+                    <div style="background:var(--bg-card-2);border-radius:6px;padding:8px 10px;margin-top:2px">
+                        <div class="sp-kpi-label" style="margin-bottom:4px">Total Consolidado do Dia</div>
+                        <div style="font-size:1.2rem;font-weight:800;color:var(--green)">R$ 19.040,00</div>
+                    </div>
+                </div>
+            </div>
+            <div class="search-tip">&#128269; <strong>Como buscar dados:</strong> Selecione a data desejada e visualize o demonstrativo por modalidade de pagamento.</div>
+        </article>
+
+        <article id="compras-xml" class="module-card">
+            <div class="card-top">
+                <div class="card-icon" style="background:rgba(251,146,60,.1);">&#128229;</div>
+                <div class="card-meta">
+                    <h3>Compras &amp; NF-e XML <span class="badge">Gest&atilde;o</span></h3>
+                    <p>Entrada de mercadorias automatizada via importa&ccedil;&atilde;o de arquivo XML da SEFAZ, atualiza&ccedil;&atilde;o de custos e estoque.</p>
+                    <div class="tags">
+                        <span class="tag">Importar XML</span><span class="tag">Estoque</span>
+                        <span class="tag">Custo</span><span class="tag">Fornecedor</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-preview">
+                <div class="sp-bar"><span class="sp-dot" style="background:#f87171"></span><span class="sp-dot" style="background:#fbbf24"></span><span class="sp-dot" style="background:#4ade80"></span><span style="margin-left:6px;">&#128229; Compras &amp; NF-e XML</span></div>
+                <div class="sp-body">
+                    <div style="background:var(--bg-card-2);border:2px dashed var(--border);border-radius:8px;padding:12px;text-align:center">
+                        <div style="font-size:1.4rem;margin-bottom:4px">&#128229;</div>
+                        <div style="font-size:.72rem;color:var(--text-muted)">Arraste o arquivo XML da NF-e aqui ou</div>
+                        <div class="sp-btn" style="display:inline-block;margin-top:6px;cursor:pointer">Selecionar arquivo</div>
+                    </div>
+                    <div class="sp-table-row" style="font-size:.65rem;color:var(--accent);background:transparent">
+                        <span class="sp-col">NF Compra</span><span class="sp-col">Fornecedor</span><span class="sp-col">Data</span><span class="sp-col right">Itens</span>
+                    </div>
+                    <div class="sp-table-row"><span class="sp-col bold">NFC-0322</span><span class="sp-col">Distribuidora ABC</span><span class="sp-col">25/09</span><span class="sp-col right accent">8 itens</span></div>
+                    <div class="sp-table-row"><span class="sp-col bold">NFC-0321</span><span class="sp-col">F&aacute;brica Madeiras SP</span><span class="sp-col">20/09</span><span class="sp-col right accent">14 itens</span></div>
+                </div>
+            </div>
+            <div class="search-tip">&#128269; <strong>Como buscar dados:</strong> Consulte por n&uacute;mero da nota fiscal de compra, nome do fornecedor ou data de emiss&atilde;o.</div>
+        </article>
+
+        <article id="relatorios-dre" class="module-card">
+            <div class="card-top">
+                <div class="card-icon" style="background:rgba(167,139,250,.1);">&#128202;</div>
+                <div class="card-meta">
+                    <h3>Relat&oacute;rios &amp; DRE <span class="badge">Gest&atilde;o</span></h3>
+                    <p>Demonstrativo do Resultado do Exerc&iacute;cio (DRE), relat&oacute;rios de lucratividade por produto, ranking de vendas e exporta&ccedil;&atilde;o PDF/Excel.</p>
+                    <div class="tags">
+                        <span class="tag">DRE</span><span class="tag">Lucratividade</span>
+                        <span class="tag">Ranking</span><span class="tag">PDF</span><span class="tag">Excel</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-preview">
+                <div class="sp-bar"><span class="sp-dot" style="background:#f87171"></span><span class="sp-dot" style="background:#fbbf24"></span><span class="sp-dot" style="background:#4ade80"></span><span style="margin-left:6px;">&#128202; Relat&oacute;rios &amp; DRE</span></div>
+                <div class="sp-body">
+                    <div class="sp-row">
+                        <div class="sp-kpi" style="flex:2">
+                            <div class="sp-kpi-label" style="margin-bottom:6px">DRE &mdash; Setembro 2026</div>
+                            <div style="display:flex;flex-direction:column;gap:4px;font-size:.7rem">
+                                <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted)">Receita Bruta</span><span style="color:var(--green)">R$ 38.150</span></div>
+                                <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted)">CMV</span><span style="color:var(--red)">- R$ 18.200</span></div>
+                                <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:4px;"><span style="color:#fff;font-weight:700">Lucro Bruto</span><span style="color:var(--accent);font-weight:700">R$ 19.950</span></div>
+                                <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted)">Despesas Op.</span><span style="color:var(--red)">- R$ 7.400</span></div>
+                                <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:4px;"><span style="color:#fff;font-weight:700">Lucro L&iacute;quido</span><span style="color:var(--green);font-weight:700">R$ 12.550</span></div>
+                            </div>
+                        </div>
+                        <div class="sp-kpi">
+                            <div class="sp-kpi-label" style="margin-bottom:6px">Top Produtos</div>
+                            <div style="display:flex;flex-direction:column;gap:3px;font-size:.68rem">
+                                <div style="display:flex;justify-content:space-between;"><span>&#129351; Cadeira Pro</span><span style="color:var(--green)">R$9.600</span></div>
+                                <div style="display:flex;justify-content:space-between;"><span>&#129352; Mesa 1,50m</span><span style="color:var(--text-muted)">R$7.200</span></div>
+                                <div style="display:flex;justify-content:space-between;"><span>&#129353; Montagem</span><span style="color:var(--text-muted)">R$3.000</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="search-tip">&#128269; <strong>Como buscar dados:</strong> Escolha a categoria do relat&oacute;rio, defina o intervalo de datas e aplique a filtragem.</div>
+        </article>
+
+        <article id="agenda" class="module-card">
+            <div class="card-top">
+                <div class="card-icon" style="background:rgba(56,189,248,.12);">&#128197;</div>
+                <div class="card-meta">
+                    <h3>Agenda <span class="badge">Gest&atilde;o</span></h3>
+                    <p>Calend&aacute;rio operacional para agendamento de entregas, servi&ccedil;os externos, reuni&otilde;es e compromissos operacionais.</p>
+                    <div class="tags">
+                        <span class="tag">Calend&aacute;rio</span><span class="tag">Entregas</span>
+                        <span class="tag">Servi&ccedil;os</span><span class="tag">Reuni&otilde;es</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-preview">
+                <div class="sp-bar"><span class="sp-dot" style="background:#f87171"></span><span class="sp-dot" style="background:#fbbf24"></span><span class="sp-dot" style="background:#4ade80"></span><span style="margin-left:6px;">&#128197; Agenda &mdash; Setembro 2026</span></div>
+                <div class="sp-body">
+                    <div class="sp-cal">
+                        <div class="sp-day">25</div><div class="sp-day">26</div><div class="sp-day has">27</div>
+                        <div class="sp-day has">28</div><div class="sp-day today">29</div>
+                        <div class="sp-day">30</div><div class="sp-day">1</div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:4px;margin-top:4px;">
+                        <div class="sp-table-row"><span style="width:8px;height:8px;background:var(--accent);border-radius:50%;flex-shrink:0"></span><span class="sp-col bold">09:00</span><span class="sp-col">Entrega Cadeiras &mdash; Cliente Jo&atilde;o</span><span class="sp-col right"><span class="sp-btn" style="padding:1px 6px;font-size:.6rem">Pendente</span></span></div>
+                        <div class="sp-table-row"><span style="width:8px;height:8px;background:var(--green);border-radius:50%;flex-shrink:0"></span><span class="sp-col bold">14:00</span><span class="sp-col">Montagem M&oacute;veis &mdash; Ana Lima</span><span class="sp-col right"><span class="sp-btn green" style="padding:1px 6px;font-size:.6rem">Confirmado</span></span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="search-tip">&#128269; <strong>Como buscar dados:</strong> Navegue pelas visualiza&ccedil;&otilde;es de M&ecirc;s, Semana ou Dia e filtre por respons&aacute;vel.</div>
+        </article>
+
+        <article id="marketing-lembretes" class="module-card">
+            <div class="card-top">
+                <div class="card-icon" style="background:rgba(251,191,36,.1);">&#128226;</div>
+                <div class="card-meta">
+                    <h3>Marketing &amp; Lembretes <span class="badge">Gest&atilde;o</span></h3>
+                    <p>Automa&ccedil;&atilde;o de lembretes para clientes inativos, mensagens de p&oacute;s-venda e avisos comemorativos para fideliza&ccedil;&atilde;o.</p>
+                    <div class="tags">
+                        <span class="tag">Inativos</span><span class="tag">P&oacute;s-venda</span>
+                        <span class="tag">WhatsApp</span><span class="tag">Campanhas</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-preview">
+                <div class="sp-bar"><span class="sp-dot" style="background:#f87171"></span><span class="sp-dot" style="background:#fbbf24"></span><span class="sp-dot" style="background:#4ade80"></span><span style="margin-left:6px;">&#128226; Marketing &amp; Lembretes</span></div>
+                <div class="sp-body">
+                    <div class="sp-row">
+                        <div class="sp-kpi"><div class="sp-kpi-label">Clientes Inativos</div><div class="sp-kpi-val orange">23</div></div>
+                        <div class="sp-kpi"><div class="sp-kpi-label">Enviados (m&ecirc;s)</div><div class="sp-kpi-val green">87</div></div>
+                        <div class="sp-kpi"><div class="sp-kpi-label">Retornaram</div><div class="sp-kpi-val accent">12</div></div>
+                    </div>
+                    <div class="sp-table-row" style="font-size:.65rem;color:var(--accent);background:transparent">
+                        <span class="sp-col">Cliente</span><span class="sp-col">Inativo h&aacute;</span><span class="sp-col">&Uacute;ltima Compra</span><span class="sp-col right">A&ccedil;&atilde;o</span>
+                    </div>
+                    <div class="sp-table-row"><span class="sp-col bold">Pedro Alves</span><span class="sp-col orange">90 dias</span><span class="sp-col">02/07/2026</span><span class="sp-col right"><span class="sp-btn green" style="padding:2px 6px;font-size:.6rem">Enviar</span></span></div>
+                    <div class="sp-table-row"><span class="sp-col bold">Lucia Barros</span><span class="sp-col red">120 dias</span><span class="sp-col">01/06/2026</span><span class="sp-col right"><span class="sp-btn green" style="padding:2px 6px;font-size:.6rem">Enviar</span></span></div>
+                </div>
+            </div>
+            <div class="search-tip">&#128269; <strong>Como buscar dados:</strong> Filtre a lista por dias de inatividade do cliente ou tipo de campanha promocional.</div>
+        </article>
+    </section>
+
+    <!-- SISTEMA -->
+    <section class="section-group">
+        <h2 class="group-header">Sistema</h2>
+
+        <article id="configuracoes" class="module-card">
+            <div class="card-top">
+                <div class="card-icon" style="background:rgba(148,163,184,.1);">&#9881;</div>
+                <div class="card-meta">
+                    <h3>Configura&ccedil;&otilde;es <span class="badge">Sistema</span></h3>
+                    <p>Defini&ccedil;&otilde;es gerais da empresa (CNPJ, logomarca, endere&ccedil;o), certificado digital A1, par&acirc;metros fiscais e prefer&ecirc;ncias de layout.</p>
+                    <div class="tags">
+                        <span class="tag">Empresa</span><span class="tag">Certificado A1</span>
+                        <span class="tag">Fiscal</span><span class="tag">Impress&atilde;o</span><span class="tag">Backup</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-preview">
+                <div class="sp-bar"><span class="sp-dot" style="background:#f87171"></span><span class="sp-dot" style="background:#fbbf24"></span><span class="sp-dot" style="background:#4ade80"></span><span style="margin-left:6px;">&#9881; Configura&ccedil;&otilde;es</span></div>
+                <div class="sp-body">
+                    <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+                        <span class="sp-btn" style="background:var(--accent);color:#000">Geral</span>
+                        <span class="sp-btn">Fiscal</span>
+                        <span class="sp-btn">Impress&atilde;o</span>
+                        <span class="sp-btn">Backup</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                        <div class="sp-input-row">
+                            <div style="font-size:.68rem;color:var(--text-muted);width:120px;padding-top:6px;">Raz&atilde;o Social</div>
+                            <div class="sp-input">FC M&oacute;veis e Servi&ccedil;os Ltda</div>
+                        </div>
+                        <div class="sp-input-row">
+                            <div style="font-size:.68rem;color:var(--text-muted);width:120px;padding-top:6px;">CNPJ</div>
+                            <div class="sp-input">12.345.678/0001-99</div>
+                        </div>
+                        <div class="sp-input-row">
+                            <div style="font-size:.68rem;color:var(--text-muted);width:120px;padding-top:6px;">Certificado A1</div>
+                            <div class="sp-input" style="color:var(--green)">&#128274; Instalado &mdash; Vence 15/05/2027</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="search-tip">&#128269; <strong>Como buscar dados:</strong> Navegue pelas abas internas (Geral, Fiscal, Impress&atilde;o e Backup) para localizar as op&ccedil;&otilde;es.</div>
+        </article>
+    </section>
+</main>
+
+</body>
+</html>

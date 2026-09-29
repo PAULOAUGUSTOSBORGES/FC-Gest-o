@@ -53,7 +53,8 @@ function renderizarTodosEventosAgenda() {
         financeiroEventsData.forEach(f => {
             if (f.status === 'CANCELADO' || f.status === 'RENEGOCIADO') return;
             // NUNCA agendar vendas automaticamente na agenda!
-            if (f.origemVendaId || f.categoria === 'Vendas' || f.tipo === 'RECEITA' || (f.ref && (f.ref.includes('Venda') || f.ref.includes('Pedido')))) return;
+            const refStr = String(f.ref || '');
+            if (f.origemVendaId || f.categoria === 'Vendas' || f.tipo === 'RECEITA' || refStr.includes('Venda') || refStr.includes('Pedido')) return;
             
             let color = '#ef4444'; 
             if (f.tipo === 'RECEITA') color = '#10b981';
