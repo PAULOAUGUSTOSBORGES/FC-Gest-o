@@ -36,8 +36,8 @@
         
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css?v=20260929103753">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20260929103753">
+    <link rel="stylesheet" href="../style.css?v=20260930094536">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20260930094536">
 </head>
 <body class="flex h-screen bg-slate-900 text-slate-800 dark:text-slate-100 flex items-center justify-center p-4">
 
@@ -48,35 +48,26 @@
         <div class="w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl mx-auto flex items-center justify-center text-white text-3xl mb-4 shadow-lg shadow-blue-500/50">
             <i class="fa-solid fa-layer-group"></i>
         </div>
+        <!-- Título e Subtítulo -->
         <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-1" id="titulo-form">FC Gestão</h1>
-        <p class="text-slate-500 dark:text-slate-400 text-sm mb-4" id="subtitulo-form">Acesso ao sistema integrado</p>
+        <p class="text-slate-500 dark:text-slate-400 text-sm mb-6" id="subtitulo-form">Portal de Acesso para Lojistas e Funcionários</p>
+        
+        <!-- Formulário de Login Oficial -->
+        <div class="space-y-3.5 mb-5 text-left">
+            <div>
+                <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">E-mail Cadastrado</label>
+                <input type="email" id="login-user" required placeholder="seuemail@empresa.com" aria-label="E-mail" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 px-4 py-2.5 rounded-lg focus:outline-none focus:border-blue-500 font-medium dark:text-white text-sm">
+            </div>
 
-        <!-- Banner de Trial 7 Dias Grátis -->
-        <div id="badge-trial" class="hidden mb-4 p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center justify-center gap-2">
-            <i class="fa-solid fa-gift text-sm text-emerald-600 dark:text-emerald-400"></i>
-            <span>Teste Grátis por 7 Dias sem compromisso!</span>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">Senha de Acesso</label>
+                <input type="password" id="login-pass" required placeholder="••••••••" aria-label="Senha" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 px-4 py-2.5 rounded-lg focus:outline-none focus:border-blue-500 font-medium dark:text-white text-sm" onkeypress="if(event.key === 'Enter') acaoPrincipal()">
+            </div>
         </div>
-
-        <!-- Tabs Login / Register -->
-        <div class="flex border-b border-slate-200 dark:border-slate-700 mb-5">
-            <button id="tab-login" onclick="mudarAbaLogin('login')" class="flex-1 pb-2 font-bold text-blue-600 border-b-2 border-blue-600 transition-colors">Entrar</button>
-            <button id="tab-register" onclick="mudarAbaLogin('register')" class="flex-1 pb-2 font-bold text-slate-400 border-b-2 border-transparent transition-colors hover:text-slate-600 dark:hover:text-slate-300">Criar Conta</button>
-        </div>
         
-        <!-- Formulário -->
-        <input type="text" id="login-empresa" placeholder="Nome da Sua Loja / Comércio *" aria-label="Nome da Sua Loja" class="hidden w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 px-4 py-2.5 rounded-lg mb-3 focus:outline-none focus:border-blue-500 font-medium dark:text-white text-sm">
-        
-        <input type="text" id="login-responsavel" placeholder="Seu Nome Completo (Responsável) *" aria-label="Seu Nome Completo" class="hidden w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 px-4 py-2.5 rounded-lg mb-3 focus:outline-none focus:border-blue-500 font-medium dark:text-white text-sm">
-
-        <input type="tel" id="login-telefone" placeholder="WhatsApp com DDD: (00) 00000-0000 *" maxlength="15" aria-label="WhatsApp com DDD" class="hidden w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 px-4 py-2.5 rounded-lg mb-3 focus:outline-none focus:border-blue-500 font-medium dark:text-white text-sm">
-
-        <input type="text" id="login-cidade" placeholder="Cidade / Estado (Ex: Goiânia - GO) *" aria-label="Cidade e Estado" class="hidden w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 px-4 py-2.5 rounded-lg mb-3 focus:outline-none focus:border-blue-500 font-medium dark:text-white text-sm">
-
-        <input type="email" id="login-user" placeholder="E-mail *" aria-label="E-mail" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 px-4 py-2.5 rounded-lg mb-3 focus:outline-none focus:border-blue-500 font-medium dark:text-white text-sm">
-        
-        <input type="password" id="login-pass" placeholder="Senha *" aria-label="Senha" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 px-4 py-2.5 rounded-lg mb-5 focus:outline-none focus:border-blue-500 font-medium dark:text-white text-sm" onkeypress="if(event.key === 'Enter') acaoPrincipal()">
-        
-        <button id="btn-acao" onclick="acaoPrincipal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors shadow-md">Entrar</button>
+        <button id="btn-acao" onclick="acaoPrincipal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors shadow-md">
+            <i class="fa-solid fa-right-to-bracket mr-1.5"></i> Entrar no Sistema
+        </button>
         
         <!-- Divisor OU -->
         <div class="flex items-center my-4">
@@ -99,17 +90,25 @@
         <p class="mt-4 text-sm text-slate-500" id="esqueci-senha-link">
             <a href="#" onclick="esqueciSenha(); return false;" class="text-blue-500 hover:underline">Esqueci minha senha</a>
         </p>
+
+        <!-- Bloqueio de auto-cadastro: direciona para assinar na Isabella.Tech -->
+        <div class="mt-6 pt-5 border-t border-slate-200 dark:border-slate-700/80 text-center">
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-2 font-medium">Ainda não possui uma loja ou assinatura ativa?</p>
+            <a href="https://isabella.tech/acesso.html" class="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-700 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-600 transition-all">
+                <i class="fa-solid fa-layer-group"></i> Conhecer Planos & Ativar Loja em Isabella.Tech &rarr;
+            </a>
+        </div>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     
-    <script src="../sistema/config_banco.js?v=20260929103753"></script>
-    <script src="saas_licenca.js?v=20260929103753"></script>
-    <script src="../global.js?v=20260929103753"></script>
-    <script src="fc_cache.js?v=20260929103753"></script>
-    <script src="login.js?v=20260929103753"></script>
+    <script src="../sistema/config_banco.js?v=20260930094536"></script>
+    <script src="saas_licenca.js?v=20260930094536"></script>
+    <script src="../global.js?v=20260930094536"></script>
+    <script src="fc_cache.js?v=20260930094536"></script>
+    <script src="login.js?v=20260930094536"></script>
 </body>
 </html>
 

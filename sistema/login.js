@@ -12,47 +12,26 @@ function showToast(msg, type = 'info') {
 let modoAtual = 'login';
 
 function mudarAbaLogin(modo) {
-    modoAtual = modo;
+    if (modo === 'register') {
+        window.location.href = 'https://isabella.tech/acesso.html?sistema=fc_gestao';
+        return;
+    }
+    modoAtual = 'login';
     const tabLogin = document.getElementById('tab-login');
     const tabRegister = document.getElementById('tab-register');
     const btnAcao = document.getElementById('btn-acao');
     const subtitulo = document.getElementById('subtitulo-form');
-    const inputEmpresa = document.getElementById('login-empresa');
-    const inputResponsavel = document.getElementById('login-responsavel');
-    const inputTelefone = document.getElementById('login-telefone');
-    const inputCidade = document.getElementById('login-cidade');
     const esqueciSenhaLink = document.getElementById('esqueci-senha-link');
     const txtBtnGoogle = document.getElementById('txt-btn-google');
     const badgeTrial = document.getElementById('badge-trial');
 
-    const toggleCamposCadastro = (mostrar) => {
-        [inputEmpresa, inputResponsavel, inputTelefone, inputCidade].forEach(el => {
-            if (el) {
-                if (mostrar) el.classList.remove('hidden');
-                else el.classList.add('hidden');
-            }
-        });
-    };
-
-    if (modo === 'login') {
-        if (tabLogin) tabLogin.className = 'flex-1 pb-2 font-bold text-blue-600 border-b-2 border-blue-600 transition-colors';
-        if (tabRegister) tabRegister.className = 'flex-1 pb-2 font-bold text-slate-400 border-b-2 border-transparent transition-colors hover:text-slate-600 dark:hover:text-slate-300';
-        if (btnAcao) btnAcao.innerText = 'Entrar';
-        if (subtitulo) subtitulo.innerText = 'Acesso ao sistema integrado';
-        toggleCamposCadastro(false);
-        if (esqueciSenhaLink) esqueciSenhaLink.classList.remove('hidden');
-        if (txtBtnGoogle) txtBtnGoogle.innerText = 'Entrar com Google';
-        if (badgeTrial) badgeTrial.classList.add('hidden');
-    } else {
-        if (tabRegister) tabRegister.className = 'flex-1 pb-2 font-bold text-blue-600 border-b-2 border-blue-600 transition-colors';
-        if (tabLogin) tabLogin.className = 'flex-1 pb-2 font-bold text-slate-400 border-b-2 border-transparent transition-colors hover:text-slate-600 dark:hover:text-slate-300';
-        if (btnAcao) btnAcao.innerText = 'Começar Teste Grátis (7 Dias)';
-        if (subtitulo) subtitulo.innerText = 'Preencha seus dados para ativar sua loja';
-        toggleCamposCadastro(true);
-        if (esqueciSenhaLink) esqueciSenhaLink.classList.add('hidden');
-        if (txtBtnGoogle) txtBtnGoogle.innerText = 'Cadastrar com Google';
-        if (badgeTrial) badgeTrial.classList.remove('hidden');
-    }
+    if (tabLogin) tabLogin.className = 'flex-1 pb-2 font-bold text-blue-600 border-b-2 border-blue-600 transition-colors';
+    if (tabRegister) tabRegister.className = 'flex-1 pb-2 font-bold text-slate-400 border-b-2 border-transparent transition-colors hover:text-slate-600 dark:hover:text-slate-300';
+    if (btnAcao) btnAcao.innerText = 'Entrar';
+    if (subtitulo) subtitulo.innerText = 'Acesso ao sistema integrado';
+    if (esqueciSenhaLink) esqueciSenhaLink.classList.remove('hidden');
+    if (txtBtnGoogle) txtBtnGoogle.innerText = 'Entrar com Google';
+    if (badgeTrial) badgeTrial.classList.add('hidden');
 }
 
 // Máscara dinâmica para o campo WhatsApp/Telefone
@@ -145,14 +124,26 @@ async function fazerLogin() {
             if (empAtivaFinal && cred.user.email !== 'fabricadecoresgoiania@gmail.com') {
                 try {
                     const empDoc = await firebase.firestore().collection('empresas').doc(empAtivaFinal).get();
-                    if (empDoc.exists && empDoc.data().status === 'BLOQUEADO') {
-                        await firebase.auth().signOut();
-                        localStorage.removeItem('fc_empresa_ativa');
-                        sessionStorage.clear();
-                        window._fazendoLogin = false;
-                        btn.innerText = 'Entrar'; btn.disabled = false;
-                        showToast('O acesso desta empresa está temporariamente bloqueado por pendência financeira. Contate o suporte.', 'error');
-                        return;
+                    if (empDoc.exists) {
+                        const statusEmp = empDoc.data().status;
+                        if (statusEmp === 'PENDENTE_PAGAMENTO') {
+                            await firebase.auth().signOut();
+                            localStorage.removeItem('fc_empresa_ativa');
+                            sessionStorage.clear();
+                            window._fazendoLogin = false;
+                            btn.innerText = 'Entrar'; btn.disabled = false;
+                            showToast('A ativação da sua loja está pendente de pagamento.', 'warning');
+                            setTimeout(() => { window.location.href = 'https://isabella.tech/cadastro.html'; }, 2000);
+                            return;
+                        } else if (statusEmp === 'BLOQUEADO') {
+                            await firebase.auth().signOut();
+                            localStorage.removeItem('fc_empresa_ativa');
+                            sessionStorage.clear();
+                            window._fazendoLogin = false;
+                            btn.innerText = 'Entrar'; btn.disabled = false;
+                            showToast('O acesso desta empresa está temporariamente bloqueado por pendência financeira. Contate o suporte.', 'error');
+                            return;
+                        }
                     }
                 } catch (errCheck) {
                     console.warn("Falha na checagem de status da empresa:", errCheck);
@@ -223,210 +214,7 @@ async function fazerLogin() {
 }
 
 async function fazerCadastro() {
-    const nomeEmpresaInput = document.getElementById('login-empresa');
-    const responsavelInput = document.getElementById('login-responsavel');
-    const telefoneInput = document.getElementById('login-telefone');
-    const cidadeInput = document.getElementById('login-cidade');
-    const u = document.getElementById('login-user').value.trim();
-    const p = document.getElementById('login-pass').value;
-
-    const nomeEmpresa = nomeEmpresaInput ? nomeEmpresaInput.value.trim() : '';
-    const nomeResponsavel = responsavelInput ? responsavelInput.value.trim() : '';
-    const telefone = telefoneInput ? telefoneInput.value.trim() : '';
-    const cidade = cidadeInput ? cidadeInput.value.trim() : '';
-    
-    if (!nomeEmpresa) {
-        showToast('Preencha o nome da sua Loja/Empresa!', 'error');
-        return;
-    }
-
-    if (!nomeResponsavel) {
-        showToast('Preencha o seu nome completo (Responsável)!', 'error');
-        return;
-    }
-
-    const telNumeros = telefone.replace(/\D/g, '');
-    if (!telefone || telNumeros.length < 10) {
-        showToast('Preencha seu WhatsApp/Telefone de contato com DDD!', 'error');
-        return;
-    }
-
-    if (!cidade) {
-        showToast('Preencha sua Cidade e Estado (Ex: Goiânia - GO)!', 'error');
-        return;
-    }
-
-    if(!u || !p) {
-        showToast('Preencha os campos de e-mail e senha!', 'error');
-        return;
-    }
-
-    if(p.length < 6) {
-        showToast('A senha deve ter no mínimo 6 caracteres!', 'error');
-        return;
-    }
-    
-    try {
-        window._fazendoLogin = true;
-        sessionStorage.clear();
-        localStorage.removeItem('fc_empresa_ativa');
-        if (typeof window.FCCache !== 'undefined') {
-            try { await window.FCCache.invalidarTudo(); } catch(e) {}
-        }
-
-        const btn = document.getElementById('btn-acao');
-        btn.innerText = 'Criando Loja...'; btn.disabled = true;
-        
-        const cred = await firebase.auth().createUserWithEmailAndPassword(u, p);
-        if (cred && cred.user) {
-            const uid = cred.user.uid;
-            // Gerar empresaId unico
-            const empresaId = 'loja_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
-            
-            const db = firebase.firestore();
-            const batch = db.batch();
-            
-            // 1. Criar o documento global do usuario
-            batch.set(db.collection('usuarios').doc(uid), {
-                email: u,
-                nome: nomeResponsavel,
-                telefone: telefone,
-                whatsapp: telefone,
-                cidade: cidade,
-                empresaId: empresaId,
-                role: 'admin',
-                dataCriacao: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            // 2. Criar o documento da empresa (Trial 7 dias com dados completos de contato)
-            const vencTrial = new Date();
-            vencTrial.setDate(vencTrial.getDate() + 7);
-            const dataVencTrialStr = vencTrial.toISOString().split('T')[0];
-
-            batch.set(db.collection('empresas').doc(empresaId), {
-                nomeEmpresa: nomeEmpresa,
-                responsavel: nomeResponsavel,
-                telefone: telefone,
-                whatsapp: telefone,
-                cidade: cidade,
-                donoUid: uid,
-                emailAcesso: u,
-                status: 'TRIAL',
-                plano: 'FREE',
-                dataVencimento: dataVencTrialStr,
-                modulosLiberados: ['pdv', 'vendas', 'estoque'],
-                dataCriacao: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            // 3. Criar o perfil de funcionario admin dentro da empresa
-            batch.set(db.collection('empresas').doc(empresaId).collection('funcionarios').doc(uid), {
-                nome: nomeResponsavel,
-                email: u,
-                telefone: telefone,
-                whatsapp: telefone,
-                isAdmin: true,
-                perm_dashboard: true,
-                perm_pdv: true,
-                perm_cadastros: true,
-                perm_gestao: true,
-                perm_config: true,
-                status: 'ativo'
-            });
-
-            // 4. Configuracao inicial basica
-            batch.set(db.collection('empresas').doc(empresaId).collection('configuracoes').doc('config'), {
-                empresa: {
-                    nome: nomeEmpresa,
-                    fantasia: nomeEmpresa,
-                    responsavel: nomeResponsavel,
-                    cnpj: '',
-                    telefone: telefone,
-                    whatsapp: telefone,
-                    logo: '',
-                    cep: '',
-                    rua: '',
-                    numero: '',
-                    bairro: '',
-                    cidade: cidade,
-                    uf: ''
-                },
-                taxas: {
-                    'Dinheiro': 0, 'PIX': 0, 'Cartão Débito': 0, 'Boleto': 0, 'Fiado': 0,
-                    'Cartão Crédito': { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0 }
-                },
-                prazos: { 'Fiado': 30, 'Boleto': 30, 'Cartão Crédito': 1, 'Cartão Débito': 1 },
-                pdv: {
-                    permite_estoque_negativo: false
-                },
-                loja: {
-                    ativa: false,
-                    nome: nomeEmpresa,
-                    whatsapp: telefone
-                }
-            });
-
-            // 5. Caixa zerado
-            batch.set(db.collection('empresas').doc(empresaId).collection('caixa').doc('caixa_atual'), {
-                status: 'fechado',
-                saldo: 0,
-                historico: [],
-                ultimaAtualizacao: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            await batch.commit();
-
-            // Sincronizar com o SaaS Master (banco central de licenças: fcgestao-testes)
-            try {
-                const sDb = typeof window.obterInstanciaSaaS === 'function' ? window.obterInstanciaSaaS() : null;
-                if (sDb) {
-                    await sDb.collection('empresas').doc(empresaId).set({
-                        id: empresaId,
-                        nome: nomeEmpresa,
-                        nomeEmpresa: nomeEmpresa,
-                        responsavel: nomeResponsavel,
-                        donoNome: nomeResponsavel,
-                        telefone: telefone,
-                        whatsapp: telefone,
-                        cidade: cidade,
-                        donoUid: uid,
-                        emailAcesso: u,
-                        status: 'TRIAL',
-                        plano: 'FREE',
-                        sistemaId: 'fc_gestao',
-                        valorMensalidade: 99.00,
-                        dataVencimento: dataVencTrialStr,
-                        diasTrial: 7,
-                        modulosLiberados: ['pdv', 'vendas', 'estoque'],
-                        dataCriacao: firebase.firestore.FieldValue.serverTimestamp(),
-                        origemCadastro: 'auto_cadastro_erp'
-                    });
-                    console.log('👑 [SaaS Master Sync] Nova empresa registrada no banco central fcgestao-testes com contatos completos:', empresaId);
-                }
-            } catch (errSaaS) {
-                console.warn('[SaaS Master Sync] Registro central será sincronizado posteriormente:', errSaaS.message);
-            }
-
-            const hoje = new Date().toDateString();
-            localStorage.setItem('fc_sessao_data', hoje);
-            localStorage.setItem('fc_sessao_uid', uid);
-            localStorage.setItem('fc_empresa_ativa', empresaId);
-            
-            showToast('Loja criada com sucesso! 7 dias de teste grátis liberados.', 'success');
-            setTimeout(() => {
-                window.location.href = 'index.html';
-            }, 800);
-            return;
-        }
-    } catch (e) { 
-        window._fazendoLogin = false;
-        document.getElementById('btn-acao').innerText = 'Criar Conta'; document.getElementById('btn-acao').disabled = false;
-        if (e.code === 'auth/email-already-in-use') {
-            showToast('Este e-mail já possui uma conta. Vá para a aba Entrar.', 'error');
-        } else {
-            showToast('Erro ao criar conta: ' + e.message, 'error'); 
-            console.error(e);
-        }
-    }
+    window.location.href = 'https://isabella.tech/acesso.html?sistema=fc_gestao';
 }
 
 // Inicializa a escuta de sessão para redirecionar automaticamente quando logar
@@ -544,149 +332,53 @@ async function fazerLoginGoogle() {
             }
         }
 
-        // 4. Se ainda não possui empresa vinculada: onboarding de nova loja
+        // 4. Se ainda não possui empresa vinculada: não permite auto-criação de trial grátis sem plano contratado
         if (!empresaId) {
-            let nomeEmpresa = document.getElementById('login-empresa')?.value?.trim();
-            if (!nomeEmpresa) {
-                const primeiroNome = user.displayName ? user.displayName.split(' ')[0] : '';
-                const sugestao = primeiroNome ? `Loja de ${primeiroNome}` : 'Minha Loja';
-                nomeEmpresa = window.prompt('Para finalizar seu cadastro com o Google, digite o nome da sua Loja/Empresa:', sugestao);
-                if (nomeEmpresa) nomeEmpresa = nomeEmpresa.trim();
-            }
-
-            if (!nomeEmpresa) {
-                showToast('Cadastro cancelado. O nome da loja é necessário para criar a conta.', 'info');
-                await firebase.auth().signOut();
-                localStorage.removeItem('fc_sessao_data');
-                localStorage.removeItem('fc_sessao_uid');
-                window._fazendoLogin = false;
-                if (btnGoogle) btnGoogle.disabled = false;
-                if (txtGoogle) txtGoogle.innerText = textoOriginal;
-                return;
-            }
-
-            if (txtGoogle) txtGoogle.innerText = 'Criando Loja...';
-            empresaId = 'loja_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
-
-            const batch = db.batch();
-
-            // 1. Criar o documento global do usuario
-            batch.set(db.collection('usuarios').doc(user.uid), {
-                email: user.email,
-                nome: user.displayName || 'Administrador',
-                empresaId: empresaId,
-                role: 'admin',
-                provedor: 'google',
-                foto: user.photoURL || '',
-                dataCriacao: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            // 2. Criar o documento da empresa (Trial 7 dias)
-            const vencTrialGoogle = new Date();
-            vencTrialGoogle.setDate(vencTrialGoogle.getDate() + 7);
-            const dataVencTrialGoogleStr = vencTrialGoogle.toISOString().split('T')[0];
-
-            batch.set(db.collection('empresas').doc(empresaId), {
-                nomeEmpresa: nomeEmpresa,
-                donoUid: user.uid,
-                emailAcesso: user.email,
-                provedor: 'google',
-                status: 'TRIAL',
-                plano: 'FREE',
-                dataVencimento: dataVencTrialGoogleStr,
-                modulosLiberados: ['pdv', 'vendas', 'estoque'],
-                dataCriacao: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            // 3. Criar o perfil de funcionario admin dentro da empresa
-            batch.set(db.collection('empresas').doc(empresaId).collection('funcionarios').doc(user.uid), {
-                nome: user.displayName || 'Administrador',
-                email: user.email,
-                isAdmin: true,
-                perm_dashboard: true,
-                perm_pdv: true,
-                perm_cadastros: true,
-                perm_gestao: true,
-                perm_config: true,
-                status: 'ativo'
-            });
-
-            // 4. Configuracao inicial basica
-            batch.set(db.collection('empresas').doc(empresaId).collection('configuracoes').doc('config'), {
-                empresa: {
-                    nome: nomeEmpresa,
-                    fantasia: nomeEmpresa,
-                    cnpj: '',
-                    telefone: user.phoneNumber || '',
-                    logo: user.photoURL || '',
-                    cep: '', rua: '', numero: '', bairro: '', cidade: '', uf: ''
-                },
-                taxas: {
-                    'Dinheiro': 0, 'PIX': 0, 'Cartão Débito': 0, 'Boleto': 0, 'Fiado': 0,
-                    'Cartão Crédito': { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0 }
-                },
-                prazos: { 'Fiado': 30, 'Boleto': 30, 'Cartão Crédito': 1, 'Cartão Débito': 1 },
-                pdv: {
-                    permite_estoque_negativo: false
-                },
-                loja: {
-                    ativa: false,
-                    nome: nomeEmpresa
-                }
-            });
-
-            // 5. Caixa zerado
-            batch.set(db.collection('empresas').doc(empresaId).collection('caixa').doc('caixa_atual'), {
-                status: 'fechado',
-                saldo: 0,
-                historico: [],
-                ultimaAtualizacao: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            await batch.commit();
-
-            // Sincronizar com o SaaS Master (banco central de licenças: fcgestao-testes)
-            try {
-                const sDb = typeof window.obterInstanciaSaaS === 'function' ? window.obterInstanciaSaaS() : null;
-                if (sDb) {
-                    await sDb.collection('empresas').doc(empresaId).set({
-                        id: empresaId,
-                        nome: nomeEmpresa,
-                        nomeEmpresa: nomeEmpresa,
-                        donoUid: user.uid,
-                        emailAcesso: user.email,
-                        status: 'TRIAL',
-                        plano: 'FREE',
-                        sistemaId: 'fc_gestao',
-                        valorMensalidade: 99.00,
-                        dataVencimento: dataVencTrialGoogleStr,
-                        diasTrial: 7,
-                        modulosLiberados: ['pdv', 'vendas', 'estoque'],
-                        dataCriacao: firebase.firestore.FieldValue.serverTimestamp(),
-                        origemCadastro: 'auto_cadastro_google'
-                    });
-                    console.log('👑 [SaaS Master Sync Google] Nova empresa registrada no SaaS Master:', empresaId);
-                }
-            } catch (errSaaS) {
-                console.warn('[SaaS Master Sync Google] Registro central será sincronizado posteriormente:', errSaaS.message);
-            }
+            showToast('Nenhuma assinatura ativa encontrada para este e-mail. Redirecionando para os planos...', 'warning');
+            await firebase.auth().signOut();
+            localStorage.removeItem('fc_sessao_data');
+            localStorage.removeItem('fc_sessao_uid');
+            localStorage.removeItem('fc_empresa_ativa');
+            sessionStorage.clear();
+            window._fazendoLogin = false;
+            if (btnGoogle) btnGoogle.disabled = false;
+            if (txtGoogle) txtGoogle.innerText = textoOriginal;
+            setTimeout(() => {
+                window.location.href = 'https://isabella.tech/acesso.html?sistema=fc_gestao';
+            }, 2000);
+            return;
         }
 
         localStorage.setItem('fc_empresa_ativa', empresaId);
 
-        // Verificar se a empresa está com acesso bloqueado
+        // Verificar se a empresa está com status BLOQUEADO ou PENDENTE_PAGAMENTO
         if (empresaId && user.email !== 'fabricadecoresgoiania@gmail.com') {
             try {
                 const empDoc = await db.collection('empresas').doc(empresaId).get();
-                if (empDoc.exists && empDoc.data().status === 'BLOQUEADO') {
-                    await firebase.auth().signOut();
-                    localStorage.removeItem('fc_empresa_ativa');
-                    sessionStorage.clear();
-                    window._fazendoLogin = false;
-                    if (btnGoogle) btnGoogle.disabled = false;
-                    if (txtGoogle) txtGoogle.innerText = textoOriginal;
-                    showToast('O acesso desta empresa está temporariamente bloqueado por pendência financeira. Contate o suporte.', 'error');
-                    return;
+                if (empDoc.exists) {
+                    const statusEmp = empDoc.data().status;
+                    if (statusEmp === 'PENDENTE_PAGAMENTO') {
+                        await firebase.auth().signOut();
+                        localStorage.removeItem('fc_empresa_ativa');
+                        sessionStorage.clear();
+                        window._fazendoLogin = false;
+                        if (btnGoogle) btnGoogle.disabled = false;
+                        if (txtGoogle) txtGoogle.innerText = textoOriginal;
+                        showToast('A ativação da sua loja está pendente de pagamento.', 'warning');
+                        setTimeout(() => {
+                            window.location.href = 'https://isabella.tech/cadastro.html';
+                        }, 2000);
+                        return;
+                    } else if (statusEmp === 'BLOQUEADO') {
+                        await firebase.auth().signOut();
+                        localStorage.removeItem('fc_empresa_ativa');
+                        sessionStorage.clear();
+                        window._fazendoLogin = false;
+                        if (btnGoogle) btnGoogle.disabled = false;
+                        if (txtGoogle) txtGoogle.innerText = textoOriginal;
+                        showToast('O acesso desta empresa está temporariamente bloqueado por pendência financeira. Contate o suporte.', 'error');
+                        return;
+                    }
                 }
             } catch (errCheck) {
                 console.warn("Falha na checagem de status da empresa:", errCheck);
@@ -747,29 +439,14 @@ async function fazerLoginGoogle() {
 }
 window.fazerLoginGoogle = fazerLoginGoogle;
 
-// Auto-selecionar aba de cadastro/trial via parâmetro de URL (?tab=cadastro ou ?tab=register)
+// Auto-redirecionar para Isabella.tech caso acesse com parâmetros de cadastro/trial (?tab=cadastro ou ?tab=register)
 (function inicializarAbaLoginViaUrl() {
     try {
         const urlParams = new URLSearchParams(window.location.search);
         const tab = (urlParams.get('tab') || '').toLowerCase();
         if (tab === 'cadastro' || tab === 'register' || tab === 'criar' || tab === 'trial') {
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', () => mudarAbaLogin('register'));
-            } else {
-                mudarAbaLogin('register');
-            }
-        }
-        const empresaParam = urlParams.get('empresa') || urlParams.get('loja');
-        if (empresaParam) {
-            const aplicarEmpresa = () => {
-                const inputEmpresa = document.getElementById('login-empresa');
-                if (inputEmpresa) inputEmpresa.value = decodeURIComponent(empresaParam);
-            };
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', aplicarEmpresa);
-            } else {
-                aplicarEmpresa();
-            }
+            window.location.href = 'https://isabella.tech/acesso.html?sistema=fc_gestao';
+            return;
         }
     } catch (e) {
         console.warn('Erro ao processar parâmetros de URL no login:', e);
