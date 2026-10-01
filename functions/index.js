@@ -1761,3 +1761,12 @@ exports.validarCertificadoA1 = functions.runWith({ serviceAccount: 'lojafc-a31f9
 });
 
 
+
+// ==========================================
+// 11. MERCADO PAGO - INTEGRAÇÃO SAAS
+// Pagamentos PIX, Cartão e Webhook de Assinaturas
+// ==========================================
+const pagamento = require("./pagamento");
+exports.criarPagamento = pagamento.criarPagamento;
+exports.verificarPix = pagamento.verificarPix;
+exports.webhookMercadoPago = pagamento.webhookMercadoPago;

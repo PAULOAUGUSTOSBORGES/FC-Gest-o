@@ -9,11 +9,14 @@ function showToast(msg, type = 'info') {
     setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 3000);
 }
 
+// URL Oficial do Portal de Planos e Ativação da Primas Tecnologia
+const URL_PORTAL_PRIMAS = 'https://primas.tech';
+
 let modoAtual = 'login';
 
 function mudarAbaLogin(modo) {
     if (modo === 'register') {
-        window.location.href = 'https://isabella.tech/acesso.html?sistema=fc_gestao';
+        window.location.href = `${URL_PORTAL_PRIMAS}/acesso.html?sistema=fc_gestao`;
         return;
     }
     modoAtual = 'login';
@@ -133,7 +136,7 @@ async function fazerLogin() {
                             window._fazendoLogin = false;
                             btn.innerText = 'Entrar'; btn.disabled = false;
                             showToast('A ativação da sua loja está pendente de pagamento.', 'warning');
-                            setTimeout(() => { window.location.href = 'https://isabella.tech/cadastro.html'; }, 2000);
+                            setTimeout(() => { window.location.href = `${URL_PORTAL_PRIMAS}/cadastro.html`; }, 2000);
                             return;
                         } else if (statusEmp === 'BLOQUEADO') {
                             await firebase.auth().signOut();
@@ -214,7 +217,7 @@ async function fazerLogin() {
 }
 
 async function fazerCadastro() {
-    window.location.href = 'https://isabella.tech/acesso.html?sistema=fc_gestao';
+    window.location.href = `${URL_PORTAL_PRIMAS}/acesso.html?sistema=fc_gestao`;
 }
 
 // Inicializa a escuta de sessão para redirecionar automaticamente quando logar
@@ -344,7 +347,7 @@ async function fazerLoginGoogle() {
             if (btnGoogle) btnGoogle.disabled = false;
             if (txtGoogle) txtGoogle.innerText = textoOriginal;
             setTimeout(() => {
-                window.location.href = 'https://isabella.tech/acesso.html?sistema=fc_gestao';
+                window.location.href = `${URL_PORTAL_PRIMAS}/acesso.html?sistema=fc_gestao`;
             }, 2000);
             return;
         }
@@ -366,7 +369,7 @@ async function fazerLoginGoogle() {
                         if (txtGoogle) txtGoogle.innerText = textoOriginal;
                         showToast('A ativação da sua loja está pendente de pagamento.', 'warning');
                         setTimeout(() => {
-                            window.location.href = 'https://isabella.tech/cadastro.html';
+                            window.location.href = `${URL_PORTAL_PRIMAS}/cadastro.html`;
                         }, 2000);
                         return;
                     } else if (statusEmp === 'BLOQUEADO') {
@@ -439,13 +442,13 @@ async function fazerLoginGoogle() {
 }
 window.fazerLoginGoogle = fazerLoginGoogle;
 
-// Auto-redirecionar para Isabella.tech caso acesse com parâmetros de cadastro/trial (?tab=cadastro ou ?tab=register)
+// Auto-redirecionar para Primas.tech caso acesse com parâmetros de cadastro/trial (?tab=cadastro ou ?tab=register)
 (function inicializarAbaLoginViaUrl() {
     try {
         const urlParams = new URLSearchParams(window.location.search);
         const tab = (urlParams.get('tab') || '').toLowerCase();
         if (tab === 'cadastro' || tab === 'register' || tab === 'criar' || tab === 'trial') {
-            window.location.href = 'https://isabella.tech/acesso.html?sistema=fc_gestao';
+            window.location.href = `${URL_PORTAL_PRIMAS}/acesso.html?sistema=fc_gestao`;
             return;
         }
     } catch (e) {
