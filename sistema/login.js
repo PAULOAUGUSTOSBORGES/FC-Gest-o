@@ -232,13 +232,153 @@ async function fazerCadastro() {
     window.location.href = `${URL_PORTAL_PRIMAS}/acesso.html?sistema=fc_gestao`;
 }
 
+// Detecta se o dispositivo é mobile/tablet
+function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        || (navigator.maxTouchPoints > 1 && /Macintosh/i.test(navigator.userAgent));
+}
+
+// Processa o resultado do redirect do Google (necessário para mobile)
+async function processarRedirectResult() {
+    try {
+        const cred = await firebase.auth().getRedirectResult();
+        if (!cred || !cred.user) return; // Nenhum redirect pendente, fluxo normal
+
+        // Marca como em processo de login para não ser interceptado pelo onAuthStateChanged
+        window._fazendoLogin = true;
+        sessionStorage.removeItem('fc_google_redirect_pendente');
+
+        // A partir daqui é o mesmo fluxo de pós-login do Google
+        const user = cred.user;
+        const db = firebase.firestore();
+        const hoje = new Date().toDateString();
+        localStorage.setItem('fc_sessao_data', hoje);
+        localStorage.setItem('fc_sessao_uid', user.uid);
+        sessionStorage.clear();
+        if (typeof window.FCCache !== 'undefined') {
+            try { await window.FCCache.invalidarTudo(); } catch(e) {}
+        }
+
+        let empresaId = null;
+        try {
+            const userDoc = await db.collection('usuarios').doc(user.uid).get();
+            if (userDoc.exists && userDoc.data().empresaId) {
+                empresaId = userDoc.data().empresaId;
+            }
+        } catch(eDoc) { console.warn('Erro ao buscar usuario por UID:', eDoc); }
+
+        if (!empresaId && user.email === 'fabricadecoresgoiania@gmail.com') {
+            empresaId = 'emp_fc_moveis';
+        }
+
+        if (!empresaId && user.email) {
+            try {
+                const snapEmail = await db.collection('usuarios').where('email', '==', user.email).limit(1).get();
+                if (!snapEmail.empty) {
+                    const dadosExistentes = snapEmail.docs[0].data();
+                    if (dadosExistentes.empresaId) {
+                        empresaId = dadosExistentes.empresaId;
+                        await db.collection('usuarios').doc(user.uid).set({
+                            ...dadosExistentes,
+                            googleUid: user.uid,
+                            email: user.email,
+                            nome: user.displayName || dadosExistentes.nome || 'Usuário',
+                            dataVinculoGoogle: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
+                    }
+                }
+            } catch(eEmail) { console.warn('Aviso ao buscar por email:', eEmail); }
+        }
+
+        if (!empresaId) {
+            showToast('Nenhuma assinatura ativa encontrada para este e-mail. Redirecionando para os planos...', 'warning');
+            await firebase.auth().signOut();
+            localStorage.removeItem('fc_sessao_data');
+            localStorage.removeItem('fc_sessao_uid');
+            localStorage.removeItem('fc_empresa_ativa');
+            sessionStorage.clear();
+            window._fazendoLogin = false;
+            setTimeout(() => { window.location.href = `${URL_PORTAL_PRIMAS}/acesso.html?sistema=fc_gestao`; }, 2000);
+            return;
+        }
+
+        localStorage.setItem('fc_empresa_ativa', empresaId);
+
+        if (user.email !== 'fabricadecoresgoiania@gmail.com') {
+            try {
+                const empDoc = await db.collection('empresas').doc(empresaId).get();
+                if (empDoc.exists) {
+                    const statusEmp = empDoc.data().status;
+                    if (statusEmp === 'PENDENTE_PAGAMENTO') {
+                        await firebase.auth().signOut();
+                        localStorage.removeItem('fc_empresa_ativa');
+                        sessionStorage.clear();
+                        window._fazendoLogin = false;
+                        showToast('A ativação da sua loja está pendente de pagamento.', 'warning');
+                        setTimeout(() => { window.location.href = `${URL_PORTAL_PRIMAS}/cadastro.html`; }, 2000);
+                        return;
+                    } else if (statusEmp === 'BLOQUEADO') {
+                        await firebase.auth().signOut();
+                        localStorage.removeItem('fc_empresa_ativa');
+                        sessionStorage.clear();
+                        window._fazendoLogin = false;
+                        showToast('O acesso desta empresa está temporariamente bloqueado por pendência financeira. Contate o suporte.', 'error');
+                        return;
+                    }
+                }
+            } catch (errCheck) { console.warn('Falha na checagem de status da empresa:', errCheck); }
+        }
+
+        let rotaInicial = 'index.html';
+        try {
+            const funcDoc = await db.collection('empresas').doc(empresaId).collection('funcionarios').doc(user.uid).get();
+            if (funcDoc.exists) {
+                const uData = funcDoc.data();
+                if (typeof window.obterRotaInicialUsuario === 'function') {
+                    rotaInicial = window.obterRotaInicialUsuario(uData);
+                } else {
+                    if (uData.isAdmin || uData.perm_dashboard) rotaInicial = 'index.html';
+                    else if (uData.perm_pdv) rotaInicial = 'pdv.html';
+                    else if (uData.perm_vendas_op) rotaInicial = 'vendas_operacao.html';
+                    else if (uData.perm_orcamentos) rotaInicial = 'orcamentos.html';
+                    else if (uData.perm_produtos) rotaInicial = 'produtos.html';
+                    else if (uData.perm_clientes) rotaInicial = 'clientes.html';
+                    else if (uData.perm_fornecedores) rotaInicial = 'fornecedores.html';
+                    else if (uData.perm_financeiro || uData.perm_gestao) rotaInicial = 'financeiro.html';
+                    else if (uData.perm_caixa) rotaInicial = 'caixa.html';
+                    else if (uData.perm_compras) rotaInicial = 'compras.html';
+                    else if (uData.perm_relatorios) rotaInicial = 'relatorios.html';
+                    else if (uData.perm_agenda) rotaInicial = 'agenda.html';
+                    else if (uData.perm_marketing) rotaInicial = 'marketing.html';
+                    else if (uData.perm_fiscal) rotaInicial = 'fiscal.html';
+                    else if (uData.perm_config) rotaInicial = 'sistema.html';
+                }
+            }
+        } catch(eRota) { console.warn('Aviso rota inicial:', eRota); }
+
+        showToast('Login com Google realizado com sucesso! Entrando...', 'success');
+        setTimeout(() => { window.location.href = rotaInicial; }, 500);
+
+    } catch (e) {
+        window._fazendoLogin = false;
+        if (e.code === 'auth/popup-blocked' || e.code === 'auth/redirect-cancelled-by-user') {
+            showToast('Login com Google cancelado.', 'info');
+        } else if (e.code && e.code !== 'auth/no-auth-event') {
+            showToast('Erro ao entrar com Google: ' + (e.message || e), 'error');
+            console.error('Erro Google getRedirectResult:', e);
+        }
+    }
+}
+
 // Inicializa a escuta de sessão para redirecionar automaticamente quando logar
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
     const msgExpirada = sessionStorage.getItem('fc_sessao_expirada_msg');
     if (msgExpirada) {
         showToast(msgExpirada, 'info');
         sessionStorage.removeItem('fc_sessao_expirada_msg');
     }
+    // Processa retorno do redirect do Google (mobile)
+    await processarRedirectResult();
     initGlobalData();
 });
 
@@ -290,6 +430,15 @@ async function fazerLoginGoogle() {
         const provider = new firebase.auth.GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
         
+        // No mobile, usa Redirect (Popup é bloqueado pelo navegador); no desktop, usa Popup
+        if (isMobileDevice()) {
+            // Sinaliza que o login está em andamento para não ser interceptado pelo onAuthStateChanged
+            sessionStorage.setItem('fc_google_redirect_pendente', '1');
+            await firebase.auth().signInWithRedirect(provider);
+            // O processamento continua em processarRedirectResult() após o retorno do Google
+            return;
+        }
+
         const cred = await firebase.auth().signInWithPopup(provider);
         if (!cred || !cred.user) {
             throw new Error('Nenhum dado de usuário retornado pelo Google.');
