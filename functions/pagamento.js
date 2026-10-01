@@ -2,7 +2,7 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const axios = require("axios");
 
-const MP_TOKEN = process.env.MERCADOPAGO_TOKEN || 'APP_USR-5617925851399894-093015-267239be9015b1c9ddaa929ac0594443-3725426093';
+const MP_TOKEN = process.env.MERCADOPAGO_TOKEN || 'APP_USR-4139999599254354-093013-a40e774b9a2e412dd44185483865af54-208400622';
 const MP_BASE = 'https://api.mercadopago.com';
 
 function getDb() {
@@ -40,7 +40,7 @@ function traduzirStatusMP(statusDetail) {
   return traducoes[statusDetail] || 'Pagamento recusado. Verifique os dados e tente novamente.';
 }
 
-async function criarUsuarioFirebase(email, nomePlano, pagamentoId) {
+async function criarUsuarioFirebase(email, nomePlano, pagamentoId, senha, dadosExtras = {}) {
   const auth = getAuth();
   const db = getDb();
   let uid;
@@ -49,7 +49,7 @@ async function criarUsuarioFirebase(email, nomePlano, pagamentoId) {
     const novoUsuario = await auth.createUser({
       email: email,
       emailVerified: false,
-      password: gerarSenhaTemporaria(),
+      password: senha || gerarSenhaTemporaria(),
       displayName: email.split('@')[0]
     });
     uid = novoUsuario.uid;
@@ -58,19 +58,125 @@ async function criarUsuarioFirebase(email, nomePlano, pagamentoId) {
     if (err.code === 'auth/email-already-exists') {
       const usuarioExistente = await auth.getUserByEmail(email);
       uid = usuarioExistente.uid;
+      if (senha) {
+        await auth.updateUser(uid, { password: senha });
+      }
       console.log(`[criarUsuario] Usuário já existente: ${uid}`);
     } else {
       throw err;
     }
   }
 
+  const nomeFinalEmpresa = (dadosExtras && dadosExtras.nomeEmpresa) ? dadosExtras.nomeEmpresa.trim() : 'Minha Loja';
+
+  // 1. Localiza a empresa cadastrada pelo cliente no cadastro.html
+  let empresaId = null;
+  try {
+    const empSnap = await db.collection('empresas')
+      .where('emailAcesso', '==', email)
+      .get();
+
+    if (!empSnap.empty) {
+      const docs = empSnap.docs.sort((a, b) => {
+        const da = a.data().dataCriacao && a.data().dataCriacao.toMillis ? a.data().dataCriacao.toMillis() : 0;
+        const dbVal = b.data().dataCriacao && b.data().dataCriacao.toMillis ? b.data().dataCriacao.toMillis() : 0;
+        return dbVal - da;
+      });
+      const empDoc = docs[0];
+      empresaId = empDoc.id;
+      const empUpdate = {
+        status: 'ATIVO',
+        pago: true,
+        pagamentoId: String(pagamentoId),
+        planoAtivadoEm: admin.firestore.FieldValue.serverTimestamp()
+      };
+      if (nomeFinalEmpresa && (!empDoc.data().nomeEmpresa || empDoc.data().nomeEmpresa === 'Minha Loja')) {
+        empUpdate.nomeEmpresa = nomeFinalEmpresa;
+      }
+      if (dadosExtras.whatsapp) empUpdate.whatsapp = dadosExtras.whatsapp;
+      if (dadosExtras.cidade) empUpdate.cidade = dadosExtras.cidade;
+      if (dadosExtras.nomeResponsavel) empUpdate.responsavel = dadosExtras.nomeResponsavel;
+
+      await empDoc.ref.set(empUpdate, { merge: true });
+      console.log(`[criarUsuario] Empresa ${empresaId} ativada com sucesso!`);
+    }
+  } catch (eEmp) {
+    console.warn('[criarUsuario] Aviso ao buscar empresa:', eEmp.message);
+  }
+
+  // Se ainda não tiver empresaId, gera um id padrao
+  if (!empresaId) {
+    empresaId = 'emp_' + uid.substring(0, 10);
+    await db.collection('empresas').doc(empresaId).set({
+      nomeEmpresa: nomeFinalEmpresa,
+      responsavel: dadosExtras.nomeResponsavel || '',
+      whatsapp: dadosExtras.whatsapp || '',
+      cidade: dadosExtras.cidade || '',
+      emailAcesso: email,
+      plano: nomePlano,
+      status: 'ATIVO',
+      pago: true,
+      pagamentoId: String(pagamentoId),
+      dataCriacao: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+  }
+
+  // Garante que o documento configuracoes/config seja criado com a identidade da nova empresa
+  try {
+    const configRef = db.collection('empresas').doc(empresaId).collection('configuracoes').doc('config');
+    const configSnap = await configRef.get();
+    const configAtual = configSnap.exists ? (configSnap.data() || {}) : {};
+    const empAtual = configAtual.empresa || {};
+
+    const nomeConfig = (empAtual.nome && empAtual.nome !== 'FC Móveis') ? empAtual.nome : nomeFinalEmpresa;
+    const fantasiaConfig = (empAtual.fantasia && empAtual.fantasia !== 'FC Móveis') ? empAtual.fantasia : nomeFinalEmpresa;
+
+    await configRef.set({
+      empresa: {
+        nome: nomeConfig,
+        fantasia: fantasiaConfig,
+        telefone: empAtual.telefone || dadosExtras.whatsapp || '',
+        cidade: empAtual.cidade || dadosExtras.cidade || '',
+        email: empAtual.email || email,
+        cnpj: empAtual.cnpj || '',
+        logo: empAtual.logo || ''
+      },
+      taxas: configAtual.taxas || { 'Dinheiro': 0, 'PIX': 0, 'Cartão Débito': 0, 'Boleto': 0, 'Fiado': 0, 'Cartão Crédito': { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0 } },
+      prazos: configAtual.prazos || { 'Fiado': 30, 'Boleto': 30, 'Cartão Crédito': 1, 'Cartão Débito': 1 },
+      pdv: configAtual.pdv || { permite_estoque_negativo: false }
+    }, { merge: true });
+    console.log(`[criarUsuario] Documento configuracoes/config configurado para ${empresaId} (${nomeConfig})`);
+  } catch (eConf) {
+    console.warn('[criarUsuario] Aviso ao criar configuracoes/config:', eConf.message);
+  }
+
+  // 2. Salva o documento do usuário vinculando empresaId (obrigatório para login.js)
   await db.collection('usuarios').doc(uid).set({
     email: email,
     plano: nomePlano,
+    empresaId: empresaId,
     pagamentoId: String(pagamentoId),
     planoAtivadoEm: admin.firestore.FieldValue.serverTimestamp(),
     ativo: true
   }, { merge: true });
+
+  // 3. Cadastra o funcionário Admin na subcoleção para o FC Gestão liberar a sessão
+  try {
+    await db.collection('empresas').doc(empresaId).collection('funcionarios').doc(uid).set({
+      nome: email.split('@')[0],
+      email: email,
+      isAdmin: true,
+      perm_gestao: true,
+      perm_fiscal: true,
+      perm_operacao: true,
+      perm_pdv: true,
+      ativo: true,
+      criadoEm: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    console.log(`[criarUsuario] Funcionário Admin registrado em empresas/${empresaId}/funcionarios/${uid}`);
+  } catch (eFunc) {
+    console.warn('[criarUsuario] Aviso ao criar funcionário:', eFunc.message);
+  }
 
   try {
     const linkReset = await auth.generatePasswordResetLink(email);
@@ -82,7 +188,8 @@ async function criarUsuarioFirebase(email, nomePlano, pagamentoId) {
   return uid;
 }
 
-// 1. Endpoint: criarPagamento
+// 1. Endpoint: criarPagamento — usa Checkout Pro do Mercado Pago (PRODUÇÃO)
+// Gera o link oficial com PIX, cartão de crédito, boleto, saldo Mercado Pago
 exports.criarPagamento = functions.https.onRequest(async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -91,132 +198,94 @@ exports.criarPagamento = functions.https.onRequest(async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(204).send('');
   if (req.method !== 'POST') return res.status(405).send('Método não permitido');
 
-  const { tipo, valorCentavos, cardToken, emailPagador, nomePlano } = req.body;
+  const { valorCentavos, emailPagador, nomePlano, senha, nomeEmpresa, nomeResponsavel, whatsapp, cidade } = req.body;
   const db = getDb();
 
   try {
-    if (tipo === 'pix') {
-      const pagamento = await axios.post(
-        `${MP_BASE}/v1/payments`,
-        {
-          transaction_amount: Number(valorCentavos) / 100,
-          payment_method_id: 'pix',
-          payer: { email: emailPagador || 'contato@primastecnologia.com' },
-          description: `Assinatura Plano ${nomePlano || 'SaaS'} — Primas Tecnologia`,
-          notification_url: 'https://us-central1-lojafc-a31f9.cloudfunctions.net/webhookMercadoPago'
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${MP_TOKEN}`,
-            'X-Idempotency-Key': `pix-${Date.now()}-${Math.random()}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
+    const emailMp = emailPagador || 'cliente@primastecnologia.com';
 
-      const dados = pagamento.data;
-      const pixCopiaCola = dados.point_of_interaction?.transaction_data?.qr_code || '';
+    // Checkout Pro Oficial: gera link oficial com PIX, cartão, etc.
+    const preferencePayload = {
+      items: [{
+        title: `Plano ${(nomePlano || 'SaaS').substring(0, 50)}`,
+        quantity: 1,
+        unit_price: Number(valorCentavos) / 100,
+        currency_id: 'BRL'
+      }],
+      payment_methods: {
+        excluded_payment_methods: [],
+        excluded_payment_types: [],
+        installments: 12
+      },
+      back_urls: {
+        success: 'https://lojafc-a31f9.web.app/sistema/login.html',
+        failure: 'https://pauloaugustosborges.github.io/IsabellaTecnologia/cadastro.html',
+        pending: 'https://lojafc-a31f9.web.app/sistema/login.html'
+      },
+      auto_return: 'approved',
+      notification_url: 'https://us-central1-lojafc-a31f9.cloudfunctions.net/webhookMercadoPago',
+      external_reference: emailPagador || 'cliente@primastecnologia.com',
+      statement_descriptor: 'PRIMAS TECNOLOGIA'
+    };
 
-      await db.collection('pagamentos_pendentes').doc(String(dados.id)).set({
-        pagamentoId: dados.id,
-        tipo: 'pix',
-        nomePlano: nomePlano || 'Padrao',
-        email: emailPagador || null,
-        status: 'pending',
-        criadoEm: admin.firestore.FieldValue.serverTimestamp()
-      });
-
-      return res.status(200).json({
-        sucesso: true,
-        pixCopiaCola: pixCopiaCola,
-        pagamentoId: dados.id
-      });
-
-    } else if (tipo === 'cartao' || tipo === 'assinatura') {
-      let subscricao;
-      // Se for ambiente de testes do Mercado Pago, usa o comprador de testes registrado
-      let emailMp = emailPagador;
-      if (MP_TOKEN.includes('3725426093') || !emailMp || emailMp.includes('silvaborges') || emailMp.includes('primas')) {
-        emailMp = 'test_user_1362349500493985627@testuser.com';
-      }
-
-      try {
-        const subscricaoPayload = {
-          payer_email: emailMp,
-          back_url: 'https://lojafc-a31f9.web.app/sistema/login.html',
-          reason: `Assinatura Plano ${nomePlano || 'SaaS'} — Primas Tecnologia`,
-          auto_recurring: {
-            frequency: 1,
-            frequency_type: 'months',
-            transaction_amount: Number(valorCentavos) / 100,
-            currency_id: 'BRL'
-          }
-        };
-
-        if (cardToken) {
-          subscricaoPayload.card_token_id = cardToken;
-          subscricaoPayload.status = 'authorized';
-        }
-
-        subscricao = await axios.post(
-          `${MP_BASE}/preapproval`,
-          subscricaoPayload,
-          {
-            headers: {
-              'Authorization': `Bearer ${MP_TOKEN}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-      } catch (errSub) {
-        console.warn('[criarPagamento] Tentativa preapproval com token:', errSub.response?.data?.message || errSub.message);
-        
-        // Tentativa 2: Gera o link de checkout de assinatura oficial do Mercado Pago (init_point)
-        subscricao = await axios.post(
-          `${MP_BASE}/preapproval`,
-          {
-            payer_email: emailMp,
-            back_url: 'https://lojafc-a31f9.web.app/sistema/login.html',
-            reason: `Assinatura Plano ${nomePlano || 'SaaS'} — Primas Tecnologia`,
-            auto_recurring: {
-              frequency: 1,
-              frequency_type: 'months',
-              transaction_amount: Number(valorCentavos) / 100,
-              currency_id: 'BRL'
-            }
-          },
-          {
-            headers: {
-              'Authorization': `Bearer ${MP_TOKEN}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-      }
-
-      const dados = subscricao.data;
-      const status = dados.status;
-
-      if (status === 'approved' || status === 'authorized') {
-        if (emailPagador) {
-          await criarUsuarioFirebase(emailPagador, nomePlano, dados.id);
-        }
-        return res.status(200).json({ aprovado: true, status: status, id: dados.id });
-      } else if (dados.init_point) {
-        return res.status(200).json({ aprovado: true, initPoint: dados.init_point, id: dados.id });
-      } else {
-        return res.status(200).json({
-          aprovado: false,
-          status: status,
-          mensagem: traduzirStatusMP(dados.status_detail) || 'Assinatura pendente de confirmação.'
-        });
-      }
-    } else {
-      return res.status(200).json({ sucesso: false, erro: 'Tipo de pagamento inválido.' });
+    if (emailPagador && !emailPagador.toLowerCase().includes('silvaborges') && !emailPagador.toLowerCase().includes('pauloaugusto')) {
+      preferencePayload.payer = { email: emailPagador };
     }
+
+    const preference = await axios.post(
+      `${MP_BASE}/checkout/preferences`,
+      preferencePayload,
+      {
+        headers: {
+          'Authorization': `Bearer ${MP_TOKEN}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    const dados = preference.data;
+    const initPoint = dados.init_point; // Link Oficial de Produção do Mercado Pago
+
+    // Salva no Firestore para o webhook processar quando o pagamento for confirmado
+    await db.collection('pagamentos_pendentes').doc(String(dados.id)).set({
+      preferenceId: dados.id,
+      nomePlano: nomePlano || 'Padrao',
+      email: emailPagador || null,
+      senha: senha || null,
+      nomeEmpresa: nomeEmpresa || null,
+      nomeResponsavel: nomeResponsavel || null,
+      whatsapp: whatsapp || null,
+      cidade: cidade || null,
+      valor: Number(valorCentavos) / 100,
+      status: 'pending',
+      criadoEm: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    if (emailPagador) {
+      await db.collection('pagamentos_pendentes_email').doc(emailPagador.toLowerCase().trim()).set({
+        preferenceId: dados.id,
+        nomePlano: nomePlano || 'Padrao',
+        email: emailPagador,
+        senha: senha || null,
+        nomeEmpresa: nomeEmpresa || null,
+        nomeResponsavel: nomeResponsavel || null,
+        whatsapp: whatsapp || null,
+        cidade: cidade || null,
+        valor: Number(valorCentavos) / 100,
+        status: 'pending',
+        atualizadoEm: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    }
+
+    return res.status(200).json({
+      sucesso: true,
+      initPoint: initPoint,
+      id: dados.id
+    });
+
   } catch (err) {
     const detalhe = err.response?.data || err.message;
-    console.error('[criarPagamento] Aviso Mercado Pago:', detalhe);
+    console.error('[criarPagamento] Erro Mercado Pago:', detalhe);
     return res.status(200).json({
       sucesso: false,
       erro: err.response?.data?.message || err.message,
@@ -273,9 +342,6 @@ exports.verificarPix = functions.https.onRequest(async (req, res) => {
 
 // 3. Endpoint: webhookMercadoPago
 exports.webhookMercadoPago = functions.https.onRequest(async (req, res) => {
-  // Retorna HTTP 200 IMEDIATAMENTE (requisito obrigatório do Mercado Pago e simulador)
-  res.status(200).send('OK');
-
   try {
     const body = req.body || {};
     const query = req.query || {};
@@ -289,13 +355,13 @@ exports.webhookMercadoPago = functions.https.onRequest(async (req, res) => {
     // Se for simulação ou ping de teste do painel com ID 123456
     if (!dataId || String(dataId) === '123456' || String(dataId) === '123456789') {
       console.log('[webhook] Teste ou simulador detectado. Conexão validada com sucesso!');
-      return;
+      return res.status(200).send('OK');
     }
 
     const db = getDb();
 
-    // Notificação de Pagamento (PIX, Cartão, etc.)
-    if (type === 'payment' || action.startsWith('payment')) {
+    // Notificação de Pagamento — Checkout Pro (PIX, Cartão, Boleto)
+    if (type === 'payment' || action.startsWith('payment') || query.type === 'payment') {
       const resp = await axios.get(
         `${MP_BASE}/v1/payments/${dataId}`,
         { headers: { 'Authorization': `Bearer ${MP_TOKEN}` } }
@@ -305,40 +371,57 @@ exports.webhookMercadoPago = functions.https.onRequest(async (req, res) => {
       const status = pagamento.status;
       console.log(`[webhook] Pagamento ${dataId} -> status: ${status}`);
 
+      // external_reference contém o email REAL do cliente (gravado na preferência)
+      const emailReal = pagamento.external_reference || pagamento.payer?.email;
+
       const docRef = db.collection('pagamentos_pendentes').doc(String(dataId));
       await docRef.set({ status, ultimaAtualizacao: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
 
-      if (status === 'approved') {
-        const emailPagador = pagamento.payer?.email;
-        const pendenteDoc = await docRef.get();
-        const nomePlano = pendenteDoc.exists ? (pendenteDoc.data().nomePlano || 'SaaS Pro') : 'SaaS Pro';
+      if ((status === 'approved' || status === 'refunded') && emailReal) {
+        let nomePlano = 'SaaS Pro';
+        let senhaCliente = null;
+        let dadosExtras = {};
 
-        if (emailPagador) {
-          await criarUsuarioFirebase(emailPagador, nomePlano, dataId);
-          console.log(`[webhook] Acesso liberado para: ${emailPagador}`);
+        try {
+          const docEmail = await db.collection('pagamentos_pendentes_email').doc(emailReal.toLowerCase().trim()).get();
+          if (docEmail.exists) {
+            const dataEmail = docEmail.data();
+            nomePlano = dataEmail.nomePlano || nomePlano;
+            senhaCliente = dataEmail.senha || null;
+            dadosExtras = {
+              nomeEmpresa: dataEmail.nomeEmpresa || null,
+              nomeResponsavel: dataEmail.nomeResponsavel || null,
+              whatsapp: dataEmail.whatsapp || null,
+              cidade: dataEmail.cidade || null
+            };
+          } else {
+            const docPag = await db.collection('pagamentos_pendentes').doc(String(dataId)).get();
+            if (docPag.exists) {
+              const dataPag = docPag.data();
+              nomePlano = dataPag.nomePlano || nomePlano;
+              senhaCliente = dataPag.senha || null;
+              dadosExtras = {
+                nomeEmpresa: dataPag.nomeEmpresa || null,
+                nomeResponsavel: dataPag.nomeResponsavel || null,
+                whatsapp: dataPag.whatsapp || null,
+                cidade: dataPag.cidade || null
+              };
+            }
+          }
+        } catch (e) {
+          console.warn('[webhook] Erro ao buscar dados pendentes por email:', e.message);
         }
+
+        await criarUsuarioFirebase(emailReal, nomePlano, dataId, senhaCliente, dadosExtras);
+        console.log(`[webhook] Acesso liberado automaticamente para: ${emailReal} (Empresa: ${dadosExtras.nomeEmpresa || 'Minha Loja'})`);
       }
     }
 
-    // Notificação de Assinatura Recorrente (Preapproval)
-    if (type === 'subscription_preapproval' || type === 'preapproval' || action.includes('preapproval')) {
-      const resp = await axios.get(
-        `${MP_BASE}/preapproval/${dataId}`,
-        { headers: { 'Authorization': `Bearer ${MP_TOKEN}` } }
-      );
-
-      const assinatura = resp.data;
-      const status = assinatura.status; // 'authorized', 'paused', 'cancelled'
-      console.log(`[webhook] Assinatura ${dataId} -> status: ${status}`);
-
-      const emailPagador = assinatura.payer_email;
-      if (status === 'authorized' && emailPagador) {
-        await criarUsuarioFirebase(emailPagador, assinatura.reason || 'Assinatura SaaS', dataId);
-        console.log(`[webhook] Assinatura autorizada e usuário liberado: ${emailPagador}`);
-      }
-    }
-
+    return res.status(200).send('OK');
   } catch (err) {
     console.error('[webhook] Erro ao processar:', err.response?.data || err.message);
+    return res.status(200).send('OK');
   }
 });
+
+

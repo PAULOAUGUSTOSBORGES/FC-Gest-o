@@ -936,7 +936,8 @@ function abrirUltimoMapaCaixa() {
 }
 
 function renderizarMapaCaixaHTML(m) {
-    const emp = db.config?.empresa || { nome: 'FC Móveis & Interiores', cnpj: '00.000.000/0000-00', telefone: '' };
+    const defaultEmpNome = (window.currentEmpresaData?.nomeEmpresa) || localStorage.getItem('fc_nome_empresa_ativa') || (localStorage.getItem('fc_empresa_ativa') === 'emp_fc_moveis' ? 'FC Móveis & Interiores' : 'Minha Loja');
+    const emp = db.config?.empresa || { nome: defaultEmpNome, cnpj: '00.000.000/0000-00', telefone: '' };
     const corDiferenca = m.diferencas.difGeral >= 0 ? 'text-emerald-600' : 'text-red-600';
     const bgDiferenca = m.diferencas.difGeral >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-red-50 dark:bg-red-950/30';
 
@@ -2901,7 +2902,8 @@ function exportarDadosParaIA() {
 
     let lucroBruto = receitaBruta - custoTotal;
 
-    let relatorioTexto = `=== RELATÓRIO FINANCEIRO E DE GESTÃO - FC MÓVEIS ===\nData da exportação: ${new Date().toLocaleString('pt-BR')}\n\n`;
+    const nomeLojaRel = (typeof obterDadosEmpresa === 'function' ? obterDadosEmpresa().nome : (window.currentEmpresaData?.nomeEmpresa || localStorage.getItem('fc_nome_empresa_ativa') || 'MINHA LOJA'));
+    let relatorioTexto = `=== RELATÓRIO FINANCEIRO E DE GESTÃO - ${nomeLojaRel.toUpperCase()} ===\nData da exportação: ${new Date().toLocaleString('pt-BR')}\n\n`;
     relatorioTexto += `--- 1. DRE SIMPLIFICADA ---\n- Receita Bruta Total: R$ ${receitaBruta.toFixed(2)}\n- Custo da Mercadoria Vendida (CMV): R$ ${custoTotal.toFixed(2)}\n- Lucro Bruto Real: R$ ${lucroBruto.toFixed(2)}\n\n`;
     relatorioTexto += `--- 2. HISTÓRICO DE VENDAS RECENTES ---\n`;
     vendas.slice(-20).forEach((v, index) => { relatorioTexto += `[Venda ${index + 1}] Data: ${v.data || 'N/A'} | Total: R$ ${Number(v.total || 0).toFixed(2)} | Forma de Pagamento: ${v.pagamento || 'N/A'}\n`; });
@@ -4387,8 +4389,9 @@ window.imprimirContratoAtual = function() {
 };
 
 window.imprimirContratoObj = function(v) {
-    if (!v) return;
-    const emp = (typeof obterDadosEmpresa === 'function') ? obterDadosEmpresa() : { nome: 'FC MÓVEIS', cnpj: '', end: '', tel: '', logoHtml: '' };
+    const empAtivaIdContr = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
+    const fallbackNomeContr = (window.currentEmpresaData?.nomeEmpresa) || localStorage.getItem('fc_nome_empresa_ativa') || (empAtivaIdContr === 'emp_fc_moveis' ? 'FC MÓVEIS' : 'MINHA LOJA');
+    const emp = (typeof obterDadosEmpresa === 'function') ? obterDadosEmpresa() : { nome: fallbackNomeContr, cnpj: '', end: '', tel: '', logoHtml: '' };
     const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id || '').slice(-4);
     const cliNome = v.clienteNome || v.cliente || 'Consumidor Final';
     const cliCpf = v.clienteDoc || 'Não informado';
@@ -4451,7 +4454,8 @@ window.imprimirContratoObj = function(v) {
 };
 
 function obterDadosEmpresa() {
-    const defaultName = 'FC Móveis';
+    const empAtivaId = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
+    const defaultName = (window.currentEmpresaData?.nomeEmpresa) || localStorage.getItem('fc_nome_empresa_ativa') || (empAtivaId === 'emp_fc_moveis' ? 'FC Móveis' : 'Minha Loja');
     const defaultCnpj = '';
     const defaultTel = '';
     const defaultEnd = '';

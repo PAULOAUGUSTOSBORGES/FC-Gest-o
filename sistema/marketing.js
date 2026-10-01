@@ -219,7 +219,9 @@ function aoSelecionarClienteLembrete() {
 
 function preencherMsgPadrao() {
     const textarea = document.getElementById('lemb-msg');
-    textarea.value = "Bom dia! Tudo bem? Aqui é da FC Móveis.\n\nPassando para avisar da nossa promoção de hoje: ";
+    const empAtivaIdMkt = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
+    const nomeLojaMkt = (typeof obterDadosEmpresa === 'function' ? obterDadosEmpresa().nome : (window.currentEmpresaData?.nomeEmpresa || localStorage.getItem('fc_nome_empresa_ativa') || (empAtivaIdMkt === 'emp_fc_moveis' ? 'FC Móveis' : 'nossa loja')));
+    textarea.value = `Bom dia! Tudo bem? Aqui é da ${nomeLojaMkt}.\n\nPassando para avisar da nossa promoção de hoje: `;
     textarea.focus();
 }
 

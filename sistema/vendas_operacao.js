@@ -2834,7 +2834,9 @@ window.reimprimirVenda = function(id) {
         return;
     }
     
-    const emp = typeof obterDadosEmpresa === 'function' ? obterDadosEmpresa() : (db.empresa || { nome: 'FC MÓVEIS', cnpj: '', end: '', tel: '', logoHtml: '' });
+    const empAtivaIdVenda = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
+    const fallbackNomeVenda = (window.currentEmpresaData?.nomeEmpresa) || localStorage.getItem('fc_nome_empresa_ativa') || (empAtivaIdVenda === 'emp_fc_moveis' ? 'FC MÓVEIS' : 'MINHA LOJA');
+    const emp = typeof obterDadosEmpresa === 'function' ? obterDadosEmpresa() : (db.empresa || { nome: fallbackNomeVenda, cnpj: '', end: '', tel: '', logoHtml: '' });
     
     const isOrcamento = v.tipo === 'ORÇAMENTO';
     const isServico = v.tipo === 'SERVIÇO';

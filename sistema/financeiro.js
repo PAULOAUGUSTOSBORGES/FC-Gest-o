@@ -1282,7 +1282,8 @@ function abrirUltimoMapaCaixa() {
 }
 
 function renderizarMapaCaixaHTML(m) {
-    const emp = db.config?.empresa || { nome: 'FC Móveis & Interiores', cnpj: '00.000.000/0000-00', telefone: '' };
+    const defaultEmpNome = (window.currentEmpresaData?.nomeEmpresa) || localStorage.getItem('fc_nome_empresa_ativa') || (localStorage.getItem('fc_empresa_ativa') === 'emp_fc_moveis' ? 'FC Móveis & Interiores' : 'Minha Loja');
+    const emp = db.config?.empresa || { nome: defaultEmpNome, cnpj: '00.000.000/0000-00', telefone: '' };
     const corDiferenca = m.diferencas.difGeral >= 0 ? 'text-emerald-600' : 'text-red-600';
     const bgDiferenca = m.diferencas.difGeral >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-red-50 dark:bg-red-950/30';
 

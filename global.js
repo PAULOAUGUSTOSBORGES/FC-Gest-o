@@ -342,10 +342,11 @@ window.db = db;
             }
         });
         // Carrega config do cache
+        const empAtivaIdPre = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
         if (window.FCCache.isValido('config')) {
             const configCache = window.FCCache.get('config');
             if (configCache) db.config = configCache;
-        } else if (window.FCCache.isValido('fc_moveis_config')) {
+        } else if (empAtivaIdPre === 'emp_fc_moveis' && window.FCCache.isValido('fc_moveis_config')) {
             const configCache = window.FCCache.get('fc_moveis_config');
             if (configCache) db.config = configCache;
         }
@@ -353,7 +354,7 @@ window.db = db;
         if (window.FCCache.isValido('caixa')) {
             const caixaCache = window.FCCache.get('caixa');
             if (caixaCache) db.caixa = caixaCache;
-        } else if (window.FCCache.isValido('fc_moveis_caixa')) {
+        } else if (empAtivaIdPre === 'emp_fc_moveis' && window.FCCache.isValido('fc_moveis_caixa')) {
             const caixaCache = window.FCCache.get('fc_moveis_caixa');
             if (caixaCache) db.caixa = caixaCache;
         }
@@ -749,6 +750,15 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
 
                 if (empData) {
                     window.currentEmpresaData = empData;
+                    const nomeEmpresaAtiva = empData.nomeEmpresa || empData.nome || localStorage.getItem('fc_nome_empresa_ativa') || (empId === 'emp_fc_moveis' ? 'FC Móveis' : 'Minha Loja');
+                    localStorage.setItem('fc_nome_empresa_ativa', nomeEmpresaAtiva);
+
+                    // Atualiza imediatamente o nome no cabeçalho/menu lateral se o elemento existir
+                    const elMenuNomePre = document.getElementById('menu-empresa-nome');
+                    if (elMenuNomePre) elMenuNomePre.innerText = nomeEmpresaAtiva;
+                    if (document.title && empId !== 'emp_fc_moveis' && document.title.includes('FC Móveis')) {
+                        document.title = document.title.replace('FC Móveis', nomeEmpresaAtiva);
+                    }
 
                     // Checagem de expiracao e bloqueio da assinatura / trial
                     const expInfo = typeof window._verificarExpiracaoSaaS === 'function'
@@ -820,12 +830,23 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                         window.getEmpresaRef().collection("funcionarios").doc(user.uid).get().catch(e => { console.error("Erro de permissões:", e); return null; })
                     ]);
 
+                    const empIdAtiva = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
+                    const nomeEmpresaPadrao = window.currentEmpresaData?.nomeEmpresa || window.currentEmpresaData?.nome || localStorage.getItem('fc_nome_empresa_ativa') || (empIdAtiva === 'emp_fc_moveis' ? 'FC Móveis' : 'Minha Loja');
+
                     if (confSnap && confSnap.exists) {
                         const dados = confSnap.data() || {};
+                        const empConfig = dados.empresa || {};
+                        // Se nome ou fantasia forem vazios ou faltantes, preenche com o nome da loja
+                        if (!empConfig.nome || empConfig.nome.trim() === '') {
+                            empConfig.nome = nomeEmpresaPadrao;
+                        }
+                        if (!empConfig.fantasia || empConfig.fantasia.trim() === '') {
+                            empConfig.fantasia = nomeEmpresaPadrao;
+                        }
                         const baseConfig = {
                             empresa: {
-                                nome: window.currentEmpresaData?.nomeEmpresa || '',
-                                fantasia: window.currentEmpresaData?.nomeEmpresa || '',
+                                nome: nomeEmpresaPadrao,
+                                fantasia: nomeEmpresaPadrao,
                                 cnpj: '', telefone: '', logo: ''
                             },
                             taxas: { 'Dinheiro': 0, 'PIX': 0, 'Cartão Débito': 0, 'Boleto': 0, 'Fiado': 0, 'Cartão Crédito': { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0 } },
@@ -835,14 +856,27 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                         db.config = {
                             ...baseConfig,
                             ...dados,
-                            empresa: { ...baseConfig.empresa, ...(dados.empresa || {}) },
+                            empresa: { ...baseConfig.empresa, ...empConfig },
                             taxas: dados.taxas || baseConfig.taxas,
                             prazos: dados.prazos || baseConfig.prazos,
                             loja: { ...baseConfig.loja, ...(dados.loja || {}) }
                         };
+
+                        // Auto-correção persistente no Firestore se estiver vazio no banco
+                        if (!dados.empresa || !dados.empresa.nome || !dados.empresa.fantasia) {
+                            window.getEmpresaRef().collection('configuracoes').doc('config').set({
+                                empresa: {
+                                    nome: nomeEmpresaPadrao,
+                                    fantasia: nomeEmpresaPadrao
+                                }
+                            }, { merge: true }).catch(() => {});
+                        }
+
                         if (typeof window.FCCache !== 'undefined') {
                             window.FCCache.set('config', db.config);
-                            window.FCCache.set('fc_moveis_config', db.config);
+                            if (empIdAtiva === 'emp_fc_moveis') {
+                                window.FCCache.set('fc_moveis_config', db.config);
+                            }
                         }
                         if (typeof window.ajustarOpcoesOperacaoPDV === 'function') {
                             try { window.ajustarOpcoesOperacaoPDV(); } catch (e) {}
@@ -850,8 +884,8 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                     } else if (confSnap && !confSnap.exists) {
                         const novaConfig = {
                             empresa: {
-                                nome: window.currentEmpresaData?.nomeEmpresa || '',
-                                fantasia: window.currentEmpresaData?.nomeEmpresa || '',
+                                nome: nomeEmpresaPadrao,
+                                fantasia: nomeEmpresaPadrao,
                                 cnpj: '', telefone: '', logo: ''
                             },
                             taxas: { 'Dinheiro': 0, 'PIX': 0, 'Cartão Débito': 0, 'Boleto': 0, 'Fiado': 0, 'Cartão Crédito': { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0 } },
@@ -862,7 +896,9 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                         await window.getEmpresaRef().collection('configuracoes').doc('config').set(novaConfig).catch(() => {});
                         if (typeof window.FCCache !== 'undefined') {
                             window.FCCache.set('config', db.config);
-                            window.FCCache.set('fc_moveis_config', db.config);
+                            if (empIdAtiva === 'emp_fc_moveis') {
+                                window.FCCache.set('fc_moveis_config', db.config);
+                            }
                         }
                     }
 
@@ -1828,10 +1864,20 @@ function aplicarIdentidadeVisualGlobal() {
     const elPlaceholder = document.getElementById('menu-logo-placeholder');
 
     const emp = (db.config && db.config.empresa) ? db.config.empresa : {};
-    const nomeEmpresa = emp.fantasia || emp.nome || 'FC Móveis';
+    const empIdAtiva = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
+    const fallbackNome = (window.currentEmpresaData?.nomeEmpresa) || (window.currentEmpresaData?.nome) || localStorage.getItem('fc_nome_empresa_ativa') || (empIdAtiva === 'emp_fc_moveis' ? 'FC Móveis' : 'Minha Loja');
+    const nomeEmpresa = (emp.fantasia && emp.fantasia.trim()) ? emp.fantasia : ((emp.nome && emp.nome.trim()) ? emp.nome : fallbackNome);
 
     if (elNome) {
         elNome.innerText = nomeEmpresa;
+    }
+
+    if (document.title && empIdAtiva !== 'emp_fc_moveis') {
+        if (document.title.includes('FC Móveis')) {
+            document.title = document.title.replace('FC Móveis', nomeEmpresa);
+        } else if (document.title.includes('FC Gestão')) {
+            document.title = document.title.replace('FC Gestão', nomeEmpresa);
+        }
     }
 
     if (elLogo && elPlaceholder) {
@@ -3585,9 +3631,13 @@ window.cadastrarOpcaoRapida = function(cat) {
     function obterDadosEmpresa() {
         const conf = (window.db && window.db.config) ? window.db.config : {};
         const emp = conf.empresa || {};
+        const empAtivaId = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
+        const fallbackNome = (window.currentEmpresaData?.nomeEmpresa) || (window.currentEmpresaData?.nome) || localStorage.getItem('fc_nome_empresa_ativa') || (empAtivaId === 'emp_fc_moveis' ? 'FC Móveis' : 'Minha Loja');
+        const nomeFinal = (emp.nome && emp.nome.trim()) ? emp.nome : ((emp.fantasia && emp.fantasia.trim()) ? emp.fantasia : fallbackNome);
+        const fantasiaFinal = (emp.fantasia && emp.fantasia.trim()) ? emp.fantasia : ((emp.nome && emp.nome.trim()) ? emp.nome : fallbackNome);
         return {
-            nome: emp.nome || emp.fantasia || 'FC Móveis e Interiores',
-            fantasia: emp.fantasia || emp.nome || 'FC Móveis',
+            nome: nomeFinal,
+            fantasia: fantasiaFinal,
             cnpj: emp.cnpj || emp.doc || '',
             telefone: emp.telefone || emp.wpp || emp.whatsapp || '',
             email: emp.email || '',

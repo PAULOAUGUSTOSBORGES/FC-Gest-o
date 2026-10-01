@@ -3116,7 +3116,8 @@ function imprimirDrilldownDRE() {
     const tableEl = document.getElementById('dre-drilldown-table');
     if (!tableEl) return showToast('Tabela de dados não encontrada para impressão.', 'error');
     
-    let empNome = db?.config?.empresa?.nome || 'FC Móveis';
+    const empAtivaId = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
+    let empNome = db?.config?.empresa?.nome || (window.currentEmpresaData?.nomeEmpresa) || localStorage.getItem('fc_nome_empresa_ativa') || (empAtivaId === 'emp_fc_moveis' ? 'FC Móveis' : 'Minha Loja');
     let logoHtml = db?.config?.empresa?.logo ? `<img src="${db.config.empresa.logo}" style="max-height: 50px; margin-bottom: 8px;">` : '';
 
     const htmlImpressao = `
@@ -4015,7 +4016,10 @@ window.exportarRelatorioExecutivoPDF = function() {
     }
 
     const periodoTexto = document.getElementById('bi-filtro-periodo')?.selectedOptions[0]?.text || 'Período Atual';
-    const empresaNome = document.getElementById('menu-empresa-nome')?.innerText || db?.config?.empresa?.nome || 'FC Móveis';
+    const empAtivaIdExp = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
+    const fallbackEmpNome = (window.currentEmpresaData?.nomeEmpresa) || localStorage.getItem('fc_nome_empresa_ativa') || (empAtivaIdExp === 'emp_fc_moveis' ? 'FC Móveis' : 'Minha Loja');
+    const elMenuEmp = document.getElementById('menu-empresa-nome')?.innerText;
+    const empresaNome = (elMenuEmp && elMenuEmp !== 'Carregando...') ? elMenuEmp : (db?.config?.empresa?.nome || fallbackEmpNome);
 
     const printArea = document.getElementById('print-area-relatorios');
     if (!printArea) {
@@ -4208,7 +4212,9 @@ function exportarDadosParaIA() {
 
     let lucroBruto = receitaBruta - custoTotal;
 
-    let relatorioTexto = `=== RELATÓRIO FINANCEIRO E DE GESTÃO - FC MÓVEIS ===\nData da exportação: ${new Date().toLocaleString('pt-BR')}\n\n`;
+    const empAtivaIdTxt = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
+    const nomeLojaRelV2 = (typeof obterDadosEmpresa === 'function' ? obterDadosEmpresa().nome : (window.currentEmpresaData?.nomeEmpresa || localStorage.getItem('fc_nome_empresa_ativa') || (empAtivaIdTxt === 'emp_fc_moveis' ? 'FC MÓVEIS' : 'MINHA LOJA')));
+    let relatorioTexto = `=== RELATÓRIO FINANCEIRO E DE GESTÃO - ${nomeLojaRelV2.toUpperCase()} ===\nData da exportação: ${new Date().toLocaleString('pt-BR')}\n\n`;
     relatorioTexto += `--- 1. DRE SIMPLIFICADA ---\n- Receita Bruta Total: R$ ${receitaBruta.toFixed(2)}\n- Custo da Mercadoria Vendida (CMV): R$ ${custoTotal.toFixed(2)}\n- Lucro Bruto Real: R$ ${lucroBruto.toFixed(2)}\n\n`;
     relatorioTexto += `--- 2. HISTÓRICO DE VENDAS RECENTES ---\n`;
     vendas.slice(-20).forEach((v, index) => { relatorioTexto += `[Venda ${index + 1}] Data: ${v.data || 'N/A'} | Total: R$ ${Number(v.total || 0).toFixed(2)} | Forma de Pagamento: ${v.pagamento || 'N/A'}\n`; });

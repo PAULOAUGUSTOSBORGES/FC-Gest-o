@@ -92,6 +92,11 @@ async function fazerLogin() {
             if (typeof window.FCCache !== 'undefined') {
                 try { await window.FCCache.invalidarTudo(); } catch(e) {}
             }
+            if (cred.user.email !== 'fabricadecoresgoiania@gmail.com') {
+                localStorage.removeItem('fc_moveis_config');
+                localStorage.removeItem('fc_moveis_caixa');
+                localStorage.removeItem('fc_moveis_produtos');
+            }
 
             // Buscar empresa do usuario
             try {
@@ -101,6 +106,7 @@ async function fazerLogin() {
                 } else if (cred.user.email === 'fabricadecoresgoiania@gmail.com') {
                     // Fallback exclusivo para a conta master
                     localStorage.setItem('fc_empresa_ativa', 'emp_fc_moveis');
+                    localStorage.setItem('fc_nome_empresa_ativa', 'FC Móveis');
                 } else {
                     console.error("Usuário sem empresa registrada.");
                     showToast('Conta sem loja vinculada. Crie uma nova conta.', 'error');
@@ -113,6 +119,7 @@ async function fazerLogin() {
                 console.error("Erro ao buscar empresa do usuario", e);
                 if (cred.user.email === 'fabricadecoresgoiania@gmail.com') {
                     localStorage.setItem('fc_empresa_ativa', 'emp_fc_moveis');
+                    localStorage.setItem('fc_nome_empresa_ativa', 'FC Móveis');
                 } else {
                     showToast('Erro ao identificar sua loja: ' + e.message, 'error');
                     await firebase.auth().signOut();
@@ -122,13 +129,18 @@ async function fazerLogin() {
                 }
             }
 
-            // Verificar se a empresa está com acesso bloqueado
+            // Verificar se a empresa está com acesso bloqueado e carregar o nome
             const empAtivaFinal = localStorage.getItem('fc_empresa_ativa');
-            if (empAtivaFinal && cred.user.email !== 'fabricadecoresgoiania@gmail.com') {
+            if (empAtivaFinal) {
                 try {
                     const empDoc = await firebase.firestore().collection('empresas').doc(empAtivaFinal).get();
                     if (empDoc.exists) {
-                        const statusEmp = empDoc.data().status;
+                        const empData = empDoc.data();
+                        const nomeEmp = empData.nomeEmpresa || empData.nome || (empAtivaFinal === 'emp_fc_moveis' ? 'FC Móveis' : 'Minha Loja');
+                        localStorage.setItem('fc_nome_empresa_ativa', nomeEmp);
+
+                        if (cred.user.email !== 'fabricadecoresgoiania@gmail.com') {
+                            const statusEmp = empData.status;
                         if (statusEmp === 'PENDENTE_PAGAMENTO') {
                             await firebase.auth().signOut();
                             localStorage.removeItem('fc_empresa_ativa');
