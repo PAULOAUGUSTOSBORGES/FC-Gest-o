@@ -83,6 +83,7 @@ function renderizarTodosEventosAgenda() {
             }
         });
     }
+    setTimeout(() => { if (calendar) calendar.updateSize(); }, 50);
 }
 
 function initCalendar() {
@@ -106,7 +107,7 @@ function initCalendar() {
         selectable: true,
         selectMirror: true,
         dayMaxEvents: true,
-        height: '100%',
+        height: 'auto',
         
         select: function(info) {
             abrirModalEvento(null, info.startStr, info.endStr);
@@ -145,7 +146,12 @@ function initCalendar() {
     });
     
     calendar.render();
+    setTimeout(() => { if (calendar) calendar.updateSize(); }, 100);
 }
+
+window.addEventListener('resize', () => {
+    if (calendar) calendar.updateSize();
+});
 
 function carregarEventos() {
     if (window.__paginaBloqueadaPorPermissao || (typeof window.verificarPermissaoRota === 'function' && !window.verificarPermissaoRota(window.location.pathname).permitido)) {

@@ -2748,17 +2748,16 @@ window.excluirVenda = function(id) {
             if(v.tipo !== 'ORÇAMENTO') {
                 if(v.itens && v.itens.length > 0) { 
                     v.itens.forEach(item => { 
-                        const p = (db.produtos || []).find(prod => String(prod.id) === String(item.id)); 
-                        if(p) { 
-                            const pRef = window.getEmpresaRef().collection('produtos').doc(String(p.id));
-                            batch.update(pRef, { estoque: (p.estoque || 0) + Number(item.qtd || 1) });
+                        if(item.id) { 
+                            const pRef = window.getEmpresaRef().collection('produtos').doc(String(item.id));
+                            batch.set(pRef, { estoque: firebase.firestore.FieldValue.increment(Number(item.qtd || 1)) }, { merge: true });
                             
                             const kardexRef = window.getEmpresaRef().collection('movimentacoes').doc();
                             batch.set(kardexRef, {
                                 data: new Date().toISOString(),
                                 ref: `Estorno de Exclusão ${v.tipo || 'VENDA'} #${numPedStr}`,
-                                prodId: p.id,
-                                prodNome: p.nome,
+                                prodId: item.id,
+                                prodNome: item.nome || 'Produto',
                                 qtd: Number(item.qtd || 1),
                                 tipo: 'ESTORNO'
                             });
@@ -2766,10 +2765,18 @@ window.excluirVenda = function(id) {
                     }); 
                 }
                 
-                const finQuery = await window.getEmpresaRef().collection('financeiro').where('origemVendaId', '==', String(id)).get();
-                finQuery.docs.forEach(doc => {
-                    batch.delete(doc.ref);
-                });
+                if (typeof window.removerFinanceiroVinculadoVenda === 'function') {
+                    await window.removerFinanceiroVinculadoVenda(id, v.numeroPedido, batch);
+                } else {
+                    const finQuery = await window.getEmpresaRef().collection('financeiro').where('origemVendaId', '==', String(id)).get();
+                    finQuery.docs.forEach(doc => {
+                        batch.delete(doc.ref);
+                    });
+                }
+
+                if (typeof window.excluirAgendamentoVinculadoVenda === 'function') {
+                    await window.excluirAgendamentoVinculadoVenda(id, v.numeroPedido);
+                }
                 
                 if(v.pag && typeof v.pag === 'string' && String(v.pag).includes('Dinheiro')) { 
                     let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
@@ -2779,6 +2786,10 @@ window.excluirVenda = function(id) {
                     
                     const caixaRef = window.getEmpresaRef().collection('caixa').doc('caixa_atual');
                     batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+                }
+            } else {
+                if (typeof window.excluirAgendamentoVinculadoVenda === 'function') {
+                    await window.excluirAgendamentoVinculadoVenda(id, v.numeroPedido);
                 }
             }
 

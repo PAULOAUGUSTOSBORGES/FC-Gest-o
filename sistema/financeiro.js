@@ -303,12 +303,16 @@ function mudarVisualizacaoFin(tipo) {
         if (calArea) calArea.classList.add('hidden');
         if (abasCont) abasCont.classList.remove('hidden');
         renderFinAbas('pagar'); 
-    } else if ((tipo === 'calendario' || tipo === 'Calendrio')) {
+    } else if (tipo === 'calendario' || tipo === 'Calendário' || tipo === 'Calendrio') {
         if (calBtn) calBtn.className = 'px-3.5 py-2 rounded-lg text-xs font-bold bg-blue-600 text-white shadow-md hover:bg-blue-700 transition-all whitespace-nowrap';
         if (listBtn) listBtn.className = 'px-3.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all whitespace-nowrap';
         document.querySelectorAll('.fin-area').forEach(el => el.classList.add('hidden'));
         if (calArea) calArea.classList.remove('hidden');
+        if (abasCont) abasCont.classList.add('hidden');
         if (typeof renderCalendarFin === 'function') renderCalendarFin();
+        setTimeout(() => {
+            if (finCalendarInstance) finCalendarInstance.updateSize();
+        }, 100);
     }
 }
 
@@ -764,6 +768,10 @@ function inicializarGestao() {
     _listen('financeiro', function(dados) {
         db.financeiro = dados;
         tentarRefresh();
+        const calArea = document.getElementById('fin-area-calendario');
+        if (calArea && !calArea.classList.contains('hidden') && typeof renderCalendarFin === 'function') {
+            renderCalendarFin();
+        }
     });
     _listen('compras', function(dados) {
         db.compras = dados;
@@ -4752,8 +4760,6 @@ window.verDetalhesVenda = async function(id) {
 
 let finCalendarInstance = null;
 function renderCalendarFin() {
-    if (!db.financeiro) return;
-    
     const calendarEl = document.getElementById('fin-calendar');
     if (!calendarEl) return;
     
@@ -4761,6 +4767,7 @@ function renderCalendarFin() {
         finCalendarInstance = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth',
             locale: 'pt-br',
+            height: 'auto',
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
@@ -4768,7 +4775,7 @@ function renderCalendarFin() {
             },
             buttonText: {
                 today: 'Hoje',
-                month: 'M�s',
+                month: 'Mês',
                 week: 'Semana',
                 list: 'Lista'
             },
@@ -4783,7 +4790,9 @@ function renderCalendarFin() {
     
     finCalendarInstance.removeAllEvents();
     
-    db.financeiro.forEach(f => {
+    const finList = (db && db.financeiro && Array.isArray(db.financeiro)) ? db.financeiro : [];
+    
+    finList.forEach(f => {
         if (f.status === 'CANCELADO' || f.status === 'RENEGOCIADO') return;
         
         let color = '#ef4444'; // DESPESA
@@ -4794,13 +4803,13 @@ function renderCalendarFin() {
             color = '#64748b'; // PAGO
         }
         
-        let dateStr = f.data;
-        if (dateStr && dateStr.includes('T')) {
+        let dateStr = f.data || f.dataVencimento || f.vencimento;
+        if (dateStr && typeof dateStr === 'string' && dateStr.includes('T')) {
             dateStr = dateStr.split('T')[0];
         }
         
         const valorFormatado = typeof window.formatMoney === 'function' ? window.formatMoney(f.valor) : ('R$ ' + parseFloat(f.valor||0).toFixed(2));
-        const titulo = (f.pessoa || 'Diversos') + ' - ' + valorFormatado;
+        const titulo = (f.pessoa || f.fornecedor || f.cliente || f.descricao || 'Diversos') + ' - ' + valorFormatado;
         
         if (dateStr) {
             finCalendarInstance.addEvent({
@@ -4813,5 +4822,13 @@ function renderCalendarFin() {
             });
         }
     });
+
+    setTimeout(() => {
+        if (finCalendarInstance) finCalendarInstance.updateSize();
+    }, 50);
 }
 window.renderCalendarFin = renderCalendarFin;
+
+window.addEventListener('resize', () => {
+    if (finCalendarInstance) finCalendarInstance.updateSize();
+});

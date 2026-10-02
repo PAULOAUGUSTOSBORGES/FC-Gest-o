@@ -36,10 +36,10 @@
         
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css?v=20261001153835">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261001153835">
+    <link rel="stylesheet" href="../style.css?v=20261001182521">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261001182521">
 </head>
-<body class="flex h-screen bg-slate-900 text-slate-800 dark:text-slate-100 flex items-center justify-center p-4">
+<body class="flex min-h-screen min-h-[100dvh] bg-slate-900 text-slate-800 dark:text-slate-100 items-center justify-center p-4">
 
     <div id="toast-container"></div>
 
@@ -53,21 +53,21 @@
         <p class="text-slate-500 dark:text-slate-400 text-sm mb-6" id="subtitulo-form">Portal de Acesso para Lojistas e Funcionários</p>
         
         <!-- Formulário de Login Oficial -->
-        <div class="space-y-3.5 mb-5 text-left">
+        <form id="form-login" onsubmit="event.preventDefault(); acaoPrincipal();" class="space-y-3.5 mb-5 text-left">
             <div>
                 <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">E-mail Cadastrado</label>
-                <input type="email" id="login-user" required placeholder="seuemail@empresa.com" aria-label="E-mail" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 px-4 py-2.5 rounded-lg focus:outline-none focus:border-blue-500 font-medium dark:text-white text-sm">
+                <input type="email" id="login-user" required autocomplete="username" placeholder="seuemail@empresa.com" aria-label="E-mail" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 px-4 py-2.5 rounded-lg focus:outline-none focus:border-blue-500 font-medium dark:text-white text-sm">
             </div>
 
             <div>
                 <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">Senha de Acesso</label>
-                <input type="password" id="login-pass" required placeholder="••••••••" aria-label="Senha" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 px-4 py-2.5 rounded-lg focus:outline-none focus:border-blue-500 font-medium dark:text-white text-sm" onkeypress="if(event.key === 'Enter') acaoPrincipal()">
+                <input type="password" id="login-pass" required autocomplete="current-password" placeholder="••••••••" aria-label="Senha" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 px-4 py-2.5 rounded-lg focus:outline-none focus:border-blue-500 font-medium dark:text-white text-sm">
             </div>
-        </div>
-        
-        <button id="btn-acao" onclick="acaoPrincipal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors shadow-md">
-            <i class="fa-solid fa-right-to-bracket mr-1.5"></i> Entrar no Sistema
-        </button>
+
+            <button id="btn-acao" type="submit" class="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold py-3.5 rounded-lg transition-colors shadow-md touch-manipulation cursor-pointer">
+                <i class="fa-solid fa-right-to-bracket mr-1.5"></i> Entrar no Sistema
+            </button>
+        </form>
         
         <!-- Divisor OU -->
         <div class="flex items-center my-4">
@@ -104,11 +104,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     
-    <script src="../sistema/config_banco.js?v=20261001153835"></script>
-    <script src="saas_licenca.js?v=20261001153835"></script>
-    <script src="../global.js?v=20261001153835"></script>
-    <script src="fc_cache.js?v=20261001153835"></script>
-    <script src="login.js?v=20261001153835"></script>
+    <script src="../sistema/config_banco.js?v=20261001182521"></script>
+    <script src="saas_licenca.js?v=20261001182521"></script>
+    <script src="../global.js?v=20261001182521"></script>
+    <script src="fc_cache.js?v=20261001182521"></script>
+    <script src="login.js?v=20261001182521"></script>
 </body>
 </html>
 

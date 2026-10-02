@@ -61,6 +61,16 @@ foreach ($file in $htmlFiles) {
     }
 }
 
+# Atualiza versão do cache no Service Worker (sw.js) para forçar atualização em celulares e PWAs
+$swPath = Join-Path $root "sw.js"
+if (Test-Path $swPath) {
+    $swContent = [System.IO.File]::ReadAllText($swPath, [System.Text.Encoding]::UTF8)
+    $swContent = $swContent -replace "const CACHE_NAME = 'fc-gestao-cache-[^']+';", "const CACHE_NAME = 'fc-gestao-cache-v$versao';"
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText($swPath, $swContent, $utf8NoBom)
+    Write-Host "Service Worker (sw.js) atualizado para versao: fc-gestao-cache-v$versao" -ForegroundColor Green
+}
+
 Write-Host "=======================================================" -ForegroundColor Cyan
 Write-Host "Concluido! $arquivosAtualizados arquivos HTML atualizados." -ForegroundColor Green
 Write-Host "Sempre que voce publicar na nuvem, o navegador dos seus clientes"

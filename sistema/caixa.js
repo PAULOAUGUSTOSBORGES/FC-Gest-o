@@ -4520,13 +4520,22 @@ window.cancelarVendaPendentePDV = function(vendaId) {
                 }
 
                 // Remove títulos financeiros vinculados a este pedido, se houver
-                try {
-                    const snapFin = await empRef.collection('financeiro').where('origemVendaId', '==', String(vendaId)).get();
-                    snapFin.forEach(fDoc => {
-                        batch.delete(fDoc.ref);
-                    });
-                } catch(eFin) {
-                    console.warn('Aviso ao consultar financeiro no cancelamento:', eFin);
+                if (typeof window.removerFinanceiroVinculadoVenda === 'function') {
+                    await window.removerFinanceiroVinculadoVenda(vendaId, v.numeroPedido, batch);
+                } else {
+                    try {
+                        const snapFin = await empRef.collection('financeiro').where('origemVendaId', '==', String(vendaId)).get();
+                        snapFin.forEach(fDoc => {
+                            batch.delete(fDoc.ref);
+                        });
+                    } catch(eFin) {
+                        console.warn('Aviso ao consultar financeiro no cancelamento:', eFin);
+                    }
+                }
+
+                // Remove agendamento vinculado a este pedido na agenda de eventos
+                if (typeof window.excluirAgendamentoVinculadoVenda === 'function') {
+                    await window.excluirAgendamentoVinculadoVenda(vendaId, v.numeroPedido);
                 }
 
                 await batch.commit();

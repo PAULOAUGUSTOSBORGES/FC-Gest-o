@@ -2777,7 +2777,7 @@ async function finalizarVendaMultipla() {
     const inputLembreteData = document.getElementById('pdv-lembrete-data');
     if (inputLembreteData) {
         const hojeStr = new Date().toISOString().split('T')[0];
-        inputLembreteData.value = hojeStr;
+        inputLembreteData.value = dataEntregaFinal || hojeStr;
     }
     const inputLembreteHora = document.getElementById('pdv-lembrete-hora');
     if (inputLembreteHora) inputLembreteHora.value = '';
@@ -3277,7 +3277,7 @@ async function executarEstornoEEdicao(id) {
                 v.itens.forEach(item => {
                     if(item.id) {
                         const pRef = window.getEmpresaRef().collection('produtos').doc(String(item.id));
-                        batch.update(pRef, { estoque: firebase.firestore.FieldValue.increment(Number(item.qtd || 1)) });
+                        batch.set(pRef, { estoque: firebase.firestore.FieldValue.increment(Number(item.qtd || 1)) }, { merge: true });
                         
                         const kardexRef = window.getEmpresaRef().collection('movimentacoes').doc();
                         batch.set(kardexRef, {
@@ -3292,10 +3292,20 @@ async function executarEstornoEEdicao(id) {
                 });
             }
             
-            const finQuery = await window.getEmpresaRef().collection('financeiro').where('origemVendaId', '==', String(id)).get();
-            finQuery.docs.forEach(doc => {
-                batch.delete(doc.ref);
-            });
+            // Remove títulos vinculados no Firestore e limpa memória viva (db.financeiro) e IndexedDB (FCCache)
+            if (typeof window.removerFinanceiroVinculadoVenda === 'function') {
+                await window.removerFinanceiroVinculadoVenda(id, v.numeroPedido, batch);
+            } else {
+                const finQuery = await window.getEmpresaRef().collection('financeiro').where('origemVendaId', '==', String(id)).get();
+                finQuery.docs.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+            }
+
+            // Remove agendamento / lembrete vinculado à venda na Agenda (agenda_eventos)
+            if (typeof window.excluirAgendamentoVinculadoVenda === 'function') {
+                await window.excluirAgendamentoVinculadoVenda(id, v.numeroPedido);
+            }
             
             // Estorno de Caixa Físico Preciso (Apenas dinheiro em espécie)
             let valorDinheiroEfetivo = 0;
@@ -3321,10 +3331,26 @@ async function executarEstornoEEdicao(id) {
                     : window.getEmpresaRef().collection('caixa').doc('caixa_atual');
                 batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
             }
+        } else {
+            // Em orçamentos, garante que qualquer agendamento vinculado também seja removido
+            if (typeof window.excluirAgendamentoVinculadoVenda === 'function') {
+                await window.excluirAgendamentoVinculadoVenda(id, v.numeroPedido);
+            }
         }
         const vendaRef = window.getEmpresaRef().collection('vendas').doc(String(id));
         batch.delete(vendaRef);
         
+        // Remove da memória local e cache imediatamente
+        if (typeof db !== 'undefined' && Array.isArray(db.vendas)) {
+            db.vendas = db.vendas.filter(x => String(x.id) !== String(id));
+        }
+        if (typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) {
+            window.db.vendas = window.db.vendas.filter(x => String(x.id) !== String(id));
+        }
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.removerItem === 'function') {
+            await window.FCCache.removerItem('vendas', id);
+        }
+
         await batch.commit(); 
 
         pdvLimpar(); 
@@ -3444,7 +3470,7 @@ function excluirVenda(id) {
                     v.itens.forEach(item => {
                         if (item.id) {
                             const pRef = window.getEmpresaRef().collection('produtos').doc(String(item.id));
-                            batch.update(pRef, { estoque: firebase.firestore.FieldValue.increment(Number(item.qtd || 1)) });
+                            batch.set(pRef, { estoque: firebase.firestore.FieldValue.increment(Number(item.qtd || 1)) }, { merge: true });
                             
                             const kardexRef = window.getEmpresaRef().collection('movimentacoes').doc();
                             batch.set(kardexRef, {
@@ -3459,8 +3485,18 @@ function excluirVenda(id) {
                     });
                 }
 
-                const finQuery = await window.getEmpresaRef().collection('financeiro').where('origemVendaId', '==', String(id)).get();
-                finQuery.docs.forEach(doc => batch.delete(doc.ref));
+                // Remove títulos financeiros vinculados no Firestore e atualiza memória e FCCache
+                if (typeof window.removerFinanceiroVinculadoVenda === 'function') {
+                    await window.removerFinanceiroVinculadoVenda(id, v.numeroPedido, batch);
+                } else {
+                    const finQuery = await window.getEmpresaRef().collection('financeiro').where('origemVendaId', '==', String(id)).get();
+                    finQuery.docs.forEach(doc => batch.delete(doc.ref));
+                }
+
+                // Remove agendamento vinculado à venda na Agenda de eventos
+                if (typeof window.excluirAgendamentoVinculadoVenda === 'function') {
+                    await window.excluirAgendamentoVinculadoVenda(id, v.numeroPedido);
+                }
 
                 let valorDinheiroEfetivo = 0;
                 if (Array.isArray(v.pagamentos) && v.pagamentos.length > 0) {
@@ -3483,6 +3519,10 @@ function excluirVenda(id) {
                         ? window.obterCaixaDocRef(targetOpUid) 
                         : window.getEmpresaRef().collection('caixa').doc('caixa_atual');
                     batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+                }
+            } else {
+                if (typeof window.excluirAgendamentoVinculadoVenda === 'function') {
+                    await window.excluirAgendamentoVinculadoVenda(id, v.numeroPedido);
                 }
             }
 

@@ -679,9 +679,16 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
             return;
         }
 
+function isContaMasterGlobal(email) {
+    if (!email) return false;
+    const e = email.toLowerCase().trim();
+    return e === 'fabricadecoresgoiania@gmail.com' || e === 'pauloaugusto.silvaborges@gmail.com';
+}
+window.isContaMasterGlobal = isContaMasterGlobal;
+
         // Se já está logado e abriu a tela de login, vai direto para o sistema
         if (isLoginPage) {
-            if (!window._fazendoLogin) {
+            if (!window._fazendoLogin && !sessionStorage.getItem('fc_google_redirect_pendente')) {
                 window.location.href = 'index.html';
             }
             return;
@@ -720,13 +727,13 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                 if (uDoc.exists && uDoc.data().empresaId) {
                     empId = uDoc.data().empresaId;
                     localStorage.setItem('fc_empresa_ativa', empId);
-                } else if (user.email === 'fabricadecoresgoiania@gmail.com') {
+                } else if (isContaMasterGlobal(user.email)) {
                     empId = 'emp_fc_moveis';
                     localStorage.setItem('fc_empresa_ativa', empId);
                 }
             } catch(e) {
                 console.error("Erro ao resolver empresa do usuário:", e);
-                if (user.email === 'fabricadecoresgoiania@gmail.com') {
+                if (isContaMasterGlobal(user.email)) {
                     empId = 'emp_fc_moveis';
                     localStorage.setItem('fc_empresa_ativa', empId);
                 }
@@ -905,8 +912,8 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                     if (userSnap && userSnap.exists) {
                         window.currentUserInfo = userSnap.data();
                         
-                        // CORRE??O: Garante admin para o email correto
-                        if (user.email === 'fabricadecoresgoiania@gmail.com' && !window.currentUserInfo.isAdmin) {
+                        // CORREÇÃO: Garante admin para as contas master
+                        if (isContaMasterGlobal(user.email) && !window.currentUserInfo.isAdmin) {
                             window.currentUserInfo.isAdmin = true;
                             window.currentUserInfo.perm_dashboard = true;
                             window.currentUserInfo.perm_pdv = true;
@@ -935,8 +942,8 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                         // Usuário não cadastrado na base de funcionários
                         window.currentUserInfo = { isAdmin: false, perm_dashboard: false, perm_pdv: false, perm_cadastros: false, perm_produtos: false, perm_clientes: false, perm_gestao: false, perm_config: false };
                         
-                        // CORRE??O: Garante admin na criação do cadastro
-                        if (user.email === 'fabricadecoresgoiania@gmail.com') {
+                        // CORREÇÃO: Garante admin na criação do cadastro
+                        if (isContaMasterGlobal(user.email)) {
                             window.currentUserInfo.isAdmin = true;
                             window.currentUserInfo.perm_dashboard = true;
                             window.currentUserInfo.perm_pdv = true;
@@ -2056,11 +2063,206 @@ window.reimprimirVenda = function(id) {
     }
 };
 
+// ==========================================
+// FUNÇÕES AUXILIARES DE ESTORNO DE VENDAS
+// ==========================================
+
+// Exclui qualquer lembrete/agendamento vinculado a esta venda no documento configuracoes/config (agenda_eventos)
+window.excluirAgendamentoVinculadoVenda = async function(vendaId, numeroPedido) {
+    if (!vendaId && !numeroPedido) return;
+    try {
+        if (typeof window.getEmpresaRef !== 'function') return;
+        const configRef = window.getEmpresaRef().collection('configuracoes').doc('config');
+        const configSnap = await configRef.get();
+        if (!configSnap.exists) return;
+
+        const configData = configSnap.data() || {};
+        const agenda = configData.agenda_eventos || {};
+        const updatesAgenda = {};
+        let encontrou = false;
+
+        const vIdStr = String(vendaId || '');
+        const numPedStr = numeroPedido ? String(numeroPedido).padStart(4, '0') : '';
+        const numPedRaw = numeroPedido ? String(numeroPedido) : '';
+
+        Object.keys(agenda).forEach(k => {
+            const ev = agenda[k];
+            if (!ev) return;
+            const evVendaId = String(ev.vendaId || '');
+            const evNumPed = String(ev.numeroPedido || '');
+            const evTitulo = String(ev.titulo || '');
+
+            const matchVendaId = vIdStr && (evVendaId === vIdStr);
+            const matchNumPed = (numPedStr || numPedRaw) && (
+                evNumPed === numPedStr ||
+                evNumPed === numPedRaw ||
+                (numPedStr && evTitulo.includes('#' + numPedStr)) ||
+                (numPedRaw && evTitulo.includes('#' + numPedRaw))
+            );
+
+            if (matchVendaId || matchNumPed) {
+                updatesAgenda[`agenda_eventos.${k}`] = firebase.firestore.FieldValue.delete();
+                delete agenda[k];
+                encontrou = true;
+            }
+        });
+
+        if (encontrou) {
+            await configRef.update(updatesAgenda);
+            if (typeof agendaEventsData !== 'undefined' && agendaEventsData) {
+                Object.keys(updatesAgenda).forEach(upKey => {
+                    const cleanKey = upKey.replace('agenda_eventos.', '');
+                    delete agendaEventsData[cleanKey];
+                });
+            }
+            if (typeof window.renderizarTodosEventosAgenda === 'function') {
+                try { window.renderizarTodosEventosAgenda(); } catch(e) {}
+            }
+            if (window.FCCache && typeof window.FCCache.atualizarItem === 'function') {
+                window.FCCache.atualizarItem('configuracoes', 'config', { agenda_eventos: agenda });
+            }
+        }
+    } catch (eAgenda) {
+        console.warn('[Agendamento] Erro ao remover agendamento vinculado à venda:', eAgenda);
+    }
+};
+
+// Remove títulos financeiros vinculados a esta venda tanto do Firestore quanto da memória viva e do FCCache (IndexedDB)
+window.removerFinanceiroVinculadoVenda = async function(vendaId, numeroPedido, batch) {
+    if (!vendaId && !numeroPedido) return [];
+    const idsParaDeletar = new Set();
+    const docsRefsParaDeletar = [];
+
+    const vIdStr = String(vendaId || '');
+    const numPedStr = numeroPedido ? String(numeroPedido).padStart(4, '0') : '';
+    const numPedRaw = numeroPedido ? String(numeroPedido) : '';
+
+    try {
+        if (typeof window.getEmpresaRef === 'function') {
+            const colFin = window.getEmpresaRef().collection('financeiro');
+
+            if (vIdStr) {
+                // 1. Por origemVendaId (String)
+                const q1 = await colFin.where('origemVendaId', '==', vIdStr).get();
+                q1.forEach(d => { idsParaDeletar.add(d.id); docsRefsParaDeletar.push(d.ref); });
+
+                // 2. Por origemVendaId (Number, se aplicável)
+                const numVal = Number(vIdStr);
+                if (!isNaN(numVal) && String(numVal) === vIdStr) {
+                    const q1Num = await colFin.where('origemVendaId', '==', numVal).get();
+                    q1Num.forEach(d => { idsParaDeletar.add(d.id); docsRefsParaDeletar.push(d.ref); });
+                }
+
+                // 3. Por idVenda (String)
+                const q2 = await colFin.where('idVenda', '==', vIdStr).get();
+                q2.forEach(d => { idsParaDeletar.add(d.id); docsRefsParaDeletar.push(d.ref); });
+
+                // 4. Por idVenda (Number, se aplicável)
+                if (!isNaN(numVal) && String(numVal) === vIdStr) {
+                    const q2Num = await colFin.where('idVenda', '==', numVal).get();
+                    q2Num.forEach(d => { idsParaDeletar.add(d.id); docsRefsParaDeletar.push(d.ref); });
+                }
+            }
+
+            // 5. Por número do pedido, se disponível
+            if (numPedRaw) {
+                const numP = Number(numPedRaw);
+                if (!isNaN(numP)) {
+                    const qPedNum = await colFin.where('numeroPedido', '==', numP).get();
+                    qPedNum.forEach(d => { idsParaDeletar.add(d.id); docsRefsParaDeletar.push(d.ref); });
+                }
+                const qPedStr = await colFin.where('numeroPedido', '==', numPedRaw).get();
+                qPedStr.forEach(d => { idsParaDeletar.add(d.id); docsRefsParaDeletar.push(d.ref); });
+            }
+        }
+    } catch(eFinFirestore) {
+        console.warn('[Financeiro] Erro ao consultar Firestore no estorno da venda:', eFinFirestore);
+    }
+
+    // 6. Varredura no repositório em memória viva (db.financeiro / window.db.financeiro)
+    const listaFinMemoria = (typeof db !== 'undefined' && Array.isArray(db.financeiro))
+        ? db.financeiro
+        : ((typeof window.db !== 'undefined' && Array.isArray(window.db.financeiro)) ? window.db.financeiro : []);
+
+    listaFinMemoria.forEach(f => {
+        if (!f || !f.id) return;
+        const fOrigem = String(f.origemVendaId || '');
+        const fIdVenda = String(f.idVenda || '');
+        const fNumPed = String(f.numeroPedido || '');
+        const fRef = String(f.ref || '');
+
+        const matchId = vIdStr && (fOrigem === vIdStr || fIdVenda === vIdStr);
+        const matchPedido = (numPedStr || numPedRaw) && (
+            (numPedStr && fNumPed === numPedStr) ||
+            (numPedRaw && fNumPed === numPedRaw) ||
+            (f.categoria === 'Vendas' && (
+                (numPedStr && fRef.includes(`Venda #${numPedStr}`)) ||
+                (numPedRaw && fRef.includes(`Venda #${numPedRaw}`)) ||
+                (numPedStr && fRef.includes(`Pedido #${numPedStr}`)) ||
+                (numPedRaw && fRef.includes(`Pedido #${numPedRaw}`)) ||
+                (numPedStr && fRef.includes(`#${numPedStr}`)) ||
+                (numPedRaw && fRef.includes(`#${numPedRaw}`))
+            ))
+        );
+
+        if (matchId || matchPedido) {
+            idsParaDeletar.add(String(f.id));
+            if (typeof window.getEmpresaRef === 'function') {
+                docsRefsParaDeletar.push(window.getEmpresaRef().collection('financeiro').doc(String(f.id)));
+            }
+        }
+    });
+
+    // 7. Remove no Firestore: usa o batch recebido ou realiza a exclusão diretamente
+    if (batch && docsRefsParaDeletar.length > 0) {
+        const refsUnicos = new Map();
+        docsRefsParaDeletar.forEach(r => refsUnicos.set(r.path, r));
+        refsUnicos.forEach(r => batch.delete(r));
+    } else if (docsRefsParaDeletar.length > 0) {
+        try {
+            const b = firestore.batch();
+            const refsUnicos = new Map();
+            docsRefsParaDeletar.forEach(r => refsUnicos.set(r.path, r));
+            refsUnicos.forEach(r => b.delete(r));
+            await b.commit();
+        } catch(eCommitFin) {
+            console.warn('[Financeiro] Erro ao deletar títulos no Firestore:', eCommitFin);
+        }
+    }
+
+    // 8. Remove da memória local imediatamente
+    if (idsParaDeletar.size > 0) {
+        if (typeof db !== 'undefined' && Array.isArray(db.financeiro)) {
+            db.financeiro = db.financeiro.filter(f => !idsParaDeletar.has(String(f.id)));
+        }
+        if (typeof window.db !== 'undefined' && Array.isArray(window.db.financeiro)) {
+            window.db.financeiro = window.db.financeiro.filter(f => !idsParaDeletar.has(String(f.id)));
+        }
+
+        // 9. Remove do FCCache (IndexedDB e sessionStorage)
+        if (typeof window.FCCache !== 'undefined') {
+            idsParaDeletar.forEach(fid => {
+                if (typeof window.FCCache.removerItem === 'function') {
+                    window.FCCache.removerItem('financeiro', fid);
+                }
+            });
+            if (typeof window.FCCache.set === 'function') {
+                const finRestante = (typeof db !== 'undefined' && db.financeiro) ? db.financeiro : (window.db && window.db.financeiro);
+                if (finRestante) window.FCCache.set('financeiro', finRestante);
+            }
+        }
+
+        try { localStorage.setItem('fc_sync_trigger', Date.now()); } catch(e) {}
+    }
+
+    return Array.from(idsParaDeletar);
+};
+
 window.excluirVenda = function(id) {
     const v = (window.db && window.db.vendas) ? window.db.vendas.find(x => String(x.id) === String(id)) : null; 
     if(!v) return showToast('Venda não encontrada.', 'error'); 
 
-    const isOrcamento = v.tipo === 'OR?AMENTO'; 
+    const isOrcamento = v.tipo === 'ORÇAMENTO'; 
     const msg = isOrcamento 
         ? 'Deseja excluir este orçamento?' 
         : 'Atenção! Isso fará a exclusão completa desta venda (devolvendo estoque e apagando as parcelas do financeiro). Deseja continuar?';
@@ -2073,17 +2275,16 @@ window.excluirVenda = function(id) {
             if(!isOrcamento) {
                 if(v.itens && v.itens.length > 0) { 
                     v.itens.forEach(item => { 
-                        const p = (window.db.produtos || []).find(prod => String(prod.id) === String(item.id)); 
-                        if(p) { 
-                            const pRef = window.getEmpresaRef().collection('produtos').doc(String(p.id));
-                            batch.update(pRef, { estoque: firebase.firestore.FieldValue.increment(Number(item.qtd || 1)) });
+                        if(item.id) {
+                            const pRef = window.getEmpresaRef().collection('produtos').doc(String(item.id));
+                            batch.set(pRef, { estoque: firebase.firestore.FieldValue.increment(Number(item.qtd || 1)) }, { merge: true });
                             
                             const kardexRef = window.getEmpresaRef().collection('movimentacoes').doc();
                             batch.set(kardexRef, {
                                 data: new Date().toISOString(),
                                 ref: 'Estorno (Exclusão) ' + (v.tipo || 'Venda') + ' #' + numPedStr,
-                                prodId: p.id,
-                                prodNome: p.nome,
+                                prodId: item.id,
+                                prodNome: item.nome || 'Produto',
                                 qtd: Number(item.qtd || 1),
                                 tipo: 'ESTORNO'
                             });
@@ -2091,10 +2292,8 @@ window.excluirVenda = function(id) {
                     }); 
                 }
                 
-                const finQuery = await window.getEmpresaRef().collection('financeiro').where('origemVendaId', '==', String(id)).get();
-                finQuery.docs.forEach(doc => {
-                    batch.delete(doc.ref);
-                });
+                await window.removerFinanceiroVinculadoVenda(id, v.numeroPedido, batch);
+                await window.excluirAgendamentoVinculadoVenda(id, v.numeroPedido);
                 
                 // Cálculo preciso do montante efetivamente pago em dinheiro
                 let valorDinheiroEfetivo = 0;
