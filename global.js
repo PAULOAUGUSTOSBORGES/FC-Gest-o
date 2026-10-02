@@ -2697,137 +2697,331 @@ async function obterVendaFiscal(vendaOrId) {
  * 4) Dos campos `v.formaPagamento` / `v.pagamento` / `v.metodo`
  * 5) Fallback padrão 'Dinheiro'
  */
+function formatarDataBrLocal(d) {
+    if (!d) return '';
+    try {
+        const str = String(d).trim();
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) return str;
+        if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+            const p = str.split('T')[0].split('-');
+            return `${p[2]}/${p[1]}/${p[0]}`;
+        }
+        const dt = new Date(d);
+        if (isNaN(dt.getTime())) return str.replace(',', '').trim();
+        const dia = String(dt.getDate()).padStart(2, '0');
+        const mes = String(dt.getMonth() + 1).padStart(2, '0');
+        const ano = dt.getFullYear();
+        return `${dia}/${mes}/${ano}`;
+    } catch (e) {
+        return String(d).replace(',', '').trim();
+    }
+}
+
 function extrairPagamentosNota(v, nota) {
-    const xml = nota?.xml_conteudo || v?.fiscal_xml || v?.nfce?.xml_conteudo || v?.nfe?.xml_conteudo || v?.rawAvulsa?.xml_conteudo || '';
-    const totalNota = Number(v?.totalLiquido || v?.tot || v?.valorLiquido || v?.total || nota?.valor || 0);
+    try {
+        const rawXml = nota?.xml_conteudo || v?.fiscal_xml || v?.nfce?.xml_conteudo || v?.nfe?.xml_conteudo || v?.rawAvulsa?.xml_conteudo || '';
+        const xml = typeof rawXml === 'string' ? rawXml : '';
+        const totalNota = Number(v?.totalLiquido || v?.tot || v?.valorLiquido || v?.total || nota?.valor || 0);
+        const dataEmissaoRaw = nota?.data_emissao || v?.data || new Date().toISOString();
+        const dataBaseApenas = formatarDataBrLocal(dataEmissaoRaw);
 
-    // 1. Tentar extrair do XML da SEFAZ
-    if (xml && xml.includes('<detPag>')) {
-        const detPags = [];
-        const regexDetPag = /<detPag>([\s\S]*?)<\/detPag>/g;
-        let match;
         const nomesSefaz = {
-            '01': 'Dinheiro',
-            '02': 'Cheque',
-            '03': 'Cartão de Crédito',
-            '04': 'Cartão de Débito',
-            '05': 'Crédito Loja',
-            '10': 'Vale Alimentação',
-            '11': 'Vale Refeição',
-            '12': 'Vale Presente',
-            '13': 'Vale Combustível',
-            '14': 'Duplicata Mercantil',
-            '15': 'Boleto Bancário',
-            '16': 'Depósito Bancário',
-            '17': 'Pagamento Instantâneo (PIX)',
-            '18': 'Transferência Bancária',
-            '19': 'Programa de Fidelidade',
-            '20': 'PIX',
-            '90': 'Sem Pagamento',
-            '99': 'Outros'
+            '01': 'Dinheiro', '02': 'Cheque', '03': 'Cartão de Crédito', '04': 'Cartão de Débito',
+            '05': 'Crédito Loja', '10': 'Vale Alimentação', '11': 'Vale Refeição', '12': 'Vale Presente',
+            '13': 'Vale Combustível', '14': 'Duplicata Mercantil', '15': 'Boleto Bancário',
+            '16': 'Depósito Bancário', '17': 'Pagamento Instantâneo (PIX)', '18': 'Transferência Bancária',
+            '19': 'Programa de Fidelidade', '20': 'PIX', '90': 'Sem Pagamento', '99': 'Outros'
         };
 
-        while ((match = regexDetPag.exec(xml)) !== null) {
-            const bloco = match[1];
-            const tPagMatch = bloco.match(/<tPag>(\d+)<\/tPag>/);
-            const vPagMatch = bloco.match(/<vPag>([\d\.]+)<\/vPag>/);
-            const xPagMatch = bloco.match(/<xPag>([\s\S]*?)<\/xPag>/);
-            
-            if (tPagMatch && vPagMatch) {
-                const cod = tPagMatch[1].padStart(2, '0');
-                const val = parseFloat(vPagMatch[1]) || 0;
-                let nome = nomesSefaz[cod] || `Outros (${cod})`;
-                if (cod === '99' && xPagMatch && xPagMatch[1].trim()) {
-                    nome = xPagMatch[1].trim();
-                } else if (cod === '17' || cod === '20') {
-                    nome = 'PIX';
+        // 1. Extrair <dup> do XML se existir
+        const dupsXml = [];
+        if (xml && xml.includes('<dup>')) {
+            const regexDup = /<dup>([\s\S]*?)<\/dup>/g;
+            let matchDup;
+            while ((matchDup = regexDup.exec(xml)) !== null) {
+                const bloco = matchDup[1];
+                const nDup = bloco.match(/<nDup>([\s\S]*?)<\/nDup>/)?.[1]?.trim() || '';
+                const dVenc = bloco.match(/<dVenc>([\s\S]*?)<\/dVenc>/)?.[1]?.trim() || '';
+                const vDup = parseFloat(bloco.match(/<vDup>([\d\.]+)<\/vDup>/)?.[1]) || 0;
+                if (vDup > 0 || dVenc) {
+                    dupsXml.push({
+                        numero: nDup || String(dupsXml.length + 1).padStart(3, '0'),
+                        vencimento: dVenc,
+                        vencimentoFormatado: formatarDataBrLocal(dVenc),
+                        valor: vDup
+                    });
                 }
-                detPags.push({ codigo: cod, nome, valor: val });
             }
         }
 
-        let troco = 0;
-        const trocoMatch = xml.match(/<vTroco>([\d\.]+)<\/vTroco>/);
-        if (trocoMatch) {
-            troco = parseFloat(trocoMatch[1]) || 0;
-        }
-
-        if (detPags.length > 0) {
-            return {
-                pagamentos: detPags,
-                troco,
-                textoResumo: detPags.map(p => p.nome).join(' + ')
-            };
-        }
-    }
-
-    // 2. Tentar extrair do array de pagamentos (v.pagamentos ou nota.pagamentos)
-    const listaArr = (v?.pagamentos && Array.isArray(v?.pagamentos) && v.pagamentos.length > 0)
-        ? v.pagamentos
-        : (nota?.pagamentos && Array.isArray(nota?.pagamentos) && nota.pagamentos.length > 0 ? nota.pagamentos : []);
-
-    if (listaArr.length > 0) {
-        const pagamentos = listaArr.map((p, idx) => {
-            const metodo = p.metodo || p.forma || p.formaPagamento || p.nome || 'Dinheiro';
-            const parcelas = parseInt(p.parcelas) || 1;
-            const parcTxt = parcelas > 1 ? ` (${parcelas}x)` : '';
-            const valor = (parseFloat(p.valor) || 0) || (listaArr.length === 1 ? totalNota : 0);
-            return {
-                codigo: '',
-                nome: `${metodo}${parcTxt}`,
-                valor,
-                parcelas,
-                vencimentoBase: p.vencimentoBase || ''
-            };
-        });
-        const soma = pagamentos.reduce((acc, p) => acc + p.valor, 0);
-        const troco = soma > totalNota ? (soma - totalNota) : 0;
-        return {
-            pagamentos,
-            troco,
-            textoResumo: pagamentos.map(p => p.nome).join(' + ')
-        };
-    }
-
-    // 3. Tentar extrair da string v.pag ou nota.pag
-    const pagStr = v?.pag || nota?.pag || '';
-    if (pagStr && typeof pagStr === 'string' && pagStr.trim()) {
-        if (pagStr.includes('+')) {
-            const partes = pagStr.split('+').map(s => s.trim()).filter(Boolean);
-            const pagamentos = partes.map(pt => {
-                const matchVal = pt.match(/\(R\$\s*([\d\.,]+)\)/i);
-                let valor = 0;
-                let nome = pt;
-                if (matchVal) {
-                    valor = parseFloat(matchVal[1].replace(/\./g, '').replace(',', '.')) || 0;
-                    nome = pt.replace(matchVal[0], '').trim();
+        // 2. Extrair <detPag> e <vTroco> do XML
+        const detPagsXml = [];
+        let trocoXml = 0;
+        if (xml && xml.includes('<detPag>')) {
+            const regexDetPag = /<detPag>([\s\S]*?)<\/detPag>/g;
+            let match;
+            while ((match = regexDetPag.exec(xml)) !== null) {
+                const bloco = match[1];
+                const tPagMatch = bloco.match(/<tPag>(\d+)<\/tPag>/);
+                const vPagMatch = bloco.match(/<vPag>([\d\.]+)<\/vPag>/);
+                const xPagMatch = bloco.match(/<xPag>([\s\S]*?)<\/xPag>/);
+                if (tPagMatch && vPagMatch) {
+                    const cod = tPagMatch[1].padStart(2, '0');
+                    const val = parseFloat(vPagMatch[1]) || 0;
+                    let nome = nomesSefaz[cod] || `Outros (${cod})`;
+                    if (cod === '99' && xPagMatch && xPagMatch[1].trim()) {
+                        nome = xPagMatch[1].trim();
+                    } else if (cod === '17' || cod === '20') {
+                        nome = 'PIX';
+                    }
+                    detPagsXml.push({ codigo: cod, nome, valor: val });
                 }
-                return { codigo: '', nome: nome || pt, valor };
+            }
+            const trocoMatch = xml.match(/<vTroco>([\d\.]+)<\/vTroco>/);
+            if (trocoMatch) trocoXml = parseFloat(trocoMatch[1]) || 0;
+        }
+
+        // 3. Obter lista de pagamentos do objeto de venda / nota
+        let listaArr = (v?.pagamentos && Array.isArray(v?.pagamentos) && v.pagamentos.length > 0)
+            ? v.pagamentos
+            : (nota?.pagamentos && Array.isArray(nota?.pagamentos) && nota.pagamentos.length > 0 ? nota.pagamentos : []);
+
+        if (listaArr.length === 0 && v?.condicaoPagamentoVendedor) {
+            listaArr = [v.condicaoPagamentoVendedor];
+        }
+
+        if (listaArr.length === 0 && (v?.pag || nota?.pag)) {
+            const pagStr = String(v?.pag || nota?.pag || '').trim();
+            if (pagStr && pagStr !== 'Sem Pagamento') {
+                if (pagStr.includes('+')) {
+                    const partes = pagStr.split('+').map(s => s.trim()).filter(Boolean);
+                    listaArr = partes.map(pt => {
+                        const matchVal = pt.match(/\(R\$\s*([\d\.,]+)\)/i);
+                        let valor = 0;
+                        let nome = pt;
+                        if (matchVal) {
+                            valor = parseFloat(matchVal[1].replace(/\./g, '').replace(',', '.')) || 0;
+                            nome = pt.replace(matchVal[0], '').trim();
+                        }
+                        const matchParc = String(nome).match(/\((\d+)x\)/i) || String(nome).match(/(\d+)x/i);
+                        const parcelas = matchParc ? parseInt(matchParc[1]) : 1;
+                        return { metodo: nome, valor, parcelas };
+                    });
+                } else {
+                    const matchVal = pagStr.match(/\(R\$\s*([\d\.,]+)\)/i);
+                    let valor = totalNota;
+                    let nome = pagStr;
+                    if (matchVal) {
+                        const vParsed = parseFloat(matchVal[1].replace(/\./g, '').replace(',', '.'));
+                        if (vParsed > 0) valor = vParsed;
+                        nome = pagStr.replace(matchVal[0], '').trim();
+                    }
+                    const matchParc = String(nome).match(/\((\d+)x\)/i) || String(nome).match(/(\d+)x/i);
+                    const parcelas = matchParc ? parseInt(matchParc[1]) : 1;
+                    listaArr = [{ metodo: nome, valor, parcelas }];
+                }
+            }
+        }
+
+        // 4. Buscar títulos do financeiro vinculados à venda se existirem
+        let titulosFinanceiro = [];
+        try {
+            if (typeof db !== 'undefined' && Array.isArray(db?.financeiro) && (v?.id || v?.numeroPedido)) {
+                const vIdStr = String(v?.id || '');
+                const numPedStr = String(v?.numeroPedido || v?.id || '');
+                titulosFinanceiro = db.financeiro.filter(f => {
+                    if (!f) return false;
+                    const origemIdStr = String(f.origemVendaId || f.origemId || '');
+                    const refStr = typeof f.ref === 'string' ? f.ref : (f.ref !== undefined && f.ref !== null ? String(f.ref) : '');
+                    const matchOrigem = vIdStr && origemIdStr === vIdStr;
+                    const matchPed = numPedStr && refStr && (refStr.includes('#' + numPedStr) || refStr === numPedStr);
+                    const isReceita = f.tipo === 'RECEITA' || !f.tipo;
+                    return (matchOrigem || matchPed) && isReceita;
+                }).sort((a, b) => new Date(a.data || 0) - new Date(b.data || 0));
+            }
+        } catch (eFin) {
+            console.warn('Erro ao filtrar titulos do financeiro:', eFin);
+        }
+
+        // 5. Se não achou pagamentos estruturados, mas tem detPagsXml
+        if (listaArr.length === 0 && detPagsXml.length > 0) {
+            listaArr = detPagsXml.map(dp => ({
+                metodo: dp.nome,
+                codigo: dp.codigo,
+                valor: dp.valor,
+                parcelas: 1
+            }));
+        }
+
+        const pagamentosProcessados = [];
+        const faturasProcessadas = [];
+
+        if (listaArr.length > 0) {
+            listaArr.forEach((p, pIdx) => {
+                if (!p) return;
+                let metodoNome = p.metodo || p.forma || p.formaPagamento || p.nome || '';
+                if (!metodoNome && detPagsXml[pIdx]) {
+                    metodoNome = detPagsXml[pIdx].nome;
+                }
+                if (!metodoNome) metodoNome = 'Dinheiro';
+                metodoNome = String(metodoNome);
+
+                let parcelas = parseInt(p.parcelas) || 0;
+                if (!parcelas && p.detalhesParcelas && Array.isArray(p.detalhesParcelas)) {
+                    parcelas = p.detalhesParcelas.length;
+                }
+                if (!parcelas && p.vencimentosPersonalizados && Array.isArray(p.vencimentosPersonalizados)) {
+                    parcelas = p.vencimentosPersonalizados.length;
+                }
+                if (!parcelas) {
+                    const matchX = metodoNome.match(/\((\d+)x\)/i) || metodoNome.match(/(\d+)x/i);
+                    if (matchX) parcelas = parseInt(matchX[1]);
+                }
+                if (!parcelas) parcelas = 1;
+
+                const valorTotalMetodo = (parseFloat(p.valor) || 0) || (listaArr.length === 1 ? totalNota : 0);
+                const parcelasDetalhes = [];
+
+                if (dupsXml.length > 0 && listaArr.length === 1) {
+                    dupsXml.forEach(d => {
+                        parcelasDetalhes.push({
+                            ...d,
+                            metodo: metodoNome
+                        });
+                    });
+                } else if (p.detalhesParcelas && Array.isArray(p.detalhesParcelas) && p.detalhesParcelas.length > 0) {
+                    p.detalhesParcelas.forEach((dp, i) => {
+                        if (!dp) return;
+                        const numStr = String(dp.parcela || i + 1).padStart(3, '0');
+                        const dtVenc = dp.vencimento || dp.data || '';
+                        const vParc = parseFloat(dp.valor) || (valorTotalMetodo / p.detalhesParcelas.length);
+                        parcelasDetalhes.push({
+                            numero: numStr,
+                            vencimento: dtVenc,
+                            vencimentoFormatado: formatarDataBrLocal(dtVenc) || dataBaseApenas,
+                            valor: vParc,
+                            metodo: metodoNome
+                        });
+                    });
+                } else if (titulosFinanceiro.length > 1 && titulosFinanceiro.length === parcelas) {
+                    titulosFinanceiro.forEach((tf, i) => {
+                        if (!tf) return;
+                        const numStr = String(i + 1).padStart(3, '0');
+                        const dtVenc = tf.data || tf.vencimento || '';
+                        const vParc = parseFloat(tf.valor) || (valorTotalMetodo / parcelas);
+                        parcelasDetalhes.push({
+                            numero: numStr,
+                            vencimento: dtVenc,
+                            vencimentoFormatado: formatarDataBrLocal(dtVenc) || dataBaseApenas,
+                            valor: vParc,
+                            metodo: metodoNome
+                        });
+                    });
+                } else if (parcelas > 1) {
+                    const baseCentavos = Math.floor((valorTotalMetodo / parcelas) * 100) / 100;
+                    const restoCentavos = Math.round((valorTotalMetodo - (baseCentavos * parcelas)) * 100) / 100;
+                    
+                    let dataRef = p.vencimentoBase ? new Date(p.vencimentoBase + 'T12:00:00') : new Date(dataEmissaoRaw);
+                    if (isNaN(dataRef.getTime())) dataRef = new Date();
+
+                    for (let i = 1; i <= parcelas; i++) {
+                        const numStr = String(i).padStart(3, '0');
+                        let dtVenc = '';
+                        if (p.vencimentosPersonalizados && p.vencimentosPersonalizados[i - 1]) {
+                            dtVenc = p.vencimentosPersonalizados[i - 1];
+                        } else {
+                            const d = new Date(dataRef);
+                            d.setDate(d.getDate() + (30 * (i - 1)));
+                            dtVenc = d.toISOString().split('T')[0];
+                        }
+                        const vParc = (i === 1) ? (baseCentavos + restoCentavos) : baseCentavos;
+                        parcelasDetalhes.push({
+                            numero: numStr,
+                            vencimento: dtVenc,
+                            vencimentoFormatado: formatarDataBrLocal(dtVenc) || dataBaseApenas,
+                            valor: vParc,
+                            metodo: metodoNome
+                        });
+                    }
+                } else {
+                    const dtVenc = p.vencimentoBase || (p.vencimentosPersonalizados && p.vencimentosPersonalizados[0]) || '';
+                    parcelasDetalhes.push({
+                        numero: '001',
+                        vencimento: dtVenc,
+                        vencimentoFormatado: dtVenc ? formatarDataBrLocal(dtVenc) : dataBaseApenas,
+                        valor: valorTotalMetodo,
+                        metodo: metodoNome
+                    });
+                }
+
+                const nomeMetodoComParc = (parcelas > 1 && !metodoNome.includes('x)')) 
+                    ? `${metodoNome} (${parcelas}x)` 
+                    : metodoNome;
+
+                pagamentosProcessados.push({
+                    codigo: p.codigo || (detPagsXml[pIdx]?.codigo) || '',
+                    nome: nomeMetodoComParc,
+                    metodo: metodoNome,
+                    valor: valorTotalMetodo,
+                    parcelas: parcelasDetalhes.length,
+                    vencimentoBase: p.vencimentoBase || (parcelasDetalhes[0]?.vencimento) || '',
+                    detalhesParcelas: parcelasDetalhes
+                });
+
+                parcelasDetalhes.forEach(pd => faturasProcessadas.push(pd));
             });
-            const soma = pagamentos.reduce((acc, p) => acc + p.valor, 0);
-            const troco = soma > totalNota ? (soma - totalNota) : 0;
-            return { pagamentos, troco, textoResumo: pagStr };
-        } else {
-            const matchVal = pagStr.match(/\(R\$\s*([\d\.,]+)\)/i);
-            let valor = totalNota;
-            let nome = pagStr;
-            if (matchVal) {
-                const vParsed = parseFloat(matchVal[1].replace(/\./g, '').replace(',', '.'));
-                if (vParsed > 0) valor = vParsed;
-                nome = pagStr.replace(matchVal[0], '').trim();
-            }
-            return { pagamentos: [{ codigo: '', nome: nome || pagStr, valor }], troco: 0, textoResumo: nome || pagStr };
         }
-    }
 
-    // 4. Campos avulsos
-    const formaAvulsa = v?.formaPagamento || v?.pagamento || v?.metodo || nota?.formaPagamento || nota?.metodo || '';
-    if (formaAvulsa) {
-        return { pagamentos: [{ codigo: '', nome: formaAvulsa, valor: totalNota }], troco: 0, textoResumo: formaAvulsa };
-    }
+        if (pagamentosProcessados.length === 0) {
+            pagamentosProcessados.push({
+                codigo: '01',
+                nome: 'Dinheiro',
+                metodo: 'Dinheiro',
+                valor: totalNota,
+                parcelas: 1,
+                detalhesParcelas: [{
+                    numero: '001',
+                    vencimento: '',
+                    vencimentoFormatado: dataBaseApenas,
+                    valor: totalNota,
+                    metodo: 'Dinheiro'
+                }]
+            });
+            faturasProcessadas.push({
+                numero: '001',
+                vencimento: '',
+                vencimentoFormatado: dataBaseApenas,
+                valor: totalNota,
+                metodo: 'Dinheiro'
+            });
+        }
 
-    // 5. Fallback final
-    return { pagamentos: [{ codigo: '01', nome: 'Dinheiro', valor: totalNota }], troco: 0, textoResumo: 'Dinheiro' };
+        const somaPag = pagamentosProcessados.reduce((acc, p) => acc + p.valor, 0);
+        const trocoEfetivo = trocoXml > 0 ? trocoXml : (somaPag > totalNota ? (somaPag - totalNota) : 0);
+        const temParcelamento = faturasProcessadas.length > 1;
+
+        return {
+            pagamentos: pagamentosProcessados,
+            faturas: faturasProcessadas,
+            parcelas: faturasProcessadas,
+            temParcelamento: temParcelamento,
+            troco: trocoEfetivo,
+            textoResumo: pagamentosProcessados.map(p => p.nome).join(' + ')
+        };
+    } catch (errGeral) {
+        console.error('[extrairPagamentosNota] Falha ao extrair pagamentos da nota:', errGeral);
+        const totalNota = Number(v?.totalLiquido || v?.tot || v?.valorLiquido || v?.total || nota?.valor || 0);
+        const dataEmissaoRaw = nota?.data_emissao || v?.data || new Date().toISOString();
+        const dataBaseApenas = formatarDataBrLocal(dataEmissaoRaw);
+        return {
+            pagamentos: [{ codigo: '01', nome: 'Dinheiro', metodo: 'Dinheiro', valor: totalNota, parcelas: 1 }],
+            faturas: [{ numero: '001', vencimento: '', vencimentoFormatado: dataBaseApenas, valor: totalNota, metodo: 'Dinheiro' }],
+            parcelas: [{ numero: '001', vencimento: '', vencimentoFormatado: dataBaseApenas, valor: totalNota, metodo: 'Dinheiro' }],
+            temParcelamento: false,
+            troco: 0,
+            textoResumo: 'Dinheiro'
+        };
+    }
 }
 window.extrairPagamentosNota = extrairPagamentosNota;
 
@@ -2923,9 +3117,29 @@ function gerarHtmlDanfeNFeA4(v, nota, emp) {
     const serie = nota?.serie || '1';
     const protocolo = nota?.protocolo || v?.fiscal_protocolo || 'AUTORIZADO';
     const dataEmissaoRaw = nota?.data_emissao || v?.data || new Date().toISOString();
-    const dataEmissao = new Date(dataEmissaoRaw).toLocaleString('pt-BR');
-    const dataApenas = dataEmissao.split(' ')[0] || '';
-    const horaApenas = dataEmissao.split(' ')[1] || '';
+    let dataApenas = '';
+    let horaApenas = '';
+    let dataEmissao = '';
+    try {
+        const dtObj = new Date(dataEmissaoRaw);
+        if (!isNaN(dtObj.getTime())) {
+            const dia = String(dtObj.getDate()).padStart(2, '0');
+            const mes = String(dtObj.getMonth() + 1).padStart(2, '0');
+            const ano = dtObj.getFullYear();
+            const hor = String(dtObj.getHours()).padStart(2, '0');
+            const min = String(dtObj.getMinutes()).padStart(2, '0');
+            const seg = String(dtObj.getSeconds()).padStart(2, '0');
+            dataApenas = `${dia}/${mes}/${ano}`;
+            horaApenas = `${hor}:${min}:${seg}`;
+            dataEmissao = `${dataApenas} ${horaApenas}`;
+        }
+    } catch (e) {}
+    if (!dataApenas) {
+        const dtStr = new Date().toLocaleString('pt-BR').replace(',', '');
+        dataApenas = dtStr.split(' ')[0] || '';
+        horaApenas = dtStr.split(' ')[1] || '';
+        dataEmissao = `${dataApenas} ${horaApenas}`;
+    }
 
     // Emitente
     const logoSrc = emp?.logo || emp?.logoBase64 || v?.empresaLogo || (typeof db !== 'undefined' && db?.config?.empresa?.logo) || '';
@@ -2965,25 +3179,24 @@ function gerarHtmlDanfeNFeA4(v, nota, emp) {
         const cod = escapeHtml(it.ean || it.codigo || it.codigoProduto || it.sku || it.codProduto || it.cod || it.id || String(idx + 1));
         const desc = escapeHtml(it.nome || it.descricao || 'PRODUTO');
         const ncm = escapeHtml(it.ncm || '94036000');
-        const csosn = escapeHtml(it.csosn || '102');
+        const csosn = escapeHtml(it.csosn || it.cst || '102');
         const cfop = escapeHtml(it.cfop || '5102');
         const un = escapeHtml(it.unidade || 'UN');
 
         return `
-        <tr>
-            <td>${cod}</td>
+        <tr class="item-row">
+            <td style="text-align: center;">${cod}</td>
             <td>${desc}</td>
-            <td>${ncm}</td>
-            <td>${csosn}</td>
-            <td>${cfop}</td>
-            <td>${un}</td>
+            <td style="text-align: center;">${ncm}</td>
+            <td style="text-align: center;">${csosn}</td>
+            <td style="text-align: center;">${cfop}</td>
+            <td style="text-align: center;">${un}</td>
             <td style="text-align: right;">${qtd.toFixed(2)}</td>
             <td style="text-align: right;">${preco.toFixed(2)}</td>
             <td style="text-align: right; font-weight: bold;">${subtotal.toFixed(2)}</td>
             <td style="text-align: right;">0.00</td>
             <td style="text-align: right;">0.00</td>
-            <td style="text-align: right;">0.00</td>
-            <td style="text-align: right;">0.00</td>
+            <td style="text-align: center;">0.00</td>
         </tr>`;
     }).join('');
 
@@ -2993,21 +3206,26 @@ function gerarHtmlDanfeNFeA4(v, nota, emp) {
     const infoPag = extrairPagamentosNota(v, nota);
     const formaPag = escapeHtml(infoPag.textoResumo || 'Dinheiro');
 
+    const listaFaturas = (infoPag.faturas && infoPag.faturas.length > 0) ? infoPag.faturas : [{
+        numero: '001',
+        metodo: infoPag.textoResumo || 'Dinheiro',
+        vencimentoFormatado: dataApenas,
+        valor: Number(totalNota)
+    }];
+
     let linhasFatura = '';
-    if (infoPag.pagamentos && infoPag.pagamentos.length > 0) {
-        linhasFatura = infoPag.pagamentos.map((p, idx) => {
-            const numParc = String(idx + 1).padStart(3, '0');
-            const venc = p.vencimentoBase ? new Date(p.vencimentoBase + 'T12:00:00').toLocaleDateString('pt-BR') : dataApenas;
-            const valFmt = Number(p.valor || totalNota).toFixed(2);
+    if (listaFaturas.length <= 4) {
+        linhasFatura = listaFaturas.map((f, idx) => {
+            const valFmt = Number(f.valor || 0).toFixed(2);
             return `
     <div class="row" style="${idx > 0 ? 'border-top: none;' : ''}">
         <div class="box ${idx > 0 ? 'border-t-0' : ''}" style="flex: 1.2;">
             <span class="box-title">FORMA DE PAGAMENTO</span>
-            <div class="box-val">${escapeHtml(p.nome || 'Dinheiro')}</div>
+            <div class="box-val">${escapeHtml(f.metodo || formaPag)}</div>
         </div>
         <div class="box ${idx > 0 ? 'border-t-0' : ''} border-l-0" style="flex: 1;">
             <span class="box-title">PARCELA / VENCIMENTO</span>
-            <div class="box-val">${numParc} - ${venc}</div>
+            <div class="box-val">${f.numero} - ${f.vencimentoFormatado || dataApenas}</div>
         </div>
         <div class="box ${idx > 0 ? 'border-t-0' : ''} border-l-0" style="flex: 1;">
             <span class="box-title">VALOR DA PARCELA</span>
@@ -3016,22 +3234,26 @@ function gerarHtmlDanfeNFeA4(v, nota, emp) {
     </div>`;
         }).join('');
     } else {
+        // Para mais de 4 parcelas, exibe em grid compacto de duplicatas para preservar 1 folha A4
         linhasFatura = `
-    <div class="row">
-        <div class="box" style="flex: 1.2;">
-            <span class="box-title">FORMA DE PAGAMENTO</span>
-            <div class="box-val">${formaPag}</div>
-        </div>
-        <div class="box border-l-0" style="flex: 1;">
-            <span class="box-title">PARCELA / VENCIMENTO</span>
-            <div class="box-val">001 - ${dataApenas}</div>
-        </div>
-        <div class="box border-l-0" style="flex: 1;">
-            <span class="box-title">VALOR DA PARCELA</span>
-            <div class="box-val">R$ ${totalNota}</div>
-        </div>
+    <div class="row" style="flex-wrap: wrap; display: flex;">
+        ${listaFaturas.map((f, idx) => {
+            const valFmt = Number(f.valor || 0).toFixed(2);
+            const isLeft = (idx % 4) === 0;
+            const isTop = idx < 4;
+            return `
+        <div class="box ${!isLeft ? 'border-l-0' : ''} ${!isTop ? 'border-t-0' : ''}" style="flex: 1 1 24%; min-width: 24%; max-width: 25%; padding: 2px 4px; box-sizing: border-box;">
+            <span class="box-title">PARC. ${f.numero} - ${escapeHtml(f.metodo || formaPag)}</span>
+            <div class="box-val" style="display: flex; justify-content: space-between; font-size: 8.5px;">
+                <span>Venc: <b>${f.vencimentoFormatado || dataApenas}</b></span>
+                <span>R$ <b>${valFmt}</b></span>
+            </div>
+        </div>`;
+        }).join('')}
     </div>`;
     }
+
+    const lockSinglePage = itens.length <= 18;
 
     return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -3039,285 +3261,512 @@ function gerarHtmlDanfeNFeA4(v, nota, emp) {
     <meta charset="utf-8">
     <title>DANFE NF-e Nº ${numeroNota} - ${emitRazao}</title>
     <style>
-        @page { size: A4 portrait; margin: 4mm 5mm; }
-        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        body { font-family: Arial, Helvetica, sans-serif; color: #000; margin: 0; padding: 0; font-size: 8px; background: #fff; width: 100%; }
-        .canhoto { border: 1px solid #000; display: flex; width: 100%; margin-bottom: 3px; }
-        .canhoto-txt { flex: 1; padding: 3px 5px; border-right: 1px solid #000; font-size: 7.5px; line-height: 1.1; }
+        @page {
+            size: A4 portrait;
+            margin: 4mm 5mm;
+        }
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
+            color: #000;
+            background: #525659;
+        }
+        .no-print.bar-acoes {
+            background: #1e293b;
+            color: #fff;
+            padding: 8px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 9999;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+            font-family: Arial, sans-serif;
+        }
+        .danfe-page {
+            width: 200mm;
+            ${lockSinglePage ? 'height: 287mm; max-height: 287mm;' : ''}
+            min-height: 287mm;
+            margin: 6px auto;
+            background: #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+            padding: 0;
+        }
+        .canhoto { border: 1px solid #000; display: flex; width: 100%; height: 20mm; margin-bottom: 2px; }
+        .canhoto-txt { flex: 1; padding: 4px 6px; border-right: 1px solid #000; font-size: 7.5pt; line-height: 1.2; }
         .canhoto-assinatura { width: 250px; padding: 3px 5px; border-right: 1px solid #000; display: flex; flex-direction: column; justify-content: space-between; }
         .canhoto-nfe { width: 95px; text-align: center; padding: 3px 2px; display: flex; flex-direction: column; justify-content: center; }
-        .linha-pontilhada { border-bottom: 1px dashed #000; margin: 3px 0 4px 0; }
+        .linha-pontilhada { border-bottom: 1px dashed #000; margin: 2px 0 3px 0; }
+
         .box { border: 1px solid #000; padding: 2px 4px; overflow: hidden; }
-        .box-title { font-size: 6px; text-transform: uppercase; font-weight: bold; display: block; line-height: 1; color: #333; margin-bottom: 1px; }
-        .box-val { font-size: 8px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .box-val-normal { font-size: 8px; font-weight: normal; }
+        .box-title { font-size: 6pt; text-transform: uppercase; font-weight: bold; display: block; line-height: 1; color: #111; margin-bottom: 1.5px; }
+        .box-val { font-size: 8.5pt; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.15; }
+        .box-val-normal { font-size: 8pt; font-weight: normal; line-height: 1.2; }
         .row { display: flex; width: 100%; }
         .border-t-0 { border-top: 0 !important; }
         .border-b-0 { border-bottom: 0 !important; }
         .border-l-0 { border-left: 0 !important; }
         .border-r-0 { border-right: 0 !important; }
-        .section-header { font-size: 7.5px; font-weight: bold; text-transform: uppercase; margin: 4px 0 1px 1px; }
-        table.tabela-itens { width: 100%; border-collapse: collapse; border: 1px solid #000; }
-        table.tabela-itens th { font-size: 6.5px; font-weight: bold; text-transform: uppercase; border: 1px solid #000; padding: 2px 3px; background: #e8e8e8; text-align: left; }
-        table.tabela-itens td { font-size: 7.5px; border: 1px solid #000; padding: 2px 3px; }
+        .section-header { font-size: 7.5pt; font-weight: bold; text-transform: uppercase; margin: 3px 0 1px 1px; letter-spacing: 0.2px; }
+
+        .secao-produtos {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            margin-bottom: 2px;
+        }
+        .tabela-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            border: 1px solid #000;
+        }
+        table.tabela-itens {
+            width: 100%;
+            height: 100%;
+            border-collapse: collapse;
+        }
+        table.tabela-itens th {
+            font-size: 6.5pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-bottom: 1px solid #000;
+            border-right: 1px solid #000;
+            padding: 3px 2px;
+            background: #e4e4e4;
+            text-align: left;
+            height: 18px;
+        }
+        table.tabela-itens th:last-child {
+            border-right: 0;
+        }
+        table.tabela-itens td {
+            font-size: 7.5pt;
+            border-right: 1px solid #000;
+            padding: 2px 3px;
+        }
+        table.tabela-itens td:last-child {
+            border-right: 0;
+        }
+        table.tabela-itens tr.item-row {
+            height: 18px;
+        }
+        table.tabela-itens tr.item-row td {
+            border-bottom: 1px solid #eee;
+        }
+        table.tabela-itens tr.filler-row {
+            height: auto;
+        }
+        table.tabela-itens tr.filler-row td {
+            border-bottom: 0;
+            padding: 0;
+        }
+
+        .secao-adicionais {
+            margin-top: auto;
+        }
+
+        .rodape-danfe {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 6.5pt;
+            color: #333;
+            padding: 2px 2px 0 2px;
+            border-top: 1px solid #ccc;
+            margin-top: 2px;
+        }
+
+        @media print {
+            body { margin: 0; padding: 0; background: #fff; }
+            .no-print { display: none !important; }
+            .danfe-page {
+                width: 100% !important;
+                max-width: 100% !important;
+                ${lockSinglePage ? 'height: 287mm !important; max-height: 287mm !important;' : ''}
+                min-height: 287mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="canhoto">
-        <div class="canhoto-txt">
-            RECEBEMOS DE <strong>${escapeHtml(emitRazao)}</strong> OS PRODUTOS CONSTANTES DA NOTA FISCAL INDICADA AO LADO.
-            <div style="margin-top: 6px; font-size: 7px; color: #555;">EMISSÃO: ${dataEmissao} - DESTINATÁRIO: ${escapeHtml(destNome)} - VALOR TOTAL: R$ ${totalNota}</div>
+    <div class="no-print bar-acoes">
+        <div style="font-size: 13px; font-weight: bold; display: flex; align-items: center; gap: 8px;">
+            <span>📄 DANFE NF-e Nº ${numeroNota}</span>
+            <span style="font-size: 11px; opacity: 0.8; font-weight: normal;">(A4 Retrato - Página Completa)</span>
         </div>
-        <div class="canhoto-assinatura">
-            <div class="box-title">DATA DE RECEBIMENTO</div>
-            <div style="height: 14px; border-bottom: 1px solid #000; margin-bottom: 2px;"></div>
-            <div class="box-title">IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR</div>
-        </div>
-        <div class="canhoto-nfe">
-            <strong style="font-size: 10px;">NF-e</strong>
-            <div style="font-size: 8.5px; font-weight: bold;">Nº ${numeroNota}</div>
-            <div style="font-size: 7.5px;">SÉRIE: ${serie}</div>
+        <div style="display: flex; gap: 8px;">
+            <button onclick="window.print()" style="background: #0284c7; color: #fff; border: none; padding: 6px 14px; border-radius: 4px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 12px;">
+                🖨️ Imprimir DANFE
+            </button>
+            <button onclick="window.close()" style="background: #475569; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px;">
+                ✕ Fechar
+            </button>
         </div>
     </div>
-    <div class="linha-pontilhada"></div>
 
-    <div class="row">
-        <div class="box" style="flex: 1.1; display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 4px 6px;">
-            ${logoSrc ? `<div style="max-width: 80px; max-height: 65px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><img src="${logoSrc}" style="max-width: 80px; max-height: 60px; object-fit: contain;"></div>` : ''}
-            <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; overflow: hidden;">
-                <div style="font-size: 10.5px; font-weight: bold; line-height: 1.1;">${escapeHtml(emitRazao)}</div>
-                ${emitFantasia ? `<div style="font-size: 8.5px; font-weight: bold; color: #444;">${escapeHtml(emitFantasia)}</div>` : ''}
-                <div class="box-val-normal" style="margin-top: 2px;">${escapeHtml(emitLogr)}, ${escapeHtml(emitNro)} - ${escapeHtml(emitBairro)}</div>
-                <div class="box-val-normal">${escapeHtml(emitMun)} - ${emitUf} - CEP: ${escapeHtml(emitCep)}</div>
-                ${emitFone ? `<div class="box-val-normal">FONE: ${escapeHtml(emitFone)}</div>` : ''}
+    <div class="danfe-page">
+        <!-- Topo da página -->
+        <div>
+            <!-- Canhoto -->
+            <div class="canhoto">
+                <div class="canhoto-txt">
+                    RECEBEMOS DE <strong>${escapeHtml(emitRazao)}</strong> OS PRODUTOS CONSTANTES DA NOTA FISCAL INDICADA AO LADO.
+                    <div style="margin-top: 6px; font-size: 7pt; color: #555;">EMISSÃO: ${dataEmissao} - DESTINATÁRIO: ${escapeHtml(destNome)} - VALOR TOTAL: R$ ${totalNota}</div>
+                </div>
+                <div class="canhoto-assinatura">
+                    <div class="box-title">DATA DE RECEBIMENTO</div>
+                    <div style="height: 15px; border-bottom: 1px solid #000; margin-bottom: 2px;"></div>
+                    <div class="box-title">IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR</div>
+                </div>
+                <div class="canhoto-nfe">
+                    <strong style="font-size: 11pt;">NF-e</strong>
+                    <div style="font-size: 9pt; font-weight: bold;">Nº ${numeroNota}</div>
+                    <div style="font-size: 8pt;">SÉRIE: ${serie}</div>
+                </div>
+            </div>
+            <div class="linha-pontilhada"></div>
+
+            <!-- Cabeçalho Emitente, Danfe, Chave -->
+            <div class="row">
+                <div class="box" style="flex: 1.1; display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 4px 6px;">
+                    ${logoSrc ? `<div style="max-width: 80px; max-height: 65px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><img src="${logoSrc}" style="max-width: 80px; max-height: 60px; object-fit: contain;"></div>` : ''}
+                    <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; overflow: hidden;">
+                        <div style="font-size: 11pt; font-weight: bold; line-height: 1.1;">${escapeHtml(emitRazao)}</div>
+                        ${emitFantasia ? `<div style="font-size: 8.5pt; font-weight: bold; color: #444; margin-top: 1px;">${escapeHtml(emitFantasia)}</div>` : ''}
+                        <div class="box-val-normal" style="margin-top: 2px;">${escapeHtml(emitLogr)}, ${escapeHtml(emitNro)} - ${escapeHtml(emitBairro)}</div>
+                        <div class="box-val-normal">${escapeHtml(emitMun)} - ${emitUf} - CEP: ${escapeHtml(emitCep)}</div>
+                        ${emitFone ? `<div class="box-val-normal">FONE: ${escapeHtml(emitFone)}</div>` : ''}
+                    </div>
+                </div>
+
+                <div class="box border-l-0" style="width: 145px; text-align: center; padding: 4px 2px;">
+                    <div style="font-size: 15pt; font-weight: 900; letter-spacing: 1px;">DANFE</div>
+                    <div style="font-size: 7pt; line-height: 1;">Documento Auxiliar da<br>Nota Fiscal Eletrônica</div>
+                    <div class="row" style="margin: 4px auto 2px auto; justify-content: center; align-items: center; gap: 4px;">
+                        <div style="font-size: 7.5pt; text-align: left; line-height: 1.1;">0 - ENTRADA<br>1 - SAÍDA</div>
+                        <div style="border: 1px solid #000; font-size: 12pt; font-weight: bold; width: 20px; height: 20px; line-height: 20px; text-align: center;">${tpNF}</div>
+                    </div>
+                    <div style="font-size: 9pt; font-weight: bold; margin-top: 2px;">Nº ${numeroNota}</div>
+                    <div style="font-size: 8pt; font-weight: bold;">SÉRIE: ${serie}</div>
+                    <div style="font-size: 7.5pt;">FOLHA: 1/1</div>
+                </div>
+
+                <div class="box border-l-0" style="flex: 1.3; text-align: center; padding: 3px 4px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div style="width: 100%; margin: 1px 0;">${barcodeSvg}</div>
+                    <div class="box-title" style="text-align: left; margin-top: 1px;">CHAVE DE ACESSO</div>
+                    <div style="font-size: 8pt; font-weight: bold; letter-spacing: 0.4px; word-break: break-all;">${chaveFmt}</div>
+                    <div style="font-size: 6.5pt; margin-top: 2px; color: #333; line-height: 1.1;">
+                        Consulta de autenticidade no portal nacional da NF-e<br>
+                        <span style="text-decoration: underline;">www.nfe.fazenda.gov.br/portal</span> ou no site da Sefaz Autorizadora
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="box border-t-0" style="flex: 2;">
+                    <span class="box-title">NATUREZA DA OPERAÇÃO</span>
+                    <div class="box-val">${escapeHtml(naturezaOp)}</div>
+                </div>
+                <div class="box border-t-0 border-l-0" style="flex: 1.8;">
+                    <span class="box-title">PROTOCOLO DE AUTORIZAÇÃO DE USO</span>
+                    <div class="box-val">${escapeHtml(protocolo)} - ${dataEmissao}</div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="box border-t-0" style="flex: 1;">
+                    <span class="box-title">INSCRIÇÃO ESTADUAL</span>
+                    <div class="box-val">${escapeHtml(emitIe)}</div>
+                </div>
+                <div class="box border-t-0 border-l-0" style="flex: 1;">
+                    <span class="box-title">INSC. ESTADUAL DO SUBST. TRIB.</span>
+                    <div class="box-val">${escapeHtml(emitIeSt || '-')}</div>
+                </div>
+                <div class="box border-t-0 border-l-0" style="flex: 1;">
+                    <span class="box-title">CNPJ</span>
+                    <div class="box-val">${escapeHtml(emitCnpj)}</div>
+                </div>
+            </div>
+
+            <!-- Destinatário / Remetente -->
+            <div class="section-header">DESTINATÁRIO / REMETENTE</div>
+            <div class="row">
+                <div class="box" style="flex: 2.5;">
+                    <span class="box-title">NOME / RAZÃO SOCIAL</span>
+                    <div class="box-val">${escapeHtml(destNome)}</div>
+                </div>
+                <div class="box border-l-0" style="flex: 1.2;">
+                    <span class="box-title">CNPJ / CPF</span>
+                    <div class="box-val">${escapeHtml(destDoc)}</div>
+                </div>
+                <div class="box border-l-0" style="width: 85px;">
+                    <span class="box-title">DATA DA EMISSÃO</span>
+                    <div class="box-val" style="text-align: center;">${dataApenas}</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="box border-t-0" style="flex: 2;">
+                    <span class="box-title">ENDEREÇO</span>
+                    <div class="box-val-normal">${escapeHtml(destLogr)}, ${escapeHtml(destNro)}</div>
+                </div>
+                <div class="box border-t-0 border-l-0" style="flex: 1;">
+                    <span class="box-title">BAIRRO / DISTRITO</span>
+                    <div class="box-val-normal">${escapeHtml(destBairro)}</div>
+                </div>
+                <div class="box border-t-0 border-l-0" style="width: 75px;">
+                    <span class="box-title">CEP</span>
+                    <div class="box-val-normal">${escapeHtml(destCep || '74000-000')}</div>
+                </div>
+                <div class="box border-t-0 border-l-0" style="width: 85px;">
+                    <span class="box-title">DATA SAÍDA/ENTRADA</span>
+                    <div class="box-val" style="text-align: center;">${dataApenas}</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="box border-t-0" style="flex: 1.5;">
+                    <span class="box-title">MUNICÍPIO</span>
+                    <div class="box-val-normal">${escapeHtml(destMun)}</div>
+                </div>
+                <div class="box border-t-0 border-l-0" style="flex: 1;">
+                    <span class="box-title">FONE / FAX</span>
+                    <div class="box-val-normal">${escapeHtml(destFone || '-')}</div>
+                </div>
+                <div class="box border-t-0 border-l-0" style="width: 35px; text-align: center;">
+                    <span class="box-title">UF</span>
+                    <div class="box-val">${destUf}</div>
+                </div>
+                <div class="box border-t-0 border-l-0" style="flex: 1;">
+                    <span class="box-title">INSCRIÇÃO ESTADUAL</span>
+                    <div class="box-val-normal">${escapeHtml(destIe)}</div>
+                </div>
+                <div class="box border-t-0 border-l-0" style="width: 85px;">
+                    <span class="box-title">HORA DA SAÍDA</span>
+                    <div class="box-val" style="text-align: center;">${horaApenas || '12:00:00'}</div>
+                </div>
+            </div>
+
+            <!-- Fatura / Duplicata -->
+            <div class="section-header">FATURA / DUPLICATA / FORMA DE PAGAMENTO</div>
+            ${linhasFatura}
+
+            <!-- Impostos -->
+            <div class="section-header">CÁLCULO DO IMPOSTO</div>
+            <div class="row">
+                <div class="box" style="flex: 1;">
+                    <span class="box-title">BASE DE CÁLCULO DO ICMS</span>
+                    <div class="box-val" style="text-align: right;">0,00</div>
+                </div>
+                <div class="box border-l-0" style="flex: 1;">
+                    <span class="box-title">VALOR DO ICMS</span>
+                    <div class="box-val" style="text-align: right;">0,00</div>
+                </div>
+                <div class="box border-l-0" style="flex: 1;">
+                    <span class="box-title">BASE DE CÁLC. ICMS ST</span>
+                    <div class="box-val" style="text-align: right;">0,00</div>
+                </div>
+                <div class="box border-l-0" style="flex: 1;">
+                    <span class="box-title">VALOR DO ICMS ST</span>
+                    <div class="box-val" style="text-align: right;">0,00</div>
+                </div>
+                <div class="box border-l-0" style="flex: 1.2;">
+                    <span class="box-title">VALOR TOTAL DOS PRODUTOS</span>
+                    <div class="box-val" style="text-align: right;">${totalProdFmt}</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="box border-t-0" style="flex: 1;">
+                    <span class="box-title">VALOR DO FRETE</span>
+                    <div class="box-val" style="text-align: right;">0,00</div>
+                </div>
+                <div class="box border-t-0 border-l-0" style="flex: 1;">
+                    <span class="box-title">VALOR DO SEGURO</span>
+                    <div class="box-val" style="text-align: right;">0,00</div>
+                </div>
+                <div class="box border-t-0 border-l-0" style="flex: 1;">
+                    <span class="box-title">DESCONTO</span>
+                    <div class="box-val" style="text-align: right;">0,00</div>
+                </div>
+                <div class="box border-t-0 border-l-0" style="flex: 1;">
+                    <span class="box-title">OUTRAS DESPESAS</span>
+                    <div class="box-val" style="text-align: right;">0,00</div>
+                </div>
+                <div class="box border-t-0 border-l-0" style="flex: 1;">
+                    <span class="box-title">VALOR DO IPI</span>
+                    <div class="box-val" style="text-align: right;">0,00</div>
+                </div>
+                <div class="box border-t-0 border-l-0" style="flex: 1.2; background: #fafafa;">
+                    <span class="box-title">VALOR TOTAL DA NOTA</span>
+                    <div class="box-val" style="text-align: right; font-size: 10pt;">R$ ${totalNota}</div>
+                </div>
+            </div>
+
+            <!-- Transportador -->
+            <div class="section-header">TRANSPORTADOR / VOLUMES TRANSPORTADOS</div>
+            <div class="row">
+                <div class="box" style="flex: 2;">
+                    <span class="box-title">RAZÃO SOCIAL</span>
+                    <div class="box-val-normal">O MESMO / RETIRADA NO LOCAL</div>
+                </div>
+                <div class="box border-l-0" style="width: 140px;">
+                    <span class="box-title">FRETE POR CONTA</span>
+                    <div class="box-val">9 - SEM OCORRÊNCIA</div>
+                </div>
+                <div class="box border-l-0" style="width: 75px;">
+                    <span class="box-title">CÓDIGO ANTT</span>
+                    <div class="box-val-normal">-</div>
+                </div>
+                <div class="box border-l-0" style="width: 75px;">
+                    <span class="box-title">PLACA VEÍCULO</span>
+                    <div class="box-val-normal">-</div>
+                </div>
+                <div class="box border-l-0" style="width: 35px; text-align: center;">
+                    <span class="box-title">UF</span>
+                    <div class="box-val-normal">${emitUf}</div>
+                </div>
+                <div class="box border-l-0" style="flex: 1.2;">
+                    <span class="box-title">CNPJ / CPF</span>
+                    <div class="box-val-normal">-</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="box border-t-0" style="flex: 1;">
+                    <span class="box-title">QUANTIDADE</span>
+                    <div class="box-val-normal">1</div>
+                </div>
+                <div class="box border-t-0 border-l-0" style="flex: 1;">
+                    <span class="box-title">ESPÉCIE</span>
+                    <div class="box-val-normal">VOLUMES</div>
+                </div>
+                <div class="box border-t-0 border-l-0" style="flex: 1;">
+                    <span class="box-title">MARCA</span>
+                    <div class="box-val-normal">-</div>
+                </div>
+                <div class="box border-t-0 border-l-0" style="flex: 1;">
+                    <span class="box-title">NUMERAÇÃO</span>
+                    <div class="box-val-normal">-</div>
+                </div>
+                <div class="box border-t-0 border-l-0" style="flex: 1;">
+                    <span class="box-title">PESO BRUTO</span>
+                    <div class="box-val-normal">-</div>
+                </div>
+                <div class="box border-t-0 border-l-0" style="flex: 1;">
+                    <span class="box-title">PESO LÍQUIDO</span>
+                    <div class="box-val-normal">-</div>
+                </div>
             </div>
         </div>
 
-        <div class="box border-l-0" style="width: 145px; text-align: center; padding: 4px 2px;">
-            <div style="font-size: 14px; font-weight: 900; letter-spacing: 1px;">DANFE</div>
-            <div style="font-size: 6.5px; line-height: 1;">Documento Auxiliar da<br>Nota Fiscal Eletrônica</div>
-            <div class="row" style="margin: 4px auto 2px auto; justify-content: center; align-items: center; gap: 4px;">
-                <div style="font-size: 7px; text-align: left; line-height: 1.1;">0 - ENTRADA<br>1 - SAÍDA</div>
-                <div style="border: 1px solid #000; font-size: 11px; font-weight: bold; width: 18px; height: 18px; line-height: 18px; text-align: center;">${tpNF}</div>
-            </div>
-            <div style="font-size: 8.5px; font-weight: bold; margin-top: 2px;">Nº ${numeroNota}</div>
-            <div style="font-size: 8px; font-weight: bold;">SÉRIE: ${serie}</div>
-            <div style="font-size: 7px;">FOLHA: 1/1</div>
-        </div>
-
-        <div class="box border-l-0" style="flex: 1.3; text-align: center; padding: 3px 4px; display: flex; flex-direction: column; justify-content: space-between;">
-            <div style="width: 100%; margin: 1px 0;">${barcodeSvg}</div>
-            <div class="box-title" style="text-align: left; margin-top: 1px;">CHAVE DE ACESSO</div>
-            <div style="font-size: 8px; font-weight: bold; letter-spacing: 0.4px; word-break: break-all;">${chaveFmt}</div>
-            <div style="font-size: 6.5px; margin-top: 2px; color: #333; line-height: 1;">
-                Consulta de autenticidade no portal nacional da NF-e<br>
-                <span style="text-decoration: underline;">www.nfe.fazenda.gov.br/portal</span> ou no site da Sefaz Autorizadora
-            </div>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="box border-t-0" style="flex: 2;">
-            <span class="box-title">NATUREZA DA OPERAÇÃO</span>
-            <div class="box-val">${escapeHtml(naturezaOp)}</div>
-        </div>
-        <div class="box border-t-0 border-l-0" style="flex: 1.8;">
-            <span class="box-title">PROTOCOLO DE AUTORIZAÇÃO DE USO</span>
-            <div class="box-val">${escapeHtml(protocolo)} - ${dataEmissao}</div>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="box border-t-0" style="flex: 1;">
-            <span class="box-title">INSCRIÇÃO ESTADUAL</span>
-            <div class="box-val">${escapeHtml(emitIe)}</div>
-        </div>
-        <div class="box border-t-0 border-l-0" style="flex: 1;">
-            <span class="box-title">INSC. ESTADUAL DO SUBST. TRIB.</span>
-            <div class="box-val">${escapeHtml(emitIeSt || '-')}</div>
-        </div>
-        <div class="box border-t-0 border-l-0" style="flex: 1;">
-            <span class="box-title">CNPJ</span>
-            <div class="box-val">${escapeHtml(emitCnpj)}</div>
-        </div>
-    </div>
-
-    <div class="section-header">DESTINATÁRIO / REMETENTE</div>
-    <div class="row">
-        <div class="box" style="flex: 2.5;">
-            <span class="box-title">NOME / RAZÃO SOCIAL</span>
-            <div class="box-val">${escapeHtml(destNome)}</div>
-        </div>
-        <div class="box border-l-0" style="flex: 1.2;">
-            <span class="box-title">CNPJ / CPF</span>
-            <div class="box-val">${escapeHtml(destDoc)}</div>
-        </div>
-        <div class="box border-l-0" style="width: 80px;">
-            <span class="box-title">DATA DA EMISSÃO</span>
-            <div class="box-val" style="text-align: center;">${dataApenas}</div>
-        </div>
-    </div>
-    <div class="row">
-        <div class="box border-t-0" style="flex: 2;">
-            <span class="box-title">ENDEREÇO</span>
-            <div class="box-val-normal">${escapeHtml(destLogr)}, ${escapeHtml(destNro)}</div>
-        </div>
-        <div class="box border-t-0 border-l-0" style="flex: 1;">
-            <span class="box-title">BAIRRO / DISTRITO</span>
-            <div class="box-val-normal">${escapeHtml(destBairro)}</div>
-        </div>
-        <div class="box border-t-0 border-l-0" style="width: 70px;">
-            <span class="box-title">CEP</span>
-            <div class="box-val-normal">${escapeHtml(destCep || '74000-000')}</div>
-        </div>
-        <div class="box border-t-0 border-l-0" style="width: 80px;">
-            <span class="box-title">DATA SAÍDA/ENTRADA</span>
-            <div class="box-val" style="text-align: center;">${dataApenas}</div>
-        </div>
-    </div>
-    <div class="row">
-        <div class="box border-t-0" style="flex: 1.5;">
-            <span class="box-title">MUNICÍPIO</span>
-            <div class="box-val-normal">${escapeHtml(destMun)}</div>
-        </div>
-        <div class="box border-t-0 border-l-0" style="flex: 1;">
-            <span class="box-title">FONE / FAX</span>
-            <div class="box-val-normal">${escapeHtml(destFone || '-')}</div>
-        </div>
-        <div class="box border-t-0 border-l-0" style="width: 30px; text-align: center;">
-            <span class="box-title">UF</span>
-            <div class="box-val">${destUf}</div>
-        </div>
-        <div class="box border-t-0 border-l-0" style="flex: 1;">
-            <span class="box-title">INSCRIÇÃO ESTADUAL</span>
-            <div class="box-val-normal">${escapeHtml(destIe)}</div>
-        </div>
-        <div class="box border-t-0 border-l-0" style="width: 80px;">
-            <span class="box-title">HORA DA SAÍDA</span>
-            <div class="box-val" style="text-align: center;">${horaApenas || '12:00:00'}</div>
-        </div>
-    </div>
-
-    <div class="section-header">FATURA / DUPLICATA / FORMA DE PAGAMENTO</div>
-    ${linhasFatura}
-
-    <div class="section-header">CÁLCULO DO IMPOSTO</div>
-    <div class="row">
-        <div class="box" style="flex: 1;">
-            <span class="box-title">BASE DE CÁLCULO DO ICMS</span>
-            <div class="box-val" style="text-align: right;">0,00</div>
-        </div>
-        <div class="box border-l-0" style="flex: 1;">
-            <span class="box-title">VALOR DO ICMS</span>
-            <div class="box-val" style="text-align: right;">0,00</div>
-        </div>
-        <div class="box border-l-0" style="flex: 1;">
-            <span class="box-title">BASE DE CÁLC. ICMS ST</span>
-            <div class="box-val" style="text-align: right;">0,00</div>
-        </div>
-        <div class="box border-l-0" style="flex: 1;">
-            <span class="box-title">VALOR DO ICMS ST</span>
-            <div class="box-val" style="text-align: right;">0,00</div>
-        </div>
-        <div class="box border-l-0" style="flex: 1.2;">
-            <span class="box-title">VALOR TOTAL DOS PRODUTOS</span>
-            <div class="box-val" style="text-align: right;">${totalNota}</div>
-        </div>
-    </div>
-    <div class="row">
-        <div class="box border-t-0" style="flex: 1;">
-            <span class="box-title">VALOR DO FRETE</span>
-            <div class="box-val" style="text-align: right;">0,00</div>
-        </div>
-        <div class="box border-t-0 border-l-0" style="flex: 1;">
-            <span class="box-title">VALOR DO SEGURO</span>
-            <div class="box-val" style="text-align: right;">0,00</div>
-        </div>
-        <div class="box border-t-0 border-l-0" style="flex: 1;">
-            <span class="box-title">DESCONTO</span>
-            <div class="box-val" style="text-align: right;">0,00</div>
-        </div>
-        <div class="box border-t-0 border-l-0" style="flex: 1;">
-            <span class="box-title">OUTRAS DESPESAS</span>
-            <div class="box-val" style="text-align: right;">0,00</div>
-        </div>
-        <div class="box border-t-0 border-l-0" style="flex: 1;">
-            <span class="box-title">VALOR DO IPI</span>
-            <div class="box-val" style="text-align: right;">0,00</div>
-        </div>
-        <div class="box border-t-0 border-l-0" style="flex: 1.2; background: #fafafa;">
-            <span class="box-title">VALOR TOTAL DA NOTA</span>
-            <div class="box-val" style="text-align: right; font-size: 10px;">R$ ${totalNota}</div>
-        </div>
-    </div>
-
-    <div class="section-header">TRANSPORTADOR / VOLUMES TRANSPORTADOS</div>
-    <div class="row">
-        <div class="box" style="flex: 2;">
-            <span class="box-title">RAZÃO SOCIAL</span>
-            <div class="box-val-normal">O MESMO / RETIRADA NO LOCAL</div>
-        </div>
-        <div class="box border-l-0" style="width: 130px;">
-            <span class="box-title">FRETE POR CONTA</span>
-            <div class="box-val">9 - SEM OCORRÊNCIA</div>
-        </div>
-        <div class="box border-l-0" style="width: 70px;">
-            <span class="box-title">CÓDIGO ANTT</span>
-            <div class="box-val-normal">-</div>
-        </div>
-        <div class="box border-l-0" style="width: 70px;">
-            <span class="box-title">PLACA VEÍCULO</span>
-            <div class="box-val-normal">-</div>
-        </div>
-        <div class="box border-l-0" style="width: 30px; text-align: center;">
-            <span class="box-title">UF</span>
-            <div class="box-val-normal">${emitUf}</div>
-        </div>
-        <div class="box border-l-0" style="flex: 1.2;">
-            <span class="box-title">CNPJ / CPF</span>
-            <div class="box-val-normal">-</div>
-        </div>
-    </div>
-
-    <div class="section-header">DADOS DO PRODUTO / SERVIÇO</div>
-    <table class="tabela-itens">
-        <thead>
-            <tr>
-                <th style="width: 50px; text-align: center;">CÓDIGO</th>
-                <th>DESCRIÇÃO DO PRODUTO / SERVIÇO</th>
-                <th style="width: 45px; text-align: center;">NCM/SH</th>
-                <th style="width: 35px; text-align: center;">CST</th>
-                <th style="width: 35px; text-align: center;">CFOP</th>
-                <th style="width: 25px; text-align: center;">UN</th>
-                <th style="width: 40px; text-align: right;">QTD.</th>
-                <th style="width: 50px; text-align: right;">V. UNIT.</th>
-                <th style="width: 55px; text-align: right;">V. TOTAL</th>
-                <th style="width: 45px; text-align: right;">BC ICMS</th>
-                <th style="width: 45px; text-align: right;">V. ICMS</th>
-                <th style="width: 30px; text-align: center;">ALÍQ.</th>
-            </tr>
-        </thead>
-        <tbody>
-            ${itensTr}
-        </tbody>
-    </table>
-
-    <div class="section-header">DADOS ADICIONAIS</div>
-    <div class="row">
-        <div class="box" style="flex: 2; min-height: 55px;">
-            <span class="box-title">INFORMAÇÕES COMPLEMENTARES</span>
-            <div class="box-val-normal" style="line-height: 1.2; font-size: 7px;">
-                DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.<br>
-                NÃO GERA DIREITO A CRÉDITO FISCAL DE IPI/ICMS.<br>
-                ${isDevolucao ? `<strong>NF-E DE DEVOLUÇÃO / ENTRADA</strong> - Emitida em estorno de operação comercial.<br>Ref. Chave de Acesso Original: <strong>${escapeHtml(nota?.chave_original || v?.nfce?.chave_nfe || v?.nfe?.chave_nfe || '')}</strong><br>` : ''}
-                ${v?.id ? `Identificador da Venda: ${v.id} | ` : ''}Vendedor: ${escapeHtml(v?.vendedor || 'BALCÃO')}<br>
-                ${v?.observacoes ? `Observações: ${escapeHtml(v.observacoes)}<br>` : ''}
-                Documento emitido através do sistema FC-Gestão - SEFAZ Direto.
+        <!-- DADOS DO PRODUTO / SERVIÇO (Expande cobrindo todo o meio da página) -->
+        <div class="secao-produtos">
+            <div class="section-header">DADOS DO PRODUTO / SERVIÇO</div>
+            <div class="tabela-container">
+                <table class="tabela-itens">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px; text-align: center;">CÓDIGO</th>
+                            <th>DESCRIÇÃO DO PRODUTO / SERVIÇO</th>
+                            <th style="width: 50px; text-align: center;">NCM/SH</th>
+                            <th style="width: 32px; text-align: center;">CST</th>
+                            <th style="width: 32px; text-align: center;">CFOP</th>
+                            <th style="width: 25px; text-align: center;">UN</th>
+                            <th style="width: 38px; text-align: right;">QTD.</th>
+                            <th style="width: 52px; text-align: right;">V. UNIT.</th>
+                            <th style="width: 58px; text-align: right;">V. TOTAL</th>
+                            <th style="width: 45px; text-align: right;">BC ICMS</th>
+                            <th style="width: 45px; text-align: right;">V. ICMS</th>
+                            <th style="width: 30px; text-align: center;">ALÍQ.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${itensTr}
+                        <tr class="filler-row">
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
-        <div class="box border-l-0" style="flex: 1; min-height: 55px;">
-            <span class="box-title">RESERVADO AO FISCO</span>
-            <div class="box-val-normal"></div>
+
+        <!-- Parte Inferior: ISSQN, Dados Adicionais e Rodapé -->
+        <div>
+            <!-- Cálculo do ISSQN -->
+            <div class="section-header">CÁLCULO DO ISSQN</div>
+            <div class="row">
+                <div class="box" style="flex: 1;">
+                    <span class="box-title">INSCRIÇÃO MUNICIPAL</span>
+                    <div class="box-val-normal">-</div>
+                </div>
+                <div class="box border-l-0" style="flex: 1;">
+                    <span class="box-title">VALOR TOTAL DOS SERVIÇOS</span>
+                    <div class="box-val" style="text-align: right;">0,00</div>
+                </div>
+                <div class="box border-l-0" style="flex: 1;">
+                    <span class="box-title">BASE DE CÁLCULO DO ISSQN</span>
+                    <div class="box-val" style="text-align: right;">0,00</div>
+                </div>
+                <div class="box border-l-0" style="flex: 1;">
+                    <span class="box-title">VALOR DO ISSQN</span>
+                    <div class="box-val" style="text-align: right;">0,00</div>
+                </div>
+            </div>
+
+            <!-- Dados Adicionais -->
+            <div class="section-header">DADOS ADICIONAIS</div>
+            <div class="row">
+                <div class="box" style="flex: 2.2; min-height: 60px;">
+                    <span class="box-title">INFORMAÇÕES COMPLEMENTARES</span>
+                    <div class="box-val-normal" style="line-height: 1.25; font-size: 7.5pt;">
+                        DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.<br>
+                        NÃO GERA DIREITO A CRÉDITO FISCAL DE IPI/ICMS.<br>
+                        ${isDevolucao ? `<strong>NF-E DE DEVOLUÇÃO / ENTRADA</strong> - Emitida em estorno de operação comercial.<br>Ref. Chave de Acesso Original: <strong>${escapeHtml(nota?.chave_original || v?.nfce?.chave_nfe || v?.nfe?.chave_nfe || '')}</strong><br>` : ''}
+                        ${v?.id ? `Identificador da Venda: ${v.id} | ` : ''}Vendedor: ${escapeHtml(v?.vendedor || 'BALCÃO')}<br>
+                        ${v?.observacoes ? `Observações: ${escapeHtml(v.observacoes)}<br>` : ''}
+                        Documento emitido através do sistema FC-Gestão - SEFAZ Direto.
+                    </div>
+                </div>
+                <div class="box border-l-0" style="flex: 1; min-height: 60px;">
+                    <span class="box-title">RESERVADO AO FISCO</span>
+                    <div class="box-val-normal"></div>
+                </div>
+            </div>
+
+            <!-- Rodapé Informativo Oficial -->
+            <div class="rodape-danfe">
+                <span>Documento emitido através do sistema FC-Gestão - SEFAZ Direto.</span>
+                <span>DANFE Mod. 55 - Emissão: ${dataEmissao}</span>
+            </div>
         </div>
     </div>
 
@@ -3362,17 +3811,32 @@ function gerarHtmlDanfeNFCe80mm(v, nota, emp, qrImgSrc) {
     const infoPagNFCe = extrairPagamentosNota(v, nota);
     const totalNotaNFCe = Number(v?.totalLiquido || v?.tot || v?.valorLiquido || v?.total || 0).toFixed(2);
 
-    const linhasPagamentosNFCe = (infoPagNFCe.pagamentos && infoPagNFCe.pagamentos.length > 0)
-        ? infoPagNFCe.pagamentos.map(p => `
-        <div style="display:flex; justify-content:space-between; font-size:10px; padding: 1px 0;">
-            <span>${escapeHtml(p.nome)}</span>
-            <span>${Number(p.valor || totalNotaNFCe).toFixed(2)}</span>
-        </div>`).join('')
-        : `
+    let linhasPagamentosNFCe = '';
+    if (infoPagNFCe.pagamentos && infoPagNFCe.pagamentos.length > 0) {
+        linhasPagamentosNFCe = infoPagNFCe.pagamentos.map(p => {
+            const valMetodoFmt = Number(p.valor || totalNotaNFCe).toFixed(2);
+            let htmlParcs = '';
+            if (p.detalhesParcelas && p.detalhesParcelas.length > 1) {
+                htmlParcs = p.detalhesParcelas.map(dp => `
+                <div style="display:flex; justify-content:space-between; font-size:9px; padding: 1px 0 1px 10px; color: #222;">
+                    <span>▪ Parc. ${dp.numero} (${dp.vencimentoFormatado})</span>
+                    <span>${Number(dp.valor).toFixed(2)}</span>
+                </div>`).join('');
+            }
+            return `
+            <div style="display:flex; justify-content:space-between; font-size:10px; font-weight:${p.detalhesParcelas && p.detalhesParcelas.length > 1 ? 'bold' : 'normal'}; padding: 2px 0 1px 0;">
+                <span>${escapeHtml(p.nome)}</span>
+                <span>${valMetodoFmt}</span>
+            </div>
+            ${htmlParcs}`;
+        }).join('');
+    } else {
+        linhasPagamentosNFCe = `
         <div style="display:flex; justify-content:space-between; font-size:10px; padding: 1px 0;">
             <span>${escapeHtml(infoPagNFCe.textoResumo || 'Dinheiro')}</span>
             <span>${totalNotaNFCe}</span>
         </div>`;
+    }
 
     const trocoHtmlNFCe = (infoPagNFCe.troco > 0.001) ? `
         <div style="display:flex; justify-content:space-between; font-size:10px; font-weight:bold; padding: 1px 0; border-top: 1px dotted #000; margin-top: 2px;">
@@ -3486,113 +3950,119 @@ function gerarHtmlDanfeNFCe80mm(v, nota, emp, qrImgSrc) {
 window.gerarHtmlDanfeNFCe80mm = gerarHtmlDanfeNFCe80mm;
 
 async function imprimirDanfeNativo(vendaOrId, tipo = 'NFC-e') {
-    if (typeof showToast === 'function') showToast('Preparando DANFE para impressão...', 'info');
-
-    const v = await obterVendaFiscal(vendaOrId);
-    if (!v) {
-        if (typeof showToast === 'function') showToast('Venda não encontrada para impressão fiscal.', 'error');
-        else alert('Venda não encontrada para impressão fiscal.');
-        return;
-    }
-
-    const isDev = (tipo === 'NF-e Devolução' || tipo === 'devolucao');
-    const isNFe = isDev || (tipo === 'NF-e' || tipo === 'nfe' || tipo === '55');
-    const nota = isDev ? (v.nfe_devolucao || v.nfe || {}) : (isNFe ? (v.nfe || {}) : (v.nfce || {}));
-    const emp = (typeof db !== 'undefined' && db.config?.empresa) ? db.config.empresa : {};
-    const chave = nota.chave_nfe || nota.chave_nfce || v.fiscal_chave || '';
-    const qrCodeUrl = nota.qr_code_url || v.fiscal_qrcode_url || (chave ? `https://nfeweb.sefaz.go.gov.br/nfeweb/sites/nfce/danfeNFCe?p=${chave}` : '');
-    const qrImgSrc = qrCodeUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrCodeUrl)}` : '';
-
-    let html = '';
-    if (isNFe) {
-        html = gerarHtmlDanfeNFeA4(v, nota, emp);
-    } else {
-        html = gerarHtmlDanfeNFCe80mm(v, nota, emp, qrImgSrc);
-    }
-
-    if (!html) {
-        if (typeof showToast === 'function') showToast('Erro ao gerar layout da DANFE.', 'error');
-        else alert('Erro ao gerar layout da DANFE.');
-        return;
-    }
-
-    const winW = isNFe ? 850 : 450;
-    const winH = isNFe ? 950 : 700;
-
-    // 1. Tenta abrir janela popup
-    let printWin = null;
     try {
-        printWin = window.open('', '_blank', `width=${winW},height=${winH},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`);
-    } catch (e) {
-        console.warn('Falha ao abrir popup de impressão:', e);
-    }
+        if (typeof showToast === 'function') showToast('Preparando DANFE para impressão...', 'info');
 
-    if (printWin && !printWin.closed) {
-        try {
-            printWin.document.open();
-            printWin.document.write(html);
-            printWin.document.close();
-            setTimeout(() => {
-                try {
-                    printWin.focus();
-                    printWin.print();
-                } catch (err) {
-                    console.warn('Erro ao disparar print na janela popup:', err);
-                }
-            }, 300);
+        const v = await obterVendaFiscal(vendaOrId);
+        if (!v) {
+            if (typeof showToast === 'function') showToast('Venda não encontrada para impressão fiscal.', 'error');
+            else alert('Venda não encontrada para impressão fiscal.');
             return;
-        } catch (e) {
-            console.warn('Erro ao manipular popup de impressão fiscal:', e);
         }
-    }
 
-    // 2. Fallback Iframe se popup foi bloqueada pelo navegador
-    let iframe = document.getElementById('iframe-impressao-fiscal-global');
-    if (!iframe) {
-        iframe = document.createElement('iframe');
-        iframe.id = 'iframe-impressao-fiscal-global';
-        iframe.style.position = 'fixed';
-        iframe.style.right = '0';
-        iframe.style.bottom = '0';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = '0';
-        iframe.style.visibility = 'hidden';
-        document.body.appendChild(iframe);
-    }
+        const isDev = (tipo === 'NF-e Devolução' || tipo === 'devolucao');
+        const isNFe = isDev || (tipo === 'NF-e' || tipo === 'nfe' || tipo === '55');
+        const nota = isDev ? (v.nfe_devolucao || v.nfe || {}) : (isNFe ? (v.nfe || {}) : (v.nfce || {}));
+        const emp = (typeof db !== 'undefined' && db.config?.empresa) ? db.config.empresa : {};
+        const chave = nota.chave_nfe || nota.chave_nfce || v.fiscal_chave || '';
+        const qrCodeUrl = nota.qr_code_url || v.fiscal_qrcode_url || (chave ? `https://nfeweb.sefaz.go.gov.br/nfeweb/sites/nfce/danfeNFCe?p=${chave}` : '');
+        const qrImgSrc = qrCodeUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrCodeUrl)}` : '';
 
-    const docIframe = iframe.contentWindow?.document || iframe.contentDocument;
-    if (docIframe) {
+        let html = '';
+        if (isNFe) {
+            html = gerarHtmlDanfeNFeA4(v, nota, emp);
+        } else {
+            html = gerarHtmlDanfeNFCe80mm(v, nota, emp, qrImgSrc);
+        }
+
+        if (!html) {
+            if (typeof showToast === 'function') showToast('Erro ao gerar layout da DANFE.', 'error');
+            else alert('Erro ao gerar layout da DANFE.');
+            return;
+        }
+
+        const winW = isNFe ? 850 : 450;
+        const winH = isNFe ? 950 : 700;
+
+        // 1. Tenta abrir janela popup
+        let printWin = null;
         try {
-            docIframe.open();
-            docIframe.write(html);
-            docIframe.close();
+            printWin = window.open('', '_blank', `width=${winW},height=${winH},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`);
+        } catch (e) {
+            console.warn('Falha ao abrir popup de impressão:', e);
+        }
+
+        if (printWin && !printWin.closed) {
+            try {
+                printWin.document.open();
+                printWin.document.write(html);
+                printWin.document.close();
+                setTimeout(() => {
+                    try {
+                        printWin.focus();
+                        printWin.print();
+                    } catch (err) {
+                        console.warn('Erro ao disparar print na janela popup:', err);
+                    }
+                }, 300);
+                return;
+            } catch (e) {
+                console.warn('Erro ao manipular popup de impressão fiscal:', e);
+            }
+        }
+
+        // 2. Fallback Iframe com Blob URL (compatível com file:// e https://)
+        let iframe = document.getElementById('iframe-impressao-fiscal-global');
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'iframe-impressao-fiscal-global';
+            iframe.style.position = 'fixed';
+            iframe.style.right = '0';
+            iframe.style.bottom = '0';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = '0';
+            iframe.style.visibility = 'hidden';
+            document.body.appendChild(iframe);
+        }
+
+        try {
+            const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+            const blobUrl = URL.createObjectURL(blob);
+            iframe.src = blobUrl;
+            iframe.onload = () => {
+                setTimeout(() => {
+                    try {
+                        iframe.contentWindow.focus();
+                        iframe.contentWindow.print();
+                    } catch (err) {
+                        console.warn('Erro ao disparar print no iframe via blob:', err);
+                    }
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+                }, 350);
+            };
+            return;
+        } catch (eBlob) {
+            console.warn('Falha ao usar blob URL para iframe, tentando srcdoc:', eBlob);
+        }
+
+        iframe.srcdoc = html;
+        iframe.onload = () => {
             setTimeout(() => {
                 try {
                     iframe.contentWindow.focus();
                     iframe.contentWindow.print();
-                } catch (err) {
-                    console.warn('Erro ao disparar print no iframe:', err);
+                } catch (e) {
+                    if (typeof showToast === 'function') showToast('Erro ao imprimir. Por favor, autorize pop-ups no navegador.', 'warning');
+                    else alert('Erro ao imprimir. Por favor, autorize pop-ups no navegador.');
                 }
             }, 350);
-            return;
-        } catch (err) {
-            console.warn('Falha no doc.write do iframe, usando srcdoc:', err);
-        }
+        };
+    } catch (errGlobal) {
+        console.error('Erro na impressão nativa da DANFE:', errGlobal);
+        if (typeof showToast === 'function') showToast('Erro ao gerar DANFE: ' + (errGlobal.message || errGlobal), 'error');
+        else alert('Erro ao gerar DANFE: ' + (errGlobal.message || errGlobal));
     }
-
-    iframe.srcdoc = html;
-    iframe.onload = () => {
-        setTimeout(() => {
-            try {
-                iframe.contentWindow.focus();
-                iframe.contentWindow.print();
-            } catch (e) {
-                if (typeof showToast === 'function') showToast('Erro ao imprimir. Por favor, autorize pop-ups no navegador.', 'warning');
-                else alert('Erro ao imprimir. Por favor, autorize pop-ups no navegador.');
-            }
-        }, 350);
-    };
 }
 
 async function baixarXmlNativo(vendaOrId, tipo = 'NFC-e') {

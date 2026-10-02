@@ -1476,110 +1476,115 @@ async function imprimirDanfeNativo(vendaId, tipo = 'NFC-e') {
         return window.imprimirDanfeNativoGlobal(vendaId, tipo);
     }
 
-    showToast('Preparando DANFE para impressão...', 'info');
-    const v = await obterVendaParaImpressao(vendaId);
-    if (!v) {
-        showToast('Venda não encontrada.', 'error');
-        return;
-    }
-    const isDev = (tipo === 'NF-e Devolução' || tipo === 'devolucao');
-    const isNFe = isDev || (tipo === 'NF-e' || tipo === 'nfe' || tipo === '55');
-    const nota = isDev ? (v.nfe_devolucao || v.nfe || {}) : (isNFe ? (v.nfe || {}) : (v.nfce || {}));
-    const emp = db.config?.empresa || {};
-    const chave = nota?.chave_nfe || v.fiscal_chave || '';
-    const qrCodeUrl = nota?.qr_code_url || v.fiscal_qrcode_url || (chave ? `https://nfeweb.sefaz.go.gov.br/nfeweb/sites/nfce/danfeNFCe?p=${chave}` : '');
-    const qrImgSrc = qrCodeUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrCodeUrl)}` : '';
-
-    let html = '';
-    if (isNFe && typeof window.gerarHtmlDanfeNFeA4 === 'function') {
-        html = window.gerarHtmlDanfeNFeA4(v, nota, emp);
-    } else if (typeof window.gerarHtmlDanfeNFCe80mm === 'function') {
-        html = window.gerarHtmlDanfeNFCe80mm(v, nota, emp, qrImgSrc);
-    } else if (typeof gerarHtmlDanfeNFeA4 === 'function' && isNFe) {
-        html = gerarHtmlDanfeNFeA4(v, nota, emp);
-    } else if (typeof gerarHtmlDanfeNFCe80mm === 'function') {
-        html = gerarHtmlDanfeNFCe80mm(v, nota, emp, qrImgSrc);
-    }
-
-    if (!html) {
-        showToast('Erro ao gerar layout de impressão.', 'error');
-        return;
-    }
-
-    const winW = isNFe ? 850 : 450;
-    const winH = isNFe ? 950 : 700;
-
-    let printWin = null;
     try {
-        printWin = window.open('', '_blank', `width=${winW},height=${winH},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`);
-    } catch (e) {
-        console.warn('Popup bloqueado ou não suportado:', e);
-    }
-
-    if (printWin && !printWin.closed) {
-        try {
-            printWin.document.open();
-            printWin.document.write(html);
-            printWin.document.close();
-            setTimeout(() => {
-                try {
-                    printWin.focus();
-                    printWin.print();
-                } catch (err) {
-                    console.warn(err);
-                }
-            }, 300);
+        showToast('Preparando DANFE para impressão...', 'info');
+        const v = await obterVendaParaImpressao(vendaId);
+        if (!v) {
+            showToast('Venda não encontrada.', 'error');
             return;
-        } catch (e) {
-            console.warn(e);
         }
-    }
+        const isDev = (tipo === 'NF-e Devolução' || tipo === 'devolucao');
+        const isNFe = isDev || (tipo === 'NF-e' || tipo === 'nfe' || tipo === '55');
+        const nota = isDev ? (v.nfe_devolucao || v.nfe || {}) : (isNFe ? (v.nfe || {}) : (v.nfce || {}));
+        const emp = db.config?.empresa || {};
+        const chave = nota?.chave_nfe || v.fiscal_chave || '';
+        const qrCodeUrl = nota?.qr_code_url || v.fiscal_qrcode_url || (chave ? `https://nfeweb.sefaz.go.gov.br/nfeweb/sites/nfce/danfeNFCe?p=${chave}` : '');
+        const qrImgSrc = qrCodeUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrCodeUrl)}` : '';
 
-    let iframe = document.getElementById('iframe-impressao-fiscal');
-    if (!iframe) {
-        iframe = document.createElement('iframe');
-        iframe.id = 'iframe-impressao-fiscal';
-        iframe.style.position = 'fixed';
-        iframe.style.right = '0';
-        iframe.style.bottom = '0';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = '0';
-        iframe.style.visibility = 'hidden';
-        document.body.appendChild(iframe);
-    }
-    
-    const docIframe = iframe.contentWindow?.document || iframe.contentDocument;
-    if (docIframe) {
+        let html = '';
+        if (isNFe && typeof window.gerarHtmlDanfeNFeA4 === 'function') {
+            html = window.gerarHtmlDanfeNFeA4(v, nota, emp);
+        } else if (typeof window.gerarHtmlDanfeNFCe80mm === 'function') {
+            html = window.gerarHtmlDanfeNFCe80mm(v, nota, emp, qrImgSrc);
+        } else if (typeof gerarHtmlDanfeNFeA4 === 'function' && isNFe) {
+            html = gerarHtmlDanfeNFeA4(v, nota, emp);
+        } else if (typeof gerarHtmlDanfeNFCe80mm === 'function') {
+            html = gerarHtmlDanfeNFCe80mm(v, nota, emp, qrImgSrc);
+        }
+
+        if (!html) {
+            showToast('Erro ao gerar layout de impressão.', 'error');
+            return;
+        }
+
+        const winW = isNFe ? 850 : 450;
+        const winH = isNFe ? 950 : 700;
+
+        let printWin = null;
         try {
-            docIframe.open();
-            docIframe.write(html);
-            docIframe.close();
+            printWin = window.open('', '_blank', `width=${winW},height=${winH},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`);
+        } catch (e) {
+            console.warn('Popup bloqueado ou não suportado:', e);
+        }
+
+        if (printWin && !printWin.closed) {
+            try {
+                printWin.document.open();
+                printWin.document.write(html);
+                printWin.document.close();
+                setTimeout(() => {
+                    try {
+                        printWin.focus();
+                        printWin.print();
+                    } catch (err) {
+                        console.warn(err);
+                    }
+                }, 300);
+                return;
+            } catch (e) {
+                console.warn(e);
+            }
+        }
+
+        let iframe = document.getElementById('iframe-impressao-fiscal');
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'iframe-impressao-fiscal';
+            iframe.style.position = 'fixed';
+            iframe.style.right = '0';
+            iframe.style.bottom = '0';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = '0';
+            iframe.style.visibility = 'hidden';
+            document.body.appendChild(iframe);
+        }
+        
+        try {
+            const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+            const blobUrl = URL.createObjectURL(blob);
+            iframe.src = blobUrl;
+            iframe.onload = () => {
+                setTimeout(() => {
+                    try {
+                        iframe.contentWindow.focus();
+                        iframe.contentWindow.print();
+                    } catch (err) {
+                        console.warn(err);
+                    }
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+                }, 350);
+            };
+            return;
+        } catch (eBlob) {
+            console.warn('Falha ao usar blob URL para iframe em fiscal.js:', eBlob);
+        }
+
+        iframe.srcdoc = html;
+        iframe.onload = () => {
             setTimeout(() => {
                 try {
                     iframe.contentWindow.focus();
                     iframe.contentWindow.print();
-                } catch (err) {
-                    console.warn(err);
+                } catch (e) {
+                    showToast('Erro ao imprimir. Por favor, autorize pop-ups no navegador.', 'warning');
                 }
             }, 350);
-            return;
-        } catch (err) {
-            console.warn(err);
-        }
+        };
+    } catch (errGlobal) {
+        console.error('Erro na impressão nativa da DANFE:', errGlobal);
+        showToast('Erro ao gerar DANFE: ' + (errGlobal.message || errGlobal), 'error');
     }
-
-    iframe.srcdoc = html;
-    iframe.onload = () => {
-        setTimeout(() => {
-            try {
-                iframe.contentWindow.focus();
-                iframe.contentWindow.print();
-            } catch (e) {
-                showToast('Erro ao imprimir. Por favor, autorize pop-ups no navegador.', 'warning');
-            }
-        }, 350);
-    };
 }
 window.imprimirDanfeNativo = imprimirDanfeNativo;
 

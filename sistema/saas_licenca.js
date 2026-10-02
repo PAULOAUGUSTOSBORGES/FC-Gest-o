@@ -1,4 +1,4 @@
-// ==========================================================================
+﻿// ==========================================================================
 // SAAS_LICENCA.JS - CLIENTE UNIVERSAL DE LICENCIAMENTO MULTI-SISTEMAS
 // Conecta ao banco central do SaaS Master para validar licença e módulos
 // Compatível com FC-Gestão, FC-Food, FC-Barber e qualquer novo aplicativo
@@ -15,7 +15,7 @@
     };
 
     // Número do WhatsApp de suporte (formato internacional sem +)
-    const SUPORTE_WHATSAPP = '5562993341774';
+    const SUPORTE_WHATSAPP = '5562999676874';
 
     // Mapeamento completo: módulo → nome legível
     const NOMES_MODULOS = {

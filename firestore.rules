@@ -264,6 +264,13 @@ service cloud.firestore {
       allow write: if isSuperAdmin();
     }
 
+    // FAQ Dinâmico / Base de conhecimento compartilhada
+    match /faq_dinamico/{faqId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isSuperAdmin();
+    }
+
     // Regras legadas de raiz bloqueadas contra acesso publico (apenas Super Admin para manutencao)
     match /fc_moveis/{doc=**} { allow read, write: if isSuperAdmin(); }
     match /produtos/{doc=**} { allow read, write: if isSuperAdmin(); }

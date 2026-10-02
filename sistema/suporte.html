@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <!-- Anti-FOUC: Previne flash branco ao alternar páginas no sistema -->
+    <script>
+        (function() {
+            const t = localStorage.getItem('fc_theme_sistema') || 'dark';
+            if (t === 'light') {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.classList.add('light');
+                document.documentElement.setAttribute('data-theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                document.documentElement.classList.remove('light');
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+    <style>
+        :root { color-scheme: dark; background-color: #0f172a; }
+        html, body { background-color: #0f172a; }
+        html.light, html.light body, html[data-theme="light"], html[data-theme="light"] body { background-color: #f1f5f9; color-scheme: light; }
+    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- PWA Configurações e Ícones -->
+    <script>if (window.location.protocol.startsWith('http')) { const l = document.createElement('link'); l.rel = 'manifest'; l.href = '../manifest.json'; document.head.appendChild(l); }</script>
+    <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FC Gestão">
+    <link rel="apple-touch-icon" href="../icons/icon-apple-touch.png">
+    <link rel="icon" type="image/png" href="../icons/favicon.png">
+    <title>Configurações do Sistema</title>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css?v=20261002142531">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261002142531">
+</head>
+<body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
+
+    <div id="toast-container"></div>
+    
+    <div id="app-container" class="flex w-full h-full relative">
+        <div id="sidebar-overlay" class="fixed inset-0 bg-slate-900/60 z-30 hidden md:hidden transition-opacity" onclick="toggleMenu()"></div>
+
+        <!-- BARRA LATERAL (MENU) -->
+        <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 w-64 bg-slate-900 text-slate-300 flex flex-col h-full shrink-0 shadow-2xl z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out no-print">
+            <div class="p-5 flex items-center justify-between gap-3 border-b border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors" onclick="window.location.href='index.html'">
+                <div class="flex items-center gap-3 pointer-events-none">
+                    <!-- Motor que puxa a Logo -->
+                    <img id="menu-logo" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="w-10 h-10 rounded-lg object-cover hidden bg-white dark:bg-slate-800 shadow-lg">
+                    <div id="menu-logo-placeholder" class="w-10 h-10 bg-slate-800 border border-slate-600 rounded-lg flex items-center justify-center text-slate-400 text-xl shadow-lg"><i class="fa-solid fa-store"></i></div>
+                    
+                    <div>
+                        <!-- Motor que puxa o Nome da Empresa -->
+                        <h1 id="menu-empresa-nome" class="font-bold text-white text-lg tracking-wide leading-tight truncate w-32">Carregando...</h1>
+                        <p class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Sistema Ativo</p>
+                    </div>
+                </div>
+                <button onclick="event.stopPropagation(); toggleMenu()" class="md:hidden text-slate-400 hover:text-white text-2xl"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1 custom-scrollbar">
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-2 mb-1">Visão Geral</p>
+                <a href="index.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-chart-pie w-5 text-center"></i> Dashboard</a>
+                
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Operação</p>
+                <a href="pdv.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-cash-register w-5 text-center"></i> Frente de Caixa (PDV)</a>
+                <a href="vendas_operacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-receipt w-5 text-center"></i> Histórico Vendas/Serviços</a>
+                <a href="orcamentos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-file-invoice w-5 text-center"></i> Meus Orçamentos</a>
+                <a href="fiscal.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-file-invoice text-emerald-400 w-5 text-center"></i> Emissor Fiscal (NF-e)</a>
+                
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Cadastros</p>
+                <a href="produtos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-boxes-stacked w-5 text-center"></i> Produtos & Serviços</a>
+                <a href="clientes.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-users w-5 text-center"></i> Clientes</a>
+                <a href="fornecedores.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-truck w-5 text-center"></i> Fornecedores</a>
+                <a href="funcionarios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="funcionarios"><i class="fa-solid fa-user-tie w-5 text-center"></i> Funcionários / Vendedores</a>
+                
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
+                <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
+                <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
+                <a href="caixa_loja.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa_loja"><i class="fa-solid fa-chart-bar w-5 text-center"></i> Caixa da Loja</a>
+                <a href="compras.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & NF-e XML</a>
+                <a href="relatorios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
+                <a href="agenda.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="agenda"><i class="fa-regular fa-calendar w-5 text-center"></i> Agenda</a>
+                <a href="marketing.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="marketing"><i class="fa-solid fa-bullhorn w-5 text-center"></i> Marketing & Lembretes</a>
+                
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Sistema</p>
+                <a href="sistema.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="config"><i class="fa-solid fa-gear w-5 text-center"></i> Configurações</a>
+                <a href="suporte.html" class="nav-btn bg-sky-600 text-white w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-sky-600/20" data-target="suporte"><i class="fa-solid fa-headset w-5 text-center"></i> Suporte & Ajuda</a>
+            </nav>
+            <div class="p-4 border-t border-slate-800">
+                <button onclick="fazerLogout()" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-white text-sm font-medium transition-colors"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair do Sistema</button>
+            </div>
+        </aside>
+
+        <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
+        <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
+            <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleMenu()" class="md:hidden text-slate-600 dark:text-slate-300 hover:text-blue-600 p-2"><i class="fa-solid fa-bars text-xl"></i></button>
+                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><i class="fa-solid fa-headset text-sky-500"></i> Central de Suporte & Ajuda</h2>
+                </div>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth custom-scrollbar w-full relative">
+                <div class="max-w-5xl mx-auto space-y-6 pb-20">
+                    <!-- HERO / CAMPO DE PESQUISA -->
+                    <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/80 rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden">
+                        <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                        <div class="max-w-2xl relative z-10">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-sky-500/15 text-sky-400 border border-sky-500/30 mb-3">
+                                <i class="fa-solid fa-sparkles"></i> Autoatendimento Inteligente
+                            </span>
+                            <h3 class="text-2xl md:text-3xl font-black text-white leading-tight">Como podemos te ajudar hoje?</h3>
+                            <p class="text-sm text-slate-300 mt-2 mb-6">Pesquise suas dúvidas nos tópicos do sistema ou faça perguntas diretamente para nossa Inteligência Artificial.</p>
+                            
+                            <div class="relative flex items-center">
+                                <span style="position: absolute; left: 1rem; display: flex; align-items: center; justify-content: center; width: 1.25rem; height: 1.25rem; color: #94a3b8; pointer-events: none; z-index: 10;">
+                                    <i class="fa-solid fa-magnifying-glass text-base"></i>
+                                </span>
+                                <input type="text" id="campo-busca-faq" oninput="filtrarFaqSistema()" placeholder="Digite sua dúvida... (ex: cadastrar produto, emitir nota fiscal, fechar caixa, sangria, PIX)" style="padding-left: 2.85rem; padding-right: 2.75rem; min-height: 50px;" class="w-full py-3.5 bg-slate-950/70 border border-slate-700 rounded-2xl text-sm md:text-base text-white placeholder-slate-400 outline-none focus:border-sky-400 transition-all shadow-inner font-medium">
+                                <button type="button" id="btn-limpar-busca-faq" onclick="limparBuscaFaq()" class="hidden" style="position: absolute; right: 0.85rem; top: 50%; transform: translateY(-50%); width: 1.75rem; height: 1.75rem; border-radius: 9999px; background: rgba(255,255,255,0.1); color: #cbd5e1; display: none; align-items: center; justify-content: center; transition: all 0.2s; cursor: pointer; border: none;" title="Limpar busca">
+                                    <i class="fa-solid fa-xmark text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BOTÕES DE CATEGORIAS -->
+                    <div class="flex items-center gap-2 overflow-x-auto pb-2 custom-scrollbar" id="container-categorias-faq"></div>
+
+                    <!-- GRID: FAQ + IA ASSISTENTE -->
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                        <!-- COLUNA DA ESQUERDA: FAQ PRONTOS -->
+                        <div class="lg:col-span-7 space-y-3">
+                            <div class="flex items-center justify-between px-1">
+                                <h4 class="text-sm font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                                    <i class="fa-solid fa-circle-question text-sky-400"></i> Respostas Rápidas & Manuais
+                                </h4>
+                                <span class="text-xs text-slate-400 font-medium" id="contador-resultados-faq">Carregando...</span>
+                            </div>
+                            <div id="lista-respostas-faq" class="space-y-3"></div>
+                        </div>
+
+                        <!-- COLUNA DA DIREITA: CHAT IA + WHATSAPP -->
+                        <div class="lg:col-span-5 space-y-6">
+                            <!-- BOX IA GEMINI -->
+                            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden flex flex-col h-[520px]">
+                                <div class="p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-white">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/30 text-purple-400 flex items-center justify-center text-base">
+                                            <i class="fa-solid fa-robot"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="text-sm font-black text-white flex items-center gap-1.5">IA Especialista do Sistema</h4>
+                                            <p class="text-[10px] text-slate-400">Ajuda você a operar cada recurso</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Online
+                                    </span>
+                                </div>
+                                <div id="ia-chat-mensagens" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-slate-950/20 text-xs">
+                                    <div class="flex gap-2.5 items-start">
+                                        <div class="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-xs shrink-0 mt-0.5">
+                                            <i class="fa-solid fa-robot"></i>
+                                        </div>
+                                        <div class="bg-slate-800/90 text-slate-200 border border-slate-700/80 rounded-2xl rounded-tl-none p-3 max-w-[85%] leading-relaxed shadow-sm">
+                                            Olá! Sou sua <strong>IA de Suporte do FC Gestão</strong>. Você pode me perguntar:
+                                            <ul class="list-disc list-inside mt-2 space-y-1 text-slate-300">
+                                                <li>"Como cadastrar um produto com foto?"</li>
+                                                <li>"Como emitir uma NFC-e no PDV?"</li>
+                                                <li>"Onde vejo minhas contas atrasadas?"</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="p-3 bg-slate-900 border-t border-slate-800">
+                                    <form onsubmit="perguntarIaSuporte(event)" class="flex gap-2">
+                                        <input type="text" id="ia-chat-input" placeholder="Faça uma pergunta sobre o sistema..." class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-purple-400 transition-colors">
+                                        <button type="submit" id="btn-enviar-ia" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-md shadow-purple-600/20 flex items-center gap-1.5">
+                                            <i class="fa-solid fa-paper-plane"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <!-- CARD WHATSAPP OFICIAL DO SAAS -->
+                            <div class="bg-gradient-to-br from-emerald-950/60 via-slate-900 to-emerald-950/30 border border-emerald-500/30 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+                                <div class="flex items-start gap-4">
+                                    <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center text-2xl shrink-0">
+                                        <i class="fa-brands fa-whatsapp"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h4 class="text-sm font-black text-white">Prefere suporte humano?</h4>
+                                        <p class="text-xs text-slate-300 mt-1 leading-relaxed">Fale direto com o responsável pelo sistema cadastrado no SaaS para suporte técnico ou financeiro.</p>
+                                        <div class="mt-3 flex items-center gap-2">
+                                            <button onclick="abrirWhatsAppSuporte()" class="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 transition-all">
+                                                <i class="fa-brands fa-whatsapp text-sm"></i> Chamar no WhatsApp
+                                            </button>
+                                        </div>
+                                        <p class="text-[10px] text-slate-400 text-center mt-2" id="info-whatsapp-numero">WhatsApp integrado ao SaaS</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
+    
+    <script src="../sistema/config_banco.js?v=20261002142531"></script>
+    <script src="saas_licenca.js?v=20261002142531"></script>
+    <script src="../global.js?v=20261002142531"></script>
+    <script src="fc_cache.js?v=20261002142531"></script>
+    <script src="suporte.js?v=20261002142531"></script>
+
+</body>
+</html>

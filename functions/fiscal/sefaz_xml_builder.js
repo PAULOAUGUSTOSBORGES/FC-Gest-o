@@ -537,6 +537,81 @@ function construirXmlNota(dados) {
     <pag>${detPagXml}${vTrocoTag}
     </pag>`;
 
+    // Grupo de Cobrança / Fatura / Duplicatas (Opcional na NF-e Mod 55, proibido na NFC-e Mod 65)
+    let tagCobr = '';
+    if (modelo === '55' && String(finNFe) !== '4' && String(finNFe) !== '3') {
+        let dups = [];
+        let pagsVenda = (venda.pagamentos && Array.isArray(venda.pagamentos) && venda.pagamentos.length > 0)
+            ? venda.pagamentos
+            : (venda.condicaoPagamentoVendedor ? [venda.condicaoPagamentoVendedor] : []);
+
+        pagsVenda.forEach(p => {
+            if (p.detalhesParcelas && Array.isArray(p.detalhesParcelas) && p.detalhesParcelas.length > 1) {
+                p.detalhesParcelas.forEach((dp, i) => {
+                    dups.push({
+                        nDup: String(dp.parcela || i + 1).padStart(3, '0'),
+                        dVenc: dp.vencimento ? dp.vencimento.split('T')[0] : dhEmi.split('T')[0],
+                        vDup: (parseFloat(dp.valor) || 0)
+                    });
+                });
+            } else {
+                let parcQtd = parseInt(p.parcelas) || 0;
+                if (!parcQtd && p.vencimentosPersonalizados && Array.isArray(p.vencimentosPersonalizados)) {
+                    parcQtd = p.vencimentosPersonalizados.length;
+                }
+                if (parcQtd > 1) {
+                    const valTot = parseFloat(p.valor) || parseFloat(vNF);
+                    const baseCent = Math.floor((valTot / parcQtd) * 100) / 100;
+                    const restoCent = Math.round((valTot - (baseCent * parcQtd)) * 100) / 100;
+                    let dtRef = p.vencimentoBase ? new Date(p.vencimentoBase + 'T12:00:00') : new Date(dhEmi);
+                    if (isNaN(dtRef.getTime())) dtRef = new Date();
+
+                    for (let i = 1; i <= parcQtd; i++) {
+                        let dtV = '';
+                        if (p.vencimentosPersonalizados && p.vencimentosPersonalizados[i - 1]) {
+                            dtV = p.vencimentosPersonalizados[i - 1].split('T')[0];
+                        } else {
+                            const d = new Date(dtRef);
+                            d.setDate(d.getDate() + (30 * (i - 1)));
+                            dtV = d.toISOString().split('T')[0];
+                        }
+                        const vP = (i === 1) ? (baseCent + restoCent) : baseCent;
+                        dups.push({
+                            nDup: String(i).padStart(3, '0'),
+                            dVenc: dtV,
+                            vDup: vP
+                        });
+                    }
+                }
+            }
+        });
+
+        if (dups.length > 1) {
+            let somaDups = dups.reduce((acc, d) => acc + d.vDup, 0);
+            const diff = parseFloat(vNF) - somaDups;
+            if (Math.abs(diff) > 0.001) {
+                dups[0].vDup = Math.round((dups[0].vDup + diff) * 100) / 100;
+            }
+
+            let dupXml = dups.map(d => `
+        <dup>
+            <nDup>${d.nDup}</nDup>
+            <dVenc>${d.dVenc}</dVenc>
+            <vDup>${d.vDup.toFixed(2)}</vDup>
+        </dup>`).join('');
+
+            tagCobr = `
+    <cobr>
+        <fat>
+            <nFat>${String(nNF)}</nFat>
+            <vOrig>${vNF}</vOrig>
+            <vDesc>0.00</vDesc>
+            <vLiq>${vNF}</vLiq>
+        </fat>${dupXml}
+    </cobr>`;
+        }
+    }
+
     // Informações Adicionais
     const msgSimples = emitCrt === '1' ? 'DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL. NAO GERA DIREITO A CREDITO FISCAL DE IPI.' : '';
     const obsVenda = limparTexto(venda.observacoes || '');
@@ -616,7 +691,7 @@ function construirXmlNota(dados) {
     </total>
     <transp>
         <modFrete>9</modFrete>
-    </transp>${tagPag}
+    </transp>${tagCobr}${tagPag}
     <infAdic>
         <infCpl>${infCpl}</infCpl>
     </infAdic>

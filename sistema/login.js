@@ -524,6 +524,8 @@ async function fazerLoginGoogle() {
             showToast('Login com Google cancelado.', 'info');
         } else if (e.code === 'auth/popup-blocked') {
             showToast('O navegador bloqueou a janela pop-up do Google. Permita pop-ups para continuar.', 'error');
+        } else if (e.code === 'auth/operation-not-supported-in-this-environment') {
+            showToast('O login com Google requer acesso via HTTP/HTTPS ou Servidor Local (localhost).', 'warning');
         } else if (e.code === 'auth/account-exists-with-different-credential') {
             showToast('Já existe uma conta com este e-mail usando outro método de login.', 'error');
         } else {
