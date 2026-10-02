@@ -112,7 +112,7 @@ service cloud.firestore {
       // 1. Configuracoes e Caixa Fisico
       // ==========================================
       match /configuracoes/{docId} {
-        allow read: if true;
+        allow read: if isAutenticado() && (getEmpresaUsuario() == empresaId || isSuperAdmin());
         allow write: if (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_config') || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
         allow create: if isDonoNoOnboarding(empresaId) || isSuperAdmin(); // Permite no batch de criacao
       }

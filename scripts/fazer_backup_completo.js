@@ -5,6 +5,8 @@
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
+const { execSync } = require('child_process');
 
 const PROJECT_ID = 'lojafc-a31f9';
 const BASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
@@ -12,42 +14,79 @@ const BASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/dat
 // Diretório fixo solicitado pelo usuário
 const PASTA_DESTINO = path.resolve('g:/VERSOES DO SISTEMA/site sistema/backupsGestao');
 
-const COLECOES_RAIZ = [
-    'produtos',
-    'vendas',
-    'clientes',
-    'fornecedores',
-    'categorias',
-    'financeiro',
-    'compras',
-    'movimentacoes',
-    'orcamentos',
-    'pedidos_site',
-    'funcionarios',
-    'notas_servico',
-    'notas_devolucao',
-    'notas_avulsas',
-    'notas_fiscais',
-    'caixa',
-    'caixa_fechamentos',
-    'fechamentos_caixa',
-    'marketing_historico',
-    'relatorios_ia_historico',
-    'fc_moveis',
-    'planos_saas',
-    'contratos_saas',
-    'saas_config'
-];
-
-const SUBCOLECOES_EMPRESA = [
+const SUBCOLECOES_PADRAO = [
     'produtos',
     'configuracoes',
     'categorias',
     'caixa',
+    'caixa_fechamentos',
+    'fechamentos_caixa',
     'vendas',
     'clientes',
+    'fornecedores',
+    'financeiro',
+    'movimentacoes',
+    'funcionarios',
+    'orcamentos',
+    'compras',
+    'pedidos_site',
+    'notas_servico',
+    'notas_devolucao',
+    'notas_avulsas',
+    'notas_fiscais',
+    'marketing_historico',
+    'relatorios_ia_historico',
     'faturas_saas'
 ];
+
+const COLECOES_RAIZ_PADRAO = [
+    'usuarios',
+    'planos_saas',
+    'saas_config',
+    'pagamentos_pendentes',
+    'pagamentos_pendentes_email'
+];
+
+let TOKEN_ACESSO = null;
+
+function obterTokenAutenticacao() {
+    const configPath = path.join(os.homedir(), '.config', 'configstore', 'firebase-tools.json');
+    if (!fs.existsSync(configPath)) {
+        console.warn('⚠️ Arquivo de credenciais do Firebase CLI não encontrado em:', configPath);
+        return null;
+    }
+
+    try {
+        let dados = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        if (!dados.tokens) return null;
+
+        const expiresAt = dados.tokens.expires_at || 0;
+        if (Date.now() > expiresAt - 60000) {
+            console.log('🔄 Renovando token de acesso do Firebase...');
+            try {
+                execSync('firebase projects:list', { stdio: 'ignore' });
+                dados = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            } catch (errRenovacao) {
+                console.warn('⚠️ Não foi possível renovar automaticamente:', errRenovacao.message);
+            }
+        }
+
+        const userEmail = dados.user ? dados.user.email : 'Super Admin';
+        console.log(`🔑 Autenticado com sucesso via Firebase CLI: ${userEmail}\n`);
+        return dados.tokens.access_token;
+    } catch (e) {
+        console.warn('⚠️ Erro ao ler credenciais do Firebase:', e.message);
+        return null;
+    }
+}
+
+function getHeaders() {
+    const h = { 'Content-Type': 'application/json' };
+    if (TOKEN_ACESSO) {
+        h['Authorization'] = `Bearer ${TOKEN_ACESSO}`;
+    }
+    return h;
+}
 
 function fromFirestoreValue(val) {
     if (!val) return null;
@@ -70,6 +109,22 @@ function fromFirestoreValue(val) {
     return val;
 }
 
+async function listarIdsSubcolecoes(caminhoPai) {
+    const url = `https://firestore.googleapis.com/v1/${caminhoPai}:listCollectionIds`;
+    try {
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({})
+        });
+        if (!resp.ok) return [];
+        const data = await resp.json();
+        return data.collectionIds || [];
+    } catch (e) {
+        return [];
+    }
+}
+
 async function baixarCaminho(caminhoCompleto) {
     let docs = [];
     let pageToken = '';
@@ -77,7 +132,7 @@ async function baixarCaminho(caminhoCompleto) {
     do {
         let url = `${BASE_URL}/${caminhoCompleto}?pageSize=300${pageToken ? '&pageToken=' + pageToken : ''}`;
         try {
-            const resp = await fetch(url);
+            const resp = await fetch(url, { headers: getHeaders() });
             if (!resp.ok) {
                 const errText = await resp.text();
                 return { sucesso: false, erro: resp.status + ': ' + errText, docs: [] };
@@ -109,6 +164,8 @@ async function executarBackup() {
     console.log(`       Destino: ${PASTA_DESTINO}`);
     console.log('================================================================\n');
 
+    TOKEN_ACESSO = obterTokenAutenticacao();
+
     if (!fs.existsSync(PASTA_DESTINO)) {
         fs.mkdirSync(PASTA_DESTINO, { recursive: true });
         console.log(`📁 Pasta criada: ${PASTA_DESTINO}\n`);
@@ -130,9 +187,13 @@ async function executarBackup() {
 
     let totalDocumentos = 0;
 
-    console.log('📦 [1/2] Baixando Coleções Gerais...');
-    for (const col of COLECOES_RAIZ) {
-        process.stdout.write(`   - ${col.padEnd(25)}: `);
+    console.log('📦 [1/2] Baixando Coleções Gerais do Sistema...');
+    const colsRaizDinamicas = await listarIdsSubcolecoes(`projects/${PROJECT_ID}/databases/(default)/documents`);
+    const colsRaiz = Array.from(new Set([...COLECOES_RAIZ_PADRAO, ...colsRaizDinamicas]))
+        .filter(c => c !== 'empresas');
+
+    for (const col of colsRaiz) {
+        process.stdout.write(`   - ${col.padEnd(30)}: `);
         const res = await baixarCaminho(encodeURIComponent(col));
         if (res.sucesso) {
             backup.colecoes_raiz[col] = res.docs;
@@ -140,32 +201,38 @@ async function executarBackup() {
             totalDocumentos += res.docs.length;
             console.log(`✅ ${res.docs.length} docs`);
         } else {
-            console.log(`⚠️ (vazio ou sem permissão direta)`);
+            console.log(`⚠️ (vazio)`);
             backup.resumo[col] = 0;
         }
     }
 
-    console.log('\n🏢 [2/2] Baixando Lojas / Empresas (SaaS)...');
+    console.log('\n🏢 [2/2] Baixando Todas as Lojas / Empresas (SaaS)...');
     const resEmpresas = await baixarCaminho('empresas');
     if (resEmpresas.sucesso && resEmpresas.docs.length) {
         for (const emp of resEmpresas.docs) {
             const empId = emp._id;
-            console.log(`   🏬 Loja: [${empId}] ${emp.nomeEmpresa || emp.nome || ''}`);
+            const nomeLoja = emp.nomeEmpresa || emp.nome || emp.razaoSocial || 'Loja';
+            console.log(`\n   🏬 Loja: [${empId}] ${nomeLoja}`);
             backup.empresas[empId] = {
                 dados: emp,
                 subcolecoes: {}
             };
             totalDocumentos += 1;
 
-            for (const sub of SUBCOLECOES_EMPRESA) {
-                process.stdout.write(`      └── ${sub.padEnd(18)}: `);
-                const resSub = await baixarCaminho(`empresas/${encodeURIComponent(empId)}/${encodeURIComponent(sub)}`);
-                if (resSub.sucesso) {
+            const subsDinamicas = await listarIdsSubcolecoes(`projects/${PROJECT_ID}/databases/(default)/documents/empresas/${encodeURIComponent(empId)}`);
+            const subcolecoes = Array.from(new Set([...subsDinamicas, ...SUBCOLECOES_PADRAO]));
+
+            for (const sub of subcolecoes) {
+                const caminhoSub = `empresas/${encodeURIComponent(empId)}/${encodeURIComponent(sub)}`;
+                const resSub = await baixarCaminho(caminhoSub);
+                if (resSub.sucesso && resSub.docs.length > 0) {
+                    process.stdout.write(`      └── ${sub.padEnd(25)}: `);
                     backup.empresas[empId].subcolecoes[sub] = resSub.docs;
                     totalDocumentos += resSub.docs.length;
                     console.log(`✅ ${resSub.docs.length} docs`);
-                } else {
-                    console.log(`⚠️ (vazio)`);
+                } else if (subsDinamicas.includes(sub)) {
+                    process.stdout.write(`      └── ${sub.padEnd(25)}: `);
+                    console.log(`ℹ️ 0 docs`);
                 }
             }
         }
@@ -176,7 +243,7 @@ async function executarBackup() {
     const nomeArquivo = `backup_sistema_${dataFormatada}.json`;
     const caminhoFinal = path.join(PASTA_DESTINO, nomeArquivo);
 
-    console.log('\n💾 Salvando arquivo no disco...');
+    console.log('\n💾 Salvando arquivo compactado no disco...');
     fs.writeFileSync(caminhoFinal, JSON.stringify(backup, null, 2), 'utf8');
 
     const tamanhoMb = (fs.statSync(caminhoFinal).size / (1024 * 1024)).toFixed(2);

@@ -2,7 +2,10 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const axios = require("axios");
 
-const MP_TOKEN = process.env.MERCADOPAGO_TOKEN || 'APP_USR-4139999599254354-093013-a40e774b9a2e412dd44185483865af54-208400622';
+const MP_TOKEN = process.env.MERCADOPAGO_TOKEN;
+if (!MP_TOKEN) {
+  console.warn("⚠️ ALERTA DE SEGURANÇA: MERCADOPAGO_TOKEN não configurado nas variáveis de ambiente!");
+}
 const MP_BASE = 'https://api.mercadopago.com';
 
 function getDb() {
@@ -198,18 +201,56 @@ exports.criarPagamento = functions.https.onRequest(async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(204).send('');
   if (req.method !== 'POST') return res.status(405).send('Método não permitido');
 
-  const { valorCentavos, emailPagador, nomePlano, senha, nomeEmpresa, nomeResponsavel, whatsapp, cidade } = req.body;
+  const { emailPagador, nomePlano, senha, nomeEmpresa, nomeResponsavel, whatsapp, cidade } = req.body;
   const db = getDb();
 
   try {
     const emailMp = emailPagador || 'cliente@primastecnologia.com';
 
+    // 1. Validar e buscar o preço real do plano
+    const planoNomeStr = (nomePlano || '').trim();
+    let precoRealFinal = 0;
+
+    // Tabela de fallback (caso o banco não tenha a collection planos_saas populada)
+    const TABELA_PRECOS = {
+      'start express': 69.90,
+      'varejo balcão': 99.90,
+      'fiscal & vendas': 119.90,
+      'profissional': 169.90,
+      'enterprise + ia': 249.90,
+      'ultra completo': 349.90
+    };
+
+    try {
+      const planoSnap = await db.collection('planos_saas').where('nome', '==', planoNomeStr).limit(1).get();
+      if (!planoSnap.empty) {
+        const pData = planoSnap.docs[0].data();
+        precoRealFinal = Number(pData.preco || pData.valor || 0);
+      }
+    } catch (err) {}
+
+    // Se falhar no banco, usa fallback
+    if (!precoRealFinal || precoRealFinal <= 0) {
+      const pKey = planoNomeStr.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      for (const [key, val] of Object.entries(TABELA_PRECOS)) {
+        const normKey = key.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        if (pKey === normKey) {
+          precoRealFinal = val;
+          break;
+        }
+      }
+    }
+
+    if (precoRealFinal <= 0) {
+      throw new Error("Plano inválido ou preço não encontrado.");
+    }
+
     // Checkout Pro Oficial: gera link oficial com PIX, cartão, etc.
     const preferencePayload = {
       items: [{
-        title: `Plano ${(nomePlano || 'SaaS').substring(0, 50)}`,
+        title: `Plano ${planoNomeStr.substring(0, 50) || 'SaaS'}`,
         quantity: 1,
-        unit_price: Number(valorCentavos) / 100,
+        unit_price: precoRealFinal,
         currency_id: 'BRL'
       }],
       payment_methods: {
@@ -218,9 +259,9 @@ exports.criarPagamento = functions.https.onRequest(async (req, res) => {
         installments: 12
       },
       back_urls: {
-        success: 'https://lojafc-a31f9.web.app/sistema/login.html',
-        failure: 'https://pauloaugustosborges.github.io/IsabellaTecnologia/cadastro.html',
-        pending: 'https://lojafc-a31f9.web.app/sistema/login.html'
+        success: req.body.urlSucesso || 'https://lojafc-a31f9.web.app/sistema/login.html',
+        failure: req.body.urlFalha || 'https://lojafc-a31f9.web.app/sistema/login.html?erro=pagamento',
+        pending: req.body.urlSucesso || 'https://lojafc-a31f9.web.app/sistema/login.html'
       },
       auto_return: 'approved',
       notification_url: 'https://us-central1-lojafc-a31f9.cloudfunctions.net/webhookMercadoPago',
@@ -256,7 +297,7 @@ exports.criarPagamento = functions.https.onRequest(async (req, res) => {
       nomeResponsavel: nomeResponsavel || null,
       whatsapp: whatsapp || null,
       cidade: cidade || null,
-      valor: Number(valorCentavos) / 100,
+      valor: precoRealFinal,
       status: 'pending',
       criadoEm: admin.firestore.FieldValue.serverTimestamp()
     });
@@ -271,7 +312,7 @@ exports.criarPagamento = functions.https.onRequest(async (req, res) => {
         nomeResponsavel: nomeResponsavel || null,
         whatsapp: whatsapp || null,
         cidade: cidade || null,
-        valor: Number(valorCentavos) / 100,
+        valor: precoRealFinal,
         status: 'pending',
         atualizadoEm: admin.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
