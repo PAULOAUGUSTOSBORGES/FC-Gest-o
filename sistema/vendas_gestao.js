@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // GESTO.JS - ERP FINANCEIRO, DASHBOARD E PROJE‡ES
 // ==========================================
 
@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const view = urlParams.get('view') || 'vendas_gestao';
     
-    // Set default filter to 'Este Ms'
+    // Set default filter to 'Este Mês'
     if(typeof mudarPeriodoVendas === 'function') mudarPeriodoVendas(false);
     
     if (typeof mudarVisaoLocal === 'function') mudarVisaoLocal(view);
@@ -3024,10 +3024,10 @@ async function salvarAjusteCustoVenda() {
         if (typeof renderEstatisticasVendas === 'function') renderEstatisticasVendas();
 
         if (typeof showToast === 'function') {
-            const extraMsg = produtosParaAtualizarCusto.length > 0 
+            const extraMêsg = produtosParaAtualizarCusto.length > 0 
                 ? ` e ${produtosParaAtualizarCusto.length} produto(s) atualizado(s) no estoque!` 
                 : '!';
-            showToast(`Custos e anotações da venda atualizados com sucesso${extraMsg}`, 'success');
+            showToast(`Custos e anotações da venda atualizados com sucesso${extraMêsg}`, 'success');
         }
 
         // Retorna o modal para modo de visualização com os dados novos

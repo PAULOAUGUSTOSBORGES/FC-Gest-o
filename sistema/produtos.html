@@ -36,8 +36,8 @@
         
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css?v=20261005090727">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261005090727">
+    <link rel="stylesheet" href="../style.css?v=20261005171910">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261005171910">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="estoque">
 
@@ -50,11 +50,10 @@
         <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 w-64 bg-slate-900 text-slate-300 flex flex-col h-full shrink-0 shadow-2xl z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out no-print">
             <div class="p-5 flex items-center justify-between gap-3 border-b border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors" onclick="window.location.href='index.html'">
                 <div class="flex items-center gap-3 pointer-events-none">
-                    <img id="menu-logo" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="w-10 h-10 rounded-lg object-cover hidden bg-white dark:bg-slate-800 shadow-lg">
-                    <div id="menu-logo-placeholder" class="w-10 h-10 bg-slate-800 border border-slate-600 rounded-lg flex items-center justify-center text-slate-400 text-xl shadow-lg"><i class="fa-solid fa-store"></i></div>
-
+                    <img id="menu-logo" src="../icons/icon.svg" class="w-8 h-8 rounded-lg object-cover bg-slate-800 shadow-md">
+                    <div id="menu-logo-placeholder" class="hidden w-8 h-8 bg-slate-800 border border-slate-600 rounded-lg flex items-center justify-center text-slate-400 text-base shadow-md"><i class="fa-solid fa-store"></i></div>
                     <div>
-                        <h1 id="menu-empresa-nome" class="font-bold text-white text-lg tracking-wide leading-tight truncate w-32">Carregando...</h1>
+                        <h1 id="menu-empresa-nome" class="font-bold text-white text-sm tracking-wide leading-tight">FC Gestão</h1>
                         <p class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Sistema Ativo</p>
                     </div>
                 </div>
@@ -236,7 +235,7 @@
                             <div class="flex flex-wrap items-center gap-2 sm:gap-3">
                                 <span id="contador-produtos" class="font-bold text-slate-700 dark:text-slate-300">Carregando produtos...</span>
                                 
-                                <span class="hidden sm:inline text-slate-300 dark:text-slate-600">•</span>
+                                <span class="hidden sm:inline text-slate-300 dark:text-slate-600">â€¢</span>
 
                                 <!-- Total Custo Estoque -->
                                 <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 font-medium shadow-xs" title="Valor total de custo dos produtos filtrados em estoque">
@@ -602,20 +601,27 @@
                                 <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">CSOSN / CST</label>
                                 <input type="text" id="prod-csosn" list="lista-cst-csosn-produtos" placeholder="Ex: 102 (Simples) ou 00 (Normal)" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 font-mono dark:text-white">
                                 <datalist id="lista-cst-csosn-produtos">
-                                    <option value="101">101 - Simples Nacional (com permissão de crédito)</option>
-                                    <option value="102">102 - Simples Nacional (sem permissão de crédito)</option>
-                                    <option value="103">103 - Simples Nacional (isenção de ICMS)</option>
-                                    <option value="201">201 - Simples Nacional (com crédito e com ST)</option>
-                                    <option value="202">202 - Simples Nacional (sem crédito e com ST)</option>
-                                    <option value="500">500 - Simples Nacional (ICMS cobrado anteriormente por ST)</option>
-                                    <option value="900">900 - Simples Nacional (Outros)</option>
-                                    <option value="00">00 - Tributada integralmente</option>
-                                    <option value="10">10 - Tributada e com cobrança de ST</option>
-                                    <option value="20">20 - Com redução de base de cálculo</option>
-                                    <option value="40">40 - Isenta</option>
-                                    <option value="41">41 - Não tributada</option>
-                                    <option value="60">60 - Cobrado anteriormente por ST</option>
-                                    <option value="90">90 - Outras</option>
+                                    <option value="101 - Simples Nacional (com permissão de crédito)">
+                                    <option value="102 - Simples Nacional (sem permissão de crédito)">
+                                    <option value="103 - Simples Nacional (isenção de ICMS)">
+                                    <option value="201 - Simples Nacional (com crédito e com ST)">
+                                    <option value="202 - Simples Nacional (sem crédito e com ST)">
+                                    <option value="203 - Simples Nacional (isenção ICMS e com ST)">
+                                    <option value="300 - Imune">
+                                    <option value="400 - Não tributada pelo Simples Nacional">
+                                    <option value="500 - Simples Nacional (ICMS cobrado anteriormente por ST)">
+                                    <option value="900 - Simples Nacional (Outros)">
+                                    <option value="00 - Tributada integralmente">
+                                    <option value="10 - Tributada e com cobrança de ST">
+                                    <option value="20 - Com redução de base de cálculo">
+                                    <option value="30 - Isenta ou não tributada e com cobrança de ST">
+                                    <option value="40 - Isenta">
+                                    <option value="41 - Não tributada">
+                                    <option value="50 - Suspensão">
+                                    <option value="51 - Diferimento">
+                                    <option value="60 - Cobrado anteriormente por ST">
+                                    <option value="70 - Com redução de base e cobrança ST">
+                                    <option value="90 - Outras">
                                 </datalist>
                             </div>
                             <div>
@@ -893,7 +899,7 @@
                           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-dashboard" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📊 Dashboard</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ“Š Dashboard</span>
                               </label>
                           </div>
                       </div>
@@ -904,27 +910,27 @@
                           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-pdv" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">🖥️ Frente de Caixa (PDV Geral)</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ–¥ï¸ Frente de Caixa (PDV Geral)</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700 bg-amber-50/50 dark:bg-amber-950/20">
                                   <input type="checkbox" id="func-perm-pdv-caixa" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">🚀 Venda Finalizada no Caixa (F9)</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸš€ Venda Finalizada no Caixa (F9)</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700 bg-emerald-50/50 dark:bg-emerald-950/20">
                                   <input type="checkbox" id="func-perm-pdv-balcao" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">✅ Venda Feita Tudo por PDV (Balcão)</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">âœ… Venda Feita Tudo por PDV (Balcão)</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-vendas-op" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📜 Histórico Vendas/Serviços</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ“œ Histórico Vendas/Serviços</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-orcamentos" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📑 Meus Orçamentos</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ“‘ Meus Orçamentos</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-fiscal" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">🧾 Emissor Fiscal (NF-e)</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ§¾ Emissor Fiscal (NF-e)</span>
                               </label>
                           </div>
                       </div>
@@ -935,19 +941,19 @@
                           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-produtos" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📦 Produtos & Serviços</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ“¦ Produtos & Serviços</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-clientes" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">👥 Clientes</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ‘¥ Clientes</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-fornecedores" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">🚚 Fornecedores</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸšš Fornecedores</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-funcionarios" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">👔 Funcionários / Vendedores</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ‘” Funcionários / Vendedores</span>
                               </label>
                           </div>
                       </div>
@@ -958,31 +964,31 @@
                           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-financeiro" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">💰 Contas a Pagar/Receber</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ’° Contas a Pagar/Receber</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-caixa" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">💵 Caixa Físico</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ’µ Caixa Físico</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700 bg-blue-50/50 dark:bg-blue-950/20">
                                   <input type="checkbox" id="func-perm-caixa-loja" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">🏪 Caixa da Loja</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸª Caixa da Loja</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-compras" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📥 Compras & NF-e XML</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ“¥ Compras & NF-e XML</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-relatorios" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📈 Relatórios & DRE</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ“ˆ Relatórios & DRE</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-agenda" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📅 Agenda</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ“… Agenda</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-marketing" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📢 Marketing & Lembretes</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ“¢ Marketing & Lembretes</span>
                               </label>
                           </div>
                       </div>
@@ -993,7 +999,7 @@
                           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-config" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">⚙️ Configurações Gerais</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">âš™ï¸ Configurações Gerais</span>
                               </label>
                           </div>
                       </div>
@@ -1070,13 +1076,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20261005090727"></script>
-    <script src="saas_licenca.js?v=20261005090727"></script>
-    <script src="../global.js?v=20261005090727"></script>
-    <script src="fc_cache.js?v=20261005090727"></script>
-    <script src="tabela_ncm.js?v=20261005090727"></script>
-    <script src="ncm_helper.js?v=20261005090727"></script>
-    <script src="produtos.js?v=20261005090727"></script>
+    <script src="../sistema/config_banco.js?v=20261005171910"></script>
+    <script src="saas_licenca.js?v=20261005171910"></script>
+    <script src="../global.js?v=20261005171910"></script>
+    <script src="fc_cache.js?v=20261005171910"></script>
+    <script src="tabela_ncm.js?v=20261005171910"></script>
+    <script src="ncm_helper.js?v=20261005171910"></script>
+    <script src="produtos.js?v=20261005171910"></script>
 <!-- MODAL DE GERENCIAMENTO DE OPCOES PERSONALIZADAS (MADEIRAS, TECIDOS, CORES) -->
     <div id="modal-opcoes-personalizadas" class="fixed inset-0 bg-slate-900/70 z-[170] hidden flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in duration-150 max-h-[90vh]">
@@ -1142,6 +1148,7 @@
     </div>
 </body>
 </html>
+
 
 
 

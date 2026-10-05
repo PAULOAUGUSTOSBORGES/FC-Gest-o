@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÇÕES
 // ==========================================
 
@@ -5138,10 +5138,10 @@ async function salvarAjusteCustoVenda() {
         if (typeof renderEstatisticasVendas === 'function') renderEstatisticasVendas();
 
         if (typeof showToast === 'function') {
-            const extraMsg = produtosParaAtualizarCusto.length > 0 
+            const extraMêsg = produtosParaAtualizarCusto.length > 0 
                 ? ` e ${produtosParaAtualizarCusto.length} produto(s) atualizado(s) no estoque!` 
                 : '!';
-            showToast(`Custos e anotações da venda atualizados com sucesso${extraMsg}`, 'success');
+            showToast(`Custos e anotações da venda atualizados com sucesso${extraMêsg}`, 'success');
         }
 
         // Retorna o modal para modo de visualização com os dados novos
@@ -5333,8 +5333,8 @@ function coletarDadosCompletosParaIA(perguntaUsuario) {
 
     let diasPeriodo = 30;
     if (periodo && periodo.inicio && periodo.fim) {
-        let diffMs = Math.abs(periodo.fim.getTime() - periodo.inicio.getTime());
-        diasPeriodo = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+        let diffMês = Math.abs(periodo.fim.getTime() - periodo.inicio.getTime());
+        diasPeriodo = Math.max(1, Math.round(diffMês / (1000 * 60 * 60 * 24)));
     }
     let semanasPeriodo = Math.max(1, diasPeriodo / 7);
     let mesesPeriodo = Math.max(1, diasPeriodo / 30);

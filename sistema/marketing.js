@@ -1,4 +1,4 @@
-// marketing.js - Lógica para os Lembretes Diários de WhatsApp
+﻿// marketing.js - Lógica para os Lembretes Diários de WhatsApp
 
 let unsubscribeClientes = null;
 let todosClientes = [];
@@ -169,7 +169,7 @@ window.abrirModalNovoLembrete = abrirModalNovoLembrete;
 window.fecharModalLembrete = fecharModalLembrete;
 window.editarLembrete = editarLembrete;
 window.aoSelecionarClienteLembrete = aoSelecionarClienteLembrete;
-window.preencherMsgPadrao = preencherMsgPadrao;
+window.preencherMêsgPadrao = preencherMêsgPadrao;
 window.salvarLembrete = salvarLembrete;
 window.removerLembrete = removerLembrete;
 window.enviarWhatsAppMarketing = enviarWhatsAppMarketing;
@@ -217,7 +217,7 @@ function aoSelecionarClienteLembrete() {
     }
 }
 
-function preencherMsgPadrao() {
+function preencherMêsgPadrao() {
     const textarea = document.getElementById('lemb-msg');
     const empAtivaIdMkt = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
     const nomeLojaMkt = (typeof obterDadosEmpresa === 'function' ? obterDadosEmpresa().nome : (window.currentEmpresaData?.nomeEmpresa || localStorage.getItem('fc_nome_empresa_ativa') || (empAtivaIdMkt === 'emp_fc_moveis' ? 'FC Móveis' : 'nossa loja')));

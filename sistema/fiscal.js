@@ -561,8 +561,8 @@ function renderNotasFiscais() {
             badgeStatus = `<span class="inline-flex items-center gap-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-bold px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap"><i class="fa-solid fa-spinner fa-spin text-[9px]"></i> Processando</span>`;
         } else {
             const msgLimpa = (n.mensagemSefaz || 'Rejeição na SEFAZ').replace(/"/g, '&quot;');
-            const encMsg = encodeURIComponent(n.mensagemSefaz || 'Erro retornado pela SEFAZ durante a validação da nota.');
-            badgeStatus = `<button type="button" onclick="mostrarErroSefaz('${encMsg}')" title="${msgLimpa}" class="inline-flex items-center gap-1 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/70 font-bold px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap cursor-pointer transition-colors shadow-xs"><i class="fa-solid fa-circle-exclamation text-red-500 text-[9px]"></i> ${n.status === 'erro_autorizacao' ? 'Rejeitada' : String(n.status || 'ERRO').toUpperCase()}</button>`;
+            const encMêsg = encodeURIComponent(n.mensagemSefaz || 'Erro retornado pela SEFAZ durante a validação da nota.');
+            badgeStatus = `<button type="button" onclick="mostrarErroSefaz('${encMêsg}')" title="${msgLimpa}" class="inline-flex items-center gap-1 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/70 font-bold px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap cursor-pointer transition-colors shadow-xs"><i class="fa-solid fa-circle-exclamation text-red-500 text-[9px]"></i> ${n.status === 'erro_autorizacao' ? 'Rejeitada' : String(n.status || 'ERRO').toUpperCase()}</button>`;
         }
 
         const chaveAbrev = n.chave ? `${n.chave.slice(0, 6)}...${n.chave.slice(-6)}` : '-';
@@ -854,9 +854,27 @@ async function reemitirNota(vendaId, tipo) {
     if (overlay) overlay.classList.add('flex');
 
     try {
-        const emitirFunc = firebase.functions().httpsCallable(tipoFuncao);
+        const vObj = (db.vendas || []).find(x => String(x.id) === String(vendaId) || String(x.numeroPedido) === String(vendaId)) || window.vendaAtualImpressao || null;
         const empIdAtual = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
-        const resp = await emitirFunc({ vendaId, empId: empIdAtual });
+        
+        if (vObj && vObj.id) {
+            try {
+                const empRef = (typeof window.getEmpresaRef === 'function') ? window.getEmpresaRef() : firestore.collection('empresas').doc(empIdAtual || 'emp_fc_moveis');
+                await empRef.collection('vendas').doc(String(vObj.id)).set(vObj, { merge: true });
+                if (window.FCCache && typeof window.FCCache.removerDaFila === 'function') {
+                    window.FCCache.removerDaFila('vendas', vObj.id);
+                }
+            } catch (syncErr) {
+                console.warn('[Fiscal] Aviso ao sincronizar venda antes da reemissão SEFAZ:', syncErr);
+            }
+        }
+
+        const emitirFunc = firebase.functions().httpsCallable(tipoFuncao);
+        const resp = await emitirFunc({ 
+            vendaId, 
+            empId: empIdAtual,
+            vendaDados: vObj
+        });
         const res = resp.data;
 
         if (res && res.success) {
@@ -1009,13 +1027,15 @@ async function confirmarCancelamentoNota() {
     }
 
     try {
+        const empIdAtual = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
         const cancelarFunc = firebase.functions().httpsCallable('cancelarNotaFiscal');
         await cancelarFunc({
             vendaId: notaEmCancelamento.vendaId,
             chave: notaEmCancelamento.chave || '',
             numero: notaEmCancelamento.numero || '',
             tipo: notaEmCancelamento.tipo.toLowerCase().replace('-', ''),
-            justificativa: just
+            justificativa: just,
+            empId: empIdAtual
         });
 
         showToast(isNFSe ? 'NFS-e cancelada com sucesso no sistema!' : 'Nota fiscal cancelada com sucesso na SEFAZ!', 'success');
@@ -1313,9 +1333,29 @@ async function emitirNotaDireta(vendaId, tipo, contingencia = false) {
     if (overlay) overlay.classList.add('flex');
 
     try {
-        const func = firebase.functions().httpsCallable(tipo === 'nfce' ? 'emitirNFCe' : 'emitirNFe');
+        const vObj = (db.vendas || []).find(x => String(x.id) === String(vendaId) || String(x.numeroPedido) === String(vendaId)) || window.vendaAtualImpressao || null;
         const empIdAtual = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
-        const res = await func({ vendaId, contingencia: Boolean(contingencia), empId: empIdAtual });
+        
+        // Garante que a venda esteja salva no Firestore na nuvem antes de acionar a SEFAZ
+        if (vObj && vObj.id) {
+            try {
+                const empRef = (typeof window.getEmpresaRef === 'function') ? window.getEmpresaRef() : firestore.collection('empresas').doc(empIdAtual || 'emp_fc_moveis');
+                await empRef.collection('vendas').doc(String(vObj.id)).set(vObj, { merge: true });
+                if (window.FCCache && typeof window.FCCache.removerDaFila === 'function') {
+                    window.FCCache.removerDaFila('vendas', vObj.id);
+                }
+            } catch (syncErr) {
+                console.warn('[Fiscal] Aviso ao sincronizar venda antes da emissão SEFAZ:', syncErr);
+            }
+        }
+
+        const func = firebase.functions().httpsCallable(tipo === 'nfce' ? 'emitirNFCe' : 'emitirNFe');
+        const res = await func({ 
+            vendaId, 
+            contingencia: Boolean(contingencia), 
+            empId: empIdAtual,
+            vendaDados: vObj
+        });
         showToast(res.data?.message || `${label} emitida com sucesso!`, 'success');
         document.getElementById('modal-selecionar-venda').classList.add('hidden');
         processarNotasFiscais();
@@ -1404,6 +1444,8 @@ async function obterVendaParaImpressao(vendaId) {
                 clienteCidade: notaAvulsa.destinatario?.cidade || '',
                 clienteUf: notaAvulsa.destinatario?.uf || '',
                 clienteCep: notaAvulsa.destinatario?.cep || '',
+                destinatario: notaAvulsa.destinatario || null,
+                cliente: notaAvulsa.destinatario ? { ...notaAvulsa.destinatario } : null,
                 tot: Number(notaAvulsa.totalLiquido !== undefined ? notaAvulsa.totalLiquido : (notaAvulsa.valor || 0)),
                 pag: pagMetodo,
                 formaPagamento: pagMetodo,
@@ -1423,10 +1465,32 @@ async function obterVendaParaImpressao(vendaId) {
             if (!v.pagamentos || v.pagamentos.length === 0) v.pagamentos = pags;
             if (!v.pag) v.pag = pagMetodo;
             if (!v.formaPagamento) v.formaPagamento = pagMetodo;
+            if (notaAvulsa.destinatario) {
+                if (!v.destinatario) v.destinatario = notaAvulsa.destinatario;
+                if (!v.cliente) v.cliente = { ...notaAvulsa.destinatario };
+            }
         }
     }
 
     if (v) {
+        // Enriquecer venda com dados completos de db.clientes caso o endereço esteja ausente
+        if (!v.cliente || !v.cliente.rua || !v.cliente.cidade) {
+            const docLimpoV = String(v.clienteDoc || v.clienteCpf || (v.destinatario && (v.destinatario.doc || v.destinatario.cpf)) || '').replace(/\D/g, '');
+            let cliEncontrado = null;
+            if (typeof db !== 'undefined' && Array.isArray(db.clientes) && db.clientes.length > 0) {
+                if (docLimpoV && docLimpoV.length >= 11) {
+                    cliEncontrado = db.clientes.find(c => String(c.doc || c.cpf || c.cnpj || '').replace(/\D/g, '') === docLimpoV);
+                }
+                if (!cliEncontrado && v.clienteId && String(v.clienteId) !== '0') {
+                    cliEncontrado = db.clientes.find(c => String(c.id || c._id || '').trim() === String(v.clienteId).trim());
+                }
+            }
+            if (cliEncontrado) {
+                v.cliente = { ...cliEncontrado };
+                if (!v.destinatario) v.destinatario = { ...cliEncontrado };
+            }
+        }
+
         if (!v.formaPagamento && v.pagamentos && v.pagamentos.length > 0) {
             v.formaPagamento = v.pagamentos[0]?.metodo || 'Dinheiro';
         }
@@ -2321,7 +2385,8 @@ function selecionarClienteAvulsa(valor) {
         if (!uf && parts[1]) uf = parts[1].trim();
     }
     if (document.getElementById('avulsa-dest-cidade')) {
-        document.getElementById('avulsa-dest-cidade').value = cid || 'Goiânia';
+        document.getElementById('avulsa-dest-cidade').value = cid || '';
+        document.getElementById('avulsa-dest-cidade').dataset.ibge = cli.ibge || '';
     }
     if (document.getElementById('avulsa-dest-uf')) {
         document.getElementById('avulsa-dest-uf').value = (uf || 'GO').toUpperCase();
@@ -2532,12 +2597,38 @@ async function emitirNotaAvulsaModal() {
     const totalDesconto = _avulsaItens.reduce((acc, it) => acc + (parseFloat(it.desconto) || 0), 0);
     const totalLiquido = Math.max(0, totalBruto - totalDesconto);
 
+    // Se campos de endereço estiverem vazios no modal, busca automaticamente no cadastro local db.clientes
+    let cliCadastrado = null;
+    if (typeof db !== 'undefined' && Array.isArray(db.clientes) && doc && doc.length >= 11) {
+        cliCadastrado = db.clientes.find(c => String(c.doc || c.cpf || c.cnpj || '').replace(/\D/g, '') === doc);
+    }
+
+    let finalRua = rua || cliCadastrado?.rua || cliCadastrado?.endereco || cliCadastrado?.logradouro || '';
+    let finalNumero = (numero && numero !== 'S/N') ? numero : (cliCadastrado?.numero || numero || 'S/N');
+    let finalBairro = bairro || cliCadastrado?.bairro || '';
+    let finalCidade = cidade || cliCadastrado?.cidade || '';
+    let finalUf = uf || cliCadastrado?.uf || 'GO';
+    let finalCep = cep || (cliCadastrado?.cep ? String(cliCadastrado.cep).replace(/\D/g, '') : '');
+    let finalIbge = document.getElementById('avulsa-dest-cidade')?.dataset?.ibge || cliCadastrado?.ibge || '';
+
+    if (finalCidade.includes(' - ')) {
+        const parts = finalCidade.split(' - ');
+        finalCidade = parts[0]?.trim() || '';
+        if (parts[1] && (!finalUf || finalUf === 'GO')) finalUf = parts[1].trim().toUpperCase();
+    }
+
     const destinatario = {
-        nome,
+        nome: (nome && nome !== 'CONSUMIDOR FINAL') ? nome : (cliCadastrado?.nome || nome),
         cpf: doc.length === 11 ? doc : '',
         cnpj: doc.length === 14 ? doc : '',
         doc,
-        rua, numero, bairro, cidade, uf, cep
+        rua: finalRua,
+        numero: finalNumero,
+        bairro: finalBairro,
+        cidade: finalCidade,
+        uf: finalUf,
+        cep: finalCep,
+        ibge: finalIbge
     };
 
     const btn = document.getElementById('btn-emitir-nota-avulsa');

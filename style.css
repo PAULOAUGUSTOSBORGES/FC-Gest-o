@@ -8,16 +8,22 @@
    ============================================================== */
 :root {
     color-scheme: dark;
-    background-color: #0f172a;
+    background-color: #020617; /* Mais escuro para destacar cards */
 }
 
 html {
-    background-color: #0f172a;
+    background-color: #020617;
     color-scheme: dark;
 }
 
 body {
-    background-color: #0f172a;
+    background-color: #020617;
+}
+
+/* Permitir que o Tailwind controle as cores de fundo quando especificado */
+html.light,
+html[data-theme="light"] {
+    background-color: #eaf1f8; /* Azul clarinho quase imperceptível premium */
 }
 
 /* =============================================
@@ -47,7 +53,7 @@ html[data-theme="light"] {
 html.light body,
 html[data-theme="light"] body,
 body.light {
-    background-color: #f4f6fa !important;
+    background-color: #eaf1f8 !important; /* Azul clarinho charmoso e harmonioso */
     color: #0f172a !important;
 }
 
@@ -56,77 +62,13 @@ body.light {
    ============================================= */
 html.light #sidebar,
 html[data-theme="light"] #sidebar {
-    background-color: #ffffff !important;
-    color: #1e293b !important;
-    border-right: 1px solid #e2e8f0 !important;
-    box-shadow: 4px 0 24px -2px rgba(15, 23, 42, 0.08) !important;
+    background-color: #0f172a !important; /* Sidebar escuro no modo claro a pedido do usuário */
+    color: #f8fafc !important; /* Texto claro na sidebar */
+    border-right: 1px solid #1e293b !important;
+    box-shadow: 4px 0 24px -2px rgba(15, 23, 42, 0.2) !important;
 }
 
-html.light #sidebar div.border-b,
-html[data-theme="light"] #sidebar div.border-b,
-html.light #sidebar div.border-t,
-html[data-theme="light"] #sidebar div.border-t,
-html.light #sidebar .border-slate-800,
-html[data-theme="light"] #sidebar .border-slate-800 {
-    border-color: #e2e8f0 !important;
-}
-
-html.light #sidebar h1,
-html[data-theme="light"] #sidebar h1,
-html.light #sidebar #menu-empresa-nome,
-html[data-theme="light"] #sidebar #menu-empresa-nome {
-    color: #0f172a !important;
-}
-
-html.light #sidebar #menu-logo-placeholder,
-html[data-theme="light"] #sidebar #menu-logo-placeholder {
-    background-color: #f1f5f9 !important;
-    border-color: #cbd5e1 !important;
-    color: #2563eb !important;
-}
-
-html.light #sidebar p.text-slate-500,
-html[data-theme="light"] #sidebar p.text-slate-500,
-html.light #sidebar p.text-slate-400,
-html[data-theme="light"] #sidebar p.text-slate-400 {
-    color: #64748b !important;
-}
-
-html.light #sidebar .nav-btn:not(.bg-blue-600),
-html[data-theme="light"] #sidebar .nav-btn:not(.bg-blue-600) {
-    color: #334155 !important;
-}
-
-html.light #sidebar .nav-btn:not(.bg-blue-600):hover,
-html[data-theme="light"] #sidebar .nav-btn:not(.bg-blue-600):hover {
-    background-color: #f1f5f9 !important;
-    color: #0f172a !important;
-}
-
-html.light #sidebar .nav-btn.bg-blue-600,
-html[data-theme="light"] #sidebar .nav-btn.bg-blue-600 {
-    background-color: #2563eb !important;
-    color: #ffffff !important;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
-}
-
-html.light #sidebar button[onclick*="fazerLogout"],
-html[data-theme="light"] #sidebar button[onclick*="fazerLogout"] {
-    color: #64748b !important;
-}
-
-html.light #sidebar button[onclick*="fazerLogout"]:hover,
-html[data-theme="light"] #sidebar button[onclick*="fazerLogout"]:hover {
-    color: #ef4444 !important;
-    background-color: #fee2e2 !important;
-}
-
-html.light #btn-tema-sistema,
-html[data-theme="light"] #btn-tema-sistema {
-    background-color: #f1f5f9 !important;
-    border: 1px solid #cbd5e1 !important;
-    color: #0f172a !important;
-}
+/* Removido overrides do sidebar no modo claro para que ele fique sempre escuro (dark) */
 
 html.light #btn-tema-sistema:hover,
 html[data-theme="light"] #btn-tema-sistema:hover {
@@ -140,7 +82,41 @@ html[data-theme="light"] #sidebar-overlay {
 }
 
 
+/* =============================================
+   SIDEBAR EM MODO ESCURO (ATIVO E INATIVO)
+   ============================================= */
+html:not(.light) #sidebar,
+html[data-theme="dark"] #sidebar {
+    background-color: #0f172a !important; /* bg-slate-900 */
+    border-right: 1px solid #1e293b !important;
+    box-shadow: 4px 0 24px -2px rgba(0, 0, 0, 0.5) !important;
+}
+
+#sidebar .nav-btn.bg-blue-600 {
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4) !important;
+    border-left: 3px solid #60a5fa !important;
+}
+
+#sidebar .nav-btn:not(.bg-blue-600):hover {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+    color: #60a5fa !important;
+    transform: translateX(4px);
+    transition: all 0.2s ease-in-out;
+}
+#sidebar .nav-btn:not(.bg-blue-600) {
+    transition: all 0.2s ease-in-out;
+}
+
 /* Cabeçalho */
+html:not(.light) header,
+html[data-theme="dark"] header {
+    background-color: #0f172a !important; /* bg-slate-900 */
+    border-bottom: 1px solid #1e293b !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3) !important;
+}
+
 html.light header,
 html[data-theme="light"] header {
     background-color: #ffffff !important;
@@ -690,6 +666,124 @@ html, body {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* ================================================================
+   GRADIENTES SUAVES PARA BOTÕES E CARDS (DESIGN MELHORADO)
+   ================================================================ */
+
+/* Botões de Emissão Fiscal (Modais) */
+#btn-emitir-nfce, .btn-emitir-nfce {
+    background-image: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+    border: 1px solid #047857 !important;
+}
+#btn-emitir-nfce:hover, .btn-emitir-nfce:hover {
+    background-image: linear-gradient(135deg, #047857 0%, #064e3b 100%) !important;
+}
+
+#btn-emitir-nfe, .btn-emitir-nfe {
+    background-image: linear-gradient(135deg, #0f766e 0%, #0f52ba 100%) !important;
+    border: 1px solid #0f766e !important;
+}
+#btn-emitir-nfe:hover, .btn-emitir-nfe:hover {
+    background-image: linear-gradient(135deg, #115e59 0%, #0c4a6e 100%) !important;
+}
+
+/* Gradient para cards grandes (Banners de ação como Cadastro Manual) */
+div.bg-emerald-600.rounded-xl.p-6,
+div.bg-emerald-600.rounded-2xl.p-6 {
+    background-image: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+    border: 1px solid #047857 !important;
+}
+
+div.bg-indigo-600.rounded-xl.p-6,
+div.bg-indigo-600.rounded-2xl.p-6 {
+    background-image: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%) !important;
+    border: 1px solid #4338ca !important;
+}
+
+div.bg-blue-600.rounded-xl.p-6,
+div.bg-blue-600.rounded-2xl.p-6 {
+    background-image: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+    border: 1px solid #1d4ed8 !important;
+}
+
+div.bg-slate-900.rounded-xl.p-6,
+div.bg-slate-900.rounded-2xl.p-6,
+div.bg-slate-800.rounded-xl.p-6,
+div.bg-slate-800.rounded-2xl.p-6 {
+    background-image: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+    border: 1px solid #0f172a !important;
+}
+
+/* Gradientes Suaves para Botões do Sistema Inteiro */
+button.bg-blue-600:not(.nav-btn),
+a.bg-blue-600:not(.nav-btn) {
+    background-image: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+}
+button.bg-blue-600:hover:not(.nav-btn),
+a.bg-blue-600:hover:not(.nav-btn) {
+    background-image: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important;
+}
+
+button.bg-emerald-600,
+a.bg-emerald-600 {
+    background-image: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+}
+button.bg-emerald-600:hover,
+a.bg-emerald-600:hover {
+    background-image: linear-gradient(135deg, #047857 0%, #064e3b 100%) !important;
+}
+
+button.bg-teal-700,
+a.bg-teal-700 {
+    background-image: linear-gradient(135deg, #0f766e 0%, #0f52ba 100%) !important;
+}
+button.bg-teal-700:hover,
+a.bg-teal-700:hover {
+    background-image: linear-gradient(135deg, #115e59 0%, #0c4a6e 100%) !important;
+}
+
+button.bg-amber-600,
+a.bg-amber-600,
+button.bg-amber-500,
+a.bg-amber-500 {
+    background-image: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+}
+button.bg-amber-600:hover,
+a.bg-amber-600:hover,
+button.bg-amber-500:hover,
+a.bg-amber-500:hover {
+    background-image: linear-gradient(135deg, #b45309 0%, #92400e 100%) !important;
+}
+
+button.bg-indigo-600,
+a.bg-indigo-600 {
+    background-image: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%) !important;
+}
+button.bg-indigo-600:hover,
+a.bg-indigo-600:hover {
+    background-image: linear-gradient(135deg, #4338ca 0%, #3730a3 100%) !important;
+}
+
+button.bg-red-600,
+a.bg-red-600 {
+    background-image: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+}
+button.bg-red-600:hover,
+a.bg-red-600:hover {
+    background-image: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%) !important;
+}
+
+button.bg-slate-800,
+a.bg-slate-800 {
+    background-image: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+}
+
+html:not(.light) div.bg-white.rounded-xl,
+html[data-theme="dark"] div.bg-white.rounded-xl {
+    /* Evitar que divs fiquem completamente brancas ou pretas foscas no modo escuro */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3) !important;
 }
 
 /* Toast Notifications */
@@ -2206,4 +2300,251 @@ table[class*="min-w-"] {
         min-width: 0 !important;
         width: 100% !important;
     }
+}
+
+/* =============================================
+   MARCA DO SISTEMA NO MENU LATERAL (LOGO E NOME)
+   ============================================= */
+#sidebar #menu-logo,
+#sidebar #menu-logo-placeholder {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    border-radius: 6px !important;
+}
+
+#sidebar h1#menu-empresa-nome {
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    line-height: 1.2 !important;
+    letter-spacing: 0.02em !important;
+}
+
+/* =============================================
+   CARD DE CLIENTE SELECIONADO NO PDV (DARK & LIGHT)
+   ============================================= */
+#pdv-cliente-info-card {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Modo Escuro (Padrão do Sistema) */
+html.dark #pdv-cliente-info-card,
+html[data-theme="dark"] #pdv-cliente-info-card,
+body:not(.light) #pdv-cliente-info-card {
+    background-color: #1e293b !important;
+    border: 1px solid #334155 !important;
+    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.45) !important;
+}
+
+html.dark #pdv-cliente-info-card #pdv-card-cli-nome,
+html[data-theme="dark"] #pdv-cliente-info-card #pdv-card-cli-nome,
+body:not(.light) #pdv-cliente-info-card #pdv-card-cli-nome {
+    color: #f8fafc !important;
+}
+
+html.dark #pdv-cliente-info-card .pdv-cli-icon-wrap,
+html[data-theme="dark"] #pdv-cliente-info-card .pdv-cli-icon-wrap,
+body:not(.light) #pdv-cliente-info-card .pdv-cli-icon-wrap {
+    background: rgba(37, 99, 235, 0.2) !important;
+    border: 1px solid rgba(59, 130, 246, 0.4) !important;
+    color: #60a5fa !important;
+}
+
+html.dark #pdv-cliente-info-card #pdv-card-cli-doc-badge,
+html[data-theme="dark"] #pdv-cliente-info-card #pdv-card-cli-doc-badge,
+body:not(.light) #pdv-cliente-info-card #pdv-card-cli-doc-badge {
+    background-color: #0f172a !important;
+    border: 1px solid #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+html.dark #pdv-cliente-info-card #pdv-card-cli-end-wrap,
+html[data-theme="dark"] #pdv-cliente-info-card #pdv-card-cli-end-wrap,
+body:not(.light) #pdv-cliente-info-card #pdv-card-cli-end-wrap {
+    background-color: #0f172a !important;
+    border: 1px solid #334155 !important;
+    color: #cbd5e1 !important;
+}
+
+html.dark #pdv-cliente-info-card #pdv-card-cli-fone-wrap,
+html[data-theme="dark"] #pdv-cliente-info-card #pdv-card-cli-fone-wrap,
+body:not(.light) #pdv-cliente-info-card #pdv-card-cli-fone-wrap {
+    background-color: rgba(6, 78, 59, 0.35) !important;
+    border: 1px solid rgba(52, 211, 153, 0.4) !important;
+    color: #6ee7b7 !important;
+}
+
+html.dark #pdv-cliente-info-card #pdv-card-cli-vend-wrap,
+html[data-theme="dark"] #pdv-cliente-info-card #pdv-card-cli-vend-wrap,
+body:not(.light) #pdv-cliente-info-card #pdv-card-cli-vend-wrap {
+    background-color: rgba(30, 58, 138, 0.35) !important;
+    border: 1px solid rgba(96, 165, 250, 0.4) !important;
+    color: #93c5fd !important;
+}
+
+html.dark #pdv-cliente-info-card #pdv-card-cli-obs-wrap,
+html[data-theme="dark"] #pdv-cliente-info-card #pdv-card-cli-obs-wrap,
+body:not(.light) #pdv-cliente-info-card #pdv-card-cli-obs-wrap {
+    background-color: rgba(120, 53, 15, 0.3) !important;
+    border: 1px solid rgba(245, 158, 11, 0.4) !important;
+    color: #fde68a !important;
+}
+
+html.dark #pdv-cliente-info-card .btn-cli-editar,
+html[data-theme="dark"] #pdv-cliente-info-card .btn-cli-editar,
+body:not(.light) #pdv-cliente-info-card .btn-cli-editar {
+    background-color: #334155 !important;
+    border: 1px solid #475569 !important;
+    color: #f1f5f9 !important;
+}
+html.dark #pdv-cliente-info-card .btn-cli-editar:hover,
+html[data-theme="dark"] #pdv-cliente-info-card .btn-cli-editar:hover,
+body:not(.light) #pdv-cliente-info-card .btn-cli-editar:hover {
+    background-color: #475569 !important;
+}
+
+html.dark #pdv-cliente-info-card .btn-cli-desvincular,
+html[data-theme="dark"] #pdv-cliente-info-card .btn-cli-desvincular,
+body:not(.light) #pdv-cliente-info-card .btn-cli-desvincular {
+    background-color: rgba(159, 18, 57, 0.25) !important;
+    border: 1px solid rgba(244, 63, 94, 0.4) !important;
+    color: #fda4af !important;
+}
+html.dark #pdv-cliente-info-card .btn-cli-desvincular:hover,
+html[data-theme="dark"] #pdv-cliente-info-card .btn-cli-desvincular:hover,
+body:not(.light) #pdv-cliente-info-card .btn-cli-desvincular:hover {
+    background-color: rgba(159, 18, 57, 0.4) !important;
+}
+
+/* Status Financeiro - Débitos / Em dia */
+html.dark .pdv-card-cli-status-debito,
+html[data-theme="dark"] .pdv-card-cli-status-debito,
+body:not(.light) .pdv-card-cli-status-debito {
+    background-color: rgba(159, 18, 57, 0.3) !important;
+    border: 1px solid rgba(244, 63, 94, 0.5) !important;
+    color: #fda4af !important;
+}
+html.dark .pdv-card-cli-status-debito:hover,
+html[data-theme="dark"] .pdv-card-cli-status-debito:hover,
+body:not(.light) .pdv-card-cli-status-debito:hover {
+    background-color: rgba(159, 18, 57, 0.45) !important;
+}
+
+html.dark .pdv-card-cli-status-ok,
+html[data-theme="dark"] .pdv-card-cli-status-ok,
+body:not(.light) .pdv-card-cli-status-ok {
+    background-color: rgba(6, 78, 59, 0.35) !important;
+    border: 1px solid rgba(52, 211, 153, 0.45) !important;
+    color: #6ee7b7 !important;
+}
+
+/* Modo Claro */
+html.light #pdv-cliente-info-card,
+html[data-theme="light"] #pdv-cliente-info-card,
+body.light #pdv-cliente-info-card {
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 2px 6px -1px rgba(0, 0, 0, 0.07) !important;
+}
+
+html.light #pdv-cliente-info-card #pdv-card-cli-nome,
+html[data-theme="light"] #pdv-cliente-info-card #pdv-card-cli-nome,
+body.light #pdv-cliente-info-card #pdv-card-cli-nome {
+    color: #0f172a !important;
+}
+
+html.light #pdv-cliente-info-card .pdv-cli-icon-wrap,
+html[data-theme="light"] #pdv-cliente-info-card .pdv-cli-icon-wrap,
+body.light #pdv-cliente-info-card .pdv-cli-icon-wrap {
+    background-color: #eff6ff !important;
+    border: 1px solid #bfdbfe !important;
+    color: #2563eb !important;
+}
+
+html.light #pdv-cliente-info-card #pdv-card-cli-doc-badge,
+html[data-theme="light"] #pdv-cliente-info-card #pdv-card-cli-doc-badge,
+body.light #pdv-cliente-info-card #pdv-card-cli-doc-badge {
+    background-color: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #334155 !important;
+}
+
+html.light #pdv-cliente-info-card #pdv-card-cli-end-wrap,
+html[data-theme="light"] #pdv-cliente-info-card #pdv-card-cli-end-wrap,
+body.light #pdv-cliente-info-card #pdv-card-cli-end-wrap {
+    background-color: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #334155 !important;
+}
+
+html.light #pdv-cliente-info-card #pdv-card-cli-fone-wrap,
+html[data-theme="light"] #pdv-cliente-info-card #pdv-card-cli-fone-wrap,
+body.light #pdv-cliente-info-card #pdv-card-cli-fone-wrap {
+    background-color: #ecfdf5 !important;
+    border: 1px solid #a7f3d0 !important;
+    color: #047857 !important;
+}
+
+html.light #pdv-cliente-info-card #pdv-card-cli-vend-wrap,
+html[data-theme="light"] #pdv-cliente-info-card #pdv-card-cli-vend-wrap,
+body.light #pdv-cliente-info-card #pdv-card-cli-vend-wrap {
+    background-color: #eff6ff !important;
+    border: 1px solid #bfdbfe !important;
+    color: #1d4ed8 !important;
+}
+
+html.light #pdv-cliente-info-card #pdv-card-cli-obs-wrap,
+html[data-theme="light"] #pdv-cliente-info-card #pdv-card-cli-obs-wrap,
+body.light #pdv-cliente-info-card #pdv-card-cli-obs-wrap {
+    background-color: #fffbeb !important;
+    border: 1px solid #fde68a !important;
+    color: #b45309 !important;
+}
+
+html.light #pdv-cliente-info-card .btn-cli-editar,
+html[data-theme="light"] #pdv-cliente-info-card .btn-cli-editar,
+body.light #pdv-cliente-info-card .btn-cli-editar {
+    background-color: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #1e293b !important;
+}
+html.light #pdv-cliente-info-card .btn-cli-editar:hover,
+html[data-theme="light"] #pdv-cliente-info-card .btn-cli-editar:hover,
+body.light #pdv-cliente-info-card .btn-cli-editar:hover {
+    background-color: #e2e8f0 !important;
+}
+
+html.light #pdv-cliente-info-card .btn-cli-desvincular,
+html[data-theme="light"] #pdv-cliente-info-card .btn-cli-desvincular,
+body.light #pdv-cliente-info-card .btn-cli-desvincular {
+    background-color: #fff1f2 !important;
+    border: 1px solid #fecdd3 !important;
+    color: #e11d48 !important;
+}
+html.light #pdv-cliente-info-card .btn-cli-desvincular:hover,
+html[data-theme="light"] #pdv-cliente-info-card .btn-cli-desvincular:hover,
+body.light #pdv-cliente-info-card .btn-cli-desvincular:hover {
+    background-color: #ffe4e6 !important;
+}
+
+html.light .pdv-card-cli-status-debito,
+html[data-theme="light"] .pdv-card-cli-status-debito,
+body.light .pdv-card-cli-status-debito {
+    background-color: #fff1f2 !important;
+    border: 1px solid #fecdd3 !important;
+    color: #be123c !important;
+}
+html.light .pdv-card-cli-status-debito:hover,
+html[data-theme="light"] .pdv-card-cli-status-debito:hover,
+body.light .pdv-card-cli-status-debito:hover {
+    background-color: #ffe4e6 !important;
+}
+
+html.light .pdv-card-cli-status-ok,
+html[data-theme="light"] .pdv-card-cli-status-ok,
+body.light .pdv-card-cli-status-ok {
+    background-color: #ecfdf5 !important;
+    border: 1px solid #a7f3d0 !important;
+    color: #047857 !important;
 }

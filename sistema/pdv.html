@@ -39,8 +39,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- CORRIGIDO: Removido o ?v=20260831113500 que estava quebrando o carregamento offline -->
-    <link rel="stylesheet" href="../style.css?v=20261005090727">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261005090727">
+    <link rel="stylesheet" href="../style.css?v=20261005171910">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261005171910">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="pdv">
 
@@ -143,8 +143,69 @@
                             <div id="pdv-cliente-resultados" class="absolute z-50 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl rounded-lg top-[42px] hidden max-h-60 overflow-y-auto custom-scrollbar"></div>
                             <button id="btn-pdv-novo-cliente" onclick="abrirModalClienteRapido()" class="bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-200 border-l-0 px-3 py-2 rounded-r-lg font-bold text-sm transition shrink-0" title="Novo Cliente"><i class="fa-solid fa-user-plus"></i></button>
                         </div>
-                        <button onclick="pdvLimpar()" class="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-lg font-bold text-sm transition ml-1" title="Limpar Tudo"><i class="fa-solid fa-trash text-lg"></i></button>
+                        <button type="button" onclick="confirmarLimparPDV()" class="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-lg font-bold text-sm transition ml-1" title="Limpar Tudo"><i class="fa-solid fa-trash text-lg"></i></button>
                     </div>
+                    </div>
+
+                    <!-- CARD EXPANSÍVEL DE DETALHES DO CLIENTE SELECIONADO -->
+                    <div id="pdv-cliente-info-card" class="hidden rounded-xl p-3 md:p-3.5 shadow-sm transition-all duration-200 shrink-0">
+                        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                            <!-- Info Principal -->
+                            <div class="flex items-start sm:items-center gap-3 flex-1 min-w-0">
+                                <div class="pdv-cli-icon-wrap w-10 h-10 rounded-xl flex items-center justify-center text-lg font-black shrink-0 shadow-inner">
+                                    <i class="fa-solid fa-user-check"></i>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <!-- Linha 1: Nome, Documento e Situação Financeira -->
+                                    <div class="flex items-center gap-2 flex-wrap mb-1.5">
+                                        <h4 id="pdv-card-cli-nome" class="font-black text-sm md:text-base tracking-tight truncate">Nome do Cliente</h4>
+                                        
+                                        <span id="pdv-card-cli-doc-badge" class="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-lg shadow-2xs">
+                                            <i class="fa-solid fa-id-card text-xs opacity-75"></i> 
+                                            <span id="pdv-card-cli-doc">--</span>
+                                        </span>
+                                        
+                                        <span id="pdv-card-cli-status-financeiro" class="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-lg pdv-card-cli-status-ok shadow-2xs">
+                                            <i class="fa-solid fa-circle-check text-[10px]"></i> Sem débitos pendentes
+                                        </span>
+                                    </div>
+                                    
+                                    <!-- Linha 2: Badges de Contato, Endereço e Vendedor -->
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span id="pdv-card-cli-fone-wrap" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold text-xs shadow-2xs">
+                                            <i class="fa-brands fa-whatsapp text-sm"></i>
+                                            <a id="pdv-card-cli-fone-link" href="#" target="_blank" class="hover:underline tracking-wide">--</a>
+                                        </span>
+                                        
+                                        <span id="pdv-card-cli-end-wrap" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium truncate max-w-md shadow-2xs" title="Endereço">
+                                            <i class="fa-solid fa-location-dot opacity-80 text-rose-500"></i>
+                                            <span id="pdv-card-cli-end" class="truncate">Sem endereço</span>
+                                        </span>
+                                        
+                                        <span id="pdv-card-cli-vend-wrap" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold shadow-2xs">
+                                            <i class="fa-solid fa-user-tie opacity-80 text-blue-500"></i>
+                                            <span id="pdv-card-cli-vend">Balcão</span>
+                                        </span>
+                                    </div>
+                                    
+                                    <!-- Linha 3: Observações (se houver) -->
+                                    <div id="pdv-card-cli-obs-wrap" class="hidden mt-2 p-2 px-3 rounded-lg text-xs font-medium flex items-center gap-2">
+                                        <i class="fa-regular fa-comment-dots text-amber-500 text-sm shrink-0"></i> 
+                                        <span id="pdv-card-cli-obs" class="truncate"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Ações Rápidas do Cliente -->
+                            <div class="flex items-center gap-2 self-end lg:self-center shrink-0">
+                                <button type="button" onclick="editarClienteSelecionadoPDV()" class="btn-cli-editar px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs active:scale-95" title="Editar dados deste cliente">
+                                    <i class="fa-solid fa-pen-to-square text-blue-400"></i> <span>Editar</span>
+                                </button>
+                                <button type="button" onclick="desvincularClientePDV()" class="btn-cli-desvincular px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs active:scale-95" title="Voltar para Consumidor Final">
+                                    <i class="fa-solid fa-user-xmark"></i> <span>Desvincular</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="flex flex-col lg:flex-row gap-4 h-full min-h-[600px]">
@@ -1038,13 +1099,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
 
-    <script src="../sistema/config_banco.js?v=20261005090727"></script>
-    <script src="saas_licenca.js?v=20261005090727"></script>
-    <script src="../global.js?v=20261005090727"></script>
-    <script src="fc_cache.js?v=20261005090727"></script>
-    <script src="tabela_ncm.js?v=20261005090727"></script>
-    <script src="ncm_helper.js?v=20261005090727"></script>
-    <script src="pdv.js?v=20261005090727"></script>
+    <script src="../sistema/config_banco.js?v=20261005171910"></script>
+    <script src="saas_licenca.js?v=20261005171910"></script>
+    <script src="../global.js?v=20261005171910"></script>
+    <script src="fc_cache.js?v=20261005171910"></script>
+    <script src="tabela_ncm.js?v=20261005171910"></script>
+    <script src="ncm_helper.js?v=20261005171910"></script>
+    <script src="pdv.js?v=20261005171910"></script>
 
     <!-- MODAL RELATÓRIO COMPLETO DO PDV -->
     <div id="modal-relatorio-pdv" class="fixed inset-0 bg-slate-900/70 z-[200] hidden flex items-center justify-center p-3 md:p-4 backdrop-blur-sm">

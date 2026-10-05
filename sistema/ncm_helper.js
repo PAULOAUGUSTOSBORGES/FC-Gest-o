@@ -1,5 +1,5 @@
 // ==========================================
-// NCM HELPER - BUSCA E AUTOCOMPLETE DE NCMs
+// NCM HELPER - BUSCA E AUTOCOMPLETE DE NCMês
 // Suporte a todos os 10.437 códigos NCM do Brasil
 // ==========================================
 
@@ -112,7 +112,10 @@
     }
 
     function limparNCM(valor) {
-        return String(valor || '').replace(/\D/g, '').substring(0, 8);
+        if (!valor) return '';
+        const str = String(valor).trim();
+        const parteCod = str.includes(' - ') ? str.split(' - ')[0] : str;
+        return parteCod.replace(/\D/g, '').substring(0, 8);
     }
 
     function formatarNCM(cod) {
@@ -121,6 +124,19 @@
             return `${d.substring(0, 4)}.${d.substring(4, 6)}.${d.substring(6, 8)}`;
         }
         return d;
+    }
+
+    function formatarNCMDisplay(codigo) {
+        if (!codigo) return '';
+        const str = String(codigo).trim();
+        if (str.includes(' - ')) return str;
+        const limpo = limparNCM(str);
+        if (!limpo) return str;
+        const desc = buscarDescricaoNCM(limpo);
+        if (desc) {
+            return `${limpo} - ${desc}`;
+        }
+        return limpo;
     }
 
     function buscarDescricaoNCM(codigo) {
@@ -140,13 +156,18 @@
             .replace(/[\u0300-\u036f]/g, '');
     }
 
-    function filtrarNCMs(termo, limite = 30) {
+    function filtrarNCMês(termo, limite = 30) {
         if (!window.TABELA_NCM || !Array.isArray(window.TABELA_NCM)) return [];
-        const termoLimpo = String(termo || '').trim();
+        let termoLimpo = String(termo || '').trim();
         if (!termoLimpo) return [];
 
-        const apenasDig = termoLimpo.replace(/\D/g, '');
-        const termoNorm = normalizarTexto(termoLimpo);
+        let termoBusca = termoLimpo;
+        if (termoBusca.includes(' - ')) {
+            termoBusca = termoBusca.split(' - ')[0].trim();
+        }
+
+        const apenasDig = termoBusca.replace(/\D/g, '');
+        const termoNorm = normalizarTexto(termoBusca);
 
         const resultadosExatos = [];
         const resultadosInicio = [];
@@ -256,7 +277,7 @@
 
         function selecionarItem(item) {
             if (!item) return;
-            input.value = item.c;
+            input.value = `${item.c} - ${item.d}`;
             fecharDropdown();
             input.dispatchEvent(new Event('input', { bubbles: true }));
             input.dispatchEvent(new Event('change', { bubbles: true }));
@@ -291,15 +312,29 @@
             }
 
             debounceTimer = setTimeout(() => {
-                const resultados = filtrarNCMs(val, 25);
+                const resultados = filtrarNCMês(val, 25);
                 renderizarLista(resultados);
             }, 80);
         });
 
         input.addEventListener('focus', function() {
             if (this.value.trim()) {
-                const resultados = filtrarNCMs(this.value.trim(), 25);
+                const resultados = filtrarNCMês(this.value.trim(), 25);
                 renderizarLista(resultados);
+            }
+        });
+
+        input.addEventListener('blur', function() {
+            const val = this.value.trim();
+            if (!val) return;
+            if (!val.includes(' - ')) {
+                const limpo = limparNCM(val);
+                if (limpo && limpo.length === 8) {
+                    const desc = buscarDescricaoNCM(limpo);
+                    if (desc) {
+                        this.value = `${limpo} - ${desc}`;
+                    }
+                }
             }
         });
 
@@ -316,6 +351,18 @@
                 if (indiceAtivo >= 0 && itensAtuais[indiceAtivo]) {
                     e.preventDefault();
                     selecionarItem(itensAtuais[indiceAtivo]);
+                } else {
+                    const val = input.value.trim();
+                    if (val && !val.includes(' - ')) {
+                        const limpo = limparNCM(val);
+                        if (limpo && limpo.length === 8) {
+                            const desc = buscarDescricaoNCM(limpo);
+                            if (desc) {
+                                input.value = `${limpo} - ${desc}`;
+                                fecharDropdown();
+                            }
+                        }
+                    }
                 }
             } else if (e.key === 'Escape') {
                 fecharDropdown();
@@ -340,15 +387,87 @@
         if (oldPreview) oldPreview.remove();
     }
 
+    // ==========================================
+    // HELPERS PARA CSOSN / CST
+    // ==========================================
+    const MAPA_CSOSN_CST = {
+        '101': '101 - Simples Nacional (com permissão de crédito)',
+        '102': '102 - Simples Nacional (sem permissão de crédito)',
+        '103': '103 - Simples Nacional (isenção de ICMS)',
+        '201': '201 - Simples Nacional (com crédito e com ST)',
+        '202': '202 - Simples Nacional (sem crédito e com ST)',
+        '203': '203 - Simples Nacional (isenção ICMS e com ST)',
+        '300': '300 - Imune',
+        '400': '400 - Não tributada pelo Simples Nacional',
+        '500': '500 - Simples Nacional (ICMS cobrado anteriormente por ST)',
+        '900': '900 - Simples Nacional (Outros)',
+        '00': '00 - Tributada integralmente',
+        '10': '10 - Tributada e com cobrança de ST',
+        '20': '20 - Com redução de base de cálculo',
+        '30': '30 - Isenta ou não tributada e com cobrança de ST',
+        '40': '40 - Isenta',
+        '41': '41 - Não tributada',
+        '50': '50 - Suspensão',
+        '51': '51 - Diferimento',
+        '60': '60 - Cobrado anteriormente por ST',
+        '70': '70 - Com redução de base e cobrança ST',
+        '90': '90 - Outras'
+    };
+
+    function formatarCSOSNDisplay(val) {
+        if (!val && val !== 0) return '';
+        const str = String(val).trim();
+        if (str.includes(' - ')) return str;
+        if (MAPA_CSOSN_CST[str]) return MAPA_CSOSN_CST[str];
+        const cod = str.replace(/\D/g, '');
+        if (MAPA_CSOSN_CST[cod]) return MAPA_CSOSN_CST[cod];
+        return str;
+    }
+
+    function extrairCodigoCSOSN(val) {
+        if (!val && val !== 0) return '';
+        const str = String(val).trim();
+        if (str.includes(' - ')) {
+            const parte = str.split(' - ')[0].trim();
+            return parte.replace(/\D/g, '');
+        }
+        return str.replace(/\D/g, '');
+    }
+
+    function initCSOSNInput(inputOrId) {
+        const input = typeof inputOrId === 'string' ? document.getElementById(inputOrId) : inputOrId;
+        if (!input || input.dataset.csosnAtivo === 'true') return;
+        input.dataset.csosnAtivo = 'true';
+
+        function autoFormatar() {
+            const val = input.value.trim();
+            if (val) {
+                const formatado = formatarCSOSNDisplay(val);
+                if (formatado !== val) {
+                    input.value = formatado;
+                }
+            }
+        }
+
+        input.addEventListener('change', autoFormatar);
+        input.addEventListener('blur', autoFormatar);
+    }
+
     // Exporta globalmente
     window.NCMHelper = {
         limparNCM,
         formatarNCM,
+        formatarNCMDisplay,
         buscarDescricaoNCM,
-        filtrarNCMs,
+        filtrarNCMês,
         initNCMAutocomplete,
-        atualizarPreviewNCM
+        atualizarPreviewNCM,
+        MAPA_CSOSN_CST,
+        formatarCSOSNDisplay,
+        extrairCodigoCSOSN,
+        initCSOSNInput
     };
+    window.FiscalHelper = window.NCMHelper;
 
     // Auto-inicialização automática quando o DOM carregar
     if (typeof document !== 'undefined') {
@@ -357,6 +476,12 @@
                 const el = document.getElementById(id);
                 if (el) {
                     initNCMAutocomplete(el);
+                }
+            });
+            ['prod-csosn', 'item-csosn', 'avulsa-item-csosn'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    initCSOSNInput(el);
                 }
             });
         });

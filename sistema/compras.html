@@ -38,8 +38,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link rel="stylesheet" href="../style.css?v=20261005090727">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261005090727">
+    <link rel="stylesheet" href="../style.css?v=20261005171910">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261005171910">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="compras">
 
@@ -52,10 +52,10 @@
         <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 w-64 bg-slate-900 text-slate-300 flex flex-col h-full shrink-0 shadow-2xl z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out no-print">
             <div class="p-5 flex items-center justify-between gap-3 border-b border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors" onclick="window.location.href='index.html'">
                 <div class="flex items-center gap-3 pointer-events-none">
-                    <img id="menu-logo" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="w-10 h-10 rounded-lg object-cover hidden bg-white dark:bg-slate-800 shadow-lg">
-                    <div id="menu-logo-placeholder" class="w-10 h-10 bg-slate-800 border border-slate-600 rounded-lg flex items-center justify-center text-slate-400 text-xl shadow-lg"><i class="fa-solid fa-store"></i></div>
+                    <img id="menu-logo" src="../icons/icon.svg" class="w-8 h-8 rounded-lg object-cover bg-slate-800 shadow-md">
+                    <div id="menu-logo-placeholder" class="hidden w-8 h-8 bg-slate-800 border border-slate-600 rounded-lg flex items-center justify-center text-slate-400 text-base shadow-md"><i class="fa-solid fa-store"></i></div>
                     <div>
-                        <h1 id="menu-empresa-nome" class="font-bold text-white text-lg tracking-wide leading-tight truncate w-32">Carregando...</h1>
+                        <h1 id="menu-empresa-nome" class="font-bold text-white text-sm tracking-wide leading-tight">FC Gestão</h1>
                         <p class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Sistema Ativo</p>
                     </div>
                 </div>
@@ -97,7 +97,7 @@
             </div>
         </aside>
 
-        <!-- ?Á?ÁREA DE CONTE??âââ€šÂ¬Â¦Â¡DO PRINCIPAL -->
+        <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
             <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
                 <div class="flex items-center gap-3">
@@ -112,7 +112,7 @@
 
             <div class="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth custom-scrollbar w-full relative">
 
-                <!-- M?âââââ€šÂ¬Ã…Â¡Â¬?ââ‚¬Â¦âââ€šÂ¬Ã…â€œDULO FINANCEIRO -->
+                <!-- MÓDULO FINANCEIRO -->
                                 <!-- COMPRAS E NF-E -->
                 <div id="view-compras" class="view-section max-w-7xl mx-auto space-y-6 active">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -371,7 +371,7 @@
 
     <!-- M O D A I S   D E   G E S T ?Á O -->
 
-    <!-- MODAL MOVIMENTA?âââââ€šÂ¬Ã…Â¡Â¬Â¡?ÁO CAIXA -->
+    <!-- MODAL MOVIMENTAÇÃO CAIXA -->
     <div id="modal-mov-caixa" class="fixed inset-0 bg-slate-900/60 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
             <div id="modal-caixa-header" class="bg-blue-600 p-4 md:p-5 text-white flex justify-between items-center">
@@ -390,7 +390,7 @@
         </div>
     </div>
 
-    <!-- NOVO MODAL: CADASTRO DE CONTA (COM RECORR?Á?ââââ‚¬Å¡Â¬Â¦ NCIA) -->
+    <!-- NOVO MODAL: CADASTRO DE CONTA (COM RECORRÊNCIA) -->
     <div id="modal-nova-conta" class="fixed inset-0 bg-slate-900/80 z-[200] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-slate-800 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col overflow-hidden max-h-[95vh]">
             <div id="modal-conta-header" class="p-4 md:p-5 text-white flex justify-between items-center shrink-0">
@@ -440,7 +440,7 @@
                         </div>
                     </div>
 
-                    <!-- BLOCO 2: DATAS, VALORES E RECORR?Á?ââââ‚¬Å¡Â¬Â¦ NCIA -->
+                    <!-- BLOCO 2: DATAS, VALORES E RECORRÊNCIA -->
                     <div class="bg-slate-700 p-4 rounded-xl border border-slate-600 shadow-sm space-y-4">
                         <h4 class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase border-b border-slate-100 dark:border-slate-700 pb-2"><i class="fa-solid fa-calendar-days text-slate-400 mr-1"></i> Datas e Valores</h4>
 
@@ -452,7 +452,7 @@
                             <input type="date" id="conta-vencimento" class="w-full bg-amber-50 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-600 p-2 rounded-lg text-xs font-bold text-amber-800 dark:text-amber-300 outline-none focus:border-amber-500"></div>
                         </div>
 
-                        <!-- RECORR?Á?ââââ‚¬Å¡Â¬Â¦ NCIA -->
+                        <!-- RECORRÊNCIA -->
                         <div class="grid grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg">
                             <div class="col-span-2 sm:col-span-1">
                                 <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Repetir (Assinatura)?</label>
@@ -501,8 +501,8 @@
                                 </select>
                             </div>
 
-                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">NÂº da NF</label><input type="text" id="conta-num-nf" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
-                            <div class="sm:col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">NÂº do Boleto / Cód. Barras</label><input type="text" id="conta-num-boleto" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Nº da NF</label><input type="text" id="conta-num-nf" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
+                            <div class="sm:col-span-2"><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Nº do Boleto / Cód. Barras</label><input type="text" id="conta-num-boleto" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
 
                             <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Data de Protesto</label><input type="date" id="conta-data-protesto" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white"></div>
                             <div><label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Cartório</label><input type="text" id="conta-cartorio" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white" placeholder="Nome"></div>
@@ -649,7 +649,7 @@
                             </select>
                         </div>
                         <div>
-                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1">1Âº Vencimento</label>
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1">1º Vencimento</label>
                             <input type="date" id="reneg-data-primeira" onchange="gerarPreviewParcelasRenegociacao()" class="w-full bg-slate-50 dark:bg-slate-900 border border-purple-300 dark:border-purple-800 p-2 rounded-lg text-xs font-bold text-slate-800 dark:text-white outline-none focus:border-purple-500">
                         </div>
                     </div>
@@ -753,7 +753,7 @@
         </div>
     </div>
 
-    <!-- MODAL DETALHES DO T?Á?ââââ‚¬Å¡Â¬?â€¦Â¡ÍTULO -->
+    <!-- MODAL DETALHES DO TÍTULO -->
     <div id="modal-detalhes-titulo" class="fixed inset-0 bg-slate-900/80 z-[200] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
             <div id="det-tit-header" class="p-4 md:p-5 text-white flex justify-between items-center">
@@ -788,7 +788,7 @@
         </div>
     </div>
 
-    <!-- MODAL CONFERà?ââââ‚¬Å¡Â¬Â¦ NCIA XML E RATEIO -->
+    <!-- MODAL CONFERÊNCIA XML E RATEIO -->
     <div id="modal-conferencia-xml" class="fixed inset-0 bg-slate-900/70 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-md transition-opacity">
         <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.3)] dark:border dark:border-slate-800 w-full max-w-6xl flex flex-col overflow-hidden max-h-[95vh] transform transition-transform">
             <div class="bg-gradient-to-r from-indigo-600 to-violet-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0 shadow-sm">
@@ -797,10 +797,10 @@
             </div>
             <div class="p-4 md:p-6 bg-slate-50 dark:bg-slate-900/95 flex-1 overflow-y-auto custom-scrollbar">
 
-                <!-- INFO CABE?âââââ€šÂ¬Ã…Â¡Â¬Â¡ALHO NF -->
+                <!-- INFO CABEÇALHO NF -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 bg-white dark:bg-slate-800/60 backdrop-blur-sm p-4 rounded-xl border border-slate-200 dark:border-slate-700/60 shadow-sm mb-5 transition-all hover:shadow-md">
                     <div class="col-span-2 md:col-span-4"><p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Fornecedor Emitente</p><p class="font-bold text-indigo-700 dark:text-indigo-400 text-sm uppercase" id="xml-forn-nome">-</p><p class="text-[10px] text-slate-500 dark:text-slate-400 font-mono" id="xml-forn-cnpj">-</p></div>
-                    <div><p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">NÂº NF-e</p><p class="font-bold text-slate-800 dark:text-slate-200 text-sm" id="rev-nfe">-</p></div>
+                    <div><p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Nº NF-e</p><p class="font-bold text-slate-800 dark:text-slate-200 text-sm" id="rev-nfe">-</p></div>
                     <div><p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Data Emissão</p><p class="font-bold text-slate-800 dark:text-slate-200 text-sm" id="rev-data">-</p></div>
                     <div><p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total Mercadorias</p><p class="font-bold text-slate-800 dark:text-slate-200 text-sm" id="rev-vprod">R$ 0,00</p></div>
                     <div><p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total do XML</p><p class="font-bold text-emerald-600 dark:text-emerald-400 text-lg drop-shadow-sm" id="xml-total-nota">R$ 0,00</p></div>
@@ -829,7 +829,7 @@
                     </div>
                 </div>
 
-                <!-- LAN?âââââ€šÂ¬Ã…Â¡Â¬Â¡AMENTOS FINANCEIROS -->
+                <!-- LANÇAMENTOS FINANCEIROS -->
                 <div class="bg-amber-50/50 dark:bg-amber-900/10 rounded-xl shadow-sm border border-amber-200/60 dark:border-amber-800/50 mb-5 p-4 transition-all hover:border-amber-300 dark:hover:border-amber-700">
                     <div class="flex justify-between items-center mb-4">
                         <h4 class="text-xs font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-money-bill-transfer"></i> Lançamentos Financeiros (Boletos)</h4>
@@ -879,7 +879,7 @@
                 <button onclick="fecharModalProduto()" class="text-blue-200 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             <div class="p-4 bg-slate-50 dark:bg-slate-900 overflow-y-auto space-y-4">
-                <!-- NOVO: OP?âââââ€šÂ¬Ã…Â¡Â¬Â¡?ÁO DE V?ÍNCULO MANUAL (MOSTRADA APENAS NO XML) -->
+                <!-- NOVO: OPÇÃO DE VÍNCULO MANUAL (MOSTRADA APENAS NO XML) -->
                 <div id="div-acao-vinculo-xml" class="hidden mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-lg">
                     <label class="text-xs font-bold text-slate-500 mb-1 block">Ação: Vincular ou Cadastrar?</label>
                     <select id="prod-acao-vinculo" onchange="alternarAcaoVinculoXML()" class="w-full bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 p-2 rounded text-sm outline-none mb-2 font-bold text-slate-700 dark:text-slate-200">
@@ -920,20 +920,27 @@
                             <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">CSOSN / CST</label>
                             <input type="text" id="prod-csosn" list="lista-cst-csosn-compras" placeholder="Ex: 102 ou 00" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-sm outline-none focus:border-blue-500 font-mono dark:text-white">
                             <datalist id="lista-cst-csosn-compras">
-                                <option value="101">101 - Simples Nacional (com permissão de crédito)</option>
-                                <option value="102">102 - Simples Nacional (sem permissão de crédito)</option>
-                                <option value="103">103 - Simples Nacional (isenção de ICMS para faixa de receita)</option>
-                                <option value="201">201 - Simples Nacional (com crédito e com ST)</option>
-                                <option value="202">202 - Simples Nacional (sem crédito e com ST)</option>
-                                <option value="500">500 - Simples Nacional (ICMS cobrado anteriormente por ST)</option>
-                                <option value="900">900 - Simples Nacional (Outros)</option>
-                                <option value="00">00 - Tributada integralmente</option>
-                                <option value="10">10 - Tributada e com cobrança de ST</option>
-                                <option value="20">20 - Com redução de base de cálculo</option>
-                                <option value="40">40 - Isenta</option>
-                                <option value="41">41 - Não tributada</option>
-                                <option value="60">60 - Cobrado anteriormente por ST</option>
-                                <option value="90">90 - Outras</option>
+                                <option value="101 - Simples Nacional (com permissão de crédito)">
+                                <option value="102 - Simples Nacional (sem permissão de crédito)">
+                                <option value="103 - Simples Nacional (isenção de ICMS para faixa de receita)">
+                                <option value="201 - Simples Nacional (com crédito e com ST)">
+                                <option value="202 - Simples Nacional (sem crédito e com ST)">
+                                <option value="203 - Simples Nacional (isenção ICMS e com ST)">
+                                <option value="300 - Imune">
+                                <option value="400 - Não tributada pelo Simples Nacional">
+                                <option value="500 - Simples Nacional (ICMS cobrado anteriormente por ST)">
+                                <option value="900 - Simples Nacional (Outros)">
+                                <option value="00 - Tributada integralmente">
+                                <option value="10 - Tributada e com cobrança de ST">
+                                <option value="20 - Com redução de base de cálculo">
+                                <option value="30 - Isenta ou não tributada e com cobrança de ST">
+                                <option value="40 - Isenta">
+                                <option value="41 - Não tributada">
+                                <option value="50 - Suspensão">
+                                <option value="51 - Diferimento">
+                                <option value="60 - Cobrado anteriormente por ST">
+                                <option value="70 - Com redução de base e cobrança ST">
+                                <option value="90 - Outras">
                             </datalist>
                         </div>
                         <div>
@@ -968,7 +975,7 @@
         </div>
     </div>
 
-    <!-- MODAL LAN?ââââ‚¬Å¡Â¬Â¡AMENTO DE COMPRA MANUAL (SEM NF E EDI?ââââ‚¬Å¡Â¬Â¡ÁO) -->
+    <!-- MODAL LANÇAMENTO DE COMPRA MANUAL (SEM NF E EDIÇÃO) -->
     <div id="modal-compra-manual" class="fixed inset-0 bg-slate-900/80 z-[160] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-slate-800 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col overflow-hidden max-h-[95vh]">
             <div class="bg-emerald-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
@@ -994,7 +1001,7 @@
                         <input type="date" id="compra-manual-data" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 dark:text-white">
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">NÂº Pedido / Ref / Recibo</label>
+                        <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Nº Pedido / Ref / Recibo</label>
                         <input type="text" id="compra-manual-ref" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-emerald-500 dark:text-white">
                     </div>
                     <div class="md:col-span-2">
@@ -1085,7 +1092,7 @@
     </div>
 
 
-    <!-- CONFIRMA?âââââ€šÂ¬Ã…Â¡Â¬Â¡?ÁO DO SISTEMA -->
+    <!-- CONFIRMAÇÃO DO SISTEMA -->
     <div id="modal-confirmacao" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden text-center p-6">
             <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
@@ -1115,15 +1122,16 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20261005090727"></script>
-    <script src="saas_licenca.js?v=20261005090727"></script>
-    <script src="../global.js?v=20261005090727"></script>
-    <script src="fc_cache.js?v=20261005090727"></script>
-    <script src="tabela_ncm.js?v=20261005090727"></script>
-    <script src="ncm_helper.js?v=20261005090727"></script>
-    <script src="compras.js?v=20261005090727"></script>
+    <script src="../sistema/config_banco.js?v=20261005171910"></script>
+    <script src="saas_licenca.js?v=20261005171910"></script>
+    <script src="../global.js?v=20261005171910"></script>
+    <script src="fc_cache.js?v=20261005171910"></script>
+    <script src="tabela_ncm.js?v=20261005171910"></script>
+    <script src="ncm_helper.js?v=20261005171910"></script>
+    <script src="compras.js?v=20261005171910"></script>
 </body>
 </html>
+
 
 
 

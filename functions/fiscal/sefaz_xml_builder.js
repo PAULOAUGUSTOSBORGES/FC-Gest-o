@@ -257,14 +257,43 @@ function construirXmlNota(dados) {
         const destLgr = limparTexto(cliente?.rua || cliente?.logradouro || cliente?.endereco || 'RUA');
         const destNro = limparTexto(cliente?.numero || 'S/N');
         const destBairro = limparTexto(cliente?.bairro || 'CENTRO');
-        const destMun = limparTexto(cliente?.cidade || cliente?.municipio || emitMun);
-        const destUf = (cliente?.uf || ufSigla).toUpperCase().trim();
+
+        let rawMun = cliente?.cidade || cliente?.municipio || '';
+        let rawUf = cliente?.uf || '';
+        if (rawMun.includes(' - ')) {
+            const parts = rawMun.split(' - ');
+            rawMun = parts[0].trim();
+            if (!rawUf && parts[1]) rawUf = parts[1].trim();
+        } else if (rawMun.includes('/')) {
+            const parts = rawMun.split('/');
+            rawMun = parts[0].trim();
+            if (!rawUf && parts[1]) rawUf = parts[1].trim();
+        }
+
         const destCep = apenasDigitos(cliente?.cep || emitCep).padStart(8, '0');
+        if (!rawMun && (destCep.startsWith('7380') || destCep.startsWith('7381'))) {
+            rawMun = 'FORMOSA';
+            if (!rawUf) rawUf = 'GO';
+        }
+
+        const destMun = limparTexto(rawMun || emitMun);
+        const destUf = (rawUf || ufSigla).toUpperCase().trim();
 
         const ufCod = CODIGOS_UF[destUf] || (destUf === ufSigla ? cUF : '35');
         let destIbge = apenasDigitos(cliente?.ibge || cliente?.cMun || cliente?.codigoMunicipio || cliente?.codigoMunicipioIBGE || '');
-        if (!destIbge || destIbge.length < 7 || !destIbge.startsWith(ufCod)) {
-            if (destUf === ufSigla && cMunFG && cMunFG.startsWith(ufCod)) {
+
+        const munNorm = destMun.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+        if (destUf === 'GO' && (munNorm === 'FORMOSA' || destCep.startsWith('7380') || destCep.startsWith('7381'))) {
+            destIbge = '5208004';
+        } else if (destUf === 'GO' && munNorm === 'ANAPOLIS') {
+            destIbge = '5201108';
+        } else if (destUf === 'GO' && (munNorm === 'APARECIDA DE GOIANIA' || munNorm === 'APARECIDA DE GOIÂNIA')) {
+            destIbge = '5201405';
+        } else if (!destIbge || destIbge.length < 7 || !destIbge.startsWith(ufCod)) {
+            const emitMunNorm = limparTexto(emitMun).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+            if (destUf === ufSigla && munNorm === emitMunNorm && cMunFG) {
+                destIbge = cMunFG;
+            } else if (destUf === ufSigla && !rawMun && cMunFG && cMunFG.startsWith(ufCod)) {
                 destIbge = cMunFG;
             } else {
                 destIbge = CAPITAIS_IBGE[destUf] || (ufCod + '00000');

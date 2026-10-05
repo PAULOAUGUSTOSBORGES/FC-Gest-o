@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // GESTO.JS - ERP FINANCEIRO, DASHBOARD E PROJEƒ€ƒES
 // ==========================================
 
@@ -1673,8 +1673,14 @@ function abrirModalProdutoDoXML(index) {
     }
 
     // Preenche dados fiscais extraídos do XML ou existentes
-    if (document.getElementById('prod-ncm')) document.getElementById('prod-ncm').value = p.ncm || '';
-    if (document.getElementById('prod-csosn')) document.getElementById('prod-csosn').value = p.csosn || p.cst || '';
+    if (document.getElementById('prod-ncm')) {
+        const codNcm = p.ncm || '';
+        document.getElementById('prod-ncm').value = window.NCMHelper ? window.NCMHelper.formatarNCMDisplay(codNcm) : codNcm;
+    }
+    if (document.getElementById('prod-csosn')) {
+        const codCsosn = p.csosn || p.cst || '';
+        document.getElementById('prod-csosn').value = window.NCMHelper ? window.NCMHelper.formatarCSOSNDisplay(codCsosn) : codCsosn;
+    }
     if (document.getElementById('prod-origem')) document.getElementById('prod-origem').value = (p.origem !== undefined && p.origem !== '') ? String(p.origem) : '0';
     if (document.getElementById('prod-cfop')) document.getElementById('prod-cfop').value = p.cfop || '5102';
     if (document.getElementById('prod-cest')) document.getElementById('prod-cest').value = p.cest || '';
@@ -1683,6 +1689,7 @@ function abrirModalProdutoDoXML(index) {
     if (window.NCMHelper && typeof window.NCMHelper.initNCMAutocomplete === 'function') {
         window.NCMHelper.initNCMAutocomplete('prod-ncm');
         window.NCMHelper.atualizarPreviewNCM('prod-ncm');
+        if (typeof window.NCMHelper.initCSOSNInput === 'function') window.NCMHelper.initCSOSNInput('prod-csosn');
     }
 }
 
@@ -1702,8 +1709,10 @@ function salvarProdutoXmlModal() {
     pXML.custoFinal = parseInputMoney(document.getElementById('prod-custo').value)||0; pXML.margemAtual = parseInputMoney(document.getElementById('prod-margem').value)||0; pXML.precoVendaSug = parseInputMoney(document.getElementById('prod-preco').value)||0;
     
     // Atualiza campos fiscais editados no modal
-    pXML.ncm = document.getElementById('prod-ncm') ? document.getElementById('prod-ncm').value.trim() : (pXML.ncm || '');
-    pXML.csosn = document.getElementById('prod-csosn') ? document.getElementById('prod-csosn').value.trim() : (pXML.csosn || '');
+    const ncmValModal = document.getElementById('prod-ncm') ? document.getElementById('prod-ncm').value.trim() : (pXML.ncm || '');
+    const csosnValModal = document.getElementById('prod-csosn') ? document.getElementById('prod-csosn').value.trim() : (pXML.csosn || '');
+    pXML.ncm = window.NCMHelper ? window.NCMHelper.limparNCM(ncmValModal) : String(ncmValModal).replace(/\D/g, '').substring(0, 8);
+    pXML.csosn = window.NCMHelper ? window.NCMHelper.extrairCodigoCSOSN(csosnValModal) : csosnValModal;
     pXML.cst = pXML.csosn;
     pXML.origem = document.getElementById('prod-origem') ? document.getElementById('prod-origem').value : (pXML.origem || '0');
     pXML.cfop = document.getElementById('prod-cfop') ? document.getElementById('prod-cfop').value.trim() : (pXML.cfop || '5102');
@@ -1773,9 +1782,9 @@ async function salvarXMLConferido() {
                 min: 5, 
                 foto: '', 
                 ativo: true,
-                ncm: p.ncm || '',
-                cst: p.cst || p.csosn || '',
-                csosn: p.csosn || p.cst || '102',
+                ncm: window.NCMHelper ? window.NCMHelper.limparNCM(p.ncm || '') : (p.ncm || ''),
+                cst: window.NCMHelper ? window.NCMHelper.extrairCodigoCSOSN(p.cst || p.csosn || '') : (p.cst || p.csosn || ''),
+                csosn: window.NCMHelper ? window.NCMHelper.extrairCodigoCSOSN(p.csosn || p.cst || '102') : (p.csosn || p.cst || '102'),
                 origem: (p.origem !== undefined && p.origem !== '') ? String(p.origem) : '0',
                 cfop: p.cfop || '5102',
                 cest: p.cest || '',
@@ -1807,9 +1816,9 @@ async function salvarXMLConferido() {
                     preco: pDB.preco, 
                     nome: pDB.nome, 
                     ativo: true,
-                    ncm: pDB.ncm || '',
-                    cst: pDB.cst || pDB.csosn || '',
-                    csosn: pDB.csosn || pDB.cst || '102',
+                    ncm: window.NCMHelper ? window.NCMHelper.limparNCM(pDB.ncm || '') : (pDB.ncm || ''),
+                    cst: window.NCMHelper ? window.NCMHelper.extrairCodigoCSOSN(pDB.cst || pDB.csosn || '') : (pDB.cst || pDB.csosn || ''),
+                    csosn: window.NCMHelper ? window.NCMHelper.extrairCodigoCSOSN(pDB.csosn || pDB.cst || '102') : (pDB.csosn || pDB.cst || '102'),
                     origem: pDB.origem || '0',
                     cfop: pDB.cfop || '5102',
                     cest: pDB.cest || ''

@@ -1,4 +1,4 @@
-// ==============================================================
+﻿// ==============================================================
 // PROCESSADOR DE PROTOCOLOS SEFAZ & GERADOR DE QR-CODE NFC-E
 // Montagem do <nfeProc> oficial de distribuição e validação de retorno
 // ==============================================================

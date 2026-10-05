@@ -35,8 +35,8 @@
     <title>Configurações do Sistema</title>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css?v=20261005090727">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261005090727">
+    <link rel="stylesheet" href="../style.css?v=20261005171910">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261005171910">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -49,13 +49,10 @@
         <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 w-64 bg-slate-900 text-slate-300 flex flex-col h-full shrink-0 shadow-2xl z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out no-print">
             <div class="p-5 flex items-center justify-between gap-3 border-b border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors" onclick="window.location.href='index.html'">
                 <div class="flex items-center gap-3 pointer-events-none">
-                    <!-- Motor que puxa a Logo -->
-                    <img id="menu-logo" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="w-10 h-10 rounded-lg object-cover hidden bg-white dark:bg-slate-800 shadow-lg">
-                    <div id="menu-logo-placeholder" class="w-10 h-10 bg-slate-800 border border-slate-600 rounded-lg flex items-center justify-center text-slate-400 text-xl shadow-lg"><i class="fa-solid fa-store"></i></div>
-                    
+                    <img id="menu-logo" src="../icons/icon.svg" class="w-8 h-8 rounded-lg object-cover bg-slate-800 shadow-md">
+                    <div id="menu-logo-placeholder" class="hidden w-8 h-8 bg-slate-800 border border-slate-600 rounded-lg flex items-center justify-center text-slate-400 text-base shadow-md"><i class="fa-solid fa-store"></i></div>
                     <div>
-                        <!-- Motor que puxa o Nome da Empresa -->
-                        <h1 id="menu-empresa-nome" class="font-bold text-white text-lg tracking-wide leading-tight truncate w-32">Carregando...</h1>
+                        <h1 id="menu-empresa-nome" class="font-bold text-white text-sm tracking-wide leading-tight">FC Gestão</h1>
                         <p class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Sistema Ativo</p>
                     </div>
                 </div>
@@ -295,7 +292,7 @@
                         <!-- SEÇÃO: CERTIFICADO DIGITAL A1 (SEFAZ DIRETO) -->
                         <div id="secao-sefaz-direto" class="bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/60 rounded-xl p-4 mb-4">
                             <h4 class="text-xs font-bold text-blue-700 dark:text-blue-400 mb-2 flex items-center gap-2">
-                                <i class="fa-solid fa-shield-halved"></i> Certificado Digital A1 (.pfx / .p12) — Autonomia Total SEFAZ
+                                <i class="fa-solid fa-shield-halved"></i> Certificado Digital A1 (.pfx / .p12) â€” Autonomia Total SEFAZ
                             </h4>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
@@ -411,10 +408,10 @@
                             <div>
                                 <label class="text-[10px] md:text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1.5"><i class="fa-solid fa-list-check text-indigo-500 mr-1"></i> Operação Pré-selecionada no PDV</label>
                                 <select id="pdv-operacao-padrao" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg outline-none focus:border-blue-500 text-sm font-bold text-slate-700 dark:text-slate-200 dark:text-white">
-                                    <option value="Venda">Venda (Lançar p/ Caixa Central) — Pré-selecionada</option>
-                                    <option value="VendaBalcao">Venda Balcão (Receber no PDV) — Pré-selecionada</option>
-                                    <option value="Orçamento">Orçamento Completo — Pré-selecionado</option>
-                                    <option value="Serviço">Prestação de Serviço / O.S. — Pré-selecionada</option>
+                                    <option value="Venda">Venda (Lançar p/ Caixa Central) â€” Pré-selecionada</option>
+                                    <option value="VendaBalcao">Venda Balcão (Receber no PDV) â€” Pré-selecionada</option>
+                                    <option value="Orçamento">Orçamento Completo â€” Pré-selecionado</option>
+                                    <option value="Serviço">Prestação de Serviço / O.S. â€” Pré-selecionada</option>
                                     <option value="nenhum">Não pré-selecionar (Operador escolhe no momento da venda)</option>
                                 </select>
                                 <p class="text-[11px] text-slate-400 mt-1.5">Escolha se deseja deixar a venda pré-selecionada automaticamente ao abrir o PDV ou não (o operador poderá alterar livremente a qualquer momento).</p>
@@ -700,11 +697,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
     
-    <script src="../sistema/config_banco.js?v=20261005090727"></script>
-    <script src="saas_licenca.js?v=20261005090727"></script>
-    <script src="../global.js?v=20261005090727"></script>
-    <script src="fc_cache.js?v=20261005090727"></script>
-    <script src="sistema.js?v=20261005090727"></script>
+    <script src="../sistema/config_banco.js?v=20261005171910"></script>
+    <script src="saas_licenca.js?v=20261005171910"></script>
+    <script src="../global.js?v=20261005171910"></script>
+    <script src="fc_cache.js?v=20261005171910"></script>
+    <script src="sistema.js?v=20261005171910"></script>
 <!-- MODAL DE GERENCIAMENTO DE OPCOES PERSONALIZADAS (MADEIRAS, TECIDOS, CORES) -->
     <div id="modal-opcoes-personalizadas" class="fixed inset-0 bg-slate-900/70 z-[170] hidden flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in duration-150 max-h-[90vh]">
@@ -770,3 +767,4 @@
     </div>
 </body>
 </html>
+

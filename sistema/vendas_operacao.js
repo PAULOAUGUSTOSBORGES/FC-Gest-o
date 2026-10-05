@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // OPERACAO.JS - SISTEMA 100% WHITE LABEL E BLINDADO
 // ==========================================
 
@@ -112,7 +112,7 @@ function aplicarIdentidadeVisualNoMenu() {
 
 function obterDadosClientePDV(cId) {
     const c = cId && cId !== "0" && db.clientes ? db.clientes.find(x => String(x.id) === String(cId)) : null;
-    if(!c) return { nome: 'Consumidor Final', doc: 'Não informado', tel: 'Não informado', endCompleto: 'Não informado', bairro: '', cidade: '', cep: '' };
+    if(!c) return { nome: 'Consumidor Final', doc: 'Não informado', tel: 'Não informado', endCompleto: 'Não informado', rua: '', numero: '', bairro: '', cidade: '', uf: '', cep: '', ibge: '' };
     
     const doc = c.cpfCnpj || c.documento || c.cnpj || c.cpf || c.doc || c.cpf_cnpj || 'Não informado';
     const tel = c.whatsapp || c.wpp || c.celular || c.telefone || c.telefoneFixo || c.tel || 'Não informado';
@@ -120,15 +120,43 @@ function obterDadosClientePDV(cId) {
     const rua = c.rua || c.logradouro || c.endereco || c.end || '';
     const num = c.numero ? ', ' + c.numero : '';
     const endCompleto = rua ? (rua + num) : 'Não informado';
+
+    let cidadeLimpa = (c.cidade || '').trim();
+    let ufLimpa = (c.uf || '').trim();
+    if (cidadeLimpa.includes(' - ')) {
+        const parts = cidadeLimpa.split(' - ');
+        cidadeLimpa = parts[0].trim();
+        if (!ufLimpa && parts[1]) ufLimpa = parts[1].trim();
+    } else if (cidadeLimpa.includes('/')) {
+        const parts = cidadeLimpa.split('/');
+        cidadeLimpa = parts[0].trim();
+        if (!ufLimpa && parts[1]) ufLimpa = parts[1].trim();
+    }
+    let ibgeLimpo = (c.ibge || '').trim();
+    const cepLimpo = (c.cep ? String(c.cep).replace(/\D/g, '') : '');
+    if ((!ibgeLimpo || ibgeLimpo === '5208707') && (cidadeLimpa.toUpperCase() === 'FORMOSA' || cepLimpo.startsWith('7380') || cepLimpo.startsWith('7381'))) {
+        ibgeLimpo = '5208004';
+    }
+    if (!ufLimpa && (cidadeLimpa.toUpperCase() === 'FORMOSA' || cepLimpo.startsWith('738'))) {
+        ufLimpa = 'GO';
+    }
     
     return {
+        id: c.id,
         nome: c.nome || c.razaoSocial || 'Consumidor Final',
         doc: doc,
+        cpf: (doc.replace(/\D/g, '').length === 11) ? doc.replace(/\D/g, '') : (c.cpf ? c.cpf.replace(/\D/g, '') : ''),
+        cnpj: (doc.replace(/\D/g, '').length === 14) ? doc.replace(/\D/g, '') : (c.cnpj ? c.cnpj.replace(/\D/g, '') : ''),
         tel: tel,
+        rua: rua,
+        numero: c.numero || 'S/N',
         endCompleto: endCompleto,
-        bairro: c.bairro || 'Não informado',
-        cidade: c.cidade || 'Não informado',
-        cep: c.cep || 'Não informado'
+        bairro: c.bairro || '',
+        cidade: cidadeLimpa,
+        uf: ufLimpa,
+        cep: cepLimpo,
+        ibge: ibgeLimpo,
+        raw: c
     };
 }
 
@@ -2011,23 +2039,45 @@ async function finalizarVendaMultipla() {
     const idFinalVenda = vendaRef.id;
 
     if (!isOrcamento) { 
+        let prodsAlterados = false;
         cart.forEach(item => { 
             const p = (db.produtos || []).find(x => String(x.id) === String(item.id)); 
             if(p) { 
                 const pRef = window.getEmpresaRef().collection('produtos').doc(String(p.id));
                 batch.update(pRef, { estoque: (p.estoque || 0) - item.qtd });
                 
+                // Abatimento de estoque local imediato no modo economia
+                const qtdItemVendida = Number(item.qtd || 1);
+                p.estoque = (Number(p.estoque) || 0) - qtdItemVendida;
+                prodsAlterados = true;
+
+                if (window.FCCache && typeof window.FCCache.enfileirarOperacao === 'function') {
+                    window.FCCache.enfileirarOperacao('produtos', p.id, 'set', p);
+                }
+
                 const kardexRef = window.getEmpresaRef().collection('movimentacoes').doc();
-                batch.set(kardexRef, {
+                const kardexObj = {
+                    id: kardexRef.id,
                     data: new Date().toISOString(),
                     ref: `${tipoVenda} #${numPedStr}`,
                     prodId: p.id,
                     prodNome: p.nome,
-                    qtd: -(item.qtd || 1),
+                    qtd: -qtdItemVendida,
                     tipo: tipoVenda
-                });
+                };
+                batch.set(kardexRef, kardexObj);
+
+                if (window.FCCache && typeof window.FCCache.enfileirarOperacao === 'function') {
+                    window.FCCache.enfileirarOperacao('movimentacoes', kardexObj.id, 'set', kardexObj);
+                }
+                if (Array.isArray(db.movimentacoes)) {
+                    db.movimentacoes.unshift(kardexObj);
+                }
             } 
         }); 
+        if (prodsAlterados && window.FCCache && typeof window.FCCache.set === 'function') {
+            window.FCCache.set('produtos', db.produtos);
+        }
     }
 
     const itensLimpados = cart.map(i => {
@@ -2058,8 +2108,31 @@ async function finalizarVendaMultipla() {
         clienteId: cId || '', 
         clienteNome: cliInfo.nome || '', 
         clienteDoc: cliInfo.doc || 'Não informado',
+        clienteCpf: cliInfo.cpf || '',
+        clienteCnpj: cliInfo.cnpj || '',
         clienteTel: cliInfo.tel || 'Não informado',
         clienteEnd: cliInfo.endCompleto || 'Não informado',
+        clienteRua: cliInfo.rua || '',
+        clienteNumero: cliInfo.numero || '',
+        clienteBairro: cliInfo.bairro || '',
+        clienteCidade: cliInfo.cidade || '',
+        clienteUf: cliInfo.uf || '',
+        clienteCep: cliInfo.cep || '',
+        clienteIbge: cliInfo.ibge || '',
+        cliente: cliInfo.raw ? { ...cliInfo.raw } : null,
+        destinatario: cliInfo.raw ? {
+            nome: cliInfo.nome,
+            doc: cliInfo.doc,
+            cpf: cliInfo.cpf,
+            cnpj: cliInfo.cnpj,
+            rua: cliInfo.rua,
+            numero: cliInfo.numero,
+            bairro: cliInfo.bairro,
+            cidade: cliInfo.cidade,
+            uf: cliInfo.uf,
+            cep: cliInfo.cep,
+            ibge: cliInfo.ibge
+        } : null,
         subtotal: sub || 0, 
         frete: frete || 0, 
         desconto: desc || 0, 
@@ -2162,7 +2235,7 @@ async function finalizarVendaMultipla() {
         isProcessingVenda = false;
         vendaIdempotencyKey = null;
         if (typeof showToast === 'function') {
-            showToast('Operação salva no dispositivo! Clique em SINCRONIZAR para enviar à nuvem.', 'info');
+            showToast('Operação registrada com sucesso! (Salva localmente. Clique em SINCRONIZAR quando desejar enviar à nuvem)', 'success');
         }
     } else {
         try {
@@ -2340,11 +2413,26 @@ async function emitirNota(tipo) {
     }
 
     try {
-        const emitirFunc = firebase.functions().httpsCallable(tipo === 'nfce' ? 'emitirNFCe' : 'emitirNFe');
         const empIdAtual = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
+        
+        // Garante persistência da venda no Firestore antes de acionar a SEFAZ
+        if (window.vendaAtualImpressao && window.vendaAtualImpressao.id) {
+            try {
+                const empRef = (typeof window.getEmpresaRef === 'function') ? window.getEmpresaRef() : firestore.collection('empresas').doc(empIdAtual || 'emp_fc_moveis');
+                await empRef.collection('vendas').doc(String(window.vendaAtualImpressao.id)).set(window.vendaAtualImpressao, { merge: true });
+                if (window.FCCache && typeof window.FCCache.removerDaFila === 'function') {
+                    window.FCCache.removerDaFila('vendas', window.vendaAtualImpressao.id);
+                }
+            } catch (syncErr) {
+                console.warn('[Venda/Fiscal] Aviso ao sincronizar venda antes da emissão SEFAZ:', syncErr);
+            }
+        }
+
+        const emitirFunc = firebase.functions().httpsCallable(tipo === 'nfce' ? 'emitirNFCe' : 'emitirNFe');
         const response = await emitirFunc({ 
             vendaId: window.vendaAtualImpressao.id,
-            empId: empIdAtual
+            empId: empIdAtual,
+            vendaDados: window.vendaAtualImpressao
         });
         const res = response.data;
         const d = res.data || {};
@@ -2400,17 +2488,17 @@ async function emitirNota(tipo) {
             statusContainer.classList.remove('border-blue-500', 'bg-blue-50');
             statusContainer.classList.add('border-red-500', 'bg-red-50');
             
-            let errorMsg = error.message;
+            let errorMêsg = error.message;
             try {
-                const parsed = JSON.parse(errorMsg);
+                const parsed = JSON.parse(errorMêsg);
                 if(parsed.erros && parsed.erros.length > 0) {
-                    errorMsg = parsed.erros[0].mensagem || parsed.erros[0].codigo;
+                    errorMêsg = parsed.erros[0].mensagem || parsed.erros[0].codigo;
                 } else if (parsed.mensagem_sefaz) {
-                    errorMsg = parsed.mensagem_sefaz;
+                    errorMêsg = parsed.mensagem_sefaz;
                 }
             } catch (e) {}
             
-            statusContainer.innerHTML = `<p class="text-red-700 font-bold text-xs text-left"><i class="fa-solid fa-circle-exclamation mr-1"></i> Falha na SEFAZ: ${errorMsg}</p>`;
+            statusContainer.innerHTML = `<p class="text-red-700 font-bold text-xs text-left"><i class="fa-solid fa-circle-exclamation mr-1"></i> Falha na SEFAZ: ${errorMêsg}</p>`;
         }
         
         if (btnNfce) btnNfce.disabled = false;

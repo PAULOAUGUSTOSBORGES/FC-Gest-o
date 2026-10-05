@@ -1,4 +1,4 @@
-// index.js - Lógica exclusiva do Dashboard (MEGA BI)
+﻿// index.js - Lógica exclusiva do Dashboard (MEGA BI)
 
 let renderTimeout = null;
 

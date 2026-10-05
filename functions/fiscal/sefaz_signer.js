@@ -1,4 +1,4 @@
-// ==============================================================
+﻿// ==============================================================
 // ASSINADOR DIGITAL ICP-BRASIL PARA NF-e / NFC-e (XML-DSig)
 // Padrão W3C Enveloped Signature com Certificado Digital A1 (.pfx)
 // Canonicalização W3C C14N (REC-xml-c14n-20010315) e RSA-SHA1

@@ -1,4 +1,4 @@
-let calendar;
+﻿let calendar;
 let unsubscribeAgenda = null;
 let currentEventId = null;
 
@@ -75,7 +75,7 @@ function renderizarTodosEventosAgenda() {
                     backgroundColor: color,
                     borderColor: color,
                     extendedProps: {
-                        descricao: 'Evento do m�dulo financeiro.',
+                        descricao: 'Evento do módulo financeiro.',
                         tipoEvento: 'FINANCEIRO',
                         originalId: f.id
                     }
@@ -98,7 +98,7 @@ function initCalendar() {
         },
         buttonText: {
             today: 'Hoje',
-            month: 'M�s',
+            month: 'Mês',
             week: 'Semana',
             day: 'Dia',
             list: 'Lista'
@@ -117,9 +117,9 @@ function initCalendar() {
         eventClick: function(info) {
             if (info.event.extendedProps && info.event.extendedProps.tipoEvento === 'FINANCEIRO') {
                 if (typeof showToast === 'function') {
-                    showToast('Conta a pagar/receber. Acesse o m�dulo Financeiro para visualizar.', 'info');
+                    showToast('Conta a pagar/receber. Acesse o módulo Financeiro para visualizar.', 'info');
                 } else {
-                    alert('Acesse o m�dulo Financeiro para visualizar esta conta.');
+                    alert('Acesse o módulo Financeiro para visualizar esta conta.');
                 }
                 return;
             }
@@ -129,7 +129,7 @@ function initCalendar() {
         eventDrop: function(info) {
             if (info.event.extendedProps && info.event.extendedProps.tipoEvento === 'FINANCEIRO') {
                 info.revert();
-                if (typeof showToast === 'function') showToast('N�o � poss�vel reagendar contas por aqui.', 'error');
+                if (typeof showToast === 'function') showToast('Não é possível reagendar contas por aqui.', 'error');
                 return;
             }
             atualizarDataEvento(info.event);
@@ -138,7 +138,7 @@ function initCalendar() {
         eventResize: function(info) {
             if (info.event.extendedProps && info.event.extendedProps.tipoEvento === 'FINANCEIRO') {
                 info.revert();
-                if (typeof showToast === 'function') showToast('N�o � poss�vel reagendar contas por aqui.', 'error');
+                if (typeof showToast === 'function') showToast('Não é possível reagendar contas por aqui.', 'error');
                 return;
             }
             atualizarDataEvento(info.event);

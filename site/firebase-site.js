@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // FIREBASE-SITE.JS
 // Configuração do Firebase exclusiva para o SITE PÚBLICO (Loja Online)
 // NÃO redireciona visitantes para o login.

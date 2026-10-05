@@ -1,4 +1,4 @@
-// ==========================================================================
+﻿// ==========================================================================
 // FC-CACHE.JS — Repositório Local Persistente (IndexedDB) & Sincronização
 // FC-Gestão · Versão 2.0 (Offline-First / Repositório Persistente)
 // ==========================================================================
@@ -443,6 +443,101 @@
         });
     }
 
+    // ----------------------------------------------------------------------
+    // 3.1 Barramento de Comunicação Local em Tempo Real (Mesmo Computador)
+    // Conecta todas as abas e janelas abertas localmente sem precisar da nuvem
+    // ----------------------------------------------------------------------
+    let _localBus = null;
+    try {
+        if (typeof BroadcastChannel !== 'undefined') {
+            _localBus = new BroadcastChannel('fc_sistema_local_bus');
+            _localBus.onmessage = function (ev) {
+                if (ev && ev.data && ev.data.colecao) {
+                    _processarAtualizacaoLocal(ev.data.colecao);
+                }
+            };
+        }
+    } catch (e) {
+        console.warn('[FCRepo] BroadcastChannel não disponível:', e);
+    }
+
+    if (typeof window !== 'undefined') {
+        // Fallback cross-tab via evento storage do localStorage
+        window.addEventListener('storage', function (e) {
+            if (e.key === 'fc_local_bus_pulse' && e.newValue) {
+                try {
+                    const info = JSON.parse(e.newValue);
+                    if (info && info.colecao) {
+                        _processarAtualizacaoLocal(info.colecao);
+                    }
+                } catch (err) {}
+            }
+        });
+
+        // Quando o usuário volta para uma aba, sincroniza instantaneamente com o IndexedDB
+        window.addEventListener('focus', function () {
+            _sincronizarAbaComIndexedDB();
+        });
+    }
+
+    async function _processarAtualizacaoLocal(col) {
+        try {
+            const dadosIdb = await _idbLerColecao(col);
+            if (dadosIdb !== null && dadosIdb !== undefined) {
+                _memoria[col] = dadosIdb;
+                _salvarSession(col, dadosIdb);
+                if (typeof window.db !== 'undefined') {
+                    window.db[col] = dadosIdb;
+                    if (col === 'produtos') window._produtosCarregados = true;
+                    if (col === 'caixa') window.db.caixa = dadosIdb;
+                    if (col === 'config') window.db.config = dadosIdb;
+                }
+                _notificarListeners(col, dadosIdb);
+                if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('fc-dados-locais-atualizados', { detail: { colecao: col, dados: dadosIdb } }));
+                }
+            }
+            await _atualizarBadgePendencias();
+        } catch (errBus) {
+            console.warn('[FCRepo] Erro ao processar atualização local para "' + col + '":', errBus);
+        }
+    }
+
+    async function _sincronizarAbaComIndexedDB() {
+        try {
+            PRINCIPAIS_COLECOES.forEach(async function (col) {
+                const dados = await _idbLerColecao(col);
+                if (dados !== null && Array.isArray(dados)) {
+                    _memoria[col] = dados;
+                    _salvarSession(col, dados);
+                    if (typeof window.db !== 'undefined') {
+                        window.db[col] = dados;
+                    }
+                    _notificarListeners(col, dados);
+                }
+            });
+            const cx = await _idbLerColecao('caixa');
+            if (cx) {
+                _memoria['caixa'] = cx;
+                _salvarSession('caixa', cx);
+                if (typeof window.db !== 'undefined') window.db.caixa = cx;
+                _notificarListeners('caixa', cx);
+            }
+            await _atualizarBadgePendencias();
+        } catch (e) {}
+    }
+
+    function _notificarOutrasAbas(colecao) {
+        try {
+            if (_localBus) {
+                _localBus.postMessage({ colecao: colecao, time: Date.now() });
+            }
+        } catch (e) {}
+        try {
+            localStorage.setItem('fc_local_bus_pulse', JSON.stringify({ colecao: colecao, time: Date.now() }));
+        } catch (e) {}
+    }
+
     function _notificarSyncState(estado) {
         _syncStateListeners.forEach(function (cb) {
             try { cb(estado); } catch (e) {}
@@ -869,6 +964,7 @@
             _memoria[colecao] = dados;
             _salvarSession(colecao, dados);
             _idbSalvarColecao(colecao, dados);
+            _notificarOutrasAbas(colecao);
         },
 
         /**
@@ -880,6 +976,7 @@
                 sessionStorage.removeItem(_sessionChave(colecao));
             } catch (e) {}
             _idbSalvarColecao(colecao, null);
+            _notificarOutrasAbas(colecao);
         },
 
         /**
@@ -951,6 +1048,14 @@
                 }
             }
             // 2. Atualiza memória interna _memoria, session e IndexedDB
+            if (!Array.isArray(_memoria[colecao])) {
+                if (typeof window.db !== 'undefined' && Array.isArray(window.db[colecao])) {
+                    _memoria[colecao] = [...window.db[colecao]];
+                } else {
+                    const idb = await _idbLerColecao(colecao);
+                    _memoria[colecao] = Array.isArray(idb) ? idb : [];
+                }
+            }
             if (Array.isArray(_memoria[colecao])) {
                 const idx = _memoria[colecao].findIndex(x => String(x.id) === idStr);
                 if (idx >= 0) {
@@ -965,6 +1070,7 @@
             await _idbEnfileirar(colecao, docId, operacao, dados);
             await _atualizarBadgePendencias();
             _notificarListeners(colecao, _memoria[colecao] || (window.db ? window.db[colecao] : []));
+            _notificarOutrasAbas(colecao);
         },
 
         /**
@@ -987,6 +1093,14 @@
                     window.db[colecao].unshift(Object.assign({ id: docId }, dados));
                 }
             }
+            if (!Array.isArray(_memoria[colecao])) {
+                if (typeof window.db !== 'undefined' && Array.isArray(window.db[colecao])) {
+                    _memoria[colecao] = [...window.db[colecao]];
+                } else {
+                    const idb = await _idbLerColecao(colecao);
+                    _memoria[colecao] = Array.isArray(idb) ? idb : [];
+                }
+            }
             if (Array.isArray(_memoria[colecao])) {
                 const idx = _memoria[colecao].findIndex(x => String(x.id) === idStr);
                 if (idx >= 0) {
@@ -998,6 +1112,7 @@
                 await _idbSalvarColecao(colecao, _memoria[colecao]);
             }
             _notificarListeners(colecao, _memoria[colecao] || (window.db ? window.db[colecao] : []));
+            _notificarOutrasAbas(colecao);
         },
 
         /**
@@ -1008,6 +1123,14 @@
             if (typeof window.db !== 'undefined' && Array.isArray(window.db[colecao])) {
                 window.db[colecao] = window.db[colecao].filter(x => String(x.id) !== idStr);
             }
+            if (!Array.isArray(_memoria[colecao])) {
+                if (typeof window.db !== 'undefined' && Array.isArray(window.db[colecao])) {
+                    _memoria[colecao] = [...window.db[colecao]];
+                } else {
+                    const idb = await _idbLerColecao(colecao);
+                    _memoria[colecao] = Array.isArray(idb) ? idb : [];
+                }
+            }
             if (Array.isArray(_memoria[colecao])) {
                 _memoria[colecao] = _memoria[colecao].filter(x => String(x.id) !== idStr);
                 _salvarSession(colecao, _memoria[colecao]);
@@ -1017,6 +1140,7 @@
             await _idbEnfileirar(colecao, docId, 'delete', null);
             await _atualizarBadgePendencias();
             _notificarListeners(colecao, _memoria[colecao] || (window.db ? window.db[colecao] : []));
+            _notificarOutrasAbas(colecao);
         },
 
         /**
@@ -1242,12 +1366,28 @@
             } catch (e) {
                 console.error('[FCRepo] Erro ao servir da memória para "' + colecao + '":', e);
             }
-            // Repositório local em memória atendido: ZERO leituras no Firebase!
+            // Verifica o IndexedDB em segundo plano para garantir integridade com outras abas
+            _idbLerColecao(colecao).then(function (dadosIdb) {
+                if (dadosIdb !== null && Array.isArray(dadosIdb) && (!Array.isArray(emMemoria) || dadosIdb.length !== emMemoria.length)) {
+                    _memoria[colecao] = dadosIdb;
+                    _salvarSession(colecao, dadosIdb);
+                    if (typeof window.db !== 'undefined') {
+                        window.db[colecao] = dadosIdb;
+                        if (colecao === 'produtos') window._produtosCarregados = true;
+                    }
+                    try { callback(dadosIdb); } catch (e) {}
+                }
+            }).catch(() => {});
         } else {
             // 2. Tenta ler do IndexedDB (assíncrono, ~15ms)
             _idbLerColecao(colecao).then(function (dadosIdb) {
                 if (dadosIdb !== null && !opcoes.semCache && !opcoes.forcarRemoto) {
                     _memoria[colecao] = dadosIdb;
+                    _salvarSession(colecao, dadosIdb);
+                    if (typeof window.db !== 'undefined') {
+                        window.db[colecao] = dadosIdb;
+                        if (colecao === 'produtos') window._produtosCarregados = true;
+                    }
                     try {
                         callback(dadosIdb);
                     } catch (e) {

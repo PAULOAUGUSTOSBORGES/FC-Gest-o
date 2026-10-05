@@ -41,7 +41,9 @@ const SERVIDORES_NFE = {
         producao: 'https://nfe.sefaz.go.gov.br/nfe/services/NFeAutorizacao4',
         homologacao: 'https://homolog.sefaz.go.gov.br/nfe/services/NFeAutorizacao4',
         evento_prod: 'https://nfe.sefaz.go.gov.br/nfe/services/NFeRecepcaoEvento4',
-        evento_homol: 'https://homolog.sefaz.go.gov.br/nfe/services/NFeRecepcaoEvento4'
+        evento_homol: 'https://homolog.sefaz.go.gov.br/nfe/services/NFeRecepcaoEvento4',
+        consulta_prod: 'https://nfe.sefaz.go.gov.br/nfe/services/NFeConsultaProtocolo4',
+        consulta_homol: 'https://homolog.sefaz.go.gov.br/nfe/services/NFeConsultaProtocolo4'
     },
     'MT': {
         producao: 'https://nfe.sefaz.mt.gov.br/nfews/v2/services/NfeAutorizacao4',
@@ -173,14 +175,16 @@ function obterEndpointsSefaz(modelo, uf, ambiente = 'homologacao') {
             eventoUrl: configNFCe[ambEvt],
             qrCodeUrl: configNFCe[ambQr] || SERVIDORES_NFCE['SVRS'][ambQr],
             urlChave: configNFCe[ambChave] || SERVIDORES_NFCE['SVRS'][ambChave] || (configNFCe[ambQr] || SERVIDORES_NFCE['SVRS'][ambQr]).split('?')[0],
-            cUF: CODIGOS_UF[estado] || '35'
+            cUF: CODIGOS_UF[estado] || '35',
+            consultaUrl: configNFCe[ambiente === 'producao' ? 'consulta_prod' : 'consulta_homol'] || (estado === 'GO' ? 'https://nfe.sefaz.go.gov.br/nfe/services/NFeConsultaProtocolo4' : '')
         };
     } else {
         const configNFe = SERVIDORES_NFE[estado] || SERVIDORES_NFE['SVRS'];
         return {
             autorizacaoUrl: configNFe[amb],
             eventoUrl: configNFe[ambEvt],
-            cUF: CODIGOS_UF[estado] || '35'
+            cUF: CODIGOS_UF[estado] || '35',
+            consultaUrl: configNFe[ambiente === 'producao' ? 'consulta_prod' : 'consulta_homol'] || (estado === 'GO' ? 'https://nfe.sefaz.go.gov.br/nfe/services/NFeConsultaProtocolo4' : '')
         };
     }
 }

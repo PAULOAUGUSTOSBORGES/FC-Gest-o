@@ -36,8 +36,8 @@
         
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css?v=20261005090727">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261005090727">
+    <link rel="stylesheet" href="../style.css?v=20261005171910">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261005171910">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="vendas">
 
@@ -50,11 +50,10 @@
         <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 w-64 bg-slate-900 text-slate-300 flex flex-col h-full shrink-0 shadow-2xl z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out no-print">
             <div class="p-5 flex items-center justify-between gap-3 border-b border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors" onclick="window.location.href='index.html'">
                 <div class="flex items-center gap-3 pointer-events-none">
-                    <img id="menu-logo" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="w-10 h-10 rounded-lg object-cover hidden bg-white dark:bg-slate-800 shadow-lg">
-                    <div id="menu-logo-placeholder" class="w-10 h-10 bg-slate-800 border border-slate-600 rounded-lg flex items-center justify-center text-slate-400 text-xl shadow-lg"><i class="fa-solid fa-store"></i></div>
-
+                    <img id="menu-logo" src="../icons/icon.svg" class="w-8 h-8 rounded-lg object-cover bg-slate-800 shadow-md">
+                    <div id="menu-logo-placeholder" class="hidden w-8 h-8 bg-slate-800 border border-slate-600 rounded-lg flex items-center justify-center text-slate-400 text-base shadow-md"><i class="fa-solid fa-store"></i></div>
                     <div>
-                        <h1 id="menu-empresa-nome" class="font-bold text-white text-lg tracking-wide leading-tight truncate w-32">Carregando...</h1>
+                        <h1 id="menu-empresa-nome" class="font-bold text-white text-sm tracking-wide leading-tight">FC Gestão</h1>
                         <p class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Sistema Ativo</p>
                     </div>
                 </div>
@@ -116,23 +115,23 @@
 
                     <!-- BANNERS DE CADASTRO DE PRODUTOS -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        <!-- Botï¿½o Cadastro Manual -->
+                        <!-- Botão Cadastro Manual -->
                         <div class="bg-emerald-600 rounded-xl shadow-lg p-6 text-white flex flex-col items-center justify-center text-center relative overflow-hidden transition-transform hover:-translate-y-1">
                             <div class="absolute -right-4 -bottom-4 opacity-10 pointer-events-none"><i class="fa-solid fa-box text-9xl"></i></div>
                             <i class="fa-solid fa-plus-circle text-3xl md:text-4xl mb-3 text-emerald-200 relative z-10"></i>
                             <h2 class="text-lg md:text-xl font-bold mb-1 relative z-10">Cadastro Manual</h2>
-                            <p class="text-emerald-200 text-[10px] md:text-xs mb-4 max-w-sm relative z-10">Cadastre um produto ou serviï¿½o preenchendo os dados um a um.</p>
+                            <p class="text-emerald-200 text-[10px] md:text-xs mb-4 max-w-sm relative z-10">Cadastre um produto ou serviço preenchendo os dados um a um.</p>
                             <button onclick="abrirModalProduto()" class="bg-white dark:bg-slate-800 text-emerald-700 px-5 py-2.5 rounded-lg font-bold shadow-md hover:bg-emerald-50 transition text-sm relative z-10">
                                 <i class="fa-solid fa-plus mr-1"></i> Novo Produto
                             </button>
                         </div>
 
-                        <!-- Botï¿½o Importar Planilha -->
+                        <!-- Botão Importar Planilha -->
                         <div class="bg-indigo-600 rounded-xl shadow-lg p-6 text-white flex flex-col items-center justify-center text-center relative overflow-hidden transition-transform hover:-translate-y-1">
                             <div class="absolute -right-4 -bottom-4 opacity-10 pointer-events-none"><i class="fa-solid fa-file-excel text-9xl"></i></div>
                             <i class="fa-solid fa-file-import text-3xl md:text-4xl mb-3 text-indigo-200 relative z-10"></i>
                             <h2 class="text-lg md:text-xl font-bold mb-1 relative z-10">Importar em Massa (Excel/CSV)</h2>
-                            <p class="text-indigo-200 text-[10px] md:text-xs mb-4 max-w-sm relative z-10">Baixe a planilha modelo, preencha no Excel e faï¿½a o upload no sistema.</p>
+                            <p class="text-indigo-200 text-[10px] md:text-xs mb-4 max-w-sm relative z-10">Baixe a planilha modelo, preencha no Excel e faça o upload no sistema.</p>
                             <div class="flex gap-2 relative z-10">
                                 <button onclick="baixarPlanilhaModeloProduto()" class="bg-indigo-800 text-white px-4 py-2.5 rounded-lg font-bold shadow-md hover:bg-indigo-900 transition text-xs sm:text-sm">
                                     <i class="fa-solid fa-download mr-1"></i> Baixar Modelo
@@ -167,8 +166,8 @@
                 <!-- ESTOQUE / KARDEX -->
                 <div id="view-estoque" class="view-section hidden max-w-7xl mx-auto space-y-6 hidden">
                     <div class="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                        <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100">Kardex de Movimentaï¿½ï¿½es</h2>
-                        <p class="text-xs md:text-sm text-slate-500 dark:text-slate-400">Histórico de todas as entradas e saï¿½das de estoque.</p>
+                        <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100">Kardex de Movimentações</h2>
+                        <p class="text-xs md:text-sm text-slate-500 dark:text-slate-400">Histórico de todas as entradas e saídas de estoque.</p>
                     </div>
                     <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                         <div class="overflow-x-auto custom-scrollbar">
@@ -254,7 +253,7 @@
                     </div>
                 </div>
 
-                <!-- FUNCIONï¿½RIOS -->
+                <!-- FUNCIONÁRIOS -->
                 <div id="view-funcionarios" class="view-section hidden max-w-7xl mx-auto space-y-4 md:space-y-6 hidden">
                     <div class="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 gap-3">
                         <div class="flex items-center gap-1.5 w-full md:w-96">
@@ -273,7 +272,7 @@
                                         <th class="p-3">Nome do Colaborador</th>
                                         <th class="p-3">Login / E-mail</th>
                                         <th class="p-3">Cargo /É Vendedor</th>
-                                        <th class="p-3">Comissóo</th>
+                                        <th class="p-3">Comissão</th>
                                         <th class="p-3 text-center w-24">Ações</th>
                                     </tr>
                                 </thead>
@@ -298,7 +297,7 @@
             </div>
 
             <div class="flex overflow-x-auto border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 md:px-6 pt-4 shrink-0 custom-scrollbar">
-                <button onclick="abaModal('prod', 'dados')" id="prod-btn-dados" class="px-4 md:px-5 py-2 border-b-2 border-blue-600 font-bold text-blue-600 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Dados & Precificaï¿½ï¿½o</button>
+                <button onclick="abaModal('prod', 'dados')" id="prod-btn-dados" class="px-4 md:px-5 py-2 border-b-2 border-blue-600 font-bold text-blue-600 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Dados & Precificação</button>
                 <button onclick="abaModal('prod', 'crm')" id="prod-btn-crm" class="px-4 md:px-5 py-2 border-b-2 border-transparent font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-200 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">CRM & Histórico</button>
                 <button onclick="abaModal('prod', 'fiscal')" id="prod-btn-fiscal" class="px-4 md:px-5 py-2 border-b-2 border-transparent font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-200 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Fiscal & Impostos</button>
             </div>
@@ -373,7 +372,7 @@
                     </div>
 
                     <div class="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                        <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm border-b border-slate-100 dark:border-slate-700 pb-3 mb-4 md:mb-5 flex items-center gap-2"><i class="fa-solid fa-money-bill text-emerald-500 text-lg"></i> Precificaï¿½ï¿½o Inteligente e Estoque</h4>
+                        <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm border-b border-slate-100 dark:border-slate-700 pb-3 mb-4 md:mb-5 flex items-center gap-2"><i class="fa-solid fa-money-bill text-emerald-500 text-lg"></i> Precificação Inteligente e Estoque</h4>
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
                             <div>
                                 <label class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Custo Unit. (R$)</label>
@@ -412,11 +411,11 @@
                         <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm border-b border-slate-100 dark:border-slate-700 pb-3 mb-4 md:mb-5 flex items-center gap-2"><i class="fa-solid fa-file-invoice text-blue-500 text-lg"></i> Dados Fiscais (NFe / NFCe)</h4>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">NCM (8 dï¿½gitos)</label>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">NCM (8 dígitos)</label>
                                 <input type="text" id="prod-ncm" placeholder="Ex: 85444200" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
                             </div>
                             <div>
-                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">CFOP (Padrï¿½o Saída)</label>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">CFOP (Padrão Saída)</label>
                                 <input type="text" id="prod-cfop" placeholder="Ex: 5102" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
                             </div>
                             <div>
@@ -427,7 +426,7 @@
                                 <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Origem da Mercadoria</label>
                                 <select id="prod-origem" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
                                     <option value="0">0 - Nacional</option>
-                                    <option value="1">1 - Estrangeira (Importaï¿½ï¿½o direta)</option>
+                                    <option value="1">1 - Estrangeira (Importação direta)</option>
                                     <option value="2">2 - Estrangeira (Mercado interno)</option>
                                 </select>
                             </div>
@@ -441,7 +440,7 @@
 
                 <div id="prod-aba-crm" class="aba-conteudo hidden space-y-4">
                     <div class="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                        <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm border-b pb-2 mb-3 md:mb-4">Anotaï¿½ï¿½es / Ficha Tï¿½cnica</h4>
+                        <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm border-b pb-2 mb-3 md:mb-4">Anotações / Ficha Técnica</h4>
                         <textarea id="prod-obs" rows="3" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white"></textarea>
                     </div>
                     <div class="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
@@ -481,13 +480,13 @@
                 <div id="cli-aba-dados" class="aba-conteudo active">
                     <div class="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                            <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Nome Completo / Razï¿½o Social *</label><input type="text" id="cli-nome" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
+                            <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Nome Completo / Razão Social *</label><input type="text" id="cli-nome" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                             <div>
                                 <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">CPF ou CNPJ</label>
                                 <div class="flex gap-2"><input type="text" id="cli-doc" oninput="formatarEBuscarDoc(this, 'cli')" maxlength="18" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"><button onclick="buscarCNPJ('cli')" class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 md:px-4 rounded-lg font-bold transition-colors"><i class="fa-solid fa-magnifying-glass"></i></button></div>
                             </div>
                             <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">RG / Insc. Estadual</label><input type="text" id="cli-rg" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
-                            <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Nascimento / Fundaï¿½ï¿½o</label><input type="date" id="cli-nasc" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
+                            <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Nascimento / Fundação</label><input type="date" id="cli-nasc" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                             <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">WhatsApp / Celular</label><input type="text" id="cli-wpp" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                             <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Telefone Fixo</label><input type="text" id="cli-fixo" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                             <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">E-mail</label><input type="email" id="cli-email" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
@@ -517,7 +516,7 @@
                 </div>
                 <div id="cli-aba-crm" class="aba-conteudo hidden space-y-4">
                     <div class="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                        <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Anotaï¿½ï¿½es / CRM</label>
+                        <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Anotações / CRM</label>
                         <textarea id="cli-obs" rows="3" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></textarea>
                     </div>
                     <div class="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
@@ -559,7 +558,7 @@
                     <div class="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                             <div class="md:col-span-2">
-                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Razï¿½o Social / Nome *</label>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Razão Social / Nome *</label>
                                 <input type="text" id="forn-nome" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white">
                             </div>
                             <div>
@@ -570,13 +569,13 @@
                                 </div>
                             </div>
 
-                            <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Inscriï¿½ï¿½o Estadual</label><input type="text" id="forn-ie" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white"></div>
+                            <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Inscrição Estadual</label><input type="text" id="forn-ie" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white"></div>
                             <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Pessoa de Contato</label><input type="text" id="forn-contato" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white"></div>
                             <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Telefone / WhatsApp</label><input type="text" id="forn-wpp" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white"></div>
                             <div class="md:col-span-3"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">E-mail Comercial</label><input type="email" id="forn-email" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white"></div>
                         </div>
                         <div class="border-t border-slate-100 dark:border-slate-700 pt-4 mt-6">
-                            <h4 class="font-bold text-slate-700 dark:text-slate-200 text-sm mb-3 flex items-center gap-2"><i class="fa-solid fa-location-dot text-blue-500"></i> Localizaï¿½ï¿½o</h4>
+                            <h4 class="font-bold text-slate-700 dark:text-slate-200 text-sm mb-3 flex items-center gap-2"><i class="fa-solid fa-location-dot text-blue-500"></i> Localização</h4>
                             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">CEP</label><input type="text" id="forn-cep" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white" onblur="buscarCEP('forn')"></div>
                                 <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Rua / Logradouro</label><input type="text" id="forn-rua" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white"></div>
@@ -591,7 +590,7 @@
                 <div id="forn-aba-condicoes" class="aba-conteudo hidden space-y-4">
                     <div class="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm grid grid-cols-1 gap-4">
                         <div>
-                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Condições de Pagamento Padrï¿½o</label>
+                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Condições de Pagamento Padrão</label>
                             <input type="text" id="forn-condicoes" placeholder="Ex: 30/60/90 dias, Boleto 28 dias..." class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white">
                         </div>
                         <div>
@@ -635,7 +634,7 @@
         </div>
     </div>
 
-    <!-- MODAL FUNCIONï¿½RIOS -->
+    <!-- MODAL FUNCIONÁRIOS -->
     <div id="modal-funcionario" class="fixed inset-0 z-[60] hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl my-auto animate-[slideIn_0.3s_ease-out]">
             <div class="p-4 md:p-5 text-white flex justify-between items-center shrink-0 bg-blue-600">
@@ -655,8 +654,8 @@
                     </div>
                     <div>
                         <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Senha Provisória *</label>
-                        <input type="text" id="func-senha" placeholder="No mï¿½nimo 6 caracteres" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-medium">
-                        <p class="text-[10px] text-red-500 mt-1 hidden" id="func-senha-aviso">Preencha caso deseje criar um novo usuï¿½rio ou alterar a senha atual.</p>
+                        <input type="text" id="func-senha" placeholder="No mínimo 6 caracteres" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-medium">
+                        <p class="text-[10px] text-red-500 mt-1 hidden" id="func-senha-aviso">Preencha caso deseje criar um novo usuário ou alterar a senha atual.</p>
                     </div>
                 </div>
 
@@ -667,14 +666,14 @@
                         <input type="text" id="func-nome" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-medium uppercase">
                     </div>
                     <div>
-                        <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">ï¿½É Vendedor? (Aparece no PDV)</label>
+                        <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">É Vendedor? (Aparece no PDV)</label>
                         <select id="func-vendedor" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-medium">
                             <option value="SIM">Sim</option>
                             <option value="NAO">Não</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Comissóo Padrï¿½o (%)</label>
+                        <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Comissão Padrão (%)</label>
                         <input type="text" data-mask="money" inputmode="numeric"  id="func-comissao" value="0"  min="0" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-bold text-blue-600 text-right">
                     </div>
                     <div>
@@ -701,7 +700,7 @@
                           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-dashboard" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📊 Dashboard</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ“Š Dashboard</span>
                               </label>
                           </div>
                       </div>
@@ -712,27 +711,27 @@
                           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-pdv" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">🖥️ Frente de Caixa (PDV Geral)</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ–¥ï¸ Frente de Caixa (PDV Geral)</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700 bg-amber-50/50 dark:bg-amber-950/20">
                                   <input type="checkbox" id="func-perm-pdv-caixa" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">🚀 Venda Finalizada no Caixa (F9)</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸš€ Venda Finalizada no Caixa (F9)</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700 bg-emerald-50/50 dark:bg-emerald-950/20">
                                   <input type="checkbox" id="func-perm-pdv-balcao" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">✅ Venda Feita Tudo por PDV (Balcão)</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">âœ… Venda Feita Tudo por PDV (Balcão)</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-vendas-op" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📜 Histórico Vendas/Serviços</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ“œ Histórico Vendas/Serviços</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-orcamentos" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📑 Meus Orçamentos</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ“‘ Meus Orçamentos</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-fiscal" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">🧾 Emissor Fiscal (NF-e)</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ§¾ Emissor Fiscal (NF-e)</span>
                               </label>
                           </div>
                       </div>
@@ -743,19 +742,19 @@
                           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-produtos" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📦 Produtos & Serviços</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ“¦ Produtos & Serviços</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-clientes" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">👥 Clientes</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ‘¥ Clientes</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-fornecedores" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">🚚 Fornecedores</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸšš Fornecedores</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-funcionarios" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">👔 Funcionários / Vendedores</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ‘” Funcionários / Vendedores</span>
                               </label>
                           </div>
                       </div>
@@ -766,31 +765,31 @@
                           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-financeiro" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">💰 Contas a Pagar/Receber</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ’° Contas a Pagar/Receber</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-caixa" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">💵 Caixa Físico</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ’µ Caixa Físico</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700 bg-blue-50/50 dark:bg-blue-950/20">
                                   <input type="checkbox" id="func-perm-caixa-loja" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">🏪 Caixa da Loja</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸª Caixa da Loja</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-compras" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📥 Compras & NF-e XML</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ“¥ Compras & NF-e XML</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-relatorios" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📈 Relatórios & DRE</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ“ˆ Relatórios & DRE</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-agenda" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📅 Agenda</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ“… Agenda</span>
                               </label>
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-marketing" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">📢 Marketing & Lembretes</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">ðŸ“¢ Marketing & Lembretes</span>
                               </label>
                           </div>
                       </div>
@@ -801,7 +800,7 @@
                           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                               <label class="flex items-center gap-2.5 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/80 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <input type="checkbox" id="func-perm-config" class="w-4 h-4 accent-blue-600 rounded">
-                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">⚙️ Configurações Gerais</span>
+                                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">âš™ï¸ Configurações Gerais</span>
                               </label>
                           </div>
                       </div>
@@ -816,7 +815,7 @@
         </div>
     </div>
 
-    <!-- DETALHES DA VENDA/ORï¿½AMENTO -->
+    <!-- DETALHES DA VENDA/ORÇAMENTO -->
     <div id="modal-detalhes-venda" class="fixed inset-0 bg-slate-900/80 z-[450] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden max-h-[90vh]">
             <div class="bg-slate-800 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
@@ -878,13 +877,14 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20261005090727"></script>
-    <script src="saas_licenca.js?v=20261005090727"></script>
-    <script src="../global.js?v=20261005090727"></script>
-    <script src="fc_cache.js?v=20261005090727"></script>
-    <script src="clientes.js?v=20261005090727"></script>
+    <script src="../sistema/config_banco.js?v=20261005171910"></script>
+    <script src="saas_licenca.js?v=20261005171910"></script>
+    <script src="../global.js?v=20261005171910"></script>
+    <script src="fc_cache.js?v=20261005171910"></script>
+    <script src="clientes.js?v=20261005171910"></script>
 </body>
 </html>
+
 
 
 

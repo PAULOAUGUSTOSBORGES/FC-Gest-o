@@ -3,7 +3,7 @@ const admin = require("firebase-admin");
 const axios = require("axios");
 const forge = require("node-forge");
 const crypto = require("crypto");
-const { emitirNotaDiretoSefaz, cancelarNotaDiretoSefaz, cartaCorrecaoDiretoSefaz, transmitirNotaContingenciaSefaz } = require("./fiscal/sefaz_engine");
+const { emitirNotaDiretoSefaz, cancelarNotaDiretoSefaz, cartaCorrecaoDiretoSefaz, transmitirNotaContingenciaSefaz, consultarSituacaoNotaFiscal } = require("./fiscal/sefaz_engine");
 const { extrairChavesDoPfx } = require("./fiscal/sefaz_signer");
 
 admin.initializeApp();
@@ -185,38 +185,110 @@ async function montarItensFocus(produtosVenda) {
 // ==========================================
 // HELPERS MULTI-TENANT & FALLBACK FISCAL
 // ==========================================
-async function localizarVendaEConfig(vendaId, empId) {
-    const id = String(vendaId).trim();
+async function localizarVendaEConfig(vendaId, empId, vendaDadosFallback = null) {
+    const rawId = String(vendaId || '').trim();
+    const cleanId = rawId.replace(/^#/, '').trim();
+    const numId = Number(cleanId);
     let empresaRef = db.collection('empresas').doc(empId || 'emp_fc_moveis');
     
-    // 1. Tenta na subcolecao da empresa
-    let vendaSnap = await empresaRef.collection("vendas").doc(id).get();
-    if (vendaSnap.exists) {
-        return { vendaSnap, empresaRef, vendaRef: vendaSnap.ref };
-    }
-    
-    // 2. Tenta na raiz (legado)
-    const raizSnap = await db.collection("vendas").doc(id).get();
-    if (raizSnap.exists) {
-        return { vendaSnap: raizSnap, empresaRef, vendaRef: raizSnap.ref };
-    }
-    
-    // 3. Tenta em collectionGroup('vendas') em caso de empId divergente ou nao especificado
-    try {
-        const cgSnap = await db.collectionGroup("vendas").where(admin.firestore.FieldPath.documentId(), "==", id).limit(1).get();
-        if (!cgSnap.empty) {
-            const foundSnap = cgSnap.docs[0];
-            const parentEmp = foundSnap.ref.parent ? foundSnap.ref.parent.parent : null;
-            if (parentEmp) {
-                empresaRef = parentEmp;
+    // 1. Tenta doc direto pelo rawId e cleanId na subcoleção da empresa
+    for (const testId of [rawId, cleanId]) {
+        if (!testId) continue;
+        try {
+            let snap = await empresaRef.collection("vendas").doc(testId).get();
+            if (snap.exists) {
+                return { vendaSnap: snap, empresaRef, vendaRef: snap.ref };
             }
-            return { vendaSnap: foundSnap, empresaRef, vendaRef: foundSnap.ref };
+        } catch (e) {}
+    }
+
+    // 2. Tenta por campo 'id' na subcoleção da empresa
+    for (const testId of [rawId, cleanId]) {
+        if (!testId) continue;
+        try {
+            const qId = await empresaRef.collection("vendas").where("id", "==", testId).limit(1).get();
+            if (!qId.empty) {
+                return { vendaSnap: qId.docs[0], empresaRef, vendaRef: qId.docs[0].ref };
+            }
+        } catch (e) {}
+    }
+
+    // 3. Tenta por 'numeroPedido' na empresa (numérico, string e formato com zeros '0255')
+    if (!isNaN(numId) && numId > 0) {
+        try {
+            const qNum = await empresaRef.collection("vendas").where("numeroPedido", "==", numId).limit(1).get();
+            if (!qNum.empty) {
+                return { vendaSnap: qNum.docs[0], empresaRef, vendaRef: qNum.docs[0].ref };
+            }
+            const qStr = await empresaRef.collection("vendas").where("numeroPedido", "==", cleanId).limit(1).get();
+            if (!qStr.empty) {
+                return { vendaSnap: qStr.docs[0], empresaRef, vendaRef: qStr.docs[0].ref };
+            }
+            const qPad = await empresaRef.collection("vendas").where("numeroPedido", "==", String(numId).padStart(4, '0')).limit(1).get();
+            if (!qPad.empty) {
+                return { vendaSnap: qPad.docs[0], empresaRef, vendaRef: qPad.docs[0].ref };
+            }
+        } catch (e) {}
+    }
+
+    // 4. Tenta na raiz (legado)
+    for (const testId of [rawId, cleanId]) {
+        if (!testId) continue;
+        try {
+            const raizSnap = await db.collection("vendas").doc(testId).get();
+            if (raizSnap.exists) {
+                return { vendaSnap: raizSnap, empresaRef, vendaRef: raizSnap.ref };
+            }
+        } catch (e) {}
+    }
+    if (!isNaN(numId) && numId > 0) {
+        try {
+            const qRaizNum = await db.collection("vendas").where("numeroPedido", "==", numId).limit(1).get();
+            if (!qRaizNum.empty) {
+                return { vendaSnap: qRaizNum.docs[0], empresaRef, vendaRef: qRaizNum.docs[0].ref };
+            }
+        } catch (e) {}
+    }
+
+    // 5. Tenta em collectionGroup('vendas') em caso de empId divergente ou multi-tenant
+    try {
+        if (!isNaN(numId) && numId > 0) {
+            const cgNum = await db.collectionGroup("vendas").where("numeroPedido", "==", numId).limit(1).get();
+            if (!cgNum.empty) {
+                const foundSnap = cgNum.docs[0];
+                const parentEmp = foundSnap.ref.parent ? foundSnap.ref.parent.parent : null;
+                if (parentEmp) empresaRef = parentEmp;
+                return { vendaSnap: foundSnap, empresaRef, vendaRef: foundSnap.ref };
+            }
+        }
+        for (const testId of [rawId, cleanId]) {
+            if (!testId) continue;
+            const cgId = await db.collectionGroup("vendas").where("id", "==", testId).limit(1).get();
+            if (!cgId.empty) {
+                const foundSnap = cgId.docs[0];
+                const parentEmp = foundSnap.ref.parent ? foundSnap.ref.parent.parent : null;
+                if (parentEmp) empresaRef = parentEmp;
+                return { vendaSnap: foundSnap, empresaRef, vendaRef: foundSnap.ref };
+            }
         }
     } catch (e) {
         console.warn("[localizarVendaEConfig] Aviso na busca collectionGroup:", e.message);
     }
-    
-    return { vendaSnap, empresaRef, vendaRef: empresaRef.collection("vendas").doc(id) };
+
+    // 6. Fallback com dados da venda fornecidos no payload (offline / cache local pendente de sincronização)
+    if (vendaDadosFallback && typeof vendaDadosFallback === 'object') {
+        const docIdFinal = cleanId || String(vendaDadosFallback.id || Date.now());
+        const targetRef = empresaRef.collection("vendas").doc(docIdFinal);
+        await targetRef.set(vendaDadosFallback, { merge: true });
+        const salvoSnap = await targetRef.get();
+        if (salvoSnap.exists) {
+            console.log("[localizarVendaEConfig] Venda persistida no Firestore via fallback: " + docIdFinal);
+            return { vendaSnap: salvoSnap, empresaRef, vendaRef: targetRef };
+        }
+    }
+
+    const fallbackDocId = cleanId || rawId || 'inexistente';
+    return { vendaSnap: await empresaRef.collection("vendas").doc(fallbackDocId).get(), empresaRef, vendaRef: empresaRef.collection("vendas").doc(fallbackDocId) };
 }
 
 async function verificarPermissaoUsuario(empresaRef, uid, tiposPermissao = ['isAdmin', 'perm_pdv', 'perm_gestao']) {
@@ -292,7 +364,7 @@ exports.emitirNFCe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
         if (!vendaId) throw new functions.https.HttpsError("invalid-argument", "vendaId não informado.");
 
         // 1. Buscar Venda e Configurações da Empresa
-        const loc = await localizarVendaEConfig(vendaId, empId);
+        const loc = await localizarVendaEConfig(vendaId, empId, (data && (data.vendaDados || data.venda)) ? (data.vendaDados || data.venda) : null);
         const vendaSnap = loc.vendaSnap;
         empresaRef = loc.empresaRef;
         const vendaRef = loc.vendaRef;
@@ -416,7 +488,7 @@ exports.transmitirNFCeContingencia = functions.runWith({ serviceAccount: 'lojafc
         const vendaId = data.vendaId;
         if (!vendaId) throw new functions.https.HttpsError("invalid-argument", "vendaId não informado.");
 
-        const loc = await localizarVendaEConfig(vendaId, empId);
+        const loc = await localizarVendaEConfig(vendaId, empId, (data && (data.vendaDados || data.venda)) ? (data.vendaDados || data.venda) : null);
         const vendaSnap = loc.vendaSnap;
         empresaRef = loc.empresaRef;
         const vendaRef = loc.vendaRef;
@@ -489,7 +561,7 @@ exports.emitirNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gs
         if (!vendaId) throw new functions.https.HttpsError("invalid-argument", "vendaId não informado.");
 
         // 1. Buscar Venda e Configurações da Empresa
-        const loc = await localizarVendaEConfig(vendaId, empId);
+        const loc = await localizarVendaEConfig(vendaId, empId, (data && (data.vendaDados || data.venda)) ? (data.vendaDados || data.venda) : null);
         const vendaSnap = loc.vendaSnap;
         empresaRef = loc.empresaRef;
         const vendaRef = loc.vendaRef;
@@ -522,6 +594,24 @@ exports.emitirNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gs
         const docClean = String(cliDoc).replace(/\D/g, '');
         if (!docClean || (docClean.length !== 11 && docClean.length !== 14)) {
             throw new functions.https.HttpsError("failed-precondition", "Para emitir NF-e (Modelo 55), o cliente precisa ter CPF ou CNPJ válido cadastrado ou informado na venda.");
+        }
+
+        // Se o cliente não foi encontrado por ID ou está com endereço incompleto, busca no Firestore por CPF/CNPJ
+        if ((!clienteData || !clienteData.rua || !clienteData.cidade) && docClean) {
+            try {
+                let qSnap = await empresaRef.collection("clientes").where("doc", "==", docClean).limit(1).get();
+                if (qSnap.empty) qSnap = await empresaRef.collection("clientes").where("cpf", "==", docClean).limit(1).get();
+                if (qSnap.empty) qSnap = await empresaRef.collection("clientes").where("cnpj", "==", docClean).limit(1).get();
+                if (!qSnap.empty) {
+                    clienteData = { ...(clienteData || {}), ...qSnap.docs[0].data() };
+                    console.log(`[EMISSÃO NF-e] Cliente recuperado pelo CPF/CNPJ: ${docClean}, cidade: ${clienteData.cidade}`);
+                }
+            } catch (cliErr) {
+                console.warn("[EMISSÃO NF-e] Aviso ao buscar cliente por CPF/CNPJ:", cliErr);
+            }
+        }
+        if (!clienteData && (venda.cliente || (data && data.vendaDados && data.vendaDados.cliente))) {
+            clienteData = venda.cliente || (data && data.vendaDados && data.vendaDados.cliente);
         }
 
         const produtos = venda.itens || venda.produtos || [];
@@ -586,7 +676,7 @@ exports.emitirNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gs
 // ==========================================
 exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
     const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
-    const empresaRef = db.collection('empresas').doc(empId);
+    let empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
 
     const funcSnap = await empresaRef.collection("funcionarios").doc(context.auth.uid).get();
@@ -610,7 +700,7 @@ exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@a
 
         // 1. Tenta buscar na coleção 'vendas'
         if (vendaId) {
-            const loc = await localizarVendaEConfig(vendaId, empId);
+            const loc = await localizarVendaEConfig(vendaId, empId, (data && (data.vendaDados || data.venda)) ? (data.vendaDados || data.venda) : null);
             if (loc.vendaSnap.exists) {
                 targetDoc = loc.vendaSnap.data();
                 targetRef = loc.vendaRef;
@@ -843,6 +933,56 @@ exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@a
         } else {
             const cStatStr = String(resCanc.cStat || '');
             const xMotivoStr = String(resCanc.xMotivo || '');
+
+            // Se a SEFAZ retornou rejeição (ex: 999 ou duplicidade), consulta a situação real da NF-e no Web Service da SEFAZ
+            // Pois a nota pode já ter sido cancelada anteriormente na SEFAZ ou estar vinculada a evento homologado
+            try {
+                const respConsulta = await consultarSituacaoNotaFiscal(chave, empresa, modeloNota);
+                console.log(`[CANCELAMENTO] Consulta protocolo da chave ${chave}:`, typeof respConsulta === 'string' ? respConsulta.substring(0, 600) : respConsulta);
+
+                const cStatConsulta = String(respConsulta).match(/<cStat>(\d+)<\/cStat>/i)?.[1];
+                const xMotivoConsulta = String(respConsulta).match(/<xMotivo>([\s\S]*?)<\/xMotivo>/i)?.[1]?.trim();
+
+                // 101 = Cancelamento de NF-e homologado, 151/155 = Cancelamento homologado fora de prazo
+                // Ou se o retorno contiver o evento 110111 vinculado com cStat 135
+                const isNotaCanceladaNaSefaz = cStatConsulta === '101' || cStatConsulta === '151' || cStatConsulta === '155' || 
+                    (String(respConsulta).includes('110111') && String(respConsulta).includes('<cStat>135</cStat>'));
+
+                if (isNotaCanceladaNaSefaz) {
+                    console.log(`[CANCELAMENTO] A nota fiscal chave ${chave} já consta como CANCELADA na SEFAZ (cStat ${cStatConsulta} - ${xMotivoConsulta}). Sincronizando com o sistema...`);
+                    const dadosCancelamento = {
+                        status_sefaz: "cancelado",
+                        status_fiscal: "cancelado",
+                        justificativa_cancelamento: justificativa.trim(),
+                        data_cancelamento: new Date().toISOString(),
+                        mensagem_cancelamento: xMotivoConsulta || "Cancelamento de NF-e homologado na SEFAZ",
+                        protocolo_cancelamento: String(respConsulta).match(/<nProt>(\d+)<\/nProt>/i)?.[1] || protocolo || ""
+                    };
+
+                    if (targetCollection === "vendas") {
+                        const updatePayload = { status_fiscal: "cancelado" };
+                        if (modeloNota === "55") {
+                            updatePayload.nfe = { ...(targetDoc.nfe || {}), ...dadosCancelamento };
+                        } else {
+                            updatePayload.nfce = { ...(targetDoc.nfce || {}), ...dadosCancelamento };
+                        }
+                        await targetRef.set(updatePayload, { merge: true });
+                    } else if (targetCollection === "notas_devolucao") {
+                        await targetRef.set({ ...dadosCancelamento, status_sefaz: "cancelado" }, { merge: true });
+                    } else if (targetCollection === "notas_avulsas") {
+                        await targetRef.set(dadosCancelamento, { merge: true });
+                    }
+
+                    return {
+                        success: true,
+                        message: "Nota Fiscal confirmada como cancelada na SEFAZ!",
+                        data: dadosCancelamento
+                    };
+                }
+            } catch (errCons) {
+                console.warn("[CANCELAMENTO] Erro na consulta complementar à SEFAZ:", errCons.message);
+            }
+
             const isPrazoExpirado = cStatStr === '501' || xMotivoStr.toLowerCase().includes('prazo de cancelamento superior');
 
             if (isPrazoExpirado) {
@@ -873,7 +1013,7 @@ exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@a
 // ==========================================
 exports.reverterCancelamentoInterno = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
     const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
-    const empresaRef = db.collection('empresas').doc(empId);
+    let empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Usuário não autenticado.');
     const { vendaId, tipo } = data;
     if (!vendaId) throw new functions.https.HttpsError('invalid-argument', 'vendaId não informado.');
@@ -883,7 +1023,7 @@ exports.reverterCancelamentoInterno = functions.runWith({ serviceAccount: 'lojaf
         const hasPerm = funcSnap.exists && (funcSnap.data().isAdmin || funcSnap.data().perm_gestao);
         if (!hasPerm) throw new functions.https.HttpsError('permission-denied', 'Sem permissão para alterar notas fiscais.');
 
-        const loc = await localizarVendaEConfig(vendaId, empId);
+        const loc = await localizarVendaEConfig(vendaId, empId, (data && (data.vendaDados || data.venda)) ? (data.vendaDados || data.venda) : null);
         const vendaSnap = loc.vendaSnap;
         const vendaRef = loc.vendaRef;
         if (!vendaSnap.exists) throw new functions.https.HttpsError('not-found', 'Venda não encontrada.');
@@ -927,7 +1067,7 @@ exports.reverterCancelamentoInterno = functions.runWith({ serviceAccount: 'lojaf
 // ==========================================
 exports.consultarStatusNota = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
     const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
-    const empresaRef = db.collection('empresas').doc(empId);
+    let empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
 
     try {
@@ -936,18 +1076,46 @@ exports.consultarStatusNota = functions.runWith({ serviceAccount: 'lojafc-a31f9@
 
         const tipoNormalizado = (tipo && String(tipo).toLowerCase().includes("nfe") && !String(tipo).toLowerCase().includes("nfce")) ? "nfe" : "nfce";
 
-        const loc = await localizarVendaEConfig(vendaId, empId);
+        const loc = await localizarVendaEConfig(vendaId, empId, (data && (data.vendaDados || data.venda)) ? (data.vendaDados || data.venda) : null);
         const vendaSnap = loc.vendaSnap;
         if (!vendaSnap.exists) throw new functions.https.HttpsError("not-found", "Venda não encontrada.");
         const venda = vendaSnap.data();
 
         const docFiscal = tipoNormalizado === 'nfe' ? (venda.nfe || {}) : (venda.nfce || {});
+        const chaveNota = docFiscal.chave_nfe || docFiscal.chave || venda.fiscal_chave || "";
+        let statusSefazEfetivo = docFiscal.status_sefaz || venda.status_fiscal || "autorizado";
+        let msgSefazEfetiva = docFiscal.mensagem_sefaz || "";
+
+        // Se tiver chave e certificado, consulta a situação real na SEFAZ para manter 100% sincronizado
+        if (chaveNota && loc.config && loc.config.empresa && loc.config.empresa.certificadoBase64) {
+            try {
+                const modeloNota = tipoNormalizado === 'nfe' ? '55' : '65';
+                const respConsulta = await consultarSituacaoNotaFiscal(chaveNota, loc.config.empresa, modeloNota);
+                const cStatConsulta = String(respConsulta).match(/<cStat>(\d+)<\/cStat>/i)?.[1];
+                const xMotivoConsulta = String(respConsulta).match(/<xMotivo>([\s\S]*?)<\/xMotivo>/i)?.[1]?.trim();
+
+                if (cStatConsulta === '101' || cStatConsulta === '151' || cStatConsulta === '155' || (String(respConsulta).includes('110111') && String(respConsulta).includes('<cStat>135</cStat>'))) {
+                    statusSefazEfetivo = 'cancelado';
+                    msgSefazEfetiva = xMotivoConsulta || 'Cancelamento de NF-e homologado na SEFAZ';
+                    const payloadUpdate = { status_fiscal: 'cancelado' };
+                    if (tipoNormalizado === 'nfe') {
+                        payloadUpdate.nfe = { ...(venda.nfe || {}), status_sefaz: 'cancelado', status_fiscal: 'cancelado', mensagem_sefaz: msgSefazEfetiva };
+                    } else {
+                        payloadUpdate.nfce = { ...(venda.nfce || {}), status_sefaz: 'cancelado', status_fiscal: 'cancelado', mensagem_sefaz: msgSefazEfetiva };
+                    }
+                    await loc.vendaRef.set(payloadUpdate, { merge: true });
+                }
+            } catch (errCons) {
+                console.warn("[consultarStatusNota] Aviso ao consultar SEFAZ:", errCons.message);
+            }
+        }
+
         return {
             success: true,
             data: {
-                status_sefaz: docFiscal.status_sefaz || venda.status_fiscal || "autorizado",
-                mensagem_sefaz: docFiscal.mensagem_sefaz || "",
-                chave_nfe: docFiscal.chave_nfe || venda.fiscal_chave || "",
+                status_sefaz: statusSefazEfetivo,
+                mensagem_sefaz: msgSefazEfetiva,
+                chave_nfe: chaveNota,
                 numero: docFiscal.numero || "",
                 protocolo: docFiscal.protocolo || ""
             }
@@ -965,7 +1133,7 @@ exports.consultarStatusNota = functions.runWith({ serviceAccount: 'lojafc-a31f9@
 // ==========================================
 exports.cartaCorrecaoNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
     const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
-    const empresaRef = db.collection('empresas').doc(empId);
+    let empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
 
     const funcSnap = await empresaRef.collection("funcionarios").doc(context.auth.uid).get();
@@ -979,7 +1147,7 @@ exports.cartaCorrecaoNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
             throw new functions.https.HttpsError("invalid-argument", "A correção deve ter pelo menos 15 caracteres (exigência da SEFAZ).");
         }
 
-        const loc = await localizarVendaEConfig(vendaId, empId);
+        const loc = await localizarVendaEConfig(vendaId, empId, (data && (data.vendaDados || data.venda)) ? (data.vendaDados || data.venda) : null);
         const vendaSnap = loc.vendaSnap;
         const vendaRef = loc.vendaRef;
         if (!vendaSnap.exists) throw new functions.https.HttpsError("not-found", "Venda não encontrada.");
@@ -1038,7 +1206,7 @@ exports.cartaCorrecaoNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
 // ==========================================
 exports.emitirDevolucaoVenda = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
     const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
-    const empresaRef = db.collection('empresas').doc(empId);
+    let empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Usuário não autenticado.');
 
     const funcSnap = await empresaRef.collection('funcionarios').doc(context.auth.uid).get();
@@ -1050,7 +1218,7 @@ exports.emitirDevolucaoVenda = functions.runWith({ serviceAccount: 'lojafc-a31f9
         if (!vendaId) throw new functions.https.HttpsError('invalid-argument', 'vendaId não informado.');
 
         // Buscar venda e configurações
-        const loc = await localizarVendaEConfig(vendaId, empId);
+        const loc = await localizarVendaEConfig(vendaId, empId, (data && (data.vendaDados || data.venda)) ? (data.vendaDados || data.venda) : null);
         const vendaSnap = loc.vendaSnap;
         empresaRef = loc.empresaRef;
         const vendaRef = loc.vendaRef;
@@ -1215,7 +1383,7 @@ exports.emitirDevolucaoVenda = functions.runWith({ serviceAccount: 'lojafc-a31f9
 // ==========================================
 exports.emitirDevolucaoCompra = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
     const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
-    const empresaRef = db.collection('empresas').doc(empId);
+    let empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Usuário não autenticado.');
 
     const funcSnap = await empresaRef.collection('funcionarios').doc(context.auth.uid).get();
@@ -1331,7 +1499,7 @@ exports.emitirDevolucaoCompra = functions.runWith({ serviceAccount: 'lojafc-a31f
 // ==========================================
 exports.limparDevolucoesRejeitadas = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
     const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
-    const empresaRef = db.collection('empresas').doc(empId);
+    let empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Usuário não autenticado.');
 
     try {
@@ -1387,7 +1555,7 @@ exports.limparDevolucoesRejeitadas = functions.runWith({ serviceAccount: 'lojafc
 // ==========================================
 exports.emitirNotaAvulsa = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
     const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
-    const empresaRef = db.collection('empresas').doc(empId);
+    let empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Usuário não autenticado.');
 
     const funcSnap = await empresaRef.collection('funcionarios').doc(context.auth.uid).get();
@@ -1401,13 +1569,80 @@ exports.emitirNotaAvulsa = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
 
         const modelo = tipo === 'nfce' ? '65' : '55';
 
+        let dest = destinatario || {};
+        const docDest = String(dest.cpf || dest.cnpj || dest.doc || '').replace(/\D/g, '');
+
         // Para NF-e modelo 55 é obrigatório ter destinatário com CPF/CNPJ
         if (modelo === '55') {
-            const docDest = String(destinatario?.cpf || destinatario?.cnpj || destinatario?.doc || '').replace(/\D/g, '');
             if (!docDest || (docDest.length !== 11 && docDest.length !== 14)) {
                 throw new functions.https.HttpsError('invalid-argument', 'NF-e (Modelo 55) exige destinatário com CPF ou CNPJ válido.');
             }
         }
+
+        // Se destinatário foi informado ou tem documento, busca dados completos no cadastro de clientes caso falte endereço
+        let clienteCadastrado = null;
+        if (docDest) {
+            try {
+                let qSnap = await empresaRef.collection("clientes").where("doc", "==", docDest).limit(1).get();
+                if (qSnap.empty) qSnap = await empresaRef.collection("clientes").where("cpf", "==", docDest).limit(1).get();
+                if (qSnap.empty) qSnap = await empresaRef.collection("clientes").where("cnpj", "==", docDest).limit(1).get();
+                if (!qSnap.empty) {
+                    clienteCadastrado = qSnap.docs[0].data();
+                    console.log(`[NOTA AVULSA] Cliente recuperado do cadastro (${docDest}): ${clienteCadastrado.nome || clienteCadastrado.razaoSocial}, Cidade: ${clienteCadastrado.cidade}`);
+                }
+            } catch (errCad) {
+                console.warn("[NOTA AVULSA] Erro ao buscar cliente por CPF/CNPJ:", errCad);
+            }
+        }
+
+        const cliBase = clienteCadastrado || {};
+        let finalNome = dest.nome || dest.razaoSocial || cliBase.nome || cliBase.razaoSocial || 'CONSUMIDOR FINAL';
+        let finalRua = dest.rua || dest.logradouro || cliBase.rua || cliBase.logradouro || cliBase.endereco || '';
+        let finalNumero = dest.numero || cliBase.numero || 'S/N';
+        let finalBairro = dest.bairro || cliBase.bairro || 'CENTRO';
+        let finalCidade = dest.cidade || cliBase.cidade || '';
+        let finalUf = dest.uf || cliBase.uf || '';
+        let finalCep = dest.cep || cliBase.cep || '';
+        let finalIe = dest.ie || cliBase.ie || '';
+        let finalIbge = dest.ibge || cliBase.ibge || '';
+
+        // Se a cidade veio com formato "CIDADE - UF" ou "CIDADE / UF", desmembra:
+        if (finalCidade.includes(' - ')) {
+            const parts = finalCidade.split(' - ');
+            finalCidade = parts[0].trim();
+            if (!finalUf && parts[1]) finalUf = parts[1].trim();
+        } else if (finalCidade.includes('/')) {
+            const parts = finalCidade.split('/');
+            finalCidade = parts[0].trim();
+            if (!finalUf && parts[1]) finalUf = parts[1].trim();
+        }
+
+        const cepLimpo = String(finalCep).replace(/\D/g, '');
+        if (finalCidade.toUpperCase() === 'FORMOSA' || cepLimpo.startsWith('7380') || cepLimpo.startsWith('7381')) {
+            if (!finalCidade) finalCidade = 'FORMOSA';
+            if (!finalUf) finalUf = 'GO';
+            if (!finalIbge || finalIbge === '5208707') finalIbge = '5208004';
+        }
+
+        if (!finalCidade) finalCidade = empresa.cidade || 'GOIANIA';
+        if (!finalUf) finalUf = empresa.uf || 'GO';
+        if (!finalIbge) finalIbge = empresa.ibge || '';
+        if (!finalRua) finalRua = 'RUA';
+
+        const clienteAvulso = (destinatario || clienteCadastrado) ? {
+            nome: finalNome,
+            cpf: dest.cpf || cliBase.cpf || (docDest.length === 11 ? docDest : ''),
+            cnpj: dest.cnpj || cliBase.cnpj || (docDest.length === 14 ? docDest : ''),
+            doc: docDest,
+            rua: finalRua,
+            numero: finalNumero,
+            bairro: finalBairro,
+            cidade: finalCidade,
+            uf: finalUf,
+            cep: finalCep,
+            ie: finalIe,
+            ibge: finalIbge
+        } : null;
 
         const config = await obterConfigEmpresaComFallback(empresaRef);
         const empresa = config.empresa;
@@ -1455,23 +1690,8 @@ exports.emitirNotaAvulsa = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
             pag: pagamentosNota.map(p => p.metodo).join(', ') || 'Dinheiro',
             formaPagamento: pagamentosNota[0]?.metodo || 'Dinheiro',
             observacoes: observacoes || '',
-            clienteNome: destinatario?.nome || destinatario?.razaoSocial || 'CONSUMIDOR FINAL'
+            clienteNome: finalNome
         };
-
-        const clienteAvulso = destinatario ? {
-            nome: destinatario.nome || destinatario.razaoSocial || 'CONSUMIDOR FINAL',
-            cpf: destinatario.cpf || '',
-            cnpj: destinatario.cnpj || '',
-            doc: destinatario.doc || destinatario.cpf || destinatario.cnpj || '',
-            rua: destinatario.rua || destinatario.logradouro || 'RUA',
-            numero: destinatario.numero || 'S/N',
-            bairro: destinatario.bairro || 'CENTRO',
-            cidade: destinatario.cidade || empresa.cidade || 'GOIANIA',
-            uf: destinatario.uf || empresa.uf || 'GO',
-            cep: destinatario.cep || '',
-            ie: destinatario.ie || '',
-            ibge: destinatario.ibge || empresa.ibge || ''
-        } : null;
 
         const isContingencia = Boolean(contingencia);
 
@@ -1500,7 +1720,7 @@ exports.emitirNotaAvulsa = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
             pag: pagamentosNota.map(p => p.metodo).join(', ') || 'Dinheiro',
             formaPagamento: pagamentosNota[0]?.metodo || 'Dinheiro',
             itens: itensFormatados,
-            destinatario: destinatario || null,
+            destinatario: clienteAvulso || destinatario || null,
             motor: 'sefaz_direto'
         };
 
@@ -1538,7 +1758,7 @@ exports.emitirNotaAvulsa = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
 // ==========================================
 exports.emitirNFSe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
     const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
-    const empresaRef = db.collection('empresas').doc(empId);
+    let empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Usuário não autenticado.');
 
     const funcSnap = await empresaRef.collection('funcionarios').doc(context.auth.uid).get();
@@ -1737,7 +1957,7 @@ exports.emitirNFSe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
 
 exports.validarCertificadoA1 = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
     const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
-    const empresaRef = db.collection('empresas').doc(empId);
+    let empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
 
     const { pfxBase64, senha } = data;

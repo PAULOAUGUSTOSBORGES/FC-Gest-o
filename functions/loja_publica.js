@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // LOJA PÚBLICA (VITRINE)
 // Espelha APENAS os campos públicos de empresas/{empId}/configuracoes/config
 // para empresas/{empId}/configuracoes/loja_publica, que é o único doc de

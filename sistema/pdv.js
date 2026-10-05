@@ -188,7 +188,7 @@ function aplicarIdentidadeVisualNoMenu() {
 
 function obterDadosClientePDV(cId) {
     const c = cId && cId !== "0" && db.clientes ? db.clientes.find(x => String(x.id) === String(cId)) : null;
-    if(!c) return { nome: 'Consumidor Final', doc: 'Não informado', tel: 'Não informado', endCompleto: 'Não informado', bairro: '', cidade: '', cep: '' };
+    if(!c) return { nome: 'Consumidor Final', doc: 'Não informado', tel: 'Não informado', endCompleto: 'Não informado', rua: '', numero: '', bairro: '', cidade: '', uf: '', cep: '', ibge: '' };
     
     const doc = c.cpfCnpj || c.documento || c.cnpj || c.cpf || c.doc || c.cpf_cnpj || 'Não informado';
     const tel = c.whatsapp || c.wpp || c.celular || c.telefone || c.telefoneFixo || c.tel || 'Não informado';
@@ -196,15 +196,43 @@ function obterDadosClientePDV(cId) {
     const rua = c.rua || c.logradouro || c.endereco || c.end || '';
     const num = c.numero ? ', ' + c.numero : '';
     const endCompleto = rua ? (rua + num) : 'Não informado';
+
+    let cidadeLimpa = (c.cidade || '').trim();
+    let ufLimpa = (c.uf || '').trim();
+    if (cidadeLimpa.includes(' - ')) {
+        const parts = cidadeLimpa.split(' - ');
+        cidadeLimpa = parts[0].trim();
+        if (!ufLimpa && parts[1]) ufLimpa = parts[1].trim();
+    } else if (cidadeLimpa.includes('/')) {
+        const parts = cidadeLimpa.split('/');
+        cidadeLimpa = parts[0].trim();
+        if (!ufLimpa && parts[1]) ufLimpa = parts[1].trim();
+    }
+    let ibgeLimpo = (c.ibge || '').trim();
+    const cepLimpo = (c.cep ? String(c.cep).replace(/\D/g, '') : '');
+    if ((!ibgeLimpo || ibgeLimpo === '5208707') && (cidadeLimpa.toUpperCase() === 'FORMOSA' || cepLimpo.startsWith('7380') || cepLimpo.startsWith('7381'))) {
+        ibgeLimpo = '5208004';
+    }
+    if (!ufLimpa && (cidadeLimpa.toUpperCase() === 'FORMOSA' || cepLimpo.startsWith('738'))) {
+        ufLimpa = 'GO';
+    }
     
     return {
+        id: c.id,
         nome: c.nome || c.razaoSocial || 'Consumidor Final',
         doc: doc,
+        cpf: (doc.replace(/\D/g, '').length === 11) ? doc.replace(/\D/g, '') : (c.cpf ? c.cpf.replace(/\D/g, '') : ''),
+        cnpj: (doc.replace(/\D/g, '').length === 14) ? doc.replace(/\D/g, '') : (c.cnpj ? c.cnpj.replace(/\D/g, '') : ''),
         tel: tel,
+        rua: rua,
+        numero: c.numero || 'S/N',
         endCompleto: endCompleto,
-        bairro: c.bairro || 'Não informado',
-        cidade: c.cidade || 'Não informado',
-        cep: c.cep || 'Não informado'
+        bairro: c.bairro || '',
+        cidade: cidadeLimpa,
+        uf: ufLimpa,
+        cep: cepLimpo,
+        ibge: ibgeLimpo,
+        raw: c
     };
 }
 
@@ -212,6 +240,10 @@ function obterDadosClientePDV(cId) {
 // 2. INICIALIZAÇÃO E NAVEGAÇÃO
 // ==========================================
 function mudarVisaoLocal(viewId) {
+    if (typeof window.salvarEstadoPDV === 'function') {
+        window.salvarEstadoPDV();
+    }
+
     document.querySelectorAll('.view-section').forEach(el => { 
         el.classList.add('hidden'); 
         el.classList.remove('active'); 
@@ -239,7 +271,9 @@ function mudarVisaoLocal(viewId) {
         document.getElementById('sidebar-overlay').classList.add('hidden');
     }
     
-    if (viewId === 'pdv') prepararPDV();
+    if (viewId === 'pdv') {
+        prepararPDV();
+    }
     if (viewId === 'vendas') renderVendas();
     if (viewId === 'orcamentos') renderOrcamentos();
 }
@@ -371,6 +405,9 @@ function selecionarClientePDV(clienteOuId, silencioso = false) {
     } else if (clienteOuId && clienteOuId !== '0') {
         const idStr = String(clienteOuId).trim();
         c = (db.clientes || []).find(x => String(x.id || x._id || '').trim() === idStr);
+        if (!c && window._ultimoClienteSelecionado && String(window._ultimoClienteSelecionado.id || window._ultimoClienteSelecionado._id || '').trim() === idStr) {
+            c = window._ultimoClienteSelecionado;
+        }
     }
 
     const hiddenId = document.getElementById('pdv-cliente');
@@ -380,15 +417,36 @@ function selecionarClientePDV(clienteOuId, silencioso = false) {
 
     if (dropdown) dropdown.classList.add('hidden');
 
-    if (!c || c.id === '0' || c.id === 0) {
+    // Desvinculação explícita para Consumidor Final
+    if (clienteOuId === null || clienteOuId === undefined || clienteOuId === '0' || clienteOuId === 0) {
+        window._clientePendentePDV = null;
+        window._ultimoClienteSelecionado = null;
         if (hiddenId) hiddenId.value = '0';
         if (inputBusca) inputBusca.value = '';
-        if (vendSelect) vendSelect.value = 'Balcão';
+        if (vendSelect && !vendSelect.dataset.usuarioAlterou) vendSelect.value = 'Balcão';
+        esconderCardClientePDV();
+        if (!silencioso && typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
         return;
     }
 
+    // Se passou um ID mas o cadastro de clientes ainda não carregou do Firebase:
+    if (!c) {
+        const idStr = String(clienteOuId).trim();
+        if (idStr && idStr !== '0') {
+            window._clientePendentePDV = idStr;
+            if (hiddenId) hiddenId.value = idStr;
+        }
+        return;
+    }
+
+    // Cliente encontrado: registra dados ativos
+    window._ultimoClienteSelecionado = c;
+    window._clientePendentePDV = String(c.id || c._id || '').trim();
     if (hiddenId) hiddenId.value = c.id || c._id || '';
     if (inputBusca) inputBusca.value = c.nome || '';
+
+    // Renderiza card com dados completos do cliente no topo do PDV
+    renderizarCardClientePDV(c);
 
     if (c.vendedor && String(c.vendedor).trim()) {
         const vendedorNome = String(c.vendedor).trim();
@@ -421,25 +479,200 @@ function selecionarClientePDV(clienteOuId, silencioso = false) {
                 showToast(`Vendedor "${vendedorNome}" preenchido automaticamente pelo cadastro do cliente.`, 'info');
             }
         }
-    } else {
-        if (vendSelect && !vendSelect.value) {
-            vendSelect.value = 'Balcão';
-        }
+    }
+
+    // Salva o estado imediatamente para que a navegação nunca perca o cliente selecionado
+    if (typeof window.salvarEstadoPDV === 'function') {
+        window.salvarEstadoPDV();
     }
 }
 window.selecionarClientePDV = selecionarClientePDV;
+
+function esconderCardClientePDV() {
+    const card = document.getElementById('pdv-cliente-info-card');
+    if (card) {
+        card.classList.add('hidden');
+    }
+}
+window.esconderCardClientePDV = esconderCardClientePDV;
+
+function renderizarCardClientePDV(c) {
+    if (!c) {
+        esconderCardClientePDV();
+        return;
+    }
+    const card = document.getElementById('pdv-cliente-info-card');
+    if (!card) return;
+
+    // Nome
+    const elNome = document.getElementById('pdv-card-cli-nome');
+    if (elNome) elNome.textContent = c.nome || 'Cliente Selecionado';
+
+    // Documento (CPF / CNPJ)
+    const docLimpo = (c.doc || c.cpfCnpj || c.documento || '').trim();
+    const elDoc = document.getElementById('pdv-card-cli-doc');
+    const badgeDoc = document.getElementById('pdv-card-cli-doc-badge');
+    if (elDoc) {
+        if (docLimpo) {
+            const numApenas = docLimpo.replace(/\D/g, '');
+            let docFmt = docLimpo;
+            if (numApenas.length === 11) {
+                docFmt = numApenas.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+            } else if (numApenas.length === 14) {
+                docFmt = numApenas.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+            }
+            elDoc.textContent = docFmt;
+            if (badgeDoc) badgeDoc.classList.remove('hidden');
+        } else {
+            elDoc.textContent = 'Sem documento';
+            if (badgeDoc) badgeDoc.classList.remove('hidden');
+        }
+    }
+
+    // Telefone / WhatsApp com formatação (DD) 00000-0000
+    const foneRaw = (c.wpp || c.telefone || c.fixo || '').trim();
+    const linkFone = document.getElementById('pdv-card-cli-fone-link');
+    const wrapFone = document.getElementById('pdv-card-cli-fone-wrap');
+    if (linkFone && wrapFone) {
+        if (foneRaw) {
+            const digitos = foneRaw.replace(/\D/g, '');
+            let foneFormatado = foneRaw;
+            if (digitos.length === 11) {
+                foneFormatado = `(${digitos.slice(0, 2)}) ${digitos.slice(2, 7)}-${digitos.slice(7)}`;
+            } else if (digitos.length === 10) {
+                foneFormatado = `(${digitos.slice(0, 2)}) ${digitos.slice(2, 6)}-${digitos.slice(6)}`;
+            }
+            linkFone.textContent = foneFormatado;
+            if (digitos.length >= 10) {
+                const ddi = digitos.length <= 11 ? '55' : '';
+                linkFone.href = `https://wa.me/${ddi}${digitos}`;
+                linkFone.title = 'Clique para abrir conversa no WhatsApp';
+            } else {
+                linkFone.href = `tel:${digitos}`;
+                linkFone.title = 'Ligar para este número';
+            }
+            wrapFone.classList.remove('hidden');
+        } else {
+            linkFone.textContent = 'Sem telefone';
+            linkFone.removeAttribute('href');
+            wrapFone.classList.remove('hidden');
+        }
+    }
+
+    // Endereço Completo
+    let cepFmt = (c.cep || '').trim();
+    const cepDigitos = cepFmt.replace(/\D/g, '');
+    if (cepDigitos.length === 8) {
+        cepFmt = `${cepDigitos.slice(0, 5)}-${cepDigitos.slice(5)}`;
+    }
+    const partesEnd = [
+        c.rua, 
+        c.numero ? `nº ${c.numero}` : '', 
+        c.complemento, 
+        c.bairro, 
+        c.cidade ? `${c.cidade}${c.uf ? ' - ' + c.uf : ''}` : '', 
+        cepFmt ? `CEP ${cepFmt}` : ''
+    ].filter(Boolean);
+    const endCompleto = partesEnd.length > 0 ? partesEnd.join(', ') : (c.endereco || 'Sem endereço informado');
+    const elEnd = document.getElementById('pdv-card-cli-end');
+    const wrapEnd = document.getElementById('pdv-card-cli-end-wrap');
+    if (elEnd && wrapEnd) {
+        elEnd.textContent = endCompleto;
+        wrapEnd.title = endCompleto;
+    }
+
+    // Vendedor
+    const elVend = document.getElementById('pdv-card-cli-vend');
+    if (elVend) {
+        elVend.textContent = c.vendedor ? `Vend: ${c.vendedor}` : 'Balcão';
+    }
+
+    // Situação Financeira (débitos em aberto no db.financeiro com alto contraste)
+    const elFin = document.getElementById('pdv-card-cli-status-financeiro');
+    if (elFin) {
+        const idStr = String(c.id || c._id || '').trim();
+        const nomeLower = (c.nome || '').trim().toLowerCase();
+        const titulosPendentes = (db.financeiro || []).filter(f => {
+            if (!f) return false;
+            const isReceita = f.tipo === 'RECEITA';
+            const isPendente = f.status === 'PENDENTE' || f.status === 'ATRASADO';
+            if (!isReceita || !isPendente) return false;
+            if (idStr && f.clienteId && String(f.clienteId).trim() === idStr) return true;
+            if (f.pessoa && f.pessoa.trim().toLowerCase() === nomeLower) return true;
+            return false;
+        });
+
+        const totalDebito = titulosPendentes.reduce((acc, t) => acc + (Number(t.valor) || 0), 0);
+        if (totalDebito > 0) {
+            const valorFmt = typeof formatMoney === 'function' ? formatMoney(totalDebito) : `R$ ${totalDebito.toFixed(2)}`;
+            elFin.className = 'inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-lg pdv-card-cli-status-debito shadow-2xs cursor-pointer transition-colors';
+            elFin.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${titulosPendentes.length} débito(s) em aberto: ${valorFmt}`;
+            elFin.title = 'Clique para ver detalhes do saldo devedor';
+            elFin.onclick = () => {
+                if (typeof showToast === 'function') {
+                    showToast(`Atenção: Cliente possui ${titulosPendentes.length} débito(s) pendente(s) somando ${valorFmt}.`, 'warning');
+                }
+            };
+        } else {
+            elFin.className = 'inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-lg pdv-card-cli-status-ok shadow-2xs transition-colors';
+            elFin.innerHTML = '<i class="fa-solid fa-circle-check text-[10px]"></i> Sem débitos pendentes';
+            elFin.title = 'Cliente sem débitos pendentes';
+            elFin.onclick = null;
+        }
+    }
+
+    // Observações
+    const wrapObs = document.getElementById('pdv-card-cli-obs-wrap');
+    const elObs = document.getElementById('pdv-card-cli-obs');
+    if (wrapObs && elObs) {
+        if (c.obs && c.obs.trim()) {
+            elObs.textContent = c.obs.trim();
+            wrapObs.classList.remove('hidden');
+        } else {
+            wrapObs.classList.add('hidden');
+        }
+    }
+
+    card.classList.remove('hidden');
+}
+window.renderizarCardClientePDV = renderizarCardClientePDV;
+
+function desvincularClientePDV() {
+    selecionarClientePDV(null);
+    if (typeof showToast === 'function') {
+        showToast('Cliente desvinculado. Operação definida para Consumidor Final.', 'info');
+    }
+}
+window.desvincularClientePDV = desvincularClientePDV;
+
+function editarClienteSelecionadoPDV() {
+    const hiddenId = document.getElementById('pdv-cliente');
+    const cId = hiddenId ? hiddenId.value : '0';
+    if (!cId || cId === '0') return;
+    const c = (db.clientes || []).find(x => String(x.id || x._id || '') === String(cId));
+    if (c) {
+        abrirModalClienteRapido(c);
+    }
+}
+window.editarClienteSelecionadoPDV = editarClienteSelecionadoPDV;
 
 function autoSelecionarClientePorNome() {
     const inputBusca = document.getElementById('pdv-cliente-busca');
     const hiddenId = document.getElementById('pdv-cliente');
     if (!inputBusca) return;
     const txt = inputBusca.value.trim().toLowerCase();
+    const idAtual = hiddenId ? String(hiddenId.value || '0').trim() : '0';
+
     if (!txt) {
-        selecionarClientePDV(null, true);
+        if (idAtual && idAtual !== '0') {
+            selecionarClientePDV(null, false);
+        }
         return;
     }
-    if (hiddenId && hiddenId.value && hiddenId.value !== '0') {
-        const atual = (db.clientes || []).find(x => String(x.id || x._id || '').trim() === String(hiddenId.value).trim());
+
+    if (idAtual && idAtual !== '0') {
+        const atual = (db.clientes || []).find(x => String(x.id || x._id || '').trim() === idAtual) ||
+                      (window._ultimoClienteSelecionado && String(window._ultimoClienteSelecionado.id || window._ultimoClienteSelecionado._id || '').trim() === idAtual ? window._ultimoClienteSelecionado : null);
         if (atual && (atual.nome || '').trim().toLowerCase() === txt) return;
     }
     const exato = (db.clientes || []).find(x => (x.nome || '').trim().toLowerCase() === txt);
@@ -471,25 +704,14 @@ function autoSelecionarPrimeiroCliente() {
 window.autoSelecionarPrimeiroCliente = autoSelecionarPrimeiroCliente;
 
 function atualizarListaClientesPDV(selecionarId = null, silencioso = true) {
-    if (selecionarId && selecionarId !== '0') {
-        selecionarClientePDV(selecionarId, silencioso);
-    } else if (selecionarId === null) {
-        const hiddenId = document.getElementById('pdv-cliente');
-        const inputBusca = document.getElementById('pdv-cliente-busca');
-        if (hiddenId && hiddenId.value && hiddenId.value !== '0') {
-            const c = (db.clientes || []).find(x => String(x.id || x._id || '').trim() === String(hiddenId.value).trim());
-            if (c) {
-                if (inputBusca && !inputBusca.value) inputBusca.value = c.nome || '';
-                if (c.vendedor) {
-                    selecionarClientePDV(c, true);
-                }
-                return;
-            }
-        }
-        if (hiddenId) hiddenId.value = '0';
-        if (inputBusca) inputBusca.value = '';
-    } else {
-        selecionarClientePDV(null, true);
+    const hiddenId = document.getElementById('pdv-cliente');
+    const atualId = hiddenId ? hiddenId.value : '0';
+    const targetId = (selecionarId && selecionarId !== '0') 
+        ? selecionarId 
+        : ((atualId && atualId !== '0') ? atualId : (window._clientePendentePDV || null));
+        
+    if (targetId && targetId !== '0') {
+        selecionarClientePDV(targetId, silencioso);
     }
 }
 
@@ -557,19 +779,20 @@ function filtrarClientesPDV(termo) {
     dropdown.classList.remove('hidden');
 }
 
-function abrirModalClienteRapido() {
+function abrirModalClienteRapido(c = null) {
     if (typeof window.podeCadastrarClientes === 'function' && !window.podeCadastrarClientes()) {
         showToast('Acesso Negado: Você não tem permissão para cadastrar clientes.', 'error');
         return;
     }
-    document.getElementById('cli-id').value = '';
-    document.getElementById('cli-nome').value = '';
-    document.getElementById('cli-doc').value = '';
-    document.getElementById('cli-rg').value = '';
-    document.getElementById('cli-nasc').value = '';
-    document.getElementById('cli-wpp').value = '';
-    document.getElementById('cli-fixo').value = '';
-    document.getElementById('cli-email').value = '';
+    const isEdit = !!(c && (c.id || c._id));
+    document.getElementById('cli-id').value = isEdit ? (c.id || c._id || '') : '';
+    document.getElementById('cli-nome').value = isEdit ? (c.nome || '') : '';
+    document.getElementById('cli-doc').value = isEdit ? (c.doc || c.cpfCnpj || c.documento || '') : '';
+    document.getElementById('cli-rg').value = isEdit ? (c.rg || '') : '';
+    document.getElementById('cli-nasc').value = isEdit ? (c.nasc || '') : '';
+    document.getElementById('cli-wpp').value = isEdit ? (c.wpp || '') : '';
+    document.getElementById('cli-fixo').value = isEdit ? (c.fixo || c.telefone || '') : '';
+    document.getElementById('cli-email').value = isEdit ? (c.email || '') : '';
     const selVend = document.getElementById('cli-vendedor');
     if (selVend) {
         const vendedores = (db.funcionarios || [])
@@ -580,19 +803,19 @@ function abrirModalClienteRapido() {
             html += `<option value="${v.nome}">${v.nome}</option>`;
         });
         selVend.innerHTML = html;
-        selVend.value = '';
+        selVend.value = isEdit ? (c.vendedor || '') : '';
     }
-    document.getElementById('cli-cep').value = '';
-    document.getElementById('cli-rua').value = '';
-    document.getElementById('cli-numero').value = '';
-    document.getElementById('cli-complemento').value = '';
-    document.getElementById('cli-bairro').value = '';
-    document.getElementById('cli-cidade').value = '';
-    document.getElementById('cli-ibge').value = '';
-    document.getElementById('cli-obs').value = '';
+    document.getElementById('cli-cep').value = isEdit ? (c.cep || '') : '';
+    document.getElementById('cli-rua').value = isEdit ? (c.rua || '') : '';
+    document.getElementById('cli-numero').value = isEdit ? (c.numero || '') : '';
+    document.getElementById('cli-complemento').value = isEdit ? (c.complemento || '') : '';
+    document.getElementById('cli-bairro').value = isEdit ? (c.bairro || '') : '';
+    document.getElementById('cli-cidade').value = isEdit ? (c.cidade || '') : '';
+    document.getElementById('cli-ibge').value = isEdit ? (c.ibge || '') : '';
+    document.getElementById('cli-obs').value = isEdit ? (c.obs || '') : '';
     document.getElementById('cli-historico-body').innerHTML = '<tr><td colspan="4" class="text-center p-4 text-slate-400">Nenhum histórico</td></tr>';
     
-    document.getElementById('modal-cliente-title').innerText = 'Novo Cliente';
+    document.getElementById('modal-cliente-title').innerText = isEdit ? 'Editar Dados do Cliente' : 'Novo Cliente';
     abaModal('cli', 'dados');
     document.getElementById('modal-cliente').classList.remove('hidden');
 }
@@ -620,6 +843,7 @@ async function salvarCliente() {
         showToast('Acesso Negado: Você não tem permissão para cadastrar clientes.', 'error');
         return;
     }
+    const id = document.getElementById('cli-id').value;
     const nome = document.getElementById('cli-nome').value.trim();
     if(!nome) return showToast('Nome Completo / Razão Social é obrigatório!', 'error');
 
@@ -639,18 +863,32 @@ async function salvarCliente() {
         bairro: document.getElementById('cli-bairro').value.trim(),
         cidade: document.getElementById('cli-cidade').value.trim(),
         ibge: document.getElementById('cli-ibge').value.trim(),
-        obs: document.getElementById('cli-obs').value.trim(),
-        dataCadastro: new Date().toISOString()
+        obs: document.getElementById('cli-obs').value.trim()
     };
 
     try {
-        const docRef = await window.getEmpresaRef().collection('clientes').add(dados);
+        let finalId = id;
+        if (id) {
+            await window.getEmpresaRef().collection('clientes').doc(String(id)).set(dados, { merge: true });
+            if (Array.isArray(db.clientes)) {
+                const idx = db.clientes.findIndex(x => String(x.id || x._id || '') === String(id));
+                if (idx >= 0) db.clientes[idx] = { id: String(id), ...dados };
+            }
+            showToast('Cliente atualizado com sucesso!', 'success');
+        } else {
+            dados.dataCadastro = new Date().toISOString();
+            const docRef = await window.getEmpresaRef().collection('clientes').add(dados);
+            finalId = docRef.id;
+            if (Array.isArray(db.clientes)) {
+                db.clientes.push({ id: finalId, ...dados });
+            }
+            showToast('Cliente cadastrado e selecionado!', 'success');
+        }
         fecharModalCliente();
-        atualizarListaClientesPDV(docRef.id);
-        showToast('Cliente cadastrado e selecionado!', 'success');
+        atualizarListaClientesPDV(finalId);
     } catch(err) {
         console.error(err);
-        showToast('Erro ao cadastrar cliente.', 'error');
+        showToast('Erro ao salvar cliente.', 'error');
     }
 }
 
@@ -853,10 +1091,6 @@ function removerFotoOS(index) { osFotosArray.splice(index, 1); renderizarFotosOS
 // 7. MOTORES DE IMPRESSÃO E PDF (BLINDADOS)
 // ==========================================
 function printHtmlSeguro(htmlCompleto) {
-    if (typeof window.printHtmlSeguro === 'function') {
-        window.printHtmlSeguro(htmlCompleto);
-        return;
-    }
     showToast("Preparando documento para Impressão...", "info");
     
     const printWin = window.open('', '', 'width=800,height=600');
@@ -982,22 +1216,24 @@ function exportarExcel(tabelaId, filename) {
 // 8. GERADOR DE CONTRATO E WHATSAPP 
 // ==========================================
 function imprimirContratoAtual() {
-    if (typeof window.abrirModalContrato === 'function' && window.vendaAtualImpressao) {
-        window.abrirModalContrato(window.vendaAtualImpressao);
-    } else if (window.vendaAtualImpressao) { 
+    if (window.vendaAtualImpressao) { 
         imprimirContratoObj(window.vendaAtualImpressao); 
     } else { 
-        showToast("Nenhuma venda selecionada para imprimir.", "error"); 
+        showToast("Nenhuma venda selecionada para imprimir o contrato.", "error"); 
     }
 }
 window.imprimirContratoAtual = imprimirContratoAtual;
 
 function imprimirContratoById(id) { 
-    if (typeof window.abrirModalContrato === 'function') {
-        window.abrirModalContrato(id);
+    const todasVendas = (typeof db !== 'undefined' && Array.isArray(db.vendas)) 
+        ? db.vendas 
+        : ((typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) ? window.db.vendas : []);
+    const v = todasVendas.find(x => String(x.id) === String(id)); 
+    if (v) {
+        window.vendaAtualImpressao = v;
+        imprimirContratoObj(v); 
     } else {
-        const v = db.vendas.find(x => String(x.id) === String(id)); 
-        if(v) imprimirContratoObj(v); 
+        showToast("Venda não encontrada para imprimir o contrato.", "error");
     }
 }
 window.imprimirContratoById = imprimirContratoById;
@@ -1232,10 +1468,6 @@ function enviarPDFWhatsApp(id) {
 
 function imprimirContratoObj(v) {
     if(!v) return;
-    if (typeof window.abrirModalContrato === 'function') {
-        window.abrirModalContrato(v);
-        return;
-    }
     const emp = obterDadosEmpresa();
     
     const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
@@ -1556,6 +1788,16 @@ function prepararPDV() {
             if (!elDataEntPdv.value) elDataEntPdv.value = elOsPrazoPdv.value;
         });
     }
+
+    const camposAutoSalvar = ['pdv-obs', 'pdv-desconto', 'pdv-frete', 'pdv-vendedor', 'pdv-operacao', 'pdv-data', 'pdv-data-entrega'];
+    camposAutoSalvar.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && !el._pdvAutoSalvarAttached) {
+            el._pdvAutoSalvarAttached = true;
+            el.addEventListener('change', () => { if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV(); });
+            el.addEventListener('input', () => { if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV(); });
+        }
+    });
 }
 
 function togglePanelServico() {
@@ -1741,10 +1983,12 @@ function processarAdicaoProduto(p) {
         }
     } 
     renderCarrinho(); 
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
 }
 
 function pdvMudarObsItem(i, val) { 
-    cart[i].obsVenda = val || ''; 
+    if (cart[i]) cart[i].obsVenda = val || ''; 
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
 }
 
 function renderCarrinho() {
@@ -1814,7 +2058,7 @@ function renderCarrinho() {
             <td class="py-2.5 text-right"><input type="text" data-mask="money" inputmode="numeric" value="${Number(item.preco).toFixed(2)}" onchange="pdvMudarPreco(${i}, this.value)" class="w-20 text-right border border-slate-300 dark:border-slate-600 rounded-lg p-1.5 font-bold text-slate-600 dark:text-slate-300 outline-none focus:border-blue-500 bg-white dark:bg-slate-800 dark:text-white"></td>
             <td class="py-2.5 text-right"><input type="text" data-mask="money" inputmode="numeric" value="${Number(item.desconto || 0).toFixed(2)}" onchange="pdvMudarDescontoItem(${i}, this.value)" class="${inputDescClass}"></td>
             <td class="py-2.5 text-right font-bold text-slate-800 dark:text-slate-100 font-mono">${formatMoney(((item.preco || 0) * (item.qtd || 1)) - (item.desconto || 0))}</td>
-            <td class="py-2.5 text-center"><button onclick="cart.splice(${i},1); renderCarrinho()" class="text-red-500 hover:text-red-700 p-2 transition-colors"><i class="fa-solid fa-trash text-base"></i></button></td>
+            <td class="py-2.5 text-center"><button onclick="cart.splice(${i},1); renderCarrinho(); if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();" class="text-red-500 hover:text-red-700 p-2 transition-colors"><i class="fa-solid fa-trash text-base"></i></button></td>
         </tr>`;
     }).join(''); 
     pdvAtualizarTotais();
@@ -1865,6 +2109,7 @@ function pdvMudarQtd(i, n) {
         showToast(`Estoque NEGATIVO! Restam ${p.estoque || 0}.`, 'info'); 
     }
     renderCarrinho(); 
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
 }
 
 function pdvMudarPreco(i, val) { 
@@ -1874,12 +2119,13 @@ function pdvMudarPreco(i, val) {
     } 
     pdvAtualizarTotais(); 
     renderCarrinho(); 
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
 }
 
 function pdvLimpar() { 
     cart = []; 
-    document.getElementById('pdv-desconto').value = 0; 
-    document.getElementById('pdv-frete').value = 0; 
+    if (document.getElementById('pdv-desconto')) document.getElementById('pdv-desconto').value = 0; 
+    if (document.getElementById('pdv-frete')) document.getElementById('pdv-frete').value = 0; 
     
     if(document.getElementById('pdv-obs')) {
         document.getElementById('pdv-obs').value = ''; 
@@ -1890,6 +2136,21 @@ function pdvLimpar() {
     if(document.getElementById('pdv-data-entrega')) {
         document.getElementById('pdv-data-entrega').value = '';
     }
+    if(document.getElementById('pdv-produto-busca')) {
+        document.getElementById('pdv-produto-busca').value = '';
+    }
+    if(document.getElementById('pdv-valor-atual')) {
+        document.getElementById('pdv-valor-atual').value = '0';
+    }
+    if(document.getElementById('pdv-obs-venda-rapida')) {
+        document.getElementById('pdv-obs-venda-rapida').value = '';
+    }
+    if(document.getElementById('pdv-metodo-atual')) {
+        document.getElementById('pdv-metodo-atual').value = 'Dinheiro';
+    }
+    if(document.getElementById('pdv-parcelas-atual')) {
+        document.getElementById('pdv-parcelas-atual').value = '1';
+    }
     if(document.getElementById('os-prazo')) { 
         document.getElementById('os-prazo').value = ''; 
         document.getElementById('os-garantia').value = ''; 
@@ -1899,10 +2160,17 @@ function pdvLimpar() {
     } 
     pagamentosVendaAtual = []; 
     window.vendaEmEdicao = null; 
-    atualizarListaClientesPDV(null);
+    window.vendaIdempotencyKey = null;
+    isProcessingVenda = false;
+
+    // Reset completo do cliente para Consumidor Final (oculta card de dados)
+    selecionarClientePDV(null, true);
     
     const vendSelect = document.getElementById('pdv-vendedor');
-    if (vendSelect) vendSelect.value = 'Balcão';
+    if (vendSelect) {
+        delete vendSelect.dataset.usuarioAlterou;
+        vendSelect.value = 'Balcão';
+    }
 
     const opSelect = document.getElementById('pdv-operacao');
     if (opSelect) {
@@ -1910,7 +2178,19 @@ function pdvLimpar() {
         ajustarOpcoesOperacaoPDV();
     }
 
+    // Limpa rascunho persistido para evitar restauração indevida de venda finalizada
+    try {
+        localStorage.removeItem('pdvState');
+    } catch(e) {
+        console.warn('Aviso: falha ao limpar pdvState do localStorage:', e);
+    }
+
     renderCarrinho(); 
+    pdvAtualizarTotais();
+    if (typeof atualizarResumoPagamentosVenda === 'function') {
+        atualizarResumoPagamentosVenda();
+    }
+    liberarBotaoFinalizar();
 }
 
 function pdvMudarDescontoItem(i, n) { 
@@ -1924,6 +2204,7 @@ function pdvMudarDescontoItem(i, n) {
         }
     }
     renderCarrinho(); 
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
 }
 
 function pdvAtualizarTotais() { 
@@ -2209,12 +2490,14 @@ function adicionarPagamentoVenda() {
     
     pagamentosVendaAtual.push({ metodo, valor, parcelas, vencimentoBase, vencimentosPersonalizados }); 
     atualizarResumoPagamentosVenda(); 
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
     inputValor.focus(); 
 }
 
 function removerPagamentoVenda(index) { 
     pagamentosVendaAtual.splice(index, 1); 
     atualizarResumoPagamentosVenda(); 
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
 }
 
 async function finalizarVendaMultipla() {
@@ -2596,23 +2879,45 @@ async function finalizarVendaMultipla() {
     const idFinalVenda = vendaRef.id;
 
     if (!isOrcamento) { 
+        let prodsAlterados = false;
         cart.forEach(item => { 
             const p = (db.produtos || []).find(x => String(x.id) === String(item.id)); 
             if(p) { 
                 const pRef = window.getEmpresaRef().collection('produtos').doc(String(p.id));
                 batch.update(pRef, { estoque: firebase.firestore.FieldValue.increment(-Number(item.qtd || 1)) });
                 
+                // Abatimento de estoque local imediato no modo economia
+                const qtdItemVendida = Number(item.qtd || 1);
+                p.estoque = (Number(p.estoque) || 0) - qtdItemVendida;
+                prodsAlterados = true;
+
+                if (window.FCCache && typeof window.FCCache.enfileirarOperacao === 'function') {
+                    window.FCCache.enfileirarOperacao('produtos', p.id, 'set', p);
+                }
+
                 const kardexRef = window.getEmpresaRef().collection('movimentacoes').doc();
-                batch.set(kardexRef, {
+                const kardexObj = {
+                    id: kardexRef.id,
                     data: new Date().toISOString(),
                     ref: `${tipoVenda} #${numPedStr}`,
                     prodId: p.id,
                     prodNome: p.nome,
-                    qtd: -(item.qtd || 1),
+                    qtd: -qtdItemVendida,
                     tipo: tipoVenda
-                });
+                };
+                batch.set(kardexRef, kardexObj);
+
+                if (window.FCCache && typeof window.FCCache.enfileirarOperacao === 'function') {
+                    window.FCCache.enfileirarOperacao('movimentacoes', kardexObj.id, 'set', kardexObj);
+                }
+                if (Array.isArray(db.movimentacoes)) {
+                    db.movimentacoes.unshift(kardexObj);
+                }
             } 
         }); 
+        if (prodsAlterados && window.FCCache && typeof window.FCCache.set === 'function') {
+            window.FCCache.set('produtos', db.produtos);
+        }
     }
 
     const itensLimpados = cart.map(i => {
@@ -2644,8 +2949,31 @@ async function finalizarVendaMultipla() {
         clienteId: cId || '', 
         clienteNome: cliInfo.nome || '', 
         clienteDoc: cliInfo.doc || 'Não informado',
+        clienteCpf: cliInfo.cpf || '',
+        clienteCnpj: cliInfo.cnpj || '',
         clienteTel: cliInfo.tel || 'Não informado',
         clienteEnd: cliInfo.endCompleto || 'Não informado',
+        clienteRua: cliInfo.rua || '',
+        clienteNumero: cliInfo.numero || '',
+        clienteBairro: cliInfo.bairro || '',
+        clienteCidade: cliInfo.cidade || '',
+        clienteUf: cliInfo.uf || '',
+        clienteCep: cliInfo.cep || '',
+        clienteIbge: cliInfo.ibge || '',
+        cliente: cliInfo.raw ? { ...cliInfo.raw } : null,
+        destinatario: cliInfo.raw ? {
+            nome: cliInfo.nome,
+            doc: cliInfo.doc,
+            cpf: cliInfo.cpf,
+            cnpj: cliInfo.cnpj,
+            rua: cliInfo.rua,
+            numero: cliInfo.numero,
+            bairro: cliInfo.bairro,
+            cidade: cliInfo.cidade,
+            uf: cliInfo.uf,
+            cep: cliInfo.cep,
+            ibge: cliInfo.ibge
+        } : null,
         subtotal: sub || 0, 
         frete: frete || 0, 
         desconto: desc || 0, 
@@ -2763,6 +3091,10 @@ async function finalizarVendaMultipla() {
         if (typeof FCCache !== 'undefined' && typeof FCCache.set === 'function') {
             const cacheKey = (typeof window.obterCaixaDocId === 'function') ? 'fc_moveis_' + window.obterCaixaDocId() : 'fc_moveis_caixa';
             FCCache.set(cacheKey, cxFinalData);
+            FCCache.set('caixa', cxFinalData);
+            if (typeof window.FCCache.enfileirarOperacao === 'function') {
+                window.FCCache.enfileirarOperacao('caixa', 'caixa_atual', 'set', cxFinalData);
+            }
         }
     }
 
@@ -2791,7 +3123,7 @@ async function finalizarVendaMultipla() {
         isProcessingVenda = false;
         vendaIdempotencyKey = null;
         if (typeof showToast === 'function') {
-            showToast('Venda salva no dispositivo! Clique em SINCRONIZAR para enviar à nuvem.', 'info');
+            showToast('Venda registrada com sucesso! (Salva localmente. Clique em SINCRONIZAR quando desejar enviar à nuvem)', 'success');
         }
     } else {
         try {
@@ -3007,6 +3339,10 @@ function fecharModalOpcoesRecibo() {
     document.getElementById('modal-opcoes-recibo').classList.add('hidden'); 
     document.getElementById('fiscal-status-container').classList.add('hidden');
     document.getElementById('fiscal-status-container').innerHTML = '';
+    // Garante PDV 100% resetado e pronto para o próximo cliente
+    pdvLimpar();
+    const buscaProd = document.getElementById('pdv-produto-busca');
+    if (buscaProd) buscaProd.focus();
 }
 
 
@@ -3030,11 +3366,26 @@ async function emitirNota(tipo) {
     }
 
     try {
-        const emitirFunc = firebase.functions().httpsCallable(tipo === 'nfce' ? 'emitirNFCe' : 'emitirNFe');
         const empIdAtual = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
+        
+        // Garante persistência da venda no Firestore antes de acionar a SEFAZ
+        if (window.vendaAtualImpressao && window.vendaAtualImpressao.id) {
+            try {
+                const empRef = (typeof window.getEmpresaRef === 'function') ? window.getEmpresaRef() : firestore.collection('empresas').doc(empIdAtual || 'emp_fc_moveis');
+                await empRef.collection('vendas').doc(String(window.vendaAtualImpressao.id)).set(window.vendaAtualImpressao, { merge: true });
+                if (window.FCCache && typeof window.FCCache.removerDaFila === 'function') {
+                    window.FCCache.removerDaFila('vendas', window.vendaAtualImpressao.id);
+                }
+            } catch (syncErr) {
+                console.warn('[Venda/Fiscal] Aviso ao sincronizar venda antes da emissão SEFAZ:', syncErr);
+            }
+        }
+
+        const emitirFunc = firebase.functions().httpsCallable(tipo === 'nfce' ? 'emitirNFCe' : 'emitirNFe');
         const response = await emitirFunc({ 
             vendaId: window.vendaAtualImpressao.id,
-            empId: empIdAtual
+            empId: empIdAtual,
+            vendaDados: window.vendaAtualImpressao
         });
         const res = response.data;
         const d = res.data || {};
@@ -3742,51 +4093,222 @@ function atualizarVendedoresPDV() {
 // ==========================================
 // PERSISTÊNCIA DE ESTADO DO PDV (LOCALSTORAGE)
 // ==========================================
+function confirmarLimparPDV() {
+    const temDados = (typeof cart !== 'undefined' && Array.isArray(cart) && cart.length > 0) ||
+                     (typeof pagamentosVendaAtual !== 'undefined' && Array.isArray(pagamentosVendaAtual) && pagamentosVendaAtual.length > 0) ||
+                     (document.getElementById('pdv-cliente') && document.getElementById('pdv-cliente').value !== '0');
+    if (temDados) {
+        if (!confirm('Deseja realmente cancelar esta venda e limpar todos os dados do PDV?')) {
+            return;
+        }
+    }
+    pdvLimpar();
+    if (typeof showToast === 'function') {
+        showToast('PDV limpo com sucesso!', 'info');
+    }
+}
+window.confirmarLimparPDV = confirmarLimparPDV;
+
 window.salvarEstadoPDV = function() {
+    // PROTEÇÃO CRÍTICA: Não salva nem limpa se o estado inicial da página ainda não terminou de ser restaurado
+    if (!window._pdvEstadoCarregado) return;
+
     try {
+        const cId = document.getElementById('pdv-cliente') ? document.getElementById('pdv-cliente').value : '0';
+        const temCarrinho = typeof cart !== 'undefined' && Array.isArray(cart) && cart.length > 0;
+        const temPag = typeof pagamentosVendaAtual !== 'undefined' && Array.isArray(pagamentosVendaAtual) && pagamentosVendaAtual.length > 0;
+        const temCliente = cId && cId !== '0';
+        const temObs = document.getElementById('pdv-obs') && document.getElementById('pdv-obs').value.trim() !== '';
+        const temEdicao = window.vendaEmEdicao != null;
+
+        // Se o PDV não possui dados em aberto (está limpo), remove qualquer rascunho persistido
+        if (!temCarrinho && !temPag && !temCliente && !temObs && !temEdicao) {
+            localStorage.removeItem('pdvState');
+            return;
+        }
+
+        // Sanitiza clienteCache como objeto simples e seguro para JSON
+        let cliCache = null;
+        let rawCli = (window._ultimoClienteSelecionado && String(window._ultimoClienteSelecionado.id || window._ultimoClienteSelecionado._id || '') === String(cId)) ? window._ultimoClienteSelecionado : null;
+        if (!rawCli && temCliente && window.db && window.db.clientes) {
+            rawCli = window.db.clientes.find(x => String(x.id || x._id || '').trim() === String(cId).trim()) || null;
+        }
+        if (rawCli) {
+            cliCache = {
+                id: String(rawCli.id || rawCli._id || cId).trim(),
+                nome: rawCli.nome || '',
+                doc: rawCli.doc || rawCli.cpfCnpj || rawCli.documento || '',
+                cpfCnpj: rawCli.cpfCnpj || rawCli.doc || rawCli.documento || '',
+                documento: rawCli.documento || rawCli.doc || rawCli.cpfCnpj || '',
+                wpp: rawCli.wpp || rawCli.telefone || rawCli.fixo || '',
+                telefone: rawCli.telefone || rawCli.wpp || rawCli.fixo || '',
+                fixo: rawCli.fixo || '',
+                rua: rawCli.rua || '',
+                numero: rawCli.numero || '',
+                complemento: rawCli.complemento || '',
+                bairro: rawCli.bairro || '',
+                cidade: rawCli.cidade || '',
+                uf: rawCli.uf || '',
+                cep: rawCli.cep || '',
+                endereco: rawCli.endereco || '',
+                vendedor: rawCli.vendedor || '',
+                obs: rawCli.obs || ''
+            };
+        }
+
+        // Sanitiza cart como lista de itens serializáveis puros
+        const cartSanitizado = (typeof cart !== 'undefined' && Array.isArray(cart)) ? cart.map(it => ({
+            id: it.id || '',
+            nome: it.nome || 'Produto',
+            preco: Number(it.preco) || 0,
+            precoOriginal: Number(it.precoOriginal) || Number(it.preco) || 0,
+            custo: Number(it.custo) || 0,
+            estoque: it.estoque !== undefined ? Number(it.estoque) : 0,
+            desconto: Number(it.desconto) || 0,
+            qtd: Number(it.qtd) || 1,
+            foto: it.foto || '',
+            obsVenda: it.obsVenda || '',
+            customizacao: it.customizacao ? JSON.parse(JSON.stringify(it.customizacao)) : undefined
+        })) : [];
+
+        // Sanitiza pagamentos
+        const pagamentosSanitizados = (typeof pagamentosVendaAtual !== 'undefined' && Array.isArray(pagamentosVendaAtual)) ? pagamentosVendaAtual.map(p => ({
+            metodo: p.metodo || 'Dinheiro',
+            valor: Number(p.valor) || 0,
+            parcelas: Number(p.parcelas) || 1,
+            vencimentoBase: p.vencimentoBase || '',
+            vencimentosPersonalizados: Array.isArray(p.vencimentosPersonalizados) ? [...p.vencimentosPersonalizados] : []
+        })) : [];
+
         const estado = {
-            cart: typeof cart !== 'undefined' ? cart : [],
-            pagamentos: typeof pagamentosVendaAtual !== 'undefined' ? pagamentosVendaAtual : [],
-            clienteId: document.getElementById('pdv-cliente') ? document.getElementById('pdv-cliente').value : '0',
-            clienteBusca: document.getElementById('pdv-cliente-busca') ? document.getElementById('pdv-cliente-busca').value : '',
+            cart: cartSanitizado,
+            pagamentos: pagamentosSanitizados,
+            clienteId: cId,
+            clienteBusca: document.getElementById('pdv-cliente-busca') ? document.getElementById('pdv-cliente-busca').value : (cliCache ? cliCache.nome : ''),
+            clienteCache: cliCache,
             vendedorId: document.getElementById('pdv-vendedor') ? document.getElementById('pdv-vendedor').value : '',
             observacao: document.getElementById('pdv-obs') ? document.getElementById('pdv-obs').value : '',
             dataVenda: document.getElementById('pdv-data') ? document.getElementById('pdv-data').value : '',
+            dataEntrega: document.getElementById('pdv-data-entrega') ? document.getElementById('pdv-data-entrega').value : '',
             desconto: document.getElementById('pdv-desconto') ? document.getElementById('pdv-desconto').value : '0',
             frete: document.getElementById('pdv-frete') ? document.getElementById('pdv-frete').value : '0',
-            vendaEmEdicao: window.vendaEmEdicao || null
+            operacao: document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : '',
+            vendaEmEdicao: window.vendaEmEdicao ? {
+                id: window.vendaEmEdicao.id,
+                data: window.vendaEmEdicao.data,
+                numeroPedido: window.vendaEmEdicao.numeroPedido
+            } : null
         };
         localStorage.setItem('pdvState', JSON.stringify(estado));
-    } catch (e) { console.error("Erro interno:", e); }
+    } catch (e) {
+        console.error("Erro interno ao salvar estado do PDV:", e);
+    }
 };
 
 window.carregarEstadoPDV = function() {
-    const saved = localStorage.getItem('pdvState');
-    if (saved) {
-        try {
-            const estado = JSON.parse(saved);
-            if (typeof cart !== 'undefined') cart = estado.cart || [];
-            if (typeof pagamentosVendaAtual !== 'undefined') pagamentosVendaAtual = estado.pagamentos || [];
-            window.vendaEmEdicao = estado.vendaEmEdicao || null;
-
-            if (document.getElementById('pdv-cliente')) document.getElementById('pdv-cliente').value = estado.clienteId || '0';
-            if (document.getElementById('pdv-cliente-busca')) document.getElementById('pdv-cliente-busca').value = estado.clienteBusca || '';
-            if (document.getElementById('pdv-vendedor')) document.getElementById('pdv-vendedor').value = estado.vendedorId || '';
-            if (document.getElementById('pdv-obs')) document.getElementById('pdv-obs').value = estado.observacao || '';
-            if (document.getElementById('pdv-data')) document.getElementById('pdv-data').value = estado.dataVenda || (typeof obterDataHojeLocalYYYYMMDD === 'function' ? obterDataHojeLocalYYYYMMDD() : new Date().toISOString().split('T')[0]);
-            if (document.getElementById('pdv-desconto')) document.getElementById('pdv-desconto').value = estado.desconto || '0';
-            if (document.getElementById('pdv-frete')) document.getElementById('pdv-frete').value = estado.frete || '0';
-
-            if (typeof renderCarrinho === 'function') renderCarrinho();
-            if (typeof atualizarResumoPagamentosVenda === 'function') atualizarResumoPagamentosVenda();
-            
-            const btnFinalizar = document.getElementById('btn-finalizar-venda');
-            if(btnFinalizar && window.vendaEmEdicao) {
-                btnFinalizar.innerHTML = '<i class="fa-solid fa-circle-check"></i> FINALIZAR VENDA EDITADA';
-            }
-        } catch(e) {
-            console.error('Erro ao restaurar estado do PDV:', e);
+    if (window._pdvEstadoCarregando) return;
+    window._pdvEstadoCarregando = true;
+    try {
+        const saved = localStorage.getItem('pdvState');
+        if (!saved) {
+            window._pdvEstadoCarregado = true;
+            return;
         }
+
+        const estado = JSON.parse(saved);
+        if (!estado || typeof estado !== 'object') {
+            window._pdvEstadoCarregado = true;
+            return;
+        }
+
+        const temConteudo = (estado.cart && Array.isArray(estado.cart) && estado.cart.length > 0) || 
+                            (estado.clienteId && estado.clienteId !== '0') ||
+                            (estado.pagamentos && Array.isArray(estado.pagamentos) && estado.pagamentos.length > 0) ||
+                            (estado.observacao && estado.observacao.trim()) ||
+                            (estado.vendaEmEdicao != null);
+
+        if (!temConteudo) {
+            window._pdvEstadoCarregado = true;
+            return;
+        }
+
+        // REGRA DE OURO: NUNCA SOBRESCREVE DADOS SE JÁ HOUVER ITENS NA MEMÓRIA
+        if (typeof cart !== 'undefined') {
+            if (!Array.isArray(cart) || cart.length === 0) {
+                if (Array.isArray(estado.cart) && estado.cart.length > 0) {
+                    cart = estado.cart;
+                }
+            }
+        }
+
+        if (typeof pagamentosVendaAtual !== 'undefined') {
+            if (!Array.isArray(pagamentosVendaAtual) || pagamentosVendaAtual.length === 0) {
+                if (Array.isArray(estado.pagamentos) && estado.pagamentos.length > 0) {
+                    pagamentosVendaAtual = estado.pagamentos;
+                }
+            }
+        }
+
+        if (estado.vendaEmEdicao) {
+            window.vendaEmEdicao = estado.vendaEmEdicao;
+        }
+
+        if (document.getElementById('pdv-operacao') && estado.operacao) {
+            document.getElementById('pdv-operacao').value = estado.operacao;
+            document.getElementById('pdv-operacao').dataset.usuarioAlterou = 'true';
+        }
+        if (document.getElementById('pdv-vendedor') && estado.vendedorId) {
+            document.getElementById('pdv-vendedor').value = estado.vendedorId;
+            document.getElementById('pdv-vendedor').dataset.usuarioAlterou = 'true';
+        }
+        if (document.getElementById('pdv-obs') && estado.observacao) {
+            document.getElementById('pdv-obs').value = estado.observacao;
+        }
+        if (document.getElementById('pdv-data') && estado.dataVenda) {
+            document.getElementById('pdv-data').value = estado.dataVenda;
+        }
+        if (document.getElementById('pdv-data-entrega') && estado.dataEntrega) {
+            document.getElementById('pdv-data-entrega').value = estado.dataEntrega;
+        }
+        if (document.getElementById('pdv-desconto') && estado.desconto) {
+            document.getElementById('pdv-desconto').value = estado.desconto;
+        }
+        if (document.getElementById('pdv-frete') && estado.frete) {
+            document.getElementById('pdv-frete').value = estado.frete;
+        }
+
+        // Restaura o cliente e o card completo de imediato
+        if (estado.clienteId && estado.clienteId !== '0') {
+            window._clientePendentePDV = String(estado.clienteId).trim();
+            const hiddenId = document.getElementById('pdv-cliente');
+            const inputBusca = document.getElementById('pdv-cliente-busca');
+            if (hiddenId) hiddenId.value = estado.clienteId;
+            if (inputBusca) inputBusca.value = estado.clienteBusca || (estado.clienteCache ? estado.clienteCache.nome : '');
+
+            if (estado.clienteCache) {
+                window._ultimoClienteSelecionado = estado.clienteCache;
+                renderizarCardClientePDV(estado.clienteCache);
+            } else if (window.db && window.db.clientes) {
+                const c = window.db.clientes.find(x => String(x.id || x._id || '').trim() === String(estado.clienteId).trim());
+                if (c) {
+                    window._ultimoClienteSelecionado = c;
+                    renderizarCardClientePDV(c);
+                }
+            }
+        }
+
+        if (typeof renderCarrinho === 'function') renderCarrinho();
+        if (typeof atualizarResumoPagamentosVenda === 'function') atualizarResumoPagamentosVenda();
+        
+        const btnFinalizar = document.getElementById('btn-finalizar-venda');
+        if (btnFinalizar && window.vendaEmEdicao) {
+            btnFinalizar.innerHTML = '<i class="fa-solid fa-circle-check"></i> FINALIZAR VENDA EDITADA';
+        }
+    } catch(e) {
+        console.error('Erro ao restaurar estado do PDV:', e);
+    } finally {
+        window._pdvEstadoCarregado = true;
+        window._pdvEstadoCarregando = false;
     }
 };
 
@@ -3796,11 +4318,22 @@ setInterval(() => {
     }
 }, 1000);
 
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => {
-        if (typeof window.carregarEstadoPDV === 'function') window.carregarEstadoPDV();
-    }, 800); 
+window.addEventListener('beforeunload', () => {
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
 });
+
+function inicializarRestauracaoPDV() {
+    if (window._pdvEstadoCarregado) return;
+    if (typeof window.carregarEstadoPDV === 'function') {
+        window.carregarEstadoPDV();
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inicializarRestauracaoPDV);
+} else {
+    inicializarRestauracaoPDV();
+}
 
 // Delegação de eventos para zoom de imagens (evita problema com URLs especiais do Firebase no onclick inline)
 document.addEventListener('click', function(e) {
@@ -4084,6 +4617,7 @@ window.salvarPersonalizacaoItem = function() {
 
     window.fecharModalPersonalizacao();
     if (typeof renderCarrinho === 'function') renderCarrinho();
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
     if (typeof showToast === 'function') showToast('Personalização aplicada ao item!', 'success');
 };
 
@@ -4096,6 +4630,7 @@ window.removerPersonalizacaoItem = function() {
     }
     window.fecharModalPersonalizacao();
     if (typeof renderCarrinho === 'function') renderCarrinho();
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
     if (typeof showToast === 'function') showToast('Personalização removida.', 'info');
 };
 

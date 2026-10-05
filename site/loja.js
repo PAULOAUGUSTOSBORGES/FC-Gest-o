@@ -1,4 +1,4 @@
-// Roteamento Multi-Tenant da Loja Virtual
+﻿// Roteamento Multi-Tenant da Loja Virtual
 const urlParamsSite = new URLSearchParams(window.location.search);
 const empresaAtivaSite = urlParamsSite.get('loja') || urlParamsSite.get('empresa') || 'emp_fc_moveis';
 window.empresaAtivaSite = empresaAtivaSite;

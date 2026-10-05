@@ -1,4 +1,4 @@
-// cadastro.js - Lógica de Produtos, Clientes, Fornecedores e Estoque
+﻿// cadastro.js - Lógica de Produtos, Clientes, Fornecedores e Estoque
 
 let acaoConfirmacaoPendente = null;
 
@@ -510,8 +510,9 @@ function abrirModalProduto() {
     const modalProd = document.getElementById('modal-produto');
     modalProd.classList.remove('hidden');
     modalProd.style.display = 'flex';
-    if (window.NCMHelper && typeof window.NCMHelper.initNCMAutocomplete === 'function') {
-        window.NCMHelper.initNCMAutocomplete('prod-ncm');
+    if (window.NCMHelper) {
+        if (typeof window.NCMHelper.initNCMAutocomplete === 'function') window.NCMHelper.initNCMAutocomplete('prod-ncm');
+        if (typeof window.NCMHelper.initCSOSNInput === 'function') window.NCMHelper.initCSOSNInput('prod-csosn');
     }
 }
 
@@ -735,10 +736,10 @@ async function salvarProduto() {
         obs: document.getElementById('prod-obs').value,
         foto: fotoFinal,
         fotos: fotosFinal,
-        ncm: document.getElementById('prod-ncm') ? String(document.getElementById('prod-ncm').value).replace(/\D/g, '').substring(0, 8) : '',
+        ncm: document.getElementById('prod-ncm') ? (window.NCMHelper ? window.NCMHelper.limparNCM(document.getElementById('prod-ncm').value) : String(document.getElementById('prod-ncm').value).replace(/\D/g, '').substring(0, 8)) : '',
         cfop: document.getElementById('prod-cfop') ? document.getElementById('prod-cfop').value.trim() : '5102',
-        csosn: document.getElementById('prod-csosn') ? document.getElementById('prod-csosn').value.trim() : '',
-        cst: document.getElementById('prod-csosn') ? document.getElementById('prod-csosn').value.trim() : '',
+        csosn: document.getElementById('prod-csosn') ? (window.NCMHelper ? window.NCMHelper.extrairCodigoCSOSN(document.getElementById('prod-csosn').value) : document.getElementById('prod-csosn').value.trim()) : '',
+        cst: document.getElementById('prod-csosn') ? (window.NCMHelper ? window.NCMHelper.extrairCodigoCSOSN(document.getElementById('prod-csosn').value) : document.getElementById('prod-csosn').value.trim()) : '',
         origem: document.getElementById('prod-origem') ? document.getElementById('prod-origem').value : '0',
         cest: document.getElementById('prod-cest') ? String(document.getElementById('prod-cest').value).replace(/\D/g, '') : '',
         exibirLoja: document.getElementById('prod-exibirLoja') ? document.getElementById('prod-exibirLoja').value === 'true' : true,
@@ -882,9 +883,14 @@ async function editarProduto(id) {
         document.getElementById('prod-legenda').value = p.legenda || '';
     }
 
-    // Garante que dados fiscais sejam preenchidos
+    // Garante que dados fiscais sejam preenchidos com Código + Descrição
+    if (document.getElementById('prod-ncm')) {
+        const codNcm = p.ncm || '';
+        document.getElementById('prod-ncm').value = window.NCMHelper ? window.NCMHelper.formatarNCMDisplay(codNcm) : codNcm;
+    }
     if (document.getElementById('prod-csosn')) {
-        document.getElementById('prod-csosn').value = p.csosn || p.cst || '';
+        const codCsosn = p.csosn || p.cst || '';
+        document.getElementById('prod-csosn').value = window.NCMHelper ? window.NCMHelper.formatarCSOSNDisplay(codCsosn) : codCsosn;
     }
     if (document.getElementById('prod-origem')) {
         document.getElementById('prod-origem').value = (p.origem !== undefined && p.origem !== '') ? String(p.origem) : '0';

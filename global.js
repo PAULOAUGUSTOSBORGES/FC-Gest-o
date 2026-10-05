@@ -320,7 +320,7 @@ var db = {
 window.db = db;
 
 // ==========================================
-// PRÃ‰-CARGA DO CACHE: popula o db com dados do
+// PRÉ-CARGA DO CACHE: popula o db com dados do
 // sessionStorage antes do Firebase responder.
 // Isso faz as telas carregarem instantaneamente.
 // ==========================================
@@ -690,7 +690,7 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                 }
                 const nomeEmpresaAtiva = (window.currentEmpresaData && (window.currentEmpresaData.nomeEmpresa || window.currentEmpresaData.nome)) || localStorage.getItem('fc_nome_empresa_ativa') || (empId === 'emp_fc_moveis' ? 'FC Móveis' : 'Minha Loja');
                 const elMenuNomePre = document.getElementById('menu-empresa-nome');
-                if (elMenuNomePre) elMenuNomePre.innerText = nomeEmpresaAtiva;
+                if (elMenuNomePre) elMenuNomePre.innerText = 'FC Gestão';
                 if (typeof aplicarIdentidadeVisualGlobal === 'function') {
                     aplicarIdentidadeVisualGlobal();
                 }
@@ -828,7 +828,7 @@ window.isContaMasterGlobal = isContaMasterGlobal;
 
                     // Atualiza imediatamente o nome no cabeçalho/menu lateral se o elemento existir
                     const elMenuNomePre = document.getElementById('menu-empresa-nome');
-                    if (elMenuNomePre) elMenuNomePre.innerText = nomeEmpresaAtiva;
+                    if (elMenuNomePre) elMenuNomePre.innerText = 'FC Gestão';
                     if (document.title && empId !== 'emp_fc_moveis' && document.title.includes('FC Móveis')) {
                         document.title = document.title.replace('FC Móveis', nomeEmpresaAtiva);
                     }
@@ -1976,56 +1976,23 @@ function toggleMenu() {
 }
 
 // ==========================================
-// M?DULO: MOTOR DE TEMA E IDENTIDADE DA EMPRESA
+// MÓDULO: MOTOR DE TEMA E IDENTIDADE DO SISTEMA
 // ==========================================
 function aplicarIdentidadeVisualGlobal() {
     const elNome = document.getElementById('menu-empresa-nome');
     const elLogo = document.getElementById('menu-logo');
     const elPlaceholder = document.getElementById('menu-logo-placeholder');
 
-    const emp = (window.db && window.db.config && window.db.config.empresa) ? window.db.config.empresa : {};
-    const empIdAtiva = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
-    const fallbackNome = (window.currentEmpresaData?.nomeEmpresa) || (window.currentEmpresaData?.nome) || localStorage.getItem('fc_nome_empresa_ativa') || (empIdAtiva === 'emp_fc_moveis' ? 'FC Móveis' : 'Minha Loja');
-    const nomeEmpresa = (emp.fantasia && emp.fantasia.trim()) ? emp.fantasia : ((emp.nome && emp.nome.trim()) ? emp.nome : fallbackNome);
-
+    // Logo e Nome do Sistema no Menu (solicitado pelo usuário)
     if (elNome) {
-        elNome.innerText = nomeEmpresa;
+        elNome.innerText = 'FC Gestão';
     }
 
-    if (document.title && empIdAtiva !== 'emp_fc_moveis') {
-        if (document.title.includes('FC Móveis')) {
-            document.title = document.title.replace('FC Móveis', nomeEmpresa);
-        } else if (document.title.includes('FC Gestão')) {
-            document.title = document.title.replace('FC Gestão', nomeEmpresa);
-        }
-    }
-
-    if (elLogo && elPlaceholder) {
-        // Busca do logo através de múltiplas camadas de persistência
-        let logoSrc = emp.logo || (window.currentEmpresaData && window.currentEmpresaData.logo) || '';
-        if (!logoSrc && empIdAtiva) {
-            try {
-                const c = JSON.parse(localStorage.getItem('fc_empresa_cache_' + empIdAtiva) || '{}');
-                logoSrc = c.logo || '';
-            } catch(e) {}
-        }
-        if (!logoSrc) {
-            logoSrc = localStorage.getItem('fc_logo_empresa_ativa') || '';
-        }
-
-        if (logoSrc && typeof logoSrc === 'string' && logoSrc.trim()) {
-            elLogo.src = logoSrc;
-            elLogo.classList.remove('hidden');
-            elPlaceholder.classList.add('hidden');
-            elLogo.onerror = function() {
-                elLogo.classList.add('hidden');
-                elPlaceholder.classList.remove('hidden');
-            };
-            try { localStorage.setItem('fc_logo_empresa_ativa', logoSrc); } catch(e) {}
-        } else {
-            elLogo.classList.add('hidden');
-            elPlaceholder.classList.remove('hidden');
-        }
+    if (elLogo) {
+        const isSubdir = window.location.pathname.includes('/sistema/');
+        elLogo.src = (isSubdir ? '../' : './') + 'icons/icon.svg';
+        elLogo.classList.remove('hidden');
+        if (elPlaceholder) elPlaceholder.classList.add('hidden');
     }
 
     // Aplica o tema salvo pelo usuário (Light ou Dark)
@@ -3571,17 +3538,84 @@ function gerarHtmlDanfeNFeA4(v, nota, emp) {
     const emitCep = emp?.cep || '';
     const emitFone = emp?.telefone || emp?.fone || '';
 
-    // Destinatário
-    const destNome = v?.clienteNome || v?.cliente?.nome || 'CONSUMIDOR FINAL';
-    const destDoc = v?.clienteCpf || v?.clienteCnpj || v?.clienteDoc || v?.cliente?.cpf || v?.cliente?.cnpj || '000.000.000-00';
-    const destLogr = v?.cliente?.endereco || v?.cliente?.rua || v?.cliente?.logradouro || 'RUA PRINCIPAL';
-    const destNro = v?.cliente?.numero || 'S/N';
-    const destBairro = v?.cliente?.bairro || 'CENTRO';
-    const destMun = v?.cliente?.cidade || v?.cliente?.municipio || emitMun;
-    const destUf = (v?.cliente?.uf || emitUf).toUpperCase();
-    const destCep = v?.cliente?.cep || '';
-    const destFone = v?.cliente?.telefone || v?.cliente?.fone || '';
-    const destIe = v?.cliente?.ie || 'ISENTO';
+    // Extração inteligente do Destinatário oficial (prioriza XML autorizado da SEFAZ, nota avulsa, objeto da venda e db.clientes)
+    let xmlDest = null;
+    const xmlBruto = nota?.xml_conteudo || v?.fiscal_xml || nota?.xml || v?.xml || (nota?.rawAvulsa && nota.rawAvulsa.xml_conteudo) || '';
+    if (xmlBruto && typeof xmlBruto === 'string') {
+        const mDest = xmlBruto.match(/<dest>([\s\S]*?)<\/dest>/i);
+        if (mDest) {
+            const bloco = mDest[1];
+            const extrairTag = (tag) => {
+                const mt = bloco.match(new RegExp(`<(?:[a-zA-Z0-9]+:)?${tag}>([\\s\\S]*?)<\\/(?:[a-zA-Z0-9]+:)?${tag}>`, 'i'));
+                return mt ? mt[1].trim() : '';
+            };
+            xmlDest = {
+                nome: extrairTag('xNome'),
+                cpf: extrairTag('CPF'),
+                cnpj: extrairTag('CNPJ'),
+                ie: extrairTag('IE'),
+                rua: extrairTag('xLgr'),
+                numero: extrairTag('nro'),
+                bairro: extrairTag('xBairro'),
+                cidade: extrairTag('xMun'),
+                uf: extrairTag('UF'),
+                cep: extrairTag('CEP'),
+                fone: extrairTag('fone')
+            };
+        }
+    }
+
+    const docRaw = xmlDest?.cpf || xmlDest?.cnpj || v?.clienteCpf || v?.clienteCnpj || v?.clienteDoc || v?.cliente?.cpf || v?.cliente?.cnpj || v?.destinatario?.doc || v?.destinatario?.cpf || v?.destinatario?.cnpj || '';
+    const docClean = String(docRaw).replace(/\D/g, '');
+
+    // Busca cliente correspondente na base local db.clientes se houver
+    let cliDb = null;
+    if (typeof db !== 'undefined' && Array.isArray(db.clientes) && db.clientes.length > 0) {
+        if (docClean && docClean.length >= 11) {
+            cliDb = db.clientes.find(c => {
+                const cDoc = String(c.doc || c.cpf || c.cnpj || '').replace(/\D/g, '');
+                return cDoc && cDoc === docClean;
+            });
+        }
+        if (!cliDb && v?.clienteId && String(v.clienteId) !== '0') {
+            cliDb = db.clientes.find(c => String(c.id || c._id || '').trim() === String(v.clienteId).trim());
+        }
+    }
+
+    const destObj = v?.destinatario || nota?.destinatario || v?.cliente || cliDb || {};
+
+    const destNome = xmlDest?.nome || destObj?.nome || destObj?.razaoSocial || v?.clienteNome || 'CONSUMIDOR FINAL';
+    const destDoc = xmlDest?.cpf || xmlDest?.cnpj || (docClean.length === 14 ? docClean.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : (docClean.length === 11 ? docClean.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4') : (docRaw || '000.000.000-00')));
+    
+    let destLogr = xmlDest?.rua || destObj?.rua || destObj?.endereco || destObj?.logradouro || '';
+    let destNro = xmlDest?.numero || destObj?.numero || '';
+    if (!destLogr && v?.clienteEnd && typeof v.clienteEnd === 'string' && v.clienteEnd !== 'Não informado') {
+        const partesEnd = v.clienteEnd.split(',');
+        destLogr = partesEnd[0]?.trim() || '';
+        if (partesEnd.length > 1 && !destNro) destNro = partesEnd[1]?.trim() || '';
+    }
+    if (!destLogr) destLogr = 'RUA';
+    if (!destNro) destNro = 'S/N';
+
+    const destBairro = xmlDest?.bairro || destObj?.bairro || 'CENTRO';
+
+    let rawCidade = xmlDest?.cidade || destObj?.cidade || destObj?.municipio || '';
+    let destUf = (xmlDest?.uf || destObj?.uf || '').toUpperCase().trim();
+    if (rawCidade.includes(' - ')) {
+        const parts = rawCidade.split(' - ');
+        rawCidade = parts[0]?.trim() || '';
+        if (!destUf && parts[1]) destUf = parts[1].trim().toUpperCase();
+    }
+    const destMun = rawCidade || emitMun;
+    if (!destUf) destUf = emitUf;
+
+    let destCep = String(xmlDest?.cep || destObj?.cep || '').replace(/\D/g, '');
+    if (destCep && destCep.length === 8) {
+        destCep = destCep.replace(/^(\d{5})(\d{3})$/, '$1-$2');
+    }
+
+    const destFone = xmlDest?.fone || destObj?.telefone || destObj?.fone || destObj?.wpp || destObj?.celular || v?.clienteTel || '';
+    const destIe = xmlDest?.ie || destObj?.ie || 'ISENTO';
 
     // Itens
     const itens = v?.itens || v?.produtos || [];
@@ -3951,7 +3985,7 @@ function gerarHtmlDanfeNFeA4(v, nota, emp) {
                 </div>
                 <div class="box border-t-0 border-l-0" style="width: 75px;">
                     <span class="box-title">CEP</span>
-                    <div class="box-val-normal">${escapeHtml(destCep || '74000-000')}</div>
+                    <div class="box-val-normal">${escapeHtml(destCep || '-')}</div>
                 </div>
                 <div class="box border-t-0 border-l-0" style="width: 85px;">
                     <span class="box-title">DATA SAÍDA/ENTRADA</span>

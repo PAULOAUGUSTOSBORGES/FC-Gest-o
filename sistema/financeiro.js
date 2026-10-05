@@ -1,5 +1,5 @@
-// ==========================================
-// GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÃâ¡ÕES
+﻿// ==========================================
+// GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÇÕES
 // ==========================================
 
 var ofxItemAtualIdx = null;
@@ -19,7 +19,7 @@ var categoriasPagar = typeof categoriasPagar !== 'undefined' ? categoriasPagar :
 var categoriasReceber = typeof categoriasReceber !== 'undefined' ? categoriasReceber : ['Vendas', 'Serviços', 'Outras Receitas'];
 
 // ==========================================
-// FUNÃâ¡ÕES DE TÍTULOS (DETALHES, BAIXA, RENEGOCIAÃâ¡ÃÆO)
+// FUNÇÕES DE TÍTULOS (DETALHES, BAIXA, RENEGOCIAÇÃO)
 // ==========================================
 function verDetalhesTitulo(id) {
     if (!db.financeiro) return;
@@ -869,7 +869,7 @@ function atualizarCardsFluxoDeCaixa() {
 }
 
 // ==========================================
-// 2. MOTORES DE IMPRESSÃÆO E PDF (100% BLINDADOS E DEFINITIVOS)
+// 2. MOTORES DE IMPRESSÃO E PDF (100% BLINDADOS E DEFINITIVOS)
 // ==========================================
 
 function abrirConfirmacao(titulo, mensagem, acao) { 
@@ -1336,7 +1336,7 @@ function renderizarMapaCaixaHTML(m) {
             ${m.observacao ? `<div class="flex justify-between text-slate-500"><span>OBS:</span><em>${m.observacao}</em></div>` : ''}
         </div>
 
-        <!-- MOVIMENTAÃâ¡ÃÆO GAVETA -->
+<!-- MOVIMENTAÇÃO GAVETA -->
         <div class="border-b border-dashed border-slate-300 dark:border-slate-700 pb-3 mb-3">
             <h4 class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[10px] mb-1.5">1. FLUXO DE GAVETA (DINHEIRO FÍSICO)</h4>
             <div class="flex justify-between text-[11px]"><span>(+) Fundo de Troco Inicial:</span><span>${formatMoney(m.apuradoSistema.fundoTroco)}</span></div>
@@ -1351,9 +1351,9 @@ function renderizarMapaCaixaHTML(m) {
             </div>
         </div>
 
-        <!-- MÃâ°TODOS ELETRÃâNICOS -->
+<!-- MÉTODOS ELETRÔNICOS -->
         <div class="border-b border-dashed border-slate-300 dark:border-slate-700 pb-3 mb-3">
-            <h4 class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[10px] mb-1.5">2. MÃâ°TODOS ELETRÃâNICOS E PARCELADOS</h4>
+<h4 class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[10px] mb-1.5">2. MÉTODOS ELETRÔNICOS E PARCELADOS</h4>
             <div class="flex justify-between text-[11px]"><span>Cartão Débito (Sistema / Declarado):</span><span>${formatMoney(m.apuradoSistema.vendasDebito)} / <strong>${formatMoney(m.declaradoOperador.debito)}</strong></span></div>
             <div class="flex justify-between text-[11px]"><span>Cartão Crédito (Sistema / Declarado):</span><span>${formatMoney(m.apuradoSistema.vendasCredito)} / <strong>${formatMoney(m.declaradoOperador.credito)}</strong></span></div>
             <div class="flex justify-between text-[11px]"><span>PIX (Sistema / Declarado):</span><span>${formatMoney(m.apuradoSistema.vendasPix)} / <strong>${formatMoney(m.declaradoOperador.pix)}</strong></span></div>
@@ -1792,7 +1792,7 @@ function renderTitulos(tipo) {
         });
     }
 
-    // 5. FILTRO DE PERÍODO RELATIVO (MÃÅ S, 7 DIAS, ETC.)
+    // 5. FILTRO DE PERÍODO RELATIVO (MÊS, 7 DIAS, ETC.)
     const temBuscaAtiva = !!(termoNorm || pessoaFiltroVal);
     if (!temBuscaAtiva && !dataIni && !dataFim && periodoFilter !== 'TUDO') {
         const hoje = new Date();
@@ -1917,7 +1917,7 @@ function renderTitulos(tipo) {
 }
 
 // ==========================================
-// 5. MODAL DE CADASTRO/EDIÃâ¡ÃÆO DE CONTA (COM RECORRÃÅ NCIA)
+// 5. MODAL DE CADASTRO/EDIÇÃO DE CONTA (COM RECORRÊNCIA)
 // ==========================================
 
 // ===== HELPER: PESSOA SELECT DROPDOWN =====
@@ -2737,7 +2737,7 @@ async function salvarXMLConferido() {
 }
 
 // ==========================================
-// COMPRA MANUAL E EDIÃâ¡ÃÆO
+// COMPRA MANUAL E EDIÇÃO
 // ==========================================
 function abrirModalCompraManual() {
     compraManualItens = [];
@@ -3458,11 +3458,11 @@ function exportarDadosParaIA() {
 
     let lucroBruto = receitaBruta - custoTotal;
 
-    let relatorioTexto = `=== RELATÓRIO FINANCEIRO E DE GESTÃO - FC MÃâVEIS ===\nData da exportação: ${new Date().toLocaleString('pt-BR')}\n\n`;
+    let relatorioTexto = `=== RELATÓRIO FINANCEIRO E DE GESTÃO - FC MÓVEIS ===\nData da exportação: ${new Date().toLocaleString('pt-BR')}\n\n`;
     relatorioTexto += `--- 1. DRE SIMPLIFICADA ---\n- Receita Bruta Total: R$ ${receitaBruta.toFixed(2)}\n- Custo da Mercadoria Vendida (CMV): R$ ${custoTotal.toFixed(2)}\n- Lucro Bruto Real: R$ ${lucroBruto.toFixed(2)}\n\n`;
     relatorioTexto += `--- 2. HISTÓRICO DE VENDAS RECENTES ---\n`;
     vendas.slice(-20).forEach((v, index) => { relatorioTexto += `[Venda ${index + 1}] Data: ${v.data || 'N/A'} | Total: R$ ${Number(v.total || 0).toFixed(2)} | Forma de Pagamento: ${v.pagamento || 'N/A'}\n`; });
-    relatorioTexto += `\n--- 3. MOVIMENTAÃâ¡ÕES FINANCEIRAS / CAIXA ---\n`;
+    relatorioTexto += `\n--- 3. MOVIMENTAÇÕES FINANCEIRAS / CAIXA ---\n`;
     financeiro.slice(-20).forEach((f, index) => { relatorioTexto += `[Movimento ${index + 1}] Tipo: ${f.tipo || 'N/A'} | Descrição: ${f.descricao || 'N/A'} | Valor: R$ ${Number(f.valor || 0).toFixed(2)} | Data: ${f.data || 'N/A'}\n`; });
 
     const blob = new Blob([relatorioTexto], { type: 'text/plain;charset=utf-8' });

@@ -334,8 +334,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <link rel="stylesheet" href="../style.css?v=20261005090727">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261005090727">
+    <link rel="stylesheet" href="../style.css?v=20261005171910">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261005171910">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="fiscal">
 
@@ -348,11 +348,10 @@
         <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 w-64 bg-slate-900 text-slate-300 flex flex-col h-full shrink-0 shadow-2xl z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out no-print">
             <div class="p-5 flex items-center justify-between gap-3 border-b border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors" onclick="window.location.href='index.html'">
                 <div class="flex items-center gap-3 pointer-events-none">
-                    <img id="menu-logo" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="w-10 h-10 rounded-lg object-cover hidden bg-white dark:bg-slate-800 shadow-lg">
-                    <div id="menu-logo-placeholder" class="w-10 h-10 bg-slate-800 border border-slate-600 rounded-lg flex items-center justify-center text-slate-400 text-xl shadow-lg"><i class="fa-solid fa-store"></i></div>
-
+                    <img id="menu-logo" src="../icons/icon.svg" class="w-8 h-8 rounded-lg object-cover bg-slate-800 shadow-md">
+                    <div id="menu-logo-placeholder" class="hidden w-8 h-8 bg-slate-800 border border-slate-600 rounded-lg flex items-center justify-center text-slate-400 text-base shadow-md"><i class="fa-solid fa-store"></i></div>
                     <div>
-                        <h1 id="menu-empresa-nome" class="font-bold text-white text-lg tracking-wide leading-tight truncate w-32">Carregando...</h1>
+                        <h1 id="menu-empresa-nome" class="font-bold text-white text-sm tracking-wide leading-tight">FC Gestão</h1>
                         <p class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Sistema Ativo</p>
                     </div>
                 </div>
@@ -564,34 +563,34 @@
                         <!-- Filtro de Período -->
                         <div class="relative">
                             <select id="filtro-periodo-fiscal" onchange="mudarPeriodoFiscal()" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl text-xs font-semibold outline-none focus:border-blue-500 cursor-pointer">
-                                <option value="este_mes" selected>📅 Este Mês</option>
-                                <option value="mes_passado">📅 Mês Passado</option>
-                                <option value="ultimos_30">📅 Últimos 30 dias</option>
-                                <option value="todos">📅 Todo o Histórico</option>
+                                <option value="este_mes" selected>ðŸ“… Este Mês</option>
+                                <option value="mes_passado">ðŸ“… Mês Passado</option>
+                                <option value="ultimos_30">ðŸ“… Últimos 30 dias</option>
+                                <option value="todos">ðŸ“… Todo o Histórico</option>
                             </select>
                         </div>
 
                         <!-- Filtro de Modelo -->
                         <div class="relative">
                             <select id="filtro-tipo-fiscal" onchange="filtrarNotasFiscais()" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl text-xs font-semibold outline-none focus:border-blue-500 cursor-pointer">
-                                <option value="TODOS">📄 Todos os Modelos</option>
-                                <option value="NFE">🔹 NF-e (Mod 55)</option>
-                                <option value="NFCE">🟢 NFC-e (Mod 65)</option>
-                                <option value="DEVOLUCAO">🟠 Devoluções / Estornos</option>
-                                <option value="NFSE">🟣 NFS-e (Serviço)</option>
+                                <option value="TODOS">ðŸ“„ Todos os Modelos</option>
+                                <option value="NFE">ðŸ”¹ NF-e (Mod 55)</option>
+                                <option value="NFCE">ðŸŸ¢ NFC-e (Mod 65)</option>
+                                <option value="DEVOLUCAO">ðŸŸ  Devoluções / Estornos</option>
+                                <option value="NFSE">ðŸŸ£ NFS-e (Serviço)</option>
                             </select>
                         </div>
 
                         <!-- Filtro de Status -->
                         <div class="relative">
                             <select id="filtro-status-fiscal" onchange="filtrarNotasFiscais()" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl text-xs font-semibold outline-none focus:border-blue-500 cursor-pointer">
-                                <option value="TODOS">⚡ Todos os Status</option>
-                                <option value="AUTORIZADO">✅ Autorizadas</option>
-                                <option value="DEVOLVIDO">↩️ Devolvidas / Estornadas</option>
-                                <option value="CONTINGENCIA">⚠️ Em Contingência</option>
-                                <option value="PROCESSANDO">⏳ Processando</option>
-                                <option value="CANCELADO">🚫 Canceladas</option>
-                                <option value="ERRO">❌ Com Rejeição/Erro</option>
+                                <option value="TODOS">âš¡ Todos os Status</option>
+                                <option value="AUTORIZADO">âœ… Autorizadas</option>
+                                <option value="DEVOLVIDO">â†©ï¸ Devolvidas / Estornadas</option>
+                                <option value="CONTINGENCIA">âš ï¸ Em Contingência</option>
+                                <option value="PROCESSANDO">â³ Processando</option>
+                                <option value="CANCELADO">ðŸš« Canceladas</option>
+                                <option value="ERRO">âŒ Com Rejeição/Erro</option>
                             </select>
                         </div>
                     </div>
@@ -608,7 +607,7 @@
                         </div>
                         <span class="text-[11px] font-medium text-slate-400 flex items-center gap-1.5">
                             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            Transmissão em tempo real — SEFAZ Goiás
+                            Transmissão em tempo real â€” SEFAZ Goiás
                         </span>
                     </div>
                     <!-- BARRA DE ROLAGEM SUPERIOR (SINCRONIZADA COM A TABELA) -->
@@ -764,7 +763,7 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- MODAL — DEVOLUÇÃO DE VENDA                -->
+    <!-- MODAL â€” DEVOLUÇÃO DE VENDA                -->
     <!-- ========================================== -->
     <div id="modal-devolucao-venda" class="fixed inset-0 bg-slate-900/80 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
@@ -782,7 +781,7 @@
             <div class="overflow-y-auto p-5 space-y-4 custom-scrollbar">
                 <p class="text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-xl p-3">
                     <i class="fa-solid fa-triangle-exclamation mr-1"></i>
-                    Será emitida uma <strong>NF-e de Entrada (finNFe=4 — Devolução)</strong> referenciando a NF-e original. Isso registra a entrada das mercadorias de volta no seu estoque fiscal.
+                    Será emitida uma <strong>NF-e de Entrada (finNFe=4 â€” Devolução)</strong> referenciando a NF-e original. Isso registra a entrada das mercadorias de volta no seu estoque fiscal.
                 </p>
                 <div>
                     <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Selecione os itens a devolver:</h3>
@@ -817,7 +816,7 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- MODAL — DEVOLUÇÃO DE COMPRA AO FORNECEDOR / INDÚSTRIA -->
+    <!-- MODAL â€” DEVOLUÇÃO DE COMPRA AO FORNECEDOR / INDÚSTRIA -->
     <!-- ========================================== -->
     <div id="modal-devolucao-compra" class="fixed inset-0 bg-slate-900/80 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[95vh] modal-inner-card border border-slate-200 dark:border-slate-700">
@@ -1022,7 +1021,7 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- MODAL — NOTA AVULSA COMPLETA              -->
+    <!-- MODAL â€” NOTA AVULSA COMPLETA              -->
     <!-- ========================================== -->
     <div id="modal-nota-avulsa" class="fixed inset-0 bg-slate-950/80 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
         <div class="modal-card-avulsa bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[95vh]">
@@ -1067,7 +1066,7 @@
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">CPF / CNPJ</label>
-                            <input id="avulsa-dest-doc" type="text" placeholder="000.000.000-00" maxlength="18" class="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                            <input id="avulsa-dest-doc" type="text" placeholder="000.000.000-00" maxlength="18" oninput="selecionarClienteAvulsa(this.value)" onblur="selecionarClienteAvulsa(this.value)" class="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
                         </div>
                         <div>
                             <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Nome / Razão Social</label>
@@ -1221,7 +1220,7 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- MODAL — EMISSÃO DE NFS-e (SERVIÇOS)       -->
+    <!-- MODAL â€” EMISSÃO DE NFS-e (SERVIÇOS)       -->
     <!-- ========================================== -->
     <div id="modal-emitir-nfse" class="fixed inset-0 bg-slate-900/80 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[95vh]">
@@ -1230,7 +1229,7 @@
                     <h2 class="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
                         <i class="fa-solid fa-screwdriver-wrench text-purple-500"></i> Emitir NFS-e (Nota Fiscal de Serviços)
                     </h2>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Competência Municipal — Padrão ABRASF / RPS Nacional</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Competência Municipal â€” Padrão ABRASF / RPS Nacional</p>
                 </div>
                 <button onclick="fecharModalNFSe()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
                     <i class="fa-solid fa-xmark text-lg"></i>
@@ -1340,12 +1339,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20261005090727"></script>
-    <script src="saas_licenca.js?v=20261005090727"></script>
-    <script src="../global.js?v=20261005090727"></script>
-    <script src="fc_cache.js?v=20261005090727"></script>
-    <script src="tabela_ncm.js?v=20261005090727"></script>
-    <script src="ncm_helper.js?v=20261005090727"></script>
-    <script src="fiscal.js?v=20261005090727"></script>
+    <script src="../sistema/config_banco.js?v=20261005171910"></script>
+    <script src="saas_licenca.js?v=20261005171910"></script>
+    <script src="../global.js?v=20261005171910"></script>
+    <script src="fc_cache.js?v=20261005171910"></script>
+    <script src="tabela_ncm.js?v=20261005171910"></script>
+    <script src="ncm_helper.js?v=20261005171910"></script>
+    <script src="fiscal.js?v=20261005171910"></script>
 </body>
 </html>
+

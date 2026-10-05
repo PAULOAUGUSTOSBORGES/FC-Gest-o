@@ -2,7 +2,7 @@
 <html lang="pt-BR" class="dark" data-theme="dark">
 <head>
     <meta charset="UTF-8">
-    <!-- Anti-FOUC: Previne flash branco ao alternar pÃ¡ginas no sistema -->
+    <!-- Anti-FOUC: Previne flash branco ao alternar páginas no sistema -->
     <script>
         (function() {
             const t = localStorage.getItem('fc_theme_sistema') || 'dark';
@@ -23,24 +23,24 @@
         html.light, html.light body, html[data-theme="light"], html[data-theme="light"] body { background-color: #f1f5f9; color-scheme: light; }
     </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- PWA ConfiguraÃ§Ãµes e Ãcones -->
+    <!-- PWA Configurações e Ícones -->
     <script>if (window.location.protocol.startsWith('http')) { const l = document.createElement('link'); l.rel = 'manifest'; l.href = '../manifest.json'; document.head.appendChild(l); }</script>
     <meta name="theme-color" content="#0f172a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="FC GestÃ£o">
+    <meta name="apple-mobile-web-app-title" content="FC Gestão">
     <link rel="apple-touch-icon" href="../icons/icon-apple-touch.png">
     <link rel="icon" type="image/png" href="../icons/favicon.png">
-    <title>FC GestÃ£o - HistÃ³rico Vendas/ServiÃ§os</title>
+    <title>FC Gestão - Histórico Vendas/Serviços</title>
         
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- CORRIGIDO: Removido o ?v=20260831113500 que estava quebrando o carregamento offline -->
-    <link rel="stylesheet" href="../style.css?v=20261005090727">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261005090727">
+    <link rel="stylesheet" href="../style.css?v=20261005171910">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261005171910">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="vendas">
 
@@ -53,11 +53,10 @@
         <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 w-64 bg-slate-900 text-slate-300 flex flex-col h-full shrink-0 shadow-2xl z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out no-print">
             <div class="p-5 flex items-center justify-between gap-3 border-b border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors" onclick="window.location.href='index.html'">
                 <div class="flex items-center gap-3 pointer-events-none">
-                    <img id="menu-logo" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="w-10 h-10 rounded-lg object-cover hidden bg-white dark:bg-slate-800 shadow-lg">
-                    <div id="menu-logo-placeholder" class="w-10 h-10 bg-slate-800 border border-slate-600 rounded-lg flex items-center justify-center text-slate-400 text-xl shadow-lg"><i class="fa-solid fa-store"></i></div>
-                    
+                    <img id="menu-logo" src="../icons/icon.svg" class="w-8 h-8 rounded-lg object-cover bg-slate-800 shadow-md">
+                    <div id="menu-logo-placeholder" class="hidden w-8 h-8 bg-slate-800 border border-slate-600 rounded-lg flex items-center justify-center text-slate-400 text-base shadow-md"><i class="fa-solid fa-store"></i></div>
                     <div>
-                        <h1 id="menu-empresa-nome" class="font-bold text-white text-lg tracking-wide leading-tight truncate w-32">Carregando...</h1>
+                        <h1 id="menu-empresa-nome" class="font-bold text-white text-sm tracking-wide leading-tight">FC Gestão</h1>
                         <p class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Sistema Ativo</p>
                     </div>
                 </div>
@@ -65,33 +64,33 @@
             </div>
             
             <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1 custom-scrollbar">
-                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-2 mb-1">VisÃ£o Geral</p>
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-2 mb-1">Visão Geral</p>
                 <a href="index.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="dashboard"><i class="fa-solid fa-chart-pie w-5 text-center"></i> Dashboard</a>
                 
-                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">OperaÃ§Ã£o</p>
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Operação</p>
                 <a href="pdv.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="pdv"><i class="fa-solid fa-cash-register w-5 text-center"></i> Frente de Caixa (PDV)</a>
-                <a href="vendas_operacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_operacao"><i class="fa-solid fa-receipt w-5 text-center"></i> HistÃ³rico Vendas/ServiÃ§os</a>
-                <a href="orcamentos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="orcamentos"><i class="fa-solid fa-file-invoice w-5 text-center"></i> Meus OrÃ§amentos</a>
+                <a href="vendas_operacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_operacao"><i class="fa-solid fa-receipt w-5 text-center"></i> Histórico Vendas/Serviços</a>
+                <a href="orcamentos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="orcamentos"><i class="fa-solid fa-file-invoice w-5 text-center"></i> Meus Orçamentos</a>
                 <a href="fiscal.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="fiscal"><i class="fa-solid fa-file-invoice text-emerald-400 w-5 text-center"></i> Emissor Fiscal (NF-e)</a>
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Cadastros</p>
-                <a href="produtos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="produtos"><i class="fa-solid fa-boxes-stacked w-5 text-center"></i> Produtos & ServiÃ§os</a>
+                <a href="produtos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="produtos"><i class="fa-solid fa-boxes-stacked w-5 text-center"></i> Produtos & Serviços</a>
 
                 <a href="clientes.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="clientes"><i class="fa-solid fa-users w-5 text-center"></i> Clientes</a>
                 <a href="fornecedores.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="fornecedores"><i class="fa-solid fa-truck w-5 text-center"></i> Fornecedores</a>
-                <a href="funcionarios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="funcionarios"><i class="fa-solid fa-user-tie w-5 text-center"></i> FuncionÃ¡rios / Vendedores</a>
+                <a href="funcionarios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="funcionarios"><i class="fa-solid fa-user-tie w-5 text-center"></i> Funcionários / Vendedores</a>
                 
-                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">GestÃ£o</p>
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
                 <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
-                <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa FÃ­sico</a>
+                <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
                 <a href="caixa_loja.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa_loja"><i class="fa-solid fa-chart-bar w-5 text-center"></i> Caixa da Loja</a>
                 <a href="compras.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & NF-e XML</a>
-                <a href="relatorios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> RelatÃ³rios & DRE</a>
+                <a href="relatorios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
                 <a href="agenda.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="agenda"><i class="fa-regular fa-calendar w-5 text-center"></i> Agenda</a>
                 <a href="marketing.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="marketing"><i class="fa-solid fa-bullhorn w-5 text-center"></i> Marketing & Lembretes</a>
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Sistema</p>
-                <a href="sistema.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="config"><i class="fa-solid fa-gear w-5 text-center"></i> ConfiguraÃ§Ãµes</a>
+                <a href="sistema.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="config"><i class="fa-solid fa-gear w-5 text-center"></i> Configurações</a>
                 <a href="suporte.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-sky-400" data-target="suporte"><i class="fa-solid fa-headset w-5 text-center text-sky-400"></i> Suporte & Ajuda</a>
             </nav>
             <div class="p-4 border-t border-slate-800">
@@ -99,12 +98,12 @@
             </div>
         </aside>
 
-        <!-- ÃREA DE CONTEÃšDO PRINCIPAL -->
+        <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
             <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
                 <div class="flex items-center gap-3">
                     <button onclick="toggleMenu()" class="md:hidden text-slate-600 dark:text-slate-300 hover:text-blue-600 p-2"><i class="fa-solid fa-bars text-xl"></i></button>
-                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate" id="header-title">HistÃ³rico Vendas/ServiÃ§os</h2>
+                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate" id="header-title">Histórico Vendas/Serviços</h2>
                 </div>
                 <div class="flex items-center gap-2 md:gap-4">
                     <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs shrink-0">PA</div>
@@ -119,19 +118,19 @@
                         <div class="flex flex-wrap items-center justify-between gap-3">
                             <!-- Filtros e Busca -->
                             <div class="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
-                                <!-- NOVO FILTRO DE TIPO (VENDA / SERVIÃ‡O) -->
+                                <!-- NOVO FILTRO DE TIPO (VENDA / SERVIÇO) -->
                                 <select id="filtro-vendas-tipo" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm rounded-lg px-3 py-2 outline-none focus:border-blue-500 dark:text-white" onchange="renderVendas()">
-                                    <option value="TODOS" selected>Vendas e ServiÃ§os</option>
+                                    <option value="TODOS" selected>Vendas e Serviços</option>
                                     <option value="VENDAS">Apenas Vendas</option>
-                                    <option value="SERVIÃ‡OS">Apenas ServiÃ§os</option>
+                                    <option value="SERVIÇOS">Apenas Serviços</option>
                                 </select>
 
                                 <select id="filtro-vendas-pgto" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm rounded-lg px-3 py-2 outline-none focus:border-blue-500 dark:text-white" onchange="renderVendas()">
                                     <option value="TODOS">Todos os Pagamentos</option>
                                     <option value="Dinheiro">Dinheiro</option>
                                     <option value="PIX">PIX</option>
-                                    <option value="CartÃ£o CrÃ©dito">CartÃ£o de CrÃ©dito</option>
-                                    <option value="CartÃ£o DÃ©bito">CartÃ£o de DÃ©bito</option>
+                                    <option value="Cartão Crédito">Cartão de Crédito</option>
+                                    <option value="Cartão Débito">Cartão de Débito</option>
                                     <option value="Boleto">Boleto</option>
                                     <option value="Fiado">Fiado</option>
                                 </select>
@@ -145,12 +144,12 @@
                                 
                                 <div class="flex items-center gap-1.5">
                                     <input type="date" id="filtro-vendas-ini" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm rounded-lg px-2.5 py-2 outline-none focus:border-blue-500 dark:text-white" onchange="renderVendas()" title="Data Inicial">
-                                    <span class="text-slate-400 text-xs">atÃ©</span>
+                                    <span class="text-slate-400 text-xs">até</span>
                                     <input type="date" id="filtro-vendas-fim" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm rounded-lg px-2.5 py-2 outline-none focus:border-blue-500 dark:text-white" onchange="renderVendas()" title="Data Final">
                                 </div>
                             </div>
                             
-                            <!-- AÃ§Ãµes de ExportaÃ§Ã£o e ImpressÃ£o -->
+                            <!-- Ações de Exportação e Impressão -->
                             <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
                                 <div class="inline-flex items-center bg-slate-100 dark:bg-slate-700/60 p-1 rounded-lg border border-slate-200 dark:border-slate-600 shadow-xs">
                                     <span class="text-[11px] font-bold text-slate-500 dark:text-slate-300 px-2 flex items-center gap-1 border-r border-slate-200 dark:border-slate-600">
@@ -162,7 +161,7 @@
                                     <button type="button" onclick="puxarRelatorio('vendas', 'word')" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors" title="Exportar Vendas para Word">
                                         <i class="fa-solid fa-file-word text-blue-600 dark:text-blue-400"></i> Word
                                     </button>
-                                    <button type="button" onclick="puxarRelatorio('vendas', 'pdf')" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors" title="Gerar RelatÃ³rio de Vendas em PDF">
+                                    <button type="button" onclick="puxarRelatorio('vendas', 'pdf')" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors" title="Gerar Relatório de Vendas em PDF">
                                         <i class="fa-solid fa-file-pdf text-rose-600 dark:text-rose-400"></i> PDF
                                     </button>
                                 </div>
@@ -174,7 +173,7 @@
                     </div>
                     <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden" id="print-area-vendas">
                         <div class="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 print:hidden">
-                            <h3 class="font-bold text-slate-700 dark:text-slate-200">LanÃ§amentos de Vendas e ServiÃ§os</h3>
+                            <h3 class="font-bold text-slate-700 dark:text-slate-200">Lançamentos de Vendas e Serviços</h3>
                         </div>
                         <div class="overflow-x-auto custom-scrollbar">
                             <table class="w-full text-left min-w-[700px]" id="tabela-vendas-export">
@@ -185,7 +184,7 @@
                                         <th class="p-3">Cliente</th>
                                         <th class="p-3">Pagamentos</th>
                                         <th class="p-3 text-right">Valor Bruto</th>
-                                        <th class="p-3 text-center w-28 print:hidden">AÃ§Ãµes</th>
+                                        <th class="p-3 text-center w-28 print:hidden">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tabela-vendas-body" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
@@ -198,7 +197,7 @@
         </main>
     </div>
 
-    <!-- OPÃ‡Ã•ES DE RECIBO E CONTRATO -->
+    <!-- OPÇÕES DE RECIBO E CONTRATO -->
     <div id="modal-opcoes-recibo" class="fixed inset-0 bg-slate-900/80 z-[200] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden max-h-[92vh]">
             <div id="modal-recibo-header" class="bg-gradient-to-r from-emerald-600 to-teal-600 p-4 text-white text-center shrink-0 shadow-sm">
@@ -210,15 +209,15 @@
             <!-- CORPO COM ROLAGEM PRINCIPAL -->
             <div class="p-4 bg-slate-50 dark:bg-slate-900 flex flex-col gap-3 flex-1 overflow-y-auto custom-scrollbar">
                 
-                <!-- [RESERVADO PARA FUTURA EMISSÃƒO FISCAL] -->
+                <!-- [RESERVADO PARA FUTURA EMISSÃO FISCAL] -->
                 <div id="fiscal-container" class="hidden">
                     <div id="fiscal-status-container" class="hidden mb-2 text-center p-3 rounded-lg border">
-                        <!-- SerÃ¡ preenchido via JS (loader, sucesso, erro) -->
+                        <!-- Será preenchido via JS (loader, sucesso, erro) -->
                     </div>
 
                     <div class="flex items-center gap-2 mb-2">
                         <span class="text-[10px] font-black tracking-wider text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1.5">
-                            <i class="fa-solid fa-receipt text-emerald-500"></i> EmissÃ£o Fiscal (SEFAZ)
+                            <i class="fa-solid fa-receipt text-emerald-500"></i> Emissão Fiscal (SEFAZ)
                         </span>
                         <div class="flex-1 h-px bg-slate-200 dark:bg-slate-700/60"></div>
                     </div>
@@ -234,9 +233,9 @@
                         </button>
                     </div>
                 </div>
-                <!-- [/RESERVADO PARA FUTURA EMISSÃƒO FISCAL] -->
+                <!-- [/RESERVADO PARA FUTURA EMISSÃO FISCAL] -->
 
-                <!-- BOTÃ•ES DE IMPRESSÃƒO / RECIBO -->
+                <!-- BOTÕES DE IMPRESSÃO / RECIBO -->
                 <div>
                     <div class="flex items-center gap-2 mb-2">
                         <span class="text-[10px] font-black tracking-wider text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1.5">
@@ -290,7 +289,7 @@
                                 </label>
                                 <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 cursor-pointer hover:border-amber-500 has-[:checked]:border-amber-500 has-[:checked]:bg-amber-50 dark:has-[:checked]:bg-amber-900/30 transition-colors">
                                     <input type="radio" name="pdv-lembrete-tipo" value="COBRANCA" class="text-amber-600 focus:ring-amber-500">
-                                    <span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5"><i class="fa-solid fa-hand-holding-dollar text-amber-500"></i> CobranÃ§a</span>
+                                    <span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5"><i class="fa-solid fa-hand-holding-dollar text-amber-500"></i> Cobrança</span>
                                 </label>
                             </div>
                         </div>
@@ -302,18 +301,18 @@
                                 <input type="date" id="pdv-lembrete-data" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs font-bold outline-none focus:border-blue-500 dark:text-white">
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">HorÃ¡rio (opcional)</label>
+                                <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Horário (opcional)</label>
                                 <input type="time" id="pdv-lembrete-hora" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs font-bold outline-none focus:border-blue-500 dark:text-white">
                             </div>
                         </div>
 
-                        <!-- OBSERVAÃ‡ÃƒO ADICIONAL -->
+                        <!-- OBSERVAÇÃO ADICIONAL -->
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">ObservaÃ§Ã£o do Lembrete</label>
-                            <textarea id="pdv-lembrete-obs" rows="2" placeholder="Ex: Entregar Ã  tarde, cobrar restante via PIX..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white resize-none"></textarea>
+                            <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Observação do Lembrete</label>
+                            <textarea id="pdv-lembrete-obs" rows="2" placeholder="Ex: Entregar à tarde, cobrar restante via PIX..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white resize-none"></textarea>
                         </div>
 
-                        <!-- BOTÃƒO AGENDAR -->
+                        <!-- BOTÃO AGENDAR -->
                         <button type="button" id="btn-salvar-lembrete-pdv" onclick="salvarLembretePDV()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-3 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors shadow-sm">
                             <i class="fa-solid fa-calendar-plus"></i> Salvar Lembrete na Agenda
                         </button>
@@ -321,7 +320,7 @@
                 </details>
             </div>
 
-            <!-- RODAPÃ‰ FIXO COM FECHAR JANELA (SEMPRE VISÃVEL) -->
+            <!-- RODAPÉ FIXO COM FECHAR JANELA (SEMPRE VISÍVEL) -->
             <div class="p-3 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 shrink-0">
                 <button onclick="fecharModalOpcoesRecibo()" class="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 p-2.5 rounded-xl font-bold transition-colors text-xs sm:text-sm flex items-center justify-center gap-1.5 border border-slate-300 dark:border-slate-600">
                     <i class="fa-solid fa-xmark"></i> Fechar Janela
@@ -403,11 +402,11 @@
         </div>
     </div>
 
-    <!-- CONFIRMAÃ‡ÃƒO DO SISTEMA -->
+    <!-- CONFIRMAÇÃO DO SISTEMA -->
     <div id="modal-confirmacao" class="fixed inset-0 bg-slate-900/80 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden text-center p-6">
             <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
-            <h3 class="font-bold text-xl text-slate-800 dark:text-slate-100 mb-2" id="modal-confirm-title">AtenÃ§Ã£o!</h3>
+            <h3 class="font-bold text-xl text-slate-800 dark:text-slate-100 mb-2" id="modal-confirm-title">Atenção!</h3>
             <p class="text-slate-500 dark:text-slate-400 text-sm mb-6 font-medium" id="modal-confirm-msg">Deseja continuar?</p>
             <div class="flex gap-3">
                 <button onclick="fecharModalConfirmacao()" class="flex-1 px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 transition-colors">Cancelar</button>
@@ -424,27 +423,27 @@
                 <button onclick="fecharModalCliente()" class="text-blue-200 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl md:text-2xl"></i></button>
             </div>
             <div class="flex overflow-x-auto border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 md:px-6 pt-4 shrink-0 custom-scrollbar">
-                <button onclick="abaModal('cli', 'dados')" id="cli-btn-dados" class="px-4 md:px-5 py-2 border-b-2 border-blue-600 font-bold text-blue-600 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Dados & EndereÃ§o</button>
-                <button onclick="abaModal('cli', 'crm')" id="cli-btn-crm" class="px-4 md:px-5 py-2 border-b-2 border-transparent font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-200 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">CRM & HistÃ³rico</button>
+                <button onclick="abaModal('cli', 'dados')" id="cli-btn-dados" class="px-4 md:px-5 py-2 border-b-2 border-blue-600 font-bold text-blue-600 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Dados & Endereço</button>
+                <button onclick="abaModal('cli', 'crm')" id="cli-btn-crm" class="px-4 md:px-5 py-2 border-b-2 border-transparent font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-200 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">CRM & Histórico</button>
             </div>
             <div class="p-4 md:p-6 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900 custom-scrollbar">
                 <input type="hidden" id="cli-id">
                 <div id="cli-aba-dados" class="aba-conteudo active">
                     <div class="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                            <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Nome Completo / RazÃ£o Social *</label><input type="text" id="cli-nome" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
+                            <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Nome Completo / Razão Social *</label><input type="text" id="cli-nome" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                             <div>
                                 <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">CPF ou CNPJ</label>
                                 <div class="flex gap-2"><input type="text" id="cli-doc" oninput="formatarEBuscarDoc(this, 'cli')" maxlength="18" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"><button onclick="buscarCNPJ('cli')" class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 md:px-4 rounded-lg font-bold transition-colors"><i class="fa-solid fa-magnifying-glass"></i></button></div>
                             </div>
                             <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">RG / Insc. Estadual</label><input type="text" id="cli-rg" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
-                            <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Nascimento / FundaÃ§Ã£o</label><input type="date" id="cli-nasc" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
+                            <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Nascimento / Fundação</label><input type="date" id="cli-nasc" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                             <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">WhatsApp / Celular</label><input type="text" id="cli-wpp" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                             <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Telefone Fixo</label><input type="text" id="cli-fixo" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                             <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">E-mail</label><input type="email" id="cli-email" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                         </div>
                         <div class="border-t border-slate-100 dark:border-slate-700 pt-4 mt-6">
-                            <h4 class="font-bold text-slate-700 dark:text-slate-200 text-sm mb-3 flex items-center gap-2"><i class="fa-solid fa-location-dot text-blue-500"></i> EndereÃ§o</h4>
+                            <h4 class="font-bold text-slate-700 dark:text-slate-200 text-sm mb-3 flex items-center gap-2"><i class="fa-solid fa-location-dot text-blue-500"></i> Endereço</h4>
                             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <div><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">CEP</label><input type="text" id="cli-cep" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" onblur="buscarCEP('cli')"></div>
                                 <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Rua / Logradouro</label><input type="text" id="cli-rua" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
@@ -452,18 +451,18 @@
                                 <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Complemento</label><input type="text" id="cli-complemento" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                                 <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Bairro</label><input type="text" id="cli-bairro" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                                 <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Cidade / UF</label><input type="text" id="cli-cidade" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
-                                <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">CÃ³d. IBGE</label><input type="text" id="cli-ibge" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
+                                <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Cód. IBGE</label><input type="text" id="cli-ibge" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2 md:p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></div>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div id="cli-aba-crm" class="aba-conteudo hidden space-y-4">
                     <div class="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                        <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">AnotaÃ§Ãµes / CRM</label>
+                        <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Anotações / CRM</label>
                         <textarea id="cli-obs" rows="3" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white"></textarea>
                     </div>
                     <div class="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                        <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm border-b pb-2 mb-4">HistÃ³rico de Compras</h4>
+                        <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm border-b pb-2 mb-4">Histórico de Compras</h4>
                         <div class="overflow-y-auto max-h-48 border border-slate-100 dark:border-slate-700 rounded-lg custom-scrollbar">
                             <table class="w-full text-left text-xs">
                                 <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase font-bold sticky top-0"><tr><th class="p-2 md:p-3">Data</th><th class="p-2 md:p-3">Ref</th><th class="p-2 md:p-3">Pagamento</th><th class="p-2 md:p-3 text-right">Total</th></tr></thead>
@@ -480,21 +479,21 @@
         </div>
     </div>
 
-    <!-- CADASTRO RÃPIDO DE PRODUTO/SERVIÃ‡O PELO PDV -->
+    <!-- CADASTRO RÁPIDO DE PRODUTO/SERVIÇO PELO PDV -->
     <div id="modal-produto" class="fixed inset-0 bg-slate-900/60 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col overflow-hidden max-h-[95vh]">
             <div class="bg-blue-600 p-4 md:p-5 text-white flex justify-between items-center shrink-0">
-                <h3 class="font-bold text-base md:text-lg flex items-center gap-2"><i class="fa-solid fa-cube"></i> <span id="modal-produto-title">Cadastrar RÃ¡pido</span></h3>
+                <h3 class="font-bold text-base md:text-lg flex items-center gap-2"><i class="fa-solid fa-cube"></i> <span id="modal-produto-title">Cadastrar Rápido</span></h3>
                 <button onclick="fecharModalProduto()" class="text-blue-200 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl md:text-2xl"></i></button>
             </div>
             
             <div class="flex overflow-x-auto border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 md:px-6 pt-4 shrink-0 custom-scrollbar">
-                <button onclick="abaModal('prod', 'dados')" id="prod-btn-dados" class="px-4 md:px-5 py-2 border-b-2 border-blue-600 font-bold text-blue-600 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Dados BÃ¡sicos</button>
+                <button onclick="abaModal('prod', 'dados')" id="prod-btn-dados" class="px-4 md:px-5 py-2 border-b-2 border-blue-600 font-bold text-blue-600 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Dados Básicos</button>
                 <button onclick="abaModal('prod', 'fiscal')" id="prod-btn-fiscal" class="px-4 md:px-5 py-2 border-b-2 border-transparent font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-200 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Fiscal & Impostos</button>
             </div>
 
             <div class="p-4 md:p-6 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900 custom-scrollbar">
-                <!-- NOVO: OPÃ‡ÃƒO DE VÃNCULO MANUAL (MOSTRADA APENAS NO XML) -->
+                <!-- NOVO: OPÇÃO DE VÍNCULO MANUAL (MOSTRADA APENAS NO XML) -->
                 <div id="div-acao-vinculo-xml" class="hidden mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-lg">
                     <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Vincular ou Cadastrar?</label>
                     <select id="prod-acao-vinculo" onchange="alternarAcaoVinculoXML()" class="w-full bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 p-2 rounded text-sm outline-none mb-2 font-bold text-slate-700 dark:text-slate-200">
@@ -523,11 +522,11 @@
                     <div class="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Nome do Produto ou ServiÃ§o *</label>
+                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Nome do Produto ou Serviço *</label>
                             <input type="text" id="prod-nome" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white">
                         </div>
                         <div>
-                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">CÃ³d de Barras (EAN)</label>
+                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Cód de Barras (EAN)</label>
                             <input type="text" id="prod-ean" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white">
                         </div>
                         <div>
@@ -535,7 +534,7 @@
                             <input type="text" id="prod-marca" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors dark:text-white">
                         </div>
                         <div>
-                            <label class="text-xs font-bold text-emerald-700 mb-1.5 block">PreÃ§o Cobrado (R$)</label>
+                            <label class="text-xs font-bold text-emerald-700 mb-1.5 block">Preço Cobrado (R$)</label>
                             <input type="text" data-mask="money" inputmode="numeric"  id="prod-preco"  class="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 p-2.5 rounded-lg text-sm font-bold outline-none focus:border-emerald-500 transition-all dark:bg-slate-800 dark:border-slate-600 dark:text-white">
                         </div>
                         <div>
@@ -543,7 +542,7 @@
                             <input type="text" data-mask="money" inputmode="numeric"  id="prod-custo"  class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" value="0">
                         </div>
                         <div>
-                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Estoque Inicial (Zero se for ServiÃ§o)</label>
+                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Estoque Inicial (Zero se for Serviço)</label>
                             <input type="number" id="prod-estoque" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" value="0">
                         </div>
                     </div>
@@ -554,7 +553,7 @@
                             <span id="texto-sem-foto">Sem Foto</span>
                         </div>
                         <div class="flex-1">
-                            <label class="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2 block">Foto (PC ou CÃ¢mera)</label>
+                            <label class="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2 block">Foto (PC ou Câmera)</label>
                             <input type="file" id="prod-foto-file" accept="image/*" capture="environment" onchange="processarFoto(event)" class="text-xs text-blue-600 file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 dark:file:bg-slate-700 dark:file:text-blue-400 dark:text-white">
                             <input type="hidden" id="prod-foto-base64">
                             <input type="hidden" id="prod-margem" value="0">
@@ -567,11 +566,11 @@
                     <div class="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">NCM (8 dÃ­gitos)</label>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">NCM (8 dígitos)</label>
                                 <input type="text" id="prod-ncm" placeholder="Ex: 85444200" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
                             </div>
                             <div>
-                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">CFOP (PadrÃ£o SaÃ­da)</label>
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">CFOP (Padrão Saída)</label>
                                 <input type="text" id="prod-cfop" placeholder="Ex: 5102" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
                             </div>
                             <div>
@@ -582,7 +581,7 @@
                                 <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Origem da Mercadoria</label>
                                 <select id="prod-origem" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white">
                                     <option value="0">0 - Nacional</option>
-                                    <option value="1">1 - Estrangeira (ImportaÃ§Ã£o direta)</option>
+                                    <option value="1">1 - Estrangeira (Importação direta)</option>
                                     <option value="2">2 - Estrangeira (Mercado interno)</option>
                                 </select>
                             </div>
@@ -621,9 +620,9 @@
                     </div>
                     <div>
                         <h3 class="font-bold text-base md:text-lg text-white leading-tight flex items-center gap-2">
-                            PersonalizaÃ§Ã£o do MÃ³vel
+                            Personalização do Móvel
                         </h3>
-                        <p class="text-xs text-amber-100 mt-0.5 font-medium">Madeira, acabamento, tecido, medidas e observaÃ§Ãµes exclusivas</p>
+                        <p class="text-xs text-amber-100 mt-0.5 font-medium">Madeira, acabamento, tecido, medidas e observações exclusivas</p>
                     </div>
                 </div>
                 <button type="button" onclick="fecharModalPersonalizacao()" class="text-amber-100 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors text-2xl leading-none">
@@ -633,13 +632,13 @@
 
             <!-- Corpo com scroll suave -->
             <div class="p-4 sm:p-6 overflow-y-auto space-y-4 text-slate-700 dark:text-slate-200 text-xs custom-scrollbar">
-                <!-- Card do MÃ³vel Selecionado -->
+                <!-- Card do Móvel Selecionado -->
                 <div class="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3.5 rounded-xl flex items-center gap-3.5">
                     <div id="modal-pers-prod-foto" class="w-12 h-12 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 overflow-hidden text-xl">
                         <i class="fa-solid fa-couch"></i>
                     </div>
                     <div class="min-w-0 flex-1">
-                        <span class="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">MÃ³vel Selecionado</span>
+                        <span class="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">Móvel Selecionado</span>
                         <h4 id="modal-pers-prod-nome" class="font-bold text-sm sm:text-base text-slate-800 dark:text-slate-100 truncate mt-0.5">Nome do Produto</h4>
                     </div>
                 </div>
@@ -662,7 +661,7 @@
                                 </button>
                             </div>
                             <select id="modal-pers-madeira" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white">
-                                <option value="">(PadrÃ£o / NÃ£o se aplica)</option>
+                                <option value="">(Padrão / Não se aplica)</option>
                             </select>
                         </div>
                         <div class="flex flex-col justify-end">
@@ -673,7 +672,7 @@
                                 </button>
                             </div>
                             <select id="modal-pers-cor-madeira" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white">
-                                <option value="">(PadrÃ£o / NÃ£o se aplica)</option>
+                                <option value="">(Padrão / Não se aplica)</option>
                             </select>
                         </div>
                     </div>
@@ -695,7 +694,7 @@
                                 </button>
                             </div>
                             <select id="modal-pers-estofado" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white">
-                                <option value="">(PadrÃ£o / NÃ£o se aplica)</option>
+                                <option value="">(Padrão / Não se aplica)</option>
                             </select>
                         </div>
                         <div class="flex flex-col justify-end">
@@ -706,17 +705,17 @@
                                 </button>
                             </div>
                             <select id="modal-pers-cor-estofado" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white">
-                                <option value="">(PadrÃ£o / NÃ£o se aplica)</option>
+                                <option value="">(Padrão / Não se aplica)</option>
                             </select>
                         </div>
                     </div>
                 </div>
 
-                <!-- 3. DIMENSÃ•ES SOB MEDIDA -->
+                <!-- 3. DIMENSÕES SOB MEDIDA -->
                 <div class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
                     <div class="flex items-center justify-between pb-2 mb-3 border-b border-slate-200 dark:border-slate-700">
                         <span class="font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                            <i class="fa-solid fa-ruler-combined text-purple-500"></i> DimensÃµes / Sob Medida <span class="text-[10px] font-normal text-slate-400 capitalize">(Opcional)</span>
+                            <i class="fa-solid fa-ruler-combined text-purple-500"></i> Dimensões / Sob Medida <span class="text-[10px] font-normal text-slate-400 capitalize">(Opcional)</span>
                         </span>
                     </div>
                     <div class="grid grid-cols-3 gap-3">
@@ -735,23 +734,23 @@
                     </div>
                 </div>
 
-                <!-- 4. OBSERVAÃ‡Ã•ES ESPECIAIS DO MÃ“VEL -->
+                <!-- 4. OBSERVAÇÕES ESPECIAIS DO MÓVEL -->
                 <div class="bg-amber-50/40 dark:bg-amber-950/20 p-4 rounded-xl border border-amber-300/60 dark:border-amber-800/60">
                     <div class="flex items-center justify-between mb-2">
                         <label class="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5">
-                            <i class="fa-solid fa-comment-dots text-amber-600"></i> ObservaÃ§Ãµes Especiais do MÃ³vel (AlÃ©m da Obs Geral)
+                            <i class="fa-solid fa-comment-dots text-amber-600"></i> Observações Especiais do Móvel (Além da Obs Geral)
                         </label>
                         <span class="text-[10px] text-amber-700 dark:text-amber-400 font-bold bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded border border-amber-300/50">Impresso no Pedido & Contrato</span>
                     </div>
-                    <textarea id="modal-pers-obs" rows="3" placeholder="Ex: Detalhes de costura, modelo dos pÃ©s em ferro preto, lado do braÃ§o, densidade de espuma, cuidados especiais..." class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white resize-none shadow-inner"></textarea>
-                    <p class="text-[10px] text-slate-400 mt-1">Esta observaÃ§Ã£o ficarÃ¡ vinculada aos detalhes do mÃ³vel e sairÃ¡ no comprovante, pedido e contrato.</p>
+                    <textarea id="modal-pers-obs" rows="3" placeholder="Ex: Detalhes de costura, modelo dos pés em ferro preto, lado do braço, densidade de espuma, cuidados especiais..." class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white resize-none shadow-inner"></textarea>
+                    <p class="text-[10px] text-slate-400 mt-1">Esta observação ficará vinculada aos detalhes do móvel e sairá no comprovante, pedido e contrato.</p>
                 </div>
             </div>
 
             <!-- Rodape -->
             <div class="bg-slate-100 dark:bg-slate-900 p-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 shrink-0 rounded-b-2xl">
                 <button type="button" onclick="removerPersonalizacaoItem()" class="text-xs font-bold text-red-600 hover:text-red-700 dark:text-red-400 flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 transition">
-                    <i class="fa-solid fa-trash-can"></i> Limpar PersonalizaÃ§Ã£o
+                    <i class="fa-solid fa-trash-can"></i> Limpar Personalização
                 </button>
                 <div class="flex items-center gap-2.5">
                     <button type="button" onclick="fecharModalPersonalizacao()" class="px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition text-xs shadow-sm">Cancelar</button>
@@ -772,8 +771,8 @@
                         <i class="fa-solid fa-sliders text-lg"></i>
                     </div>
                     <div>
-                        <h3 class="font-bold text-base leading-tight">OpÃ§Ãµes de PersonalizaÃ§Ã£o da Loja</h3>
-                        <p class="text-xs text-slate-400">Cadastre e remova opÃ§Ãµes que aparecem nas personalizaÃ§Ãµes dos mÃ³veis</p>
+                        <h3 class="font-bold text-base leading-tight">Opções de Personalização da Loja</h3>
+                        <p class="text-xs text-slate-400">Cadastre e remova opções que aparecem nas personalizações dos móveis</p>
                     </div>
                 </div>
                 <button type="button" onclick="fecharModalOpcoesPersonalizadas()" class="text-slate-400 hover:text-white p-1 transition-colors">
@@ -812,7 +811,7 @@
                 <!-- Lista de Opcoes Cadastradas -->
                 <div>
                     <div class="flex items-center justify-between mb-2">
-                        <span class="font-bold text-slate-700 dark:text-slate-300">OpÃ§Ãµes DisponÃ­veis:</span>
+                        <span class="font-bold text-slate-700 dark:text-slate-300">Opções Disponíveis:</span>
                         <span id="contador-opcoes-pers" class="text-[11px] text-slate-500 font-semibold">0 cadastradas</span>
                     </div>
                     <div id="lista-opcoes-pers-tags" class="flex flex-wrap gap-2 p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700/80 min-h-[100px] items-start content-start">
@@ -822,7 +821,7 @@
             </div>
 
             <div class="p-3.5 bg-slate-100 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-700 flex justify-end shrink-0 rounded-b-2xl">
-                <button type="button" onclick="fecharModalOpcoesPersonalizadas()" class="px-5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-white hover:bg-slate-700 transition">ConcluÃ­do</button>
+                <button type="button" onclick="fecharModalOpcoesPersonalizadas()" class="px-5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-white hover:bg-slate-700 transition">Concluído</button>
             </div>
         </div>
     </div>
@@ -832,15 +831,16 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
     
-    <script src="../sistema/config_banco.js?v=20261005090727"></script>
-    <script src="saas_licenca.js?v=20261005090727"></script>
-    <script src="../global.js?v=20261005090727"></script>
-    <script src="fc_cache.js?v=20261005090727"></script>
-    <script src="tabela_ncm.js?v=20261005090727"></script>
-    <script src="ncm_helper.js?v=20261005090727"></script>
-    <script src="vendas_operacao.js?v=20261005090727"></script>
+    <script src="../sistema/config_banco.js?v=20261005171910"></script>
+    <script src="saas_licenca.js?v=20261005171910"></script>
+    <script src="../global.js?v=20261005171910"></script>
+    <script src="fc_cache.js?v=20261005171910"></script>
+    <script src="tabela_ncm.js?v=20261005171910"></script>
+    <script src="ncm_helper.js?v=20261005171910"></script>
+    <script src="vendas_operacao.js?v=20261005171910"></script>
 </body>
 </html>
+
 
 
 

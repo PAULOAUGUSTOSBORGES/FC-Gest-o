@@ -29,14 +29,15 @@ function criarAgenteMtls(pfxBase64, senha = '') {
  * @param {string|number} idLote Número identificador do lote (ex: 1)
  * @returns {Promise<string>} Resposta XML pura da SEFAZ
  */
-async function transmitirLoteSefaz(urlAutorizacao, xmlAssinado, pfxBase64, senha, idLote = '1') {
+async function transmitirLoteSefaz(urlAutorizacao, xmlAssinado, pfxBase64, senha, idLote = null) {
     const agente = criarAgenteMtls(pfxBase64, senha);
 
     // Remove qualquer declaração <?xml ... ?> interna para que o XML do lote SOAP seja 100% válido
     const xmlNFeLimpo = String(xmlAssinado || '').replace(/<\?xml.*?\?>/gi, '').trim();
+    const loteId = String(idLote && idLote !== '1' ? idLote : Date.now()).slice(-15);
 
     // Envelope SOAP 1.2 oficial do MOC 4.00 com indSinc=1 (Processamento Síncrono Imediato)
-    const envelopeSoap = `<?xml version="1.0" encoding="utf-8"?><soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope"><soap12:Body><nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4"><enviNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><idLote>${idLote}</idLote><indSinc>1</indSinc>${xmlNFeLimpo}</enviNFe></nfeDadosMsg></soap12:Body></soap12:Envelope>`;
+    const envelopeSoap = `<?xml version="1.0" encoding="utf-8"?><soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope"><soap12:Body><nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4"><enviNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><idLote>${loteId}</idLote><indSinc>1</indSinc>${xmlNFeLimpo}</enviNFe></nfeDadosMsg></soap12:Body></soap12:Envelope>`;
 
     try {
         const soapActionLote = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4/nfeAutorizacaoLote';
@@ -65,12 +66,13 @@ async function transmitirLoteSefaz(urlAutorizacao, xmlAssinado, pfxBase64, senha
  * @param {string} pfxBase64 Certificado em Base64
  * @param {string} senha Senha do certificado
  */
-async function transmitirEvento(urlEvento, eventoAssinadoXml, pfxBase64, senha, idLote = '1') {
+async function transmitirEvento(urlEvento, eventoAssinadoXml, pfxBase64, senha, idLote = null) {
     const agente = criarAgenteMtls(pfxBase64, senha);
 
     const eventoLimpo = String(eventoAssinadoXml || '').replace(/<\?xml.*?\?>/gi, '').trim();
+    const loteId = String(idLote && idLote !== '1' ? idLote : Date.now()).slice(-15);
 
-    const envelopeSoap = `<?xml version="1.0" encoding="utf-8"?><soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope"><soap12:Body><nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4"><envEvento xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00"><idLote>${idLote}</idLote>${eventoLimpo}</envEvento></nfeDadosMsg></soap12:Body></soap12:Envelope>`;
+    const envelopeSoap = `<?xml version="1.0" encoding="utf-8"?><soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope"><soap12:Body><nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4"><envEvento xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00"><idLote>${loteId}</idLote>${eventoLimpo}</envEvento></nfeDadosMsg></soap12:Body></soap12:Envelope>`;
 
     try {
         const soapActionEvento = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4/nfeRecepcaoEvento';
@@ -92,8 +94,42 @@ async function transmitirEvento(urlEvento, eventoAssinadoXml, pfxBase64, senha, 
     }
 }
 
+/**
+ * Consulta a situação atual da NF-e diretamente no Web Service de Consulta de Protocolo da SEFAZ
+ * @param {string} urlConsulta URL do Web Service NFeConsultaProtocolo4
+ * @param {string} chave Chave de acesso de 44 dígitos
+ * @param {string} pfxBase64 Certificado em Base64
+ * @param {string} senha Senha do certificado
+ */
+async function consultarProtocoloSefaz(urlConsulta, chave, pfxBase64, senha) {
+    const agente = criarAgenteMtls(pfxBase64, senha);
+    const chaveLimpa = String(chave || '').replace(/\D/g, '').trim();
+
+    const envelopeSoap = `<?xml version="1.0" encoding="utf-8"?><soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope"><soap12:Body><nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeConsultaProtocolo4"><consSitNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><tpAmb>1</tpAmb><xServ>CONSULTAR</xServ><chNFe>${chaveLimpa}</chNFe></consSitNFe></nfeDadosMsg></soap12:Body></soap12:Envelope>`;
+
+    try {
+        const soapActionConsulta = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeConsultaProtocolo4/nfeConsultaNF';
+        const response = await axios.post(urlConsulta, envelopeSoap, {
+            httpsAgent: agente,
+            headers: {
+                'Content-Type': `application/soap+xml; charset=utf-8; action="${soapActionConsulta}"`,
+                'SOAPAction': soapActionConsulta
+            },
+            timeout: 20000
+        });
+
+        return response.data;
+    } catch (err) {
+        if (err.response && err.response.data) {
+            return err.response.data;
+        }
+        throw new Error(`Erro na consulta de protocolo na SEFAZ: ${err.message}`);
+    }
+}
+
 module.exports = {
     criarAgenteMtls,
     transmitirLoteSefaz,
-    transmitirEvento
+    transmitirEvento,
+    consultarProtocoloSefaz
 };

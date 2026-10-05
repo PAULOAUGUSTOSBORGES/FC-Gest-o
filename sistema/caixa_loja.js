@@ -1,4 +1,4 @@
-// caixa_loja.js
+﻿// caixa_loja.js
 
 let chartResumo7Dias = null;
 let chartPeriodoBar = null;

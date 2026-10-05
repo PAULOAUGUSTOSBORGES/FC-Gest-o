@@ -126,16 +126,34 @@ function fecharZoom() { document.getElementById('modal-zoom').classList.add('hid
 
 async function buscarCEP(prefix) {
     const el = document.getElementById(`${prefix}-cep`); if (!el) return; let cep = el.value.replace(/\D/g, ''); if (cep.length !== 8) return;
-    try { let res = await fetch(`https://viacep.com.br/ws/${cep}/json/`); let data = await res.json(); if (!data.erro) { document.getElementById(`${prefix}-rua`).value = data.logradouro || ''; document.getElementById(`${prefix}-bairro`).value = data.bairro || ''; document.getElementById(`${prefix}-cidade`).value = `${data.localidade} - ${data.uf}`; } } catch (e) { }
+    try {
+        let res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        let data = await res.json();
+        if (!data.erro) {
+            if (document.getElementById(`${prefix}-rua`)) document.getElementById(`${prefix}-rua`).value = data.logradouro || '';
+            if (document.getElementById(`${prefix}-bairro`)) document.getElementById(`${prefix}-bairro`).value = data.bairro || '';
+            if (document.getElementById(`${prefix}-cidade`)) document.getElementById(`${prefix}-cidade`).value = `${data.localidade} - ${data.uf}`;
+            if (document.getElementById(`${prefix}-ibge`)) document.getElementById(`${prefix}-ibge`).value = data.ibge || '';
+        }
+    } catch (e) { }
 }
 
 async function buscarCNPJ(prefix) {
-    const elDoc = document.getElementById(`${prefix}-doc`); if (!elDoc) return; let cnpj = elDoc.value.replace(/\D/g, ''); if (cnpj.length !== 14) return showToast('Digite os 14 nmeros do CNPJ', 'error');
+    const elDoc = document.getElementById(`${prefix}-doc`); if (!elDoc) return; let cnpj = elDoc.value.replace(/\D/g, ''); if (cnpj.length !== 14) return showToast('Digite os 14 números do CNPJ', 'error');
     showToast('Consultando Receita...', 'info');
     try {
         let res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`); let data = await res.json();
-        if (data.razao_social) { document.getElementById(`${prefix}-nome`).value = data.razao_social || ''; document.getElementById(`${prefix}-wpp`).value = data.ddd_telefone_1 || ''; document.getElementById(`${prefix}-cep`).value = data.cep || ''; document.getElementById(`${prefix}-rua`).value = data.logradouro || ''; document.getElementById(`${prefix}-bairro`).value = data.bairro || ''; document.getElementById(`${prefix}-cidade`).value = `${data.municipio || ''} - ${data.uf || ''}`; showToast('Empresa Importada!', 'success'); }
-    } catch (e) { showToast('Servio indisponvel.', 'error'); }
+        if (data.razao_social) {
+            if (document.getElementById(`${prefix}-nome`)) document.getElementById(`${prefix}-nome`).value = data.razao_social || '';
+            if (document.getElementById(`${prefix}-wpp`)) document.getElementById(`${prefix}-wpp`).value = data.ddd_telefone_1 || '';
+            if (document.getElementById(`${prefix}-cep`)) document.getElementById(`${prefix}-cep`).value = data.cep || '';
+            if (document.getElementById(`${prefix}-rua`)) document.getElementById(`${prefix}-rua`).value = data.logradouro || '';
+            if (document.getElementById(`${prefix}-bairro`)) document.getElementById(`${prefix}-bairro`).value = data.bairro || '';
+            if (document.getElementById(`${prefix}-cidade`)) document.getElementById(`${prefix}-cidade`).value = `${data.municipio || ''} - ${data.uf || ''}`;
+            if (document.getElementById(`${prefix}-ibge`) && data.codigo_municipio_ibge) document.getElementById(`${prefix}-ibge`).value = data.codigo_municipio_ibge;
+            showToast('Empresa Importada!', 'success');
+        }
+    } catch (e) { showToast('Serviço indisponível.', 'error'); }
 }
 
 // ==========================================
@@ -467,6 +485,28 @@ async function salvarCliente() {
     const nome = document.getElementById('cli-nome').value.trim();
     if (!nome) return showToast('Nome é obrigatório!', 'error');
 
+    let cidadeVal = (document.getElementById('cli-cidade')?.value || '').trim();
+    let ufVal = (document.getElementById('cli-uf')?.value || '').trim();
+    let ibgeVal = (document.getElementById('cli-ibge')?.value || '').trim();
+
+    if (cidadeVal.includes(' - ')) {
+        const p = cidadeVal.split(' - ');
+        cidadeVal = p[0].trim();
+        if (!ufVal && p[1]) ufVal = p[1].trim();
+    } else if (cidadeVal.includes('/')) {
+        const p = cidadeVal.split('/');
+        cidadeVal = p[0].trim();
+        if (!ufVal && p[1]) ufVal = p[1].trim();
+    }
+
+    const cepDigitos = (document.getElementById('cli-cep')?.value || '').replace(/\D/g, '');
+    if ((!ibgeVal || ibgeVal === '5208707') && (cidadeVal.toUpperCase().includes('FORMOSA') || cepDigitos.startsWith('7380') || cepDigitos.startsWith('7381'))) {
+        ibgeVal = '5208004';
+    }
+    if (!ufVal && (cidadeVal.toUpperCase().includes('FORMOSA') || cidadeVal.toUpperCase().includes('GOIANIA') || cepDigitos.startsWith('738') || cepDigitos.startsWith('74'))) {
+        ufVal = 'GO';
+    }
+
     const c = {
         nome:    nome,
         doc:     document.getElementById('cli-doc').value    || '',
@@ -481,8 +521,9 @@ async function salvarCliente() {
         numero:  document.getElementById('cli-numero').value || '',
         complemento: document.getElementById('cli-complemento').value || '',
         bairro:  document.getElementById('cli-bairro').value || '',
-        cidade:  document.getElementById('cli-cidade').value || '',
-        ibge:    document.getElementById('cli-ibge').value   || '',
+        cidade:  cidadeVal,
+        uf:      ufVal,
+        ibge:    ibgeVal,
         obs:     document.getElementById('cli-obs').value    || ''
     };
 

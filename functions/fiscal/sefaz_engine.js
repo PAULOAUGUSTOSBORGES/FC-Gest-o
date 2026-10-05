@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const { obterEndpointsSefaz } = require('./sefaz_urls');
 const { construirXmlNota, formatarDataHoraSefaz, limparTexto, apenasDigitos } = require('./sefaz_xml_builder');
 const { assinarXmlNota, assinarXmlEvento, extrairChavesDoPfx } = require('./sefaz_signer');
-const { transmitirLoteSefaz, transmitirEvento } = require('./sefaz_client');
+const { transmitirLoteSefaz, transmitirEvento, consultarProtocoloSefaz } = require('./sefaz_client');
 const { processarRespostaSefaz, gerarUrlQrCodeNFCe, processarRespostaEvento } = require('./sefaz_protocol');
 
 /**
@@ -218,14 +218,16 @@ async function cancelarNotaDiretoSefaz(chave, protocolo, justificativa, empresa,
         idEvento
     );
 
-    console.log(`[SEFAZ EVENTO] Transmitindo cancelamento chave ${chaveLimpa} para ${endpoints.eventoUrl}...`);
+    const idLote = String(Date.now()).slice(-15);
+    console.log(`[SEFAZ EVENTO] Transmitindo cancelamento chave ${chaveLimpa} (idLote: ${idLote}) para ${endpoints.eventoUrl}...`);
 
     // Transmite para o Web Service de Evento
     const respostaSoap = await transmitirEvento(
         endpoints.eventoUrl,
         eventoAssinadoXml,
         empresa.certificadoBase64,
-        empresa.certificadoSenha || ''
+        empresa.certificadoSenha || '',
+        idLote
     );
 
     console.log(`[SEFAZ EVENTO] Resposta bruta SEFAZ:`, typeof respostaSoap === 'string' ? respostaSoap.substring(0, 600) : JSON.stringify(respostaSoap));
@@ -293,13 +295,15 @@ async function cartaCorrecaoDiretoSefaz(chave, correcao, empresa, nSeqEvento = 1
         idEvento
     );
 
-    console.log(`[SEFAZ EVENTO] Transmitindo CC-e chave ${chaveLimpa} seq ${nSeqEvento} para ${endpoints.eventoUrl}...`);
+    const idLote = String(Date.now()).slice(-15);
+    console.log(`[SEFAZ EVENTO] Transmitindo CC-e chave ${chaveLimpa} seq ${nSeqEvento} (idLote: ${idLote}) para ${endpoints.eventoUrl}...`);
 
     const respostaSoap = await transmitirEvento(
         endpoints.eventoUrl,
         eventoAssinadoXml,
         empresa.certificadoBase64,
-        empresa.certificadoSenha || ''
+        empresa.certificadoSenha || '',
+        idLote
     );
 
     const resultado = processarRespostaEvento(respostaSoap);
@@ -337,9 +341,40 @@ async function transmitirNotaContingenciaSefaz(xmlAssinado, chave, empresa, mode
     };
 }
 
+/**
+ * Consulta a situação de uma nota fiscal diretamente na SEFAZ
+ * @param {string} chave Chave de acesso de 44 dígitos
+ * @param {Object} empresa Dados da empresa configurada
+ * @param {'65'|'55'} modelo Modelo da nota
+ */
+async function consultarSituacaoNotaFiscal(chave, empresa, modelo = '55') {
+    if (!empresa.certificadoBase64) {
+        throw new Error('Certificado Digital A1 (.pfx) não configurado.');
+    }
+    const chaveLimpa = String(chave || '').replace(/^NFe/i, '').replace(/\D/g, '').trim();
+    if (!chaveLimpa || chaveLimpa.length !== 44) {
+        throw new Error(`Chave de acesso inválida (${chaveLimpa ? chaveLimpa.length : 0} dígitos). Deve conter exatamente 44 dígitos numéricos.`);
+    }
+
+    const ambiente = empresa.ambienteFiscal === 'producao' ? 'producao' : 'homologacao';
+    const endpoints = obterEndpointsSefaz(modelo, empresa.uf, ambiente);
+    const urlConsulta = endpoints.consultaUrl || (empresa.uf === 'GO' ? 'https://nfe.sefaz.go.gov.br/nfe/services/NFeConsultaProtocolo4' : '');
+    if (!urlConsulta) throw new Error('URL de consulta de protocolo não configurada para este estado.');
+
+    const respostaSoap = await consultarProtocoloSefaz(
+        urlConsulta,
+        chaveLimpa,
+        empresa.certificadoBase64,
+        empresa.certificadoSenha || ''
+    );
+
+    return respostaSoap;
+}
+
 module.exports = {
     emitirNotaDiretoSefaz,
     cancelarNotaDiretoSefaz,
     cartaCorrecaoDiretoSefaz,
-    transmitirNotaContingenciaSefaz
+    transmitirNotaContingenciaSefaz,
+    consultarSituacaoNotaFiscal
 };

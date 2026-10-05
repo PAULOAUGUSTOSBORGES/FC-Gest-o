@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // GESTO.JS - ERP FINANCEIRO, DASHBOARD E PROJEES
 // ==========================================
 
@@ -335,10 +335,6 @@ function fecharModalConfirmacao() {
 
 
 function printHtmlSeguro(htmlCompleto) {
-    if (typeof window.printHtmlSeguro === 'function') {
-        window.printHtmlSeguro(htmlCompleto);
-        return;
-    }
     showToast("Preparando documento para Impressão...", "info");
     
     const printWin = window.open('', '', 'width=800,height=600');
@@ -612,7 +608,7 @@ function renderCaixaDiario() {
             '</tr>';
         }).join('');
     } else {
-        const textoMsg = (modoFiltroCaixa === 'DATA')
+        const textoMêsg = (modoFiltroCaixa === 'DATA')
             ? 'Sem movimentos registrados para ' + dataFiltro.split('-').reverse().join('/') + '.'
             : (modoFiltroCaixa === 'TURNO' ? 'Nenhuma movimentação registrada no turno atual.' : 'Nenhum movimento registrado.');
         
@@ -620,7 +616,7 @@ function renderCaixaDiario() {
             ? '<br><button type="button" onclick="trocarModoFiltroHistorico(\'TODOS\')" class="mt-2 text-xs text-blue-600 hover:underline font-bold"><i class="fa-solid fa-list mr-1"></i>Ver histórico completo (' + todosHistorico.length + ' movimentos)</button>'
             : '';
 
-        tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-slate-500 dark:text-slate-400">' + textoMsg + btnVerTodos + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-slate-500 dark:text-slate-400">' + textoMêsg + btnVerTodos + '</td></tr>';
     }
 }
 
@@ -4250,11 +4246,26 @@ window.emitirNota = async function(tipo) {
     }
 
     try {
-        const emitirFunc = firebase.functions().httpsCallable(tipo === 'nfce' ? 'emitirNFCe' : 'emitirNFe');
         const empIdAtual = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
+        
+        // Garante persistência da venda no Firestore antes de acionar a SEFAZ
+        if (window.vendaAtualImpressao && window.vendaAtualImpressao.id) {
+            try {
+                const empRef = (typeof window.getEmpresaRef === 'function') ? window.getEmpresaRef() : firestore.collection('empresas').doc(empIdAtual || 'emp_fc_moveis');
+                await empRef.collection('vendas').doc(String(window.vendaAtualImpressao.id)).set(window.vendaAtualImpressao, { merge: true });
+                if (window.FCCache && typeof window.FCCache.removerDaFila === 'function') {
+                    window.FCCache.removerDaFila('vendas', window.vendaAtualImpressao.id);
+                }
+            } catch (syncErr) {
+                console.warn('[Venda/Fiscal] Aviso ao sincronizar venda antes da emissão SEFAZ:', syncErr);
+            }
+        }
+
+        const emitirFunc = firebase.functions().httpsCallable(tipo === 'nfce' ? 'emitirNFCe' : 'emitirNFe');
         const response = await emitirFunc({ 
             vendaId: window.vendaAtualImpressao.id,
-            empId: empIdAtual
+            empId: empIdAtual,
+            vendaDados: window.vendaAtualImpressao
         });
         const res = response.data;
         const d = res.data || {};
@@ -4397,9 +4408,7 @@ window.salvarLembreteCaixa = async function() {
 };
 
 window.imprimirContratoAtual = function() {
-    if (typeof window.abrirModalContrato === 'function' && window.vendaAtualImpressao) {
-        window.abrirModalContrato(window.vendaAtualImpressao);
-    } else if (window.vendaAtualImpressao) {
+    if (window.vendaAtualImpressao) {
         window.imprimirContratoObj(window.vendaAtualImpressao);
     } else {
         showToast("Nenhuma venda selecionada para imprimir.", "error");
@@ -4408,10 +4417,6 @@ window.imprimirContratoAtual = function() {
 
 window.imprimirContratoObj = function(v) {
     if (!v) return;
-    if (typeof window.abrirModalContrato === 'function') {
-        window.abrirModalContrato(v);
-        return;
-    }
     const empAtivaIdContr = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
     const fallbackNomeContr = (window.currentEmpresaData?.nomeEmpresa) || localStorage.getItem('fc_nome_empresa_ativa') || (empAtivaIdContr === 'emp_fc_moveis' ? 'FC MÓVEIS' : 'MINHA LOJA');
     const emp = (typeof obterDadosEmpresa === 'function') ? obterDadosEmpresa() : { nome: fallbackNomeContr, cnpj: '', end: '', tel: '', logoHtml: '' };

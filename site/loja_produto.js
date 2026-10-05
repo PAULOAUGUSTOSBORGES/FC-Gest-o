@@ -1,4 +1,4 @@
-let lojaConfig = {};
+﻿let lojaConfig = {};
 let produtoUrlId = null;
 
 document.addEventListener('DOMContentLoaded', () => {

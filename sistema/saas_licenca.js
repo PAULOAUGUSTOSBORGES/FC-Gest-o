@@ -1,4 +1,4 @@
-// ==========================================================================
+﻿// ==========================================================================
 // SAAS_LICENCA.JS - CLIENTE UNIVERSAL DE LICENCIAMENTO MULTI-SISTEMAS
 // Conecta ao banco central do SaaS Master para validar licença e módulos
 // Compatível com FC-Gestão, FC-Food, FC-Barber e qualquer novo aplicativo
@@ -512,10 +512,10 @@
 
         if (dataVenc && !isNaN(dataVenc.getTime())) {
             const agora = new Date();
-            const diffMs = dataVenc.getTime() - agora.getTime();
-            const diasRestantes = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+            const diffMês = dataVenc.getTime() - agora.getTime();
+            const diasRestantes = Math.ceil(diffMês / (1000 * 60 * 60 * 24));
 
-            if (diffMs < 0) {
+            if (diffMês < 0) {
                 const motivo = isTrial
                     ? 'Seu período de teste gratuito de 7 dias chegou ao fim. Ative seu plano para continuar operando sua loja sem interrupções.'
                     : 'A sua assinatura mensal expirou. Regularize o pagamento via PIX para reativar seu acesso imediatamente.';
