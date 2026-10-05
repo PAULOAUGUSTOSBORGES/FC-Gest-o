@@ -1,4 +1,4 @@
-﻿// ==========================================================================
+// ==========================================================================
 // SAAS_LICENCA.JS - CLIENTE UNIVERSAL DE LICENCIAMENTO MULTI-SISTEMAS
 // Conecta ao banco central do SaaS Master para validar licença e módulos
 // Compatível com FC-Gestão, FC-Food, FC-Barber e qualquer novo aplicativo
@@ -167,12 +167,39 @@
     // -----------------------------------------------------------------------
     // CONSULTA DE LICENÇA CENTRAL
     // -----------------------------------------------------------------------
-    async function consultarLicencaCentral(empresaId, sistemaId = 'fc_gestao') {
+    async function consultarLicencaCentral(empresaId, sistemaId = 'fc_gestao', forcarRemoto = false) {
         const cacheKey = `saas_licenca_${empresaId}`;
         const cacheLocal = localStorage.getItem(cacheKey);
         let licencaCached = null;
         if (cacheLocal) {
             try { licencaCached = JSON.parse(cacheLocal); } catch(e) {}
+        }
+
+        // CARREGAMENTO INSTANTÂNEO (< 1ms): Se a licença já estiver salva em cache local,
+        // retorna imediatamente para que a tela abra sem nenhum delay de rede!
+        if (licencaCached && !forcarRemoto) {
+            const expInfo = _verificarExpiracao(licencaCached);
+            licencaCached._expInfo = expInfo;
+            window.currentSaaSLicense = licencaCached;
+
+            if (expInfo.expirado) {
+                aplicarBloqueioTotal(expInfo.motivo, licencaCached);
+            } else if (expInfo.isTrial) {
+                renderizarBannerTrial(expInfo.diasRestantes, licencaCached);
+            } else {
+                removerBannerTrial();
+            }
+
+            // Revalidação assíncrona em segundo plano após 2.5s para não disputar banda com a abertura da página
+            const agora = Date.now();
+            const ultimoCheck = licencaCached._cacheTimestamp || 0;
+            if (agora - ultimoCheck > 10 * 60 * 1000) {
+                setTimeout(() => {
+                    consultarLicencaCentral(empresaId, sistemaId, true).catch(() => {});
+                }, 2500);
+            }
+
+            return licencaCached;
         }
 
         const sDb = obterInstanciaSaaS();

@@ -37,8 +37,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link rel="stylesheet" href="../style.css?v=20261002142531">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261002142531">
+    <link rel="stylesheet" href="../style.css?v=20261003132500">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261003132500">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="caixa">
 
@@ -513,7 +513,7 @@
     <!-- OPÇÕES DE RECIBO E CONTRATO (DOCUMENTO GERADO APÓS FINALIZAR CAIXA) -->
     <div id="modal-opcoes-recibo" class="fixed inset-0 bg-slate-900/80 z-[200] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden max-h-[92vh]">
-            <div id="modal-recibo-header" class="bg-emerald-500 p-4 text-white text-center shrink-0">
+            <div id="modal-recibo-header" class="bg-gradient-to-r from-emerald-600 to-teal-600 p-4 text-white text-center shrink-0 shadow-sm">
                 <i id="modal-recibo-icone" class="fa-solid fa-circle-check text-4xl mb-1"></i>
                 <h2 id="modal-recibo-titulo" class="font-bold text-lg">Documento Gerado</h2>
                 <p id="modal-recibo-subtitulo" class="text-xs text-emerald-100 hidden mt-1 font-semibold"></p>
@@ -527,22 +527,50 @@
                 <div id="fiscal-container" class="hidden">
                     <div id="fiscal-status-container" class="hidden mb-2 text-center p-3 rounded-lg border"></div>
 
-                    <div class="grid grid-cols-2 gap-2 mb-2">
-                        <button onclick="emitirNota('nfce')" id="btn-emitir-nfce" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white p-3 rounded-xl font-bold flex flex-col items-center justify-center gap-1 transition-colors text-xs"><i class="fa-solid fa-receipt text-lg"></i> Emitir NFC-e</button>
-                        <button onclick="emitirNota('nfe')" id="btn-emitir-nfe" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white p-3 rounded-xl font-bold flex flex-col items-center justify-center gap-1 transition-colors text-xs"><i class="fa-solid fa-file-invoice text-lg"></i> Emitir NF-e</button>
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-[10px] font-black tracking-wider text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1.5">
+                            <i class="fa-solid fa-receipt text-emerald-500"></i> Emissão Fiscal (SEFAZ)
+                        </span>
+                        <div class="flex-1 h-px bg-slate-200 dark:bg-slate-700/60"></div>
                     </div>
-                    
-                    <div class="border-t border-slate-200 dark:border-slate-700 my-1"></div>
+
+                    <div class="grid grid-cols-2 gap-2.5 mb-2.5">
+                        <button onclick="emitirNota('nfce')" id="btn-emitir-nfce" class="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white p-3 rounded-xl font-bold flex flex-col items-center justify-center gap-1 transition-all text-xs shadow-sm shadow-emerald-600/20 cursor-pointer">
+                            <i class="fa-solid fa-receipt text-lg text-emerald-200"></i> 
+                            <span>Emitir NFC-e</span>
+                        </button>
+                        <button onclick="emitirNota('nfe')" id="btn-emitir-nfe" class="w-full bg-teal-700 hover:bg-teal-800 active:scale-95 text-white p-3 rounded-xl font-bold flex flex-col items-center justify-center gap-1 transition-all text-xs shadow-sm shadow-teal-700/20 cursor-pointer">
+                            <i class="fa-solid fa-file-invoice text-lg text-teal-200"></i> 
+                            <span>Emitir NF-e</span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- BOTÕES DE IMPRESSÃO / RECIBO -->
                 <div>
-                    <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1.5"><i class="fa-solid fa-print mr-1"></i> Imprimir / Exportar Comprovante</label>
-                    <div class="grid grid-cols-2 gap-2" id="grid-botoes-recibo">
-                        <button onclick="printAction('thermal')" id="btn-recibo-bobina" class="w-full bg-slate-800 hover:bg-slate-900 text-white p-2.5 md:p-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors text-xs"><i class="fa-solid fa-receipt text-base"></i> <span id="txt-recibo-bobina">Recibo Bobina</span></button>
-                        <button onclick="printAction('a4')" id="btn-recibo-a4" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-2.5 md:p-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors text-xs"><i class="fa-solid fa-print text-base"></i> <span id="txt-recibo-a4">Recibo A4</span></button>
-                        <button onclick="imprimirContratoAtual()" id="btn-recibo-contrato" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white p-2.5 md:p-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors text-xs"><i class="fa-solid fa-file-contract text-base"></i> Contrato</button>
-                        <button onclick="downloadPDF('print-area', 'Recibo')" id="btn-recibo-pdf" class="w-full bg-red-600 hover:bg-red-700 text-white p-2.5 md:p-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors text-xs"><i class="fa-solid fa-file-pdf text-base"></i> Baixar PDF</button>
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-[10px] font-black tracking-wider text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1.5">
+                            <i class="fa-solid fa-print text-indigo-500"></i> Imprimir / Exportar Comprovante
+                        </span>
+                        <div class="flex-1 h-px bg-slate-200 dark:bg-slate-700/60"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2.5" id="grid-botoes-recibo">
+                        <button onclick="printAction('thermal')" id="btn-recibo-bobina" class="btn-recibo-bobina w-full p-2.5 md:p-3 rounded-xl font-bold flex items-center justify-center gap-2.5 transition-all text-xs active:scale-95 cursor-pointer">
+                            <i class="fa-solid fa-receipt text-base"></i> 
+                            <span id="txt-recibo-bobina" class="tracking-wide">Recibo Bobina</span>
+                        </button>
+                        <button onclick="printAction('a4')" id="btn-recibo-a4" class="w-full p-2.5 md:p-3 rounded-xl font-bold flex items-center justify-center gap-2.5 transition-all text-xs active:scale-95 cursor-pointer shadow-sm shadow-blue-600/20">
+                            <i class="fa-solid fa-print text-base"></i> 
+                            <span id="txt-recibo-a4" class="tracking-wide">Recibo A4</span>
+                        </button>
+                        <button onclick="imprimirContratoAtual()" id="btn-recibo-contrato" class="w-full p-2.5 md:p-3 rounded-xl font-bold flex items-center justify-center gap-2.5 transition-all text-xs active:scale-95 cursor-pointer shadow-sm shadow-indigo-600/20">
+                            <i class="fa-solid fa-file-contract text-base"></i> 
+                            <span class="tracking-wide">Contrato</span>
+                        </button>
+                        <button onclick="downloadPDF('print-area', 'Recibo')" id="btn-recibo-pdf" class="w-full p-2.5 md:p-3 rounded-xl font-bold flex items-center justify-center gap-2.5 transition-all text-xs active:scale-95 cursor-pointer shadow-sm shadow-rose-600/20">
+                            <i class="fa-solid fa-file-pdf text-base"></i> 
+                            <span class="tracking-wide">Baixar PDF</span>
+                        </button>
                     </div>
                 </div>
 
@@ -624,11 +652,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20261002142531"></script>
-    <script src="saas_licenca.js?v=20261002142531"></script>
-    <script src="../global.js?v=20261002142531"></script>
-    <script src="fc_cache.js?v=20261002142531"></script>
-    <script src="caixa.js?v=20261002142531"></script>
+    <script src="../sistema/config_banco.js?v=20261003132500"></script>
+    <script src="saas_licenca.js?v=20261003132500"></script>
+    <script src="../global.js?v=20261003132500"></script>
+    <script src="fc_cache.js?v=20261003132500"></script>
+    <script src="caixa.js?v=20261003132500"></script>
 </body>
 </html>
 

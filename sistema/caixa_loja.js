@@ -30,13 +30,21 @@ let dbLoja = {
 
 
 
-window.addEventListener('load', () => {
+function _iniciarCaixaLoja() {
+    if (window._caixaLojaIniciado) return;
+    window._caixaLojaIniciado = true;
     if (typeof initGlobalData === 'function') {
         initGlobalData(inicializarCaixaLoja);
     } else {
         console.error('global.js não carregado corretamente.');
     }
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _iniciarCaixaLoja);
+} else {
+    _iniciarCaixaLoja();
+}
 
 async function inicializarCaixaLoja() {
     try {
@@ -60,6 +68,34 @@ async function inicializarCaixaLoja() {
 }
 
 async function loadInitialData() {
+    // 1. Tenta carregar do repositório local instantaneamente (< 2ms)
+    if (typeof window.FCCache !== 'undefined') {
+        const cVendas = window.FCCache.get('vendas');
+        const cFin = window.FCCache.get('financeiro');
+        const cFech = window.FCCache.get('caixa_fechamentos');
+        const cProd = window.FCCache.get('produtos');
+        const cCli = window.FCCache.get('clientes');
+        const cFunc = window.FCCache.get('funcionarios');
+        const cCx = window.FCCache.get('caixa') || window.FCCache.get('fc_moveis_caixa');
+
+        if (cVendas) dbLoja.vendas = cVendas;
+        if (cFin) dbLoja.financeiro = cFin;
+        if (cFech) dbLoja.caixa_fechamentos = cFech;
+        if (cProd) dbLoja.produtos = cProd;
+        if (cCli) dbLoja.clientes = cCli;
+        if (cFunc) dbLoja.funcionarios = cFunc;
+        if (cCx) {
+            dbLoja.caixa_atual = cCx;
+            dbLoja.caixas = [cCx];
+        }
+
+        // Se já temos dados no cache local, configura os listeners locais e evita consultas remotas massivas!
+        if (dbLoja.vendas.length > 0 || dbLoja.financeiro.length > 0) {
+            setupRealtimeListeners();
+            return;
+        }
+    }
+
     const empresaRef = window.getEmpresaRef();
     if (!empresaRef) return;
 
@@ -95,7 +131,7 @@ async function loadInitialData() {
         const cxAtualDoc = dbLoja.caixas.find(c => c.id === 'caixa_atual') || dbLoja.caixas[0] || null;
         dbLoja.caixa_atual = cxAtualDoc;
 
-        // Iniciar listeners em tempo real para refletir qualquer venda, conta paga ou movimentação imediatamente
+        // Iniciar listeners via cache inteligente
         setupRealtimeListeners();
 
     } catch (e) {
@@ -105,28 +141,27 @@ async function loadInitialData() {
 }
 
 function setupRealtimeListeners() {
-    const empresaRef = window.getEmpresaRef();
-    if (!empresaRef) return;
+    const _listen = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb) {
+        let ref = window.getEmpresaRef().collection(col);
+        return ref.onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    };
 
-    // Escuta vendas
-    empresaRef.collection('vendas').onSnapshot(snap => {
-        dbLoja.vendas = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('vendas', function(dados) {
+        dbLoja.vendas = dados;
         reRenderCurrentTab();
-    }, err => console.warn('Erro listener vendas caixa loja:', err));
+    });
 
-    // Escuta financeiro (contas a pagar quitadas e contas a receber recebidas)
-    empresaRef.collection('financeiro').onSnapshot(snap => {
-        dbLoja.financeiro = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('financeiro', function(dados) {
+        dbLoja.financeiro = dados;
         reRenderCurrentTab();
-    }, err => console.warn('Erro listener financeiro caixa loja:', err));
+    });
 
-    // Escuta todos os caixas físicos da empresa
-    empresaRef.collection('caixa').onSnapshot(snap => {
-        dbLoja.caixas = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    _listen('caixa', function(dados) {
+        dbLoja.caixas = dados;
         const cxAtualDoc = dbLoja.caixas.find(c => c.id === 'caixa_atual') || dbLoja.caixas[0] || null;
-        dbLoja.caixa_atual = cxAtualDoc;
+        if (cxAtualDoc) dbLoja.caixa_atual = cxAtualDoc;
         reRenderCurrentTab();
-    }, err => console.warn('Erro listener caixa físico loja:', err));
+    });
 }
 
 function listenCaixaAtual() {

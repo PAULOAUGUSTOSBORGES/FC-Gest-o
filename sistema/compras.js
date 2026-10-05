@@ -1403,13 +1403,67 @@ function processarXMLReal(event) {
             const detNodes = xmlDoc.getElementsByTagName("det"); const produtosXML = [];
             
             for(let i=0; i<detNodes.length; i++) {
-                const prod = detNodes[i].getElementsByTagName("prod")[0]; const imposto = detNodes[i].getElementsByTagName("imposto")[0];
+                const det = detNodes[i];
+                const prod = det.getElementsByTagName("prod")[0]; const imposto = det.getElementsByTagName("imposto")[0];
                 const nome = getStringSafe(prod, "xProd"); const cEAN = getStringSafe(prod, "cEAN");
                 const vProd = getFloatSafe(prod, "vProd"); const qCom = getFloatSafe(prod, "qCom");
                 const vFrete = getFloatSafe(prod, "vFrete"); const vDesc = getFloatSafe(prod, "vDesc");
                 const vIPI = getFloatSafe(imposto, "vIPI"); const vICMSST = getFloatSafe(imposto, "vICMSST");
                 const vTotalItemNaNota = vProd + vFrete - vDesc + vIPI + vICMSST;
-                produtosXML.push({ nItem: i+1, cEAN, nome, qCom, vTotalItemNaNota, statusDB: 'NOVO', idMatch: null, margemAtual: 50, custoFinal: 0, precoVendaSug: 0 });
+
+                // Extração dos dados fiscais do XML
+                const ncm = (getStringSafe(prod, "NCM") || "").replace(/\D/g, "");
+                const cest = (getStringSafe(prod, "CEST") || "").replace(/\D/g, "");
+                const cfopNota = getStringSafe(prod, "CFOP") || "";
+                const uCom = getStringSafe(prod, "uCom") || "UN";
+
+                // Sugere CFOP padrão de saída (5405 para produtos com ST, 5102 para tributação normal/revenda)
+                let cfopSugerido = "5102";
+                if (cfopNota.includes("405") || cfopNota.includes("403") || cfopNota.includes("401")) {
+                    cfopSugerido = "5405";
+                }
+
+                // Origem e CST / CSOSN a partir de ICMS
+                let origem = "0";
+                let cst = "";
+                let csosn = "";
+
+                if (imposto) {
+                    const icms = imposto.getElementsByTagName("ICMS")[0];
+                    if (icms) {
+                        const origEl = icms.getElementsByTagName("orig")[0];
+                        if (origEl && origEl.textContent) origem = origEl.textContent.trim();
+
+                        const cstEl = icms.getElementsByTagName("CST")[0];
+                        if (cstEl && cstEl.textContent) cst = cstEl.textContent.trim();
+
+                        const csosnEl = icms.getElementsByTagName("CSOSN")[0];
+                        if (csosnEl && csosnEl.textContent) csosn = csosnEl.textContent.trim();
+                    }
+                }
+
+                const cstFinal = cst || csosn || "";
+                const csosnFinal = csosn || cst || "102";
+
+                produtosXML.push({ 
+                    nItem: i+1, 
+                    cEAN, 
+                    nome, 
+                    qCom, 
+                    vTotalItemNaNota, 
+                    statusDB: 'NOVO', 
+                    idMatch: null, 
+                    margemAtual: 50, 
+                    custoFinal: 0, 
+                    precoVendaSug: 0,
+                    ncm: ncm,
+                    cst: cstFinal,
+                    csosn: csosnFinal,
+                    origem: origem,
+                    cest: cest,
+                    cfop: cfopSugerido,
+                    unidade: uCom
+                });
             }
 
             const financeiroXML = [];
@@ -1424,14 +1478,23 @@ function processarXMLReal(event) {
             }
 
             if(financeiroXML.length === 0 && totalNF > 0) {
-                financeiroXML.push({ num: '001', venc: dataEmissao, valor: totalNF, desc: `NF ${numNF} - Parcela nica` });
+                financeiroXML.push({ num: '001', venc: dataEmissao, valor: totalNF, desc: `NF ${numNF} - Parcela Única` });
             }
 
             window.tempXMLData = { fornNome, fornCNPJ, numNF, dataEmissao, totalNF, produtosXML, financeiroXML, freteExtra: 0 };
             
             window.tempXMLData.produtosXML.forEach(p => {
                 let match = db.produtos.find(prod => (prod.ean && prod.ean === p.cEAN && p.cEAN !== 'SEM GTIN') || prod.nome.toLowerCase() === p.nome.toLowerCase());
-                if(match) { p.statusDB = 'ATUALIZAR'; p.idMatch = match.id; p.margemAtual = (match.custo > 0 && match.preco > 0) ? ((match.preco - match.custo) / match.custo) * 100 : (match.margem || 50); }
+                if(match) { 
+                    p.statusDB = 'ATUALIZAR'; 
+                    p.idMatch = match.id; 
+                    p.margemAtual = (match.custo > 0 && match.preco > 0) ? ((match.preco - match.custo) / match.custo) * 100 : (match.margem || 50); 
+                    if (!p.ncm && match.ncm) p.ncm = match.ncm;
+                    if (!p.csosn && match.csosn) p.csosn = match.csosn;
+                    if (!p.cst && match.cst) p.cst = match.cst;
+                    if (!p.cest && match.cest) p.cest = match.cest;
+                    if ((!p.origem || p.origem === '0') && match.origem) p.origem = match.origem;
+                }
                 let pesoValor = window.tempXMLData.totalNF > 0 ? (p.vTotalItemNaNota / window.tempXMLData.totalNF) : 0;
                 let freteRateado = window.tempXMLData.freteExtra * pesoValor;
                 p.custoFinal = p.qCom > 0 ? ((p.vTotalItemNaNota + freteRateado) / p.qCom) : 0;
@@ -1554,7 +1617,15 @@ function xmlAtualizarValores(i, campo, val) {
     
     document.getElementById('xml-produtos-body').innerHTML = window.tempXMLData.produtosXML.map((p, idx) => `
         <tr class="border-b border-slate-100 dark:border-slate-700/50 hover:bg-indigo-50 dark:hover:bg-slate-700/50 transition-colors">
-            <td class="p-2 md:p-3 text-xs"><input type="text" class="w-full bg-transparent font-bold text-slate-800 dark:text-slate-100 outline-none" value="${p.nome}" onchange="tempXMLData.produtosXML[${idx}].nome = this.value"><span class="text-[10px] text-slate-500 dark:text-slate-400 block mt-0.5">EAN: ${p.cEAN || 'S/N'}</span></td>
+            <td class="p-2 md:p-3 text-xs">
+                <input type="text" class="w-full bg-transparent font-bold text-slate-800 dark:text-slate-100 outline-none" value="${p.nome}" onchange="tempXMLData.produtosXML[${idx}].nome = this.value">
+                <div class="flex flex-wrap items-center gap-1.5 mt-0.5 text-[10px]">
+                    <span class="text-slate-500 dark:text-slate-400">EAN: ${p.cEAN || 'S/N'}</span>
+                    <span class="bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-mono font-bold px-1.5 py-0.5 rounded">NCM: ${p.ncm || 'S/NCM'}</span>
+                    <span class="bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-mono font-bold px-1.5 py-0.5 rounded">CST: ${p.csosn || p.cst || '102'}</span>
+                    <span class="bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-mono font-bold px-1.5 py-0.5 rounded">Orig: ${p.origem || '0'}</span>
+                </div>
+            </td>
             <td class="p-2 md:p-3 text-xs text-center"><span class="${p.statusDB.includes('NOVO') ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'} px-2 py-1 rounded-md font-bold shadow-sm inline-block">${p.statusDB}</span></td>
             <td class="p-2 md:p-3 text-xs text-center font-bold text-slate-700 dark:text-slate-300">${p.qCom}</td>
             <td class="p-2 md:p-3 text-xs text-right"><input type="text" data-mask="money" inputmode="numeric"   class="w-20 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md p-1.5 text-right font-black text-red-600 dark:text-red-400 outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all shadow-sm" value="${p.custoFinal.toFixed(2)}" onchange="xmlAtualizarValores(${idx}, 'custo', this.value)"></td>
@@ -1600,6 +1671,19 @@ function abrirModalProdutoDoXML(index) {
         document.getElementById('prod-id').value = ''; document.getElementById('modal-produto-title').innerText = 'Completar Novo Produto'; 
         document.getElementById('prod-nome').value = p.nome; document.getElementById('prod-ean').value = p.cEAN || ''; document.getElementById('prod-custo').value = p.custoFinal.toFixed(2); document.getElementById('prod-margem').value = p.margemAtual.toFixed(2); document.getElementById('prod-preco').value = p.precoVendaSug.toFixed(2); 
     }
+
+    // Preenche dados fiscais extraídos do XML ou existentes
+    if (document.getElementById('prod-ncm')) document.getElementById('prod-ncm').value = p.ncm || '';
+    if (document.getElementById('prod-csosn')) document.getElementById('prod-csosn').value = p.csosn || p.cst || '';
+    if (document.getElementById('prod-origem')) document.getElementById('prod-origem').value = (p.origem !== undefined && p.origem !== '') ? String(p.origem) : '0';
+    if (document.getElementById('prod-cfop')) document.getElementById('prod-cfop').value = p.cfop || '5102';
+    if (document.getElementById('prod-cest')) document.getElementById('prod-cest').value = p.cest || '';
+
+    // Inicializa o autocomplete inteligente de NCM
+    if (window.NCMHelper && typeof window.NCMHelper.initNCMAutocomplete === 'function') {
+        window.NCMHelper.initNCMAutocomplete('prod-ncm');
+        window.NCMHelper.atualizarPreviewNCM('prod-ncm');
+    }
 }
 
 function fecharModalProduto() { document.getElementById('modal-produto').classList.add('hidden'); }
@@ -1617,6 +1701,14 @@ function salvarProdutoXmlModal() {
     pXML.nome = nome; pXML.cEAN = document.getElementById('prod-ean').value;
     pXML.custoFinal = parseInputMoney(document.getElementById('prod-custo').value)||0; pXML.margemAtual = parseInputMoney(document.getElementById('prod-margem').value)||0; pXML.precoVendaSug = parseInputMoney(document.getElementById('prod-preco').value)||0;
     
+    // Atualiza campos fiscais editados no modal
+    pXML.ncm = document.getElementById('prod-ncm') ? document.getElementById('prod-ncm').value.trim() : (pXML.ncm || '');
+    pXML.csosn = document.getElementById('prod-csosn') ? document.getElementById('prod-csosn').value.trim() : (pXML.csosn || '');
+    pXML.cst = pXML.csosn;
+    pXML.origem = document.getElementById('prod-origem') ? document.getElementById('prod-origem').value : (pXML.origem || '0');
+    pXML.cfop = document.getElementById('prod-cfop') ? document.getElementById('prod-cfop').value.trim() : (pXML.cfop || '5102');
+    pXML.cest = document.getElementById('prod-cest') ? document.getElementById('prod-cest').value.trim() : (pXML.cest || '');
+
     if(selectAcao && selectAcao.value === 'VINCULAR' && id) {
         pXML.statusDB = 'ATUALIZAR';
         pXML.idMatch = id;
@@ -1624,7 +1716,7 @@ function salvarProdutoXmlModal() {
         pXML.statusDB = 'NOVO CADASTRADO';
         pXML.idMatch = null;
     }
-    fecharModalProduto(); renderTelaConferenciaXML(); showToast('Ficha salva para a importao!');
+    fecharModalProduto(); renderTelaConferenciaXML(); showToast('Ficha salva para a importação!');
 }
 
 function renderTelaConferenciaXML() {
@@ -1632,7 +1724,15 @@ function renderTelaConferenciaXML() {
     document.getElementById('xml-forn-nome').innerText = d.fornNome; document.getElementById('xml-forn-cnpj').innerText = d.fornCNPJ; document.getElementById('xml-total-nota').innerText = formatMoney(d.totalNF); document.getElementById('rev-nfe').innerText = d.numNF; document.getElementById('rev-data').innerText = d.dataEmissao.split('-').reverse().join('/'); document.getElementById('rev-vprod').innerText = formatMoney(d.produtosXML.reduce((a,b)=>a+b.vTotalItemNaNota,0));
     document.getElementById('xml-produtos-body').innerHTML = d.produtosXML.map((p, i) => `
         <tr class="border-b border-slate-100 dark:border-slate-700/50 hover:bg-indigo-50 dark:hover:bg-slate-700/50 transition-colors">
-            <td class="p-2 text-xs"><input type="text" class="w-full bg-transparent font-bold text-slate-800 dark:text-slate-100 outline-none dark:text-white" value="${p.nome}" onchange="tempXMLData.produtosXML[${i}].nome = this.value"><span class="text-[10px] text-slate-500 dark:text-slate-400">EAN: ${p.cEAN || 'S/N'}</span></td>
+            <td class="p-2 text-xs">
+                <input type="text" class="w-full bg-transparent font-bold text-slate-800 dark:text-slate-100 outline-none dark:text-white" value="${p.nome}" onchange="tempXMLData.produtosXML[${i}].nome = this.value">
+                <div class="flex flex-wrap items-center gap-1.5 mt-0.5 text-[10px]">
+                    <span class="text-slate-500 dark:text-slate-400">EAN: ${p.cEAN || 'S/N'}</span>
+                    <span class="bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-mono font-bold px-1.5 py-0.5 rounded">NCM: ${p.ncm || 'S/NCM'}</span>
+                    <span class="bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-mono font-bold px-1.5 py-0.5 rounded">CST: ${p.csosn || p.cst || '102'}</span>
+                    <span class="bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-mono font-bold px-1.5 py-0.5 rounded">Orig: ${p.origem || '0'}</span>
+                </div>
+            </td>
             <td class="p-2 text-xs text-center"><span class="${p.statusDB.includes('NOVO') ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'} px-2 py-0.5 rounded font-bold">${p.statusDB}</span></td>
             <td class="p-2 text-xs text-center font-bold">${p.qCom}</td>
             <td class="p-2 text-xs text-right"><input type="text" data-mask="money" inputmode="numeric"   class="w-20 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-right font-bold text-red-600 outline-none dark:text-white" value="${p.custoFinal.toFixed(2)}" onchange="xmlAtualizarValores(${i}, 'custo', this.value)"></td>
@@ -1660,15 +1760,60 @@ async function salvarXMLConferido() {
         let pDB = null;
         if ((p.statusDB === 'NOVO' || p.statusDB.includes('CADASTRADO')) && !idProd) {
             idProd = String(Date.now() + Math.floor(Math.random() * 1000));
-            pDB = { id: idProd, ean: p.cEAN, nome: p.nome, categoria: 'Geral', marca: data.fornNome, custo: p.custoFinal, margem: p.margemAtual, preco: p.precoVendaSug, estoque: p.qCom, min: 5, foto: '', ativo: true };
+            pDB = { 
+                id: idProd, 
+                ean: p.cEAN || '', 
+                nome: p.nome, 
+                categoria: 'Geral', 
+                marca: data.fornNome, 
+                custo: p.custoFinal, 
+                margem: p.margemAtual, 
+                preco: p.precoVendaSug, 
+                estoque: p.qCom, 
+                min: 5, 
+                foto: '', 
+                ativo: true,
+                ncm: p.ncm || '',
+                cst: p.cst || p.csosn || '',
+                csosn: p.csosn || p.cst || '102',
+                origem: (p.origem !== undefined && p.origem !== '') ? String(p.origem) : '0',
+                cfop: p.cfop || '5102',
+                cest: p.cest || '',
+                unidade: p.unidade || 'UN'
+            };
             const prodRef = window.getEmpresaRef().collection('produtos').doc(idProd);
             batch.set(prodRef, pDB);
+            if (Array.isArray(db.produtos)) db.produtos.unshift(pDB);
         } else { 
             pDB = db.produtos.find(x => String(x.id) === String(idProd)); 
             if (pDB) { 
-                pDB.estoque += p.qCom; pDB.custo = p.custoFinal; pDB.margem = p.margemAtual; pDB.preco = p.precoVendaSug; pDB.nome = p.nome; pDB.ativo = true;
+                pDB.estoque += p.qCom; 
+                pDB.custo = p.custoFinal; 
+                pDB.margem = p.margemAtual; 
+                pDB.preco = p.precoVendaSug; 
+                pDB.nome = p.nome; 
+                pDB.ativo = true;
+                if (p.ncm) pDB.ncm = p.ncm;
+                if (p.csosn || p.cst) { pDB.csosn = p.csosn || p.cst; pDB.cst = p.cst || p.csosn; }
+                if (p.origem !== undefined && p.origem !== '') pDB.origem = String(p.origem);
+                if (p.cfop) pDB.cfop = p.cfop;
+                if (p.cest) pDB.cest = p.cest;
+
                 const prodRef = window.getEmpresaRef().collection('produtos').doc(String(idProd));
-                batch.update(prodRef, { estoque: pDB.estoque, custo: pDB.custo, margem: pDB.margem, preco: pDB.preco, nome: pDB.nome, ativo: true });
+                batch.update(prodRef, { 
+                    estoque: pDB.estoque, 
+                    custo: pDB.custo, 
+                    margem: pDB.margem, 
+                    preco: pDB.preco, 
+                    nome: pDB.nome, 
+                    ativo: true,
+                    ncm: pDB.ncm || '',
+                    cst: pDB.cst || pDB.csosn || '',
+                    csosn: pDB.csosn || pDB.cst || '102',
+                    origem: pDB.origem || '0',
+                    cfop: pDB.cfop || '5102',
+                    cest: pDB.cest || ''
+                });
             } 
         }
         p.idMatch = idProd; // Garante a rastreabilidade pro Relatrio de Evoluo
@@ -1678,6 +1823,11 @@ async function salvarXMLConferido() {
         
         p.custoUnitOriginal = p.qCom > 0 ? (p.vTotalItemNaNota / p.qCom) : 0;
     });
+
+    // Atualiza cache local instantâneo
+    if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+        window.FCCache.set('produtos', db.produtos);
+    }
 
     const compraRef = window.getEmpresaRef().collection('compras').doc();
     batch.set(compraRef, { 
@@ -1902,13 +2052,25 @@ async function salvarCompraManual() {
                 });
             }
             try {
-                const snapFin = await window.getEmpresaRef().collection('financeiro').where('tipo', '==', 'DESPESA').get();
-                snapFin.docs.forEach(doc => {
-                    const finData = doc.data();
-                    if (finData.ref && String(finData.ref).includes(cAntiga.numeroNF) && cAntiga.numeroNF !== 'S/N') {
-                        batch.delete(doc.ref);
-                    }
-                });
+                const finLista = (typeof db !== 'undefined' && Array.isArray(db.financeiro) && db.financeiro.length > 0)
+                    ? db.financeiro
+                    : ((window.FCCache && typeof window.FCCache.get === 'function') ? window.FCCache.get('financeiro') : null);
+
+                if (Array.isArray(finLista) && finLista.length > 0) {
+                    finLista.forEach(finData => {
+                        if (finData.tipo === 'DESPESA' && finData.ref && String(finData.ref).includes(cAntiga.numeroNF) && cAntiga.numeroNF !== 'S/N') {
+                            batch.delete(window.getEmpresaRef().collection('financeiro').doc(String(finData.id)));
+                        }
+                    });
+                } else {
+                    const snapFin = await window.getEmpresaRef().collection('financeiro').where('tipo', '==', 'DESPESA').get();
+                    snapFin.docs.forEach(doc => {
+                        const finData = doc.data();
+                        if (finData.ref && String(finData.ref).includes(cAntiga.numeroNF) && cAntiga.numeroNF !== 'S/N') {
+                            batch.delete(doc.ref);
+                        }
+                    });
+                }
             } catch(e) { console.error('Erro ao buscar financeiro atrelado:', e); }
         }
     }

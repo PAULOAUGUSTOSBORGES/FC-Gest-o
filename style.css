@@ -47,7 +47,7 @@ html[data-theme="light"] {
 html.light body,
 html[data-theme="light"] body,
 body.light {
-    background-color: #f1f5f9 !important;
+    background-color: #f4f6fa !important;
     color: #0f172a !important;
 }
 
@@ -148,16 +148,198 @@ html[data-theme="light"] header {
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
 }
 
-/* Cards e Contêineres de Conteúdo */
-html.light .bg-white,
-html[data-theme="light"] .bg-white,
-html.light .bg-slate-800,
-html[data-theme="light"] .bg-slate-800,
-html.light .dark\:bg-slate-800,
-html[data-theme="light"] .dark\:bg-slate-800 {
+/* Cards e Contêineres de Conteúdo (NÃO aplicar em botões, links de ação nem elementos text-white intencionais) */
+html.light .bg-white:not(button):not(a):not([type="button"]):not([type="submit"]):not([role="button"]):not([class*="btn"]):not([class*="kpi-card"]):not([class*="bg-gradient"]):not(.card-tinted),
+html[data-theme="light"] .bg-white:not(button):not(a):not([type="button"]):not([type="submit"]):not([role="button"]):not([class*="btn"]):not([class*="kpi-card"]):not([class*="bg-gradient"]):not(.card-tinted),
+html.light .bg-slate-800:not(button):not(a):not([type="button"]):not([type="submit"]):not([role="button"]):not([class*="btn"]):not([class*="text-white"]):not([class*="kpi-card"]):not([class*="bg-gradient"]):not(.card-tinted),
+html[data-theme="light"] .bg-slate-800:not(button):not(a):not([type="button"]):not([type="submit"]):not([role="button"]):not([class*="btn"]):not([class*="text-white"]):not([class*="kpi-card"]):not([class*="bg-gradient"]):not(.card-tinted),
+html.light .dark\:bg-slate-800:not(button):not(a):not([type="button"]):not([type="submit"]):not([role="button"]):not([class*="btn"]):not([class*="text-white"]):not([class*="kpi-card"]):not([class*="bg-gradient"]):not(.card-tinted),
+html[data-theme="light"] .dark\:bg-slate-800:not(button):not(a):not([type="button"]):not([type="submit"]):not([role="button"]):not([class*="btn"]):not([class*="text-white"]):not([class*="kpi-card"]):not([class*="bg-gradient"]):not(.card-tinted) {
     background-color: #ffffff !important;
-    border-color: #cbd5e1 !important;
-    box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.06) !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 3px 10px -2px rgba(15, 23, 42, 0.04) !important;
+}
+
+/* ==============================================================
+   BLOCOS & CARDS EXECUTIVOS EM MODO CLARO (DESIGN MODERNO E SUAVE)
+   Cores leves com identificação visual imediata e alto contraste
+   ============================================================== */
+.kpi-card {
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease !important;
+}
+
+.kpi-card:hover {
+    transform: translateY(-2px);
+}
+
+/* Faturamento Hoje (Azul Céu) */
+html.light .kpi-card-blue,
+html[data-theme="light"] .kpi-card-blue {
+    background: linear-gradient(155deg, #f0f7ff 0%, #ffffff 65%) !important;
+    border: 1px solid #bfdbfe !important;
+    border-left: 4px solid #3b82f6 !important;
+    box-shadow: 0 4px 16px -2px rgba(59, 130, 246, 0.12), 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+}
+html.light .kpi-card-blue:hover,
+html[data-theme="light"] .kpi-card-blue:hover {
+    box-shadow: 0 8px 24px -4px rgba(59, 130, 246, 0.2), 0 2px 6px rgba(15, 23, 42, 0.05) !important;
+    border-color: #93c5fd !important;
+    border-left-color: #2563eb !important;
+}
+
+/* Faturamento Mês (Índigo Executivo) */
+html.light .kpi-card-indigo,
+html[data-theme="light"] .kpi-card-indigo {
+    background: linear-gradient(155deg, #eef2ff 0%, #ffffff 65%) !important;
+    border: 1px solid #c7d2fe !important;
+    border-left: 4px solid #6366f1 !important;
+    box-shadow: 0 4px 16px -2px rgba(99, 102, 241, 0.12), 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+}
+html.light .kpi-card-indigo:hover,
+html[data-theme="light"] .kpi-card-indigo:hover {
+    box-shadow: 0 8px 24px -4px rgba(99, 102, 241, 0.2), 0 2px 6px rgba(15, 23, 42, 0.05) !important;
+    border-color: #a5b4fc !important;
+    border-left-color: #4f46e5 !important;
+}
+
+/* Lucro Bruto (Esmeralda / Sucesso) */
+html.light .kpi-card-emerald,
+html[data-theme="light"] .kpi-card-emerald {
+    background: linear-gradient(155deg, #ecfdf5 0%, #ffffff 65%) !important;
+    border: 1px solid #a7f3d0 !important;
+    border-left: 4px solid #10b981 !important;
+    box-shadow: 0 4px 16px -2px rgba(16, 185, 129, 0.12), 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+}
+html.light .kpi-card-emerald:hover,
+html[data-theme="light"] .kpi-card-emerald:hover {
+    box-shadow: 0 8px 24px -4px rgba(16, 185, 129, 0.2), 0 2px 6px rgba(15, 23, 42, 0.05) !important;
+    border-color: #6ee7b7 !important;
+    border-left-color: #059669 !important;
+}
+
+/* Lucro Líquido Real (Verde Teal) */
+html.light .kpi-card-teal,
+html[data-theme="light"] .kpi-card-teal {
+    background: linear-gradient(155deg, #f0fdfa 0%, #ffffff 65%) !important;
+    border: 1px solid #99f6e4 !important;
+    border-left: 4px solid #14b8a6 !important;
+    box-shadow: 0 4px 16px -2px rgba(20, 184, 166, 0.12), 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+}
+html.light .kpi-card-teal:hover,
+html[data-theme="light"] .kpi-card-teal:hover {
+    box-shadow: 0 8px 24px -4px rgba(20, 184, 166, 0.2), 0 2px 6px rgba(15, 23, 42, 0.05) !important;
+    border-color: #5eead4 !important;
+    border-left-color: #0d9488 !important;
+}
+
+/* Despesas Pagas (Rose / Alerta) */
+html.light .kpi-card-rose,
+html[data-theme="light"] .kpi-card-rose {
+    background: linear-gradient(155deg, #fff1f2 0%, #ffffff 65%) !important;
+    border: 1px solid #fecdd3 !important;
+    border-left: 4px solid #f43f5e !important;
+    box-shadow: 0 4px 16px -2px rgba(244, 63, 94, 0.12), 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+}
+html.light .kpi-card-rose:hover,
+html[data-theme="light"] .kpi-card-rose:hover {
+    box-shadow: 0 8px 24px -4px rgba(244, 63, 94, 0.2), 0 2px 6px rgba(15, 23, 42, 0.05) !important;
+    border-color: #fda4af !important;
+    border-left-color: #e11d48 !important;
+}
+
+/* Contas a Receber (Ciano / Entradas) */
+html.light .kpi-card-cyan,
+html[data-theme="light"] .kpi-card-cyan {
+    background: linear-gradient(155deg, #ecfeff 0%, #ffffff 65%) !important;
+    border: 1px solid #a5f3fc !important;
+    border-left: 4px solid #06b6d4 !important;
+    box-shadow: 0 4px 16px -2px rgba(6, 182, 212, 0.12), 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+}
+html.light .kpi-card-cyan:hover,
+html[data-theme="light"] .kpi-card-cyan:hover {
+    box-shadow: 0 8px 24px -4px rgba(6, 182, 212, 0.2), 0 2px 6px rgba(15, 23, 42, 0.05) !important;
+    border-color: #67e8f9 !important;
+    border-left-color: #0891b2 !important;
+}
+
+/* Contas a Pagar (Âmbar / Pendências) */
+html.light .kpi-card-amber,
+html[data-theme="light"] .kpi-card-amber {
+    background: linear-gradient(155deg, #fffbeb 0%, #ffffff 65%) !important;
+    border: 1px solid #fde68a !important;
+    border-left: 4px solid #f59e0b !important;
+    box-shadow: 0 4px 16px -2px rgba(245, 158, 11, 0.12), 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+}
+html.light .kpi-card-amber:hover,
+html[data-theme="light"] .kpi-card-amber:hover {
+    box-shadow: 0 8px 24px -4px rgba(245, 158, 11, 0.2), 0 2px 6px rgba(15, 23, 42, 0.05) !important;
+    border-color: #fcd34d !important;
+    border-left-color: #d97706 !important;
+}
+
+/* Valor em Estoque (Roxo / Patrimônio) */
+html.light .kpi-card-purple,
+html[data-theme="light"] .kpi-card-purple {
+    background: linear-gradient(155deg, #faf5ff 0%, #ffffff 65%) !important;
+    border: 1px solid #e9d5ff !important;
+    border-left: 4px solid #a855f7 !important;
+    box-shadow: 0 4px 16px -2px rgba(168, 85, 247, 0.12), 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+}
+html.light .kpi-card-purple:hover,
+html[data-theme="light"] .kpi-card-purple:hover {
+    box-shadow: 0 8px 24px -4px rgba(168, 85, 247, 0.2), 0 2px 6px rgba(15, 23, 42, 0.05) !important;
+    border-color: #d8b4fe !important;
+    border-left-color: #9333ea !important;
+}
+
+/* Indicadores Secundários (Qtd Vendas, Orçamentos, Clientes, Fornecedores) */
+html.light .kpi-card-stat,
+html[data-theme="light"] .kpi-card-stat {
+    background: linear-gradient(155deg, #f8fafc 0%, #ffffff 75%) !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 2px 8px -2px rgba(15, 23, 42, 0.05) !important;
+}
+html.light .kpi-card-stat:hover,
+html[data-theme="light"] .kpi-card-stat:hover {
+    box-shadow: 0 6px 16px -3px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.light .kpi-stat-vendas,
+html[data-theme="light"] .kpi-stat-vendas {
+    border-left: 3px solid #3b82f6 !important;
+}
+html.light .kpi-stat-orcamentos,
+html[data-theme="light"] .kpi-stat-orcamentos {
+    border-left: 3px solid #f59e0b !important;
+}
+html.light .kpi-stat-clientes,
+html[data-theme="light"] .kpi-stat-clientes {
+    border-left: 3px solid #10b981 !important;
+}
+html.light .kpi-stat-fornecedores,
+html[data-theme="light"] .kpi-stat-fornecedores {
+    border-left: 3px solid #8b5cf6 !important;
+}
+
+/* Ícones dos Cards KPI */
+html.light .kpi-icon-pill,
+html[data-theme="light"] .kpi-icon-pill {
+    box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.06);
+}
+
+/* Painel da IA de Relatórios em Modo Claro */
+html.light .ia-panel-container,
+html[data-theme="light"] .ia-panel-container {
+    background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%) !important;
+    border: 1px solid #e0e7ff !important;
+    box-shadow: 0 10px 30px -5px rgba(99, 102, 241, 0.08) !important;
+}
+
+html.light #ia-rel-resultado,
+html[data-theme="light"] #ia-rel-resultado {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 4px 20px -4px rgba(99, 102, 241, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04) !important;
 }
 
 html.light .bg-slate-50,
@@ -350,18 +532,72 @@ html[data-theme="light"] table tbody tr:hover td {
     background-color: #f8fafc !important;
 }
 
-/* Modais em Modo Claro */
+/* Modais em Modo Claro (apenas containers estruturais, nunca botões de ação ou elementos text-white) */
 html.light .modal-content,
 html[data-theme="light"] .modal-content,
-html.light [id^="modal-"] > div:not(.fixed),
-html[data-theme="light"] [id^="modal-"] > div:not(.fixed),
-html.light [id*="modal"] .bg-white,
-html[data-theme="light"] [id*="modal"] .bg-white,
-html.light [id*="modal"] .dark\:bg-slate-800,
-html[data-theme="light"] [id*="modal"] .dark\:bg-slate-800 {
+html.light [id^="modal-"] > div:not(.fixed):not(button),
+html[data-theme="light"] [id^="modal-"] > div:not(.fixed):not(button),
+html.light [id*="modal"] .bg-white:not(button):not(a):not([type="button"]):not([type="submit"]):not([role="button"]):not([class*="btn"]):not([class*="text-white"]),
+html[data-theme="light"] [id*="modal"] .bg-white:not(button):not(a):not([type="button"]):not([type="submit"]):not([role="button"]):not([class*="btn"]):not([class*="text-white"]),
+html.light [id*="modal"] .dark\:bg-slate-800:not(button):not(a):not([type="button"]):not([type="submit"]):not([role="button"]):not([class*="btn"]):not([class*="text-white"]),
+html[data-theme="light"] [id*="modal"] .dark\:bg-slate-800:not(button):not(a):not([type="button"]):not([type="submit"]):not([role="button"]):not([class*="btn"]):not([class*="text-white"]) {
     background-color: #ffffff !important;
     color: #0f172a !important;
     border: 1px solid #cbd5e1 !important;
+}
+
+/* ==============================================================
+   BOTÕES DE RECIBO / BOBINA TÉRMICA & EXPORTAÇÃO (MODAL DE FINALIZAÇÃO)
+   Garante visibilidade máxima, contraste e elegância em qualquer modo
+   ============================================================== */
+#btn-recibo-bobina,
+.btn-recibo-bobina,
+button[onclick*="'thermal'"] {
+    background-color: #0f172a !important;
+    background-image: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid #334155 !important;
+    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.25), 0 2px 4px -2px rgba(15, 23, 42, 0.15) !important;
+}
+
+#btn-recibo-bobina:hover,
+.btn-recibo-bobina:hover,
+button[onclick*="'thermal'"]:hover {
+    background-color: #1e293b !important;
+    background-image: linear-gradient(135deg, #334155 0%, #1e293b 100%) !important;
+    color: #ffffff !important;
+    border-color: #475569 !important;
+    box-shadow: 0 6px 12px -2px rgba(15, 23, 42, 0.35) !important;
+}
+
+#btn-recibo-bobina i,
+.btn-recibo-bobina i,
+button[onclick*="'thermal'"] i {
+    color: #fbbf24 !important; /* Destaque âmbar/dourado de cupom fiscal/bobina */
+}
+
+#btn-recibo-a4,
+button[onclick*="'a4'"] {
+    background-color: #2563eb !important;
+    background-image: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid #1d4ed8 !important;
+}
+
+#btn-recibo-contrato,
+button[onclick*="imprimirContrato"] {
+    background-color: #6366f1 !important;
+    background-image: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid #4f46e5 !important;
+}
+
+#btn-recibo-pdf,
+button[onclick*="downloadPDF"] {
+    background-color: #e11d48 !important;
+    background-image: linear-gradient(135deg, #e11d48 0%, #be123c 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid #be123c !important;
 }
 
 

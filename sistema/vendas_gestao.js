@@ -129,6 +129,22 @@ function inicializarGestao() {
     }
     // Migração legada desativada (migrarDadosSeNecessario)
 
+    // Pré-carregamento imediato do repositório local FCCache para exibição instantânea (< 5ms)
+    if (typeof window.FCCache !== 'undefined') {
+        if (!db.vendas || db.vendas.length === 0) db.vendas = window.FCCache.get('vendas') || [];
+        if (!db.financeiro || db.financeiro.length === 0) db.financeiro = window.FCCache.get('financeiro') || [];
+        if (!db.compras || db.compras.length === 0) db.compras = window.FCCache.get('compras') || [];
+        if (!db.produtos || db.produtos.length === 0) db.produtos = window.FCCache.get('produtos') || [];
+        if (!db.clientes || db.clientes.length === 0) db.clientes = window.FCCache.get('clientes') || [];
+        if (!db.fornecedores || db.fornecedores.length === 0) db.fornecedores = window.FCCache.get('fornecedores') || [];
+        if (!db.funcionarios || db.funcionarios.length === 0) db.funcionarios = window.FCCache.get('funcionarios') || [];
+        if (!db.caixa || !db.caixa.saldo) db.caixa = window.FCCache.get('caixa') || window.FCCache.get('fc_moveis_caixa') || { status: 'FECHADO', saldo: 0, historico: [] };
+
+        if (db.vendas.length > 0) {
+            try { refreshCurrentView(); } catch(e) {}
+        }
+    }
+
     // Cache inteligente: serve dados instantaneamente do sessionStorage
     const _listen = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb, opts) {
         let ref = (typeof window.getEmpresaRef === 'function') ? window.getEmpresaRef().collection(col) : firestore.collection(col);
@@ -141,7 +157,7 @@ function inicializarGestao() {
     };
 
     // Controla quantas colecoes ja carregaram o primeiro snapshot
-    let colecoesProntas = 0;
+    let colecoesProntas = (db.vendas && db.vendas.length > 0) ? 6 : 0;
     const totalColecoes = 6;
     function tentarRefresh() {
         colecoesProntas++;
@@ -183,8 +199,17 @@ function inicializarGestao() {
     });
 }
 
+function _iniciarTelaVendasGestao() {
+    if (window._vendasGestaoIniciado) return;
+    window._vendasGestaoIniciado = true;
+    initGlobalData(inicializarGestao);
+}
 
-window.addEventListener('load', () => { initGlobalData(inicializarGestao); });
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _iniciarTelaVendasGestao);
+} else {
+    _iniciarTelaVendasGestao();
+}
 
 function atualizarCardsFluxoDeCaixa() {
     if (!db.financeiro) return;

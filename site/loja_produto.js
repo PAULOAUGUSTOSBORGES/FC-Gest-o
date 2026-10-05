@@ -84,20 +84,11 @@ window.atualizarIconesTema = atualizarIconesTema;
 async function initProduto() {
     try {
         const empresaAtiva = window.empresaAtivaSite || 'emp_fc_moveis';
-        let configDoc;
-        if (empresaAtiva === 'emp_fc_moveis') {
-            configDoc = await firebase.firestore().collection('empresas').doc('emp_fc_moveis').collection('configuracoes').doc('config').get();
-            if (!configDoc.exists) {
-                configDoc = await firebase.firestore().collection('fc_moveis').doc('config').get();
-            }
-        } else {
-            configDoc = await firebase.firestore().collection('empresas').doc(empresaAtiva).collection('configuracoes').doc('config').get();
-        }
-
-        if (configDoc && configDoc.exists) {
-            const data = configDoc.data();
-            lojaConfig = data.loja || {};
-            aplicarConfiguracoesLoja(data.empresa || {});
+        // Configuração pública da vitrine (doc 'loja_publica'; nunca lança erro)
+        const configPublica = await carregarConfigPublicaLoja(empresaAtiva);
+        if (configPublica) {
+            lojaConfig = configPublica.loja || {};
+            aplicarConfiguracoesLoja(configPublica.empresa || {});
         }
 
         let prodDoc;

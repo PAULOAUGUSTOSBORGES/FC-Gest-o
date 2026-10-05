@@ -339,14 +339,18 @@ async function salvarProduto() {
 
 async function editarProduto(id) {
     const idStr = String(id).trim();
-    let p = db.produtos.find(x => String(x.id).trim() === idStr);
+    let p = Array.isArray(db.produtos) ? db.produtos.find(x => String(x.id).trim() === idStr) : null;
+    if (!p && window.FCCache && typeof window.FCCache.get === 'function') {
+        const cached = window.FCCache.get('produtos');
+        if (Array.isArray(cached)) p = cached.find(x => String(x.id).trim() === idStr);
+    }
     
     if (!p) {
         try {
             const snap = await window.getEmpresaRef().collection('produtos').doc(idStr).get();
             if (snap.exists) {
                 p = { id: snap.id, ...snap.data() };
-                db.produtos.push(p);
+                if (Array.isArray(db.produtos)) db.produtos.push(p);
             }
         } catch (err) {
             console.error('Erro ao buscar produto:', err);
@@ -475,15 +479,24 @@ async function editarCliente(id) {
     const idStr = String(id).trim();
 
     // Tenta encontrar no cache local primeiro
-    let c = db.clientes.find(x => String(x.id).trim() === idStr);
+    let c = Array.isArray(db.clientes) ? db.clientes.find(x => String(x.id).trim() === idStr) : null;
+    if (!c && window.FCCache && typeof window.FCCache.get === 'function') {
+        const cached = window.FCCache.get('clientes');
+        if (Array.isArray(cached)) {
+            c = cached.find(x => String(x.id).trim() === idStr);
+            if (c && Array.isArray(db.clientes) && !db.clientes.some(x => String(x.id).trim() === idStr)) {
+                db.clientes.push(c);
+            }
+        }
+    }
 
-    // Se não encontrou (cache vazio), busca diretamente no Firestore
+    // Se não encontrou em nenhum cache local, busca no Firestore
     if (!c) {
         try {
             const snap = await window.getEmpresaRef().collection('clientes').doc(idStr).get();
             if (snap.exists) {
                 c = { id: snap.id, ...snap.data() };
-                db.clientes.push(c);
+                if (Array.isArray(db.clientes)) db.clientes.push(c);
             }
         } catch (err) {
             console.error('Erro ao buscar cliente:', err);

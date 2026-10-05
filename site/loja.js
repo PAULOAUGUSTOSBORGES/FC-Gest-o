@@ -192,20 +192,12 @@ async function initLoja() {
             console.warn("[Loja SaaS] Verificação de licença ignorada em fallback local:", errLic);
         }
 
-        // 1. Carregar Configurações da Loja Multi-Tenant
-        let configSnap;
-        if (empresaAtivaSite === 'emp_fc_moveis') {
-            configSnap = await firebase.firestore().collection('empresas').doc('emp_fc_moveis').collection('configuracoes').doc('config').get();
-            if (!configSnap.exists) {
-                configSnap = await firebase.firestore().collection('fc_moveis').doc('config').get();
-            }
-        } else {
-            configSnap = await firebase.firestore().collection('empresas').doc(empresaAtivaSite).collection('configuracoes').doc('config').get();
-        }
+        // 1. Carregar Configurações Públicas da Loja Multi-Tenant
+        // (doc 'loja_publica'; nunca lança erro para não derrubar a vitrine)
+        const configPublica = await carregarConfigPublicaLoja(empresaAtivaSite);
 
-        if (configSnap && configSnap.exists) {
-            const data = configSnap.data();
-            lojaConfig = data.loja || {};
+        if (configPublica) {
+            lojaConfig = configPublica.loja || {};
             
             // Verifica se a loja está desativada explicitamente
             if (lojaConfig.ativa === false) {
@@ -221,7 +213,7 @@ async function initLoja() {
                 return;
             }
 
-            aplicarConfiguracoes(data.empresa);
+            aplicarConfiguracoes(configPublica.empresa);
         } else {
             console.warn("Configurações não encontradas para:", empresaAtivaSite);
         }

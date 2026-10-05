@@ -10,7 +10,39 @@ function inicializarSistema() {
     // 1. Tenta preencher a tela imediatamente com o que já estiver no db.config
     carregarConfiguracoesNaTela();
 
-    // 2. Conecta listener em tempo real com suporte a cache para as configurações da empresa ativa:
+    function aplicarDadosConfigNaTela(dados) {
+        if (!dados) return;
+        const empIdAtiva = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
+        const fallbackNome = (window.currentEmpresaData?.nomeEmpresa) || (window.currentEmpresaData?.nome) || localStorage.getItem('fc_nome_empresa_ativa') || (empIdAtiva === 'emp_fc_moveis' ? 'FC Móveis' : 'Minha Loja');
+        const baseConfig = {
+            empresa: {
+                nome: fallbackNome,
+                fantasia: fallbackNome,
+                cnpj: '', telefone: '', logo: ''
+            },
+            taxas: { 'Dinheiro': 0, 'PIX': 0, 'Cartão Débito': 0, 'Boleto': 0, 'Fiado': 0, 'Cartão Crédito': { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0 } },
+            prazos: { 'Fiado': 30, 'Boleto': 30, 'Cartão Crédito': 1, 'Cartão Débito': 1 },
+            loja: {}
+        };
+        db.config = {
+            ...baseConfig,
+            ...dados,
+            empresa: { ...baseConfig.empresa, ...(dados.empresa || {}) },
+            taxas: dados.taxas || baseConfig.taxas,
+            prazos: dados.prazos || baseConfig.prazos,
+            loja: { ...baseConfig.loja, ...(dados.loja || {}) }
+        };
+        if (typeof window.FCCache !== 'undefined') {
+            window.FCCache.set('config', db.config);
+            window.FCCache.set('fc_moveis_config', db.config);
+        }
+        carregarConfiguracoesNaTela();
+        if (typeof aplicarIdentidadeVisualGlobal === 'function') {
+            aplicarIdentidadeVisualGlobal();
+        }
+    }
+
+    // 2. Conecta listener em tempo real com o Firestore para as configurações da empresa ativa:
     const _listenDoc = (typeof window.fcListenDoc === 'function') ? window.fcListenDoc : function(col, id, cb) {
         let ref;
         if (typeof window.getEmpresaRef === 'function') {
@@ -22,35 +54,41 @@ function inicializarSistema() {
     };
 
     _listenDoc('configuracoes', 'config', function(dados) {
-        if (dados) {
-            const baseConfig = {
-                empresa: {
-                    nome: window.currentEmpresaData?.nomeEmpresa || '',
-                    fantasia: window.currentEmpresaData?.nomeEmpresa || '',
-                    cnpj: '', telefone: '', logo: ''
-                },
-                taxas: { 'Dinheiro': 0, 'PIX': 0, 'Cartão Débito': 0, 'Boleto': 0, 'Fiado': 0, 'Cartão Crédito': { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0 } },
-                prazos: { 'Fiado': 30, 'Boleto': 30, 'Cartão Crédito': 1, 'Cartão Débito': 1 },
-                loja: {}
-            };
-            db.config = {
-                ...baseConfig,
-                ...dados,
-                empresa: { ...baseConfig.empresa, ...(dados.empresa || {}) },
-                taxas: dados.taxas || baseConfig.taxas,
-                prazos: dados.prazos || baseConfig.prazos,
-                loja: { ...baseConfig.loja, ...(dados.loja || {}) }
-            };
-            if (typeof window.FCCache !== 'undefined') {
-                window.FCCache.set('config', db.config);
-                window.FCCache.set('fc_moveis_config', db.config);
+        aplicarDadosConfigNaTela(dados);
+    }, { realtime: true });
+
+    // 3. Busca ativa direta do servidor Firestore garantindo o carregamento imediato
+    (async function carregarConfiguracoesDoServidor() {
+        try {
+            let snap = await window.getEmpresaRef().collection('configuracoes').doc('config').get();
+            let dados = (snap && snap.exists) ? snap.data() : null;
+            const empId = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
+
+            // Fallback para a coleção legada fc_moveis/config se faltar dados
+            if ((!dados || !dados.empresa || !dados.empresa.logo) && empId === 'emp_fc_moveis') {
+                try {
+                    const legSnap = await firestore.collection('fc_moveis').doc('config').get();
+                    if (legSnap && legSnap.exists && legSnap.data()) {
+                        console.log("[Config] Configurações recuperadas da coleção legada fc_moveis/config");
+                        const legD = legSnap.data();
+                        dados = { ...(legD || {}), ...(dados || {}) };
+                        if (legD.empresa) {
+                            dados.empresa = { ...(legD.empresa || {}), ...(dados.empresa || {}) };
+                        }
+                        window.getEmpresaRef().collection('configuracoes').doc('config').set(dados, { merge: true }).catch(() => {});
+                    }
+                } catch(eLeg) {
+                    console.warn("Aviso ao buscar config legada:", eLeg);
+                }
             }
-            carregarConfiguracoesNaTela();
-            if (typeof aplicarIdentidadeVisualGlobal === 'function') {
-                aplicarIdentidadeVisualGlobal();
+
+            if (dados) {
+                aplicarDadosConfigNaTela(dados);
             }
+        } catch(errServ) {
+            console.warn("Aviso ao carregar configurações diretamente do servidor:", errServ);
         }
-    });
+    })();
 
     carregarCategorias();
     renderPainelPersonalizacaoSistema();
@@ -369,16 +407,19 @@ function carregarConfiguracoesNaTela() {
         document.getElementById('emp-fiscal-ativo').checked = emp.fiscalAtivo !== false;
     }
 
+    const logoEmpresa = emp.logo || (window.currentEmpresaData && window.currentEmpresaData.logo) || localStorage.getItem('fc_logo_empresa_ativa') || '';
     if (document.getElementById('emp-logo-base64')) {
-        document.getElementById('emp-logo-base64').value = emp.logo || '';
+        document.getElementById('emp-logo-base64').value = logoEmpresa;
     }
-    
-    if (emp.logo && document.getElementById('emp-logo-preview')) {
-        document.getElementById('emp-logo-preview').src = emp.logo;
-        document.getElementById('emp-logo-preview').classList.remove('hidden');
-        if (document.getElementById('emp-logo-text')) {
-            document.getElementById('emp-logo-text').classList.add('hidden');
-        }
+    const previewEl = document.getElementById('emp-logo-preview');
+    const textEl = document.getElementById('emp-logo-text');
+    if (logoEmpresa && previewEl) {
+        previewEl.src = logoEmpresa;
+        previewEl.classList.remove('hidden');
+        if (textEl) textEl.classList.add('hidden');
+    } else if (previewEl && textEl) {
+        previewEl.classList.add('hidden');
+        textEl.classList.remove('hidden');
     }
 
     // Carrega Prazos Padrão
@@ -781,22 +822,34 @@ async function salvarConfiguracoes() {
             db.config.loja[campo] = el.value.trim();
         }
     });
-
     try {
-        await window.getEmpresaRef().collection('configuracoes').doc('config').set(db.config, { merge: true });
+        // SEGURANÇA MÁXIMA: Isola segredos confidenciais exclusivamente na subcoleção protegida 'segredos_fiscais'
+        // NUNCA salva certificados, senhas ou tokens dentro do documento 'configuracoes/config'.
+        const segredosFiscais = {
+            certificadoBase64: db.config.empresa?.certificadoBase64 || '',
+            certificadoNome: db.config.empresa?.certificadoNome || '',
+            certificadoValidade: db.config.empresa?.certificadoValidade || '',
+            certificadoSenha: db.config.empresa?.certificadoSenha || '',
+            cscToken: db.config.empresa?.cscToken || '',
+            cscId: db.config.empresa?.cscId || '',
+            ultimaAtualizacao: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        const configGeral = JSON.parse(JSON.stringify(db.config));
+        if (configGeral.empresa) {
+            delete configGeral.empresa.certificadoBase64;
+            delete configGeral.empresa.certificadoSenha;
+            delete configGeral.empresa.cscToken;
+            delete configGeral.empresa.cscId;
+            delete configGeral.empresa.focusToken;
+        }
+
+        await window.getEmpresaRef().collection('configuracoes').doc('config').set(configGeral, { merge: true });
 
         // Salva os segredos fiscais confidenciais na subcoleção protegida
         try {
-            if (db.config.empresa?.certificadoBase64 || db.config.empresa?.certificadoSenha || db.config.empresa?.cscToken) {
-                await window.getEmpresaRef().collection('segredos_fiscais').doc('config').set({
-                    certificadoBase64: db.config.empresa.certificadoBase64 || '',
-                    certificadoNome: db.config.empresa.certificadoNome || '',
-                    certificadoValidade: db.config.empresa.certificadoValidade || '',
-                    certificadoSenha: db.config.empresa.certificadoSenha || '',
-                    cscToken: db.config.empresa.cscToken || '',
-                    cscId: db.config.empresa.cscId || '',
-                    ultimaAtualizacao: firebase.firestore.FieldValue.serverTimestamp()
-                }, { merge: true });
+            if (segredosFiscais.certificadoBase64 || segredosFiscais.certificadoSenha || segredosFiscais.cscToken) {
+                await window.getEmpresaRef().collection('segredos_fiscais').doc('config').set(segredosFiscais, { merge: true });
             }
         } catch(eSegSave) {
             console.warn("Aviso ao salvar segredos_fiscais:", eSegSave);
@@ -805,6 +858,25 @@ async function salvarConfiguracoes() {
             window.FCCache.set('config', db.config);
             window.FCCache.set('fc_moveis_config', db.config);
         }
+
+        // Atualiza os caches locais de identidade visual imediatamente
+        const empIdAtiva = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
+        if (db.config.empresa?.logo) {
+            try { localStorage.setItem('fc_logo_empresa_ativa', db.config.empresa.logo); } catch(e) {}
+        }
+        if (empIdAtiva) {
+            try {
+                const cacheEmpKey = 'fc_empresa_cache_' + empIdAtiva;
+                let c = {};
+                try { c = JSON.parse(localStorage.getItem(cacheEmpKey) || '{}'); } catch(e) {}
+                c.logo = db.config.empresa?.logo || c.logo || '';
+                c.nome = db.config.empresa?.nome || c.nome || '';
+                c.nomeEmpresa = db.config.empresa?.fantasia || db.config.empresa?.nome || c.nomeEmpresa || '';
+                localStorage.setItem(cacheEmpKey, JSON.stringify(c));
+                window.currentEmpresaData = c;
+            } catch(e) {}
+        }
+
         if (typeof aplicarIdentidadeVisualGlobal === 'function') {
             aplicarIdentidadeVisualGlobal();
         }

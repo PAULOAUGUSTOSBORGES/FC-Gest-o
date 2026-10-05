@@ -3,7 +3,7 @@
 // Cache inteligente, carregamento ultra-rápido e suporte Offline
 // ==============================================================
 
-const CACHE_NAME = 'fc-gestao-cache-v20261002142531';
+const CACHE_NAME = 'fc-gestao-cache-v20261003132500';
 
 // Arquivos do App Shell para pré-armazenamento em cache
 const SHELL_ASSETS = [
@@ -56,7 +56,9 @@ const SHELL_ASSETS = [
     '/sistema/marketing.js',
     '/sistema/sistema.html',
     '/sistema/sistema.js',
-    '/sistema/fc_cache.js'
+    '/sistema/fc_cache.js',
+    '/sistema/tabela_ncm.js',
+    '/sistema/ncm_helper.js'
 ];
 
 // Instalação do Service Worker

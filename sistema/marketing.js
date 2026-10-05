@@ -382,13 +382,18 @@ Formate a resposta em HTML limpo. Use <h3> para os títulos das ideias, <p> para
         // 3. Salva no Banco de Dados para Histórico
         // FIX: modeloUsado não é exposto por window.chamarGemini() → usar fallback seguro
         try {
-            await window.getEmpresaRef().collection('marketing_historico').add({
+            const novoHist = {
                 nicho: nicho,
                 objetivo: objetivo,
                 resultado_html: textResult,
                 modelo: (typeof modeloUsado !== 'undefined' && modeloUsado) ? String(modeloUsado).replace('models/', '') : 'Gemini IA',
                 data_geracao: new Date().toISOString()
-            });
+            };
+            const docRef = await window.getEmpresaRef().collection('marketing_historico').add(novoHist);
+            if (window.FCCache && typeof window.FCCache.get === 'function') {
+                const arr = window.FCCache.get('marketing_historico') || [];
+                window.FCCache.set('marketing_historico', [{ id: docRef.id, ...novoHist }, ...arr]);
+            }
             console.log("Consultoria salva no histórico com sucesso.");
         } catch(errHistorico) {
             console.error("Erro ao salvar histórico de marketing:", errHistorico);
@@ -459,64 +464,11 @@ async function carregarHistoricoMarketing() {
         return;
     }
 
-    container.innerHTML = `<div class="col-span-full p-8 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Carregando histórico e limpando itens antigos...</div>`;
+    const dataLimite = new Date();
+    dataLimite.setDate(dataLimite.getDate() - 30); // 30 dias atrás
 
-    try {
-        const dataLimite = new Date();
-        dataLimite.setDate(dataLimite.getDate() - 30); // 30 dias atrás
-
-        // Busca todos ordenados por data (desc)
-        let snapshot;
-        try {
-            snapshot = await window.getEmpresaRef().collection('marketing_historico')
-                .orderBy('data_geracao', 'desc')
-                .get();
-        } catch (queryErr) {
-            console.warn('[Marketing] Fallback query historico sem orderBy:', queryErr);
-            snapshot = await window.getEmpresaRef().collection('marketing_historico').get();
-        }
-
-        todosHistoricosIA = [];
-
-        // Lógica de Exclusão Automática (30 dias)
-        // FIX: usar batch apenas se houver itens a deletar; evitar commit de batch vazio
-        const docsParaDeletar = [];
-        let itemsDeletados = 0;
-
-        snapshot.docs.forEach(doc => {
-            const hist = { id: doc.id, ...doc.data() };
-            // FIX: converter Firestore Timestamp com segurança
-            const dataHist = _parseDataGeracao(hist.data_geracao);
-
-            if (dataHist < dataLimite) {
-                // Item é mais velho que 30 dias -> APAGAR DA NUVEM
-                docsParaDeletar.push(doc.ref);
-                itemsDeletados++;
-            } else {
-                // Item é válido -> MANTER E MOSTRAR
-                todosHistoricosIA.push(hist);
-            }
-        });
-
-        todosHistoricosIA.sort((a, b) => {
-            const da = _parseDataGeracao(a.data_geracao);
-            const db = _parseDataGeracao(b.data_geracao);
-            return db - da;
-        });
-
-        // FIX: só commita o batch se houver itens para deletar (evita erro de batch vazio)
-        if (itemsDeletados > 0) {
-            // Batches têm limite de 500 ops; dividir se necessário
-            const BATCH_LIMIT = 450;
-            for (let i = 0; i < docsParaDeletar.length; i += BATCH_LIMIT) {
-                const batch = firestore.batch();
-                docsParaDeletar.slice(i, i + BATCH_LIMIT).forEach(ref => batch.delete(ref));
-                await batch.commit();
-            }
-            console.log(`🗑️ Limpeza de Histórico: ${itemsDeletados} consultorias velhas apagadas.`);
-        }
-
-        // Renderiza na tela
+    function _renderizarCardsHistorico() {
+        if (!container) return;
         if (todosHistoricosIA.length === 0) {
             container.innerHTML = `<div class="col-span-full p-8 text-center text-slate-400 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50">Nenhuma consultoria encontrada nos últimos 30 dias.</div>`;
             return;
@@ -524,15 +476,11 @@ async function carregarHistoricoMarketing() {
 
         let html = '';
         todosHistoricosIA.forEach(hist => {
-            // FIX: usar helper para converter data com segurança
             const d = _parseDataGeracao(hist.data_geracao);
             const dataStr = d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
-
-            // FIX: verificar se hist.objetivo existe antes de chamar .length
             const objTexto = hist.objetivo || '(sem objetivo)';
             const objCurto = objTexto.length > 80 ? objTexto.substring(0, 80) + '...' : objTexto;
             const nomeModelo = hist.modelo ? hist.modelo : 'IA';
-            // FIX: escapar aspas simples no ID para não quebrar o onclick
             const idSafe = String(hist.id).replace(/'/g, "\\'");
 
             html += `
@@ -553,9 +501,76 @@ async function carregarHistoricoMarketing() {
                 </div>
             `;
         });
-
         container.innerHTML = html;
+    }
 
+    // Tenta carregar do cache local primeiro (instantâneo)
+    const cachedMkt = (window.FCCache && typeof window.FCCache.get === 'function') ? window.FCCache.get('marketing_historico') : null;
+    let renderizouDoCache = false;
+    if (Array.isArray(cachedMkt) && cachedMkt.length > 0) {
+        todosHistoricosIA = cachedMkt.filter(hist => _parseDataGeracao(hist.data_geracao) >= dataLimite);
+        todosHistoricosIA.sort((a, b) => _parseDataGeracao(b.data_geracao) - _parseDataGeracao(a.data_geracao));
+        _renderizarCardsHistorico();
+        renderizouDoCache = true;
+        if (window.fcModoEconomico) return;
+    }
+
+    if (!renderizouDoCache) {
+        container.innerHTML = `<div class="col-span-full p-8 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Carregando histórico e limpando itens antigos...</div>`;
+    }
+
+    try {
+        // Busca todos ordenados por data (desc)
+        let snapshot;
+        try {
+            snapshot = await window.getEmpresaRef().collection('marketing_historico')
+                .orderBy('data_geracao', 'desc')
+                .get();
+        } catch (queryErr) {
+            console.warn('[Marketing] Fallback query historico sem orderBy:', queryErr);
+            snapshot = await window.getEmpresaRef().collection('marketing_historico').get();
+        }
+
+        todosHistoricosIA = [];
+
+        // Lógica de Exclusão Automática (30 dias)
+        const docsParaDeletar = [];
+        let itemsDeletados = 0;
+
+        snapshot.docs.forEach(doc => {
+            const hist = { id: doc.id, ...doc.data() };
+            const dataHist = _parseDataGeracao(hist.data_geracao);
+
+            if (dataHist < dataLimite) {
+                docsParaDeletar.push(doc.ref);
+                itemsDeletados++;
+            } else {
+                todosHistoricosIA.push(hist);
+            }
+        });
+
+        todosHistoricosIA.sort((a, b) => {
+            const da = _parseDataGeracao(a.data_geracao);
+            const db = _parseDataGeracao(b.data_geracao);
+            return db - da;
+        });
+
+        // Atualiza o cache local
+        if (window.FCCache && typeof window.FCCache.set === 'function') {
+            window.FCCache.set('marketing_historico', todosHistoricosIA);
+        }
+
+        if (itemsDeletados > 0) {
+            const BATCH_LIMIT = 450;
+            for (let i = 0; i < docsParaDeletar.length; i += BATCH_LIMIT) {
+                const batch = firestore.batch();
+                docsParaDeletar.slice(i, i + BATCH_LIMIT).forEach(ref => batch.delete(ref));
+                await batch.commit();
+            }
+            console.log(`🗑️ Limpeza de Histórico: ${itemsDeletados} consultorias velhas apagadas.`);
+        }
+
+        _renderizarCardsHistorico();
     } catch (e) {
         console.error("Erro ao carregar histórico de marketing:", e);
         const msgErro = e && e.message ? e.message : String(e);

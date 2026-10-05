@@ -335,6 +335,10 @@ function fecharModalConfirmacao() {
 
 
 function printHtmlSeguro(htmlCompleto) {
+    if (typeof window.printHtmlSeguro === 'function') {
+        window.printHtmlSeguro(htmlCompleto);
+        return;
+    }
     showToast("Preparando documento para Impressão...", "info");
     
     const printWin = window.open('', '', 'width=800,height=600');
@@ -2359,13 +2363,25 @@ async function salvarCompraManual() {
                 });
             }
             try {
-                const snapFin = await window.getEmpresaRef().collection('financeiro').where('tipo', '==', 'DESPESA').get();
-                snapFin.docs.forEach(doc => {
-                    const finData = doc.data();
-                    if (finData.ref && String(finData.ref).includes(cAntiga.numeroNF) && cAntiga.numeroNF !== 'S/N') {
-                        batch.delete(doc.ref);
-                    }
-                });
+                const finLista = (typeof db !== 'undefined' && Array.isArray(db.financeiro) && db.financeiro.length > 0)
+                    ? db.financeiro
+                    : ((window.FCCache && typeof window.FCCache.get === 'function') ? window.FCCache.get('financeiro') : null);
+
+                if (Array.isArray(finLista) && finLista.length > 0) {
+                    finLista.forEach(finData => {
+                        if (finData.tipo === 'DESPESA' && finData.ref && String(finData.ref).includes(cAntiga.numeroNF) && cAntiga.numeroNF !== 'S/N') {
+                            batch.delete(window.getEmpresaRef().collection('financeiro').doc(String(finData.id)));
+                        }
+                    });
+                } else {
+                    const snapFin = await window.getEmpresaRef().collection('financeiro').where('tipo', '==', 'DESPESA').get();
+                    snapFin.docs.forEach(doc => {
+                        const finData = doc.data();
+                        if (finData.ref && String(finData.ref).includes(cAntiga.numeroNF) && cAntiga.numeroNF !== 'S/N') {
+                            batch.delete(doc.ref);
+                        }
+                    });
+                }
             } catch(e) { console.error('Erro ao buscar financeiro atrelado:', e); }
         }
     }
@@ -4381,7 +4397,9 @@ window.salvarLembreteCaixa = async function() {
 };
 
 window.imprimirContratoAtual = function() {
-    if (window.vendaAtualImpressao) {
+    if (typeof window.abrirModalContrato === 'function' && window.vendaAtualImpressao) {
+        window.abrirModalContrato(window.vendaAtualImpressao);
+    } else if (window.vendaAtualImpressao) {
         window.imprimirContratoObj(window.vendaAtualImpressao);
     } else {
         showToast("Nenhuma venda selecionada para imprimir.", "error");
@@ -4389,25 +4407,55 @@ window.imprimirContratoAtual = function() {
 };
 
 window.imprimirContratoObj = function(v) {
+    if (!v) return;
+    if (typeof window.abrirModalContrato === 'function') {
+        window.abrirModalContrato(v);
+        return;
+    }
     const empAtivaIdContr = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
     const fallbackNomeContr = (window.currentEmpresaData?.nomeEmpresa) || localStorage.getItem('fc_nome_empresa_ativa') || (empAtivaIdContr === 'emp_fc_moveis' ? 'FC MÓVEIS' : 'MINHA LOJA');
     const emp = (typeof obterDadosEmpresa === 'function') ? obterDadosEmpresa() : { nome: fallbackNomeContr, cnpj: '', end: '', tel: '', logoHtml: '' };
     const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id || '').slice(-4);
-    const cliNome = v.clienteNome || v.cliente || 'Consumidor Final';
-    const cliCpf = v.clienteDoc || 'Não informado';
-    const cliTel = v.clienteTel || 'Não informado';
-    const cliEndCompleto = v.clienteEnd || 'Não informado';
+    const cliInfo = (typeof obterDadosClientePDV === 'function') ? obterDadosClientePDV(v.clienteId) : null;
+    const cliNome = (cliInfo && cliInfo.nome !== 'Consumidor Final') ? cliInfo.nome : (v.clienteNome || v.cliente || 'Consumidor Final');
+    const cliCpf = (cliInfo && cliInfo.doc !== 'Não informado') ? cliInfo.doc : (v.clienteDoc || 'Não informado');
+    const cliTel = (cliInfo && cliInfo.tel !== 'Não informado') ? cliInfo.tel : (v.clienteTel || 'Não informado');
+    const cliEndCompleto = (cliInfo && cliInfo.endCompleto !== 'Não informado') ? cliInfo.endCompleto : (v.clienteEnd || 'Não informado');
 
-    let itensHtml = (v.itens || []).map((i, idx) => `
+    let totalDescontoItens = 0;
+    let subtotalItensBruto = 0;
+    let itensHtml = (v.itens || []).map((i, idx) => {
+        const qtdItem = i.qtd || 1;
+        const precoUnit = i.preco || 0;
+        const subItemBruto = precoUnit * qtdItem;
+        const descItem = Number(i.desconto) || 0;
+        const totalItemLiquido = Math.max(0, subItemBruto - descItem);
+        subtotalItensBruto += subItemBruto;
+        totalDescontoItens += descItem;
+
+        let valorLinhaHtml = `Valor: ${typeof formatMoney === 'function' ? formatMoney(subItemBruto) : subItemBruto}`;
+        if (descItem > 0) {
+            valorLinhaHtml = `Valor Unitário: ${typeof formatMoney === 'function' ? formatMoney(precoUnit) : precoUnit} x ${qtdItem} = ${typeof formatMoney === 'function' ? formatMoney(subItemBruto) : subItemBruto}<br>` +
+                             `Desconto do Item: - ${typeof formatMoney === 'function' ? formatMoney(descItem) : descItem}<br>` +
+                             `Valor com Desconto: ${typeof formatMoney === 'function' ? formatMoney(totalItemLiquido) : totalItemLiquido}`;
+        }
+
+        return `
         <div style="margin-bottom: 15px; display: flex; align-items: flex-start; border-bottom: 1px dashed #eee; padding-bottom: 10px;">
             <div style="flex: 1;">
                 <strong>PRODUTO/SERVIÇO ${idx + 1}</strong><br>
                 Descrição: ${i.nome || 'Item'} ${i.obsVenda ? ` - Obs: ${i.obsVenda}` : ''}<br>
-                Quantidade: ${i.qtd || 1} unidade(s)<br>
-                Valor: ${typeof formatMoney === 'function' ? formatMoney((i.preco || 0) * (i.qtd || 1)) : ((i.preco || 0) * (i.qtd || 1))}<br>
+                Quantidade: ${qtdItem} unidade(s)<br>
+                ${valorLinhaHtml}<br>
             </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
+
+    const descGeral = Number(v.desconto) || 0;
+    const totalDescontoGeral = descGeral + totalDescontoItens;
+    const temDescontoNoContrato = totalDescontoGeral > 0;
+    const subtotalBruto = (v.subtotal && v.subtotal > 0) ? (v.subtotal + totalDescontoItens) : subtotalItensBruto;
 
     const html = `
     <div style="font-family: Arial, sans-serif; color: #000; width: 100%; max-width: 800px; margin: 0 auto; line-height: 1.5; font-size: 14px;">
@@ -4433,6 +4481,9 @@ window.imprimirContratoObj = function(v) {
 
         <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px; margin-top: 20px;">VALOR E FORMA DE PAGAMENTO</h3>
         <p style="margin-top: 0;">
+            ${temDescontoNoContrato ? `<strong>Subtotal:</strong> ${typeof formatMoney === 'function' ? formatMoney(subtotalBruto) : subtotalBruto}<br>` : ''}
+            ${temDescontoNoContrato ? `<strong>Desconto Total:</strong> - ${typeof formatMoney === 'function' ? formatMoney(totalDescontoGeral) : totalDescontoGeral}<br>` : ''}
+            ${v.frete && Number(v.frete) > 0 ? `<strong>Taxas / Frete (+):</strong> ${typeof formatMoney === 'function' ? formatMoney(v.frete) : v.frete}<br>` : ''}
             <strong>Valor Total:</strong> ${typeof formatMoney === 'function' ? formatMoney(v.tot || 0) : (v.tot || 0)}<br>
             <strong>Pagamento:</strong> ${v.pag || 'Conforme acordado'}<br>
         </p>
@@ -4524,10 +4575,22 @@ window.cancelarVendaPendentePDV = function(vendaId) {
                     await window.removerFinanceiroVinculadoVenda(vendaId, v.numeroPedido, batch);
                 } else {
                     try {
-                        const snapFin = await empRef.collection('financeiro').where('origemVendaId', '==', String(vendaId)).get();
-                        snapFin.forEach(fDoc => {
-                            batch.delete(fDoc.ref);
-                        });
+                        const finLista = (typeof db !== 'undefined' && Array.isArray(db.financeiro) && db.financeiro.length > 0)
+                            ? db.financeiro
+                            : ((window.FCCache && typeof window.FCCache.get === 'function') ? window.FCCache.get('financeiro') : null);
+
+                        if (Array.isArray(finLista) && finLista.length > 0) {
+                            finLista.forEach(fDoc => {
+                                if (String(fDoc.origemVendaId) === String(vendaId)) {
+                                    batch.delete(empRef.collection('financeiro').doc(String(fDoc.id)));
+                                }
+                            });
+                        } else {
+                            const snapFin = await empRef.collection('financeiro').where('origemVendaId', '==', String(vendaId)).get();
+                            snapFin.forEach(fDoc => {
+                                batch.delete(fDoc.ref);
+                            });
+                        }
                     } catch(eFin) {
                         console.warn('Aviso ao consultar financeiro no cancelamento:', eFin);
                     }

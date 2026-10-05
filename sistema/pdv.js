@@ -103,11 +103,23 @@ function liberarBotaoFinalizar() {
     }
 }
 
+function obterDataHojeLocalYYYYMMDD() {
+    const d = new Date();
+    const ano = d.getFullYear();
+    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    const dia = String(d.getDate()).padStart(2, '0');
+    return `${ano}-${mes}-${dia}`;
+}
+
 // Evita o "piscar" da tela carregando as abas instantaneamente antes do Firebase
 document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const view = urlParams.get('view') || 'pdv';
     if (typeof mudarVisaoLocal === 'function') mudarVisaoLocal(view);
+    const elDataVenda = document.getElementById('pdv-data');
+    if (elDataVenda && !elDataVenda.value) {
+        elDataVenda.value = obterDataHojeLocalYYYYMMDD();
+    }
 });
 
 // ==========================================
@@ -132,18 +144,44 @@ function obterDadosEmpresa() {
 }
 
 function aplicarIdentidadeVisualNoMenu() {
+    if (typeof aplicarIdentidadeVisualGlobal === 'function') {
+        aplicarIdentidadeVisualGlobal();
+        return;
+    }
     const empNomeEl = document.getElementById('menu-empresa-nome');
     const logoImg = document.getElementById('menu-logo');
     const logoPlaceholder = document.getElementById('menu-logo-placeholder');
 
-    if (db.config && db.config.empresa) {
-        if (empNomeEl && db.config.empresa.nome) {
-            empNomeEl.innerText = db.config.empresa.nome;
-        }
-        if (logoImg && logoPlaceholder && db.config.empresa.logo) {
-            logoImg.src = db.config.empresa.logo;
+    const emp = (window.db && window.db.config && window.db.config.empresa) ? window.db.config.empresa : {};
+    const empIdAtiva = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
+    const fallbackNome = (window.currentEmpresaData?.nomeEmpresa) || (window.currentEmpresaData?.nome) || localStorage.getItem('fc_nome_empresa_ativa') || 'Minha Loja';
+    const nomeEmp = emp.fantasia || emp.nome || fallbackNome;
+
+    if (empNomeEl) empNomeEl.innerText = nomeEmp;
+
+    let logoSrc = emp.logo || (window.currentEmpresaData && window.currentEmpresaData.logo) || '';
+    if (!logoSrc && empIdAtiva) {
+        try {
+            const c = JSON.parse(localStorage.getItem('fc_empresa_cache_' + empIdAtiva) || '{}');
+            logoSrc = c.logo || '';
+        } catch(e) {}
+    }
+    if (!logoSrc) {
+        logoSrc = localStorage.getItem('fc_logo_empresa_ativa') || '';
+    }
+
+    if (logoImg && logoPlaceholder) {
+        if (logoSrc && typeof logoSrc === 'string' && logoSrc.trim()) {
+            logoImg.src = logoSrc;
             logoImg.classList.remove('hidden');
             logoPlaceholder.classList.add('hidden');
+            logoImg.onerror = function() {
+                logoImg.classList.add('hidden');
+                logoPlaceholder.classList.remove('hidden');
+            };
+        } else {
+            logoImg.classList.add('hidden');
+            logoPlaceholder.classList.remove('hidden');
         }
     }
 }
@@ -277,8 +315,9 @@ function inicializarOperacao() {
         if (dados) {
             db.config = { ...(db.config || {}), ...dados };
             if (typeof ajustarOpcoesOperacaoPDV === 'function') ajustarOpcoesOperacaoPDV();
+            aplicarIdentidadeVisualNoMenu();
         }
-    });
+    }, { realtime: true });
 
     const urlParams = new URLSearchParams(window.location.search);
     mudarVisaoLocal('pdv');
@@ -814,6 +853,10 @@ function removerFotoOS(index) { osFotosArray.splice(index, 1); renderizarFotosOS
 // 7. MOTORES DE IMPRESSÃO E PDF (BLINDADOS)
 // ==========================================
 function printHtmlSeguro(htmlCompleto) {
+    if (typeof window.printHtmlSeguro === 'function') {
+        window.printHtmlSeguro(htmlCompleto);
+        return;
+    }
     showToast("Preparando documento para Impressão...", "info");
     
     const printWin = window.open('', '', 'width=800,height=600');
@@ -939,13 +982,25 @@ function exportarExcel(tabelaId, filename) {
 // 8. GERADOR DE CONTRATO E WHATSAPP 
 // ==========================================
 function imprimirContratoAtual() {
-    if (window.vendaAtualImpressao) { imprimirContratoObj(window.vendaAtualImpressao); } else { showToast("Nenhuma venda selecionada para imprimir.", "error"); }
+    if (typeof window.abrirModalContrato === 'function' && window.vendaAtualImpressao) {
+        window.abrirModalContrato(window.vendaAtualImpressao);
+    } else if (window.vendaAtualImpressao) { 
+        imprimirContratoObj(window.vendaAtualImpressao); 
+    } else { 
+        showToast("Nenhuma venda selecionada para imprimir.", "error"); 
+    }
 }
+window.imprimirContratoAtual = imprimirContratoAtual;
 
 function imprimirContratoById(id) { 
-    const v = db.vendas.find(x => String(x.id) === String(id)); 
-    if(v) imprimirContratoObj(v); 
+    if (typeof window.abrirModalContrato === 'function') {
+        window.abrirModalContrato(id);
+    } else {
+        const v = db.vendas.find(x => String(x.id) === String(id)); 
+        if(v) imprimirContratoObj(v); 
+    }
 }
+window.imprimirContratoById = imprimirContratoById;
 
 // CORREÇÃO: Variável cliTel e Telefone do Whatsapp blindados!
 function enviarPDFWhatsApp(id) {
@@ -954,11 +1009,11 @@ function enviarPDFWhatsApp(id) {
 
     const cliInfo = obterDadosClientePDV(v.clienteId);
     
-    // Garantindo que a variável existe
-    const cliNome = v.clienteNome || cliInfo.nome || 'Consumidor Final';
-    const cliCpf = v.clienteDoc || cliInfo.doc || 'Não informado';
-    const cliTel = v.clienteTel || cliInfo.tel || ''; 
-    const cliEndCompleto = v.clienteEnd || cliInfo.endCompleto || 'Não informado';
+    // Prioriza dados cadastrais atualizados do cliente caso ele tenha sido editado
+    const cliNome = (cliInfo && cliInfo.nome !== 'Consumidor Final') ? cliInfo.nome : (v.clienteNome || 'Consumidor Final');
+    const cliCpf = (cliInfo && cliInfo.doc !== 'Não informado') ? cliInfo.doc : (v.clienteDoc || 'Não informado');
+    const cliTel = (cliInfo && cliInfo.tel !== 'Não informado') ? cliInfo.tel : (v.clienteTel || ''); 
+    const cliEndCompleto = (cliInfo && cliInfo.endCompleto !== 'Não informado') ? cliInfo.endCompleto : (v.clienteEnd || 'Não informado');
     const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
     
     let numLimpo = cliTel.replace(/\D/g, '');
@@ -1177,27 +1232,48 @@ function enviarPDFWhatsApp(id) {
 
 function imprimirContratoObj(v) {
     if(!v) return;
+    if (typeof window.abrirModalContrato === 'function') {
+        window.abrirModalContrato(v);
+        return;
+    }
     const emp = obterDadosEmpresa();
     
     const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
     
     const cliInfo = obterDadosClientePDV(v.clienteId);
-    const cliNome = v.clienteNome || cliInfo.nome || 'Consumidor Final';
-    const cliCpf = v.clienteDoc || cliInfo.doc || 'Não informado';
-    const cliTel = v.clienteTel || cliInfo.tel || 'Não informado';
-    const cliEndCompleto = v.clienteEnd || cliInfo.endCompleto || 'Não informado';
+    const cliNome = (cliInfo && cliInfo.nome !== 'Consumidor Final') ? cliInfo.nome : (v.clienteNome || 'Consumidor Final');
+    const cliCpf = (cliInfo && cliInfo.doc !== 'Não informado') ? cliInfo.doc : (v.clienteDoc || 'Não informado');
+    const cliTel = (cliInfo && cliInfo.tel !== 'Não informado') ? cliInfo.tel : (v.clienteTel || 'Não informado');
+    const cliEndCompleto = (cliInfo && cliInfo.endCompleto !== 'Não informado') ? cliInfo.endCompleto : (v.clienteEnd || 'Não informado');
 
+    let totalDescontoItens = 0;
+    let subtotalItensBruto = 0;
     let itensHtml = (v.itens || []).map((i, idx) => {
         const prodDb = (db.produtos || []).find(p => String(p.id) === String(i.id));
         const fotoHtml = prodDb && prodDb.foto ? `<div style="margin-right: 15px; flex-shrink: 0;"><img src="${prodDb.foto}" style="width: 90px; height: 90px; object-fit: cover; border-radius: 6px; border: 1px solid #ccc;"></div>` : '';
+        const qtdItem = i.qtd || 1;
+        const precoUnit = i.preco || 0;
+        const subItemBruto = precoUnit * qtdItem;
+        const descItem = Number(i.desconto) || 0;
+        const totalItemLiquido = Math.max(0, subItemBruto - descItem);
+        subtotalItensBruto += subItemBruto;
+        totalDescontoItens += descItem;
+
+        let valorLinhaHtml = `Valor: ${formatMoney(subItemBruto)}`;
+        if (descItem > 0) {
+            valorLinhaHtml = `Valor Unitário: ${formatMoney(precoUnit)} x ${qtdItem} = ${formatMoney(subItemBruto)}<br>` +
+                             `Desconto do Item: - ${formatMoney(descItem)}<br>` +
+                             `Valor com Desconto: ${formatMoney(totalItemLiquido)}`;
+        }
+
         return `
         <div style="margin-bottom: 15px; display: flex; align-items: flex-start; border-bottom: 1px dashed #eee; padding-bottom: 10px;">
             ${fotoHtml}
             <div style="flex: 1;">
                 <strong>PRODUTO/SERVIÇO ${idx + 1}</strong><br>
                 Descrição: ${i.nome} ${i.obsVenda ? ` - Obs: ${i.obsVenda}` : ''}<br>${typeof formatarCustomizacaoContratoTexto === "function" ? formatarCustomizacaoContratoTexto(i.customizacao) : ""}
-                Quantidade: ${i.qtd} unidade(s)<br>
-                Valor: ${formatMoney(i.preco * i.qtd)}<br>
+                Quantidade: ${qtdItem} unidade(s)<br>
+                ${valorLinhaHtml}<br>
                 Situação do produto: ( ) Produto em estoque &nbsp;&nbsp;&nbsp; ( ) Produto sob fabricação
             </div>
         </div>
@@ -1220,6 +1296,11 @@ function imprimirContratoObj(v) {
     }
     const prazoOs = dataEntregaFormatada;
     const dataEmissaoOperação = v.data ? new Date(v.data).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
+
+    const descGeral = Number(v.desconto) || 0;
+    const totalDescontoGeral = descGeral + totalDescontoItens;
+    const temDescontoNoContrato = totalDescontoGeral > 0;
+    const subtotalBruto = (v.subtotal && v.subtotal > 0) ? (v.subtotal + totalDescontoItens) : subtotalItensBruto;
 
     const html = `
     <div style="font-family: Arial, sans-serif; color: #000; width: 100%; max-width: 800px; margin: 0 auto; line-height: 1.5; font-size: 14px;">
@@ -1246,13 +1327,16 @@ function imprimirContratoObj(v) {
 
         <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px; margin-top: 20px;">VALOR TOTAL DA COMPRA</h3>
         <p style="margin-top: 0;">
+            ${temDescontoNoContrato ? `<strong>Subtotal:</strong> ${formatMoney(subtotalBruto)}<br>` : ''}
+            ${temDescontoNoContrato ? `<strong>Desconto Total:</strong> - ${formatMoney(totalDescontoGeral)}<br>` : ''}
+            ${v.frete && Number(v.frete) > 0 ? `<strong>Taxas / Frete (+):</strong> ${formatMoney(v.frete)}<br>` : ''}
             <strong>Valor total:</strong> ${formatMoney(v.tot)}<br>
             <strong>Forma de pagamento registrada:</strong> ${v.pag || '_________________________________'}<br>
             <strong>Data da Operação:</strong> ${dataEmissaoOperação}
         </p>
 
         <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">PRAZO DE ENTREGA E GARANTIA</h3>
-        <p style="margin-top: 0; text-align: justify;">Caso o produto esteja disponível em estoque, o prazo de entrega será de até 3 (três) dias úteis após a confirmação do pagamento.<br>Caso o produto seja fabricado sob encomenda, o prazo de produção e entrega será de até 30 (trinta) dias corridos após a confirmação do pedido e pagamento da entrada.<br>O produto/serviço possui garantia legal de 90 (noventa) dias contra defeitos de fabricação.<br>Os prazos poderão sofrer alterações em casos de força maior, problemas logísticos, transporte, fornecedores ou condições climáticas.</p>
+        <p style="margin-top: 0; text-align: justify;">O prazo de entrega válido é a <strong>Data Prevista de Entrega Acordada</strong> informada neste pedido. Havendo eventuais imprevistos operacionais, de transporte, fabricação ou intempéries, fica acordado um prazo adicional de tolerância de até 7 (sete) dias corridos.<br>O produto/serviço possui garantia legal de 90 (noventa) dias contra defeitos de fabricação.</p>
 
         ${dataEntregaFormatada !== '___/___/20__' ? `<p style="margin-top: 8px; font-weight: bold; background-color: #f1f5f9; padding: 6px 10px; border-left: 4px solid #2563eb; border-radius: 2px;">Data Prevista de Entrega Acordada: <span style="font-size: 15px; color: #1e3a8a;">${dataEntregaFormatada}</span></p>` : ''}
 
@@ -1800,6 +1884,9 @@ function pdvLimpar() {
     if(document.getElementById('pdv-obs')) {
         document.getElementById('pdv-obs').value = ''; 
     }
+    if(document.getElementById('pdv-data')) {
+        document.getElementById('pdv-data').value = typeof obterDataHojeLocalYYYYMMDD === 'function' ? obterDataHojeLocalYYYYMMDD() : new Date().toISOString().split('T')[0];
+    }
     if(document.getElementById('pdv-data-entrega')) {
         document.getElementById('pdv-data-entrega').value = '';
     }
@@ -2341,7 +2428,29 @@ async function finalizarVendaMultipla() {
     
     const isEdicao = window.vendaEmEdicao != null;
     const vendaId = isEdicao ? window.vendaEmEdicao.id : Date.now();
-    const dataIso = (isEdicao && window.vendaEmEdicao && window.vendaEmEdicao.data && !(window.vendaEmEdicao.tipo === 'ORÇAMENTO' && tipoVenda !== 'ORÇAMENTO')) ? window.vendaEmEdicao.data : new Date().toISOString();
+
+    const elDataVenda = document.getElementById('pdv-data');
+    const dataEscolhida = elDataVenda && elDataVenda.value ? elDataVenda.value.trim() : '';
+    const temDataEdicao = isEdicao && window.vendaEmEdicao && window.vendaEmEdicao.data && !(window.vendaEmEdicao.tipo === 'ORÇAMENTO' && tipoVenda !== 'ORÇAMENTO');
+
+    let dataIso = new Date().toISOString();
+    if (dataEscolhida) {
+        if (temDataEdicao && window.vendaEmEdicao.data.startsWith(dataEscolhida)) {
+            dataIso = window.vendaEmEdicao.data;
+        } else {
+            const partesData = dataEscolhida.split('-');
+            if (partesData.length === 3) {
+                const ano = parseInt(partesData[0], 10);
+                const mes = parseInt(partesData[1], 10) - 1;
+                const dia = parseInt(partesData[2], 10);
+                const agora = new Date();
+                const dFinal = new Date(ano, mes, dia, agora.getHours(), agora.getMinutes(), agora.getSeconds());
+                dataIso = !isNaN(dFinal.getTime()) ? dFinal.toISOString() : new Date().toISOString();
+            }
+        }
+    } else if (temDataEdicao) {
+        dataIso = window.vendaEmEdicao.data;
+    }
     
     let numeroPedido = 1;
     if (isEdicao && window.vendaEmEdicao && window.vendaEmEdicao.numeroPedido) {
@@ -2584,7 +2693,7 @@ async function finalizarVendaMultipla() {
                 
                 if(p.metodo === 'Fiado' || p.metodo === 'Boleto') { 
                     const valParc = valorParaCaixa / (p.parcelas || 1); 
-                    let dataBase = p.vencimentoBase ? new Date(p.vencimentoBase + 'T12:00:00') : new Date(); 
+                    let dataBase = p.vencimentoBase ? new Date(p.vencimentoBase + 'T12:00:00') : new Date(dataIso); 
                     if(!p.vencimentoBase) dataBase.setDate(dataBase.getDate() + prazoMetodo); 
                     for(let i=1; i<=(p.parcelas || 1); i++) { 
                         let dataVencParc = new Date(dataBase); 
@@ -2601,7 +2710,7 @@ async function finalizarVendaMultipla() {
                     let prazoCartao = (db.config && db.config.prazos && db.config.prazos[p.metodo] !== undefined) ? parseInt(db.config.prazos[p.metodo]) : 30;
                     const valParc = valorParaCaixa / (p.parcelas || 1); 
                     for(let i=1; i<=(p.parcelas || 1); i++) { 
-                        let dataVencParc = new Date();
+                        let dataVencParc = new Date(dataIso);
                         dataVencParc.setDate(dataVencParc.getDate() + (prazoCartao * i));
                         const finRef = window.getEmpresaRef().collection('financeiro').doc();
                         batch.set(finRef, { ref: `${pRef} [${i}/${p.parcelas || 1}]`, data: dataVencParc.toISOString(), pessoa: cliInfo.nome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas', metodoPagamento: p.metodo, origemVendaId: idFinalVenda }); 
@@ -2677,21 +2786,28 @@ async function finalizarVendaMultipla() {
         }
     }
 
-    try {
-        await batch.commit();
-        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.removerDaFila === 'function') {
-            window.FCCache.removerDaFila('vendas', idFinalVenda);
-        }
-        // Sucesso: reseta flag de processamento (botao sera restaurado pelo pdvLimpar)
-        isProcessingVenda = false;
-        vendaIdempotencyKey = null;
-    } catch(err) {
-        console.warn('Aviso: Operacao salva no repositorio local (pendente de sincronizacao com Firebase):', err);
-        // Reseta flag de processamento para permitir nova tentativa manual
+    if (window.FCCache && typeof window.FCCache.isModoEconomia === 'function' && window.FCCache.isModoEconomia()) {
+        console.log('[PDV] Venda registrada no repositório local (Modo Economia). Enfileirada para sincronização.');
         isProcessingVenda = false;
         vendaIdempotencyKey = null;
         if (typeof showToast === 'function') {
-            showToast('Operacao salva no dispositivo! Sera sincronizada assim que voce clicar em SINCRONIZAR.', 'info');
+            showToast('Venda salva no dispositivo! Clique em SINCRONIZAR para enviar à nuvem.', 'info');
+        }
+    } else {
+        try {
+            await batch.commit();
+            if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.removerDaFila === 'function') {
+                window.FCCache.removerDaFila('vendas', idFinalVenda);
+            }
+            isProcessingVenda = false;
+            vendaIdempotencyKey = null;
+        } catch(err) {
+            console.warn('Aviso: Operacao salva no repositorio local (pendente de sincronizacao com Firebase):', err);
+            isProcessingVenda = false;
+            vendaIdempotencyKey = null;
+            if (typeof showToast === 'function') {
+                showToast('Operacao salva no dispositivo! Sera sincronizada assim que voce clicar em SINCRONIZAR.', 'info');
+            }
         }
     }
         window.vendaEmEdicao = null;
@@ -2744,17 +2860,17 @@ async function finalizarVendaMultipla() {
         }
     } else {
         if (btnContrato) btnContrato.classList.remove('hidden');
-        if (mHeader) mHeader.className = "bg-emerald-500 p-4 text-white text-center shrink-0";
+        if (mHeader) mHeader.className = "bg-gradient-to-r from-emerald-600 to-teal-600 p-4 text-white text-center shrink-0 shadow-sm";
         if (mIcone) mIcone.className = "fa-solid fa-circle-check text-4xl mb-1";
         if (mTitulo) mTitulo.textContent = isOrcamento ? "Orçamento Gerado" : "Documento Gerado";
         if (mSub) mSub.classList.add('hidden');
 
         if (txtBobina) txtBobina.textContent = "Recibo Bobina";
         if (btnBobina) {
-            btnBobina.className = "w-full bg-slate-800 hover:bg-slate-900 text-white p-2.5 md:p-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors text-xs";
+            btnBobina.className = "btn-recibo-bobina w-full p-2.5 md:p-3 rounded-xl font-bold flex items-center justify-center gap-2.5 transition-all text-xs active:scale-95 cursor-pointer";
         }
         if (btnA4) {
-            btnA4.className = "w-full bg-blue-600 hover:bg-blue-700 text-white p-2.5 md:p-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors text-xs";
+            btnA4.className = "w-full bg-blue-600 hover:bg-blue-700 text-white p-2.5 md:p-3 rounded-xl font-bold flex items-center justify-center gap-2.5 transition-all text-xs active:scale-95 cursor-pointer shadow-sm shadow-blue-600/20";
         }
         if (btnPdf) {
             btnPdf.className = "w-full bg-red-600 hover:bg-red-700 text-white p-2.5 md:p-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors text-xs";
@@ -3396,6 +3512,19 @@ async function executarEstornoEEdicao(id) {
             const obsEl = document.getElementById('pdv-obs');
             if(obsEl) obsEl.value = v.obs || '';
 
+            const elDataVenda = document.getElementById('pdv-data');
+            if (elDataVenda && v.data) {
+                try {
+                    const dV = new Date(v.data);
+                    const y = dV.getFullYear();
+                    const m = String(dV.getMonth() + 1).padStart(2, '0');
+                    const d = String(dV.getDate()).padStart(2, '0');
+                    elDataVenda.value = `${y}-${m}-${d}`;
+                } catch (_) {
+                    elDataVenda.value = (v.data || '').split('T')[0] || '';
+                }
+            }
+
             const elDataEntrega = document.getElementById('pdv-data-entrega');
             if(elDataEntrega) {
                 elDataEntrega.value = v.dataEntrega || (v.servicoDetalhes ? v.servicoDetalhes.prazo : '') || '';
@@ -3644,7 +3773,7 @@ window.carregarEstadoPDV = function() {
             if (document.getElementById('pdv-cliente-busca')) document.getElementById('pdv-cliente-busca').value = estado.clienteBusca || '';
             if (document.getElementById('pdv-vendedor')) document.getElementById('pdv-vendedor').value = estado.vendedorId || '';
             if (document.getElementById('pdv-obs')) document.getElementById('pdv-obs').value = estado.observacao || '';
-            if (document.getElementById('pdv-data') && estado.dataVenda) document.getElementById('pdv-data').value = estado.dataVenda;
+            if (document.getElementById('pdv-data')) document.getElementById('pdv-data').value = estado.dataVenda || (typeof obterDataHojeLocalYYYYMMDD === 'function' ? obterDataHojeLocalYYYYMMDD() : new Date().toISOString().split('T')[0]);
             if (document.getElementById('pdv-desconto')) document.getElementById('pdv-desconto').value = estado.desconto || '0';
             if (document.getElementById('pdv-frete')) document.getElementById('pdv-frete').value = estado.frete || '0';
 

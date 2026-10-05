@@ -742,6 +742,22 @@ function inicializarGestao() {
     }
     // Migração legada desativada (migrarDadosSeNecessario)
 
+    // Pré-carregamento imediato do repositório local FCCache para exibição instantânea (< 5ms)
+    if (typeof window.FCCache !== 'undefined') {
+        if (!db.vendas || db.vendas.length === 0) db.vendas = window.FCCache.get('vendas') || [];
+        if (!db.financeiro || db.financeiro.length === 0) db.financeiro = window.FCCache.get('financeiro') || [];
+        if (!db.compras || db.compras.length === 0) db.compras = window.FCCache.get('compras') || [];
+        if (!db.produtos || db.produtos.length === 0) db.produtos = window.FCCache.get('produtos') || [];
+        if (!db.clientes || db.clientes.length === 0) db.clientes = window.FCCache.get('clientes') || [];
+        if (!db.fornecedores || db.fornecedores.length === 0) db.fornecedores = window.FCCache.get('fornecedores') || [];
+        if (!db.funcionarios || db.funcionarios.length === 0) db.funcionarios = window.FCCache.get('funcionarios') || [];
+        if (!db.caixa || !db.caixa.saldo) db.caixa = window.FCCache.get('caixa') || window.FCCache.get('fc_moveis_caixa') || { status: 'FECHADO', saldo: 0, historico: [] };
+
+        if (db.financeiro.length > 0) {
+            try { refreshCurrentView(); } catch(e) {}
+        }
+    }
+
     // Cache inteligente: serve dados instantaneamente do sessionStorage
     const _listen = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb, opts) {
         let ref = (typeof window.getEmpresaRef === 'function') ? window.getEmpresaRef().collection(col) : firestore.collection(col);
@@ -754,7 +770,7 @@ function inicializarGestao() {
     };
 
     // Controla quantas colecoes ja carregaram o primeiro snapshot
-    let colecoesProntas = 0;
+    let colecoesProntas = (db.financeiro && db.financeiro.length > 0) ? 6 : 0;
     const totalColecoes = 6;
     function tentarRefresh() {
         colecoesProntas++;
@@ -800,8 +816,17 @@ function inicializarGestao() {
     });
 }
 
+function _iniciarTelaFinanceiro() {
+    if (window._finIniciado) return;
+    window._finIniciado = true;
+    initGlobalData(inicializarGestao);
+}
 
-window.addEventListener('load', () => { initGlobalData(inicializarGestao); });
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _iniciarTelaFinanceiro);
+} else {
+    _iniciarTelaFinanceiro();
+}
 
 function atualizarCardsFluxoDeCaixa() {
     if (!db.financeiro) return;
@@ -2878,13 +2903,25 @@ async function salvarCompraManual() {
                 });
             }
             try {
-                const snapFin = await window.getEmpresaRef().collection('financeiro').where('tipo', '==', 'DESPESA').get();
-                snapFin.docs.forEach(doc => {
-                    const finData = doc.data();
-                    if (finData.ref && String(finData.ref).includes(cAntiga.numeroNF) && cAntiga.numeroNF !== 'S/N') {
-                        batch.delete(doc.ref);
-                    }
-                });
+                const finLista = (typeof db !== 'undefined' && Array.isArray(db.financeiro) && db.financeiro.length > 0)
+                    ? db.financeiro
+                    : ((window.FCCache && typeof window.FCCache.get === 'function') ? window.FCCache.get('financeiro') : null);
+
+                if (Array.isArray(finLista) && finLista.length > 0) {
+                    finLista.forEach(finData => {
+                        if (finData.tipo === 'DESPESA' && finData.ref && String(finData.ref).includes(cAntiga.numeroNF) && cAntiga.numeroNF !== 'S/N') {
+                            batch.delete(window.getEmpresaRef().collection('financeiro').doc(String(finData.id)));
+                        }
+                    });
+                } else {
+                    const snapFin = await window.getEmpresaRef().collection('financeiro').where('tipo', '==', 'DESPESA').get();
+                    snapFin.docs.forEach(doc => {
+                        const finData = doc.data();
+                        if (finData.ref && String(finData.ref).includes(cAntiga.numeroNF) && cAntiga.numeroNF !== 'S/N') {
+                            batch.delete(doc.ref);
+                        }
+                    });
+                }
             } catch(e) { console.error('Erro ao buscar financeiro atrelado:', e); }
         }
     }
@@ -4582,13 +4619,22 @@ window.verDetalhesVenda = async function(id) {
         document.body.appendChild(modal);
     }
 
-    // Buscar venda na memria local db.vendas
+    // Buscar venda na memória local db.vendas ou FCCache
     let v = null;
     if (typeof db !== 'undefined' && Array.isArray(db.vendas)) {
         v = db.vendas.find(x => String(x.id) === String(id) || String(x.idVenda) === String(id) || String(x.numeroPedido) === String(id));
     }
+    if (!v && window.FCCache && typeof window.FCCache.get === 'function') {
+        const cachedVendas = window.FCCache.get('vendas');
+        if (Array.isArray(cachedVendas)) {
+            v = cachedVendas.find(x => String(x.id) === String(id) || String(x.idVenda) === String(id) || String(x.numeroPedido) === String(id));
+            if (v && typeof db !== 'undefined' && (!db.vendas || db.vendas.length === 0)) {
+                db.vendas = cachedVendas;
+            }
+        }
+    }
 
-    // Se no achou na memria, busca no Firestore direto
+    // Se não achou na memória nem no FCCache, busca no Firestore direto
     if (!v && typeof firestore !== 'undefined') {
         try {
             console.log('[VerVenda] Buscando venda diretamente no Firestore...');

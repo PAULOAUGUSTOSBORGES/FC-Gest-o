@@ -38,8 +38,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link rel="stylesheet" href="../style.css?v=20261002142531">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261002142531">
+    <link rel="stylesheet" href="../style.css?v=20261003132500">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261003132500">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="compras">
 
@@ -907,6 +907,59 @@
                     <div><label class="text-xs font-bold text-blue-700 mb-1 block">Margem %</label><input type="text"  inputmode="numeric" id="prod-margem" step="0.1" class="w-full bg-blue-50 border border-blue-200 text-blue-800 p-2.5 rounded-lg text-sm font-bold outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" oninput="calcularPrecoMargin('margem')"></div>
                     <div><label class="text-xs font-bold text-emerald-700 mb-1 block">Preço R$</label><input type="text" data-mask="money" inputmode="numeric"  id="prod-preco"  class="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 p-2.5 rounded-lg text-sm font-bold outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" oninput="calcularPrecoMargin('preco')"></div>
                 </div>
+
+                <!-- DADOS FISCAIS EXTRAÍDOS DO XML / EDITÁVEIS -->
+                <div class="border-t border-slate-200 dark:border-slate-700/80 pt-3">
+                    <h4 class="font-bold text-xs uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-2 flex items-center gap-1.5"><i class="fa-solid fa-file-invoice text-blue-500"></i> Dados Fiscais (Extraídos da Nota / Editáveis)</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="relative">
+                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">NCM (8 dígitos)</label>
+                            <input type="text" id="prod-ncm" placeholder="Digite número ou nome..." class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-sm outline-none focus:border-blue-500 font-mono dark:text-white">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">CSOSN / CST</label>
+                            <input type="text" id="prod-csosn" list="lista-cst-csosn-compras" placeholder="Ex: 102 ou 00" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-sm outline-none focus:border-blue-500 font-mono dark:text-white">
+                            <datalist id="lista-cst-csosn-compras">
+                                <option value="101">101 - Simples Nacional (com permissão de crédito)</option>
+                                <option value="102">102 - Simples Nacional (sem permissão de crédito)</option>
+                                <option value="103">103 - Simples Nacional (isenção de ICMS para faixa de receita)</option>
+                                <option value="201">201 - Simples Nacional (com crédito e com ST)</option>
+                                <option value="202">202 - Simples Nacional (sem crédito e com ST)</option>
+                                <option value="500">500 - Simples Nacional (ICMS cobrado anteriormente por ST)</option>
+                                <option value="900">900 - Simples Nacional (Outros)</option>
+                                <option value="00">00 - Tributada integralmente</option>
+                                <option value="10">10 - Tributada e com cobrança de ST</option>
+                                <option value="20">20 - Com redução de base de cálculo</option>
+                                <option value="40">40 - Isenta</option>
+                                <option value="41">41 - Não tributada</option>
+                                <option value="60">60 - Cobrado anteriormente por ST</option>
+                                <option value="90">90 - Outras</option>
+                            </datalist>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Origem da Mercadoria</label>
+                            <select id="prod-origem" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-xs outline-none focus:border-blue-500 dark:text-white font-medium">
+                                <option value="0">0 - Nacional</option>
+                                <option value="1">1 - Estrangeira (Importação direta)</option>
+                                <option value="2">2 - Estrangeira (Mercado interno)</option>
+                                <option value="3">3 - Nacional (Conteúdo Importação > 40% e <= 70%)</option>
+                                <option value="4">4 - Nacional (Produção conf. Dec-Lei 288/67)</option>
+                                <option value="5">5 - Nacional (Conteúdo Importação <= 40%)</option>
+                                <option value="6">6 - Estrangeira (Importação direta sem similar CAMEX)</option>
+                                <option value="7">7 - Estrangeira (Mercado interno sem similar CAMEX)</option>
+                                <option value="8">8 - Nacional (Conteúdo Importação > 70%)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">CFOP (Padrão Saída)</label>
+                            <input type="text" id="prod-cfop" placeholder="Ex: 5102" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-sm outline-none focus:border-blue-500 font-mono dark:text-white">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">CEST (Opcional - Substituição Tributária)</label>
+                            <input type="text" id="prod-cest" placeholder="Ex: 2806100" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-sm outline-none focus:border-blue-500 font-mono dark:text-white">
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="bg-white dark:bg-slate-800 p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
                 <button onclick="fecharModalProduto()" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50">Cancelar</button>
@@ -1062,11 +1115,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20261002142531"></script>
-    <script src="saas_licenca.js?v=20261002142531"></script>
-    <script src="../global.js?v=20261002142531"></script>
-    <script src="fc_cache.js?v=20261002142531"></script>
-    <script src="compras.js?v=20261002142531"></script>
+    <script src="../sistema/config_banco.js?v=20261003132500"></script>
+    <script src="saas_licenca.js?v=20261003132500"></script>
+    <script src="../global.js?v=20261003132500"></script>
+    <script src="fc_cache.js?v=20261003132500"></script>
+    <script src="tabela_ncm.js?v=20261003132500"></script>
+    <script src="ncm_helper.js?v=20261003132500"></script>
+    <script src="compras.js?v=20261003132500"></script>
 </body>
 </html>
 

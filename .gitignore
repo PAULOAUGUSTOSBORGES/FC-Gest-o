@@ -78,3 +78,10 @@ scratch/
 
 *serviceAccountKey*.json
 
+
+users.json
+*.pfx
+*.pem
+*.key
+*.txt
+

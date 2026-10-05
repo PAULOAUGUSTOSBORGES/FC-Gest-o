@@ -109,6 +109,13 @@ function abaModal(prefix, nomeAba) {
     const btnAtivo = document.getElementById(`${prefix}-btn-${nomeAba}`);
     btnAtivo.classList.remove('border-transparent', 'text-slate-500', 'dark:text-slate-400'); 
     btnAtivo.classList.add('border-blue-600', 'text-blue-600');
+
+    if (prefix === 'prod' && nomeAba === 'crm') {
+        const prodId = document.getElementById('prod-id')?.value;
+        if (prodId && typeof carregarHistoricoProdutoModal === 'function') {
+            carregarHistoricoProdutoModal(prodId);
+        }
+    }
 }
 
 function abrirConfirmacao(titulo, mensagem, acao) {
@@ -488,6 +495,14 @@ function abrirModalProduto() {
     const divAcao = document.getElementById('div-acao-vinculo-xml'); if(divAcao) divAcao.classList.add('hidden');
     abaModal('prod', 'dados'); document.getElementById('modal-produto-title').innerText = 'Cadastrar Produto';
     ['id', 'nome', 'ean', 'marca', 'custo', 'preco', 'margem', 'estoque', 'minimo', 'obs', 'ncm', 'cfop', 'csosn', 'origem', 'cest'].forEach(id => { const el = document.getElementById(`prod-${id}`); if (el) el.value = ''; });
+    if (document.getElementById('prod-origem')) document.getElementById('prod-origem').value = '0';
+    if (document.getElementById('prod-cfop')) document.getElementById('prod-cfop').value = '5102';
+    if (document.getElementById('prod-exibirLoja')) document.getElementById('prod-exibirLoja').value = 'true';
+    if (document.getElementById('prod-destaque')) document.getElementById('prod-destaque').value = 'false';
+    if (document.getElementById('prod-legenda')) document.getElementById('prod-legenda').value = '';
+    if (window.NCMHelper && typeof window.NCMHelper.atualizarPreviewNCM === 'function') {
+        window.NCMHelper.atualizarPreviewNCM('prod-ncm');
+    }
     document.getElementById('prod-ativo').value = 'true'; document.getElementById('prod-foto-base64').value = '';
     fotosGaleria = [];
     renderizarGaleriaFotos();
@@ -495,6 +510,9 @@ function abrirModalProduto() {
     const modalProd = document.getElementById('modal-produto');
     modalProd.classList.remove('hidden');
     modalProd.style.display = 'flex';
+    if (window.NCMHelper && typeof window.NCMHelper.initNCMAutocomplete === 'function') {
+        window.NCMHelper.initNCMAutocomplete('prod-ncm');
+    }
 }
 
 function fecharModalProduto() {
@@ -717,14 +735,15 @@ async function salvarProduto() {
         obs: document.getElementById('prod-obs').value,
         foto: fotoFinal,
         fotos: fotosFinal,
-        ncm: document.getElementById('prod-ncm') ? document.getElementById('prod-ncm').value : '',
-        cfop: document.getElementById('prod-cfop') ? document.getElementById('prod-cfop').value : '',
-        csosn: document.getElementById('prod-csosn') ? document.getElementById('prod-csosn').value : '',
+        ncm: document.getElementById('prod-ncm') ? String(document.getElementById('prod-ncm').value).replace(/\D/g, '').substring(0, 8) : '',
+        cfop: document.getElementById('prod-cfop') ? document.getElementById('prod-cfop').value.trim() : '5102',
+        csosn: document.getElementById('prod-csosn') ? document.getElementById('prod-csosn').value.trim() : '',
+        cst: document.getElementById('prod-csosn') ? document.getElementById('prod-csosn').value.trim() : '',
         origem: document.getElementById('prod-origem') ? document.getElementById('prod-origem').value : '0',
-        cest: document.getElementById('prod-cest') ? document.getElementById('prod-cest').value : '',
-        exibirLoja: document.getElementById('prod-exibirLoja') ? document.getElementById('prod-exibirLoja').value === 'true' : false,
+        cest: document.getElementById('prod-cest') ? String(document.getElementById('prod-cest').value).replace(/\D/g, '') : '',
+        exibirLoja: document.getElementById('prod-exibirLoja') ? document.getElementById('prod-exibirLoja').value === 'true' : true,
         destaque: document.getElementById('prod-destaque') ? document.getElementById('prod-destaque').value === 'true' : false,
-        legenda: document.getElementById('prod-legenda') ? document.getElementById('prod-legenda').value : ''
+        legenda: document.getElementById('prod-legenda') ? document.getElementById('prod-legenda').value.trim() : ''
     };
 
     try {
@@ -751,14 +770,18 @@ async function salvarProduto() {
             renderProdutos();
             showToast('Produto Atualizado com sucesso!', 'success');
 
-            // 3. Persistência no Firestore em segundo plano
-            try {
-                await window.getEmpresaRef().collection('produtos').doc(idStr).set(p, { merge: true });
-                if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.removerDaFila === 'function') {
-                    await window.FCCache.removerDaFila('produtos', idStr);
+            // 3. Persistência no Firestore (ou retenção na fila no Modo Economia)
+            if (window.FCCache && typeof window.FCCache.isModoEconomia === 'function' && window.FCCache.isModoEconomia()) {
+                console.log('[Produtos] Salvo no repositório local (Modo Economia). Pronto para sincronizar.');
+            } else {
+                try {
+                    await window.getEmpresaRef().collection('produtos').doc(idStr).set(p, { merge: true });
+                    if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.removerDaFila === 'function') {
+                        await window.FCCache.removerDaFila('produtos', idStr);
+                    }
+                } catch (nuvemErr) {
+                    console.warn('[Produtos] Falha ao persistir na nuvem imediatamente (salvo na fila offline):', nuvemErr);
                 }
-            } catch (nuvemErr) {
-                console.warn('[Produtos] Falha ao persistir na nuvem imediatamente (salvo na fila offline):', nuvemErr);
             }
 
             if (difEstoque !== 0) salvarKardex('Ajuste Manual', idStr, p.nome, difEstoque, 'AJUSTE');
@@ -766,23 +789,32 @@ async function salvarProduto() {
             const tempId = 'prod_' + Date.now();
             const novoProduto = { ...p, id: tempId };
 
-            // Otimista imediato
-            if (Array.isArray(db.produtos)) db.produtos.unshift(novoProduto);
+            // Otimista imediato no repositório local
+            if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.salvarOtimista === 'function') {
+                await window.FCCache.salvarOtimista('produtos', tempId, novoProduto, 'set');
+            } else if (Array.isArray(db.produtos)) {
+                db.produtos.unshift(novoProduto);
+            }
             fecharModalProduto();
             renderProdutos();
             showToast('Produto Criado com sucesso!', 'success');
+            if (p.estoque > 0) salvarKardex('Estoque Inicial', tempId, p.nome, p.estoque, 'INICIAL');
 
-            try {
-                const docRef = await window.getEmpresaRef().collection('produtos').add(p);
-                novoProduto.id = docRef.id;
-                if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.salvarOtimista === 'function') {
-                    await window.FCCache.salvarOtimista('produtos', docRef.id, novoProduto, 'set');
-                    await window.FCCache.removerDaFila('produtos', docRef.id);
+            if (window.FCCache && typeof window.FCCache.isModoEconomia === 'function' && window.FCCache.isModoEconomia()) {
+                console.log('[Produtos] Novo produto enfileirado no repositório local (Modo Economia).');
+            } else {
+                try {
+                    const docRef = await window.getEmpresaRef().collection('produtos').add(p);
+                    novoProduto.id = docRef.id;
+                    if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.salvarOtimista === 'function') {
+                        await window.FCCache.salvarOtimista('produtos', docRef.id, novoProduto, 'set');
+                        await window.FCCache.removerDaFila('produtos', tempId);
+                        await window.FCCache.removerDaFila('produtos', docRef.id);
+                    }
+                    renderProdutos();
+                } catch (nuvemErr) {
+                    console.warn('[Produtos] Erro ao cadastrar na nuvem, mantido localmente:', nuvemErr);
                 }
-                if (p.estoque > 0) salvarKardex('Estoque Inicial', docRef.id, p.nome, p.estoque, 'INICIAL');
-                renderProdutos();
-            } catch (nuvemErr) {
-                console.warn('[Produtos] Erro ao cadastrar na nuvem, mantido localmente:', nuvemErr);
             }
         }
     } catch (e) {
@@ -838,6 +870,28 @@ async function editarProduto(id) {
     }
 
     document.getElementById('prod-ativo').value = p.ativo !== false ? 'true' : 'false';
+
+    // Opções da Loja Virtual / Site
+    if (document.getElementById('prod-exibirLoja')) {
+        document.getElementById('prod-exibirLoja').value = p.exibirLoja !== false ? 'true' : 'false';
+    }
+    if (document.getElementById('prod-destaque')) {
+        document.getElementById('prod-destaque').value = p.destaque === true ? 'true' : 'false';
+    }
+    if (document.getElementById('prod-legenda')) {
+        document.getElementById('prod-legenda').value = p.legenda || '';
+    }
+
+    // Garante que dados fiscais sejam preenchidos
+    if (document.getElementById('prod-csosn')) {
+        document.getElementById('prod-csosn').value = p.csosn || p.cst || '';
+    }
+    if (document.getElementById('prod-origem')) {
+        document.getElementById('prod-origem').value = (p.origem !== undefined && p.origem !== '') ? String(p.origem) : '0';
+    }
+    if (window.NCMHelper && typeof window.NCMHelper.atualizarPreviewNCM === 'function') {
+        window.NCMHelper.atualizarPreviewNCM('prod-ncm');
+    }
     
     if (p.fotos && Array.isArray(p.fotos) && p.fotos.length > 0) {
         fotosGaleria = [...p.fotos];
@@ -848,15 +902,137 @@ async function editarProduto(id) {
     }
     renderizarGaleriaFotos();
 
-    const hist = db.movimentacoes ? db.movimentacoes.filter(m => String(m.prodId) === idStr) : [];
-    document.getElementById('prod-historico-body').innerHTML = hist.length > 0 ? hist.map(m => `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-3">${formatData(m.data).split(' ')[0]}</td><td class="p-3 font-bold">${m.tipo}</td><td class="p-3">${m.ref}</td><td class="p-3 text-right font-bold ${m.qtd > 0 ? 'text-indigo-600' : 'text-red-500'}">${m.qtd > 0 ? '+' + m.qtd : m.qtd}</td></tr>`).join('') : '<tr><td colspan="4" class="p-6 text-center text-slate-500 dark:text-slate-400">Sem movimentações.</td></tr>';
+    // Carrega histórico completo de movimentações e vendas do produto
+    carregarHistoricoProdutoModal(idStr, p.nome);
+}
+
+async function carregarHistoricoProdutoModal(idStr, prodNome = '') {
+    const tbody = document.getElementById('prod-historico-body');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Carregando movimentações...</td></tr>';
+    
+    const mapa = new Map();
+
+    // 1. Busca no cache local de movimentações (suporte a prodId, produtoId e idProd)
+    if (Array.isArray(db.movimentacoes)) {
+        db.movimentacoes.forEach(m => {
+            const mId = String(m.prodId || m.produtoId || m.idProd || '').trim();
+            if (mId === idStr) {
+                const key = m.id || `${m.data}_${m.ref}_${m.qtd}`;
+                mapa.set(key, {
+                    data: m.data,
+                    tipo: m.tipo || 'MOVIMENTAÇÃO',
+                    ref: m.ref || '-',
+                    qtd: Number(m.qtd) || 0
+                });
+            }
+        });
+    }
+
+    // 2. Busca direta no Firestore na collection 'movimentacoes' pelo ID do produto
+    try {
+        if (typeof window.getEmpresaRef === 'function') {
+            const col = window.getEmpresaRef().collection('movimentacoes');
+            const [q1, q2] = await Promise.all([
+                col.where('prodId', '==', idStr).limit(50).get().catch(() => null),
+                col.where('produtoId', '==', idStr).limit(50).get().catch(() => null)
+            ]);
+            if (q1 && !q1.empty) {
+                q1.forEach(doc => {
+                    const m = doc.data();
+                    mapa.set(doc.id, {
+                        data: m.data,
+                        tipo: m.tipo || 'MOVIMENTAÇÃO',
+                        ref: m.ref || '-',
+                        qtd: Number(m.qtd) || 0
+                    });
+                });
+            }
+            if (q2 && !q2.empty) {
+                q2.forEach(doc => {
+                    const m = doc.data();
+                    mapa.set(doc.id, {
+                        data: m.data,
+                        tipo: m.tipo || 'MOVIMENTAÇÃO',
+                        ref: m.ref || '-',
+                        qtd: Number(m.qtd) || 0
+                    });
+                });
+            }
+        }
+    } catch (err) {
+        console.warn('[Produtos] Erro ao carregar movimentações do Firestore:', err);
+    }
+
+    // 3. Complementa com histórico de saídas em db.vendas
+    if (Array.isArray(db.vendas)) {
+        db.vendas.forEach(v => {
+            if (!v.itens || !Array.isArray(v.itens)) return;
+            const item = v.itens.find(it => String(it.id || it.prodId).trim() === idStr);
+            if (item) {
+                const numPed = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id || '').slice(-4);
+                const tipoVenda = v.tipo || 'VENDA';
+                const refVenda = `${tipoVenda} #${numPed}${v.clienteNome ? ' (' + v.clienteNome + ')' : ''}`;
+                const key = `venda_${v.id}_${idStr}`;
+                if (!mapa.has(key)) {
+                    mapa.set(key, {
+                        data: v.data || v.dataCriacao || '',
+                        tipo: tipoVenda,
+                        ref: refVenda,
+                        qtd: -Math.abs(Number(item.qtd) || 1)
+                    });
+                }
+            }
+        });
+    }
+
+    const lista = Array.from(mapa.values()).sort((a, b) => {
+        const da = new Date(a.data || 0).getTime() || 0;
+        const db = new Date(b.data || 0).getTime() || 0;
+        return db - da;
+    });
+
+    if (lista.length > 0) {
+        tbody.innerHTML = lista.map(m => {
+            const dataFmt = (m.data && typeof formatData === 'function') ? formatData(m.data).split(' ')[0] : (m.data ? String(m.data).slice(0, 10) : '-');
+            const qtdNum = Number(m.qtd) || 0;
+            const qtdFmt = qtdNum > 0 ? '+' + qtdNum : qtdNum;
+            const corQtd = qtdNum > 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-red-500 dark:text-red-400';
+            return `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
+                <td class="p-3 text-slate-600 dark:text-slate-300 text-xs">${dataFmt}</td>
+                <td class="p-3 font-bold text-slate-800 dark:text-slate-100 text-xs">${m.tipo}</td>
+                <td class="p-3 text-slate-600 dark:text-slate-300 text-xs">${m.ref}</td>
+                <td class="p-3 text-right font-black text-xs ${corQtd}">${qtdFmt}</td>
+            </tr>`;
+        }).join('');
+    } else {
+        tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-slate-500 dark:text-slate-400">Sem movimentações registradas para este produto.</td></tr>';
+    }
 }
 
 function excluirProduto(id) {
     abrirConfirmacao('Excluir Produto', 'Remover produto permanentemente?', async () => {
         try {
-            await window.getEmpresaRef().collection('produtos').doc(id).delete();
-            showToast('Produto excluído!');
+            if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.removerItem === 'function') {
+                await window.FCCache.removerItem('produtos', id);
+            }
+            if (Array.isArray(db.produtos)) {
+                db.produtos = db.produtos.filter(x => String(x.id) !== String(id));
+            }
+            renderProdutos();
+            showToast('Produto excluído com sucesso!', 'success');
+
+            if (!(window.FCCache && typeof window.FCCache.isModoEconomia === 'function' && window.FCCache.isModoEconomia())) {
+                try {
+                    await window.getEmpresaRef().collection('produtos').doc(id).delete();
+                    if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.removerDaFila === 'function') {
+                        await window.FCCache.removerDaFila('produtos', id);
+                    }
+                } catch (cloudErr) {
+                    console.warn('[Produtos] Exclusão gravada localmente (fila de sincronização):', cloudErr);
+                }
+            }
         } catch (e) {
             showToast('Erro ao excluir', 'error');
         }
@@ -1734,6 +1910,7 @@ window.selecionarProdutoVinculoXML = selecionarProdutoVinculoXML;
 window.filtrarProdutosXMLBusca = filtrarProdutosXMLBusca;
 window.mostrarListaProdutosXMLBusca = mostrarListaProdutosXMLBusca;
 window.ocultarListaProdutosXMLBusca = ocultarListaProdutosXMLBusca;
+window.carregarHistoricoProdutoModal = carregarHistoricoProdutoModal;
 
 
 

@@ -490,20 +490,101 @@ async function salvarCliente() {
 
     try {
         if (id) {
-            await window.getEmpresaRef().collection('clientes').doc(String(id)).set(c, { merge: true });
+            const clienteAtualizado = { ...c, id: String(id) };
             if (Array.isArray(db.clientes)) {
                 const idx = db.clientes.findIndex(x => String(x.id || x._id || '').trim() === String(id).trim());
-                if (idx >= 0) {
-                    db.clientes[idx] = { ...db.clientes[idx], ...c };
+                if (idx >= 0) db.clientes[idx] = clienteAtualizado;
+            }
+            if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.salvarOtimista === 'function') {
+                await window.FCCache.salvarOtimista('clientes', String(id), clienteAtualizado, 'set');
+            }
+
+            // Propaga a atualização cadastral para todas as vendas/orçamentos deste cliente
+            try {
+                const docCliente = c.doc || c.cpf || c.cnpj || '';
+                const telCliente = c.wpp || c.fixo || '';
+                const ruaCliente = c.rua || '';
+                const numCliente = c.numero ? ', ' + c.numero : '';
+                const endCliente = ruaCliente ? (ruaCliente + numCliente) : '';
+
+                const idStrCliente = String(id).trim();
+                let vendasAlteradas = [];
+
+                if (Array.isArray(db.vendas)) {
+                    db.vendas.forEach(v => {
+                        if (String(v.clienteId || '').trim() === idStrCliente) {
+                            v.clienteNome = c.nome;
+                            if (docCliente) v.clienteDoc = docCliente;
+                            if (telCliente) v.clienteTel = telCliente;
+                            if (endCliente) v.clienteEnd = endCliente;
+                            vendasAlteradas.push(v);
+                        }
+                    });
+
+                    if (vendasAlteradas.length > 0) {
+                        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+                            window.FCCache.set('vendas', db.vendas);
+                        }
+                    }
+                }
+
+                // Sincroniza no Firebase (Firestore) em lote caso haja vendas afetadas
+                if (vendasAlteradas.length > 0 && !(window.FCCache && typeof window.FCCache.isModoEconomia === 'function' && window.FCCache.isModoEconomia())) {
+                    const batchVendas = window.firestore ? window.firestore.batch() : null;
+                    if (batchVendas) {
+                        const empresaRefVendas = window.getEmpresaRef();
+                        vendasAlteradas.slice(0, 50).forEach(v => {
+                            if (v.id) {
+                                const vRef = empresaRefVendas.collection('vendas').doc(String(v.id));
+                                const camposAtualizar = { clienteNome: c.nome };
+                                if (docCliente) camposAtualizar.clienteDoc = docCliente;
+                                if (telCliente) camposAtualizar.clienteTel = telCliente;
+                                if (endCliente) camposAtualizar.clienteEnd = endCliente;
+                                batchVendas.set(vRef, camposAtualizar, { merge: true });
+                            }
+                        });
+                        batchVendas.commit().catch(e => console.warn('[Clientes] Aviso ao sincronizar vendas no Firestore:', e));
+                    }
+                }
+            } catch (errSyncVendas) {
+                console.warn('[Clientes] Erro ao propagar dados do cliente para vendas:', errSyncVendas);
+            }
+
+            showToast('Cliente atualizado com sucesso!', 'success');
+
+            if (!(window.FCCache && typeof window.FCCache.isModoEconomia === 'function' && window.FCCache.isModoEconomia())) {
+                try {
+                    await window.getEmpresaRef().collection('clientes').doc(String(id)).set(c, { merge: true });
+                    if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.removerDaFila === 'function') {
+                        await window.FCCache.removerDaFila('clientes', String(id));
+                    }
+                } catch (cloudErr) {
+                    console.warn('[Clientes] Salvo no repositório local (pendente de sincronização):', cloudErr);
                 }
             }
-            showToast('Cliente atualizado!', 'success');
         } else {
-            const docRef = await window.getEmpresaRef().collection('clientes').add(c);
-            if (Array.isArray(db.clientes)) {
-                db.clientes.unshift({ id: docRef.id, ...c });
+            const tempId = 'cli_' + Date.now();
+            const novoCliente = { ...c, id: tempId };
+            if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.salvarOtimista === 'function') {
+                await window.FCCache.salvarOtimista('clientes', tempId, novoCliente, 'set');
+            } else if (Array.isArray(db.clientes)) {
+                db.clientes.unshift(novoCliente);
             }
-            showToast('Cliente cadastrado!', 'success');
+            showToast('Cliente cadastrado com sucesso!', 'success');
+
+            if (!(window.FCCache && typeof window.FCCache.isModoEconomia === 'function' && window.FCCache.isModoEconomia())) {
+                try {
+                    const docRef = await window.getEmpresaRef().collection('clientes').add(c);
+                    novoCliente.id = docRef.id;
+                    if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.salvarOtimista === 'function') {
+                        await window.FCCache.salvarOtimista('clientes', docRef.id, novoCliente, 'set');
+                        await window.FCCache.removerDaFila('clientes', tempId);
+                        await window.FCCache.removerDaFila('clientes', docRef.id);
+                    }
+                } catch (cloudErr) {
+                    console.warn('[Clientes] Cadastrado no repositório local (pendente de sincronização):', cloudErr);
+                }
+            }
         }
         if (typeof renderClientes === 'function') renderClientes();
         fecharModalCliente();
@@ -516,16 +597,17 @@ async function salvarCliente() {
 async function editarCliente(id) {
     const idStr = String(id).trim();
 
-    // Tenta encontrar no cache local primeiro
-    let c = db.clientes.find(x => String(x.id).trim() === idStr);
+    // Tenta encontrar no cache local primeiro (memória ou IndexedDB)
+    let c = (db.clientes && db.clientes.find(x => String(x.id).trim() === idStr)) || 
+            (window.FCCache && window.FCCache.get('clientes')?.find(x => String(x.id).trim() === idStr));
 
-    // Se não encontrou (cache vazio), busca diretamente no Firestore
+    // Se não encontrou no repositório local, busca pontualmente no Firestore
     if (!c) {
         try {
             const snap = await window.getEmpresaRef().collection('clientes').doc(idStr).get();
             if (snap.exists) {
                 c = { id: snap.id, ...snap.data() };
-                db.clientes.push(c);
+                if (Array.isArray(db.clientes)) db.clientes.push(c);
             }
         } catch (err) {
             console.error('Erro ao buscar cliente:', err);
@@ -557,11 +639,28 @@ async function editarCliente(id) {
 }
 
 function excluirCliente(id) {
-    abrirConfirmacao('Excluir Cliente', 'Remover cliente?', async () => {
+    abrirConfirmacao('Excluir Cliente', 'Remover cliente permanentemente?', async () => {
         try {
-            await window.getEmpresaRef().collection('clientes').doc(id).delete();
-            showToast('Cliente Excludo!');
-        } catch (e) { showToast('Erro', 'error'); }
+            if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.removerItem === 'function') {
+                await window.FCCache.removerItem('clientes', id);
+            }
+            if (Array.isArray(db.clientes)) {
+                db.clientes = db.clientes.filter(x => String(x.id || x._id || '').trim() !== String(id).trim());
+            }
+            if (typeof renderClientes === 'function') renderClientes();
+            showToast('Cliente excluído com sucesso!', 'success');
+
+            if (!(window.FCCache && typeof window.FCCache.isModoEconomia === 'function' && window.FCCache.isModoEconomia())) {
+                try {
+                    await window.getEmpresaRef().collection('clientes').doc(id).delete();
+                    if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.removerDaFila === 'function') {
+                        await window.FCCache.removerDaFila('clientes', id);
+                    }
+                } catch (cloudErr) {
+                    console.warn('[Clientes] Exclusão gravada localmente (pendente de sincronização):', cloudErr);
+                }
+            }
+        } catch (e) { showToast('Erro ao excluir cliente', 'error'); }
     });
 }
 

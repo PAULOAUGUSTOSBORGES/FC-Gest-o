@@ -744,8 +744,8 @@ exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@a
             };
         }
 
-        const configSnap = await empresaRef.collection("configuracoes").doc("config").get();
-        const empresa = configSnap.data()?.empresa || {};
+        const config = await obterConfigEmpresaComFallback(empresaRef);
+        const empresa = config.empresa || {};
 
         if (!empresa.certificadoBase64) {
             throw new functions.https.HttpsError("failed-precondition", "Certificado Digital A1 (.pfx) não configurado para realizar o cancelamento na SEFAZ. Acesse Configurações > Emissor Fiscal.");
@@ -1225,8 +1225,8 @@ exports.emitirDevolucaoCompra = functions.runWith({ serviceAccount: 'lojafc-a31f
     try {
         const { compraId, fornecedorId, chaveOriginal, itensParaDevolucao, observacoes, destinatarioDados } = data;
 
-        const configSnap = await empresaRef.collection('configuracoes').doc('config').get();
-        const empresa = configSnap.data()?.empresa;
+        const config = await obterConfigEmpresaComFallback(empresaRef);
+        const empresa = config.empresa;
         if (!empresa?.certificadoBase64) throw new functions.https.HttpsError('failed-precondition', 'Certificado A1 não configurado.');
         if (!empresa.ambienteFiscal) empresa.ambienteFiscal = 'producao';
 
@@ -1409,8 +1409,8 @@ exports.emitirNotaAvulsa = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
             }
         }
 
-        const configSnap = await empresaRef.collection('configuracoes').doc('config').get();
-        const empresa = configSnap.data()?.empresa;
+        const config = await obterConfigEmpresaComFallback(empresaRef);
+        const empresa = config.empresa;
         if (!empresa?.certificadoBase64) throw new functions.https.HttpsError('failed-precondition', 'Certificado A1 não configurado.');
         if (!empresa.ambienteFiscal) empresa.ambienteFiscal = 'producao';
 
@@ -1564,8 +1564,8 @@ exports.emitirNFSe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
             throw new functions.https.HttpsError('invalid-argument', 'O valor do serviço deve ser maior que zero.');
         }
 
-        const configSnap = await empresaRef.collection('configuracoes').doc('config').get();
-        const empresa = configSnap.data()?.empresa;
+        const config = await obterConfigEmpresaComFallback(empresaRef);
+        const empresa = config.empresa;
         if (!empresa) throw new functions.https.HttpsError('failed-precondition', 'Configurações da empresa não encontradas.');
 
         const docTomador = String(tomador?.doc || tomador?.cpf || tomador?.cnpj || '').replace(/\D/g, '');
@@ -1770,3 +1770,10 @@ const pagamento = require("./pagamento");
 exports.criarPagamento = pagamento.criarPagamento;
 exports.verificarPix = pagamento.verificarPix;
 exports.webhookMercadoPago = pagamento.webhookMercadoPago;
+
+// ==========================================
+// 12. LOJA PUBLICA (VITRINE)
+// Espelha apenas os campos publicos de configuracoes/config -> loja_publica
+// ==========================================
+const lojaPublica = require("./loja_publica");
+exports.espelharLojaPublica = lojaPublica.espelharLojaPublica;

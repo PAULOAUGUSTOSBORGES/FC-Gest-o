@@ -523,6 +523,21 @@ function inicializarDashboard() {
     }
     // migrarBancoAntigo desativado
 
+    // Pré-carregamento imediato do repositório local FCCache para exibição instantânea (< 5ms)
+    if (typeof window.FCCache !== 'undefined') {
+        if (!db.produtos || db.produtos.length === 0) db.produtos = window.FCCache.get('produtos') || [];
+        if (!db.clientes || db.clientes.length === 0) db.clientes = window.FCCache.get('clientes') || [];
+        if (!db.fornecedores || db.fornecedores.length === 0) db.fornecedores = window.FCCache.get('fornecedores') || [];
+        if (!db.vendas || db.vendas.length === 0) db.vendas = window.FCCache.get('vendas') || [];
+        if (!db.financeiro || db.financeiro.length === 0) db.financeiro = window.FCCache.get('financeiro') || [];
+        if (!db.caixa || !db.caixa.saldo) db.caixa = window.FCCache.get('caixa') || window.FCCache.get('fc_moveis_caixa') || { saldo: 0 };
+
+        if (db.produtos.length > 0 || db.vendas.length > 0 || db.financeiro.length > 0) {
+            window._produtosCarregados = true;
+            try { renderDashboard(); } catch(e) {}
+        }
+    }
+
     // Cache inteligente: serve dados instantaneamente do sessionStorage
     const _listen = (typeof window.fcListenCollection === 'function') ? window.fcListenCollection : function(col, cb, opts) {
         let ref = (typeof window.getEmpresaRef === 'function') ? window.getEmpresaRef().collection(col) : firestore.collection(col);
@@ -564,6 +579,18 @@ function inicializarDashboard() {
     // Fallback ativo: se produtos demorarem para carregar via snapshot, busca diretamente
     setTimeout(() => {
         if (!window._produtosCarregados && (!db.produtos || db.produtos.length === 0)) {
+            if (window.FCCache && typeof window.FCCache.get === 'function') {
+                const cached = window.FCCache.get('produtos');
+                if (cached && cached.length > 0) {
+                    db.produtos = cached;
+                    window._produtosCarregados = true;
+                    renderDashboard();
+                    return;
+                }
+            }
+            if (window.FCCache && typeof window.FCCache.isModoEconomia === 'function' && window.FCCache.isModoEconomia()) {
+                return;
+            }
             console.log('[Dashboard] Buscando produtos diretamente via get()...');
             if (typeof firestore !== 'undefined') {
                 window.getEmpresaRef().collection('produtos').get().then(snap => {
@@ -958,7 +985,17 @@ function renderizarGraficos() {
     ]);
 }
 
-window.addEventListener('load', () => { initGlobalData(inicializarDashboard); });
+function _iniciarTelaDashboard() {
+    if (window._dashIniciado) return;
+    window._dashIniciado = true;
+    initGlobalData(inicializarDashboard);
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _iniciarTelaDashboard);
+} else {
+    _iniciarTelaDashboard();
+}
 
 // Carrega lembretes assim que o usuário estiver autenticado
 if (typeof window.currentUserInfo !== 'undefined' && window.currentUserInfo !== null) {

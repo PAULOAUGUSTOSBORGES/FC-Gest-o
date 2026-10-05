@@ -237,14 +237,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 window.showToast('Repositório local já atualizado.', 'info');
             }
         };
-        syncBtn.className = 'h-9 w-9 sm:w-auto px-0 sm:px-3 flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg bg-slate-700 hover:bg-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-[11px] sm:text-xs font-bold tracking-wider transition-all cursor-pointer shadow-sm select-none border border-slate-600 shrink-0 relative';
+        syncBtn.className = 'h-9 px-2.5 sm:px-3 flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg bg-slate-700 hover:bg-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-[11px] sm:text-xs font-bold tracking-wider transition-all cursor-pointer shadow-sm select-none border border-slate-600 shrink-0 relative';
         syncBtn.title = 'Sincronizar banco de dados local com o Firebase';
         syncBtn.innerHTML = `
-            <span id="header-btn-sync-text" class="hidden sm:inline">SINCRONIZAR</span>
-            <span id="header-btn-sync-box" class="w-full h-full sm:w-6 sm:h-6 flex items-center justify-center rounded bg-transparent sm:bg-white/10 text-white text-xs">
+            <span id="header-btn-sync-text">SINCRONIZAR</span>
+            <span id="header-btn-sync-box" class="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded bg-white/10 text-white text-xs">
                 <i id="header-btn-sync-icon" class="fa-solid fa-arrows-rotate"></i>
             </span>
-            <span id="header-btn-sync-badge" class="hidden px-1.5 py-0.2 text-[10px] font-bold bg-amber-500 text-slate-900 rounded-full">0</span>
+            <span id="header-btn-sync-badge" class="hidden absolute -top-1.5 -right-1.5 px-1.5 py-0.5 text-[10px] font-black bg-amber-500 text-slate-950 rounded-full shadow-md leading-none border border-slate-900">0</span>
         `;
         headerActions.prepend(syncBtn);
     }
@@ -670,6 +670,65 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
         }
     } catch (e) {}
 
+    const isLoginPage = window.location.pathname.toLowerCase().includes('login.html') || window.location.href.toLowerCase().includes('login.html');
+
+    // 0ms Optimistic Pre-Auth Render:
+    // Se há sessão local válida para hoje, pré-carrega usuário, empresa e aciona renderização antes do auth do Firebase responder!
+    if (!isLoginPage) {
+        const hoje = new Date().toDateString();
+        const sessaoData = localStorage.getItem('fc_sessao_data');
+        const sessaoUid = localStorage.getItem('fc_sessao_uid');
+        const empId = localStorage.getItem('fc_empresa_ativa');
+
+        if (sessaoUid && sessaoData === hoje && empId) {
+            try {
+                // Recupera cache da empresa
+                const cacheEmpKey = 'fc_empresa_cache_' + empId;
+                const cacheEmpLocal = localStorage.getItem(cacheEmpKey);
+                if (cacheEmpLocal) {
+                    try { window.currentEmpresaData = JSON.parse(cacheEmpLocal); } catch(e) {}
+                }
+                const nomeEmpresaAtiva = (window.currentEmpresaData && (window.currentEmpresaData.nomeEmpresa || window.currentEmpresaData.nome)) || localStorage.getItem('fc_nome_empresa_ativa') || (empId === 'emp_fc_moveis' ? 'FC Móveis' : 'Minha Loja');
+                const elMenuNomePre = document.getElementById('menu-empresa-nome');
+                if (elMenuNomePre) elMenuNomePre.innerText = nomeEmpresaAtiva;
+                if (typeof aplicarIdentidadeVisualGlobal === 'function') {
+                    aplicarIdentidadeVisualGlobal();
+                }
+
+                // Recupera cache do usuário
+                const userCacheKey = 'funcionario_' + sessaoUid;
+                let userCache = (typeof window.FCCache !== 'undefined') && window.FCCache.get(userCacheKey);
+                if (!userCache) {
+                    try {
+                        const localU = localStorage.getItem('fc_user_cache_' + sessaoUid);
+                        if (localU) userCache = JSON.parse(localU);
+                    } catch(e) {}
+                }
+                if (userCache) {
+                    window.currentUserInfo = userCache;
+                    if (typeof mostrarNomeUsuarioNoHeader === 'function') {
+                        mostrarNomeUsuarioNoHeader(userCache.isAdmin ? 'Admin Master' : `Func.: ${userCache.nome || 'Usuário'}`);
+                    }
+                    if (typeof aplicarIdentidadeVisualGlobal === 'function') {
+                        aplicarIdentidadeVisualGlobal();
+                    }
+                }
+
+                // Dispara renderização inicial instantânea
+                if (funcaoDeRenderizacaoDaPagina && !window.__preRenderizadoOtimista) {
+                    window.__preRenderizadoOtimista = true;
+                    try {
+                        funcaoDeRenderizacaoDaPagina();
+                    } catch(ePre) {
+                        console.warn("Pré-render otimista inicial falhou suavemente:", ePre);
+                    }
+                }
+            } catch (errPre) {
+                console.warn("Aviso no pré-render otimista:", errPre);
+            }
+        }
+    }
+
     auth.onAuthStateChanged(async (user) => {
         window.currentUser = user;
         const isLoginPage = window.location.pathname.toLowerCase().includes('login.html') || window.location.href.toLowerCase().includes('login.html');
@@ -744,12 +803,18 @@ window.isContaMasterGlobal = isContaMasterGlobal;
         if (empId) {
             try {
                 let empData = null;
-                // Consulta prioritária ao servidor central do SaaS Master
+                const cacheEmpKey = 'fc_empresa_cache_' + empId;
+                const cacheEmpLocal = localStorage.getItem(cacheEmpKey);
+                if (cacheEmpLocal) {
+                    try { empData = JSON.parse(cacheEmpLocal); } catch(e) {}
+                }
+
+                // Consulta ao servidor central do SaaS Master (carregamento imediato via cache local < 1ms)
                 if (typeof window.consultarLicencaCentral === 'function') {
                     empData = await window.consultarLicencaCentral(empId, 'fc_gestao');
                 }
                 
-                // Fallback para o banco local da empresa
+                // Fallback para o banco local da empresa caso ainda não haja dados
                 if (!empData) {
                     const empDoc = await firestore.collection('empresas').doc(empId).get();
                     if (empDoc.exists) empData = empDoc.data();
@@ -757,6 +822,7 @@ window.isContaMasterGlobal = isContaMasterGlobal;
 
                 if (empData) {
                     window.currentEmpresaData = empData;
+                    try { localStorage.setItem(cacheEmpKey, JSON.stringify(empData)); } catch(e) {}
                     const nomeEmpresaAtiva = empData.nomeEmpresa || empData.nome || localStorage.getItem('fc_nome_empresa_ativa') || (empId === 'emp_fc_moveis' ? 'FC Móveis' : 'Minha Loja');
                     localStorage.setItem('fc_nome_empresa_ativa', nomeEmpresaAtiva);
 
@@ -810,7 +876,13 @@ window.isContaMasterGlobal = isContaMasterGlobal;
             if (configCache) db.config = configCache;
 
             const userCacheKey = 'funcionario_' + user.uid;
-            const userCache = (typeof window.FCCache !== 'undefined') && window.FCCache.get(userCacheKey);
+            let userCache = (typeof window.FCCache !== 'undefined') && window.FCCache.get(userCacheKey);
+            if (!userCache) {
+                try {
+                    const localU = localStorage.getItem('fc_user_cache_' + user.uid);
+                    if (localU) userCache = JSON.parse(localU);
+                } catch(e) {}
+            }
             if (userCache) window.currentUserInfo = userCache;
 
             let renderizouImediato = false;
@@ -829,16 +901,55 @@ window.isContaMasterGlobal = isContaMasterGlobal;
                 }
             }
 
-            // Sincronização paralela com Firebase (em background se já renderizou do cache)
+            // Sincronização com Firebase garantindo busca das configurações e permissões mais recentes
             const sincronizarFirebase = async () => {
                 try {
-                    const [confSnap, userSnap] = await Promise.all([
-                        window.getEmpresaRef().collection('configuracoes').doc('config').get().catch(e => { console.error("Erro ao carregar config:", e); return null; }),
-                        window.getEmpresaRef().collection("funcionarios").doc(user.uid).get().catch(e => { console.error("Erro de permissões:", e); return null; })
-                    ]);
-
                     const empIdAtiva = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
                     const nomeEmpresaPadrao = window.currentEmpresaData?.nomeEmpresa || window.currentEmpresaData?.nome || localStorage.getItem('fc_nome_empresa_ativa') || (empIdAtiva === 'emp_fc_moveis' ? 'FC Móveis' : 'Minha Loja');
+
+                    let confSnap = null;
+                    let userSnap = null;
+                    try {
+                        [confSnap, userSnap] = await Promise.all([
+                            window.getEmpresaRef().collection('configuracoes').doc('config').get().catch(e => { console.error("Erro ao carregar config:", e); return null; }),
+                            window.getEmpresaRef().collection("funcionarios").doc(user.uid).get().catch(e => { console.error("Erro de permissões:", e); return null; })
+                        ]);
+                    } catch(eProm) {
+                        console.error("Erro ao sincronizar config do Firebase:", eProm);
+                    }
+
+                    // Fallback para coleção legada fc_moveis/config caso o doc não exista ou falte logo/empresa
+                    if ((!confSnap || !confSnap.exists || !confSnap.data()?.empresa?.logo) && empIdAtiva === 'emp_fc_moveis') {
+                        try {
+                            const legSnap = await firestore.collection('fc_moveis').doc('config').get();
+                            if (legSnap && legSnap.exists && legSnap.data()) {
+                                const legDados = legSnap.data();
+                                if (!confSnap || !confSnap.exists) {
+                                    confSnap = legSnap;
+                                } else {
+                                    const confDataAtual = confSnap.data() || {};
+                                    confSnap = {
+                                        exists: true,
+                                        data: () => ({
+                                            ...legDados,
+                                            ...confDataAtual,
+                                            empresa: {
+                                                ...(legDados.empresa || {}),
+                                                ...(confDataAtual.empresa || {})
+                                            },
+                                            loja: {
+                                                ...(legDados.loja || {}),
+                                                ...(confDataAtual.loja || {})
+                                            }
+                                        })
+                                    };
+                                }
+                                window.getEmpresaRef().collection('configuracoes').doc('config').set(confSnap.data(), { merge: true }).catch(() => {});
+                            }
+                        } catch(eLeg) {
+                            console.warn("Aviso ao consultar config legada fc_moveis:", eLeg);
+                        }
+                    }
 
                     if (confSnap && confSnap.exists) {
                         const dados = confSnap.data() || {};
@@ -888,6 +999,9 @@ window.isContaMasterGlobal = isContaMasterGlobal;
                         if (typeof window.ajustarOpcoesOperacaoPDV === 'function') {
                             try { window.ajustarOpcoesOperacaoPDV(); } catch (e) {}
                         }
+                        if (typeof window.carregarConfiguracoesNaTela === 'function') {
+                            try { window.carregarConfiguracoesNaTela(); } catch (e) {}
+                        }
                     } else if (confSnap && !confSnap.exists) {
                         const novaConfig = {
                             empresa: {
@@ -936,6 +1050,7 @@ window.isContaMasterGlobal = isContaMasterGlobal;
                         }
                         
                         if (typeof window.FCCache !== 'undefined') window.FCCache.set(userCacheKey, window.currentUserInfo);
+                        try { localStorage.setItem('fc_user_cache_' + user.uid, JSON.stringify(window.currentUserInfo)); } catch(e) {}
                         if (aplicarControleDeAcesso()) return;
                         mostrarNomeUsuarioNoHeader(window.currentUserInfo.isAdmin ? 'Admin Master' : `Func.: ${window.currentUserInfo.nome || 'Usuário'}`);
                     } else if (userSnap && !userSnap.exists) {
@@ -1014,10 +1129,10 @@ window.isContaMasterGlobal = isContaMasterGlobal;
                 }
             };
 
-            if (renderizouImediato) {
-                sincronizarFirebase();
-            } else {
+            if (!renderizouImediato) {
                 await sincronizarFirebase();
+            } else {
+                sincronizarFirebase().catch(e => console.warn("Aviso na sincronização em background:", e));
             }
     });
 }
@@ -1864,13 +1979,11 @@ function toggleMenu() {
 // M?DULO: MOTOR DE TEMA E IDENTIDADE DA EMPRESA
 // ==========================================
 function aplicarIdentidadeVisualGlobal() {
-    if (!db) return;
-
     const elNome = document.getElementById('menu-empresa-nome');
     const elLogo = document.getElementById('menu-logo');
     const elPlaceholder = document.getElementById('menu-logo-placeholder');
 
-    const emp = (db.config && db.config.empresa) ? db.config.empresa : {};
+    const emp = (window.db && window.db.config && window.db.config.empresa) ? window.db.config.empresa : {};
     const empIdAtiva = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
     const fallbackNome = (window.currentEmpresaData?.nomeEmpresa) || (window.currentEmpresaData?.nome) || localStorage.getItem('fc_nome_empresa_ativa') || (empIdAtiva === 'emp_fc_moveis' ? 'FC Móveis' : 'Minha Loja');
     const nomeEmpresa = (emp.fantasia && emp.fantasia.trim()) ? emp.fantasia : ((emp.nome && emp.nome.trim()) ? emp.nome : fallbackNome);
@@ -1888,10 +2001,27 @@ function aplicarIdentidadeVisualGlobal() {
     }
 
     if (elLogo && elPlaceholder) {
-        if (emp.logo) {
-            elLogo.src = emp.logo;
+        // Busca do logo através de múltiplas camadas de persistência
+        let logoSrc = emp.logo || (window.currentEmpresaData && window.currentEmpresaData.logo) || '';
+        if (!logoSrc && empIdAtiva) {
+            try {
+                const c = JSON.parse(localStorage.getItem('fc_empresa_cache_' + empIdAtiva) || '{}');
+                logoSrc = c.logo || '';
+            } catch(e) {}
+        }
+        if (!logoSrc) {
+            logoSrc = localStorage.getItem('fc_logo_empresa_ativa') || '';
+        }
+
+        if (logoSrc && typeof logoSrc === 'string' && logoSrc.trim()) {
+            elLogo.src = logoSrc;
             elLogo.classList.remove('hidden');
             elPlaceholder.classList.add('hidden');
+            elLogo.onerror = function() {
+                elLogo.classList.add('hidden');
+                elPlaceholder.classList.remove('hidden');
+            };
+            try { localStorage.setItem('fc_logo_empresa_ativa', logoSrc); } catch(e) {}
         } else {
             elLogo.classList.add('hidden');
             elPlaceholder.classList.remove('hidden');
@@ -2045,8 +2175,9 @@ window.reimprimirVenda = function(id) {
     const v = (window.db && window.db.vendas) ? window.db.vendas.find(x => String(x.id) === String(id)) : null; 
     if(!v) return showToast('Venda não encontrada.', 'error');
     
+    window.vendaAtualImpressao = v;
     const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
-    const htmlRecibo = `<div style="text-align: center; border-bottom: 1px dashed #999; padding-bottom: 10px; margin-bottom: 10px;"><h2 style="font-weight: bold; font-size: 1.2em; margin: 0;">FC M?VEIS E INTERIORES</h2><p style="font-size: 0.9em; margin: 0;">Operação: REIMPRESS?O</p></div><div style="border-bottom: 1px dashed #999; padding-bottom: 10px; margin-bottom: 10px; font-size: 0.9em;"><p style="margin: 2px 0;">Pedido: #${numPedStr}</p><p style="margin: 2px 0;">Data Original: ${new Date(v.data).toLocaleString('pt-BR')}</p><p style="margin: 2px 0;">Cliente: ${v.clienteNome || '-'}</p><p style="margin: 2px 0;">Vendedor: ${v.vendedor || '-'}</p></div><table style="width: 100%; text-align: left; font-size: 0.9em; border-collapse: collapse; margin-bottom: 10px;"><tr style="border-bottom: 1px solid #ccc;"><th style="padding-bottom: 4px;">Item</th><th style="padding-bottom: 4px; text-align: center;">Qtd</th><th style="padding-bottom: 4px; text-align: right;">Total</th></tr>${(v.itens || []).map(i => `<tr><td style="padding: 4px 0;">${i.nome}</td><td style="padding: 4px 0; text-align: center;">${i.qtd}</td><td style="padding: 4px 0; text-align: right;">${typeof formatMoney === 'function' ? formatMoney(i.preco*i.qtd) : (i.preco*i.qtd)}</td></tr>`).join('')}</table><div style="text-align: right; font-size: 0.9em;"><h3 style="font-weight: bold; font-size: 1.2em; margin: 5px 0 0 0;">Total Final: ${typeof formatMoney === 'function' ? formatMoney(v.tot || v.valorLiquido) : (v.tot || v.valorLiquido)}</h3></div><div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #999; text-align: center; font-size: 0.9em;"><p style="margin: 0; font-weight: bold; text-transform: uppercase;">PAGAMENTO: ${v.pag || 'Diversos'}</p></div>`;
+    const htmlRecibo = `<div style="text-align: center; border-bottom: 1px dashed #999; padding-bottom: 10px; margin-bottom: 10px;"><h2 style="font-weight: bold; font-size: 1.2em; margin: 0;">FC MÓVEIS E INTERIORES</h2><p style="font-size: 0.9em; margin: 0;">Operação: REIMPRESSÃO</p></div><div style="border-bottom: 1px dashed #999; padding-bottom: 10px; margin-bottom: 10px; font-size: 0.9em;"><p style="margin: 2px 0;">Pedido: #${numPedStr}</p><p style="margin: 2px 0;">Data Original: ${new Date(v.data).toLocaleString('pt-BR')}</p><p style="margin: 2px 0;">Cliente: ${v.clienteNome || '-'}</p><p style="margin: 2px 0;">Vendedor: ${v.vendedor || '-'}</p></div><table style="width: 100%; text-align: left; font-size: 0.9em; border-collapse: collapse; margin-bottom: 10px;"><tr style="border-bottom: 1px solid #ccc;"><th style="padding-bottom: 4px;">Item</th><th style="padding-bottom: 4px; text-align: center;">Qtd</th><th style="padding-bottom: 4px; text-align: right;">Total</th></tr>${(v.itens || []).map(i => `<tr><td style="padding: 4px 0;">${i.nome}</td><td style="padding: 4px 0; text-align: center;">${i.qtd}</td><td style="padding: 4px 0; text-align: right;">${typeof formatMoney === 'function' ? formatMoney(i.preco*i.qtd) : (i.preco*i.qtd)}</td></tr>`).join('')}</table><div style="text-align: right; font-size: 0.9em;"><h3 style="font-weight: bold; font-size: 1.2em; margin: 5px 0 0 0;">Total Final: ${typeof formatMoney === 'function' ? formatMoney(v.tot || v.valorLiquido) : (v.tot || v.valorLiquido)}</h3></div><div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #999; text-align: center; font-size: 0.9em;"><p style="margin: 0; font-weight: bold; text-transform: uppercase;">PAGAMENTO: ${v.pag || 'Diversos'}</p></div>`;
     
     const printArea = document.getElementById('print-area');
     const modalRecibo = document.getElementById('modal-opcoes-recibo');
@@ -2054,13 +2185,297 @@ window.reimprimirVenda = function(id) {
         printArea.innerHTML = htmlRecibo; 
         modalRecibo.classList.remove('hidden');
     } else {
-        const w = window.open('', '_blank');
-        if (w) {
-            w.document.write(`<html><body style="font-family: monospace; padding: 20px;">${htmlRecibo}</body></html>`);
-            w.document.close();
-            w.print();
+        printHtmlSeguro(htmlRecibo);
+    }
+};
+
+// ==========================================
+// IMPRESSÃO SEGURA BLINDADA CONTRA BLOQUEIO DE POPUP
+// ==========================================
+window.printHtmlSeguro = function(htmlCompleto) {
+    try {
+        let printFrame = document.getElementById('fc-iframe-print-seguro');
+        if (!printFrame) {
+            printFrame = document.createElement('iframe');
+            printFrame.id = 'fc-iframe-print-seguro';
+            printFrame.style.position = 'fixed';
+            printFrame.style.right = '0';
+            printFrame.style.bottom = '0';
+            printFrame.style.width = '0';
+            printFrame.style.height = '0';
+            printFrame.style.border = '0';
+            printFrame.style.zIndex = '-99999';
+            printFrame.style.visibility = 'hidden';
+            document.body.appendChild(printFrame);
+        }
+        
+        const paginaHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Impressão</title>
+    <style>
+        @media print {
+            @page { margin: 0; }
+            body { margin: 10mm; }
+        }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #fff; color: #000; }
+    </style>
+</head>
+<body>
+    ${htmlCompleto}
+    <script>
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                try {
+                    window.focus();
+                    window.print();
+                } catch(e) {}
+            }, 300);
+        });
+    </` + `script>
+</body>
+</html>`;
+
+        if ('srcdoc' in printFrame) {
+            printFrame.srcdoc = paginaHtml;
+        } else {
+            const frameDoc = printFrame.contentWindow.document;
+            frameDoc.open();
+            frameDoc.write(paginaHtml);
+            frameDoc.close();
+            setTimeout(() => {
+                try {
+                    printFrame.contentWindow.focus();
+                    printFrame.contentWindow.print();
+                } catch(e) {
+                    console.warn('Fallback print:', e);
+                    window.print();
+                }
+            }, 350);
+        }
+    } catch(err) {
+        console.error('Falha no print seguro via iframe, tentando fallback:', err);
+        const printWin = window.open('', '_blank');
+        if (printWin) {
+            printWin.document.write(htmlCompleto);
+            printWin.document.close();
+            printWin.focus();
+            printWin.print();
+        } else {
+            showToast("Permita popups ou visualize o contrato na tela.", "warning");
         }
     }
+};
+
+// ==========================================
+// MOTOR UNIVERSAL DE VISUALIZAÇÃO E IMPRESSÃO DO CONTRATO
+// ==========================================
+window.abrirModalContrato = function(vendaOuId) {
+    let v = vendaOuId;
+    if (typeof vendaOuId === 'string' || typeof vendaOuId === 'number') {
+        const todasVendas = (typeof db !== 'undefined' && Array.isArray(db.vendas)) 
+            ? db.vendas 
+            : ((typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) ? window.db.vendas : []);
+        v = todasVendas.find(x => String(x.id) === String(vendaOuId));
+    }
+    if (!v) {
+        showToast("Venda não encontrada para gerar contrato.", "error");
+        return;
+    }
+    window.vendaAtualImpressao = v;
+    
+    // Obter dados da empresa e cliente
+    const empAtivaIdContr = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
+    const fallbackNomeContr = (window.currentEmpresaData?.nomeEmpresa) || localStorage.getItem('fc_nome_empresa_ativa') || (empAtivaIdContr === 'emp_fc_moveis' ? 'FC MÓVEIS' : 'MINHA LOJA');
+    const emp = (typeof obterDadosEmpresa === 'function') ? obterDadosEmpresa() : { nome: fallbackNomeContr, cnpj: '', end: '', tel: '', logoHtml: '' };
+    const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id || '').slice(-4);
+    
+    const cliInfo = (typeof obterDadosClientePDV === 'function') ? obterDadosClientePDV(v.clienteId) : null;
+    const cliNome = (cliInfo && cliInfo.nome !== 'Consumidor Final') ? cliInfo.nome : (v.clienteNome || v.cliente || 'Consumidor Final');
+    const cliCpf = (cliInfo && cliInfo.doc !== 'Não informado') ? cliInfo.doc : (v.clienteDoc || 'Não informado');
+    const cliTel = (cliInfo && cliInfo.tel !== 'Não informado') ? cliInfo.tel : (v.clienteTel || 'Não informado');
+    const cliEndCompleto = (cliInfo && cliInfo.endCompleto !== 'Não informado') ? cliInfo.endCompleto : (v.clienteEnd || 'Não informado');
+    
+    // Itens
+    let totalDescontoItens = 0;
+    let subtotalItensBruto = 0;
+    const prodsList = (typeof db !== 'undefined' && Array.isArray(db.produtos)) ? db.produtos : [];
+    
+    let itensHtml = (v.itens || []).map((i, idx) => {
+        const prodDb = prodsList.find(p => String(p.id) === String(i.id));
+        const fotoHtml = (prodDb && prodDb.foto) ? `<div style="margin-right: 15px; flex-shrink: 0;"><img src="${prodDb.foto}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid #ccc;"></div>` : '';
+        const qtdItem = Number(i.qtd) || 1;
+        const precoUnit = Number(i.preco) || 0;
+        const subItemBruto = precoUnit * qtdItem;
+        const descItem = Number(i.desconto) || 0;
+        const totalItemLiquido = Math.max(0, subItemBruto - descItem);
+        subtotalItensBruto += subItemBruto;
+        totalDescontoItens += descItem;
+
+        const fm = typeof formatMoney === 'function' ? formatMoney : (x => 'R$ ' + Number(x||0).toFixed(2));
+        let valorLinhaHtml = `Valor: ${fm(subItemBruto)}`;
+        if (descItem > 0) {
+            valorLinhaHtml = `Valor Unitário: ${fm(precoUnit)} x ${qtdItem} = ${fm(subItemBruto)}<br>` +
+                             `Desconto do Item: - ${fm(descItem)}<br>` +
+                             `Valor com Desconto: ${fm(totalItemLiquido)}`;
+        }
+
+        const customTexto = (typeof formatarCustomizacaoContratoTexto === "function") ? formatarCustomizacaoContratoTexto(i.customizacao) : "";
+
+        return `
+        <div style="margin-bottom: 15px; display: flex; align-items: flex-start; border-bottom: 1px dashed #e2e8f0; padding-bottom: 12px;">
+            ${fotoHtml}
+            <div style="flex: 1;">
+                <strong style="color: #0f172a;">PRODUTO / SERVIÇO ${idx + 1}</strong><br>
+                <strong>Descrição:</strong> ${i.nome || 'Item'} ${i.obsVenda ? ` - Obs: ${i.obsVenda}` : ''}<br>
+                ${customTexto ? `${customTexto}<br>` : ''}
+                <strong>Quantidade:</strong> ${qtdItem} unidade(s)<br>
+                ${valorLinhaHtml}<br>
+                <span style="font-size: 12px; color: #64748b;">Situação do produto: ( ) Produto em estoque &nbsp;&nbsp;&nbsp; ( ) Produto sob fabricação</span>
+            </div>
+        </div>
+        `;
+    }).join('');
+
+    let dataEntregaFormatada = '___/___/20__';
+    const dataEntregaBruta = v.dataEntrega || (v.servicoDetalhes && v.servicoDetalhes.prazo ? v.servicoDetalhes.prazo : '');
+    if (dataEntregaBruta) {
+        if (dataEntregaBruta.includes('-')) {
+            const partes = dataEntregaBruta.split('T')[0].split('-');
+            if (partes.length === 3) dataEntregaFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+            else dataEntregaFormatada = dataEntregaBruta;
+        } else {
+            dataEntregaFormatada = dataEntregaBruta;
+        }
+    }
+
+    const descGeral = Number(v.desconto) || 0;
+    const totalDescontoGeral = descGeral + totalDescontoItens;
+    const temDescontoNoContrato = totalDescontoGeral > 0;
+    const subtotalBruto = (v.subtotal && v.subtotal > 0) ? (v.subtotal + totalDescontoItens) : subtotalItensBruto;
+    const fm = typeof formatMoney === 'function' ? formatMoney : (x => 'R$ ' + Number(x||0).toFixed(2));
+    const dataEmissao = v.data ? new Date(v.data).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
+
+    const htmlContrato = `
+    <div id="documento-contrato-imprimivel" style="font-family: Arial, sans-serif; color: #000; width: 100%; max-width: 800px; margin: 0 auto; line-height: 1.5; font-size: 13.5px;">
+        <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 18px;">
+            ${emp.logoHtml || ''}
+            <h1 style="margin: 0; font-size: 22px; font-weight: 900; text-transform: uppercase;">${emp.nome}</h1>
+            <p style="margin: 4px 0 0 0; font-size: 12px; color: #334155;">CNPJ: ${emp.cnpj || 'Não informado'}<br>Endereço: ${emp.end || 'Não informado'}<br>Telefone / WhatsApp: ${emp.tel || 'Não informado'}</p>
+        </div>
+
+        <h2 style="text-align: center; font-size: 17px; font-weight: 800; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">CONTRATO DE COMPRA E VENDA E SERVIÇOS</h2>
+        <p style="text-align: center; font-weight: bold; margin-top: 0; margin-bottom: 18px; color: #1e40af;">PEDIDO Nº ${numPedStr}</p>
+
+        <h3 style="font-size: 13px; font-weight: bold; background: #f1f5f9; padding: 6px 10px; border: 1px solid #cbd5e1; margin-bottom: 8px; text-transform: uppercase;">1. DADOS DO CLIENTE (COMPRADOR)</h3>
+        <p style="margin-top: 0; margin-bottom: 14px; padding-left: 6px;">
+            <strong>Nome completo:</strong> ${cliNome}<br>
+            <strong>CPF/CNPJ:</strong> ${cliCpf}<br>
+            <strong>Telefone / WhatsApp:</strong> ${cliTel}<br>
+            <strong>Endereço:</strong> ${cliEndCompleto}
+        </p>
+
+        <h3 style="font-size: 13px; font-weight: bold; background: #f1f5f9; padding: 6px 10px; border: 1px solid #cbd5e1; margin-bottom: 8px; text-transform: uppercase;">2. OBJETO DO CONTRATO</h3>
+        <p style="margin-top: 0; margin-bottom: 12px; padding-left: 6px;">O presente contrato tem como objeto a venda do(s) produto(s) / serviço(s) descrito(s) abaixo:</p>
+        <div style="padding-left: 6px;">${itensHtml || '<p>Sem itens discriminados.</p>'}</div>
+
+        <h3 style="font-size: 13px; font-weight: bold; background: #f1f5f9; padding: 6px 10px; border: 1px solid #cbd5e1; margin-bottom: 8px; margin-top: 16px; text-transform: uppercase;">3. VALOR TOTAL E PAGAMENTO</h3>
+        <p style="margin-top: 0; margin-bottom: 14px; padding-left: 6px;">
+            ${temDescontoNoContrato ? `<strong>Subtotal:</strong> ${fm(subtotalBruto)}<br>` : ''}
+            ${temDescontoNoContrato ? `<strong>Desconto Total:</strong> - ${fm(totalDescontoGeral)}<br>` : ''}
+            ${v.frete && Number(v.frete) > 0 ? `<strong>Taxas / Frete (+):</strong> ${fm(v.frete)}<br>` : ''}
+            <strong>Valor Total:</strong> <span style="font-size: 15px; font-weight: bold; color: #1e3a8a;">${fm(v.tot || v.total || 0)}</span><br>
+            <strong>Forma de Pagamento:</strong> ${v.pag || 'Conforme acordado'}<br>
+            <strong>Data da Operação:</strong> ${dataEmissao}
+        </p>
+
+        <h3 style="font-size: 13px; font-weight: bold; background: #f1f5f9; padding: 6px 10px; border: 1px solid #cbd5e1; margin-bottom: 8px; text-transform: uppercase;">4. PRAZO DE ENTREGA E GARANTIA</h3>
+        <p style="margin-top: 0; margin-bottom: 10px; padding-left: 6px; text-align: justify;">O prazo de entrega válido é a <strong>Data Prevista de Entrega Acordada</strong> informada neste pedido. Havendo eventuais imprevistos operacionais, de transporte, fabricação ou intempéries, fica acordado um prazo adicional de tolerância de até 7 (sete) dias corridos.<br>O produto/serviço possui garantia legal de 90 (noventa) dias contra defeitos de fabricação.</p>
+
+        ${dataEntregaFormatada !== '___/___/20__' ? `<p style="margin-top: 6px; font-weight: bold; background-color: #eff6ff; padding: 8px 12px; border-left: 4px solid #2563eb; border-radius: 4px;">Data Prevista de Entrega Acordada: <span style="font-size: 15px; color: #1e3a8a;">${dataEntregaFormatada}</span></p>` : ''}
+
+        <h3 style="font-size: 13px; font-weight: bold; background: #f1f5f9; padding: 6px 10px; border: 1px solid #cbd5e1; margin-bottom: 8px; margin-top: 14px; text-transform: uppercase;">5. LOCAL DE ENTREGA</h3>
+        <p style="margin-top: 0; margin-bottom: 14px; padding-left: 6px;"><strong>Endereço:</strong> ${cliEndCompleto}<br><strong>Data Prevista de Entrega:</strong> <span style="font-weight: bold;">${dataEntregaFormatada}</span></p>
+
+        <h3 style="font-size: 13px; font-weight: bold; background: #f1f5f9; padding: 6px 10px; border: 1px solid #cbd5e1; margin-bottom: 8px; text-transform: uppercase;">6. TRANSPORTE E MONTAGEM</h3>
+        <p style="margin-top: 0; margin-bottom: 14px; padding-left: 6px;">( ) Entrega realizada pela empresa &nbsp;&nbsp;&nbsp; ( ) Retirada pelo cliente<br>Montagem: ( ) Inclusa &nbsp;&nbsp;&nbsp; ( ) Não inclusa<br>Caso a entrega seja realizada pela empresa, o cliente deve garantir acesso adequado ao local.</p>
+
+        <h3 style="font-size: 13px; font-weight: bold; background: #f1f5f9; padding: 6px 10px; border: 1px solid #cbd5e1; margin-bottom: 8px; text-transform: uppercase;">7. MEDIDAS E ACESSO AO LOCAL</h3>
+        <p style="margin-top: 0; margin-bottom: 14px; padding-left: 6px; text-align: justify;">O cliente declara que verificou as medidas do local de instalação e acesso (portas, corredores, elevadores e escadas). Caso o móvel não possa ser entregue ou instalado por falta de espaço ou acesso, a empresa não se responsabiliza por custos adicionais de transporte ou nova entrega.</p>
+
+        <h3 style="font-size: 13px; font-weight: bold; background: #f1f5f9; padding: 6px 10px; border: 1px solid #cbd5e1; margin-bottom: 8px; text-transform: uppercase;">8. CONFERÊNCIA NO ATO DA ENTREGA</h3>
+        <p style="margin-top: 0; margin-bottom: 14px; padding-left: 6px; text-align: justify;">O cliente deverá verificar o produto no momento da entrega. Após assinatura do recebimento, entende-se que o produto foi entregue em perfeitas condições.<br><strong>A garantia não cobre:</strong> Mau uso do produto; Danos causados após a entrega; Exposição à umidade excessiva; Sobrecarga de peso; Alterações feitas por terceiros.</p>
+
+        <h3 style="font-size: 13px; font-weight: bold; background: #f1f5f9; padding: 6px 10px; border: 1px solid #cbd5e1; margin-bottom: 8px; text-transform: uppercase;">9. CANCELAMENTO E ATRASO</h3>
+        <p style="margin-top: 0; margin-bottom: 14px; padding-left: 6px; text-align: justify;">Pedidos de produtos fabricados sob encomenda não poderão ser cancelados após o início da produção. Caso haja cancelamento após início da fabricação, poderá ser cobrada taxa referente aos custos de produção.<br>Em caso de atraso no pagamento do saldo, poderá ser aplicada multa de 2% sobre o valor devido, além de juros de 1% ao mês.</p>
+
+        <h3 style="font-size: 13px; font-weight: bold; background: #f1f5f9; padding: 6px 10px; border: 1px solid #cbd5e1; margin-bottom: 8px; text-transform: uppercase;">10. OBSERVAÇÕES DO PEDIDO</h3>
+        <p style="margin-top: 0; margin-bottom: 14px; padding-left: 6px;">${v.obs || 'Sem observações adicionais.'}</p>
+
+        <h3 style="font-size: 13px; font-weight: bold; background: #f1f5f9; padding: 6px 10px; border: 1px solid #cbd5e1; margin-bottom: 8px; text-transform: uppercase;">11. ACEITE DAS CONDIÇÕES</h3>
+        <p style="margin-top: 0; margin-bottom: 24px; padding-left: 6px;">Ao assinar este contrato, o comprador declara estar ciente e de acordo com todas as condições descritas neste documento.</p>
+
+        <div style="margin-top: 36px; text-align: center; page-break-inside: avoid;">
+            <p>Data do Acordo: ${new Date().toLocaleDateString('pt-BR')}</p>
+            <div style="display: flex; justify-content: space-between; margin-top: 45px;">
+                <div style="width: 45%;">
+                    <div style="border-top: 1px solid #000; padding-top: 5px; font-weight: bold;">VENDEDOR / EMPRESA</div>
+                    <p style="font-size: 12px; margin-top: 2px;">${v.vendedor ? `Vendedor: ${v.vendedor}<br>` : ''}<strong>${emp.nome}</strong></p>
+                </div>
+                <div style="width: 45%;">
+                    <div style="border-top: 1px solid #000; padding-top: 5px; font-weight: bold;">COMPRADOR(A)</div>
+                    <p style="font-size: 12px; margin-top: 2px;">Nome: ${cliNome}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    `;
+
+    window._htmlContratoAtual = htmlContrato;
+    const modalAntigo = document.getElementById('modal-preview-contrato');
+    if (modalAntigo) modalAntigo.remove();
+
+    if (typeof printHtmlSeguro === 'function') {
+        printHtmlSeguro(`<div style="width: 210mm; margin: 0 auto; padding: 15mm; background: #fff;">${htmlContrato}</div>`);
+    } else {
+        window.print();
+    }
+};
+
+window.fecharModalPreviewContrato = function() {
+    const modal = document.getElementById('modal-preview-contrato');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.imprimirContratoDiretoModal = function() {
+    if (window._htmlContratoAtual) {
+        if (typeof printHtmlSeguro === 'function') {
+            printHtmlSeguro(`<div style="width: 210mm; margin: 0 auto; padding: 15mm; background: #fff;">${window._htmlContratoAtual}</div>`);
+        } else {
+            window.print();
+        }
+    }
+};
+
+window.imprimirContratoAtual = function() {
+    if (window.vendaAtualImpressao) {
+        window.abrirModalContrato(window.vendaAtualImpressao);
+    } else {
+        showToast("Nenhuma venda selecionada para imprimir o contrato.", "error");
+    }
+};
+
+window.imprimirContratoObj = function(v) {
+    if (v) {
+        window.abrirModalContrato(v);
+    } else {
+        showToast("Nenhuma venda selecionada.", "error");
+    }
+};
+
+window.imprimirContratoById = function(id) {
+    window.abrirModalContrato(id);
 };
 
 // ==========================================
@@ -5162,6 +5577,45 @@ window.cadastrarOpcaoRapida = function(cat) {
         }
     };
 
+})();
+
+// ==========================================
+// PREFETCH INTELIGENTE DE PÁGINAS (Zero-Delay Navigation)
+// Ao passar o mouse ou focar em um link interno do sistema,
+// o navegador pré-carrega o HTML no cache HTTP, tornando a navegação instantânea.
+// ==========================================
+(function _iniciarPrefetchDePaginas() {
+    // Se o sistema estiver rodando localmente via file:// (sem servidor HTTP), o prefetch de link não é suportado pelo navegador
+    if (window.location.protocol === 'file:' || !window.location.protocol.startsWith('http')) return;
+
+    const urlsPrefetched = new Set();
+
+    function prefetchUrl(url) {
+        if (!url || urlsPrefetched.has(url)) return;
+        try {
+            const parsed = new URL(url, window.location.href);
+            if (parsed.origin !== window.location.origin) return;
+            if (!parsed.pathname.endsWith('.html')) return;
+            if (parsed.pathname === window.location.pathname) return;
+
+            urlsPrefetched.add(url);
+            const link = document.createElement('link');
+            link.rel = 'prefetch';
+            link.href = parsed.pathname;
+            link.as = 'document';
+            document.head.appendChild(link);
+        } catch(e) {}
+    }
+
+    function onLinkHover(e) {
+        const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+        if (a && a.href) {
+            prefetchUrl(a.href);
+        }
+    }
+
+    document.addEventListener('mouseover', onLinkHover, { passive: true });
+    document.addEventListener('touchstart', onLinkHover, { passive: true });
 })();
 
 

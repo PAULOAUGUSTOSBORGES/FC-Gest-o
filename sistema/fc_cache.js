@@ -30,7 +30,9 @@
         'notas_avulsas',
         'notas_devolucao',
         'notas_servico',
-        'caixa_fechamentos'
+        'caixa_fechamentos',
+        'marketing_historico',
+        'relatorios_ia_historico'
     ];
 
     // TTL de segurança (em ms) apenas para fallback de sincronização automática leve se desejado
@@ -77,8 +79,8 @@
 
     // Normaliza nomes legados de coleção/doc para compatibilidade
     function _normalizarColecao(col) {
-        if (col === 'fc_moveis_config' || col === 'configuracoes') return 'config';
-        if (col === 'fc_moveis_caixa') return 'caixa';
+        if (col === 'fc_moveis_config' || col === 'configuracoes' || col === 'configuracoes_config') return 'config';
+        if (col === 'fc_moveis_caixa' || col === 'caixa_caixa_atual' || col === 'caixa_atual') return 'caixa';
         return col;
     }
 
@@ -632,7 +634,7 @@
                                         const velhoStr = String(item.dados.numeroPedido).padStart(4, '0');
                                         const novoStr = String(novoNum).padStart(4, '0');
 
-                                        console.warn(`[FCRepo] ⚠️ Conflito de numeração evitado na nuvem: Pedido #${velhoStr} readequado para #${novoNumStr}`);
+                                        console.warn(`[FCRepo] ⚠️ Conflito de numeração evitado na nuvem: Pedido #${velhoStr} readequado para #${novoStr}`);
 
                                         item.dados.numeroPedido = novoNum;
                                         if (item.dados.ref) {
@@ -714,32 +716,80 @@
                 }
             });
 
-            // Baixa doc de caixa
+            // Baixa doc de caixa com suporte a todos os aliases
             pullPromessas.push((async function () {
                 try {
                     const cxSnap = await empRef.collection('caixa').doc('caixa_atual').get();
                     if (cxSnap.exists) {
                         const cxData = cxSnap.data();
-                        _memoria['fc_moveis_caixa'] = cxData;
-                        _salvarSession('fc_moveis_caixa', cxData);
-                        await _idbSalvarColecao('fc_moveis_caixa', cxData);
+                        ['caixa', 'fc_moveis_caixa', 'caixa_caixa_atual', 'caixa_atual'].forEach(k => {
+                            _memoria[k] = cxData;
+                            _salvarSession(k, cxData);
+                            _idbSalvarColecao(k, cxData);
+                            _notificarListeners(k, cxData);
+                        });
                         if (typeof window.db !== 'undefined') window.db.caixa = cxData;
-                        _notificarListeners('fc_moveis_caixa', cxData);
                     }
                 } catch (e) {}
             })());
 
-            // Baixa doc de configurações
+            // Baixa doc de configurações com suporte a todos os aliases e fallback legado
             pullPromessas.push((async function () {
                 try {
-                    const cfgSnap = await empRef.collection('configuracoes').doc('config').get();
-                    if (cfgSnap.exists) {
+                    let cfgSnap = await empRef.collection('configuracoes').doc('config').get();
+                    if ((!cfgSnap.exists || !cfgSnap.data()?.empresa?.logo) && _obterEmpresaId() === 'emp_fc_moveis') {
+                        try {
+                            const legSnap = await firestore.collection('fc_moveis').doc('config').get();
+                            if (legSnap.exists && legSnap.data()) {
+                                const legD = legSnap.data();
+                                const atualD = (cfgSnap && cfgSnap.exists) ? cfgSnap.data() : {};
+                                const merged = { ...legD, ...atualD, empresa: { ...(legD.empresa || {}), ...(atualD.empresa || {}) }, loja: { ...(legD.loja || {}), ...(atualD.loja || {}) } };
+                                cfgSnap = { exists: true, data: () => merged };
+                                empRef.collection('configuracoes').doc('config').set(merged, { merge: true }).catch(() => {});
+                            }
+                        } catch(e) {}
+                    }
+                    if (cfgSnap && cfgSnap.exists) {
                         const cfgData = cfgSnap.data();
-                        _memoria['fc_moveis_config'] = cfgData;
-                        _salvarSession('fc_moveis_config', cfgData);
-                        await _idbSalvarColecao('fc_moveis_config', cfgData);
+                        ['config', 'fc_moveis_config', 'configuracoes_config', 'configuracoes'].forEach(k => {
+                            _memoria[k] = cfgData;
+                            _salvarSession(k, cfgData);
+                            _idbSalvarColecao(k, cfgData);
+                            _notificarListeners(k, cfgData);
+                        });
                         if (typeof window.db !== 'undefined') window.db.config = cfgData;
-                        _notificarListeners('fc_moveis_config', cfgData);
+                        if (typeof window.aplicarIdentidadeVisualGlobal === 'function') window.aplicarIdentidadeVisualGlobal();
+                        if (typeof window.carregarConfiguracoesNaTela === 'function') window.carregarConfiguracoesNaTela();
+                    }
+                } catch (e) {}
+            })());
+
+            // Baixa permissões do funcionário atual para o cache
+            pullPromessas.push((async function () {
+                try {
+                    const u = window.currentUser || (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser);
+                    if (u && u.uid) {
+                        const uSnap = await empRef.collection('funcionarios').doc(u.uid).get();
+                        if (uSnap.exists) {
+                            const uData = uSnap.data();
+                            window.currentUserInfo = uData;
+                            const uKey = 'funcionario_' + u.uid;
+                            _memoria[uKey] = uData;
+                            _salvarSession(uKey, uData);
+                            await _idbSalvarColecao(uKey, uData);
+                            try { localStorage.setItem('fc_user_cache_' + u.uid, JSON.stringify(uData)); } catch(e) {}
+                        }
+                    }
+                } catch (e) {}
+            })());
+
+            // Atualiza licença SaaS Master no cache local
+            pullPromessas.push((async function () {
+                try {
+                    const empId = _obterEmpresaId();
+                    if (empId && typeof window.consultarLicencaCentral === 'function') {
+                        const lic = await window.consultarLicencaCentral(empId, 'fc_gestao', true);
+                        if (lic) window.currentEmpresaData = lic;
                     }
                 } catch (e) {}
             })());
@@ -763,7 +813,7 @@
             console.log('[FCRepo] ✅ Sincronização com Firebase concluída com sucesso!');
 
             if (!silencioso && typeof window.showToast === 'function') {
-                window.showToast('Banco de dados sincronizado com sucesso!', 'success');
+                window.showToast('Sincronização completa! Todos os dados e relatórios estão atualizados localmente.', 'success');
             }
 
             return true;
@@ -913,7 +963,8 @@
             }
             // 3. Enfileira operação na fila pendente para garantir persistência offline e contra concorrência
             await _idbEnfileirar(colecao, docId, operacao, dados);
-            _atualizarBadgePendencias();
+            await _atualizarBadgePendencias();
+            _notificarListeners(colecao, _memoria[colecao] || (window.db ? window.db[colecao] : []));
         },
 
         /**
@@ -950,7 +1001,7 @@
         },
 
         /**
-         * Remove um item das camadas de cache (memória, session e IndexedDB)
+         * Remove um item das camadas de cache (memória, session e IndexedDB) e enfileira exclusão para sincronizar
          */
         removerItem: async function (colecao, docId) {
             const idStr = String(docId);
@@ -962,7 +1013,9 @@
                 _salvarSession(colecao, _memoria[colecao]);
                 await _idbSalvarColecao(colecao, _memoria[colecao]);
             }
-            await _idbRemoverDaFila(colecao, docId);
+            // Enfileira remoção para sincronizar na nuvem
+            await _idbEnfileirar(colecao, docId, 'delete', null);
+            await _atualizarBadgePendencias();
             _notificarListeners(colecao, _memoria[colecao] || (window.db ? window.db[colecao] : []));
         },
 
@@ -1008,6 +1061,39 @@
          */
         carregarTudoDoIndexedDB: function () {
             return _carregarTudoDoIndexedDB();
+        },
+
+        /**
+         * Retorna se o Modo Economia de Firebase está ativo (padrão: true)
+         * No Modo Economia, operações são persistidas localmente no IndexedDB
+         * e sincronizadas sob demanda via botão SINCRONIZAR para poupar leituras/gravações.
+         */
+        isModoEconomia: function () {
+            try {
+                return localStorage.getItem('fc_modo_economia_firebase') !== 'false';
+            } catch (e) {
+                return true;
+            }
+        },
+
+        /**
+         * Ativa ou desativa o Modo Economia de Firebase
+         */
+        setModoEconomico: function (ativo) {
+            try {
+                localStorage.setItem('fc_modo_economia_firebase', ativo ? 'true' : 'false');
+            } catch (e) {}
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('fc-modo-economia-alterado', { detail: { ativo: !!ativo } }));
+            }
+        },
+
+        /**
+         * Verifica se existem operações na fila pendente
+         */
+        temPendencias: async function () {
+            const fila = await _idbListarFila();
+            return fila.length > 0;
         }
     };
 
@@ -1150,26 +1236,26 @@
 
         // 1. Tenta servir da memória imediatamente (síncrono, 0ms)
         const emMemoria = _memoria[colecao];
-        if (emMemoria !== undefined && emMemoria !== null && !opcoes.semCache) {
+        if (emMemoria !== undefined && emMemoria !== null && !opcoes.semCache && !opcoes.forcarRemoto) {
             try {
                 callback(emMemoria);
             } catch (e) {
                 console.error('[FCRepo] Erro ao servir da memória para "' + colecao + '":', e);
             }
-            // Dispara revalidação em background para sempre garantir que a lista completa venha da nuvem
-            _buscarAtualizacaoRemota(colecao, opcoes);
+            // Repositório local em memória atendido: ZERO leituras no Firebase!
         } else {
             // 2. Tenta ler do IndexedDB (assíncrono, ~15ms)
             _idbLerColecao(colecao).then(function (dadosIdb) {
-                if (dadosIdb !== null && !opcoes.semCache) {
+                if (dadosIdb !== null && !opcoes.semCache && !opcoes.forcarRemoto) {
                     _memoria[colecao] = dadosIdb;
                     try {
                         callback(dadosIdb);
                     } catch (e) {
                         console.error('[FCRepo] Erro ao servir do IndexedDB para "' + colecao + '":', e);
                     }
-                    _buscarAtualizacaoRemota(colecao, opcoes);
-                } else {
+                    // Repositório local persistente atendido: ZERO leituras no Firebase!
+                } else if (typeof firestore !== 'undefined') {
+                    // 3. Primeira vez neste dispositivo/navegador (repositório vazio) ou forçado: busca do Firebase uma vez para popular
                     _buscarAtualizacaoRemota(colecao, opcoes);
                 }
             });
@@ -1215,8 +1301,13 @@
     // ----------------------------------------------------------------------
     // 8. fcListenDoc — Wrapper para Documentos Únicos (Caixa, Config)
     // ----------------------------------------------------------------------
-    window.fcListenDoc = function (colecao, docId, callback, semCache) {
+    window.fcListenDoc = function (colecao, docId, callback, semCache, opcoes) {
         if (typeof callback !== 'function') return function () {};
+        if (typeof semCache === 'object' && semCache !== null) {
+            opcoes = semCache;
+            semCache = false;
+        }
+        opcoes = opcoes || {};
 
         // Normalização estrita para subcoleções multi-tenant da empresa ativa
         let normalCol = colecao;
@@ -1230,39 +1321,68 @@
         } else if (colecao === 'config') {
             normalCol = 'configuracoes';
             normalDoc = 'config';
+        } else if (colecao === 'caixa' && (!docId || docId === 'caixa_atual')) {
+            normalCol = 'caixa';
+            normalDoc = 'caixa_atual';
         }
 
         const cacheKey = normalCol + '_' + normalDoc;
+
+        function _obterDocEmMemoria() {
+            if (_memoria[cacheKey] !== undefined && _memoria[cacheKey] !== null) return _memoria[cacheKey];
+            if (normalCol === 'caixa') {
+                return _memoria['caixa'] || _memoria['fc_moveis_caixa'] || _memoria['caixa_caixa_atual'] || _memoria['caixa_atual'] || null;
+            }
+            if (normalCol === 'configuracoes' || normalCol === 'config') {
+                return _memoria['config'] || _memoria['fc_moveis_config'] || _memoria['configuracoes_config'] || null;
+            }
+            return null;
+        }
+
+        function _obterDocEmSession() {
+            let s = _lerSession(cacheKey);
+            if (s !== null) return s;
+            if (normalCol === 'caixa') {
+                return _lerSession('caixa') || _lerSession('fc_moveis_caixa') || _lerSession('caixa_caixa_atual') || null;
+            }
+            if (normalCol === 'configuracoes' || normalCol === 'config') {
+                return _lerSession('config') || _lerSession('fc_moveis_config') || _lerSession('configuracoes_config') || null;
+            }
+            return null;
+        }
 
         if (!_listeners[cacheKey]) {
             _listeners[cacheKey] = [];
         }
         _listeners[cacheKey].push(callback);
 
-        // 1. Entrega instantânea da memória isolada da empresa ativa se existir
-        if (!semCache && _memoria[cacheKey] !== undefined && _memoria[cacheKey] !== null) {
+        // 1. Entrega instantânea da memória isolada da empresa ativa se existir (< 1ms)
+        const docMem = _obterDocEmMemoria();
+        if (!semCache && docMem !== null && docMem !== undefined) {
+            _memoria[cacheKey] = docMem;
             try {
-                callback(_memoria[cacheKey]);
+                callback(docMem);
             } catch (e) {}
         } else if (!semCache) {
             // Tenta sessionStorage ou IndexedDB
-            const sess = _lerSession(cacheKey);
-            if (sess !== null) {
+            const sess = _obterDocEmSession();
+            if (sess !== null && sess !== undefined) {
                 _memoria[cacheKey] = sess;
                 try { callback(sess); } catch (e) {}
             } else {
-                _idbLerColecao(cacheKey).then(function (dadosIdb) {
+                const buscaIdbChave = (normalCol === 'caixa') ? 'caixa' : ((normalCol === 'configuracoes' || normalCol === 'config') ? 'config' : cacheKey);
+                _idbLerColecao(buscaIdbChave).then(function (dadosIdb) {
                     if (dadosIdb !== null && !semCache) {
                         _memoria[cacheKey] = dadosIdb;
                         try { callback(dadosIdb); } catch (e) {}
                     }
-                });
+                }).catch(() => {});
             }
         }
 
-        // 2. Conecta listener em tempo real garantindo o escopo da empresa ativa
+        // 2. Conecta listener em tempo real ao Firestore (ativo por padrão para garantir integridade com o servidor)
         let unsubFirestore = null;
-        if (typeof firestore !== 'undefined') {
+        if (typeof firestore !== 'undefined' && opcoes.realtime !== false) {
             let ref;
             if (typeof window.getEmpresaRef === 'function') {
                 if (normalCol === 'caixa' && normalDoc === 'caixa_atual') {
@@ -1280,18 +1400,42 @@
             }
 
             try {
-                unsubFirestore = ref.onSnapshot(function (doc) {
-                    const dados = doc.exists ? doc.data() : null;
-                    _memoria[cacheKey] = dados;
-                    _salvarSession(cacheKey, dados);
-                    _idbSalvarColecao(cacheKey, dados);
-                    if (normalCol === 'configuracoes' && normalDoc === 'config' && typeof window.db !== 'undefined' && dados) {
-                        window.db.config = { ...window.db.config, ...dados };
+                unsubFirestore = ref.onSnapshot(async function (doc) {
+                    let dados = (doc && doc.exists) ? doc.data() : null;
+
+                    // Fallback para config legada se a subcoleção estiver vazia para emp_fc_moveis
+                    if (normalCol === 'configuracoes' && normalDoc === 'config' && (!dados || !dados.empresa || !dados.empresa.logo) && _obterEmpresaId() === 'emp_fc_moveis') {
+                        try {
+                            const legSnap = await firestore.collection('fc_moveis').doc('config').get();
+                            if (legSnap && legSnap.exists && legSnap.data()) {
+                                const legD = legSnap.data();
+                                dados = { ...(legD || {}), ...(dados || {}) };
+                                if (legD.empresa) {
+                                    dados.empresa = { ...(legD.empresa || {}), ...(dados.empresa || {}) };
+                                }
+                                ref.set(dados, { merge: true }).catch(() => {});
+                            }
+                        } catch(eLeg) {}
                     }
-                    if (normalCol === 'caixa' && normalDoc === 'caixa_atual' && typeof window.db !== 'undefined' && dados) {
-                        window.db.caixa = dados;
+
+                    if (dados) {
+                        _memoria[cacheKey] = dados;
+                        _salvarSession(cacheKey, dados);
+                        _idbSalvarColecao(cacheKey, dados);
+                        if (normalCol === 'configuracoes' && normalDoc === 'config' && typeof window.db !== 'undefined') {
+                            window.db.config = { ...(window.db.config || {}), ...dados };
+                            if (typeof window.aplicarIdentidadeVisualGlobal === 'function') {
+                                window.aplicarIdentidadeVisualGlobal();
+                            }
+                            if (typeof window.carregarConfiguracoesNaTela === 'function') {
+                                window.carregarConfiguracoesNaTela();
+                            }
+                        }
+                        if (normalCol === 'caixa' && normalDoc === 'caixa_atual' && typeof window.db !== 'undefined') {
+                            window.db.caixa = dados;
+                        }
+                        try { callback(dados); } catch (e) {}
                     }
-                    try { callback(dados); } catch (e) {}
                 }, function (err) {
                     console.warn('[FCRepo] Erro no listener do doc ' + cacheKey + ':', err);
                 });
@@ -1339,7 +1483,7 @@
         }
     }
 
-    // Inicializa contador visual de pendências após o DOM carregar
+    // Inicializa contador visual de pendências após o DOM carregar e escuta outras abas
     if (typeof document !== 'undefined') {
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', function () {
@@ -1348,6 +1492,13 @@
         } else {
             _atualizarBadgePendencias();
         }
+    }
+    if (typeof window !== 'undefined') {
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'fc_sync_trigger' || e.key === 'fc_ultima_sincronizacao') {
+                _atualizarBadgePendencias();
+            }
+        });
     }
 
     console.log('[FCRepo] 🚀 Repositório Local Offline-First FC-Gestão ativo. Use FCCache.stats() para diagnóstico.');

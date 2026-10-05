@@ -60,8 +60,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    <link rel="stylesheet" href="../style.css?v=20261002142531">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261002142531">
+    <link rel="stylesheet" href="../style.css?v=20261003132500">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261003132500">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="relatorios">
 
@@ -182,7 +182,7 @@
                         <div class="absolute -top-32 -right-32 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px] group-hover:bg-indigo-500/30 transition-all duration-700 pointer-events-none"></div>
                         <div class="absolute -bottom-32 -left-32 w-64 h-64 bg-purple-500/20 rounded-full blur-[80px] group-hover:bg-purple-500/30 transition-all duration-700 pointer-events-none"></div>
 
-                        <div class="relative z-10 flex flex-col xl:flex-row gap-8 lg:gap-12">
+                        <div class="relative z-10 flex flex-col xl:flex-row gap-6 lg:gap-8 items-stretch">
                             
                             <!-- Esquerda: Interação com a IA -->
                             <div class="flex-1 flex flex-col min-w-0">
@@ -363,29 +363,45 @@
                                 </div>
                                 
                                 <!-- Campo Destinado ao Relatório -->
-                                <div class="mt-8 pt-6 border-t border-slate-200/50 dark:border-slate-700/50">
-                                    <h4 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2"><i class="fa-solid fa-wand-magic-sparkles text-indigo-400"></i> Área do Relatório</h4>
-                                    <div id="ia-rel-resultado" class="bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 rounded-2xl p-5 md:p-6 min-h-[160px] flex flex-col transition-all shadow-inner shadow-slate-900/5 dark:shadow-black/10">
-                                        <div class="flex-1 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 opacity-60 text-center py-6">
-                                            <div class="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-700/50 flex items-center justify-center mb-3">
-                                                <i class="fa-solid fa-robot text-xl"></i>
+                                <div class="mt-8 pt-6 border-t border-slate-200/80 dark:border-slate-700/60 flex-1 flex flex-col">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                                            <i class="fa-solid fa-wand-magic-sparkles text-indigo-500"></i> Área do Relatório
+                                        </h4>
+                                        <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                                            <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span> Análise Dinâmica
+                                        </span>
+                                    </div>
+                                    <div id="ia-rel-resultado" class="flex-1 bg-white/95 dark:bg-slate-900/80 border border-slate-200/90 dark:border-indigo-500/30 rounded-2xl p-6 md:p-8 min-h-[280px] flex flex-col justify-center transition-all shadow-sm dark:shadow-2xl dark:shadow-indigo-950/20">
+                                        <div class="flex flex-col items-center justify-center text-center py-8">
+                                            <div class="relative w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 p-0.5 shadow-lg shadow-indigo-500/20 mb-4 flex items-center justify-center">
+                                                <div class="w-full h-full bg-white dark:bg-slate-900 rounded-[14px] flex items-center justify-center">
+                                                    <i class="fa-solid fa-brain text-2xl bg-clip-text text-transparent bg-gradient-to-tr from-indigo-500 to-purple-500"></i>
+                                                </div>
                                             </div>
-                                            <p class="text-sm font-medium text-slate-500 dark:text-slate-400">O relatório gerado aparecerá neste espaço</p>
-                                            <p class="text-[10px] mt-1 max-w-xs mx-auto">Selecione uma sugestão acima ou digite sua pergunta para começar.</p>
+                                            <h5 class="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">Pronto para Gerar Insights Estratégicos</h5>
+                                            <p class="text-xs text-slate-500 dark:text-slate-400 max-w-md leading-relaxed mb-4">Selecione uma das perguntas sugeridas acima ou digite sua dúvida comercial para cruzar vendas, estoque e finanças em tempo real.</p>
+                                            <div class="flex flex-wrap items-center justify-center gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                                                <span class="px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/40 text-indigo-700 dark:text-indigo-300 font-semibold"><i class="fa-solid fa-chart-pie mr-1 text-indigo-500"></i> DRE & Margens</span>
+                                                <span class="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-300 font-semibold"><i class="fa-solid fa-boxes-stacked mr-1 text-emerald-500"></i> Curva ABC</span>
+                                                <span class="px-2.5 py-1 rounded-full bg-purple-50 dark:bg-purple-950/40 border border-purple-200/80 dark:border-purple-800/40 text-purple-700 dark:text-purple-300 font-semibold"><i class="fa-solid fa-users mr-1 text-purple-500"></i> Melhores Clientes</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             
                             <!-- Direita: Histórico -->
-                            <div class="w-full lg:w-96 shrink-0 flex flex-col max-w-full">
-                                <div class="bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-md rounded-2xl border border-slate-200/80 dark:border-slate-700/50 flex flex-col overflow-hidden shadow-inner shadow-slate-900/5 dark:shadow-black/20" style="max-height: 420px;">
-                                    <div class="px-5 py-4 border-b border-slate-200/80 dark:border-slate-700/50 bg-white/50 dark:bg-slate-800/50 flex items-center justify-between shrink-0">
-                                        <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-indigo-500"></i> Suas Análises</h4>
-                                        <span class="text-[10px] font-bold bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 px-2.5 py-0.5 rounded-full" id="ia-historico-count">0</span>
+                            <div class="w-full xl:w-96 shrink-0 flex flex-col max-w-full">
+                                <div class="ia-historico-container h-full min-h-[520px] bg-slate-50/80 dark:bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-200/90 dark:border-slate-700/60 flex flex-col overflow-hidden shadow-sm">
+                                    <div class="px-5 py-4 border-b border-slate-200/80 dark:border-slate-700/60 bg-white/90 dark:bg-slate-800/60 flex items-center justify-between shrink-0">
+                                        <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                                            <i class="fa-solid fa-clock-rotate-left text-indigo-500"></i> Suas Análises
+                                        </h4>
+                                        <span class="text-[10px] font-bold bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 px-2.5 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-500/30" id="ia-historico-count">0</span>
                                     </div>
                                     
-                                    <div id="ia-historico-lista" class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2.5">
+                                    <div id="ia-historico-lista" class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2.5 min-h-[440px]">
                                         <!-- Preenchido via JS -->
                                         <div class="text-center py-16 text-slate-400 dark:text-slate-500 flex flex-col items-center justify-center gap-3">
                                             <div class="w-8 h-8 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
@@ -2248,11 +2264,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20261002142531"></script>
-    <script src="saas_licenca.js?v=20261002142531"></script>
-    <script src="../global.js?v=20261002142531"></script>
-    <script src="fc_cache.js?v=20261002142531"></script>
-    <script src="relatorios_v2.js?v=20261002142531"></script>
+    <script src="../sistema/config_banco.js?v=20261003132500"></script>
+    <script src="saas_licenca.js?v=20261003132500"></script>
+    <script src="../global.js?v=20261003132500"></script>
+    <script src="fc_cache.js?v=20261003132500"></script>
+    <script src="relatorios_v2.js?v=20261003132500"></script>
 </body>
 </html>
 

@@ -112,9 +112,11 @@ service cloud.firestore {
       // 1. Configuracoes e Caixa Fisico
       // ==========================================
       match /configuracoes/{docId} {
-        allow read: if isAutenticado() && (getEmpresaUsuario() == empresaId || isSuperAdmin());
-        allow write: if (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_config') || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
-        allow create: if isDonoNoOnboarding(empresaId) || isSuperAdmin(); // Permite no batch de criacao
+        // 'loja_publica' = espelho somente com dados da vitrine (gerado pela Cloud Function espelharLojaPublica).
+        // 'config' contem certificado A1, senhas, CSC e tokens: NUNCA liberar leitura publica.
+        allow read: if docId == 'loja_publica' || (isAutenticado() && (getEmpresaUsuario() == empresaId || isSuperAdmin()));
+        allow write: if docId != 'loja_publica' && ((getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_config') || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin());
+        allow create: if docId != 'loja_publica' && (isDonoNoOnboarding(empresaId) || isSuperAdmin()); // Permite no batch de criacao
       }
 
       // Segredos Fiscais (Certificado A1 .pfx e senha privada) - Restrito a Administradores

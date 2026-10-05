@@ -73,6 +73,23 @@ function inicializarGestao() {
         return window.getEmpresaRef().collection(col).doc(id).onSnapshot(doc => cb(doc.exists ? doc.data() : null));
     };
 
+    // Pré-carregamento imediato do repositório local FCCache para exibição instantânea (< 5ms)
+    if (typeof window.FCCache !== 'undefined') {
+        if (!db.vendas || db.vendas.length === 0) db.vendas = window.FCCache.get('vendas') || [];
+        if (!db.financeiro || db.financeiro.length === 0) db.financeiro = window.FCCache.get('financeiro') || [];
+        if (!db.compras || db.compras.length === 0) db.compras = window.FCCache.get('compras') || [];
+        if (!db.produtos || db.produtos.length === 0) db.produtos = window.FCCache.get('produtos') || [];
+        if (!db.clientes || db.clientes.length === 0) db.clientes = window.FCCache.get('clientes') || [];
+        if (!db.fornecedores || db.fornecedores.length === 0) db.fornecedores = window.FCCache.get('fornecedores') || [];
+        if (!db.funcionarios || db.funcionarios.length === 0) db.funcionarios = window.FCCache.get('funcionarios') || [];
+        if (!db.movimentacoes || db.movimentacoes.length === 0) db.movimentacoes = window.FCCache.get('movimentacoes') || [];
+        if (!db.caixa || !db.caixa.saldo) db.caixa = window.FCCache.get('caixa') || window.FCCache.get('fc_moveis_caixa') || { status: 'FECHADO', saldo: 0, historico: [] };
+
+        if (db.vendas.length > 0 || db.financeiro.length > 0) {
+            try { refreshCurrentView(); } catch(e) {}
+        }
+    }
+
     // Debounce para evitar renderizacoes multiplas simultaneas
     let renderTimer = null;
     function debouncedRenderDashboard() {
@@ -81,7 +98,7 @@ function inicializarGestao() {
     }
 
     // Controla quantas colecoes ja carregaram o primeiro snapshot
-    let colecoesProntas = 0;
+    let colecoesProntas = (db.vendas && db.vendas.length > 0 && db.financeiro && db.financeiro.length > 0) ? 6 : 0;
     const totalColecoes = 6;
     function tentarRefresh() {
         colecoesProntas++;
@@ -90,64 +107,68 @@ function inicializarGestao() {
 
     _listen('vendas', function(dados) {
         db.vendas = dados;
-        tentarRefresh(); // CORRECAO: tentarRefresh ao inves de renderDashboard direto
+        tentarRefresh();
         debouncedRenderDashboard();
     });
     _listen('financeiro', function(dados) {
         db.financeiro = dados;
-        tentarRefresh(); // CORRECAO: adicionado tentarRefresh()
+        tentarRefresh();
         debouncedRenderDashboard();
     });
     _listen('compras', function(dados) {
         db.compras = dados;
-        tentarRefresh(); // CORRECAO: adicionado tentarRefresh()
+        tentarRefresh();
         debouncedRenderDashboard();
     });
     _listen('produtos', function(dados) {
         db.produtos = dados;
-        tentarRefresh(); // CORRECAO: adicionado tentarRefresh()
+        tentarRefresh();
         debouncedRenderDashboard();
     });
     _listen('clientes', function(dados) {
         db.clientes = dados;
-        tentarRefresh(); // CORRECAO: adicionado tentarRefresh()
+        tentarRefresh();
         debouncedRenderDashboard();
     });
     _listen('fornecedores', function(dados) {
         db.fornecedores = dados;
-        tentarRefresh(); // CORRECAO: adicionado tentarRefresh()
+        tentarRefresh();
         debouncedRenderDashboard();
     });
     _listen('funcionarios', function(dados) {
         db.funcionarios = dados;
-        // Nao conta no tentarRefresh (colecao adicional)
         debouncedRenderDashboard();
     });
     _listen('movimentacoes', function(dados) {
         db.movimentacoes = dados;
         debouncedRenderDashboard();
     }, { query: function(ref) { return ref.orderBy('data', 'desc').limit(300); } });
-    // Caixa: sempre ativo pois e critico (saldo em tempo real)
     _listenDoc('caixa', 'caixa_atual', function(data) {
         db.caixa = data || { status: 'FECHADO', saldo: 0, historico: [] };
         if (colecoesProntas >= totalColecoes) refreshCurrentView();
     });
 
-    // Inicia carregamento do historico de relatorios com IA e aplicacao de permissoes
     setTimeout(() => {
         if (typeof carregarHistoricoRelatoriosIA === 'function') carregarHistoricoRelatoriosIA();
         if (typeof aplicarControleAcessoRelatoriosPorPlano === 'function') aplicarControleAcessoRelatoriosPorPlano();
     }, 600);
 }
 
-
-window.addEventListener('load', () => { 
+function _iniciarTelaRelatorios() {
+    if (window._relatoriosIniciado) return;
+    window._relatoriosIniciado = true;
     initGlobalData(inicializarGestao); 
     setTimeout(() => {
         if (typeof carregarHistoricoRelatoriosIA === 'function') carregarHistoricoRelatoriosIA();
         if (typeof aplicarControleAcessoRelatoriosPorPlano === 'function') aplicarControleAcessoRelatoriosPorPlano();
     }, 1200);
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _iniciarTelaRelatorios);
+} else {
+    _iniciarTelaRelatorios();
+}
 
 function atualizarCardsFluxoDeCaixa() {
     if (!db.financeiro) return;
@@ -1833,13 +1854,25 @@ async function salvarCompraManual() {
                 });
             }
             try {
-                const snapFin = await window.getEmpresaRef().collection('financeiro').where('tipo', '==', 'DESPESA').get();
-                snapFin.docs.forEach(doc => {
-                    const finData = doc.data();
-                    if (finData.ref && String(finData.ref).includes(cAntiga.numeroNF) && cAntiga.numeroNF !== 'S/N') {
-                        batch.delete(doc.ref);
-                    }
-                });
+                const finLista = (typeof db !== 'undefined' && Array.isArray(db.financeiro) && db.financeiro.length > 0)
+                    ? db.financeiro
+                    : ((window.FCCache && typeof window.FCCache.get === 'function') ? window.FCCache.get('financeiro') : null);
+
+                if (Array.isArray(finLista) && finLista.length > 0) {
+                    finLista.forEach(finData => {
+                        if (finData.tipo === 'DESPESA' && finData.ref && String(finData.ref).includes(cAntiga.numeroNF) && cAntiga.numeroNF !== 'S/N') {
+                            batch.delete(window.getEmpresaRef().collection('financeiro').doc(String(finData.id)));
+                        }
+                    });
+                } else {
+                    const snapFin = await window.getEmpresaRef().collection('financeiro').where('tipo', '==', 'DESPESA').get();
+                    snapFin.docs.forEach(doc => {
+                        const finData = doc.data();
+                        if (finData.ref && String(finData.ref).includes(cAntiga.numeroNF) && cAntiga.numeroNF !== 'S/N') {
+                            batch.delete(doc.ref);
+                        }
+                    });
+                }
             } catch(e) { console.error('Erro ao buscar financeiro atrelado:', e); }
         }
     }
@@ -5760,7 +5793,7 @@ async function gerarRelatorioComIA(descricaoRelatorio) {
     }
     var divRes = document.getElementById('ia-rel-resultado');
     if (!divRes) return;
-    divRes.innerHTML = '<div class="flex flex-col items-center justify-center py-10"><div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center mb-4"><i class="fa-solid fa-brain text-white text-2xl animate-pulse"></i></div><p class="text-slate-200 font-semibold text-sm mb-1">Analisando seus dados em tempo real...</p><p class="text-slate-500 text-xs">Coletando vendas, estoque, clientes, financeiro...</p><div class="mt-4 flex gap-1.5"><span class="w-2 h-2 rounded-full bg-violet-400 animate-bounce"></span><span class="w-2 h-2 rounded-full bg-violet-400 animate-bounce" style="animation-delay:150ms"></span><span class="w-2 h-2 rounded-full bg-violet-400 animate-bounce" style="animation-delay:300ms"></span></div></div>';
+    divRes.innerHTML = '<div class="flex flex-col items-center justify-center py-12"><div class="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-600 flex items-center justify-center mb-4 shadow-lg shadow-indigo-500/25 animate-pulse"><i class="fa-solid fa-brain text-white text-2xl"></i></div><p class="text-slate-800 dark:text-slate-100 font-extrabold text-base mb-1">Analisando seus dados em tempo real...</p><p class="text-slate-500 dark:text-slate-400 text-xs">Cruzando vendas, estoque, clientes e fluxo financeiro com IA...</p><div class="mt-4 flex gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-bounce"></span><span class="w-2.5 h-2.5 rounded-full bg-purple-500 animate-bounce" style="animation-delay:150ms"></span><span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-bounce" style="animation-delay:300ms"></span></div></div>';
     var inputLivre = document.getElementById('ia-rel-pergunta-livre');
     var btnLivre = document.getElementById('btn-ia-rel-livre');
     if (inputLivre) inputLivre.disabled = true;
@@ -5822,30 +5855,36 @@ function renderizarRelatorioIA(resposta) {
 
     var html = resposta
         .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-        .replace(/\*\*(.+?)\*\*/g,'<strong class="text-white">$1</strong>')
-        .replace(/\*(.+?)\*/g,'<em class="text-slate-300">$1</em>')
-        .replace(/^###\s+(.+)$/gm,'<h4 class="text-violet-300 font-bold text-sm mt-5 mb-2">$1</h4>')
-        .replace(/^##\s+(.+)$/gm,'<h3 class="text-violet-200 font-bold text-base mt-6 mb-2 border-b border-slate-700 pb-2">$1</h3>')
-        .replace(/^#\s+(.+)$/gm,'<h2 class="text-white font-bold text-lg mt-6 mb-3">$1</h2>')
-        .replace(/^---$/gm,'<hr class="border-slate-700 my-4">');
+        .replace(/\*\*(.+?)\*\*/g,'<strong class="font-extrabold text-slate-900 dark:text-white bg-indigo-50/90 dark:bg-indigo-500/20 text-indigo-950 dark:text-indigo-200 px-1.5 py-0.5 rounded border border-indigo-200/60 dark:border-indigo-500/30 text-[13px] inline-block my-0.5">$1</strong>')
+        .replace(/\*(.+?)\*/g,'<em class="text-slate-600 dark:text-slate-300 italic">$1</em>')
+        .replace(/^###\s+(.+)$/gm,'<h4 class="text-slate-800 dark:text-slate-200 font-bold text-sm mt-5 mb-2.5 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span><span>$1</span></h4>')
+        .replace(/^##\s+(.+)$/gm,'<h3 class="text-indigo-950 dark:text-indigo-200 font-bold text-base md:text-lg mt-6 mb-3 flex items-center gap-2.5 border-l-4 border-indigo-600 pl-3.5 py-1.5 bg-gradient-to-r from-indigo-50/90 dark:from-indigo-950/40 via-indigo-50/40 dark:via-indigo-950/20 to-transparent rounded-r-xl shadow-2xs">$1</h3>')
+        .replace(/^#\s+(.+)$/gm,'<h2 class="text-slate-900 dark:text-white font-black text-lg md:text-xl mt-6 mb-4 flex items-center gap-2.5 pb-2.5 border-b border-indigo-100 dark:border-slate-700 text-indigo-950 dark:text-indigo-100"><i class="fa-solid fa-chart-line text-indigo-500"></i><span>$1</span></h2>')
+        .replace(/^---$/gm,'<hr class="border-slate-200 dark:border-slate-700/60 my-6">');
 
-    // Parse de Tabelas Markdown
-    html = html.replace(/(?:^[^\n]*\|[^\n]*\n?)+/gm, function(match) {
+    // Parse de Tabelas Markdown com estilo executivo de alta legibilidade em ambos os temas
+    html = html.replace(/(?:^[^
+]*\|[^
+]*\n?)+/gm, function(match) {
         if (!match.includes('|')) return match;
         var rows = match.trim().split('\n');
-        var tableHtml = '<div class="overflow-x-auto my-5 rounded-lg border border-slate-700"><table class="w-full text-left border-collapse text-sm text-slate-300">';
-        var hasHeaders = false;
+        var tableHtml = '<div class="overflow-x-auto my-5 rounded-xl border border-slate-200/90 dark:border-slate-700/80 shadow-xs bg-white dark:bg-slate-900/40"><table class="w-full text-left border-collapse text-xs md:text-sm text-slate-700 dark:text-slate-300">';
         rows.forEach(function(row, index) {
             if (row.match(/^[\s\|:\-]+$/)) return;
             var cells = row.split('|');
             if(cells.length > 0 && cells[0].trim() === '') cells.shift();
             if(cells.length > 0 && cells[cells.length-1].trim() === '') cells.pop();
             
-            tableHtml += '<tr class="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">';
+            var isHeader = (index === 0);
+            var trCls = isHeader 
+                ? 'bg-slate-100/90 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700' 
+                : 'border-b border-slate-100 dark:border-slate-800/60 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 transition-colors even:bg-slate-50/60 dark:even:bg-slate-800/20';
+            tableHtml += '<tr class="' + trCls + '">';
             cells.forEach(function(cell) {
-                var isHeader = (index === 0);
                 var tag = isHeader ? 'th' : 'td';
-                var cls = isHeader ? 'px-4 py-3 text-violet-300 font-semibold text-xs uppercase tracking-wider bg-slate-800/50' : 'px-4 py-2.5';
+                var cls = isHeader 
+                    ? 'px-4 py-3 text-indigo-950 dark:text-indigo-300 font-bold text-xs uppercase tracking-wider' 
+                    : 'px-4 py-2.5 font-medium';
                 tableHtml += '<' + tag + ' class="' + cls + '">' + cell.trim() + '</' + tag + '>';
             });
             tableHtml += '</tr>';
@@ -5854,37 +5893,59 @@ function renderizarRelatorioIA(resposta) {
         return tableHtml;
     });
 
-    // Parse de Listas
-    html = html.replace(/^[•\-]\s+(.+)$/gm,'<li class="flex gap-2 items-start text-slate-200 text-sm mt-1.5"><span class="text-violet-400 mt-0.5"><i class="fa-solid fa-circle text-[8px]"></i></span><span>$1</span></li>')
-        .replace(/^(\d+)\.\s+(.+)$/gm,'<li class="flex gap-2 items-start text-slate-200 text-sm mt-1.5"><span class="text-violet-300 font-bold shrink-0 mt-0.5">$1.</span><span>$2</span></li>')
-        .replace(/\n\n/g,'</p><p class="text-slate-300 text-sm mb-3">')
+    // Parse de Listas com icones estilizados
+    html = html.replace(/^[•\-]\s+(.+)$/gm,'<li class="flex gap-2.5 items-start text-slate-700 dark:text-slate-200 text-sm py-1 leading-relaxed"><span class="w-5 h-5 rounded-md bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 mt-0.5 text-[10px] shadow-2xs"><i class="fa-solid fa-check"></i></span><span class="flex-1">$1</span></li>')
+        .replace(/^(\d+)\.\s+(.+)$/gm,'<li class="flex gap-2.5 items-start text-slate-700 dark:text-slate-200 text-sm py-1 leading-relaxed"><span class="w-5 h-5 rounded-md bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 font-bold flex items-center justify-center shrink-0 mt-0.5 text-[10px] shadow-2xs">$1</span><span class="flex-1">$2</span></li>')
+        .replace(/\n\n/g,'</p><p class="text-slate-700 dark:text-slate-300 text-sm leading-relaxed mb-3">')
         .replace(/\n/g,'<br>');
 
     // Limpeza de <br> excedentes perto das tabelas
     html = html.replace(/<br><div class="overflow-x-auto/g, '<div class="overflow-x-auto').replace(/<\/div><br>/g, '</div>');
 
-    // Botões de Ação
+    // Barra de Ferramentas e Exportacao (visual moderno e adaptativo)
     var botoes = `
-        <div class="mt-8 pt-4 border-t border-slate-700/50 flex flex-wrap gap-2 justify-end">
-            <button onclick="copiarRelatorioIA()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-2 rounded border border-slate-600 transition-all flex items-center gap-1.5">
-                <i class="fa-regular fa-copy"></i> Copiar
+        <div class="mt-8 pt-4 border-t border-slate-200/90 dark:border-slate-700/60 flex flex-wrap gap-2.5 justify-end items-center">
+            <span class="text-xs font-semibold text-slate-500 mr-auto hidden sm:inline"><i class="fa-solid fa-download mr-1 text-indigo-400"></i> Exportar Diagnostico:</span>
+            <button onclick="copiarRelatorioIA()" class="text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-600 transition-all flex items-center gap-1.5 shadow-2xs hover:shadow">
+                <i class="fa-regular fa-copy text-indigo-500"></i> Copiar
             </button>
-            <button onclick="baixarRelatorioTXT()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-2 rounded border border-slate-600 transition-all flex items-center gap-1.5" title="Texto">
-                <i class="fa-solid fa-file-lines text-slate-400"></i> .TXT
+            <button onclick="baixarRelatorioTXT()" class="text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-600 transition-all flex items-center gap-1.5 shadow-2xs hover:shadow" title="Texto Puro">
+                <i class="fa-solid fa-file-lines text-slate-500"></i> .TXT
             </button>
-            <button onclick="baixarRelatorioPlanilha()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-2 rounded border border-slate-600 transition-all flex items-center gap-1.5" title="Excel">
-                <i class="fa-solid fa-file-excel text-green-500"></i> Planilha
+            <button onclick="baixarRelatorioPlanilha()" class="text-xs bg-emerald-50 hover:bg-emerald-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-emerald-800 dark:text-emerald-300 font-bold px-3.5 py-2 rounded-xl border border-emerald-300 dark:border-slate-600 transition-all flex items-center gap-1.5 shadow-2xs hover:shadow" title="Exportar para Excel">
+                <i class="fa-solid fa-file-excel text-emerald-600"></i> Planilha
             </button>
-            <button onclick="baixarRelatorioWord()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-2 rounded border border-slate-600 transition-all flex items-center gap-1.5" title="Word">
-                <i class="fa-solid fa-file-word text-blue-500"></i> Word
+            <button onclick="baixarRelatorioWord()" class="text-xs bg-blue-50 hover:bg-blue-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-blue-800 dark:text-blue-300 font-bold px-3.5 py-2 rounded-xl border border-blue-300 dark:border-slate-600 transition-all flex items-center gap-1.5 shadow-2xs hover:shadow" title="Exportar para Microsoft Word">
+                <i class="fa-solid fa-file-word text-blue-600"></i> Word
             </button>
-            <button onclick="window.print()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-2 rounded border border-slate-600 transition-all flex items-center gap-1.5">
-                <i class="fa-solid fa-print text-emerald-400"></i> Imprimir
+            <button onclick="window.print()" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2 rounded-xl border border-indigo-700 transition-all flex items-center gap-1.5 shadow-sm hover:shadow-md">
+                <i class="fa-solid fa-print"></i> Imprimir
             </button>
         </div>
     `;
 
-    divRes.innerHTML = '<div><div class="flex items-center justify-between gap-3 mb-5 pb-3 border-b border-slate-700/50"><div class="flex items-center gap-2"><i class="fa-solid fa-file-lines text-violet-400 text-base"></i><span class="text-xs font-bold text-slate-300 uppercase tracking-wide">Relatório Inteligente (Gerado por IA)</span></div><span class="text-xs text-slate-500">'+new Date().toLocaleString('pt-BR')+'</span></div><div class="text-slate-200 text-sm leading-relaxed space-y-1" id="ia-rel-conteudo-html"><p class="text-slate-200 text-sm mb-2">'+html+'</p></div>'+botoes+'</div>';
+    var cabecalhoExecutivo = `
+        <div class="flex items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-200/90 dark:border-slate-700/60 flex-wrap">
+            <div class="flex items-center gap-3">
+                <span class="px-2.5 py-1 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-[11px] uppercase tracking-wider shadow-sm flex items-center gap-1.5">
+                    <i class="fa-solid fa-sparkles text-[10px]"></i> Relatório Inteligente IA
+                </span>
+                <span class="text-xs text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/20 px-2 py-0.5 rounded-full font-bold border border-emerald-200 dark:border-emerald-500/30 flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Análise Concluída
+                </span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1.5">
+                    <i class="fa-regular fa-clock text-indigo-400"></i> ` + new Date().toLocaleString('pt-BR') + `
+                </span>
+                <button onclick="copiarRelatorioIA()" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-bold flex items-center gap-1">
+                    <i class="fa-regular fa-copy"></i> Copiar
+                </button>
+            </div>
+        </div>
+    `;
+
+    divRes.innerHTML = '<div>' + cabecalhoExecutivo + '<div class="text-slate-700 dark:text-slate-200 text-sm leading-relaxed space-y-2" id="ia-rel-conteudo-html"><p class="text-slate-700 dark:text-slate-200 text-sm mb-3">' + html + '</p></div>' + botoes + '</div>';
 }
 
 function baixarRelatorioWord() {
@@ -6034,21 +6095,21 @@ async function carregarHistoricoRelatoriosIA() {
                 .substring(0, 95);
             if (preview.length >= 95) preview += '...';
 
-            html += '<div class="shrink-0 relative bg-white/70 dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 hover:border-indigo-400/80 dark:hover:border-indigo-500/80 rounded-xl p-3 transition-all duration-200 cursor-pointer shadow-sm hover:shadow group" onclick="verRelatorioHistorico(\''+item.id+'\')">' +
-                '<div class="flex items-start justify-between gap-2 mb-1.5">' +
-                    '<div class="flex items-center gap-1.5 min-w-0">' +
-                        '<i class="fa-solid fa-robot text-indigo-500 text-[11px] shrink-0"></i>' +
-                        '<h5 class="text-xs font-bold text-slate-700 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 truncate leading-snug">'+titulo+'</h5>' +
+            html += '<div class="shrink-0 relative bg-white dark:bg-slate-800/70 hover:bg-indigo-50/40 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-700/60 hover:border-indigo-400 dark:hover:border-indigo-500 rounded-xl p-3.5 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md group" onclick="verRelatorioHistorico(\''+item.id+'\')">' +
+                ('<div class="flex items-start justify-between gap-2 mb-1.5">' +
+                    '<div class="flex items-center gap-2 min-w-0">' +
+                        '<span class="w-6 h-6 rounded-md bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 text-[10px]"><i class="fa-solid fa-robot"></i></span>' +
+                        '<h5 class="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 truncate leading-snug">'+titulo+'</h5>' +
                     '</div>' +
-                    '<span class="text-[10px] font-mono text-slate-400 dark:text-slate-500 shrink-0">'+dataFmt+'</span>' +
+                    '<span class="text-[10px] font-medium text-slate-400 dark:text-slate-500 shrink-0">'+dataFmt+'</span>' +
                 '</div>' +
-                '<p class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed pl-4">'+(preview || 'Clique para visualizar o relatório completo gerado.')+'</p>' +
-                '<div class="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/40 flex items-center justify-between text-[10px] text-indigo-500 font-semibold pl-4">' +
-                    '<span class="flex items-center gap-1 group-hover:underline"><i class="fa-solid fa-eye text-[9px]"></i> Ver Relatório</span>' +
-                    '<button type="button" onclick="event.stopPropagation(); deletarRelatorioHistorico(\''+item.id+'\')" class="text-slate-400 hover:text-red-500 p-0.5 rounded transition-colors" title="Excluir do histórico">' +
+                '<p class="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed pl-8">'+(preview || 'Clique para visualizar o relatório completo gerado.')+'</p>' +
+                '<div class="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-700/50 flex items-center justify-between text-[11px] text-indigo-600 dark:text-indigo-400 font-bold pl-8">' +
+                    '<span class="flex items-center gap-1.5 group-hover:underline"><i class="fa-solid fa-eye text-[10px]"></i> Ver Relatório</span>' +
+                    '<button type="button" onclick="event.stopPropagation(); deletarRelatorioHistorico(\''+item.id+'\')" class="text-slate-400 hover:text-red-500 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="Excluir do histórico">' +
                         '<i class="fa-solid fa-trash-can text-[10px]"></i>' +
                     '</button>' +
-                '</div>' +
+                '</div>') +
                 '<textarea id="hist-raw-'+item.id+'" class="hidden">'+(item.resposta || '').replace(/</g,'&lt;')+'</textarea>' +
             '</div>';
         });
@@ -6094,11 +6155,12 @@ function mudarAbaRelIA(aba) {
     var chips = document.getElementById('ia-chips-'+aba);
     if (chips) chips.classList.remove('hidden');
     document.querySelectorAll('.ia-rel-tab').forEach(function(btn){
-        btn.classList.remove('border-violet-500','text-violet-300');
-        btn.classList.add('border-transparent','text-slate-400');
+        btn.className = 'ia-rel-tab flex-1 px-4 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap min-w-max flex justify-center items-center gap-2 bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-800/50';
     });
     var tab = document.getElementById('ia-tab-'+aba);
-    if (tab) { tab.classList.remove('border-transparent','text-slate-400'); tab.classList.add('border-violet-500','text-violet-300'); }
+    if (tab) {
+        tab.className = 'ia-rel-tab flex-1 px-4 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap min-w-max flex justify-center items-center gap-2 bg-indigo-600 text-white shadow-md';
+    }
 }
 
 window.copiarRelatorioIA = function() {
