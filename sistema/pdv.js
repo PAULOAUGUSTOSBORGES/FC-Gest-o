@@ -1238,6 +1238,29 @@ function imprimirContratoById(id) {
 }
 window.imprimirContratoById = imprimirContratoById;
 
+function imprimirOrdemProducaoAtual() {
+    if (window.vendaAtualImpressao) { 
+        imprimirOrdemProducaoObj(window.vendaAtualImpressao); 
+    } else { 
+        showToast("Nenhuma venda selecionada para imprimir a Ordem de Produção.", "error"); 
+    }
+}
+window.imprimirOrdemProducaoAtual = imprimirOrdemProducaoAtual;
+
+function imprimirOrdemProducaoById(id) { 
+    const todasVendas = (typeof db !== 'undefined' && Array.isArray(db.vendas)) 
+        ? db.vendas 
+        : ((typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) ? window.db.vendas : []);
+    const v = todasVendas.find(x => String(x.id) === String(id)); 
+    if (v) {
+        window.vendaAtualImpressao = v;
+        imprimirOrdemProducaoObj(v); 
+    } else {
+        showToast("Venda não encontrada para imprimir a Ordem de Produção.", "error");
+    }
+}
+window.imprimirOrdemProducaoById = imprimirOrdemProducaoById;
+
 // CORREÇÃO: Variável cliTel e Telefone do Whatsapp blindados!
 function enviarPDFWhatsApp(id) {
     const v = db.vendas.find(x => String(x.id) === String(id)); 
@@ -1612,6 +1635,242 @@ function imprimirContratoObj(v) {
     printHtmlSeguro(`<div style="width: 210mm; margin: 0 auto; padding: 15mm; background: #fff;">${html}</div>`);
 }
 
+function imprimirOrdemProducaoObj(v) {
+    if (!v) return;
+    const emp = (typeof obterDadosEmpresa === 'function') ? obterDadosEmpresa() : { nome: 'Empresa', tel: '', end: '', cnpj: '', logoHtml: '' };
+
+    const cliInfo = (typeof obterDadosClientePDV === 'function') ? obterDadosClientePDV(v.clienteId) : {};
+    const cliNome = (cliInfo && cliInfo.nome && cliInfo.nome !== 'Consumidor Final') ? cliInfo.nome : (v.clienteNome || 'Consumidor Final');
+
+    const opAtual = (typeof window.obterOperadorAtual === 'function') ? window.obterOperadorAtual() : null;
+    const vendedorNome = v.vendedorNome || v.vendedor || (opAtual && opAtual.nome) || (window.currentUserInfo && window.currentUserInfo.nome) || 'Atendente';
+
+    // Data por extenso (ex: "Goiânia 05, de Setembro de 2026")
+    const dataVenda = v.data ? new Date(v.data) : new Date();
+    const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    const diaStr = String(dataVenda.getDate()).padStart(2, '0');
+    const mesStr = meses[dataVenda.getMonth()];
+    const anoStr = dataVenda.getFullYear();
+
+    let cidadeEmp = '';
+    if (window.db && window.db.config && window.db.config.empresa && window.db.config.empresa.cidade) {
+        cidadeEmp = window.db.config.empresa.cidade;
+    } else if (emp.end && emp.end.includes('-')) {
+        const parts = emp.end.split('-');
+        cidadeEmp = parts[parts.length - 1].trim();
+    }
+    const dataExtenso = `${cidadeEmp ? cidadeEmp + ' ' : ''}${diaStr}, de ${mesStr} de ${anoStr}`;
+    const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id || '').slice(-4);
+
+    const prodsDb = (window.db && Array.isArray(window.db.produtos)) ? window.db.produtos : [];
+    const itens = (v.itens && v.itens.length > 0) ? v.itens : [];
+    
+    const blocosItensHtml = itens.map((item, idx) => {
+        const prodDb = prodsDb.find(p => String(p.id) === String(item.id)) || {};
+        const c = item.customizacao || prodDb.customizacaoPadrao || prodDb.customizacao || {};
+        const foto = item.foto || prodDb.foto || (prodDb.fotos && prodDb.fotos[0]) || '';
+
+        const linha = prodDb.categoria || prodDb.subcategoria || prodDb.marca || 'Palito';
+        const material = c.madeira || 'Eucalipto';
+        const acabamento = c.corMadeira || 'Natural';
+
+        let medidaStr = '';
+        const m = c.medidas || {};
+        const partesMed = [];
+        if (m.largura) partesMed.push(`L: ${m.largura}`);
+        if (m.altura) partesMed.push(`A: ${m.altura}`);
+        if (m.profundidade) partesMed.push(`P: ${m.profundidade}`);
+        if (partesMed.length > 0) {
+            medidaStr = partesMed.join(' x ');
+        } else {
+            medidaStr = prodDb.unidade ? `Unidade (${prodDb.unidade})` : '1.30';
+        }
+
+        const tecidoStr = [c.estofado, c.corEstofado].filter(Boolean).join(' - ');
+        const qtdStr = `(${String(Math.round(item.qtd || 1)).padStart(2, '0')})`;
+
+        const obsLista = [];
+        if (c.obsExtra) obsLista.push(c.obsExtra);
+        if (item.obsVenda && item.obsVenda !== c.obsExtra) obsLista.push(item.obsVenda);
+        const obsStr = obsLista.length > 0 ? obsLista.join('<br>') : 'Padrão de fabricação';
+
+        const fotoHtml = foto ? `
+            <div style="text-align: center; margin: 25px auto 10px auto;">
+                <img src="${foto}" style="max-height: 420px; max-width: 95%; object-fit: contain; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 4px 15px rgba(0,0,0,0.06);">
+            </div>
+        ` : `
+            <div style="text-align: center; margin: 25px auto 10px auto; padding: 40px; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px; color: #94a3b8; font-size: 13px;">
+                <i class="fa-solid fa-couch" style="font-size: 32px; display: block; margin-bottom: 8px;"></i>
+                Foto de referência não anexada ao produto.
+            </div>
+        `;
+
+        return `
+            <div class="bloco-item-op" style="${idx > 0 ? 'page-break-before: always; margin-top: 30px;' : ''}">
+                <div style="margin: 20px 0 10px 0; font-size: 13px; line-height: 2;">
+                    <div style="display: flex; border-bottom: 1px dotted #cbd5e1; padding: 4px 0;">
+                        <span style="width: 140px; color: #64748b; font-weight: 500;">Produto:</span>
+                        <span style="flex: 1; font-weight: 700; color: #0f172a;">${item.nome}</span>
+                    </div>
+                    <div style="display: flex; border-bottom: 1px dotted #cbd5e1; padding: 4px 0;">
+                        <span style="width: 140px; color: #64748b; font-weight: 500;">Linha:</span>
+                        <span style="flex: 1; font-weight: 600; color: #1e293b;">${linha}</span>
+                    </div>
+                    <div style="display: flex; border-bottom: 1px dotted #cbd5e1; padding: 4px 0;">
+                        <span style="width: 140px; color: #64748b; font-weight: 500;">Material:</span>
+                        <span style="flex: 1; font-weight: 600; color: #1e293b;">${material}</span>
+                    </div>
+                    <div style="display: flex; border-bottom: 1px dotted #cbd5e1; padding: 4px 0;">
+                        <span style="width: 140px; color: #64748b; font-weight: 500;">Medida:</span>
+                        <span style="flex: 1; font-weight: 600; color: #1e293b;">${medidaStr}</span>
+                    </div>
+                    <div style="display: flex; border-bottom: 1px dotted #cbd5e1; padding: 4px 0;">
+                        <span style="width: 140px; color: #64748b; font-weight: 500;">Acabamento:</span>
+                        <span style="flex: 1; font-weight: 600; color: #1e293b;">${acabamento}</span>
+                    </div>
+                    ${tecidoStr ? `
+                    <div style="display: flex; border-bottom: 1px dotted #cbd5e1; padding: 4px 0;">
+                        <span style="width: 140px; color: #64748b; font-weight: 500;">Estofado/Tecido:</span>
+                        <span style="flex: 1; font-weight: 600; color: #1e293b;">${tecidoStr}</span>
+                    </div>
+                    ` : ''}
+                    <div style="display: flex; border-bottom: 1px dotted #cbd5e1; padding: 4px 0;">
+                        <span style="width: 140px; color: #64748b; font-weight: 500;">Quantidade:</span>
+                        <span style="flex: 1; font-weight: 700; color: #0f172a;">${qtdStr}</span>
+                    </div>
+                    <div style="display: flex; border-bottom: 1px dotted #cbd5e1; padding: 4px 0;">
+                        <span style="width: 140px; color: #64748b; font-weight: 500;">Observações:</span>
+                        <span style="flex: 1; font-weight: 600; color: #1e293b;">${obsStr}</span>
+                    </div>
+                </div>
+
+                ${fotoHtml}
+            </div>
+        `;
+    }).join('');
+
+    const logoHtml = emp.logoHtml || (emp.logo ? `<img src="${emp.logo}" style="max-height: 85px; margin-bottom: 8px; object-fit: contain;">` : `<h2 style="margin: 0; font-size: 22px; font-weight: 800; text-transform: uppercase; color: #475569;">${emp.nome}</h2>`);
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+        showToast("Por favor, permita pop-ups para imprimir a Ordem de Produção.", "warning");
+        return;
+    }
+
+    const wppTexto = encodeURIComponent(`*ORDEM DE PRODUÇÃO #${numPedStr}*\nCliente: ${cliNome}\nVendedora: ${vendedorNome}\nData: ${dataExtenso}`);
+    const wppLink = `https://api.whatsapp.com/send?text=${wppTexto}`;
+
+    printWin.document.open();
+    printWin.document.write(`
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <title>Ordem de Produção #${numPedStr}</title>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+            <style>
+                @page { size: A4; margin: 12mm 15mm; }
+                * { box-sizing: border-box; }
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                    background: #f1f5f9;
+                    margin: 0;
+                    padding: 20px;
+                    color: #1e293b;
+                }
+                .barra-acoes {
+                    max-width: 800px;
+                    margin: 0 auto 15px auto;
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 10px;
+                }
+                .btn-acao {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 8px 16px;
+                    border-radius: 8px;
+                    font-size: 13px;
+                    font-weight: 700;
+                    text-decoration: none;
+                    cursor: pointer;
+                    border: none;
+                    transition: all 0.2s;
+                }
+                .btn-wpp { background: #25D366; color: #fff; }
+                .btn-wpp:hover { background: #1ea952; }
+                .btn-print { background: #0f172a; color: #fff; }
+                .btn-print:hover { background: #334155; }
+                .folha-a4 {
+                    max-width: 800px;
+                    margin: 0 auto;
+                    background: #ffffff;
+                    padding: 35px 45px;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+                }
+                @media print {
+                    body { background: #fff !important; padding: 0 !important; }
+                    .barra-acoes { display: none !important; }
+                    .folha-a4 { box-shadow: none !important; border-radius: 0 !important; padding: 0 !important; max-width: none !important; }
+                    .bloco-item-op { page-break-inside: avoid; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="barra-acoes">
+                <a href="${wppLink}" target="_blank" class="btn-acao btn-wpp">
+                    <i class="fa-brands fa-whatsapp"></i> Enviar no WhatsApp
+                </a>
+                <button onclick="window.print()" class="btn-acao btn-print">
+                    <i class="fa-solid fa-print"></i> Imprimir / Salvar PDF
+                </button>
+            </div>
+
+            <div class="folha-a4">
+                <!-- Cabeçalho com Logo -->
+                <div style="text-align: center; margin-bottom: 25px;">
+                    ${logoHtml}
+                </div>
+
+                <!-- Título e Data -->
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 15px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                    <h1 style="margin: 0; font-size: 18px; font-weight: 800; letter-spacing: 1px; color: #334155; text-transform: uppercase;">
+                        ORDEM DE PRODUÇÃO <span style="font-size: 14px; font-weight: 600; color: #64748b;">#${numPedStr}</span>
+                    </h1>
+                    <span style="font-size: 12px; font-weight: 500; color: #64748b;">${dataExtenso}</span>
+                </div>
+
+                <!-- Cliente e Vendedora -->
+                <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 12px;">
+                    <div>Cliente: <span style="font-weight: 700; color: #0f172a;">${cliNome}</span></div>
+                    <div>Vendedora: <span style="font-weight: 700; color: #0f172a;">${vendedorNome}</span></div>
+                </div>
+
+                <!-- Linha pontilhada e introdução -->
+                <div style="border-top: 1px dashed #cbd5e1; margin: 10px 0 12px 0;"></div>
+                <p style="margin: 0 0 15px 0; font-size: 12px; color: #64748b;">Segue informações e foto de referência para a produção dos móveis abaixo.</p>
+
+                <!-- Itens / Móveis -->
+                ${blocosItensHtml}
+
+                <!-- Rodapé da Empresa -->
+                <div style="margin-top: 40px; padding-top: 20px; border-top: 2px dashed #a5f3fc; font-size: 11px; color: #64748b; text-align: center;">
+                    <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin-bottom: 6px; font-weight: 500;">
+                        <span><i class="fa-solid fa-location-dot" style="color: #06b6d4; margin-right: 4px;"></i> ${emp.end}</span>
+                        <span><i class="fa-solid fa-phone" style="color: #06b6d4; margin-right: 4px;"></i> ${emp.tel}</span>
+                        ${emp.cnpj ? `<span>CNPJ: ${emp.cnpj}</span>` : ''}
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+    `);
+    printWin.document.close();
+}
+window.imprimirOrdemProducaoObj = imprimirOrdemProducaoObj;
+
 // ==========================================
 // 9. LEITOR DE CÓDIGO DE BARRAS
 // ==========================================
@@ -1966,6 +2225,13 @@ function processarAdicaoProduto(p) {
             ? parseInputMoney(p.estoque) 
             : (parseFloat(String(p.estoque || 0).replace(',', '.')) || 0);
 
+        let persPadrao = null;
+        if (p.customizacaoPadrao) {
+            persPadrao = JSON.parse(JSON.stringify(p.customizacaoPadrao));
+        } else if (p.customizacao) {
+            persPadrao = JSON.parse(JSON.stringify(p.customizacao));
+        }
+
         cart.push({ 
             id: p.id || '', 
             nome: p.nome || 'Produto', 
@@ -1976,7 +2242,8 @@ function processarAdicaoProduto(p) {
             desconto: 0,
             qtd: 1, 
             foto: p.foto || '', 
-            obsVenda: '' 
+            obsVenda: '',
+            customizacao: persPadrao
         }); 
         if(!isOrcamento && estoqueProd < 1) {
             showToast(`Estoque NEGATIVO!`, 'info'); 
@@ -4432,6 +4699,29 @@ window.downloadPDF = downloadPDF;
 window.exportarExcel = exportarExcel;
 window.imprimirContratoAtual = imprimirContratoAtual;
 window.imprimirContratoById = imprimirContratoById;
+
+function imprimirOrdemProducaoAtual() {
+    if (window.vendaAtualImpressao) { 
+        imprimirOrdemProducaoObj(window.vendaAtualImpressao); 
+    } else { 
+        showToast("Nenhuma venda selecionada para imprimir a Ordem de Produção.", "error"); 
+    }
+}
+window.imprimirOrdemProducaoAtual = imprimirOrdemProducaoAtual;
+
+function imprimirOrdemProducaoById(id) { 
+    const todasVendas = (typeof db !== 'undefined' && Array.isArray(db.vendas)) 
+        ? db.vendas 
+        : ((typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) ? window.db.vendas : []);
+    const v = todasVendas.find(x => String(x.id) === String(id)); 
+    if (v) {
+        window.vendaAtualImpressao = v;
+        imprimirOrdemProducaoObj(v); 
+    } else {
+        showToast("Venda não encontrada para imprimir a Ordem de Produção.", "error");
+    }
+}
+window.imprimirOrdemProducaoById = imprimirOrdemProducaoById;
 window.enviarPDFWhatsApp = enviarPDFWhatsApp;
 window.imprimirContratoObj = imprimirContratoObj;
 window.abrirLeitorCamera = abrirLeitorCamera;

@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // OPERACAO.JS - SISTEMA 100% WHITE LABEL E BLINDADO
 // ==========================================
 
@@ -1426,7 +1426,13 @@ function processarAdicaoProduto(p) {
             showToast(`Estoque NEGATIVO! Restam ${p.estoque || 0}.`, 'info'); 
         }
     } else { 
-        cart.push({ id: p.id || '', nome: p.nome || 'Produto', preco: Number(p.preco) || 0, custo: Number(p.custo) || 0, qtd: 1, foto: p.foto || '', obsVenda: '' }); 
+        let persPadrao = null;
+        if (p.customizacaoPadrao) {
+            persPadrao = JSON.parse(JSON.stringify(p.customizacaoPadrao));
+        } else if (p.customizacao) {
+            persPadrao = JSON.parse(JSON.stringify(p.customizacao));
+        }
+        cart.push({ id: p.id || '', nome: p.nome || 'Produto', preco: Number(p.preco) || 0, custo: Number(p.custo) || 0, qtd: 1, foto: p.foto || '', obsVenda: '', customizacao: persPadrao }); 
         if(!isOrcamento && (p.estoque || 0) < 1) {
             showToast(`Estoque NEGATIVO!`, 'info'); 
         }

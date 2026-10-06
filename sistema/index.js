@@ -1,4 +1,4 @@
-﻿// index.js - Lógica exclusiva do Dashboard (MEGA BI)
+// index.js - Lógica exclusiva do Dashboard (MEGA BI)
 
 let renderTimeout = null;
 
@@ -761,6 +761,21 @@ function inicializarGraficos() {
         colors: ['#10b981', '#ef4444', '#f59e0b'],
         theme: { mode: isDark ? 'dark' : 'light' },
         plotOptions: { bar: { horizontal: true, borderRadius: 4, dataLabels: { total: { enabled: false } } } },
+        dataLabels: {
+            enabled: true,
+            formatter: (val) => {
+                if (val === null || val === undefined || isNaN(val) || Number(val) <= 0) return '';
+                const formatted = typeof formatMoney === 'function' 
+                    ? formatMoney(val) 
+                    : `R$ ${Number(val).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                return String(formatted).replace(/\u00A0/g, ' ');
+            },
+            style: {
+                colors: ['#ffffff'],
+                fontSize: '12px',
+                fontWeight: 600
+            }
+        },
         stroke: { width: 1, colors: ['transparent'] },
         xaxis: { 
             decimalsInFloat: 0,
@@ -966,17 +981,17 @@ function renderizarGraficos() {
     hojeZero.setHours(0,0,0,0);
     const receber = contas.filter(c => (!c.tipo || c.tipo === 'RECEITA'));
     
-    let totalPago = receber.filter(c => c.status === 'PAGO').reduce((a,b) => a + (Number(b.valorPago || b.valor) || 0), 0);
-    let totalAtrasado = receber.filter(c => {
+    let totalPago = Math.round(receber.filter(c => c.status === 'PAGO').reduce((a,b) => a + (Number(b.valorPago || b.valor) || 0), 0) * 100) / 100;
+    let totalAtrasado = Math.round(receber.filter(c => {
         if (c.status !== 'PENDENTE') return false;
         const d = parseDataSegura(c.dataVencimento || c.data || c.vencimento);
         return d && d.getTime() < hojeZero.getTime();
-    }).reduce((a,b) => a + (Number(b.valor) || 0), 0);
-    let totalPendenteDia = receber.filter(c => {
+    }).reduce((a,b) => a + (Number(b.valor) || 0), 0) * 100) / 100;
+    let totalPendenteDia = Math.round(receber.filter(c => {
         if (c.status !== 'PENDENTE') return false;
         const d = parseDataSegura(c.dataVencimento || c.data || c.vencimento);
         return d && d.getTime() >= hojeZero.getTime();
-    }).reduce((a,b) => a + (Number(b.valor) || 0), 0);
+    }).reduce((a,b) => a + (Number(b.valor) || 0), 0) * 100) / 100;
 
     chartInadimplencia.updateSeries([
         { name: 'Recebidos', data: [totalPago] },

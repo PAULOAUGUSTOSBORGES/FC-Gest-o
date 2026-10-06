@@ -36,8 +36,8 @@
         
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css?v=20261005171910">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261005171910">
+    <link rel="stylesheet" href="../style.css?v=20261006135537">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261006135537">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="estoque">
 
@@ -433,10 +433,19 @@
                 <button onclick="fecharModalProduto()" class="text-blue-200 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl md:text-2xl"></i></button>
             </div>
 
-            <div class="flex overflow-x-auto border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 md:px-6 pt-4 shrink-0 custom-scrollbar">
-                <button onclick="abaModal('prod', 'dados')" id="prod-btn-dados" class="px-4 md:px-5 py-2 border-b-2 border-blue-600 font-bold text-blue-600 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Dados & Precificação</button>
-                <button onclick="abaModal('prod', 'crm')" id="prod-btn-crm" class="px-4 md:px-5 py-2 border-b-2 border-transparent font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-200 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">CRM & Histórico</button>
-                <button onclick="abaModal('prod', 'fiscal')" id="prod-btn-fiscal" class="px-4 md:px-5 py-2 border-b-2 border-transparent font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-200 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap">Fiscal & Impostos</button>
+            <div class="flex flex-row flex-nowrap items-center overflow-x-auto border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 md:px-6 pt-3 shrink-0 custom-scrollbar gap-1 sm:gap-2">
+                <button type="button" onclick="abaModal('prod', 'dados')" id="prod-btn-dados" class="px-3 sm:px-4 md:px-5 py-2.5 border-b-2 border-blue-600 font-bold text-blue-600 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap shrink-0 inline-flex items-center gap-2">
+                    <i class="fa-solid fa-cube"></i> Dados & Precificação
+                </button>
+                <button type="button" onclick="abaModal('prod', 'personalizacao')" id="prod-btn-personalizacao" class="px-3 sm:px-4 md:px-5 py-2.5 border-b-2 border-transparent font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap shrink-0 inline-flex items-center gap-2">
+                    <i class="fa-solid fa-couch"></i> Personalização Padrão
+                </button>
+                <button type="button" onclick="abaModal('prod', 'crm')" id="prod-btn-crm" class="px-3 sm:px-4 md:px-5 py-2.5 border-b-2 border-transparent font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap shrink-0 inline-flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left"></i> CRM & Histórico
+                </button>
+                <button type="button" onclick="abaModal('prod', 'fiscal')" id="prod-btn-fiscal" class="px-3 sm:px-4 md:px-5 py-2.5 border-b-2 border-transparent font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xs md:text-sm focus:outline-none transition-colors whitespace-nowrap shrink-0 inline-flex items-center gap-2">
+                    <i class="fa-solid fa-receipt"></i> Fiscal & Impostos
+                </button>
             </div>
 
             <div class="p-4 md:p-6 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900 custom-scrollbar">
@@ -661,6 +670,101 @@
                                 <tbody id="prod-historico-body" class="divide-y divide-slate-50"></tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+                <!-- Aba de Personalizacao Padrao do Movel (Opcional) -->
+                <div id="prod-aba-personalizacao" class="aba-conteudo hidden space-y-4">
+                    <div class="bg-amber-500/10 border border-amber-500/30 p-3.5 rounded-xl flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold text-base shadow-sm">
+                                <i class="fa-solid fa-couch"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-100">Personalizações Pré-Definidas deste Móvel</h4>
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400">Ao lançar este item na venda (PDV), essas características virão pré-preenchidas e poderão ser alteradas na hora se o cliente desejar.</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="abrirModalOpcoesPersonalizadas()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 shadow-sm" style="background-color: #d97706;">
+                            <i class="fa-solid fa-sliders"></i> Opções da Loja
+                        </button>
+                    </div>
+
+                    <!-- 1. MADEIRA E ACABAMENTO -->
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <div class="flex items-center justify-between pb-2 mb-3 border-b border-slate-100 dark:border-slate-700">
+                            <span class="font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                <i class="fa-solid fa-tree text-amber-600"></i> Estrutura & Madeira Padrão
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="font-bold text-slate-600 dark:text-slate-300 text-xs block mb-1.5">Tipo de Madeira / Estrutura</label>
+                                <select id="prod-pers-madeira" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white">
+                                    <option value="">(Nenhuma / Não se aplica)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="font-bold text-slate-600 dark:text-slate-300 text-xs block mb-1.5">Cor / Acabamento da Madeira</label>
+                                <select id="prod-pers-cor-madeira" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white">
+                                    <option value="">(Nenhum / Padrão)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. ESTOFADO E TECIDO -->
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <div class="flex items-center justify-between pb-2 mb-3 border-b border-slate-100 dark:border-slate-700">
+                            <span class="font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                <i class="fa-solid fa-rug text-blue-500"></i> Estofamento, Tecido ou Palha Padrão
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="font-bold text-slate-600 dark:text-slate-300 text-xs block mb-1.5">Tipo de Tecido / Palha</label>
+                                <select id="prod-pers-estofado" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white">
+                                    <option value="">(Nenhum / Não se aplica)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="font-bold text-slate-600 dark:text-slate-300 text-xs block mb-1.5">Cor do Tecido / Palha</label>
+                                <select id="prod-pers-cor-estofado" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white">
+                                    <option value="">(Nenhuma / Padrão)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. DIMENSÕES PADRÃO -->
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <div class="flex items-center justify-between pb-2 mb-3 border-b border-slate-100 dark:border-slate-700">
+                            <span class="font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                <i class="fa-solid fa-ruler-combined text-purple-500"></i> Dimensões Padrão de Fabricação <span class="text-[10px] font-normal text-slate-400 capitalize">(Opcional)</span>
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="font-semibold text-slate-600 dark:text-slate-300 text-xs block mb-1">Largura (L)</label>
+                                <input type="text" id="prod-pers-med-l" placeholder="Ex: 1,30m" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white font-medium">
+                            </div>
+                            <div>
+                                <label class="font-semibold text-slate-600 dark:text-slate-300 text-xs block mb-1">Altura (A)</label>
+                                <input type="text" id="prod-pers-med-a" placeholder="Ex: 0,95m" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white font-medium">
+                            </div>
+                            <div>
+                                <label class="font-semibold text-slate-600 dark:text-slate-300 text-xs block mb-1">Profundidade (P)</label>
+                                <input type="text" id="prod-pers-med-p" placeholder="Ex: 0,50m" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white font-medium">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. OBSERVAÇÕES PADRÃO DE PRODUÇÃO -->
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <label class="font-bold text-slate-700 dark:text-slate-200 text-xs flex items-center gap-1.5 mb-1.5">
+                            <i class="fa-solid fa-industry text-amber-600"></i> Observações Técnicas / Detalhes de Produção Padrão
+                        </label>
+                        <textarea id="prod-pers-obs" rows="3" placeholder="Ex: Palha da vovó natural nas gavetas, puxadores de bola em madeira maciça, corrediças telescópicas..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white resize-none shadow-inner"></textarea>
+                        <p class="text-[10px] text-slate-400 mt-1">Essas anotações saem na Ordem de Produção e o vendedor poderá complementá-las ou alterá-las em cada venda.</p>
                     </div>
                 </div>
             </div>
@@ -1073,16 +1177,6 @@
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20261005171910"></script>
-    <script src="saas_licenca.js?v=20261005171910"></script>
-    <script src="../global.js?v=20261005171910"></script>
-    <script src="fc_cache.js?v=20261005171910"></script>
-    <script src="tabela_ncm.js?v=20261005171910"></script>
-    <script src="ncm_helper.js?v=20261005171910"></script>
-    <script src="produtos.js?v=20261005171910"></script>
 <!-- MODAL DE GERENCIAMENTO DE OPCOES PERSONALIZADAS (MADEIRAS, TECIDOS, CORES) -->
     <div id="modal-opcoes-personalizadas" class="fixed inset-0 bg-slate-900/70 z-[170] hidden flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in duration-150 max-h-[90vh]">
@@ -1096,6 +1190,18 @@
                         <p class="text-xs text-slate-400">Cadastre e remova opções que aparecem nas personalizações</p>
                     </div>
                 </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
+    <script src="../sistema/config_banco.js?v=20261006135537"></script>
+    <script src="saas_licenca.js?v=20261006135537"></script>
+    <script src="../global.js?v=20261006135537"></script>
+    <script src="fc_cache.js?v=20261006135537"></script>
+    <script src="tabela_ncm.js?v=20261006135537"></script>
+    <script src="ncm_helper.js?v=20261006135537"></script>
+    <script src="produtos.js?v=20261006135537"></script>
+
                 <button type="button" onclick="fecharModalOpcoesPersonalizadas()" class="text-slate-400 hover:text-white p-1 transition-colors">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>

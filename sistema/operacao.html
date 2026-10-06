@@ -39,8 +39,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- CORRIGIDO: Removido o ?v=20260831113500 que estava quebrando o carregamento offline -->
-    <link rel="stylesheet" href="../style.css?v=20261005171910">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261005171910">
+    <link rel="stylesheet" href="../style.css?v=20261006135537">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261006135537">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -419,6 +419,10 @@
                         <button onclick="downloadPDF('print-area', 'Recibo')" id="btn-recibo-pdf" class="w-full p-2.5 md:p-3 rounded-xl font-bold flex items-center justify-center gap-2.5 transition-all text-xs active:scale-95 cursor-pointer shadow-sm shadow-rose-600/20">
                             <i class="fa-solid fa-file-pdf text-base"></i> 
                             <span class="tracking-wide">Baixar PDF</span>
+                        </button>
+                        <button onclick="imprimirOrdemProducaoAtual()" id="btn-recibo-op" class="col-span-2 w-full p-2.5 md:p-3 rounded-xl font-bold flex items-center justify-center gap-2.5 transition-all text-xs active:scale-95 cursor-pointer shadow-sm shadow-amber-600/20 bg-amber-600 hover:bg-amber-700 text-white" style="background-color: #d97706;">
+                            <i class="fa-solid fa-industry text-base"></i> 
+                            <span class="tracking-wide">Ordem de Produção (Móveis)</span>
                         </button>
                     </div>
                 </div>
@@ -991,13 +995,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
     
-    <script src="../sistema/config_banco.js?v=20261005171910"></script>
-    <script src="saas_licenca.js?v=20261005171910"></script>
-    <script src="../global.js?v=20261005171910"></script>
-    <script src="fc_cache.js?v=20261005171910"></script>
-    <script src="tabela_ncm.js?v=20261005171910"></script>
-    <script src="ncm_helper.js?v=20261005171910"></script>
-    <script src="operacao.js?v=20261005171910"></script>
+    <script src="../sistema/config_banco.js?v=20261006135537"></script>
+    <script src="saas_licenca.js?v=20261006135537"></script>
+    <script src="../global.js?v=20261006135537"></script>
+    <script src="fc_cache.js?v=20261006135537"></script>
+    <script src="tabela_ncm.js?v=20261006135537"></script>
+    <script src="ncm_helper.js?v=20261006135537"></script>
+    <script src="operacao.js?v=20261006135537"></script>
 </body>
 </html>
 

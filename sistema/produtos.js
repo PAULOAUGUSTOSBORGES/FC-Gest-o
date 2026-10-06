@@ -1,4 +1,4 @@
-﻿// cadastro.js - Lógica de Produtos, Clientes, Fornecedores e Estoque
+// cadastro.js - Lógica de Produtos, Clientes, Fornecedores e Estoque
 
 let acaoConfirmacaoPendente = null;
 
@@ -491,6 +491,46 @@ function renderProdutos() {
 
 let fotosGaleria = [];
 
+function popularSelectsPersonalizacaoProduto(catAlterada, valorSelecionar) {
+    const persConfig = (typeof window.getPersonalizacaoConfig === 'function') 
+        ? window.getPersonalizacaoConfig() 
+        : ((window.db && window.db.config && window.db.config.personalizacao) || {});
+
+    const popularSelect = (idSelect, lista, defaultOptionText, selecionado) => {
+        const sel = document.getElementById(idSelect);
+        if (!sel) return;
+        const valorAtual = selecionado !== undefined ? selecionado : sel.value;
+        let html = `<option value="">${defaultOptionText}</option>`;
+        (lista || []).forEach(opt => {
+            const val = typeof opt === 'string' ? opt : (opt.nome || '');
+            const isSel = (valorAtual && valorAtual === val) ? 'selected' : '';
+            html += `<option value="${val}" ${isSel}>${val}</option>`;
+        });
+        if (valorAtual && !(lista || []).some(o => (typeof o === 'string' ? o : o.nome) === valorAtual)) {
+            html += `<option value="${valorAtual}" selected>${valorAtual}</option>`;
+        }
+        sel.innerHTML = html;
+    };
+
+    popularSelect('prod-pers-madeira', persConfig.madeiras, '(Nenhuma / Não se aplica)', catAlterada === 'madeiras' ? valorSelecionar : undefined);
+    popularSelect('prod-pers-cor-madeira', persConfig.cores_madeira, '(Nenhum / Padrão)', catAlterada === 'cores_madeira' ? valorSelecionar : undefined);
+    popularSelect('prod-pers-estofado', persConfig.tecidos, '(Nenhum / Não se aplica)', catAlterada === 'tecidos' ? valorSelecionar : undefined);
+    popularSelect('prod-pers-cor-estofado', persConfig.cores_estofado, '(Nenhuma / Padrão)', catAlterada === 'cores_estofado' ? valorSelecionar : undefined);
+}
+window.popularSelectsPersonalizacaoProduto = popularSelectsPersonalizacaoProduto;
+
+if (typeof window.atualizarSelectsModalPersonalizacao === 'function') {
+    const origAtualizar = window.atualizarSelectsModalPersonalizacao;
+    window.atualizarSelectsModalPersonalizacao = function(c, v) {
+        origAtualizar(c, v);
+        popularSelectsPersonalizacaoProduto(c, v);
+    };
+} else {
+    window.atualizarSelectsModalPersonalizacao = function(c, v) {
+        popularSelectsPersonalizacaoProduto(c, v);
+    };
+}
+
 function abrirModalProduto() {
     const divAcao = document.getElementById('div-acao-vinculo-xml'); if(divAcao) divAcao.classList.add('hidden');
     abaModal('prod', 'dados'); document.getElementById('modal-produto-title').innerText = 'Cadastrar Produto';
@@ -503,6 +543,8 @@ function abrirModalProduto() {
     if (window.NCMHelper && typeof window.NCMHelper.atualizarPreviewNCM === 'function') {
         window.NCMHelper.atualizarPreviewNCM('prod-ncm');
     }
+    popularSelectsPersonalizacaoProduto();
+    ['prod-pers-madeira', 'prod-pers-cor-madeira', 'prod-pers-estofado', 'prod-pers-cor-estofado', 'prod-pers-med-l', 'prod-pers-med-a', 'prod-pers-med-p', 'prod-pers-obs'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     document.getElementById('prod-ativo').value = 'true'; document.getElementById('prod-foto-base64').value = '';
     fotosGaleria = [];
     renderizarGaleriaFotos();
@@ -721,7 +763,31 @@ async function salvarProduto() {
     // Limita galeria em no máximo 3 fotos para manter tamanho de documento Firestore < 500KB
     if (fotosFinal.length > 3) fotosFinal = fotosFinal.slice(0, 3);
 
+    const persMadeira = (document.getElementById('prod-pers-madeira')?.value || '').trim();
+    const persCorMadeira = (document.getElementById('prod-pers-cor-madeira')?.value || '').trim();
+    const persEstofado = (document.getElementById('prod-pers-estofado')?.value || '').trim();
+    const persCorEstofado = (document.getElementById('prod-pers-cor-estofado')?.value || '').trim();
+    const persMedL = (document.getElementById('prod-pers-med-l')?.value || '').trim();
+    const persMedA = (document.getElementById('prod-pers-med-a')?.value || '').trim();
+    const persMedP = (document.getElementById('prod-pers-med-p')?.value || '').trim();
+    const persObs = (document.getElementById('prod-pers-obs')?.value || '').trim();
+
+    const temPers = persMadeira || persCorMadeira || persEstofado || persCorEstofado || persMedL || persMedA || persMedP || persObs;
+    const customizacaoPadrao = temPers ? {
+        madeira: persMadeira,
+        corMadeira: persCorMadeira,
+        estofado: persEstofado,
+        corEstofado: persCorEstofado,
+        medidas: {
+            largura: persMedL,
+            altura: persMedA,
+            profundidade: persMedP
+        },
+        obsExtra: persObs
+    } : null;
+
     const p = {
+        customizacaoPadrao: customizacaoPadrao,
         nome, preco,
         ean: document.getElementById('prod-ean').value,
         marca: document.getElementById('prod-marca').value,
@@ -907,6 +973,30 @@ async function editarProduto(id) {
         fotosGaleria = [];
     }
     renderizarGaleriaFotos();
+
+    // Carrega Personalização Padrão do Móvel
+    if (typeof popularSelectsPersonalizacaoProduto === 'function') {
+        popularSelectsPersonalizacaoProduto();
+    }
+    const cPadrao = p.customizacaoPadrao || p.customizacao || {};
+    const elPersMadeira = document.getElementById('prod-pers-madeira');
+    const elPersCorMadeira = document.getElementById('prod-pers-cor-madeira');
+    const elPersEstofado = document.getElementById('prod-pers-estofado');
+    const elPersCorEstofado = document.getElementById('prod-pers-cor-estofado');
+    const elPersMedL = document.getElementById('prod-pers-med-l');
+    const elPersMedA = document.getElementById('prod-pers-med-a');
+    const elPersMedP = document.getElementById('prod-pers-med-p');
+    const elPersObs = document.getElementById('prod-pers-obs');
+
+    if (elPersMadeira) elPersMadeira.value = cPadrao.madeira || '';
+    if (elPersCorMadeira) elPersCorMadeira.value = cPadrao.corMadeira || '';
+    if (elPersEstofado) elPersEstofado.value = cPadrao.estofado || '';
+    if (elPersCorEstofado) elPersCorEstofado.value = cPadrao.corEstofado || '';
+    const mPadrao = cPadrao.medidas || {};
+    if (elPersMedL) elPersMedL.value = mPadrao.largura || '';
+    if (elPersMedA) elPersMedA.value = mPadrao.altura || '';
+    if (elPersMedP) elPersMedP.value = mPadrao.profundidade || '';
+    if (elPersObs) elPersObs.value = cPadrao.obsExtra || '';
 
     // Carrega histórico completo de movimentações e vendas do produto
     carregarHistoricoProdutoModal(idStr, p.nome);
