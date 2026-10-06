@@ -439,7 +439,8 @@ function renderClientes() {
         const docExib = c.doc || c.cpf || c.cnpj || '-';
         const telExib = c.wpp || c.telefone || c.celular || '-';
         const vendBadge = c.vendedor ? `<span class="inline-block mt-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-800"><i class="fa-solid fa-user-tie mr-1"></i>Vend: ${c.vendedor}</span>` : '';
-        return `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 font-bold text-slate-800 dark:text-slate-100"><div>${c.nome}</div>${vendBadge}</td><td class="p-4 text-slate-600 dark:text-slate-300 font-mono">${docExib}</td><td class="p-4 text-slate-800 dark:text-slate-100"><i class="fa-brands fa-whatsapp text-emerald-500 mr-1"></i> ${telExib}</td><td class="p-4 text-slate-600 dark:text-slate-300">${c.cidade || '-'}</td><td class="p-4 text-center"><button onclick="editarCliente('${c.id}')" class="text-blue-500 hover:text-blue-700 p-2"><i class="fa-solid fa-pen"></i></button><button onclick="excluirCliente('${c.id}')" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash"></i></button></td></tr>`;
+        const esc = window.escapeHtml || (x => x);
+        return `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 font-bold text-slate-800 dark:text-slate-100"><div>${esc(c.nome)}</div>${vendBadge}</td><td class="p-4 text-slate-600 dark:text-slate-300 font-mono">${esc(docExib)}</td><td class="p-4 text-slate-800 dark:text-slate-100"><i class="fa-brands fa-whatsapp text-emerald-500 mr-1"></i> ${esc(telExib)}</td><td class="p-4 text-slate-600 dark:text-slate-300">${esc(c.cidade || '-')}</td><td class="p-4 text-center"><button onclick="editarCliente('${esc(c.id)}')" class="text-blue-500 hover:text-blue-700 p-2"><i class="fa-solid fa-pen"></i></button><button onclick="excluirCliente('${esc(c.id)}')" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash"></i></button></td></tr>`;
     }).join('') || '<tr><td colspan="5" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum cliente encontrado.</td></tr>';
 }
 
@@ -484,6 +485,21 @@ async function salvarCliente() {
     const id = document.getElementById('cli-id').value;
     const nome = document.getElementById('cli-nome').value.trim();
     if (!nome) return showToast('Nome é obrigatório!', 'error');
+
+    const docLimpo = (document.getElementById('cli-doc')?.value || '').replace(/\D/g, '');
+    if (docLimpo.length > 0) {
+        if (docLimpo.length === 11) {
+            if (typeof window.validarCPF === 'function' && !window.validarCPF(docLimpo)) {
+                return showToast('CPF informado é inválido!', 'warning');
+            }
+        } else if (docLimpo.length === 14) {
+            if (typeof window.validarCNPJ === 'function' && !window.validarCNPJ(docLimpo)) {
+                return showToast('CNPJ informado é inválido!', 'warning');
+            }
+        } else {
+            return showToast('Documento CPF (11 dígitos) ou CNPJ (14 dígitos) incompleto.', 'warning');
+        }
+    }
 
     let cidadeVal = (document.getElementById('cli-cidade')?.value || '').trim();
     let ufVal = (document.getElementById('cli-uf')?.value || '').trim();

@@ -1,4 +1,4 @@
-﻿// caixa_loja.js
+// caixa_loja.js
 
 let chartResumo7Dias = null;
 let chartPeriodoBar = null;
@@ -1356,10 +1356,21 @@ async function confirmarFechamentoCego() {
 
         await empresaRef.collection('caixa_fechamentos').doc(mapaDados.id).set(mapaDados);
 
+        const cxAtual = dbLoja.caixa_atual || { historico: [] };
+        const cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
+        cxHistoricoNovo.unshift({
+            data: dataFechamento,
+            tipo: 'SAIDA',
+            desc: `FECHAMENTO DE CAIXA - Op: ${operador}`,
+            valor: Number(mapaDados.totalDeclarado || 0),
+            operador: operador,
+            saldoApos: 0
+        });
+
         await empresaRef.collection('caixa').doc('caixa_atual').set({
             status: 'FECHADO',
             saldo: 0,
-            historico: [],
+            historico: cxHistoricoNovo,
             ultimoFechamento: dataFechamento,
             operadorFechamento: operador
         }, { merge: true });
@@ -1430,11 +1441,35 @@ async function confirmarTransferenciaCaixa() {
             saldoApos: novoSaldo
         });
 
+        const batch = (typeof firestore !== 'undefined' && firestore.batch) ? firestore.batch() : null;
         const targetCaixaRef = (typeof window.obterCaixaDocRef === 'function') ? window.obterCaixaDocRef() : empresaRef.collection('caixa').doc('caixa_atual');
-        await targetCaixaRef.update({
-            saldo: novoSaldo,
-            historico: novoHistorico
-        });
+        
+        if (batch) {
+            batch.update(targetCaixaRef, {
+                saldo: novoSaldo,
+                historico: novoHistorico
+            });
+            const finRef = empresaRef.collection('financeiro').doc();
+            batch.set(finRef, {
+                ref: `Transf. Caixa para ${conta.toUpperCase()} ${obs ? '(' + obs + ')' : ''}`,
+                data: dataIso,
+                pessoa: `Caixa Loja - ${window.currentUserInfo?.nome || 'Operador'}`,
+                wpp: '',
+                valor: valor,
+                status: 'PAGO',
+                tipo: 'TRANSFERENCIA',
+                categoria: 'Transferência Interna',
+                metodoPagamento: 'Dinheiro',
+                dataPagamento: dataIso,
+                contaDestino: conta
+            });
+            await batch.commit();
+        } else {
+            await targetCaixaRef.update({
+                saldo: novoSaldo,
+                historico: novoHistorico
+            });
+        }
 
         fecharModalTransferenciaCaixa();
         if (typeof showToast === 'function') showToast(`Transferência de ${window.formatMoney ? window.formatMoney(valor) : 'R$ ' + valor} realizada!`, 'success');

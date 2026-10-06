@@ -25,10 +25,11 @@ service cloud.firestore {
     }
     
     function isSuperAdmin() {
-      return isAutenticado() && (
-        request.auth.token.email == 'pauloaugusto.silvaborges@gmail.com' ||
-        request.auth.token.email == 'fabricadecoresgoiania@gmail.com'
-      );
+      return isAutenticado() && 
+        request.auth.token.email_verified == true && (
+          request.auth.token.email == 'pauloaugusto.silvaborges@gmail.com' ||
+          request.auth.token.email == 'fabricadecoresgoiania@gmail.com'
+        );
     }
 
     function isAdmin(empresaId) {
@@ -66,6 +67,19 @@ service cloud.firestore {
       );
     }
 
+    // Funcao auxiliar para validar criacao em lote (onboarding)
+    function isDonoNoOnboarding(empresaId) {
+      return isAutenticado() && existsAfter(/databases/$(database)/documents/empresas/$(empresaId)) &&
+             getAfter(/databases/$(database)/documents/empresas/$(empresaId)).data.donoUid == request.auth.uid;
+    }
+
+    // Verificacao de status da empresa (Licenciamento SaaS)
+    function empresaEstaAtiva(empresaId) {
+      return exists(/databases/$(database)/documents/empresas/$(empresaId)) &&
+             get(/databases/$(database)/documents/empresas/$(empresaId)).data.get('status', 'ATIVO') != 'BLOQUEADO' &&
+             get(/databases/$(database)/documents/empresas/$(empresaId)).data.get('status', 'ATIVO') != 'PENDENTE_PAGAMENTO';
+    }
+
     // ==========================================
     // Mapeamento Global de Usuarios (Login)
     // ==========================================
@@ -75,10 +89,10 @@ service cloud.firestore {
         isSuperAdmin() ||
         getEmpresaUsuario() == resource.data.empresaId
       );
-      // Permite o proprio usuario no onboarding OU o admin da empresa cadastrando funcionario
+      // Permite se for Super Admin, se for o proprio usuario dono no onboarding ou se for admin da empresa cadastrando funcionario
       allow create: if isAutenticado() && (
-        request.auth.uid == userId ||
         isSuperAdmin() ||
+        (request.auth.uid == userId && isDonoNoOnboarding(request.resource.data.empresaId)) ||
         (getEmpresaUsuario() != null && getEmpresaUsuario() == request.resource.data.empresaId && isAdmin(getEmpresaUsuario()))
       );
       // Apenas admin geral ou admin da empresa pode atualizar/deletar seus funcionarios (sem alterar empresaId)
@@ -90,12 +104,6 @@ service cloud.firestore {
         isSuperAdmin() ||
         (getEmpresaUsuario() != null && getEmpresaUsuario() == resource.data.empresaId && isAdmin(getEmpresaUsuario()))
       );
-    }
-
-    // Função auxiliar para validar criação em lote (onboarding)
-    function isDonoNoOnboarding(empresaId) {
-      return isAutenticado() && existsAfter(/databases/$(database)/documents/empresas/$(empresaId)) &&
-             getAfter(/databases/$(database)/documents/empresas/$(empresaId)).data.donoUid == request.auth.uid;
     }
 
     // ==========================================
@@ -115,18 +123,25 @@ service cloud.firestore {
         // 'loja_publica' = espelho somente com dados da vitrine (gerado pela Cloud Function espelharLojaPublica).
         // 'config' contem certificado A1, senhas, CSC e tokens: NUNCA liberar leitura publica.
         allow read: if docId == 'loja_publica' || (isAutenticado() && (getEmpresaUsuario() == empresaId || isSuperAdmin()));
-        allow write: if docId != 'loja_publica' && ((getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_config') || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin());
+        allow write: if docId != 'loja_publica' && (
+          isSuperAdmin() ||
+          (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_config') || temPermissao(empresaId, 'perm_gestao')) && empresaEstaAtiva(empresaId))
+        );
         allow create: if docId != 'loja_publica' && (isDonoNoOnboarding(empresaId) || isSuperAdmin()); // Permite no batch de criacao
       }
 
       // Segredos Fiscais (Certificado A1 .pfx e senha privada) - Restrito a Administradores
       match /segredos_fiscais/{docId} {
-        allow read, write: if (getEmpresaUsuario() == empresaId && isAdmin(empresaId)) || isSuperAdmin();
+        allow read: if (getEmpresaUsuario() == empresaId && isAdmin(empresaId)) || isSuperAdmin();
+        allow write: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && isAdmin(empresaId))
+        );
       }
 
       match /caixa/{docId} {
-        allow read, write: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
-        allow create: if isDonoNoOnboarding(empresaId); // Permite no batch de criacao
+        allow read: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao') || isAdmin(empresaId));
+        allow write: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao') || isAdmin(empresaId)) && empresaEstaAtiva(empresaId);
+        allow create: if (isDonoNoOnboarding(empresaId) || (getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao') || isAdmin(empresaId)))) && (isDonoNoOnboarding(empresaId) || empresaEstaAtiva(empresaId));
       }
 
       // ==========================================
@@ -134,95 +149,147 @@ service cloud.firestore {
       // ==========================================
       match /produtos/{produtoId} {
         allow read: if true; // Publico para a loja virtual (vitrine)
-        allow create, delete: if getEmpresaUsuario() == empresaId && podeCadastrarProdutos(empresaId);
-        allow update: if getEmpresaUsuario() == empresaId && (
-          podeCadastrarProdutos(empresaId) ||
-          (temPermissao(empresaId, 'perm_pdv') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estoque', 'ultimaAtualizacao']))
+        allow create, delete: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && podeCadastrarProdutos(empresaId))
+        );
+        allow update: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (
+            podeCadastrarProdutos(empresaId) ||
+            (temPermissao(empresaId, 'perm_pdv') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estoque', 'ultimaAtualizacao']))
+          ))
         );
       }
 
       match /movimentacoes/{movId} {
-        allow read, create: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_cadastros') || temPermissao(empresaId, 'perm_gestao'));
-        allow update, delete: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+        allow read: if (getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_cadastros') || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
+        allow create: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_cadastros') || temPermissao(empresaId, 'perm_gestao')))
+        );
+        allow update, delete: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao')))
+        );
       }
 
       match /categorias/{catId} {
         allow read: if true;
-        allow write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || podeCadastrarProdutos(empresaId) || temPermissao(empresaId, 'perm_cadastros'));
+        allow write: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || podeCadastrarProdutos(empresaId) || temPermissao(empresaId, 'perm_cadastros')))
+        );
       }
 
       // ==========================================
       // 3. Clientes e Fornecedores
       // ==========================================
       match /clientes/{clienteId} {
-        allow read: if getEmpresaUsuario() == empresaId && isAutenticado();
-        allow write: if getEmpresaUsuario() == empresaId && podeCadastrarClientes(empresaId);
+        allow read: if (getEmpresaUsuario() == empresaId && isAutenticado()) || isSuperAdmin();
+        allow write: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && podeCadastrarClientes(empresaId))
+        );
       }
 
       match /fornecedores/{fornecedorId} {
-        allow read, write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_cadastros') || temPermissao(empresaId, 'perm_gestao'));
+        allow read: if (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_cadastros') || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
+        allow write: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_cadastros') || temPermissao(empresaId, 'perm_gestao')))
+        );
       }
 
       // ==========================================
       // 4. Vendas, Orcamentos e Financeiro
       // ==========================================
       match /vendas/{vendaId} {
-        allow read, create, update: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
-        allow delete: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+        allow read: if (getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
+        allow create, update: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao')))
+        );
+        allow delete: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao')))
+        );
       }
 
       match /orcamentos/{orcamentoId} {
-        allow read, write: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
+        allow read: if (getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
+        allow write: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao')))
+        );
       }
 
       match /pedidos_site/{pedidoId} {
         allow read: if (getEmpresaUsuario() == empresaId && isAutenticado()) || isSuperAdmin();
-        allow create: if true; // Pedidos podem vir anonimamente da vitrine
-        allow update, delete: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
+        allow create: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) &&
+          request.resource.data.keys().hasAll(['clienteNome', 'tot', 'itens']) &&
+          request.resource.data.clienteNome is string &&
+          request.resource.data.clienteNome.size() <= 120 &&
+          request.resource.data.itens is list &&
+          request.resource.data.itens.size() <= 100;
+        allow update, delete: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao')))
+        );
       }
 
       match /financeiro/{finId} {
-        allow read: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
-        allow create: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao') || temPermissao(empresaId, 'perm_pdv'));
-        allow update, delete: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+        allow read: if (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
+        allow create: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao') || temPermissao(empresaId, 'perm_pdv')))
+        );
+        allow update, delete: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao')))
+        );
       }
 
       match /compras/{compraId} {
-        allow read, write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+        allow read: if (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
+        allow write: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao')))
+        );
       }
 
       match /notas_servico/{docId} {
-        allow read: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
-        allow write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+        allow read: if (getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
+        allow write: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao')))
+        );
       }
 
       match /notas_devolucao/{docId} {
-        allow read: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
-        allow write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+        allow read: if (getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
+        allow write: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao')))
+        );
       }
 
       match /notas_avulsas/{docId} {
-        allow read: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
-        allow write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+        allow read: if (getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
+        allow write: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao')))
+        );
       }
 
       match /notas_fiscais/{docId} {
-        allow read: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
-        allow write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
-      }
-
-      match /caixa/{caixaId} {
-        allow read, write: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao') || isAdmin(empresaId));
+        allow read: if (getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
+        allow write: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao')))
+        );
       }
 
       match /caixa_fechamentos/{docId} {
-        allow read, create: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
-        allow update, delete: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+        allow read: if (getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
+        allow create: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao')))
+        );
+        allow update, delete: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao')))
+        );
       }
 
       match /fechamentos_caixa/{docId} {
-        allow read, create: if getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'));
-        allow update, delete: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+        allow read: if (getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
+        allow create: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (temPermissao(empresaId, 'perm_pdv') || temPermissao(empresaId, 'perm_gestao')))
+        );
+        allow update, delete: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao')))
+        );
       }
 
       // ==========================================
@@ -230,22 +297,35 @@ service cloud.firestore {
       // ==========================================
       match /funcionarios/{userId} {
         allow read: if (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || request.auth.uid == userId)) || isSuperAdmin();
-        // Permite criacao pelo admin da empresa, pelo dono no onboarding ou pelo super admin
-        allow create: if (getEmpresaUsuario() == empresaId && isAdmin(empresaId)) || isDonoNoOnboarding(empresaId) || isSuperAdmin();
-        allow update, delete: if (getEmpresaUsuario() == empresaId && isAdmin(empresaId)) || isSuperAdmin();
+        // Permite criacao pelo admin da empresa ativa, pelo dono no onboarding ou pelo super admin
+        allow create: if isSuperAdmin() || isDonoNoOnboarding(empresaId) || (
+          getEmpresaUsuario() == empresaId && isAdmin(empresaId) && empresaEstaAtiva(empresaId)
+        );
+        allow update, delete: if isSuperAdmin() || (
+          getEmpresaUsuario() == empresaId && isAdmin(empresaId) && empresaEstaAtiva(empresaId)
+        );
       }
 
       match /marketing_historico/{docId} {
-        allow read, write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+        allow read: if (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
+        allow write: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao')))
+        );
       }
       
       match /relatorios_ia_historico/{docId} {
-        allow read, write: if getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'));
+        allow read: if (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
+        allow write: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao')))
+        );
       }
 
       // Tudo mais bloqueado dentro do tenant
       match /{document=**} {
-        allow read, write: if getEmpresaUsuario() == empresaId && isAdmin(empresaId);
+        allow read: if (getEmpresaUsuario() == empresaId && isAdmin(empresaId)) || isSuperAdmin();
+        allow write: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && isAdmin(empresaId))
+        );
       }
     }
 
@@ -269,7 +349,13 @@ service cloud.firestore {
     // FAQ Dinâmico / Base de conhecimento compartilhada
     match /faq_dinamico/{faqId} {
       allow read: if true;
-      allow create: if true;
+      allow create: if isSuperAdmin() || (
+        request.resource.data.keys().hasAll(['pergunta', 'resposta']) &&
+        request.resource.data.pergunta is string &&
+        request.resource.data.pergunta.size() <= 500 &&
+        request.resource.data.resposta is string &&
+        request.resource.data.resposta.size() <= 5000
+      );
       allow update, delete: if isSuperAdmin();
     }
 

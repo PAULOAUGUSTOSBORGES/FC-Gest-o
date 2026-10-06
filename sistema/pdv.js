@@ -3270,6 +3270,7 @@ async function finalizarVendaMultipla() {
     
     batch.set(vendaRef, novaVendaObj, { merge: true });
 
+    const novosLancamentosFinanceiro = [];
     if (!isOrcamento && isVendaBalcao) {
         let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
         let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
@@ -3299,7 +3300,9 @@ async function finalizarVendaMultipla() {
                         }
                         
                         const finRef = window.getEmpresaRef().collection('financeiro').doc();
-                        batch.set(finRef, { ref: `${pRef} [${i}/${p.parcelas || 1}]`, data: dataVencParc.toISOString(), pessoa: cliInfo.nome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas', origemVendaId: idFinalVenda }); 
+                        const finDados = { id: finRef.id, ref: `${pRef} [${i}/${p.parcelas || 1}]`, data: dataVencParc.toISOString(), pessoa: cliInfo.nome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas', origemVendaId: idFinalVenda };
+                        batch.set(finRef, finDados);
+                        novosLancamentosFinanceiro.push(finDados);
                     } 
                 } else if (p.metodo && (String(p.metodo).includes('Crédito') || String(p.metodo).includes('Débito'))) { 
                     let prazoCartao = (db.config && db.config.prazos && db.config.prazos[p.metodo] !== undefined) ? parseInt(db.config.prazos[p.metodo]) : 30;
@@ -3308,11 +3311,15 @@ async function finalizarVendaMultipla() {
                         let dataVencParc = new Date(dataIso);
                         dataVencParc.setDate(dataVencParc.getDate() + (prazoCartao * i));
                         const finRef = window.getEmpresaRef().collection('financeiro').doc();
-                        batch.set(finRef, { ref: `${pRef} [${i}/${p.parcelas || 1}]`, data: dataVencParc.toISOString(), pessoa: cliInfo.nome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas', metodoPagamento: p.metodo, origemVendaId: idFinalVenda }); 
+                        const finDados = { id: finRef.id, ref: `${pRef} [${i}/${p.parcelas || 1}]`, data: dataVencParc.toISOString(), pessoa: cliInfo.nome, wpp: '', valor: valParc, status: 'PENDENTE', tipo: 'RECEITA', categoria: 'Vendas', metodoPagamento: p.metodo, origemVendaId: idFinalVenda };
+                        batch.set(finRef, finDados);
+                        novosLancamentosFinanceiro.push(finDados);
                     } 
                 } else if (p.metodo === 'Dinheiro' || p.metodo === 'PIX') { 
                     const finRef = window.getEmpresaRef().collection('financeiro').doc();
-                    batch.set(finRef, { ref: pRef, data: dataIso, pessoa: cliInfo.nome, wpp: '', valor: valorParaCaixa, status: 'PAGO', tipo: 'RECEITA', categoria: 'Vendas', metodoPagamento: p.metodo, dataPagamento: dataIso, origemVendaId: idFinalVenda }); 
+                    const finDados = { id: finRef.id, ref: pRef, data: dataIso, pessoa: cliInfo.nome, wpp: '', valor: valorParaCaixa, status: 'PAGO', tipo: 'RECEITA', categoria: 'Vendas', metodoPagamento: p.metodo, dataPagamento: dataIso, origemVendaId: idFinalVenda };
+                    batch.set(finRef, finDados);
+                    novosLancamentosFinanceiro.push(finDados);
                 }
 
                 let descMov = pRef;
@@ -3385,6 +3392,22 @@ async function finalizarVendaMultipla() {
         }
     }
 
+    // Persistência e enfileiramento das parcelas financeiras geradas pela venda
+    if (novosLancamentosFinanceiro.length > 0) {
+        if (typeof db !== 'undefined') {
+            db.financeiro = [...(db.financeiro || []), ...novosLancamentosFinanceiro];
+        }
+        if (typeof window.FCCache !== 'undefined') {
+            const finExistentes = window.FCCache.get('financeiro') || [];
+            window.FCCache.set('financeiro', [...finExistentes, ...novosLancamentosFinanceiro]);
+            if (typeof window.FCCache.enfileirarOperacao === 'function') {
+                novosLancamentosFinanceiro.forEach(fItem => {
+                    window.FCCache.enfileirarOperacao('financeiro', fItem.id, 'set', fItem);
+                });
+            }
+        }
+    }
+
     if (window.FCCache && typeof window.FCCache.isModoEconomia === 'function' && window.FCCache.isModoEconomia()) {
         console.log('[PDV] Venda registrada no repositório local (Modo Economia). Enfileirada para sincronização.');
         isProcessingVenda = false;
@@ -3397,6 +3420,9 @@ async function finalizarVendaMultipla() {
             await batch.commit();
             if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.removerDaFila === 'function') {
                 window.FCCache.removerDaFila('vendas', idFinalVenda);
+                novosLancamentosFinanceiro.forEach(fItem => {
+                    window.FCCache.removerDaFila('financeiro', fItem.id);
+                });
             }
             isProcessingVenda = false;
             vendaIdempotencyKey = null;
@@ -4071,21 +4097,22 @@ async function executarEstornoEEdicao(id) {
                 await window.excluirAgendamentoVinculadoVenda(id, v.numeroPedido);
             }
         }
-        const vendaRef = window.getEmpresaRef().collection('vendas').doc(String(id));
-        batch.delete(vendaRef);
-        
-        // Remove da memória local e cache imediatamente
-        if (typeof db !== 'undefined' && Array.isArray(db.vendas)) {
-            db.vendas = db.vendas.filter(x => String(x.id) !== String(id));
-        }
-        if (typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) {
-            window.db.vendas = window.db.vendas.filter(x => String(x.id) !== String(id));
-        }
-        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.removerItem === 'function') {
-            await window.FCCache.removerItem('vendas', id);
-        }
-
-        await batch.commit(); 
+        if (!isOrcamento) {
+            const vendaRef = window.getEmpresaRef().collection('vendas').doc(String(id));
+            batch.delete(vendaRef);
+            
+            // Remove da memória local e cache imediatamente
+            if (typeof db !== 'undefined' && Array.isArray(db.vendas)) {
+                db.vendas = db.vendas.filter(x => String(x.id) !== String(id));
+            }
+            if (typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) {
+                window.db.vendas = window.db.vendas.filter(x => String(x.id) !== String(id));
+            }
+            if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.removerItem === 'function') {
+                await window.FCCache.removerItem('vendas', id);
+            }
+            await batch.commit();
+        } 
 
         pdvLimpar(); 
         
@@ -5222,17 +5249,74 @@ function pdvVerificarAlertaDescontoGlobal() {
 }
 window.pdvVerificarAlertaDescontoGlobal = pdvVerificarAlertaDescontoGlobal;
 
-// Atalho F9 para lançar/finalizar venda no PDV
-if (!window._listenerF9Attached) {
-    window._listenerF9Attached = true;
+// Atalhos Ergonômicos de Teclado no PDV (F1, F2, F3, F4, F9, Esc)
+if (!window._listenerPdvAtalhosAttached) {
+    window._listenerPdvAtalhosAttached = true;
     window.addEventListener('keydown', function(e) {
-        if (e.key === 'F9') {
+        const viewPdv = document.getElementById('view-pdv');
+        const isPdvVisivel = !viewPdv || (!viewPdv.classList.contains('hidden') && viewPdv.offsetParent !== null);
+        if (!isPdvVisivel) return;
+
+        // F1: Busca de Cliente
+        if (e.key === 'F1') {
+            e.preventDefault();
+            const buscaCli = document.getElementById('pdv-cliente-busca');
+            if (buscaCli) { buscaCli.focus(); buscaCli.select(); }
+        }
+        // F2: Busca de Produto / Leitor de Código de Barras
+        else if (e.key === 'F2') {
+            e.preventDefault();
+            const buscaProd = document.getElementById('busca-produto-pdv');
+            if (buscaProd) { buscaProd.focus(); buscaProd.select(); }
+        }
+        // F3: Desconto Global
+        else if (e.key === 'F3') {
+            e.preventDefault();
+            const descInput = document.getElementById('pdv-desconto');
+            if (descInput) { descInput.focus(); descInput.select(); }
+        }
+        // F4: Cancelar / Limpar Carrinho
+        else if (e.key === 'F4') {
+            e.preventDefault();
+            if (typeof pdvLimpar === 'function' && Array.isArray(cart) && cart.length > 0) {
+                if (typeof abrirConfirmacao === 'function') {
+                    abrirConfirmacao('Limpar Carrinho (F4)', 'Deseja realmente esvaziar todos os itens do carrinho?', pdvLimpar);
+                } else if (confirm('Deseja realmente esvaziar o carrinho?')) {
+                    pdvLimpar();
+                }
+            }
+        }
+        // F9: Lançar / Finalizar Venda
+        else if (e.key === 'F9') {
             const btnFinalizar = document.getElementById('btn-finalizar-venda');
-            const viewPdv = document.getElementById('view-pdv');
-            const isPdvVisivel = !viewPdv || (!viewPdv.classList.contains('hidden') && viewPdv.offsetParent !== null);
-            if (isPdvVisivel && btnFinalizar && !btnFinalizar.disabled) {
+            if (btnFinalizar && !btnFinalizar.disabled) {
                 e.preventDefault();
                 btnFinalizar.click();
+            }
+        }
+        // Esc: Fechar modais abertos e retornar foco ao leitor
+        else if (e.key === 'Escape') {
+            const modaisAbertos = document.querySelectorAll('[id^="modal-"]:not(.hidden), #modal-confirmacao:not(.hidden)');
+            if (modaisAbertos.length > 0) {
+                modaisAbertos.forEach(m => m.classList.add('hidden'));
+                const buscaProd = document.getElementById('busca-produto-pdv');
+                if (buscaProd) setTimeout(() => buscaProd.focus(), 100);
+            }
+        }
+    });
+
+    // Auto-recuperação de foco no leitor de código de barras
+    document.addEventListener('click', function(e) {
+        const viewPdv = document.getElementById('view-pdv');
+        const isPdvVisivel = !viewPdv || (!viewPdv.classList.contains('hidden') && viewPdv.offsetParent !== null);
+        if (!isPdvVisivel) return;
+
+        // Se nenhum modal estiver aberto e o clique não foi em outro input/select/textarea
+        const modalAberto = document.querySelector('[id^="modal-"]:not(.hidden)');
+        if (!modalAberto && e.target && !['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(e.target.tagName)) {
+            const buscaProd = document.getElementById('busca-produto-pdv');
+            if (buscaProd && document.activeElement !== buscaProd) {
+                buscaProd.focus();
             }
         }
     });

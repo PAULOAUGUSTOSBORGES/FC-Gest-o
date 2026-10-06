@@ -175,6 +175,26 @@
         return _dbPromise;
     }
 
+        function _sanitizarDadosSensiveis(dados) {
+        if (!dados || typeof dados !== 'object') return dados;
+        if (Array.isArray(dados)) {
+            return dados.map(item => _sanitizarDadosSensiveis(item));
+        }
+        const seguro = Object.assign({}, dados);
+        const campos = [
+            'certificadoBase64', 'certificadoSenha', 'cscToken', 'sefazSenha',
+            'senhaCertificado', 'tokenPrivado', 'sefaz_token', 'senha_certificado'
+        ];
+        campos.forEach(c => { if (c in seguro) delete seguro[c]; });
+        if (seguro.empresa && typeof seguro.empresa === 'object') {
+            seguro.empresa = _sanitizarDadosSensiveis(seguro.empresa);
+        }
+        if (seguro.fiscal && typeof seguro.fiscal === 'object') {
+            seguro.fiscal = _sanitizarDadosSensiveis(seguro.fiscal);
+        }
+        return seguro;
+    }
+
     async function _idbSalvarColecao(colecao, dados) {
         try {
             const db = await _abrirIndexedDB();
@@ -191,7 +211,7 @@
                         chave: chave,
                         empId: empId,
                         colecao: colecao,
-                        dados: dados,
+                        dados: _sanitizarDadosSensiveis(dados),
                         ts: Date.now()
                     });
                     tx.oncomplete = function () { resolve(true); };
@@ -377,7 +397,7 @@
         try {
             if (typeof sessionStorage === 'undefined') return;
 
-            let dadosParaSalvar = dados;
+            let dadosParaSalvar = _sanitizarDadosSensiveis(dados);
             // Otimização: remove fotos pesadas em base64 do cache de produtos do sessionStorage
             if (colecao === 'produtos' && Array.isArray(dados)) {
                 dadosParaSalvar = dados.map(p => {
@@ -1634,6 +1654,12 @@
         }
     }
     if (typeof window !== 'undefined') {
+                window.addEventListener('online', function() {
+            console.log('[FCRepo] 🌐 Conexão restabelecida! Sincronizando pendências offline automaticamente...');
+            if (window.FCCache && typeof window.FCCache.sincronizarComFirebase === 'function') {
+                setTimeout(function() { window.FCCache.sincronizarComFirebase(false); }, 1500);
+            }
+        });
         window.addEventListener('storage', function(e) {
             if (e.key === 'fc_sync_trigger' || e.key === 'fc_ultima_sincronizacao') {
                 _atualizarBadgePendencias();

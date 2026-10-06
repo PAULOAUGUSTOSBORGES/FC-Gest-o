@@ -480,7 +480,7 @@ function renderProdutos() {
         return `
         <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700 ${p.ativo === false ? 'opacity-60' : ''}">
             <td class="p-3 text-center">${fHtml}</td>
-            <td class="p-3"><p class="font-bold text-slate-800 dark:text-slate-100">${p.nome} ${badgeInativo}</p><p class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">EAN: ${p.ean || 'S/N'} | ${p.categoria || 'Sem categoria'} | Marca: ${p.marca || '-'}</p></td>
+            <td class="p-3"><p class="font-bold text-slate-800 dark:text-slate-100">${(window.escapeHtml||(x=>x))(p.nome)} ${badgeInativo}</p><p class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">EAN: ${(window.escapeHtml||(x=>x))(p.ean || 'S/N')} | ${(window.escapeHtml||(x=>x))(p.categoria || 'Sem categoria')} | Marca: ${(window.escapeHtml||(x=>x))(p.marca || '-')}</p></td>
             <td class="p-3 text-right"><p class="text-slate-600 dark:text-slate-300 font-medium">${formatMoney(p.custo)}</p><p class="text-[10px] text-blue-500 font-bold">${p.custo > 0 ? (((p.preco - p.custo) / p.custo) * 100).toFixed(2) : (p.margem || 0).toFixed(2)}% MKP</p></td>
             <td class="p-3 text-right font-bold text-emerald-600">${formatMoney(p.preco)}</td>
             <td class="p-3 text-center font-bold"><span class="px-2 py-1 rounded ${corEstoque}">${p.estoque} un</span></td>

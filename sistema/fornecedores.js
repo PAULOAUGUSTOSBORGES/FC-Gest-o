@@ -1,4 +1,4 @@
-﻿// fornecedores.js - Lógica Exclusiva de Fornecedores
+// fornecedores.js - Lógica Exclusiva de Fornecedores
 
 let acaoConfirmacaoPendente = null;
 
@@ -130,6 +130,21 @@ async function salvarFornecedor() {
     const id = document.getElementById('forn-id').value;
     const nome = document.getElementById('forn-nome').value.trim();
     if (!nome) return showToast('Razão Social obrigatória!', 'error');
+
+    const cnpjLimpo = (document.getElementById('forn-doc')?.value || '').replace(/\D/g, '');
+    if (cnpjLimpo.length > 0) {
+        if (cnpjLimpo.length === 14) {
+            if (typeof window.validarCNPJ === 'function' && !window.validarCNPJ(cnpjLimpo)) {
+                return showToast('CNPJ do fornecedor é inválido!', 'warning');
+            }
+        } else if (cnpjLimpo.length === 11) {
+            if (typeof window.validarCPF === 'function' && !window.validarCPF(cnpjLimpo)) {
+                return showToast('CPF do fornecedor é inválido!', 'warning');
+            }
+        } else {
+            return showToast('Documento do fornecedor incompleto.', 'warning');
+        }
+    }
 
     const f = {
         nome: nome, doc: document.getElementById('forn-doc').value, cnpj: document.getElementById('forn-doc').value,

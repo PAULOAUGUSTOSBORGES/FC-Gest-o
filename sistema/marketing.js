@@ -1,4 +1,4 @@
-﻿// marketing.js - Lógica para os Lembretes Diários de WhatsApp
+// marketing.js - Lógica para os Lembretes Diários de WhatsApp
 
 let unsubscribeClientes = null;
 let todosClientes = [];
@@ -612,6 +612,39 @@ window.fecharModalHistorico = function() {
 
 // FIX: exportar carregarHistoricoMarketing globalmente para que botões onclick e callbacks funcionem
 window.carregarHistoricoMarketing = carregarHistoricoMarketing;
+
+// Exportação da Consultoria IA para Word (.doc) e PDF
+window.exportarMarketingIAConsultoria = function(tipo) {
+    const cont = document.getElementById('ia-resultado-container');
+    if (!cont || !cont.innerText || cont.innerText.trim().length < 10) {
+        if (typeof showToast === 'function') showToast('Gere uma consultoria antes de exportar.', 'warning');
+        return;
+    }
+    const titulo = 'Consultoria de Marketing IA - FC Gestão';
+    const htmlConteudo = cont.innerHTML;
+
+    if (tipo === 'word') {
+        const docHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>" + titulo + "</title><style>body{font-family:Arial,sans-serif;line-height:1.6;padding:24px;color:#1e293b;}</style></head><body><h2>" + titulo + "</h2><hr/>" + htmlConteudo + "</body></html>";
+        const blob = new Blob(['\ufeff', docHtml], { type: 'application/msword' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'consultoria_marketing_' + new Date().toISOString().slice(0, 10) + '.doc';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        if (typeof showToast === 'function') showToast('Arquivo Word gerado com sucesso!', 'success');
+    } else if (tipo === 'pdf') {
+        const win = window.open('', '_blank');
+        if (!win) {
+            if (typeof showToast === 'function') showToast('Permita pop-ups no navegador para gerar o PDF.', 'warning');
+            return;
+        }
+        win.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + titulo + '</title><style>body{font-family:Arial,sans-serif;padding:30px;line-height:1.6;color:#1e293b;}h2{color:#0f172a;}@media print{button{display:none;}}</style></head><body><h2>' + titulo + '</h2><hr style="margin-bottom:20px;"/>' + htmlConteudo + '<script>window.onload=function(){window.print();};<\/script></body></html>');
+        win.document.close();
+    }
+};
 
 
 

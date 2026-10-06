@@ -2956,11 +2956,27 @@ window.excluirVenda = function(id) {
                     await window.excluirAgendamentoVinculadoVenda(id, v.numeroPedido);
                 }
                 
-                if(v.pag && typeof v.pag === 'string' && String(v.pag).includes('Dinheiro')) { 
+                // Correção de Confiabilidade: deduz da gaveta exclusivamente a quantia recebida em Dinheiro,
+                // e apenas se a venda não estiver pendente de pagamento / orçamento.
+                const statusVenda = String(v.status || '').toUpperCase();
+                const isNaoPago = statusVenda === 'AGUARDANDO_PAGAMENTO' || statusVenda === 'ORÇAMENTO' || statusVenda === 'CANCELADO';
+                
+                let valorDinheiroEstorno = 0;
+                if (!isNaoPago) {
+                    if (Array.isArray(v.pagamentos) && v.pagamentos.length > 0) {
+                        valorDinheiroEstorno = v.pagamentos
+                            .filter(p => String(p.metodo || p.forma || '').toLowerCase().includes('dinheiro'))
+                            .reduce((acc, cur) => acc + (Number(cur.valor) || 0), 0);
+                    } else if (v.pag && typeof v.pag === 'string' && String(v.pag).includes('Dinheiro')) {
+                        valorDinheiroEstorno = Number(v.valorLiquido || v.tot) || 0;
+                    }
+                }
+
+                if (valorDinheiroEstorno > 0) { 
                     let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
                     let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
-                    let cxSaldoNovo = (cxAtual.saldo || 0) - (Number(v.valorLiquido || v.tot) || 0);
-                    cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno (Exclusão) ${v.tipo || 'VENDA'} #${numPedStr}`, valor: (Number(v.valorLiquido || v.tot) || 0) });
+                    let cxSaldoNovo = (cxAtual.saldo || 0) - valorDinheiroEstorno;
+                    cxHistoricoNovo.unshift({ data: new Date().toISOString(), tipo: 'SAIDA', desc: `Estorno (Exclusão) ${v.tipo || 'VENDA'} #${numPedStr}`, valor: valorDinheiroEstorno });
                     
                     const caixaRef = window.getEmpresaRef().collection('caixa').doc('caixa_atual');
                     batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
