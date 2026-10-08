@@ -75,10 +75,7 @@ function inicializarCadastro() {
         if (v && v.classList.contains('active')) renderKardex();
     }, { query: function(ref) { return ref.orderBy('data', 'desc').limit(50); } });
 
-    // Carrega vendas para exibir historico de compras do cliente
-    _listen('vendas', function(dados) {
-        db.vendas = dados;
-    });
+    // Histórico de compras do cliente é carregado sob demanda no modal para economizar leituras
 
     // Carrega categorias para o cadastro de produtos
     _listen('categorias', function(dados) {
@@ -268,8 +265,27 @@ function limparFiltrosProdutos() {
     const ordem = document.getElementById('filtro-prod-ordem');
     if (ordem) ordem.value = 'nome-asc';
     window.prodSortDirection = 'asc';
+    window._produtosLimiteExibicao = 50;
     renderProdutos();
 }
+
+function debounceProd(func, wait) {
+    let timeout;
+    return function (...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+}
+window.debouncedRenderProdutos = debounceProd(() => {
+    window._produtosLimiteExibicao = 50;
+    renderProdutos();
+}, 200);
+
+function carregarMaisProdutos() {
+    window._produtosLimiteExibicao = (window._produtosLimiteExibicao || 50) + 50;
+    renderProdutos();
+}
+window.carregarMaisProdutos = carregarMaisProdutos;
 
 function renderProdutos() {
     const inputBusca = document.getElementById('busca-produto-lista');
@@ -472,7 +488,11 @@ function renderProdutos() {
         return;
     }
 
-    tbody.innerHTML = filtrados.map(p => {
+    window._produtosLimiteExibicao = window._produtosLimiteExibicao || 50;
+    const totalItensFiltrados = filtrados.length;
+    const itensExibidos = filtrados.slice(0, window._produtosLimiteExibicao);
+
+    const rowsHtml = itensExibidos.map(p => {
         const isBaixo = p.estoque <= p.min; const isZerado = p.estoque <= 0;
         const corEstoque = isZerado ? 'text-red-600 bg-red-50 dark:bg-red-950/40 dark:text-red-400' : (isBaixo ? 'text-amber-600 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-400' : 'text-slate-700 dark:text-slate-200');
         const fHtml = p.foto ? '<img src="' + p.foto + '" onclick="abrirZoom(\'' + p.foto + '\')" class="w-10 h-10 rounded object-cover border border-slate-200 dark:border-slate-700 mx-auto cursor-zoom-in hover:opacity-80 transition">' : '<div class="w-10 h-10 mx-auto rounded bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-400 text-xs"><i class="fa-regular fa-image"></i></div>';
@@ -487,6 +507,18 @@ function renderProdutos() {
             <td class="p-3 text-center flex items-center justify-center gap-1 mt-2"><button onclick="editarProduto('${p.id}')" class="text-blue-500 hover:text-blue-700 p-2"><i class="fa-solid fa-pen"></i></button><button onclick="excluirProduto('${p.id}')" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash"></i></button></td>
         </tr>`;
     }).join('');
+
+    const btnMaisHtml = (totalItensFiltrados > window._produtosLimiteExibicao)
+        ? `<tr>
+            <td colspan="6" class="p-4 text-center bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
+                <button type="button" onclick="carregarMaisProdutos()" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-xs font-bold transition shadow-xs">
+                    <i class="fa-solid fa-arrow-down"></i> Carregar mais ${Math.min(50, totalItensFiltrados - window._produtosLimiteExibicao)} produtos (${totalItensFiltrados - window._produtosLimiteExibicao} restantes)
+                </button>
+            </td>
+        </tr>`
+        : '';
+
+    tbody.innerHTML = rowsHtml + btnMaisHtml;
 }
 
 let fotosGaleria = [];
@@ -1241,10 +1273,28 @@ async function editarCliente(id) {
         if (el) el.value = c[campo] || '';
     });
 
-    const hist = db.vendas ? db.vendas.filter(v => String(v.clienteId) === idStr) : [];
-    document.getElementById('cli-historico-body').innerHTML = hist.length > 0
-        ? hist.map(v => `<tr data-venda-id="${v.id}" class="linha-historico hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700 cursor-pointer"><td class="p-3">${formatData(v.data).split(' ')[0]}</td><td class="p-3 font-mono text-slate-500 dark:text-slate-400">#${String(v.numeroPedido || v.id).padStart(4, '0')}</td><td class="p-3"><span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold">${v.pag}</span></td><td class="p-3 text-right font-bold text-emerald-600">${formatMoney(v.tot)}</td></tr>`).join('')
-        : '<tr><td colspan="4" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhuma compra.</td></tr>';
+    const vendasLocais = (window.db && window.db.vendas) || (window.FCCache && window.FCCache.get('vendas')) || [];
+    let hist = Array.isArray(vendasLocais) ? vendasLocais.filter(v => String(v.clienteId) === idStr) : [];
+    
+    const renderHistCli = (lista) => {
+        const bodyEl = document.getElementById('cli-historico-body');
+        if (!bodyEl) return;
+        bodyEl.innerHTML = lista.length > 0
+            ? lista.map(v => `<tr data-venda-id="${v.id}" class="linha-historico hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700 cursor-pointer"><td class="p-3">${formatData(v.data).split(' ')[0]}</td><td class="p-3 font-mono text-slate-500 dark:text-slate-400">#${String(v.numeroPedido || v.id).padStart(4, '0')}</td><td class="p-3"><span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold">${v.pag}</span></td><td class="p-3 text-right font-bold text-emerald-600">${formatMoney(v.tot)}</td></tr>`).join('')
+            : '<tr><td colspan="4" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhuma compra.</td></tr>';
+    };
+
+    renderHistCli(hist);
+
+    // Carrega sob demanda apenas as vendas deste cliente quando não houver cache
+    if (hist.length === 0 && navigator.onLine && typeof window.getEmpresaRef === 'function') {
+        window.getEmpresaRef().collection('vendas').where('clienteId', '==', idStr).limit(30).get().then(snap => {
+            if (!snap.empty) {
+                const comprasCli = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderHistCli(comprasCli);
+            }
+        }).catch(() => {});
+    }
 }
 
 function excluirCliente(id) {

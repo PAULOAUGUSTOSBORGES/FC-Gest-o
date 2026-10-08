@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // GESTO.JS - ERP FINANCEIRO, DASHBOARD E PROJEES
 // ==========================================
 
@@ -557,14 +557,110 @@ function renderCaixaDiario() {
     }
     const dataFiltro = dataFiltroEl ? dataFiltroEl.value : '';
 
-    const todosHistorico = Array.isArray(db.caixa?.historico) ? db.caixa.historico : [];
-    let movs = [];
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const hojeInicioTime = hoje.getTime();
 
-    if (modoFiltroCaixa === 'TURNO') {
-        const dtAbertura = db.caixa?.ultimaAbertura ? new Date(db.caixa.ultimaAbertura).getTime() : 0;
-        if (db.caixa?.status === 'ABERTO' && dtAbertura > 0) {
-            movs = todosHistorico.filter(m => new Date(m.data || 0).getTime() >= (dtAbertura - 60000));
+    // 1. Atualizar cards de KPI de Vendas Concluídas Hoje
+    const vendasHojeLista = (Array.isArray(db.vendas) ? db.vendas : []).filter(v => {
+        if (!v || v.tipo === 'ORÇAMENTO') return false;
+        const st = String(v.status || '').toUpperCase();
+        if (st === 'CANCELADA' || st === 'AGUARDANDO_PAGAMENTO') return false;
+        const dt = new Date(v.data?.toDate ? v.data.toDate() : (v.data || 0)).getTime();
+        return dt >= hojeInicioTime;
+    });
+
+    let kpiTotHoje = 0, kpiPixHoje = 0, kpiCartoesHoje = 0, kpiDinheiroHoje = 0;
+    vendasHojeLista.forEach(v => {
+        const tot = Number(v.tot || v.subtotal || 0);
+        kpiTotHoje += tot;
+        if (Array.isArray(v.pagamentos) && v.pagamentos.length > 0) {
+            v.pagamentos.forEach(p => {
+                const met = String(p.metodo || '');
+                let val = Number(p.valor || 0);
+                if (met.includes('Dinheiro') && Number(v.troco || 0) > 0) {
+                    val = Math.max(0, val - Number(v.troco || 0));
+                }
+                if (met.includes('PIX') || met.includes('Pix')) kpiPixHoje += val;
+                else if (met.includes('Crédito') || met.includes('Credito') || met.includes('Débito') || met.includes('Debito')) kpiCartoesHoje += val;
+                else if (met.includes('Dinheiro')) kpiDinheiroHoje += val;
+            });
         } else {
+            const met = String(v.pag || '');
+            if (met.includes('PIX') || met.includes('Pix')) kpiPixHoje += tot;
+            else if (met.includes('Crédito') || met.includes('Credito') || met.includes('Débito') || met.includes('Debito')) kpiCartoesHoje += tot;
+            else if (met.includes('Dinheiro')) kpiDinheiroHoje += tot;
+        }
+    });
+
+    const elKpiTot = document.getElementById('kpi-vendas-hoje-total');
+    if (elKpiTot) elKpiTot.innerText = formatMoney(kpiTotHoje);
+    const elKpiQtd = document.getElementById('kpi-vendas-hoje-qtd');
+    if (elKpiQtd) elKpiQtd.innerText = `${vendasHojeLista.length} venda${vendasHojeLista.length === 1 ? '' : 's'}`;
+    const elKpiPix = document.getElementById('kpi-vendas-hoje-pix');
+    if (elKpiPix) elKpiPix.innerText = formatMoney(kpiPixHoje);
+    const elKpiCartoes = document.getElementById('kpi-vendas-hoje-cartoes');
+    if (elKpiCartoes) elKpiCartoes.innerText = formatMoney(kpiCartoesHoje);
+    const elKpiDinheiro = document.getElementById('kpi-vendas-hoje-dinheiro');
+    if (elKpiDinheiro) elKpiDinheiro.innerText = formatMoney(kpiDinheiroHoje);
+
+    // 2. Unificar histórico com vendas do repositório para garantir que NENHUMA venda fique invisível
+    const todosHistorico = Array.isArray(db.caixa?.historico) ? [...db.caixa.historico] : [];
+    if (Array.isArray(db.vendas)) {
+        db.vendas.forEach(v => {
+            if (!v || v.tipo === 'ORÇAMENTO') return;
+            const st = String(v.status || '').toUpperCase();
+            if (st === 'CANCELADA' || st === 'AGUARDANDO_PAGAMENTO') return;
+            
+            const numStr = String(v.numero || v.id || '');
+            const jaExiste = todosHistorico.some(h => {
+                const desc = String(h.desc || '');
+                return numStr && (desc.includes('#' + numStr) || desc.includes('#' + numStr.padStart(4, '0')));
+            });
+
+            if (!jaExiste) {
+                const metodo = v.pag || (Array.isArray(v.pagamentos) && v.pagamentos[0]?.metodo) || 'Outros';
+                const isDinheiro = String(metodo).includes('Dinheiro');
+                todosHistorico.push({
+                    data: v.data?.toDate ? v.data.toDate().toISOString() : (v.data || new Date().toISOString()),
+                    tipo: 'ENTRADA (' + metodo.toUpperCase() + ')',
+                    metodo: metodo,
+                    desc: `Venda #${String(v.numero || v.id).padStart(4, '0')} - ${v.cliente?.nome || v.cliente || 'Consumidor'} (${metodo})`,
+                    valor: Number(v.tot || v.subtotal || 0),
+                    operador: v.vendedor || v.operador || 'Balcão',
+                    naoAfetaGaveta: !isDinheiro,
+                    sintetico: true
+                });
+            }
+        });
+    }
+
+    todosHistorico.sort((a, b) => new Date(b.data || 0).getTime() - new Date(a.data || 0).getTime());
+
+    // 3. Determinar corte do Turno Atual
+    let ultimoFechamentoHojeTime = 0;
+    const listaFech = Array.isArray(db.caixa_fechamentos) ? db.caixa_fechamentos : [];
+    listaFech.forEach(f => {
+        const dtF = new Date(f.dataFechamento?.toDate ? f.dataFechamento.toDate() : (f.dataFechamento || f.criadoEm || 0)).getTime();
+        if (dtF >= hojeInicioTime && dtF > ultimoFechamentoHojeTime) {
+            ultimoFechamentoHojeTime = dtF;
+        }
+    });
+
+    const dtAbertura = db.caixa?.ultimaAbertura ? new Date(db.caixa.ultimaAbertura).getTime() : 0;
+    let dataCorteTurno = hojeInicioTime;
+    if (ultimoFechamentoHojeTime > 0) {
+        dataCorteTurno = (dtAbertura > ultimoFechamentoHojeTime) ? dtAbertura : ultimoFechamentoHojeTime;
+    } else if (dtAbertura > 0 && dtAbertura < hojeInicioTime) {
+        dataCorteTurno = dtAbertura;
+    } else {
+        dataCorteTurno = hojeInicioTime;
+    }
+
+    let movs = [];
+    if (modoFiltroCaixa === 'TURNO') {
+        movs = todosHistorico.filter(m => new Date(m.data || 0).getTime() >= (dataCorteTurno - 60000));
+        if (movs.length === 0) {
             const hojeLocal = extrairDataLocalMov(new Date().toISOString());
             movs = todosHistorico.filter(m => extrairDataLocalMov(m.data) === hojeLocal);
             if (movs.length === 0 && todosHistorico.length > 0) {
@@ -717,6 +813,141 @@ async function confirmarMovCaixa() {
 // ==========================================
 // FECHAMENTO CEGO E MAPA DE CAIXA
 // ==========================================
+function apurarValoresTurnoCaixa(cxAtual) {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const hojeInicioTime = hoje.getTime();
+
+    const cx = cxAtual || db.caixa || { status: 'ABERTO', saldo: 0, historico: [] };
+    const dtAberturaTime = cx.ultimaAbertura ? new Date(cx.ultimaAbertura).getTime() : 0;
+
+    // Busca o último fechamento válido realizado hoje
+    let ultimoFechamentoHojeTime = 0;
+    const listaFech = Array.isArray(db.caixa_fechamentos) ? db.caixa_fechamentos : [];
+    listaFech.forEach(f => {
+        const dtF = new Date(f.dataFechamento?.toDate ? f.dataFechamento.toDate() : (f.dataFechamento || f.criadoEm || 0)).getTime();
+        if (dtF >= hojeInicioTime && dtF > ultimoFechamentoHojeTime) {
+            ultimoFechamentoHojeTime = dtF;
+        }
+    });
+
+    let dataCorteTime = hojeInicioTime;
+    if (ultimoFechamentoHojeTime > 0) {
+        dataCorteTime = (dtAberturaTime > ultimoFechamentoHojeTime) ? dtAberturaTime : ultimoFechamentoHojeTime;
+    } else if (dtAberturaTime > 0 && dtAberturaTime < hojeInicioTime) {
+        dataCorteTime = dtAberturaTime;
+    } else {
+        dataCorteTime = hojeInicioTime;
+    }
+
+    const dataAbertura = cx.ultimaAbertura || new Date(dataCorteTime).toISOString();
+    const targetUid = window.operadorCaixaVisualizadoUid || (window.currentUser && window.currentUser.uid) || null;
+    const targetDocId = (typeof window.obterCaixaDocId === 'function') ? window.obterCaixaDocId(targetUid) : 'caixa_atual';
+    let operador = cx.operadorAtual || window.currentUserInfo?.nome || (window.currentUser && window.currentUser.displayName) || 'Operador Caixa';
+    if (window.operadorCaixaVisualizadoUid && Array.isArray(db.funcionarios)) {
+        const funcAlvo = db.funcionarios.find(f => (f.uid === window.operadorCaixaVisualizadoUid || f.id === window.operadorCaixaVisualizadoUid));
+        if (funcAlvo && funcAlvo.nome) operador = funcAlvo.nome;
+    }
+
+    // Apura vendas do turno
+    const vendasTurno = (db.vendas || []).filter(v => {
+        if (!v || v.tipo === 'ORÇAMENTO') return false;
+        const st = String(v.status || '').toUpperCase();
+        if (st === 'CANCELADA' || st === 'AGUARDANDO_PAGAMENTO') return false;
+        const dt = new Date(v.data?.toDate ? v.data.toDate() : (v.data || 0)).getTime();
+        if (dt < dataCorteTime) return false;
+        return true;
+    });
+
+    let sysDinheiro = 0, sysDebito = 0, sysCredito = 0, sysPix = 0, sysBoleto = 0, sysFiado = 0, sysOutros = 0;
+
+    vendasTurno.forEach(v => {
+        if (Array.isArray(v.pagamentos) && v.pagamentos.length > 0) {
+            v.pagamentos.forEach(p => {
+                const metodo = String(p.metodo || '');
+                let val = Number(p.valor || 0);
+                if (metodo.includes('Dinheiro') && Number(v.troco || 0) > 0) {
+                    val = Math.max(0, val - Number(v.troco || 0));
+                }
+                if (metodo.includes('Dinheiro')) sysDinheiro += val;
+                else if (metodo.includes('Débito') || metodo.includes('Debito')) sysDebito += val;
+                else if (metodo.includes('Crédito') || metodo.includes('Credito')) sysCredito += val;
+                else if (metodo.includes('PIX') || metodo.includes('Pix')) sysPix += val;
+                else if (metodo.includes('Boleto')) sysBoleto += val;
+                else if (metodo.includes('Fiado')) sysFiado += val;
+                else sysOutros += val;
+            });
+        } else {
+            const pag = String(v.pag || '');
+            const tot = Number(v.tot || v.subtotal || 0);
+            if (pag.includes('Dinheiro')) sysDinheiro += tot;
+            else if (pag.includes('Débito') || pag.includes('Debito')) sysDebito += tot;
+            else if (pag.includes('Crédito') || pag.includes('Credito')) sysCredito += tot;
+            else if (pag.includes('PIX') || pag.includes('Pix')) sysPix += tot;
+            else if (pag.includes('Boleto')) sysBoleto += tot;
+            else if (pag.includes('Fiado')) sysFiado += tot;
+            else sysOutros += tot;
+        }
+    });
+
+    // Apura movimentações físicas de caixa
+    const movsTurno = (cx.historico || []).filter(m => {
+        const dt = new Date(m.data?.toDate ? m.data.toDate() : (m.data || 0)).getTime();
+        return dt >= dataCorteTime;
+    });
+
+    let sysFundoTroco = 0, sysSuprimentos = 0, sysSangrias = 0;
+    movsTurno.forEach(m => {
+        const v = Number(m.valor || 0);
+        if (m.tipo === 'ABERTURA') sysFundoTroco += v;
+        else if (m.tipo === 'ENTRADA' && !String(m.desc || '').includes('VENDA')) sysSuprimentos += v;
+        else if (m.tipo === 'SAIDA') sysSangrias += v;
+    });
+
+    const saldoEsperadoGaveta = Number(cx.saldo || 0);
+    const saldoMovsGaveta = sysSuprimentos + sysDinheiro - sysSangrias;
+    if (sysFundoTroco === 0 || Math.abs(saldoEsperadoGaveta - (sysFundoTroco + saldoMovsGaveta)) > 0.01) {
+        sysFundoTroco = Math.max(0, saldoEsperadoGaveta - saldoMovsGaveta);
+    }
+
+    const totalApuradoSistema = saldoEsperadoGaveta + sysDebito + sysCredito + sysPix + sysOutros;
+
+    return {
+        dataAbertura,
+        dataCorteTime,
+        sysDinheiro,
+        sysDebito,
+        sysCredito,
+        sysPix,
+        sysBoleto,
+        sysFiado,
+        sysOutros,
+        sysFundoTroco,
+        sysSuprimentos,
+        sysSangrias,
+        saldoEsperadoGaveta,
+        totalApuradoSistema,
+        targetDocId,
+        targetUid,
+        operador
+    };
+}
+
+function preencherValoresSistemaFechamento() {
+    const ap = apurarValoresTurnoCaixa();
+    const setMoney = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = Number(val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    setMoney('fc-dinheiro', ap.saldoEsperadoGaveta);
+    setMoney('fc-debito', ap.sysDebito);
+    setMoney('fc-credito', ap.sysCredito);
+    setMoney('fc-pix', ap.sysPix);
+    setMoney('fc-outros', ap.sysOutros + ap.sysBoleto + ap.sysFiado);
+    recalcularTotalDeclarado();
+}
+
 function abrirModalFechamentoCego() {
     if (!db.caixa || db.caixa.status !== 'ABERTO') {
         return showToast('O caixa já está FECHADO!', 'warning');
@@ -728,6 +959,10 @@ function abrirModalFechamentoCego() {
     document.getElementById('fc-outros').value = '';
     document.getElementById('fc-obs').value = '';
     document.getElementById('fc-total-declarado-display').innerText = 'R$ 0,00';
+    
+    // Pré-preenche automaticamente com os valores apurados para facilidade de conferência
+    preencherValoresSistemaFechamento();
+
     document.getElementById('modal-fechamento-cego').classList.remove('hidden');
 }
 
@@ -747,114 +982,54 @@ function recalcularTotalDeclarado() {
 }
 
 async function confirmarFechamentoCego() {
-    const decDinheiro = parseInputMoney(document.getElementById('fc-dinheiro').value) || 0;
-    const decDebito = parseInputMoney(document.getElementById('fc-debito').value) || 0;
-    const decCredito = parseInputMoney(document.getElementById('fc-credito').value) || 0;
-    const decPix = parseInputMoney(document.getElementById('fc-pix').value) || 0;
-    const decOutros = parseInputMoney(document.getElementById('fc-outros').value) || 0;
-    const decTotal = decDinheiro + decDebito + decCredito + decPix + decOutros;
+    let decDinheiro = parseInputMoney(document.getElementById('fc-dinheiro').value) || 0;
+    let decDebito = parseInputMoney(document.getElementById('fc-debito').value) || 0;
+    let decCredito = parseInputMoney(document.getElementById('fc-credito').value) || 0;
+    let decPix = parseInputMoney(document.getElementById('fc-pix').value) || 0;
+    let decOutros = parseInputMoney(document.getElementById('fc-outros').value) || 0;
+    let decTotal = decDinheiro + decDebito + decCredito + decPix + decOutros;
     const obs = document.getElementById('fc-obs').value.trim();
 
     let cxAtual = db.caixa || { status: 'ABERTO', saldo: 0, historico: [] };
-    const dataAbertura = cxAtual.ultimaAbertura || (new Date(Date.now() - 86400000).toISOString());
-    const dataFechamento = new Date().toISOString();
-    const targetUid = window.operadorCaixaVisualizadoUid || (window.currentUser && window.currentUser.uid) || null;
-    const targetDocId = (typeof window.obterCaixaDocId === 'function') ? window.obterCaixaDocId(targetUid) : 'caixa_atual';
-    let operador = cxAtual.operadorAtual || window.currentUserInfo?.nome || (window.currentUser && window.currentUser.displayName) || 'Operador Caixa';
-    if (window.operadorCaixaVisualizadoUid && Array.isArray(db.funcionarios)) {
-        const funcAlvo = db.funcionarios.find(f => (f.uid === window.operadorCaixaVisualizadoUid || f.id === window.operadorCaixaVisualizadoUid));
-        if (funcAlvo && funcAlvo.nome) operador = funcAlvo.nome;
+    const ap = apurarValoresTurnoCaixa(cxAtual);
+
+    if (decTotal === 0 && ap.totalApuradoSistema > 0) {
+        const confirmarPreencher = confirm("Os valores declarados estão zerados (R$ 0,00).\n\nDeseja preencher com os valores apurados pelo sistema para fechar conciliado?\n\n[OK] Sim, preencher com valores do sistema.\n[Cancelar] Fechar como R$ 0,00 (Gerará Quebra de Caixa).");
+        if (confirmarPreencher) {
+            preencherValoresSistemaFechamento();
+            decDinheiro = ap.saldoEsperadoGaveta;
+            decDebito = ap.sysDebito;
+            decCredito = ap.sysCredito;
+            decPix = ap.sysPix;
+            decOutros = ap.sysOutros + ap.sysBoleto + ap.sysFiado;
+            decTotal = decDinheiro + decDebito + decCredito + decPix + decOutros;
+        }
     }
 
-    // 1. Apura dados de vendas do sistema desde a abertura do turno do operador
-    const vendasTurno = (db.vendas || []).filter(v => {
-        if (v.tipo === 'ORÇAMENTO') return false;
-        const dt = new Date(v.data || 0).getTime();
-        if (dt < new Date(dataAbertura).getTime()) return false;
-        if (targetUid && v.operadorId) {
-            return v.operadorId === targetUid;
-        }
-        if (targetDocId && v.caixaId) {
-            return v.caixaId === targetDocId;
-        }
-        if (operador && v.operador) {
-            return v.operador === operador;
-        }
-        return true;
-    });
-
-    let sysDinheiro = 0;
-    let sysDebito = 0;
-    let sysCredito = 0;
-    let sysPix = 0;
-    let sysBoleto = 0;
-    let sysFiado = 0;
-
-    vendasTurno.forEach(v => {
-        if (Array.isArray(v.pagamentos) && v.pagamentos.length > 0) {
-            v.pagamentos.forEach(p => {
-                const metodo = String(p.metodo || '');
-                let val = Number(p.valor || 0);
-                if (metodo.includes('Dinheiro') && Number(v.troco || 0) > 0) {
-                    val = Math.max(0, val - Number(v.troco || 0));
-                }
-                if (metodo.includes('Dinheiro')) sysDinheiro += val;
-                else if (metodo.includes('Débito') || metodo.includes('Debito')) sysDebito += val;
-                else if (metodo.includes('Crédito') || metodo.includes('Credito')) sysCredito += val;
-                else if (metodo.includes('PIX') || metodo.includes('Pix')) sysPix += val;
-                else if (metodo.includes('Boleto')) sysBoleto += val;
-                else if (metodo.includes('Fiado')) sysFiado += val;
-            });
-        } else {
-            const pag = String(v.pag || '');
-            const tot = Number(v.tot || 0);
-            if (pag.includes('Dinheiro')) sysDinheiro += tot;
-            else if (pag.includes('Débito') || pag.includes('Debito')) sysDebito += tot;
-            else if (pag.includes('Crédito') || pag.includes('Credito')) sysCredito += tot;
-            else if (pag.includes('PIX') || pag.includes('Pix')) sysPix += tot;
-            else if (pag.includes('Boleto')) sysBoleto += tot;
-            else if (pag.includes('Fiado')) sysFiado += tot;
-        }
-    });
-
-    // 2. Apura movimentações físicas de caixa (Abertura, Suprimentos, Sangrias)
-    const movsTurno = (cxAtual.historico || []).filter(m => new Date(m.data || 0).getTime() >= new Date(dataAbertura).getTime());
-    let sysFundoTroco = 0;
-    let sysSuprimentos = 0;
-    let sysSangrias = 0;
-
-    movsTurno.forEach(m => {
-        if (m.tipo === 'ABERTURA') sysFundoTroco += Number(m.valor || 0);
-        else if (m.tipo === 'ENTRADA' && !m.desc.includes('VENDA')) sysSuprimentos += Number(m.valor || 0);
-        else if (m.tipo === 'SAIDA') sysSangrias += Number(m.valor || 0);
-    });
-
-    // Saldo esperado em dinheiro físico na gaveta:
-    const saldoEsperadoGaveta = (cxAtual.saldo || 0);
-    const totalApuradoSistema = saldoEsperadoGaveta + sysDebito + sysCredito + sysPix;
-    const difDinheiro = decDinheiro - saldoEsperadoGaveta;
-    const difGeral = decTotal - totalApuradoSistema;
+    const dataFechamento = new Date().toISOString();
+    const difDinheiro = decDinheiro - ap.saldoEsperadoGaveta;
+    const difGeral = decTotal - ap.totalApuradoSistema;
 
     const mapaDados = {
         id: 'FECH-' + Date.now(),
-        caixaId: targetDocId,
-        operadorId: targetUid || '',
-        dataAbertura: dataAbertura,
+        caixaId: ap.targetDocId,
+        operadorId: ap.targetUid || '',
+        dataAbertura: ap.dataAbertura,
         dataFechamento: dataFechamento,
-        operador: operador,
+        operador: ap.operador,
         observacao: obs,
         apuradoSistema: {
-            fundoTroco: sysFundoTroco,
-            suprimentos: sysSuprimentos,
-            sangrias: sysSangrias,
-            vendasDinheiro: sysDinheiro,
-            vendasDebito: sysDebito,
-            vendasCredito: sysCredito,
-            vendasPix: sysPix,
-            vendasBoleto: sysBoleto,
-            vendasFiado: sysFiado,
-            saldoEsperadoGaveta: saldoEsperadoGaveta,
-            totalGeral: totalApuradoSistema
+            fundoTroco: ap.sysFundoTroco,
+            suprimentos: ap.sysSuprimentos,
+            sangrias: ap.sysSangrias,
+            vendasDinheiro: ap.sysDinheiro,
+            vendasDebito: ap.sysDebito,
+            vendasCredito: ap.sysCredito,
+            vendasPix: ap.sysPix,
+            vendasBoleto: ap.sysBoleto,
+            vendasFiado: ap.sysFiado,
+            saldoEsperadoGaveta: ap.saldoEsperadoGaveta,
+            totalGeral: ap.totalApuradoSistema
         },
         declaradoOperador: {
             dinheiro: decDinheiro,
@@ -867,7 +1042,7 @@ async function confirmarFechamentoCego() {
         diferencas: {
             difDinheiro: difDinheiro,
             difGeral: difGeral,
-            status: difGeral > 0.05 ? 'SOBRA DE CAIXA' : (difGeral < -0.05 ? 'QUEBRA DE CAIXA' : 'CONCILIADO / EXATO')
+            status: Math.abs(difGeral) <= 0.05 ? 'CONCILIADO / EXATO' : (difGeral > 0 ? 'SOBRA DE CAIXA' : 'QUEBRA DE CAIXA')
         }
     };
 
@@ -876,9 +1051,9 @@ async function confirmarFechamentoCego() {
         cxHistoricoNovo.unshift({
             data: dataFechamento,
             tipo: 'FECHAMENTO',
-            desc: `Fechamento de Turno (${mapaDados.diferencas.status}) - Retirado: ${formatMoney(decDinheiro)} - Op: ${operador}`,
+            desc: `Fechamento de Turno (${mapaDados.diferencas.status}) - Retirado: ${formatMoney(decDinheiro)} - Op: ${ap.operador}`,
             valor: decDinheiro,
-            operador: operador,
+            operador: ap.operador,
             saldoApos: 0
         });
 
@@ -890,7 +1065,7 @@ async function confirmarFechamentoCego() {
             ...cxAtual,
             status: 'FECHADO',
             saldo: 0,
-            historico: cxHistoricoNovo,
+            historico: cxHistoricoNovo.slice(0, 50),
             ultimoFechamento: mapaDados
         };
         batch.set(caixaRef, novoCaixaDados, { merge: true });
@@ -903,11 +1078,15 @@ async function confirmarFechamentoCego() {
 
         // Atualiza memória viva e cache local imediatamente
         db.caixa = novoCaixaDados;
+        if (!Array.isArray(db.caixa_fechamentos)) db.caixa_fechamentos = [];
+        db.caixa_fechamentos.unshift(mapaDados);
+
         if (typeof FCCache !== 'undefined' && typeof FCCache.set === 'function') {
             const cacheKey = (typeof window.obterCaixaDocId === 'function') 
                 ? 'fc_moveis_' + window.obterCaixaDocId(window.operadorCaixaVisualizadoUid) 
                 : 'fc_moveis_caixa';
             FCCache.set(cacheKey, novoCaixaDados);
+            FCCache.set('caixa_fechamentos', db.caixa_fechamentos);
         }
 
         fecharModalFechamentoCego();
@@ -932,6 +1111,56 @@ function abrirUltimoMapaCaixa() {
         exibirModalMapaCaixa(db.caixa.ultimoFechamento);
     } else {
         showToast('Nenhum histórico de fechamento registrado ainda.', 'info');
+    }
+}
+
+async function excluirUltimoFechamento() {
+    const fechamento = db.caixa?.ultimoFechamento;
+    if (!fechamento || !fechamento.id) {
+        return showToast('Nenhum fechamento ativo para excluir.', 'info');
+    }
+
+    if (!confirm(`Deseja realmente EXCLUIR o fechamento #${fechamento.id}?\n\nIsso removerá este fechamento e permitirá reabrir o caixa para apurar as vendas novamente.`)) {
+        return;
+    }
+
+    try {
+        const empresaRef = window.getEmpresaRef();
+        if (!empresaRef) throw new Error('Referência da empresa não encontrada.');
+
+        await empresaRef.collection('caixa_fechamentos').doc(fechamento.id).delete();
+
+        if (Array.isArray(db.caixa_fechamentos)) {
+            db.caixa_fechamentos = db.caixa_fechamentos.filter(f => f.id !== fechamento.id);
+        }
+
+        const reabrir = confirm('Deseja REABRIR o caixa agora para continuar registrando o turno normalmente?');
+        const cxAtual = db.caixa || {};
+        delete cxAtual.ultimoFechamento;
+        if (reabrir) {
+            cxAtual.status = 'ABERTO';
+        }
+
+        const targetCaixaRef = (typeof window.obterCaixaDocRef === 'function')
+            ? window.obterCaixaDocRef(window.operadorCaixaVisualizadoUid)
+            : empresaRef.collection('caixa').doc('caixa_atual');
+
+        await targetCaixaRef.set(cxAtual, { merge: true });
+
+        if (typeof FCCache !== 'undefined' && typeof FCCache.set === 'function') {
+            const cacheKey = (typeof window.obterCaixaDocId === 'function') 
+                ? 'fc_moveis_' + window.obterCaixaDocId(window.operadorCaixaVisualizadoUid) 
+                : 'fc_moveis_caixa';
+            FCCache.set(cacheKey, cxAtual);
+            FCCache.set('caixa_fechamentos', db.caixa_fechamentos);
+        }
+
+        document.getElementById('modal-mapa-caixa').classList.add('hidden');
+        renderCaixaDiario();
+        showToast('Fechamento excluído com sucesso!', 'success');
+    } catch (err) {
+        console.error('Erro ao excluir fechamento:', err);
+        showToast('Erro ao excluir fechamento: ' + err.message, 'error');
     }
 }
 
@@ -1051,7 +1280,7 @@ async function confirmarTransferenciaCaixa() {
     const caixaRef = (typeof window.obterCaixaDocRef === 'function')
         ? window.obterCaixaDocRef(window.operadorCaixaVisualizadoUid)
         : window.getEmpresaRef().collection('caixa').doc('caixa_atual');
-    batch.set(caixaRef, { ...cxAtual, saldo: novoSaldo, historico: cxHistoricoNovo }, { merge: true });
+    batch.set(caixaRef, { ...cxAtual, saldo: novoSaldo, historico: cxHistoricoNovo.slice(0, 50) }, { merge: true });
 
     // Registra entrada na conta destino no financeiro
     const finRef = window.getEmpresaRef().collection('financeiro').doc();
@@ -1856,7 +2085,7 @@ async function estornarTitulo(id) {
             const caixaRef = (typeof window.obterCaixaDocRef === 'function')
                 ? window.obterCaixaDocRef()
                 : window.getEmpresaRef().collection('caixa').doc('caixa_atual');
-            batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo }, { merge: true });
+            batch.set(caixaRef, { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo.slice(0, 50) }, { merge: true });
         }
         
         const finRef = window.getEmpresaRef().collection('financeiro').doc(String(id));
@@ -2133,41 +2362,114 @@ function renderTelaConferenciaXML() {
 function fecharModalXML() { document.getElementById('modal-conferencia-xml').classList.add('hidden'); window.tempXMLData = null; }
 
 async function salvarXMLConferido() {
-    const data = window.tempXMLData; let totalQtd = 0;
+    const data = window.tempXMLData;
+    if (!data) return;
+    let totalQtd = 0;
     const batch = firestore.batch();
 
-    let forn = db.fornecedores.find(f => f.doc === data.fornCNPJ || f.cnpj === data.fornCNPJ);
-    if(!forn) { 
+    // 1. Fornecedor
+    let forn = (db.fornecedores || []).find(f => (f.doc && f.doc === data.fornCNPJ) || (f.cnpj && f.cnpj === data.fornCNPJ));
+    if (!forn) { 
         const fornRef = window.getEmpresaRef().collection('fornecedores').doc();
-        batch.set(fornRef, { nome: data.fornNome, doc: data.fornCNPJ, cnpj: data.fornCNPJ, ie: '', wpp: '', email: '', contato: '', cep: '', rua: '', numero: '', bairro: '', cidade: '', condicoes: '', produtos: '' });
+        const novoFornObj = { id: fornRef.id, nome: data.fornNome, doc: data.fornCNPJ, cnpj: data.fornCNPJ, ie: '', wpp: '', email: '', contato: '', cep: '', rua: '', numero: '', bairro: '', cidade: '', condicoes: '', produtos: '' };
+        batch.set(fornRef, novoFornObj);
+        if (!Array.isArray(db.fornecedores)) db.fornecedores = [];
+        db.fornecedores.unshift(novoFornObj);
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+            window.FCCache.set('fornecedores', db.fornecedores);
+        }
     }
     
+    // 2. Produtos e Kardex
+    const novasMovimentacoes = [];
+    if (!Array.isArray(db.produtos)) db.produtos = [];
     data.produtosXML.forEach(p => {
         let idProd = p.idMatch;
         let pDB = null;
         if ((p.statusDB === 'NOVO' || p.statusDB.includes('CADASTRADO')) && !idProd) {
             idProd = String(Date.now() + Math.floor(Math.random() * 1000));
-            pDB = { id: idProd, ean: p.cEAN, nome: p.nome, categoria: 'Geral', marca: data.fornNome, custo: p.custoFinal, margem: p.margemAtual, preco: p.precoVendaSug, estoque: p.qCom, min: 5, foto: '', ativo: true };
+            pDB = { 
+                id: idProd, 
+                ean: p.cEAN || '', 
+                nome: p.nome, 
+                categoria: 'Geral', 
+                marca: data.fornNome, 
+                custo: p.custoFinal, 
+                margem: p.margemAtual, 
+                preco: p.precoVendaSug, 
+                estoque: p.qCom, 
+                min: 5, 
+                foto: '', 
+                ativo: true,
+                ncm: window.NCMHelper ? window.NCMHelper.limparNCM(p.ncm || '') : (p.ncm || ''),
+                cst: window.NCMHelper ? window.NCMHelper.extrairCodigoCSOSN(p.cst || p.csosn || '') : (p.cst || p.csosn || ''),
+                csosn: window.NCMHelper ? window.NCMHelper.extrairCodigoCSOSN(p.csosn || p.cst || '102') : (p.csosn || p.cst || '102'),
+                origem: (p.origem !== undefined && p.origem !== '') ? String(p.origem) : '0',
+                cfop: p.cfop || '5102',
+                cest: p.cest || '',
+                unidade: p.unidade || 'UN'
+            };
             const prodRef = window.getEmpresaRef().collection('produtos').doc(idProd);
             batch.set(prodRef, pDB);
+            db.produtos.unshift(pDB);
         } else { 
             pDB = db.produtos.find(x => String(x.id) === String(idProd)); 
             if (pDB) { 
-                pDB.estoque += p.qCom; pDB.custo = p.custoFinal; pDB.margem = p.margemAtual; pDB.preco = p.precoVendaSug; pDB.nome = p.nome; pDB.ativo = true;
+                pDB.estoque += p.qCom; 
+                pDB.custo = p.custoFinal; 
+                pDB.margem = p.margemAtual; 
+                pDB.preco = p.precoVendaSug; 
+                pDB.nome = p.nome; 
+                pDB.ativo = true;
+                if (p.ncm) pDB.ncm = p.ncm;
+                if (p.csosn || p.cst) { pDB.csosn = p.csosn || p.cst; pDB.cst = p.cst || p.csosn; }
+                if (p.origem !== undefined && p.origem !== '') pDB.origem = String(p.origem);
+                if (p.cfop) pDB.cfop = p.cfop;
+                if (p.cest) pDB.cest = p.cest;
+
                 const prodRef = window.getEmpresaRef().collection('produtos').doc(String(idProd));
-                batch.update(prodRef, { estoque: pDB.estoque, custo: pDB.custo, margem: pDB.margem, preco: pDB.preco, nome: pDB.nome, ativo: true });
+                batch.update(prodRef, { 
+                    estoque: pDB.estoque, 
+                    custo: pDB.custo, 
+                    margem: pDB.margem, 
+                    preco: pDB.preco, 
+                    nome: pDB.nome, 
+                    ativo: true,
+                    ncm: window.NCMHelper ? window.NCMHelper.limparNCM(pDB.ncm || '') : (pDB.ncm || ''),
+                    cst: window.NCMHelper ? window.NCMHelper.extrairCodigoCSOSN(pDB.cst || pDB.csosn || '') : (pDB.cst || pDB.csosn || ''),
+                    csosn: window.NCMHelper ? window.NCMHelper.extrairCodigoCSOSN(pDB.csosn || pDB.cst || '102') : (pDB.csosn || pDB.cst || '102'),
+                    origem: pDB.origem || '0',
+                    cfop: pDB.cfop || '5102',
+                    cest: pDB.cest || ''
+                });
             } 
         }
-        p.idMatch = idProd; // Garante a rastreabilidade pro Relatório de Evolução
+        p.idMatch = idProd;
         totalQtd += p.qCom; 
         const kRef = window.getEmpresaRef().collection('movimentacoes').doc();
-        batch.set(kRef, { data: new Date().toISOString(), ref: `NF-e ${data.numNF} ${data.fornNome}`, produtoId: idProd, produtoNome: p.nome, qtd: p.qCom, tipo: 'ENTRADA XML' });
+        const movObj = { id: kRef.id, data: new Date().toISOString(), ref: `NF-e ${data.numNF} ${data.fornNome}`, produtoId: idProd, produtoNome: p.nome, qtd: p.qCom, tipo: 'ENTRADA XML' };
+        batch.set(kRef, movObj);
+        novasMovimentacoes.push(movObj);
         
         p.custoUnitOriginal = p.qCom > 0 ? (p.vTotalItemNaNota / p.qCom) : 0;
     });
 
+    if (novasMovimentacoes.length > 0) {
+        if (!Array.isArray(db.movimentacoes)) db.movimentacoes = [];
+        db.movimentacoes.unshift(...novasMovimentacoes);
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+            window.FCCache.set('movimentacoes', db.movimentacoes);
+        }
+    }
+
+    if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+        window.FCCache.set('produtos', db.produtos);
+    }
+
+    // 3. Gravação da Compra
     const compraRef = window.getEmpresaRef().collection('compras').doc();
-    batch.set(compraRef, { 
+    const novaCompraObj = { 
+        id: compraRef.id,
         numeroNF: data.numNF, 
         data: new Date().toISOString(), 
         dataEmissao: data.dataEmissao || new Date().toISOString().split('T')[0],
@@ -2177,19 +2479,42 @@ async function salvarXMLConferido() {
         freteExtra: data.freteExtra,
         qtdTotal: totalQtd, 
         itens: data.produtosXML 
-    });
+    };
+    batch.set(compraRef, novaCompraObj);
+    if (!Array.isArray(db.compras)) db.compras = [];
+    db.compras.unshift(novaCompraObj);
+    if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+        window.FCCache.set('compras', db.compras);
+    }
     
+    // 4. Gravação do Financeiro (Contas a Pagar)
+    const novasContasFin = [];
     data.financeiroXML.forEach((f, idx) => {
         if(f.valor > 0) {
             const finRef = window.getEmpresaRef().collection('financeiro').doc();
-            batch.set(finRef, { ref: f.desc, data: new Date(f.venc + 'T12:00:00').toISOString(), pessoa: data.fornNome, wpp: '', valor: f.valor, status: 'PENDENTE', tipo: 'DESPESA', categoria: 'Fornecedores / Compras' });
+            const contaObj = { id: finRef.id, ref: f.desc, data: new Date(f.venc + 'T12:00:00').toISOString(), pessoa: data.fornNome, wpp: '', valor: f.valor, status: 'PENDENTE', tipo: 'DESPESA', categoria: 'Fornecedores / Compras' };
+            batch.set(finRef, contaObj);
+            novasContasFin.push(contaObj);
         }
     });
+    if (novasContasFin.length > 0) {
+        if (!Array.isArray(db.financeiro)) db.financeiro = [];
+        db.financeiro.unshift(...novasContasFin);
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+            window.FCCache.set('financeiro', db.financeiro);
+        }
+    }
 
-    try {
-        await batch.commit();
-        fecharModalXML(); renderComprasHist(); renderFinAbas('pagar'); showToast('Entrada de XML Concluída!', 'success');
-    } catch(err) { console.error(err); showToast('Erro ao importar XML.', 'error'); }
+    // 5. Interface Imediata e Reativa (0ms)
+    fecharModalXML(); 
+    if (typeof renderComprasHist === 'function') renderComprasHist(); 
+    if (typeof renderFinAbas === 'function') renderFinAbas('pagar'); 
+    showToast('Entrada de XML Concluída com sucesso!', 'success');
+
+    // 6. Persistência no Firebase em background
+    batch.commit().catch(err => {
+        console.error('[Compras] Erro ao sincronizar XML no Firestore em background:', err);
+    });
 }
 
 // ==========================================
@@ -2334,26 +2659,32 @@ async function salvarCompraManual() {
     const refPed = document.getElementById('compra-manual-ref').value || 'S/N';
     
     const totais = calcularTotaisCompraManual();
-    if(compraManualItens.length === 0 || totais.totalGeral <= 0) return showToast("Adicione itens válidos!", "error");
+    const apenasValor = document.getElementById('compra-manual-apenas-valor') && document.getElementById('compra-manual-apenas-valor').checked;
+    if(!apenasValor && (compraManualItens.length === 0 || totais.totalGeral <= 0)) return showToast("Adicione itens válidos!", "error");
+    if(apenasValor && totais.totalGeral <= 0) return showToast("Informe o valor da compra!", "error");
     
-    for(let i=0; i<compraManualItens.length; i++) {
-        if(!compraManualItens[i].prodId) return showToast("Selecione os produtos em todas as linhas!", "error");
+    if (!apenasValor) {
+        for(let i=0; i<compraManualItens.length; i++) {
+            if(!compraManualItens[i].prodId) return showToast("Selecione os produtos em todas as linhas!", "error");
+        }
     }
 
     const batch = firestore.batch();
 
     if (isEdicao) {
-        const cAntiga = db.compras.find(x => String(x.id) === String(idEdit));
+        const cAntiga = (db.compras || []).find(x => String(x.id) === String(idEdit));
         if (cAntiga) {
             if(cAntiga.itens && cAntiga.itens.length > 0) {
                 cAntiga.itens.forEach(item => {
                     if (item.idMatch) {
-                        const pDB = db.produtos.find(x => String(x.id) === String(item.idMatch));
+                        const pDB = (db.produtos || []).find(x => String(x.id) === String(item.idMatch));
                         if (pDB) {
                             pDB.estoque -= item.qCom;
                             batch.update(window.getEmpresaRef().collection('produtos').doc(String(pDB.id)), { estoque: pDB.estoque });
                             const kRef = window.getEmpresaRef().collection('movimentacoes').doc();
-                            batch.set(kRef, { data: new Date().toISOString(), ref: `Estorno Edição Compra ${cAntiga.numeroNF}`, produtoId: pDB.id, produtoNome: pDB.nome, qtd: -item.qCom, tipo: 'ESTORNO COMPRA' });
+                            const movEstorno = { id: kRef.id, data: new Date().toISOString(), ref: `Estorno Edição Compra ${cAntiga.numeroNF}`, produtoId: pDB.id, produtoNome: pDB.nome, qtd: -item.qCom, tipo: 'ESTORNO COMPRA' };
+                            batch.set(kRef, movEstorno);
+                            if (Array.isArray(db.movimentacoes)) db.movimentacoes.unshift(movEstorno);
                         }
                     }
                 });
@@ -2364,19 +2695,19 @@ async function salvarCompraManual() {
                     : ((window.FCCache && typeof window.FCCache.get === 'function') ? window.FCCache.get('financeiro') : null);
 
                 if (Array.isArray(finLista) && finLista.length > 0) {
+                    const idsRemovidos = [];
                     finLista.forEach(finData => {
                         if (finData.tipo === 'DESPESA' && finData.ref && String(finData.ref).includes(cAntiga.numeroNF) && cAntiga.numeroNF !== 'S/N') {
                             batch.delete(window.getEmpresaRef().collection('financeiro').doc(String(finData.id)));
+                            idsRemovidos.push(String(finData.id));
                         }
                     });
-                } else {
-                    const snapFin = await window.getEmpresaRef().collection('financeiro').where('tipo', '==', 'DESPESA').get();
-                    snapFin.docs.forEach(doc => {
-                        const finData = doc.data();
-                        if (finData.ref && String(finData.ref).includes(cAntiga.numeroNF) && cAntiga.numeroNF !== 'S/N') {
-                            batch.delete(doc.ref);
+                    if (idsRemovidos.length > 0 && Array.isArray(db.financeiro)) {
+                        db.financeiro = db.financeiro.filter(f => !idsRemovidos.includes(String(f.id)));
+                        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+                            window.FCCache.set('financeiro', db.financeiro);
                         }
-                    });
+                    }
                 }
             } catch(e) { console.error('Erro ao buscar financeiro atrelado:', e); }
         }
@@ -2384,55 +2715,117 @@ async function salvarCompraManual() {
 
     let totalQtd = 0;
     let itensRateadosParaSalvar = [];
+    const novasMovimentacoesCompra = [];
 
-    compraManualItens.forEach(item => {
-        const pDB = db.produtos.find(x => String(x.id) === String(item.prodId));
-        if(!pDB) return;
-        
-        let pesoValor = (item.qtd * item.custoUnit) / totais.totalProdutos;
-        let freteRateado = totais.frete * pesoValor;
-        let custoRateadoFinal = item.custoUnit + (freteRateado / item.qtd);
-        
-        pDB.estoque += item.qtd;
-        pDB.custo = custoRateadoFinal;
-        pDB.preco = custoRateadoFinal * (1 + ((pDB.margem || 0) / 100));
-        
-        totalQtd += item.qtd;
-        
-        batch.update(window.getEmpresaRef().collection('produtos').doc(String(pDB.id)), {
-            estoque: pDB.estoque, custo: pDB.custo, preco: pDB.preco
+    if (!apenasValor) {
+        compraManualItens.forEach(item => {
+            const pDB = (db.produtos || []).find(x => String(x.id) === String(item.prodId));
+            if(!pDB) return;
+            
+            let pesoValor = (item.qtd * item.custoUnit) / (totais.totalProdutos || 1);
+            let freteRateado = (totais.frete || 0) * pesoValor;
+            let custoRateadoFinal = item.custoUnit + (freteRateado / item.qtd);
+            
+            pDB.estoque += item.qtd;
+            pDB.custo = custoRateadoFinal;
+            pDB.preco = custoRateadoFinal * (1 + ((pDB.margem || 0) / 100));
+            
+            totalQtd += item.qtd;
+            
+            batch.update(window.getEmpresaRef().collection('produtos').doc(String(pDB.id)), {
+                estoque: pDB.estoque, custo: pDB.custo, preco: pDB.preco
+            });
+            
+            const kRef = window.getEmpresaRef().collection('movimentacoes').doc();
+            const movCompra = { id: kRef.id, data: new Date().toISOString(), ref: `Compra Man. ${refPed} (${fornecedorFinal})`, produtoId: pDB.id, produtoNome: pDB.nome, qtd: item.qtd, tipo: 'ENTRADA COMPRA' };
+            batch.set(kRef, movCompra);
+            novasMovimentacoesCompra.push(movCompra);
+            
+            itensRateadosParaSalvar.push({
+                idMatch: pDB.id, nome: pDB.nome, qCom: item.qtd, custoFinal: custoRateadoFinal, vTotalItemNaNota: (item.qtd * item.custoUnit) + freteRateado, custoUnitOriginal: item.custoUnit 
+            });
         });
-        
-        const kRef = window.getEmpresaRef().collection('movimentacoes').doc();
-        batch.set(kRef, { data: new Date().toISOString(), ref: `Compra Man. ${refPed} (${fornecedorFinal})`, produtoId: pDB.id, produtoNome: pDB.nome, qtd: item.qtd, tipo: 'ENTRADA COMPRA' });
-        
-        itensRateadosParaSalvar.push({
-            idMatch: pDB.id, nome: pDB.nome, qCom: item.qtd, custoFinal: custoRateadoFinal, vTotalItemNaNota: (item.qtd * item.custoUnit) + freteRateado, custoUnitOriginal: item.custoUnit 
-        });
-    });
+    }
 
-    const idCompra = isEdicao ? idEdit : Date.now();
+    if (novasMovimentacoesCompra.length > 0) {
+        if (!Array.isArray(db.movimentacoes)) db.movimentacoes = [];
+        db.movimentacoes.unshift(...novasMovimentacoesCompra);
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+            window.FCCache.set('movimentacoes', db.movimentacoes);
+        }
+    }
+
+    if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+        window.FCCache.set('produtos', db.produtos);
+    }
+
+    const idCompra = isEdicao ? idEdit : ('compra_' + Date.now());
     const compraRef = window.getEmpresaRef().collection('compras').doc(String(idCompra));
-    batch.set(compraRef, { 
-        id: idCompra, numeroNF: refPed, data: new Date(dataCompra + 'T12:00:00').toISOString(), fornecedor: fornecedorFinal, cnpj: '', 
-        totalNF: totais.totalGeral, freteExtra: totais.frete, qtdTotal: totalQtd, itens: itensRateadosParaSalvar 
-    }, { merge: true });
+    const compraObj = { 
+        id: String(idCompra), 
+        numeroNF: refPed, 
+        data: new Date(dataCompra + 'T12:00:00').toISOString(), 
+        dataEmissao: dataCompra,
+        fornecedor: fornecedorFinal, 
+        cnpj: '', 
+        totalNF: totais.totalGeral, 
+        freteExtra: totais.frete, 
+        qtdTotal: totalQtd, 
+        itens: itensRateadosParaSalvar 
+    };
+    batch.set(compraRef, compraObj, { merge: true });
 
-    if(document.getElementById('compra-manual-gerar-financeiro').checked && !isEdicao) {
+    if (!Array.isArray(db.compras)) db.compras = [];
+    if (isEdicao) {
+        const idxC = db.compras.findIndex(x => String(x.id) === String(idCompra));
+        if (idxC >= 0) db.compras[idxC] = { ...db.compras[idxC], ...compraObj };
+        else db.compras.unshift(compraObj);
+    } else {
+        db.compras.unshift(compraObj);
+    }
+    if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+        window.FCCache.set('compras', db.compras);
+    }
+
+    if (document.getElementById('compra-manual-gerar-financeiro')?.checked && !isEdicao) {
         const finRef = window.getEmpresaRef().collection('financeiro').doc();
-        batch.set(finRef, { ref: `Compra: ${refPed}`, data: new Date(dataCompra + 'T12:00:00').toISOString(), pessoa: fornecedorFinal, valor: totais.totalGeral, status: 'PENDENTE', tipo: 'DESPESA', categoria: 'Fornecedores / Compras' });
+        const finObj = { 
+            id: finRef.id, 
+            ref: `Compra: ${refPed}`, 
+            data: new Date(dataCompra + 'T12:00:00').toISOString(), 
+            pessoa: fornecedorFinal, 
+            valor: totais.totalGeral, 
+            status: 'PENDENTE', 
+            tipo: 'DESPESA', 
+            categoria: 'Fornecedores / Compras' 
+        };
+        batch.set(finRef, finObj);
+        if (!Array.isArray(db.financeiro)) db.financeiro = [];
+        db.financeiro.unshift(finObj);
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+            window.FCCache.set('financeiro', db.financeiro);
+        }
     }
 
-    if(fornAvulso && !db.fornecedores.find(f => f.nome.toLowerCase() === fornAvulso.toLowerCase())) {
+    if (fornAvulso && !(db.fornecedores || []).find(f => f.nome && f.nome.toLowerCase() === fornAvulso.toLowerCase())) {
         const fornRef = window.getEmpresaRef().collection('fornecedores').doc();
-        batch.set(fornRef, { nome: fornAvulso, doc: '', cnpj: '', telefone: '' });
+        const novoFornObj = { id: fornRef.id, nome: fornAvulso, doc: '', cnpj: '', telefone: '' };
+        batch.set(fornRef, novoFornObj);
+        if (!Array.isArray(db.fornecedores)) db.fornecedores = [];
+        db.fornecedores.unshift(novoFornObj);
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+            window.FCCache.set('fornecedores', db.fornecedores);
+        }
     }
 
-    try {
-        await batch.commit();
-        fecharModalCompraManual(); renderComprasHist(); renderFinAbas('pagar');
-        showToast(isEdicao ? "Compra atualizada com sucesso!" : "Compra Manual lançada com sucesso!", "success");
-    } catch(err) { console.error(err); showToast('Erro', 'error'); }
+    fecharModalCompraManual(); 
+    if (typeof renderComprasHist === 'function') renderComprasHist(); 
+    if (typeof renderFinAbas === 'function') renderFinAbas('pagar');
+    showToast(isEdicao ? "Compra atualizada com sucesso!" : "Compra Manual lançada com sucesso!", "success");
+
+    batch.commit().catch(err => {
+        console.error('[Compras] Erro ao salvar compra manual no Firestore em background:', err);
+    });
 }
 
 function renderComprasHist() {
@@ -2503,10 +2896,18 @@ function renderComprasHist() {
 
 function excluirNF(id) { 
     abrirConfirmacao('Excluir Nota / Compra', 'Atenção: Não reverte o estoque nem o financeiro.', () => { 
-        window.getEmpresaRef().collection('compras').doc(String(id)).delete().then(() => {
-            renderComprasHist(); showToast('Compra excluída!'); 
-        }).catch(e => { console.error(e); showToast('Erro ao excluir NF.', 'error'); });
-    }); 
+        if (Array.isArray(db.compras)) {
+            db.compras = db.compras.filter(x => String(x.id) !== String(id));
+            if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+                window.FCCache.set('compras', db.compras);
+            }
+        }
+        if (typeof renderComprasHist === 'function') renderComprasHist(); 
+        showToast('Compra excluída com sucesso!', 'success'); 
+        window.getEmpresaRef().collection('compras').doc(String(id)).delete().catch(e => {
+            console.error('[Compras] Erro ao excluir NF no Firestore:', e);
+        });
+    });
 }
 
 function verDetalhesNF(id) { 
@@ -3247,9 +3648,11 @@ window.transferirParaBanco = abrirModalTransferenciaCaixa;
 window.abrirModalFechamentoCego = abrirModalFechamentoCego;
 window.fecharModalFechamentoCego = fecharModalFechamentoCego;
 window.recalcularTotalDeclarado = recalcularTotalDeclarado;
+window.preencherValoresSistemaFechamento = preencherValoresSistemaFechamento;
 window.confirmarFechamentoCego = confirmarFechamentoCego;
 window.exibirModalMapaCaixa = exibirModalMapaCaixa;
 window.abrirUltimoMapaCaixa = abrirUltimoMapaCaixa;
+window.excluirUltimoFechamento = excluirUltimoFechamento;
 window.renderizarMapaCaixaHTML = renderizarMapaCaixaHTML;
 window.abrirModalTransferenciaCaixa = abrirModalTransferenciaCaixa;
 window.fecharModalTransferenciaCaixa = fecharModalTransferenciaCaixa;
@@ -3867,7 +4270,7 @@ window.confirmarRecebimentoPDVNoCaixa = async function() {
             });
         }
 
-        const cxFinalData = { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo };
+        const cxFinalData = { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo.slice(0, 50) };
         batch.set(caixaRef, cxFinalData, { merge: true });
 
         // 4. Lançar registros no Financeiro

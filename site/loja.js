@@ -1,4 +1,4 @@
-﻿// Roteamento Multi-Tenant da Loja Virtual
+// Roteamento Multi-Tenant da Loja Virtual
 const urlParamsSite = new URLSearchParams(window.location.search);
 const empresaAtivaSite = urlParamsSite.get('loja') || urlParamsSite.get('empresa') || 'emp_fc_moveis';
 window.empresaAtivaSite = empresaAtivaSite;
@@ -370,12 +370,12 @@ async function carregarProdutos() {
     try {
         let snap;
         if (empresaAtivaSite === 'emp_fc_moveis') {
-            snap = await firebase.firestore().collection('empresas').doc('emp_fc_moveis').collection('produtos').get();
+            snap = await firebase.firestore().collection('empresas').doc('emp_fc_moveis').collection('produtos').where('exibirLoja', '==', true).get();
             if (snap.empty) {
-                snap = await firebase.firestore().collection('produtos').get();
+                snap = await firebase.firestore().collection('produtos').where('exibirLoja', '==', true).get();
             }
         } else {
-            snap = await firebase.firestore().collection('empresas').doc(empresaAtivaSite).collection('produtos').get();
+            snap = await firebase.firestore().collection('empresas').doc(empresaAtivaSite).collection('produtos').where('exibirLoja', '==', true).get();
         }
 
         produtos = [];

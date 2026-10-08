@@ -1,4 +1,4 @@
-﻿// ==========================================================================
+// ==========================================================================
 // FC-CACHE.JS — Repositório Local Persistente (IndexedDB) & Sincronização
 // FC-Gestão · Versão 2.0 (Offline-First / Repositório Persistente)
 // ==========================================================================
@@ -608,6 +608,16 @@
             icon.classList.remove('fa-spin');
             btn.disabled = false;
             btn.classList.remove('opacity-85', 'cursor-wait');
+
+            try {
+                const ultimaSincIso = localStorage.getItem('fc_ultima_sincronizacao');
+                let infoUltima = '';
+                if (ultimaSincIso) {
+                    const d = new Date(ultimaSincIso);
+                    infoUltima = ` (Última: ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })})`;
+                }
+                btn.title = `Sincronizar banco de dados local com o Firebase${infoUltima} · Automático no 1º login e às 17:30`;
+            } catch (e) {}
         }
     }
 
@@ -664,14 +674,10 @@
             _atualizarBadgePendencias();
             console.log(`[FCRepo] ⚡ Repositório Local carregado instantaneamente do IndexedDB para a empresa [${empId}].`);
 
-            // Se for a primeira vez neste dispositivo (nunca sincronizado), realiza carga inicial silenciosa
-            const ultimaSinc = await _idbLerMeta('ultima_sincronizacao');
-            if (!ultimaSinc && !localStorage.getItem('fc_ultima_sincronizacao')) {
-                console.log('[FCRepo] 🚀 Primeira inicialização detectada. Baixando banco de dados completo em segundo plano...');
-                setTimeout(function () {
-                    sincronizarComFirebase(true);
-                }, 1000);
-            }
+            // Dispara verificação de sincronização agendada (primeiro login do dia ou horário das 17:30hrs)
+            setTimeout(function () {
+                _verificarSincronizacaoAgendada('inicializacao_idb');
+            }, 1200);
         } catch (err) {
             console.warn('[FCRepo] Erro ao carregar do IndexedDB:', err);
         }
@@ -686,7 +692,7 @@
     // 5. Motor de Sincronização Inteligente (PUSH + PULL + Zero Duplicidade)
     // ----------------------------------------------------------------------
 
-    async function sincronizarComFirebase(silencioso) {
+    async function sincronizarComFirebase(silencioso, options = {}) {
         if (_isSyncing) {
             console.warn('[FCRepo] Sincronização já em andamento. Aguarde...');
             return false;
@@ -786,13 +792,30 @@
 
             const pullPromessas = PRINCIPAIS_COLECOES.map(async function (col) {
                 try {
-                    const snap = await empRef.collection(col).get();
+                    // Otimização: limitar busca de coleções de histórico volumoso para conter leituras
+                    let queryRef = empRef.collection(col);
+                    if (col === 'movimentacoes') {
+                        queryRef = queryRef.orderBy('data', 'desc').limit(200);
+                    } else if (col === 'marketing_historico' || col === 'relatorios_ia_historico') {
+                        queryRef = queryRef.orderBy('data', 'desc').limit(100);
+                    }
+
+                    const snap = await queryRef.get();
                     const docsRemotos = snap.docs.map(function (doc) {
                         return Object.assign({ id: doc.id }, doc.data());
                     });
 
-                    // Deduplicação estrita via Map por ID único
+                    // Deduplicação estrita via Map por ID único - preservando dados locais existentes
                     const mapa = new Map();
+                    const dadosLocais = (Array.isArray(_memoria[col]) && _memoria[col].length > 0)
+                        ? _memoria[col]
+                        : (await _idbLerColecao(col) || []);
+                    if (Array.isArray(dadosLocais)) {
+                        dadosLocais.forEach(function (doc) {
+                            if (doc && doc.id) mapa.set(String(doc.id), doc);
+                        });
+                    }
+
                     docsRemotos.forEach(function (doc) {
                         if (doc && doc.id) {
                             mapa.set(String(doc.id), doc);
@@ -927,8 +950,12 @@
 
             console.log('[FCRepo] ✅ Sincronização com Firebase concluída com sucesso!');
 
+            const msgSucesso = (options && options.mensagemSucesso)
+                ? options.mensagemSucesso
+                : 'Sincronização completa! Todos os dados e relatórios estão atualizados localmente.';
+
             if (!silencioso && typeof window.showToast === 'function') {
-                window.showToast('Sincronização completa! Todos os dados e relatórios estão atualizados localmente.', 'success');
+                window.showToast(msgSucesso, 'success');
             }
 
             return true;
@@ -937,10 +964,126 @@
             _isSyncing = false;
             _notificarSyncState({ syncing: false, erro: errGeral.message });
 
+            const msgErro = (options && options.mensagemErro)
+                ? options.mensagemErro
+                : 'Erro ao sincronizar. Seus dados continuam salvos no dispositivo.';
+
             if (!silencioso && typeof window.showToast === 'function') {
-                window.showToast('Erro ao sincronizar. Seus dados continuam salvos no dispositivo.', 'warning');
+                window.showToast(msgErro, 'warning');
             }
             return false;
+        }
+    }
+
+    // ----------------------------------------------------------------------
+    // 5.1 Motor de Sincronização Agendada (1º Login com Internet e 17:30hrs)
+    // ----------------------------------------------------------------------
+
+    function _obterDataHojeStr(d) {
+        const data = d || new Date();
+        const ano = data.getFullYear();
+        const mes = String(data.getMonth() + 1).padStart(2, '0');
+        const dia = String(data.getDate()).padStart(2, '0');
+        return `${ano}-${mes}-${dia}`;
+    }
+
+    async function _verificarSincronizacaoAgendada(origem) {
+        if (typeof window === 'undefined') return;
+
+        // 1. Não executa em telas de login antes de o usuário acessar o sistema
+        const pathname = (window.location.pathname || '').toLowerCase();
+        const href = (window.location.href || '').toLowerCase();
+        if (pathname.includes('login.html') || href.includes('login.html')) {
+            return;
+        }
+
+        // 2. Requer empresa ativa e usuário autenticado no Firebase
+        const empId = _obterEmpresaId();
+        if (!empId) return;
+
+        const authObj = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth() : null;
+        const user = authObj ? authObj.currentUser : null;
+        if (!user) {
+            return;
+        }
+
+        // 3. Requisito essencial: "sempre que tiver internet"
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            console.log(`[FCRepo] 📶 [AutoSync:${origem}] Dispositivo offline. Sincronização automática aguardará conexão de internet.`);
+            return;
+        }
+
+        // 4. Se já estiver sincronizando, aguarda término
+        if (_isSyncing) return;
+
+        const agora = new Date();
+        const hojeStr = _obterDataHojeStr(agora);
+        const horaAtual = agora.getHours();
+        const minutoAtual = agora.getMinutes();
+        const atingiu1730 = (horaAtual > 17) || (horaAtual === 17 && minutoAtual >= 30);
+
+        // ==================================================================
+        // REGRA 1: Sincronização na PRIMEIRA VEZ que o cliente logar no sistema
+        // ==================================================================
+        const chavePrimeiroLogin = `fc_sinc_primeiro_login_${empId}`;
+        const jaSincronizouPrimeiroLogin = localStorage.getItem(chavePrimeiroLogin) === hojeStr;
+        const recemLogado = sessionStorage.getItem('fc_recem_logado') === 'true';
+
+        if (!jaSincronizouPrimeiroLogin || recemLogado) {
+            console.log(`[FCRepo] 🚀 [AutoSync:${origem}] Primeiro login do dia detectado para a empresa [${empId}]. Sincronizando com o banco de dados...`);
+
+            // Trava prévia no localStorage para concorrência entre múltiplas abas
+            localStorage.setItem(chavePrimeiroLogin, hojeStr);
+            try { sessionStorage.removeItem('fc_recem_logado'); } catch(e) {}
+
+            const sucesso = await sincronizarComFirebase(false, {
+                motivo: 'primeiro_login',
+                mensagemSucesso: 'Primeiro acesso do dia: banco de dados sincronizado com sucesso!'
+            });
+
+            if (!sucesso) {
+                console.warn(`[FCRepo] ⚠️ Falha na sincronização do primeiro login. A trava foi liberada para nova tentativa.`);
+                localStorage.removeItem(chavePrimeiroLogin);
+                return;
+            }
+
+            // Se o primeiro login ocorreu já às 17:30 ou depois, já conclui também a sincronização das 17:30
+            if (atingiu1730) {
+                localStorage.setItem(`fc_sinc_agendado_1730_${empId}`, hojeStr);
+            }
+            return;
+        }
+
+        // ==================================================================
+        // REGRA 2: Sincronização por volta das 17:30hrs
+        // ==================================================================
+        const chave1730 = `fc_sinc_agendado_1730_${empId}`;
+        const jaSincronizou1730 = localStorage.getItem(chave1730) === hojeStr;
+
+        if (atingiu1730 && !jaSincronizou1730) {
+            // Evita re-sincronizar se acabou de sincronizar há menos de 10 minutos
+            const ultimaSincIso = localStorage.getItem('fc_ultima_sincronizacao');
+            if (ultimaSincIso) {
+                const diffMinutos = (agora.getTime() - new Date(ultimaSincIso).getTime()) / (1000 * 60);
+                if (diffMinutos < 10) {
+                    console.log(`[FCRepo] ⏰ [AutoSync:${origem}] Horário das 17:30 atingido, mas houve sincronização há ${Math.round(diffMinutos)} min. Marcando como concluída.`);
+                    localStorage.setItem(chave1730, hojeStr);
+                    return;
+                }
+            }
+
+            console.log(`[FCRepo] ⏰ [AutoSync:${origem}] Horário das 17:30 atingido! Sincronizando dados com o Firebase...`);
+            localStorage.setItem(chave1730, hojeStr);
+
+            const sucesso1730 = await sincronizarComFirebase(false, {
+                motivo: 'agendado_1730',
+                mensagemSucesso: 'Sincronização automática das 17:30 concluída com sucesso!'
+            });
+
+            if (!sucesso1730) {
+                console.warn(`[FCRepo] ⚠️ Falha na sincronização das 17:30. A trava foi liberada para nova tentativa assim que houver internet estável.`);
+                localStorage.removeItem(chave1730);
+            }
         }
     }
 
@@ -983,8 +1126,15 @@
         set: function (colecao, dados) {
             _memoria[colecao] = dados;
             _salvarSession(colecao, dados);
-            _idbSalvarColecao(colecao, dados);
-            _notificarOutrasAbas(colecao);
+            if (typeof window.db !== 'undefined' && window.db) {
+                window.db[colecao] = dados;
+            }
+            _notificarListeners(colecao, dados);
+            _idbSalvarColecao(colecao, dados).then(() => {
+                _notificarOutrasAbas(colecao);
+            }).catch(() => {
+                _notificarOutrasAbas(colecao);
+            });
         },
 
         /**
@@ -1187,8 +1337,16 @@
         /**
          * Dispara a sincronização sob demanda
          */
-        sincronizarComFirebase: function (silencioso) {
-            return sincronizarComFirebase(silencioso);
+        sincronizarComFirebase: function (silencioso, options) {
+            return sincronizarComFirebase(silencioso, options);
+        },
+
+        /**
+         * Verifica e executa a rotina de sincronização programada
+         * (1º login do dia com internet e horário das 17:30hrs)
+         */
+        verificarSincronizacaoAutomatica: function (origem) {
+            return _verificarSincronizacaoAgendada(origem);
         },
 
         /**
@@ -1265,22 +1423,39 @@
             });
         } catch (e) {}
 
-        // Se estiver online, consulta o maior número real no Firestore
-        let maxRemoto = 0;
+        // Se online, utiliza transação atômica em 'configuracoes/contadores' para evitar colisão
         if (navigator.onLine && typeof firestore !== 'undefined') {
             try {
                 let empRef = (typeof window.getEmpresaRef === 'function') ? window.getEmpresaRef() : firestore.collection('empresas').doc(_obterEmpresaId());
-                const snap = await empRef.collection('vendas').orderBy('numeroPedido', 'desc').limit(1).get();
-                if (!snap.empty) {
-                    maxRemoto = Number(snap.docs[0].data().numeroPedido) || 0;
+                if (empRef) {
+                    const contadoresRef = empRef.collection('configuracoes').doc('contadores');
+                    const proximoTransacional = await firestore.runTransaction(async (transaction) => {
+                        const cSnap = await transaction.get(contadoresRef);
+                        let base = Math.max(maxLocal, maxFila);
+                        if (cSnap.exists && cSnap.data().ultimoNumeroPedido) {
+                            base = Math.max(base, Number(cSnap.data().ultimoNumeroPedido) || 0);
+                        } else {
+                            const snap = await empRef.collection('vendas').orderBy('numeroPedido', 'desc').limit(1).get();
+                            if (!snap.empty) {
+                                base = Math.max(base, Number(snap.docs[0].data().numeroPedido) || 0);
+                            }
+                        }
+                        const novo = base + 1;
+                        transaction.set(contadoresRef, { ultimoNumeroPedido: novo, atualizadoEm: new Date().toISOString() }, { merge: true });
+                        return novo;
+                    });
+                    if (proximoTransacional) {
+                        console.log(`[FCRepo] 🔢 Próximo Pedido Atômico: #${proximoTransacional}`);
+                        return proximoTransacional;
+                    }
                 }
             } catch (err) {
-                console.warn('[FCRepo] Maior número do Firestore indisponível offline:', err);
+                console.warn('[FCRepo] Falha na transação atômica do contador:', err);
             }
         }
 
-        const proximo = Math.max(maxLocal, maxFila, maxRemoto) + 1;
-        console.log(`[FCRepo] 🔢 Próximo Pedido Calculado: #${proximo} (Local: ${maxLocal}, Fila: ${maxFila}, Nuvem: ${maxRemoto})`);
+        const proximo = Math.max(maxLocal, maxFila) + 1;
+        console.log(`[FCRepo] 🔢 Próximo Pedido Contingência: #${proximo} (Local: ${maxLocal}, Fila: ${maxFila})`);
         return proximo;
     };
     window.FCCache.obterProximoNumeroPedido = window.obterProximoNumeroPedidoSeguro;
@@ -1654,17 +1829,48 @@
         }
     }
     if (typeof window !== 'undefined') {
-                window.addEventListener('online', function() {
-            console.log('[FCRepo] 🌐 Conexão restabelecida! Sincronizando pendências offline automaticamente...');
-            if (window.FCCache && typeof window.FCCache.sincronizarComFirebase === 'function') {
-                setTimeout(function() { window.FCCache.sincronizarComFirebase(false); }, 1500);
-            }
+        // Escuta retorno da conexão com a internet para rodar sincronização agendada ou pendências
+        window.addEventListener('online', function () {
+            console.log('[FCRepo] 🌐 Conexão de internet restabelecida! Verificando sincronizações agendadas e pendências...');
+            setTimeout(function () {
+                _verificarSincronizacaoAgendada('online');
+                _atualizarBadgePendencias().then(function (pendentes) {
+                    if (pendentes > 0 && !_isSyncing) {
+                        sincronizarComFirebase(false);
+                    }
+                });
+            }, 1500);
         });
-        window.addEventListener('storage', function(e) {
+
+        // Escuta foco na aba para verificar se atingiu 17:30 ou primeiro login enquanto a aba esteve em segundo plano
+        window.addEventListener('focus', function () {
+            _verificarSincronizacaoAgendada('focus');
+        });
+
+        window.addEventListener('storage', function (e) {
             if (e.key === 'fc_sync_trigger' || e.key === 'fc_ultima_sincronizacao') {
                 _atualizarBadgePendencias();
+                _atualizarBotaoHeader({ syncing: _isSyncing });
             }
         });
+
+        // Monitor periódico a cada 30 segundos para capturar pontualmente o horário das 17:30hrs
+        setInterval(function () {
+            _verificarSincronizacaoAgendada('intervalo');
+        }, 30000);
+
+        // Se Firebase Auth estiver ativo, detecta a entrada do usuário para disparar a sincronização inicial
+        if (typeof firebase !== 'undefined' && firebase.auth) {
+            try {
+                firebase.auth().onAuthStateChanged(function (u) {
+                    if (u && _obterEmpresaId()) {
+                        setTimeout(function () {
+                            _verificarSincronizacaoAgendada('auth_state');
+                        }, 1500);
+                    }
+                });
+            } catch (eAuth) {}
+        }
     }
 
     console.log('[FCRepo] 🚀 Repositório Local Offline-First FC-Gestão ativo. Use FCCache.stats() para diagnóstico.');

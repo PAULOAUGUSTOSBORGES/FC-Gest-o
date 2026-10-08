@@ -58,50 +58,30 @@ body.light {
 }
 
 /* =============================================
-   SIDEBAR EM MODO CLARO (ALTO PADRÃO VISUAL)
+   SIDEBAR (PADRÃO ESCURO EM AMBOS OS TEMAS)
    ============================================= */
-html.light #sidebar,
-html[data-theme="light"] #sidebar {
-    background-color: #0f172a !important; /* Sidebar escuro no modo claro a pedido do usuário */
-    color: #f8fafc !important; /* Texto claro na sidebar */
-    border-right: 1px solid #1e293b !important;
-    box-shadow: 4px 0 24px -2px rgba(15, 23, 42, 0.2) !important;
+#sidebar {
+    background-color: #0f172a;
+    color: #f8fafc;
+    border-right: 1px solid #1e293b;
+    box-shadow: 4px 0 24px -2px rgba(15, 23, 42, 0.2);
 }
 
-/* Removido overrides do sidebar no modo claro para que ele fique sempre escuro (dark) */
-
-html.light #btn-tema-sistema:hover,
-html[data-theme="light"] #btn-tema-sistema:hover {
-    background-color: #e2e8f0 !important;
-}
-
-html.light #sidebar-overlay,
-html[data-theme="light"] #sidebar-overlay {
-    background-color: rgba(15, 23, 42, 0.35) !important;
-    backdrop-filter: blur(2px) !important;
-}
-
-
-/* =============================================
-   SIDEBAR EM MODO ESCURO (ATIVO E INATIVO)
-   ============================================= */
-html:not(.light) #sidebar,
-html[data-theme="dark"] #sidebar {
-    background-color: #0f172a !important; /* bg-slate-900 */
-    border-right: 1px solid #1e293b !important;
-    box-shadow: 4px 0 24px -2px rgba(0, 0, 0, 0.5) !important;
+#sidebar-overlay {
+    background-color: rgba(15, 23, 42, 0.35);
+    backdrop-filter: blur(2px);
 }
 
 #sidebar .nav-btn.bg-blue-600 {
-    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%) !important;
-    color: #ffffff !important;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4) !important;
-    border-left: 3px solid #60a5fa !important;
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    border-left: 3px solid #60a5fa;
 }
 
 #sidebar .nav-btn:not(.bg-blue-600):hover {
-    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
-    color: #60a5fa !important;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    color: #60a5fa;
     transform: translateX(4px);
     transition: all 0.2s ease-in-out;
 }
@@ -112,16 +92,16 @@ html[data-theme="dark"] #sidebar {
 /* Cabeçalho */
 html:not(.light) header,
 html[data-theme="dark"] header {
-    background-color: #0f172a !important; /* bg-slate-900 */
-    border-bottom: 1px solid #1e293b !important;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3) !important;
+    background-color: #0f172a; /* bg-slate-900 */
+    border-bottom: 1px solid #1e293b;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
 }
 
 html.light header,
 html[data-theme="light"] header {
-    background-color: #ffffff !important;
-    border-bottom: 1px solid #cbd5e1 !important;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
+    background-color: #ffffff;
+    border-bottom: 1px solid #cbd5e1;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
 }
 
 /* Cards e Contêineres de Conteúdo (NÃO aplicar em botões, links de ação nem elementos text-white intencionais) */
@@ -303,19 +283,249 @@ html[data-theme="light"] .kpi-icon-pill {
     box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.06);
 }
 
-/* Painel da IA de Relatórios em Modo Claro */
+/* ==============================================================
+   ASSISTENTE INTELIGENTE IA - RELATÓRIOS & DRE
+   Layout responsivo, equilibrado e compatível com Dark/Light Mode
+   ============================================================== */
+
+/* Container Principal do Assistente */
+.ia-panel-container {
+    position: relative;
+    border-radius: 1.5rem;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 27, 75, 0.65) 50%, rgba(15, 23, 42, 0.95) 100%);
+    box-shadow: 0 20px 45px -15px rgba(0, 0, 0, 0.5), 0 0 30px -5px rgba(99, 102, 241, 0.15);
+    overflow: hidden;
+}
+
+@media (min-width: 768px) {
+    .ia-panel-container {
+        padding: 2rem;
+    }
+}
+
 html.light .ia-panel-container,
 html[data-theme="light"] .ia-panel-container {
-    background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%) !important;
-    border: 1px solid #e0e7ff !important;
-    box-shadow: 0 10px 30px -5px rgba(99, 102, 241, 0.08) !important;
+    background: linear-gradient(135deg, #ffffff 0%, #f8faff 50%, #eef2ff 100%) !important;
+    border: 1px solid #c7d2fe !important;
+    box-shadow: 0 10px 30px -5px rgba(99, 102, 241, 0.12), 0 4px 6px -2px rgba(15, 23, 42, 0.05) !important;
+}
+
+/* Grid Principal: Esquerda (Consultas) e Direita (Histórico) */
+.ia-main-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    width: 100%;
+}
+
+@media (min-width: 1024px) {
+    .ia-main-grid {
+        grid-template-columns: minmax(0, 1.8fr) minmax(320px, 1fr);
+        align-items: stretch;
+    }
+}
+
+/* Coluna de Interação (Esquerda) */
+.ia-col-consultas {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    width: 100%;
+    gap: 1.25rem;
+}
+
+/* Coluna de Histórico (Direita) */
+.ia-col-historico {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    width: 100%;
+}
+
+.ia-historico-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 440px;
+    max-height: 520px;
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(51, 65, 85, 0.75);
+    border-radius: 1.25rem;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+html.light .ia-historico-card,
+html[data-theme="light"] .ia-historico-card {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06) !important;
+}
+
+.ia-historico-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.875rem 1.25rem;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.6);
+    background: rgba(30, 41, 59, 0.6);
+    flex-shrink: 0;
+}
+
+html.light .ia-historico-header,
+html[data-theme="light"] .ia-historico-header {
+    background: #f8fafc !important;
+    border-bottom-color: #e2e8f0 !important;
+}
+
+.ia-historico-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+}
+
+/* Tabs do Assistente */
+.ia-tabs-container {
+    display: flex;
+    gap: 0.375rem;
+    padding: 0.375rem;
+    border-radius: 0.875rem;
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(51, 65, 85, 0.65);
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+
+html.light .ia-tabs-container,
+html[data-theme="light"] .ia-tabs-container {
+    background: #f1f5f9 !important;
+    border-color: #e2e8f0 !important;
+}
+
+.ia-rel-tab {
+    flex: 1 1 0%;
+    padding: 0.625rem 1rem;
+    border-radius: 0.625rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    border: none;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+/* Botões de sugestão rápida (Chips / Cards) */
+.ia-chip-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0.875rem;
+    border-radius: 0.875rem;
+    text-align: left;
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid rgba(51, 65, 85, 0.7);
+    color: #e2e8f0;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+}
+
+.ia-chip-btn:hover {
+    background: rgba(30, 41, 59, 0.95);
+    border-color: #6366f1;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.18);
+}
+
+html.light .ia-chip-btn,
+html[data-theme="light"] .ia-chip-btn {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #1e293b !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05) !important;
+}
+
+html.light .ia-chip-btn:hover,
+html[data-theme="light"] .ia-chip-btn:hover {
+    background: #f8faff !important;
+    border-color: #6366f1 !important;
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.12) !important;
+}
+
+/* Input Box Inteligente */
+.ia-input-card {
+    position: relative;
+    border-radius: 0.875rem;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ia-input-card:focus-within {
+    border-color: #818cf8;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+}
+
+html.light .ia-input-card,
+html[data-theme="light"] .ia-input-card {
+    background: #ffffff !important;
+    border-color: #c7d2fe !important;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.light .ia-input-card:focus-within,
+html[data-theme="light"] .ia-input-card:focus-within {
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2) !important;
+}
+
+/* Área do Relatório Gerado (Full Width Abaixo do Grid) */
+.ia-relatorio-wrapper {
+    margin-top: 2rem;
+    padding-top: 1.75rem;
+    border-top: 1px solid rgba(51, 65, 85, 0.6);
+    width: 100%;
+}
+
+html.light .ia-relatorio-wrapper,
+html[data-theme="light"] .ia-relatorio-wrapper {
+    border-top-color: #e2e8f0 !important;
+}
+
+#ia-rel-resultado {
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 1.25rem;
+    padding: 1.5rem;
+    min-height: 260px;
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.35);
+    transition: all 0.3s ease;
+}
+
+@media (min-width: 768px) {
+    #ia-rel-resultado {
+        padding: 2rem;
+    }
 }
 
 html.light #ia-rel-resultado,
 html[data-theme="light"] #ia-rel-resultado {
     background: #ffffff !important;
-    border: 1px solid #e2e8f0 !important;
-    box-shadow: 0 4px 20px -4px rgba(99, 102, 241, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+    border: 1px solid #c7d2fe !important;
+    box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.03) !important;
 }
 
 html.light .bg-slate-50,
@@ -1658,8 +1868,7 @@ html[data-theme="light"] #pdv-drawer-carrinho .drawer-footer {
 @media (max-width: 767px) {
     /* Previne qualquer overflow horizontal do container principal */
     body, #app-container, main {
-        max-width: 100vw;
-        overflow-x: hidden;
+        max-width: 100%;
     }
 
     /* Cabeçalho compacto */
@@ -1802,19 +2011,19 @@ body.light .alerta-margem-pdv {
    ---------------------------------------------------------------- */
 @media (min-width: 768px) and (max-width: 1023px) {
     #sidebar {
-        width: clamp(200px, 22vw, 240px) !important;
+        width: clamp(200px, 22vw, 240px);
     }
 
     #sidebar .nav-btn {
-        font-size: 13px !important;
-        padding-top: 10px !important;
-        padding-bottom: 10px !important;
+        font-size: 13px;
+        padding-top: 10px;
+        padding-bottom: 10px;
     }
 }
 
 @media (min-width: 1024px) {
     #sidebar {
-        width: 260px !important;
+        width: 260px;
     }
 }
 
@@ -1829,7 +2038,7 @@ body.light .alerta-margem-pdv {
     }
 
     #sidebar {
-        width: 280px !important;
+        width: 280px;
     }
 }
 
@@ -1856,10 +2065,7 @@ body {
 }
 
 /* ----------------------------------------------------------------
-   FIX #1 — #mobile-bottom-nav: normaliza o conflito de display
-   Linha 696: display:none dentro do @media ≤768px cancelava a
-   linha 1019: display:flex em outro bloco do mesmo breakpoint.
-   Solução: padrão oculto + exibição explícita em ≤ 767px.
+   FIX #1 — Normaliza o layout mobile e remove padding fantasma
    ---------------------------------------------------------------- */
 #mobile-bottom-nav {
     display: none !important;
@@ -1867,14 +2073,11 @@ body {
 
 @media (max-width: 767px) {
     #mobile-bottom-nav {
-        display: flex !important;
-        flex-direction: column !important;
-        justify-content: stretch !important;
+        display: none !important;
     }
 
-    /* Padding do conteúdo principal para não ficar sob a nav bar */
     main {
-        padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+        padding-bottom: 0 !important;
     }
 }
 
@@ -2547,4 +2750,408 @@ body.light .pdv-card-cli-status-ok {
     background-color: #ecfdf5 !important;
     border: 1px solid #a7f3d0 !important;
     color: #047857 !important;
+}
+
+/* ======================================================== */
+/* MODAL EXTRATO DE DÉBITOS DO CLIENTE (PDV)                */
+/* ======================================================== */
+#modal-debitos-cliente {
+    background-color: rgba(15, 23, 42, 0.78) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+}
+
+#modal-debitos-cliente .modal-deb-card {
+    border-radius: 20px !important;
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.5) !important;
+    transition: all 0.2s ease !important;
+}
+
+/* Modo Escuro */
+html.dark #modal-debitos-cliente .modal-deb-card,
+html[data-theme="dark"] #modal-debitos-cliente .modal-deb-card,
+body:not(.light) #modal-debitos-cliente .modal-deb-card {
+    background-color: #0f172a !important;
+    border: 1px solid rgba(51, 65, 85, 0.7) !important;
+    color: #f8fafc !important;
+}
+
+html.dark #modal-debitos-cliente .modal-deb-header,
+html[data-theme="dark"] #modal-debitos-cliente .modal-deb-header,
+body:not(.light) #modal-debitos-cliente .modal-deb-header {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.6) !important;
+}
+
+html.dark #modal-debitos-cliente .modal-deb-body,
+html[data-theme="dark"] #modal-debitos-cliente .modal-deb-body,
+body:not(.light) #modal-debitos-cliente .modal-deb-body {
+    background-color: #0b0f19 !important;
+}
+
+html.dark #modal-debitos-cliente .modal-deb-box,
+html[data-theme="dark"] #modal-debitos-cliente .modal-deb-box,
+body:not(.light) #modal-debitos-cliente .modal-deb-box {
+    background-color: #1e293b !important;
+    border: 1px solid rgba(51, 65, 85, 0.65) !important;
+    color: #f8fafc !important;
+}
+
+html.dark #modal-debitos-cliente .modal-deb-table-wrap,
+html[data-theme="dark"] #modal-debitos-cliente .modal-deb-table-wrap,
+body:not(.light) #modal-debitos-cliente .modal-deb-table-wrap {
+    background-color: #1e293b !important;
+    border: 1px solid rgba(51, 65, 85, 0.65) !important;
+}
+
+html.dark #modal-debitos-cliente .modal-deb-table thead,
+html[data-theme="dark"] #modal-debitos-cliente .modal-deb-table thead,
+body:not(.light) #modal-debitos-cliente .modal-deb-table thead {
+    background-color: #0f172a !important;
+    color: #94a3b8 !important;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.6) !important;
+}
+
+html.dark #modal-debitos-cliente .modal-deb-table tbody tr,
+html[data-theme="dark"] #modal-debitos-cliente .modal-deb-table tbody tr,
+body:not(.light) #modal-debitos-cliente .modal-deb-table tbody tr {
+    border-bottom: 1px solid rgba(51, 65, 85, 0.4) !important;
+}
+
+html.dark #modal-debitos-cliente .modal-deb-table tbody tr:hover,
+html[data-theme="dark"] #modal-debitos-cliente .modal-deb-table tbody tr:hover,
+body:not(.light) #modal-debitos-cliente .modal-deb-table tbody tr:hover {
+    background-color: rgba(30, 41, 59, 0.7) !important;
+}
+
+html.dark #modal-debitos-cliente .modal-deb-table tfoot,
+html[data-theme="dark"] #modal-debitos-cliente .modal-deb-table tfoot,
+body:not(.light) #modal-debitos-cliente .modal-deb-table tfoot {
+    background-color: #0f172a !important;
+    border-top: 1px solid rgba(51, 65, 85, 0.7) !important;
+}
+
+html.dark #modal-debitos-cliente .modal-deb-footer,
+html[data-theme="dark"] #modal-debitos-cliente .modal-deb-footer,
+body:not(.light) #modal-debitos-cliente .modal-deb-footer {
+    background-color: #0f172a !important;
+    border-top: 1px solid rgba(51, 65, 85, 0.6) !important;
+}
+
+/* Modo Claro */
+html.light #modal-debitos-cliente .modal-deb-card,
+html[data-theme="light"] #modal-debitos-cliente .modal-deb-card,
+body.light #modal-debitos-cliente .modal-deb-card {
+    background-color: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #1e293b !important;
+}
+
+html.light #modal-debitos-cliente .modal-deb-header,
+html[data-theme="light"] #modal-debitos-cliente .modal-deb-header,
+body.light #modal-debitos-cliente .modal-deb-header {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+
+html.light #modal-debitos-cliente .modal-deb-body,
+html[data-theme="light"] #modal-debitos-cliente .modal-deb-body,
+body.light #modal-debitos-cliente .modal-deb-body {
+    background-color: #f8fafc !important;
+}
+
+html.light #modal-debitos-cliente .modal-deb-box,
+html[data-theme="light"] #modal-debitos-cliente .modal-deb-box,
+body.light #modal-debitos-cliente .modal-deb-box {
+    background-color: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #1e293b !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+html.light #modal-debitos-cliente .modal-deb-table-wrap,
+html[data-theme="light"] #modal-debitos-cliente .modal-deb-table-wrap,
+body.light #modal-debitos-cliente .modal-deb-table-wrap {
+    background-color: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+html.light #modal-debitos-cliente .modal-deb-table thead,
+html[data-theme="light"] #modal-debitos-cliente .modal-deb-table thead,
+body.light #modal-debitos-cliente .modal-deb-table thead {
+    background-color: #f1f5f9 !important;
+    color: #64748b !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+
+html.light #modal-debitos-cliente .modal-deb-table tbody tr,
+html[data-theme="light"] #modal-debitos-cliente .modal-deb-table tbody tr,
+body.light #modal-debitos-cliente .modal-deb-table tbody tr {
+    border-bottom: 1px solid #f1f5f9 !important;
+}
+
+html.light #modal-debitos-cliente .modal-deb-table tbody tr:hover,
+html[data-theme="light"] #modal-debitos-cliente .modal-deb-table tbody tr:hover,
+body.light #modal-debitos-cliente .modal-deb-table tbody tr:hover {
+    background-color: #f8fafc !important;
+}
+
+html.light #modal-debitos-cliente .modal-deb-table tfoot,
+html[data-theme="light"] #modal-debitos-cliente .modal-deb-table tfoot,
+body.light #modal-debitos-cliente .modal-deb-table tfoot {
+    background-color: #f8fafc !important;
+    border-top: 1px solid #e2e8f0 !important;
+}
+
+html.light #modal-debitos-cliente .modal-deb-footer,
+html[data-theme="light"] #modal-debitos-cliente .modal-deb-footer,
+body.light #modal-debitos-cliente .modal-deb-footer {
+    background-color: #ffffff !important;
+    border-top: 1px solid #e2e8f0 !important;
+}
+
+/* Tabs de Filtro */
+#modal-debitos-cliente .tab-deb-btn {
+    color: #64748b;
+    cursor: pointer;
+    background: transparent;
+}
+#modal-debitos-cliente .tab-deb-btn.active {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+}
+html.dark #modal-debitos-cliente .tab-deb-btn,
+html[data-theme="dark"] #modal-debitos-cliente .tab-deb-btn,
+body:not(.light) #modal-debitos-cliente .tab-deb-btn {
+    color: #94a3b8;
+}
+html.dark #modal-debitos-cliente .tab-deb-btn.active,
+html[data-theme="dark"] #modal-debitos-cliente .tab-deb-btn.active,
+body:not(.light) #modal-debitos-cliente .tab-deb-btn.active {
+    background-color: #334155 !important;
+    color: #ffffff !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
+}
+
+/* ==========================================================================
+/* ==========================================================================
+   SISTEMA DE LAYOUT RESPONSIVO MOBILE & DESKTOP (FC GESTÃO)
+   Garante 100% de fluidez, toque, rolagem e visualização em qualquer tela
+   ========================================================================== */
+
+/* 1. Raiz e Viewport Dinâmico */
+html, body {
+    width: 100%;
+    max-width: 100%;
+    min-height: 100%;
+    height: 100%;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    -webkit-text-size-adjust: 100%;
+    touch-action: manipulation;
+}
+
+#app-container {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    height: 100dvh;
+    display: flex;
+    overflow: hidden;
+    position: relative;
+    min-width: 0;
+}
+
+#app-container > main,
+main {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    height: 100dvh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    position: relative !important;
+    padding-bottom: 0 !important;
+}
+
+/* 2. Container de Rolagem do Conteúdo Principal */
+main > .overflow-y-auto,
+main > div.flex-1.overflow-y-auto {
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+    overscroll-behavior-y: contain !important;
+    display: flex !important;
+    flex-direction: column !important;
+    position: relative !important;
+}
+
+@media (max-width: 767px) {
+    main > .overflow-y-auto,
+    main > div.flex-1.overflow-y-auto {
+        padding: 12px 10px 16px 10px !important;
+    }
+}
+
+/* 3. Filhos do Container de Rolagem (Páginas, Seções e Containers) */
+/* Garante que o conteúdo ocupe 100% da largura disponível e expanda sem encolher */
+main > .overflow-y-auto > *:not(#fc-global-page-footer),
+main > div.flex-1.overflow-y-auto > *:not(#fc-global-page-footer) {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: 0 0 auto !important;
+}
+
+/* 4. Rodapé Global Sticky (Fica na base em conteúdo curto, e após scroll em longo) */
+#fc-global-page-footer {
+    margin-top: auto !important;
+    flex-shrink: 0 !important;
+    width: 100% !important;
+    z-index: 5 !important;
+}
+
+/* 5. REGRAS ESPECÍFICAS PARA PDV NO MOBILE E TABLET (< 1024px) */
+@media (max-width: 1023px) {
+    /* Desbloqueia a altura rígida de 100% que impedia o PDV de rolar no mobile */
+    #view-pdv,
+    .view-section#view-pdv,
+    div[id="view-pdv"] {
+        height: auto !important;
+        min-height: 100% !important;
+        flex: 1 0 auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+        padding-bottom: 24px !important;
+    }
+
+    #view-pdv > div.flex-col.lg\:flex-row,
+    #view-pdv > .min-h-\[600px\] {
+        height: auto !important;
+        min-height: auto !important;
+        flex-direction: column !important;
+        gap: 14px !important;
+    }
+
+    /* Carrinho de Compras: altura controlada para não afastar a área de pagamentos */
+    #view-pdv .flex-1.flex.flex-col.overflow-hidden {
+        min-height: 180px !important;
+        max-height: 360px !important;
+        overflow: hidden !important;
+    }
+
+    /* Coluna de Totais e Múltiplos Pagamentos */
+    #view-pdv .w-full.lg\:w-96 {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* Botão de Finalizar Venda no PDV Mobile */
+    #btn-finalizar-venda {
+        min-height: 52px !important;
+        font-size: 1rem !important;
+        position: sticky !important;
+        bottom: 8px !important;
+        z-index: 25 !important;
+        box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.4) !important;
+    }
+}
+
+/* 6. HEADER NO MOBILE (< 768px) */
+@media (max-width: 767px) {
+    #app-container > main > header,
+    main > header {
+        height: 56px !important;
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+        flex-shrink: 0 !important;
+        z-index: 20 !important;
+    }
+
+    /* Botão de Menu Hambúrguer sempre acessível e confortável de tocar */
+    main > header button[onclick*="toggleMenu"] {
+        width: 40px !important;
+        height: 40px !important;
+        min-width: 40px !important;
+        min-height: 40px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 !important;
+        margin-left: 0 !important;
+        flex-shrink: 0 !important;
+        border-radius: 8px !important;
+    }
+
+    #header-title {
+        font-size: 0.95rem !important;
+        max-width: calc(100vw - 210px) !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    #header-right-actions {
+        gap: 6px !important;
+        flex-shrink: 0 !important;
+    }
+}
+
+/* 7. MENU LATERAL (SIDEBAR) & OVERLAY NO MOBILE (< 768px) */
+@media (max-width: 767px) {
+    #sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        width: 280px !important;
+        max-width: 82vw !important;
+        height: 100% !important;
+        height: 100dvh !important;
+        z-index: 50 !important;
+        box-shadow: 4px 0 25px rgba(0, 0, 0, 0.6) !important;
+        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    #sidebar-overlay {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 45 !important;
+        background-color: rgba(15, 23, 42, 0.7) !important;
+        backdrop-filter: blur(4px) !important;
+        -webkit-backdrop-filter: blur(4px) !important;
+    }
+
+    /* Modais no Mobile: Rolagem garantida e tamanho adaptativo */
+    .fixed.inset-0 > div[class*="rounded"],
+    .fixed.inset-0 > div[class*="max-w-"],
+    .modal-card,
+    .modal-content {
+        max-height: calc(100dvh - 32px) !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    /* Formulários: previne auto-zoom do iOS Safari */
+    input[type="text"],
+    input[type="password"],
+    input[type="email"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="date"],
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
 }

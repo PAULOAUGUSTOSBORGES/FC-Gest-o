@@ -264,7 +264,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // 2. Botão no Header (acesso instantâneo direto no celular e PC sem precisar abrir menu)
-    const headerActions = document.querySelector('header .flex.items-center.gap-2, header .flex.items-center.gap-4');
+    const headerActions = document.getElementById('header-right-actions') || 
+        (document.querySelector('header') && document.querySelector('header').children.length > 1 ? document.querySelector('header').lastElementChild : null);
     if (headerActions) { headerActions.classList.add('flex-nowrap', 'shrink-0'); }
     if (headerActions && !document.getElementById('header-btn-tema')) {
         const isDark = document.documentElement.classList.contains('dark');
@@ -289,10 +290,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 window.showToast('Repositório local já atualizado.', 'info');
             }
         };
-        syncBtn.className = 'h-9 px-2.5 sm:px-3 flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg bg-slate-700 hover:bg-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-[11px] sm:text-xs font-bold tracking-wider transition-all cursor-pointer shadow-sm select-none border border-slate-600 shrink-0 relative';
-        syncBtn.title = 'Sincronizar banco de dados local com o Firebase';
+        syncBtn.className = 'h-9 px-2 sm:px-3 flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg bg-slate-700 hover:bg-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-[11px] sm:text-xs font-bold tracking-wider transition-all cursor-pointer shadow-sm select-none border border-slate-600 shrink-0 relative';
+        syncBtn.title = 'Sincronizar banco de dados local com o Firebase · Automático no 1º login e às 17:30';
         syncBtn.innerHTML = `
-            <span id="header-btn-sync-text">SINCRONIZAR</span>
+            <span id="header-btn-sync-text" class="hidden sm:inline">SINCRONIZAR</span>
             <span id="header-btn-sync-box" class="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded bg-white/10 text-white text-xs">
                 <i id="header-btn-sync-icon" class="fa-solid fa-arrows-rotate"></i>
             </span>
@@ -302,7 +303,93 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     _atualizarBotaoTemaSistema();
+    _iniciarRodapesSistema();
 });
+
+// --- INJEÇÃO GLOBAL: RODAPÉ DA EMPRESA CRIADORA (PRIMAS TECNOLOGIA) & VERSÃO 1.0 ---
+function _obterCaminhoIconePrimas() {
+    return window.location.pathname.includes('/sistema/') ? '../icons/icone_primas.png' : './icons/icone_primas.png';
+}
+
+function _injetarRodapeConteudo() {
+    // Remove qualquer rodapé que possa ter sido injetado anteriormente na sidebar
+    const oldSidebarFooter = document.getElementById('sidebar-footer-brand');
+    if (oldSidebarFooter) oldSidebarFooter.remove();
+
+    const scrollContainer = document.querySelector('main .overflow-y-auto') || document.querySelector('main > div.flex-1');
+    if (!scrollContainer) return;
+
+    // Configura o scrollContainer como flex-col para que o footer fique fixado no fundo
+    // mesmo em telas curtas, e vá para o final do scroll após o usuário rolar em telas longas
+    scrollContainer.style.setProperty('display', 'flex', 'important');
+    scrollContainer.style.setProperty('flex-direction', 'column', 'important');
+    scrollContainer.style.setProperty('width', '100%', 'important');
+
+    Array.from(scrollContainer.children).forEach(child => {
+        if (child.id !== 'fc-global-page-footer') {
+            child.style.setProperty('width', '100%', 'important');
+            child.style.setProperty('min-width', '0', 'important');
+            child.style.setProperty('flex-shrink', '0', 'important');
+            child.style.setProperty('flex-grow', '0', 'important');
+        }
+    });
+
+    let footer = document.getElementById('fc-global-page-footer');
+    if (!footer) {
+        const iconePrimas = _obterCaminhoIconePrimas();
+        footer = document.createElement('footer');
+        footer.id = 'fc-global-page-footer';
+        footer.className = 'w-full mt-auto shrink-0 pt-6 pb-2 border-t border-slate-200/80 dark:border-slate-800 text-slate-500 dark:text-slate-400 text-xs no-print select-none';
+        footer.innerHTML = `
+            <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 px-2 text-center sm:text-left">
+                <div class="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+                    <span class="font-extrabold text-slate-800 dark:text-slate-200">FC Gestão</span>
+                    <span class="text-slate-300 dark:text-slate-700">•</span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/60 font-mono" title="Versão Atual">
+                        <i class="fa-solid fa-code-commit text-[10px]"></i> Versão 1.0
+                    </span>
+                    <span class="text-slate-300 dark:text-slate-700">•</span>
+                    <span class="text-[11px] text-slate-500 dark:text-slate-400">Sistema de Gestão Comercial</span>
+                </div>
+                <div class="flex items-center gap-2 justify-center">
+                    <span class="text-[11px] text-slate-500 dark:text-slate-400">Desenvolvido por</span>
+                    <a href="https://primas.tech" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 font-extrabold text-slate-800 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors group" title="Conhecer Primas Tecnologia">
+                        <img src="${iconePrimas}" alt="Primas Tecnologia" class="w-4 h-4 rounded object-contain inline-block group-hover:scale-110 transition-transform" onerror="this.style.display='none'">
+                        <span>Primas Tecnologia</span>
+                    </a>
+                </div>
+            </div>
+        `;
+    }
+
+    footer.style.setProperty('margin-top', 'auto', 'important');
+    footer.style.setProperty('flex-shrink', '0', 'important');
+    footer.style.setProperty('width', '100%', 'important');
+
+    if (scrollContainer.lastElementChild !== footer) {
+        scrollContainer.appendChild(footer);
+    }
+}
+
+function _iniciarRodapesSistema() {
+    _injetarRodapeConteudo();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _iniciarRodapesSistema);
+} else {
+    _iniciarRodapesSistema();
+}
+window.addEventListener('load', _iniciarRodapesSistema);
+
+// Garante que o rodapé nunca se perca após renderizações dinâmicas
+setInterval(function () {
+    const sc = document.querySelector('main .overflow-y-auto') || document.querySelector('main > div.flex-1');
+    const ft = document.getElementById('fc-global-page-footer');
+    if (sc && (!ft || sc.lastElementChild !== ft)) {
+        _iniciarRodapesSistema();
+    }
+}, 1000);
 
 
 
@@ -454,6 +541,7 @@ if (!navigator.onLine) {
 }
 
 const formatMoney = (val) => Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+window.formatMoney = formatMoney;
 
 // ==========================================
 // FUN??ES DE MÁSCARA DE DINHEIRO
@@ -1186,6 +1274,13 @@ window.isContaMasterGlobal = isContaMasterGlobal;
             } else {
                 sincronizarFirebase().catch(e => console.warn("Aviso na sincronização em background:", e));
             }
+
+            // Sincronização programada (1º login do cliente no dia com internet e horário das 17:30hrs)
+            if (window.FCCache && typeof window.FCCache.verificarSincronizacaoAutomatica === 'function') {
+                setTimeout(function () {
+                    window.FCCache.verificarSincronizacaoAutomatica('login');
+                }, 1200);
+            }
     });
 }
 
@@ -1856,27 +1951,45 @@ function atualizarMenuLateralPorPlanoSaaS(modulosLiberados) {
 }
 
 function mostrarNomeUsuarioNoHeader(nome) {
-    const header = document.querySelector('header');
-    if (!header) return;
-    
-    const rightDiv = header.lastElementChild;
-    if (rightDiv && rightDiv.classList.contains('flex')) {
-        if (!document.getElementById('header-user-name-display')) {
-            const nameEl = document.createElement('div');
-            nameEl.id = 'header-user-name-display';
-            nameEl.className = 'hidden sm:block text-sm font-bold text-slate-700 dark:text-slate-200 mr-2';
-            rightDiv.insertBefore(nameEl, rightDiv.lastElementChild);
-        }
-        document.getElementById('header-user-name-display').innerText = nome;
+    try {
+        const header = document.querySelector('header');
+        if (!header) return;
         
-        const avatarEl = rightDiv.lastElementChild;
-        if (avatarEl && avatarEl.classList.contains('rounded-full')) {
-            const partes = nome.split(' ');
-            let sigla = partes[0].substring(0, 1).toUpperCase();
-            if (partes.length > 1) sigla += partes[1].substring(0, 1).toUpperCase();
-            else if (partes[0].length > 1) sigla += partes[0].substring(1, 2).toUpperCase();
-            avatarEl.innerText = sigla;
+        const rightDiv = document.getElementById('header-right-actions') || 
+            (header.children.length > 1 ? header.lastElementChild : null);
+        if (rightDiv && rightDiv.classList.contains('flex')) {
+            // Localiza apenas avatar que seja filho direto do container direito
+            let avatarEl = document.getElementById('user-avatar-icon') || 
+                           document.getElementById('header-user-avatar') || 
+                           Array.from(rightDiv.children).find(el => el.classList.contains('rounded-full'));
+            
+            if (!document.getElementById('header-user-name-display')) {
+                const nameEl = document.createElement('div');
+                nameEl.id = 'header-user-name-display';
+                nameEl.className = 'hidden sm:block text-sm font-bold text-slate-700 dark:text-slate-200 mr-2 whitespace-nowrap';
+                
+                if (avatarEl && avatarEl.parentElement === rightDiv) {
+                    rightDiv.insertBefore(nameEl, avatarEl);
+                } else {
+                    rightDiv.appendChild(nameEl);
+                }
+            }
+            
+            const nameDisplay = document.getElementById('header-user-name-display');
+            if (nameDisplay) {
+                nameDisplay.innerText = nome;
+            }
+            
+            if (avatarEl) {
+                const partes = (nome || '').trim().split(' ');
+                let sigla = partes[0] ? partes[0].substring(0, 1).toUpperCase() : 'U';
+                if (partes.length > 1) sigla += partes[partes.length - 1].substring(0, 1).toUpperCase();
+                else if (partes[0].length > 1) sigla += partes[0].substring(1, 2).toUpperCase();
+                avatarEl.innerText = sigla;
+            }
         }
+    } catch (err) {
+        console.warn('Erro não-bloqueante ao exibir nome no header:', err);
     }
 }
 
@@ -2017,15 +2130,39 @@ function toggleMenu() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebar-overlay');
     if (sidebar && overlay) {
-        if (sidebar.classList.contains('-translate-x-full')) {
+        const isClosed = sidebar.classList.contains('-translate-x-full');
+        if (isClosed) {
             sidebar.classList.remove('-translate-x-full');
             overlay.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
         } else {
             sidebar.classList.add('-translate-x-full');
             overlay.classList.add('hidden');
+            document.body.style.overflow = '';
         }
     }
 }
+window.toggleMenu = toggleMenu;
+
+// Fechamento automático no mobile ao clicar em qualquer item do menu ou tecla Escape
+document.addEventListener('click', function(e) {
+    const navLink = e.target.closest('#sidebar a.nav-btn, #sidebar a');
+    if (navLink && window.innerWidth < 768) {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
+            toggleMenu();
+        }
+    }
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar && !sidebar.classList.contains('-translate-x-full') && window.innerWidth < 768) {
+            toggleMenu();
+        }
+    }
+});
 
 // ==========================================
 // MÓDULO: MOTOR DE TEMA E IDENTIDADE DO SISTEMA
@@ -2084,19 +2221,7 @@ window.chamarGemini = async function(prompt) {
             apiKey = db.config.empresa.geminiKey;
         }
 
-        // 2.1 Busca na Chave Mestra Global configurada pelo Fundador no Master
-        if (!apiKey) {
-            try {
-                const saasSnap = await firebase.firestore().collection('saas_config').doc('master').get();
-                if (saasSnap.exists && saasSnap.data().geminiKeyMaster) {
-                    apiKey = saasSnap.data().geminiKeyMaster;
-                }
-            } catch (e) {
-                console.warn("Aviso ao buscar chave mestra do SaaS:", e);
-            }
-        }
-
-        // 2.2 Busca na empresa ativa do Firestore
+        // 2.1 Busca na empresa ativa do Firestore
         if (!apiKey && typeof window.getEmpresaRef === 'function') {
             try {
                 const empDoc = await window.getEmpresaRef().get();
@@ -2106,7 +2231,7 @@ window.chamarGemini = async function(prompt) {
             } catch(e) {}
         }
 
-        // 2.3 Fallback nas configurações legadas (fc_moveis/config)
+        // 2.2 Fallback nas configurações legadas (fc_moveis/config)
         if (!apiKey) {
             try {
                 const legacySnap = await firebase.firestore().collection('fc_moveis').doc('config').get();
@@ -2117,7 +2242,19 @@ window.chamarGemini = async function(prompt) {
             } catch(e) {}
         }
 
+        // 2.3 Se a chave de cliente não foi configurada, processa com segurança via Cloud Function (backend)
         if (!apiKey) {
+            try {
+                if (typeof firebase !== 'undefined' && firebase.functions) {
+                    const empIdAtual = (typeof _obterEmpresaId === 'function') ? _obterEmpresaId() : (localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis');
+                    const chamarGeminiFn = firebase.functions().httpsCallable('chamarGemini');
+                    const res = await chamarGeminiFn({ prompt: prompt, empId: empIdAtual });
+                    if (res && res.data) return res.data;
+                }
+            } catch (fnErr) {
+                console.warn("[IA] Execução remota via Cloud Function falhou:", fnErr);
+            }
+
             console.warn("Chave Gemini não localizada.");
             if (typeof showToast === 'function') {
                 showToast("A Chave de Inteligência Artificial ainda não foi configurada no sistema.", 'warning');

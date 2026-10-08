@@ -32,15 +32,15 @@
     <meta name="apple-mobile-web-app-title" content="FC Gestão">
     <link rel="apple-touch-icon" href="../icons/icon-apple-touch.png">
     <link rel="icon" type="image/png" href="../icons/favicon.png">
-    <title>FC Gestão - PDV</title>
+    <title>FC Gestão - Frente de Caixa (PDV)</title>
         
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- CORRIGIDO: Removido o ?v=20260831113500 que estava quebrando o carregamento offline -->
-    <link rel="stylesheet" href="../style.css?v=20261006135537">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261006135537">
+    <link rel="stylesheet" href="../style.css?v=20261008194435">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261008194435">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="pdv">
 
@@ -83,9 +83,10 @@
 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
                 <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
+                <a href="conciliacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="conciliacao"><i class="fa-solid fa-scale-balanced w-5 text-center text-blue-400"></i> Conciliação Bancária</a>
                 <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
                 <a href="caixa_loja.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa_loja"><i class="fa-solid fa-chart-bar w-5 text-center"></i> Caixa da Loja</a>
-                <a href="compras.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & NF-e XML</a>
+                <a href="compras.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & Estoque</a>
                 <a href="relatorios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
                 <a href="agenda.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="agenda"><i class="fa-regular fa-calendar w-5 text-center"></i> Agenda</a>
                 <a href="marketing.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="marketing"><i class="fa-solid fa-bullhorn w-5 text-center"></i> Marketing & Lembretes</a>
@@ -102,19 +103,19 @@
         <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
             <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
-                <div class="flex items-center gap-3">
-                    <button onclick="toggleMenu()" class="md:hidden text-slate-600 dark:text-slate-300 hover:text-blue-600 p-2"><i class="fa-solid fa-bars text-xl"></i></button>
-                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate" id="header-title">Operação & Vendas</h2>
+                <div class="flex items-center gap-3 min-w-0">
+                    <button onclick="toggleMenu()" class="md:hidden text-slate-600 dark:text-slate-300 hover:text-blue-600 p-2 -ml-2 rounded-lg transition-colors" title="Abrir Menu"><i class="fa-solid fa-bars text-xl"></i></button>
+                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate flex items-center gap-2" id="header-title">Frente de Caixa (PDV)</h2>
                 </div>
-                <div class="flex items-center gap-2 md:gap-4">
-                    <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs shrink-0">PA</div>
+                <div class="flex items-center gap-2 md:gap-4 shrink-0" id="header-right-actions">
+                    <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs shrink-0 select-none shadow-sm" id="user-avatar-icon">AM</div>
                 </div>
             </header>
 
             <div class="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth custom-scrollbar w-full relative">
 
                 <!-- ================== TELA DO PDV ================== -->
-                <div id="view-pdv" class="view-section h-full flex flex-col gap-4 active">
+                <div id="view-pdv" class="view-section lg:h-full flex flex-col gap-4 active w-full">
                     <div class="bg-white dark:bg-slate-800 p-3 md:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row flex-wrap gap-3 items-start sm:items-center justify-between shrink-0">
                         <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                             <span id="pdv-status-caixa" class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-bold px-3 py-1.5 rounded-lg text-[10px] md:text-xs uppercase tracking-wider whitespace-nowrap"><i class="fa-solid fa-lock mr-1"></i> Verificando Caixa...</span>
@@ -139,7 +140,7 @@
                         <!-- BUSCA INTELIGENTE DE CLIENTES NO PDV -->
                         <div class="flex w-full sm:w-64 relative">
                             <input type="hidden" id="pdv-cliente" value="0">
-                            <input type="text" id="pdv-cliente-busca" placeholder="Cliente: Consumidor Final" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-sm font-bold text-slate-700 dark:text-slate-200 px-3 py-2 rounded-l-lg outline-none focus:border-blue-500 w-full dark:text-white" autocomplete="off" onfocus="filtrarClientesPDV(this.value)" oninput="filtrarClientesPDV(this.value)" onblur="setTimeout(() => { if (typeof autoSelecionarClientePorNome === 'function') autoSelecionarClientePorNome(); }, 250)" onkeydown="if(event.key==='Enter'){ event.preventDefault(); if (typeof autoSelecionarPrimeiroCliente === 'function') autoSelecionarPrimeiroCliente(); }">
+                            <input type="text" id="pdv-cliente-busca" aria-label="Buscar cliente" placeholder="Cliente: Consumidor Final" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-sm font-bold text-slate-700 dark:text-slate-200 px-3 py-2 rounded-l-lg outline-none focus:border-blue-500 w-full dark:text-white" autocomplete="off" onfocus="filtrarClientesPDV(this.value)" oninput="filtrarClientesPDV(this.value)" onblur="setTimeout(() => { if (typeof autoSelecionarClientePorNome === 'function') autoSelecionarClientePorNome(); }, 250)" onkeydown="if(event.key==='Enter'){ event.preventDefault(); if (typeof autoSelecionarPrimeiroCliente === 'function') autoSelecionarPrimeiroCliente(); }">
                             <div id="pdv-cliente-resultados" class="absolute z-50 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl rounded-lg top-[42px] hidden max-h-60 overflow-y-auto custom-scrollbar"></div>
                             <button id="btn-pdv-novo-cliente" onclick="abrirModalClienteRapido()" class="bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-200 border-l-0 px-3 py-2 rounded-r-lg font-bold text-sm transition shrink-0" title="Novo Cliente"><i class="fa-solid fa-user-plus"></i></button>
                         </div>
@@ -198,6 +199,9 @@
                             
                             <!-- Ações Rápidas do Cliente -->
                             <div class="flex items-center gap-2 self-end lg:self-center shrink-0">
+                                <button type="button" id="btn-pdv-ver-debitos" onclick="abrirModalDebitosClientePDV()" class="hidden px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs active:scale-95 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30" title="Ver detalhes dos débitos pendentes">
+                                    <i class="fa-solid fa-file-invoice-dollar text-rose-500"></i> <span>Ver Débitos</span>
+                                </button>
                                 <button type="button" onclick="editarClienteSelecionadoPDV()" class="btn-cli-editar px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs active:scale-95" title="Editar dados deste cliente">
                                     <i class="fa-solid fa-pen-to-square text-blue-400"></i> <span>Editar</span>
                                 </button>
@@ -208,18 +212,18 @@
                         </div>
                     </div>
 
-                    <div class="flex flex-col lg:flex-row gap-4 h-full min-h-[600px]">
+                    <div class="flex flex-col lg:flex-row gap-4 lg:h-full min-h-0 lg:min-h-[600px] w-full">
                         <div class="flex-1 flex flex-col gap-4">
                             <!-- BUSCA INTELIGENTE -->
                             <div class="bg-white dark:bg-slate-800 p-3 md:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex gap-2 relative shrink-0">
                                 <div class="relative flex-1">
                                     <i class="fa-solid fa-barcode absolute left-3 top-3.5 text-slate-400"></i>
-                                    <input type="text" id="pdv-produto-busca" placeholder="Busque por Nome ou EAN..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 pl-10 pr-4 py-2.5 md:py-3 rounded-lg font-medium text-xs md:text-sm focus:outline-none focus:border-blue-500 dark:text-white" 
+                                    <input type="text" id="pdv-produto-busca" aria-label="Buscar produto por nome ou código de barras" placeholder="Busque por Nome ou EAN..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 pl-10 pr-4 py-2.5 md:py-3 rounded-lg font-medium text-xs md:text-sm focus:outline-none focus:border-blue-500 dark:text-white" 
                                            onfocus="filtrarProdutosPDV(this.value)" 
                                            onclick="filtrarProdutosPDV(this.value)"
-                                           oninput="filtrarProdutosPDV(this.value)"
+                                           oninput="debouncedFiltrarProdutosPDV(this.value)"
                                            onkeypress="if(event.key === 'Enter') { event.preventDefault(); buscarProdutoPorEAN(this.value); }">
-                                    <div id="pdv-busca-resultados" class="absolute z-50 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl rounded-lg mt-1 hidden max-h-60 overflow-y-auto custom-scrollbar"></div>
+                                     <div id="pdv-busca-resultados" class="absolute z-50 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl rounded-lg mt-1 hidden max-h-60 overflow-y-auto custom-scrollbar"></div>
                                 </div>
                                 <button onclick="abrirLeitorCamera()" class="bg-slate-800 hover:bg-slate-900 text-white px-3 md:px-4 font-bold rounded-lg transition-colors shadow-md text-sm" title="Ler Código de Barras"><i class="fa-solid fa-camera"></i></button>
                                 <button id="btn-pdv-novo-produto" onclick="abrirModalProduto()" class="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200 px-3 md:px-4 font-bold rounded-lg transition-colors shadow-sm text-sm" title="Cadastrar Produto/Serviço"><i class="fa-solid fa-box-open"></i></button>
@@ -234,13 +238,13 @@
                                     <table class="w-full text-left border-collapse">
                                         <thead>
                                             <tr class="text-[10px] md:text-xs font-bold text-slate-400 uppercase border-b border-slate-100 dark:border-slate-700">
-                                                <th class="pb-2 w-10 md:w-12 text-center"><i class="fa-solid fa-image"></i></th>
-                                                <th class="pb-2">Descrição</th>
-                                                <th class="pb-2 text-center w-16 md:w-24">Qtd</th>
-                                                <th class="pb-2 text-right w-20 md:w-24">Preço Und</th>
-                                                <th class="pb-2 text-right w-20 md:w-24">Desc.</th>
-                                                <th class="pb-2 text-right w-20 md:w-24">Total</th>
-                                                <th class="pb-2 w-8 md:w-10"></th>
+                                                <th scope="col" class="pb-2 w-10 md:w-12 text-center"><i class="fa-solid fa-image"></i></th>
+                                                <th scope="col" class="pb-2">Descrição</th>
+                                                <th scope="col" class="pb-2 text-center w-16 md:w-24">Qtd</th>
+                                                <th scope="col" class="pb-2 text-right w-20 md:w-24">Preço Und</th>
+                                                <th scope="col" class="pb-2 text-right w-20 md:w-24">Desc.</th>
+                                                <th scope="col" class="pb-2 text-right w-20 md:w-24">Total</th>
+                                                <th scope="col" class="pb-2 w-8 md:w-10"></th>
                                             </tr>
                                                    <tbody id="pdv-carrinho-body" class="divide-y divide-slate-50 text-xs md:text-sm"></tbody>
                                     </table>
@@ -659,6 +663,181 @@
             <!-- FOOTER -->
             <div class="bg-white dark:bg-slate-900 p-4 md:p-5 border-t border-slate-200 dark:border-slate-800 flex justify-end shrink-0 rounded-b-2xl">
                 <button onclick="fecharModalDetalhesVenda()" class="bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-bold tracking-wide px-8 py-2.5 rounded-xl text-sm shadow-md transition-all active:scale-95"><i class="fa-solid fa-check mr-2"></i> Fechar Janela</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DETALHES DE DÉBITOS DO CLIENTE -->
+    <div id="modal-debitos-cliente" class="fixed inset-0 z-[500] hidden flex items-center justify-center p-3 sm:p-4 md:p-6 transition-all duration-200" onclick="if(event.target === this) fecharModalDebitosClientePDV()">
+        <div class="modal-deb-card w-full max-w-4xl flex flex-col overflow-hidden max-h-[92vh]">
+            
+            <!-- HEADER -->
+            <div class="modal-deb-header p-4 sm:p-5 flex justify-between items-center shrink-0">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-11 h-11 rounded-2xl flex items-center justify-center text-rose-500 bg-rose-500/10 border border-rose-500/20 text-xl shrink-0 shadow-xs">
+                        <i class="fa-solid fa-file-invoice-dollar"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h3 class="font-extrabold text-base sm:text-lg tracking-tight">Extrato de Débitos do Cliente</h3>
+                            <span id="modal-deb-tag-total" class="px-2.5 py-0.5 rounded-full text-[11px] font-black tracking-wide bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">-- débitos</span>
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 font-medium tracking-wide mt-0.5">Histórico consolidado de títulos e parcelas em aberto no Contas a Receber</p>
+                    </div>
+                </div>
+                <button type="button" onclick="fecharModalDebitosClientePDV()" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Fechar (Esc)">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- BODY -->
+            <div class="modal-deb-body p-4 sm:p-5 flex-1 overflow-y-auto custom-scrollbar space-y-4">
+                
+                <!-- CLIENT BANNER -->
+                <div class="modal-deb-box p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+                    <div class="flex items-center gap-3.5 min-w-0">
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700/80 shrink-0 shadow-xs">
+                            <i class="fa-solid fa-user-tag text-rose-500"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Cliente Selecionado</span>
+                            <h4 id="modal-deb-cli-nome" class="font-black text-base sm:text-lg tracking-tight text-slate-900 dark:text-white truncate">Nome do Cliente</h4>
+                            <div class="flex items-center gap-2.5 flex-wrap mt-1">
+                                <span id="modal-deb-cli-doc" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80 font-mono">
+                                    <i class="fa-solid fa-id-card text-slate-400"></i> --
+                                </span>
+                                <a id="modal-deb-cli-fone-link" href="#" target="_blank" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/20 transition">
+                                    <i class="fa-brands fa-whatsapp text-emerald-500"></i> <span id="modal-deb-cli-fone">--</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0 self-start sm:self-center">
+                        <span id="modal-deb-cli-status-tag" class="px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center gap-1.5 shadow-2xs">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Débitos Pendentes
+                        </span>
+                    </div>
+                </div>
+
+                <!-- 4 KPI CARDS -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <!-- Card 1: Total Devedor -->
+                    <div class="modal-deb-box p-3.5 rounded-2xl relative overflow-hidden border-l-4 border-l-rose-500">
+                        <div class="flex items-center justify-between text-slate-400 mb-1">
+                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-rose-500 dark:text-rose-400">Total Devedor</span>
+                            <div class="w-6 h-6 rounded-lg bg-rose-500/10 text-rose-500 flex items-center justify-center text-xs"><i class="fa-solid fa-wallet"></i></div>
+                        </div>
+                        <p id="modal-deb-kpi-total" class="font-black text-xl sm:text-2xl text-rose-600 dark:text-rose-400 tracking-tight">R$ 0,00</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Soma consolidada</p>
+                    </div>
+
+                    <!-- Card 2: Vencidos / Em Atraso -->
+                    <div class="modal-deb-box p-3.5 rounded-2xl relative overflow-hidden border-l-4 border-l-amber-500">
+                        <div class="flex items-center justify-between text-slate-400 mb-1">
+                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-amber-500 dark:text-amber-400">Em Atraso</span>
+                            <div class="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center text-xs"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                        </div>
+                        <p id="modal-deb-kpi-vencidos-val" class="font-black text-xl sm:text-2xl text-amber-600 dark:text-amber-400 tracking-tight">R$ 0,00</p>
+                        <p id="modal-deb-kpi-vencidos-qtd" class="text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-0.5">0 título(s) vencido(s)</p>
+                    </div>
+
+                    <!-- Card 3: A Vencer no Prazo -->
+                    <div class="modal-deb-box p-3.5 rounded-2xl relative overflow-hidden border-l-4 border-l-emerald-500">
+                        <div class="flex items-center justify-between text-slate-400 mb-1">
+                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-500 dark:text-emerald-400">No Prazo</span>
+                            <div class="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xs"><i class="fa-regular fa-calendar-check"></i></div>
+                        </div>
+                        <p id="modal-deb-kpi-avencer-val" class="font-black text-xl sm:text-2xl text-emerald-600 dark:text-emerald-400 tracking-tight">R$ 0,00</p>
+                        <p id="modal-deb-kpi-avencer-qtd" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">0 título(s) a vencer</p>
+                    </div>
+
+                    <!-- Card 4: Total de Títulos -->
+                    <div class="modal-deb-box p-3.5 rounded-2xl relative overflow-hidden border-l-4 border-l-blue-500">
+                        <div class="flex items-center justify-between text-slate-400 mb-1">
+                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-blue-500 dark:text-blue-400">Total de Títulos</span>
+                            <div class="w-6 h-6 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center text-xs"><i class="fa-solid fa-layer-group"></i></div>
+                        </div>
+                        <p id="modal-deb-kpi-qtd" class="font-black text-xl sm:text-2xl text-slate-800 dark:text-slate-100 tracking-tight">0 parcelas</p>
+                        <p id="modal-deb-kpi-media" class="text-[11px] text-slate-400 mt-0.5">Média por título</p>
+                    </div>
+                </div>
+
+                <!-- TABLE SECTION -->
+                <div class="modal-deb-table-wrap rounded-2xl overflow-hidden">
+                    <div class="p-3.5 border-b border-slate-200/80 dark:border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="flex items-center gap-2">
+                            <h5 class="text-xs font-black uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-list-check text-rose-500"></i> Relação de Títulos
+                            </h5>
+                            <span id="modal-deb-tabela-contador" class="text-xs text-slate-500 dark:text-slate-400 font-medium">--</span>
+                        </div>
+                        
+                        <!-- FILTRO POR ABAS -->
+                        <div class="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+                            <button type="button" onclick="filtrarTabelaDebitosPDV('TODOS')" id="tab-deb-todos" class="tab-deb-btn active px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                                Todos <span id="badge-tab-todos" class="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 dark:bg-slate-700 font-extrabold">0</span>
+                            </button>
+                            <button type="button" onclick="filtrarTabelaDebitosPDV('VENCIDOS')" id="tab-deb-vencidos" class="tab-deb-btn px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Vencidos <span id="badge-tab-vencidos" class="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-500/20 text-rose-600 dark:text-rose-400 font-extrabold">0</span>
+                            </button>
+                            <button type="button" onclick="filtrarTabelaDebitosPDV('AVENCER')" id="tab-deb-avencer" class="tab-deb-btn px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> No Prazo <span id="badge-tab-avencer" class="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-extrabold">0</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="modal-deb-table w-full text-left min-w-[700px]">
+                            <thead>
+                                <tr>
+                                    <th class="p-3.5 pl-4 text-[10px] uppercase font-bold tracking-wider w-40">Vencimento</th>
+                                    <th class="p-3.5 text-[10px] uppercase font-bold tracking-wider">Descrição / Pedido</th>
+                                    <th class="p-3.5 text-[10px] uppercase font-bold tracking-wider w-44">Forma / Doc</th>
+                                    <th class="p-3.5 text-[10px] uppercase font-bold tracking-wider text-center w-28">Status</th>
+                                    <th class="p-3.5 pr-4 text-[10px] uppercase font-bold tracking-wider text-right w-36">Valor em Aberto</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modal-deb-tabela-corpo" class="text-xs">
+                                <!-- Inserido dinamicamente via JS -->
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="4" class="p-3.5 pl-4 text-right uppercase tracking-wider text-slate-500 dark:text-slate-400 font-extrabold text-xs">Total Consolidado da Seleção:</td>
+                                    <td id="modal-deb-tabela-total" class="p-3.5 pr-4 text-right font-black text-rose-600 dark:text-rose-400 text-base">R$ 0,00</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- INFO NOTICE -->
+                <div class="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-xs text-amber-800 dark:text-amber-300 flex items-start gap-3">
+                    <div class="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                        <i class="fa-solid fa-circle-info text-xs"></i>
+                    </div>
+                    <div class="flex-1 leading-relaxed">
+                        <strong>Orientações para o Caixa e Vendas:</strong> Títulos vencidos bloqueiam automaticamente aprovação de novo crediário/fiado. Para liquidar parcelas, conceder abatimentos ou renegociar, acesse o módulo <strong>Financeiro &gt; Contas a Receber</strong>.
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- FOOTER -->
+            <div class="modal-deb-footer p-3.5 sm:p-4 flex flex-wrap items-center justify-between gap-2.5 shrink-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <a id="modal-deb-btn-wpp" href="#" target="_blank" class="hidden bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all flex items-center gap-2 shadow-xs active:scale-95" title="Enviar extrato de débitos para o WhatsApp do cliente">
+                        <i class="fa-brands fa-whatsapp text-sm"></i> <span>Cobrar no WhatsApp</span>
+                    </a>
+                    <button type="button" id="modal-deb-btn-copiar" onclick="copiarResumoDebitosPDV()" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold px-4 py-2.5 rounded-xl text-xs transition-all flex items-center gap-2 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs active:scale-95" title="Copiar resumo de débitos para a área de transferência">
+                        <i class="fa-regular fa-copy"></i> <span>Copiar Extrato</span>
+                    </button>
+                    <a href="financeiro.html" target="_blank" class="bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 font-bold px-4 py-2.5 rounded-xl text-xs transition-all flex items-center gap-2 border border-blue-500/30 shadow-2xs active:scale-95" title="Abrir módulo Financeiro em nova aba">
+                        <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i> <span>Ir para o Financeiro</span>
+                    </a>
+                </div>
+                <button type="button" onclick="fecharModalDebitosClientePDV()" class="bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-bold px-7 py-2.5 rounded-xl text-xs shadow-sm transition-all active:scale-95">
+                    <i class="fa-solid fa-check mr-1.5"></i> Fechar Janela
+                </button>
             </div>
         </div>
     </div>
@@ -1103,13 +1282,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
 
-    <script src="../sistema/config_banco.js?v=20261006135537"></script>
-    <script src="saas_licenca.js?v=20261006135537"></script>
-    <script src="../global.js?v=20261006135537"></script>
-    <script src="fc_cache.js?v=20261006135537"></script>
-    <script src="tabela_ncm.js?v=20261006135537"></script>
-    <script src="ncm_helper.js?v=20261006135537"></script>
-    <script src="pdv.js?v=20261006135537"></script>
+    <script src="../sistema/config_banco.js?v=20261008194435"></script>
+    <script src="saas_licenca.js?v=20261008194435"></script>
+    <script src="../global.js?v=20261008194435"></script>
+    <script src="fc_cache.js?v=20261008194435"></script>
+    <script src="tabela_ncm.js?v=20261008194435"></script>
+    <script src="ncm_helper.js?v=20261008194435"></script>
+    <script src="pdv.js?v=20261008194435"></script>
 
     <!-- MODAL RELATÓRIO COMPLETO DO PDV -->
     <div id="modal-relatorio-pdv" class="fixed inset-0 bg-slate-900/70 z-[200] hidden flex items-center justify-center p-3 md:p-4 backdrop-blur-sm">

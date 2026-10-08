@@ -1628,41 +1628,114 @@ function renderTelaConferenciaXML() {
 function fecharModalXML() { document.getElementById('modal-conferencia-xml').classList.add('hidden'); window.tempXMLData = null; }
 
 async function salvarXMLConferido() {
-    const data = window.tempXMLData; let totalQtd = 0;
+    const data = window.tempXMLData;
+    if (!data) return;
+    let totalQtd = 0;
     const batch = firestore.batch();
 
-    let forn = db.fornecedores.find(f => f.doc === data.fornCNPJ || f.cnpj === data.fornCNPJ);
-    if(!forn) { 
+    // 1. Fornecedor
+    let forn = (db.fornecedores || []).find(f => (f.doc && f.doc === data.fornCNPJ) || (f.cnpj && f.cnpj === data.fornCNPJ));
+    if (!forn) { 
         const fornRef = window.getEmpresaRef().collection('fornecedores').doc();
-        batch.set(fornRef, { nome: data.fornNome, doc: data.fornCNPJ, cnpj: data.fornCNPJ, ie: '', wpp: '', email: '', contato: '', cep: '', rua: '', numero: '', bairro: '', cidade: '', condicoes: '', produtos: '' });
+        const novoFornObj = { id: fornRef.id, nome: data.fornNome, doc: data.fornCNPJ, cnpj: data.fornCNPJ, ie: '', wpp: '', email: '', contato: '', cep: '', rua: '', numero: '', bairro: '', cidade: '', condicoes: '', produtos: '' };
+        batch.set(fornRef, novoFornObj);
+        if (!Array.isArray(db.fornecedores)) db.fornecedores = [];
+        db.fornecedores.unshift(novoFornObj);
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+            window.FCCache.set('fornecedores', db.fornecedores);
+        }
     }
     
+    // 2. Produtos e Kardex
+    const novasMovimentacoes = [];
+    if (!Array.isArray(db.produtos)) db.produtos = [];
     data.produtosXML.forEach(p => {
         let idProd = p.idMatch;
         let pDB = null;
         if ((p.statusDB === 'NOVO' || p.statusDB.includes('CADASTRADO')) && !idProd) {
             idProd = String(Date.now() + Math.floor(Math.random() * 1000));
-            pDB = { id: idProd, ean: p.cEAN, nome: p.nome, categoria: 'Geral', marca: data.fornNome, custo: p.custoFinal, margem: p.margemAtual, preco: p.precoVendaSug, estoque: p.qCom, min: 5, foto: '', ativo: true };
+            pDB = { 
+                id: idProd, 
+                ean: p.cEAN || '', 
+                nome: p.nome, 
+                categoria: 'Geral', 
+                marca: data.fornNome, 
+                custo: p.custoFinal, 
+                margem: p.margemAtual, 
+                preco: p.precoVendaSug, 
+                estoque: p.qCom, 
+                min: 5, 
+                foto: '', 
+                ativo: true,
+                ncm: window.NCMHelper ? window.NCMHelper.limparNCM(p.ncm || '') : (p.ncm || ''),
+                cst: window.NCMHelper ? window.NCMHelper.extrairCodigoCSOSN(p.cst || p.csosn || '') : (p.cst || p.csosn || ''),
+                csosn: window.NCMHelper ? window.NCMHelper.extrairCodigoCSOSN(p.csosn || p.cst || '102') : (p.csosn || p.cst || '102'),
+                origem: (p.origem !== undefined && p.origem !== '') ? String(p.origem) : '0',
+                cfop: p.cfop || '5102',
+                cest: p.cest || '',
+                unidade: p.unidade || 'UN'
+            };
             const prodRef = window.getEmpresaRef().collection('produtos').doc(idProd);
             batch.set(prodRef, pDB);
+            db.produtos.unshift(pDB);
         } else { 
             pDB = db.produtos.find(x => String(x.id) === String(idProd)); 
             if (pDB) { 
-                pDB.estoque += p.qCom; pDB.custo = p.custoFinal; pDB.margem = p.margemAtual; pDB.preco = p.precoVendaSug; pDB.nome = p.nome; pDB.ativo = true;
+                pDB.estoque += p.qCom; 
+                pDB.custo = p.custoFinal; 
+                pDB.margem = p.margemAtual; 
+                pDB.preco = p.precoVendaSug; 
+                pDB.nome = p.nome; 
+                pDB.ativo = true;
+                if (p.ncm) pDB.ncm = p.ncm;
+                if (p.csosn || p.cst) { pDB.csosn = p.csosn || p.cst; pDB.cst = p.cst || p.csosn; }
+                if (p.origem !== undefined && p.origem !== '') pDB.origem = String(p.origem);
+                if (p.cfop) pDB.cfop = p.cfop;
+                if (p.cest) pDB.cest = p.cest;
+
                 const prodRef = window.getEmpresaRef().collection('produtos').doc(String(idProd));
-                batch.update(prodRef, { estoque: pDB.estoque, custo: pDB.custo, margem: pDB.margem, preco: pDB.preco, nome: pDB.nome, ativo: true });
+                batch.update(prodRef, { 
+                    estoque: pDB.estoque, 
+                    custo: pDB.custo, 
+                    margem: pDB.margem, 
+                    preco: pDB.preco, 
+                    nome: pDB.nome, 
+                    ativo: true,
+                    ncm: window.NCMHelper ? window.NCMHelper.limparNCM(pDB.ncm || '') : (pDB.ncm || ''),
+                    cst: window.NCMHelper ? window.NCMHelper.extrairCodigoCSOSN(pDB.cst || pDB.csosn || '') : (pDB.cst || pDB.csosn || ''),
+                    csosn: window.NCMHelper ? window.NCMHelper.extrairCodigoCSOSN(pDB.csosn || pDB.cst || '102') : (pDB.csosn || pDB.cst || '102'),
+                    origem: pDB.origem || '0',
+                    cfop: pDB.cfop || '5102',
+                    cest: pDB.cest || ''
+                });
             } 
         }
-        p.idMatch = idProd; // Garante a rastreabilidade pro Relatório de Evolução
+        p.idMatch = idProd;
         totalQtd += p.qCom; 
         const kRef = window.getEmpresaRef().collection('movimentacoes').doc();
-        batch.set(kRef, { data: new Date().toISOString(), ref: `NF-e ${data.numNF} ${data.fornNome}`, produtoId: idProd, produtoNome: p.nome, qtd: p.qCom, tipo: 'ENTRADA XML' });
+        const movObj = { id: kRef.id, data: new Date().toISOString(), ref: `NF-e ${data.numNF} ${data.fornNome}`, produtoId: idProd, produtoNome: p.nome, qtd: p.qCom, tipo: 'ENTRADA XML' };
+        batch.set(kRef, movObj);
+        novasMovimentacoes.push(movObj);
         
         p.custoUnitOriginal = p.qCom > 0 ? (p.vTotalItemNaNota / p.qCom) : 0;
     });
 
+    if (novasMovimentacoes.length > 0) {
+        if (!Array.isArray(db.movimentacoes)) db.movimentacoes = [];
+        db.movimentacoes.unshift(...novasMovimentacoes);
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+            window.FCCache.set('movimentacoes', db.movimentacoes);
+        }
+    }
+
+    if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+        window.FCCache.set('produtos', db.produtos);
+    }
+
+    // 3. Gravação da Compra
     const compraRef = window.getEmpresaRef().collection('compras').doc();
-    batch.set(compraRef, { 
+    const novaCompraObj = { 
+        id: compraRef.id,
         numeroNF: data.numNF, 
         data: new Date().toISOString(), 
         dataEmissao: data.dataEmissao || new Date().toISOString().split('T')[0],
@@ -1672,19 +1745,42 @@ async function salvarXMLConferido() {
         freteExtra: data.freteExtra,
         qtdTotal: totalQtd, 
         itens: data.produtosXML 
-    });
+    };
+    batch.set(compraRef, novaCompraObj);
+    if (!Array.isArray(db.compras)) db.compras = [];
+    db.compras.unshift(novaCompraObj);
+    if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+        window.FCCache.set('compras', db.compras);
+    }
     
+    // 4. Gravação do Financeiro (Contas a Pagar)
+    const novasContasFin = [];
     data.financeiroXML.forEach((f, idx) => {
         if(f.valor > 0) {
             const finRef = window.getEmpresaRef().collection('financeiro').doc();
-            batch.set(finRef, { ref: f.desc, data: new Date(f.venc + 'T12:00:00').toISOString(), pessoa: data.fornNome, wpp: '', valor: f.valor, status: 'PENDENTE', tipo: 'DESPESA', categoria: 'Fornecedores / Compras' });
+            const contaObj = { id: finRef.id, ref: f.desc, data: new Date(f.venc + 'T12:00:00').toISOString(), pessoa: data.fornNome, wpp: '', valor: f.valor, status: 'PENDENTE', tipo: 'DESPESA', categoria: 'Fornecedores / Compras' };
+            batch.set(finRef, contaObj);
+            novasContasFin.push(contaObj);
         }
     });
+    if (novasContasFin.length > 0) {
+        if (!Array.isArray(db.financeiro)) db.financeiro = [];
+        db.financeiro.unshift(...novasContasFin);
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+            window.FCCache.set('financeiro', db.financeiro);
+        }
+    }
 
-    try {
-        await batch.commit();
-        fecharModalXML(); renderComprasHist(); renderFinAbas('pagar'); showToast('Entrada de XML Concluída!', 'success');
-    } catch(err) { console.error(err); showToast('Erro ao importar XML.', 'error'); }
+    // 5. Interface Imediata e Reativa (0ms)
+    fecharModalXML(); 
+    if (typeof renderComprasHist === 'function') renderComprasHist(); 
+    if (typeof renderFinAbas === 'function') renderFinAbas('pagar'); 
+    showToast('Entrada de XML Concluída com sucesso!', 'success');
+
+    // 6. Persistência no Firebase em background
+    batch.commit().catch(err => {
+        console.error('[Compras] Erro ao sincronizar XML no Firestore em background:', err);
+    });
 }
 
 // ==========================================
@@ -1829,26 +1925,32 @@ async function salvarCompraManual() {
     const refPed = document.getElementById('compra-manual-ref').value || 'S/N';
     
     const totais = calcularTotaisCompraManual();
-    if(compraManualItens.length === 0 || totais.totalGeral <= 0) return showToast("Adicione itens válidos!", "error");
+    const apenasValor = document.getElementById('compra-manual-apenas-valor') && document.getElementById('compra-manual-apenas-valor').checked;
+    if(!apenasValor && (compraManualItens.length === 0 || totais.totalGeral <= 0)) return showToast("Adicione itens válidos!", "error");
+    if(apenasValor && totais.totalGeral <= 0) return showToast("Informe o valor da compra!", "error");
     
-    for(let i=0; i<compraManualItens.length; i++) {
-        if(!compraManualItens[i].prodId) return showToast("Selecione os produtos em todas as linhas!", "error");
+    if (!apenasValor) {
+        for(let i=0; i<compraManualItens.length; i++) {
+            if(!compraManualItens[i].prodId) return showToast("Selecione os produtos em todas as linhas!", "error");
+        }
     }
 
     const batch = firestore.batch();
 
     if (isEdicao) {
-        const cAntiga = db.compras.find(x => String(x.id) === String(idEdit));
+        const cAntiga = (db.compras || []).find(x => String(x.id) === String(idEdit));
         if (cAntiga) {
             if(cAntiga.itens && cAntiga.itens.length > 0) {
                 cAntiga.itens.forEach(item => {
                     if (item.idMatch) {
-                        const pDB = db.produtos.find(x => String(x.id) === String(item.idMatch));
+                        const pDB = (db.produtos || []).find(x => String(x.id) === String(item.idMatch));
                         if (pDB) {
                             pDB.estoque -= item.qCom;
                             batch.update(window.getEmpresaRef().collection('produtos').doc(String(pDB.id)), { estoque: pDB.estoque });
                             const kRef = window.getEmpresaRef().collection('movimentacoes').doc();
-                            batch.set(kRef, { data: new Date().toISOString(), ref: `Estorno Edição Compra ${cAntiga.numeroNF}`, produtoId: pDB.id, produtoNome: pDB.nome, qtd: -item.qCom, tipo: 'ESTORNO COMPRA' });
+                            const movEstorno = { id: kRef.id, data: new Date().toISOString(), ref: `Estorno Edição Compra ${cAntiga.numeroNF}`, produtoId: pDB.id, produtoNome: pDB.nome, qtd: -item.qCom, tipo: 'ESTORNO COMPRA' };
+                            batch.set(kRef, movEstorno);
+                            if (Array.isArray(db.movimentacoes)) db.movimentacoes.unshift(movEstorno);
                         }
                     }
                 });
@@ -1859,19 +1961,19 @@ async function salvarCompraManual() {
                     : ((window.FCCache && typeof window.FCCache.get === 'function') ? window.FCCache.get('financeiro') : null);
 
                 if (Array.isArray(finLista) && finLista.length > 0) {
+                    const idsRemovidos = [];
                     finLista.forEach(finData => {
                         if (finData.tipo === 'DESPESA' && finData.ref && String(finData.ref).includes(cAntiga.numeroNF) && cAntiga.numeroNF !== 'S/N') {
                             batch.delete(window.getEmpresaRef().collection('financeiro').doc(String(finData.id)));
+                            idsRemovidos.push(String(finData.id));
                         }
                     });
-                } else {
-                    const snapFin = await window.getEmpresaRef().collection('financeiro').where('tipo', '==', 'DESPESA').get();
-                    snapFin.docs.forEach(doc => {
-                        const finData = doc.data();
-                        if (finData.ref && String(finData.ref).includes(cAntiga.numeroNF) && cAntiga.numeroNF !== 'S/N') {
-                            batch.delete(doc.ref);
+                    if (idsRemovidos.length > 0 && Array.isArray(db.financeiro)) {
+                        db.financeiro = db.financeiro.filter(f => !idsRemovidos.includes(String(f.id)));
+                        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+                            window.FCCache.set('financeiro', db.financeiro);
                         }
-                    });
+                    }
                 }
             } catch(e) { console.error('Erro ao buscar financeiro atrelado:', e); }
         }
@@ -1879,55 +1981,117 @@ async function salvarCompraManual() {
 
     let totalQtd = 0;
     let itensRateadosParaSalvar = [];
+    const novasMovimentacoesCompra = [];
 
-    compraManualItens.forEach(item => {
-        const pDB = db.produtos.find(x => String(x.id) === String(item.prodId));
-        if(!pDB) return;
-        
-        let pesoValor = (item.qtd * item.custoUnit) / totais.totalProdutos;
-        let freteRateado = totais.frete * pesoValor;
-        let custoRateadoFinal = item.custoUnit + (freteRateado / item.qtd);
-        
-        pDB.estoque += item.qtd;
-        pDB.custo = custoRateadoFinal;
-        pDB.preco = custoRateadoFinal * (1 + ((pDB.margem || 0) / 100));
-        
-        totalQtd += item.qtd;
-        
-        batch.update(window.getEmpresaRef().collection('produtos').doc(String(pDB.id)), {
-            estoque: pDB.estoque, custo: pDB.custo, preco: pDB.preco
+    if (!apenasValor) {
+        compraManualItens.forEach(item => {
+            const pDB = (db.produtos || []).find(x => String(x.id) === String(item.prodId));
+            if(!pDB) return;
+            
+            let pesoValor = (item.qtd * item.custoUnit) / (totais.totalProdutos || 1);
+            let freteRateado = (totais.frete || 0) * pesoValor;
+            let custoRateadoFinal = item.custoUnit + (freteRateado / item.qtd);
+            
+            pDB.estoque += item.qtd;
+            pDB.custo = custoRateadoFinal;
+            pDB.preco = custoRateadoFinal * (1 + ((pDB.margem || 0) / 100));
+            
+            totalQtd += item.qtd;
+            
+            batch.update(window.getEmpresaRef().collection('produtos').doc(String(pDB.id)), {
+                estoque: pDB.estoque, custo: pDB.custo, preco: pDB.preco
+            });
+            
+            const kRef = window.getEmpresaRef().collection('movimentacoes').doc();
+            const movCompra = { id: kRef.id, data: new Date().toISOString(), ref: `Compra Man. ${refPed} (${fornecedorFinal})`, produtoId: pDB.id, produtoNome: pDB.nome, qtd: item.qtd, tipo: 'ENTRADA COMPRA' };
+            batch.set(kRef, movCompra);
+            novasMovimentacoesCompra.push(movCompra);
+            
+            itensRateadosParaSalvar.push({
+                idMatch: pDB.id, nome: pDB.nome, qCom: item.qtd, custoFinal: custoRateadoFinal, vTotalItemNaNota: (item.qtd * item.custoUnit) + freteRateado, custoUnitOriginal: item.custoUnit 
+            });
         });
-        
-        const kRef = window.getEmpresaRef().collection('movimentacoes').doc();
-        batch.set(kRef, { data: new Date().toISOString(), ref: `Compra Man. ${refPed} (${fornecedorFinal})`, produtoId: pDB.id, produtoNome: pDB.nome, qtd: item.qtd, tipo: 'ENTRADA COMPRA' });
-        
-        itensRateadosParaSalvar.push({
-            idMatch: pDB.id, nome: pDB.nome, qCom: item.qtd, custoFinal: custoRateadoFinal, vTotalItemNaNota: (item.qtd * item.custoUnit) + freteRateado, custoUnitOriginal: item.custoUnit 
-        });
-    });
+    }
 
-    const idCompra = isEdicao ? idEdit : Date.now();
+    if (novasMovimentacoesCompra.length > 0) {
+        if (!Array.isArray(db.movimentacoes)) db.movimentacoes = [];
+        db.movimentacoes.unshift(...novasMovimentacoesCompra);
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+            window.FCCache.set('movimentacoes', db.movimentacoes);
+        }
+    }
+
+    if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+        window.FCCache.set('produtos', db.produtos);
+    }
+
+    const idCompra = isEdicao ? idEdit : ('compra_' + Date.now());
     const compraRef = window.getEmpresaRef().collection('compras').doc(String(idCompra));
-    batch.set(compraRef, { 
-        id: idCompra, numeroNF: refPed, data: new Date(dataCompra + 'T12:00:00').toISOString(), fornecedor: fornecedorFinal, cnpj: '', 
-        totalNF: totais.totalGeral, freteExtra: totais.frete, qtdTotal: totalQtd, itens: itensRateadosParaSalvar 
-    }, { merge: true });
+    const compraObj = { 
+        id: String(idCompra), 
+        numeroNF: refPed, 
+        data: new Date(dataCompra + 'T12:00:00').toISOString(), 
+        dataEmissao: dataCompra,
+        fornecedor: fornecedorFinal, 
+        cnpj: '', 
+        totalNF: totais.totalGeral, 
+        freteExtra: totais.frete, 
+        qtdTotal: totalQtd, 
+        itens: itensRateadosParaSalvar 
+    };
+    batch.set(compraRef, compraObj, { merge: true });
 
-    if(document.getElementById('compra-manual-gerar-financeiro').checked && !isEdicao) {
+    if (!Array.isArray(db.compras)) db.compras = [];
+    if (isEdicao) {
+        const idxC = db.compras.findIndex(x => String(x.id) === String(idCompra));
+        if (idxC >= 0) db.compras[idxC] = { ...db.compras[idxC], ...compraObj };
+        else db.compras.unshift(compraObj);
+    } else {
+        db.compras.unshift(compraObj);
+    }
+    if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+        window.FCCache.set('compras', db.compras);
+    }
+
+    if (document.getElementById('compra-manual-gerar-financeiro')?.checked && !isEdicao) {
         const finRef = window.getEmpresaRef().collection('financeiro').doc();
-        batch.set(finRef, { ref: `Compra: ${refPed}`, data: new Date(dataCompra + 'T12:00:00').toISOString(), pessoa: fornecedorFinal, valor: totais.totalGeral, status: 'PENDENTE', tipo: 'DESPESA', categoria: 'Fornecedores / Compras' });
+        const finObj = { 
+            id: finRef.id, 
+            ref: `Compra: ${refPed}`, 
+            data: new Date(dataCompra + 'T12:00:00').toISOString(), 
+            pessoa: fornecedorFinal, 
+            valor: totais.totalGeral, 
+            status: 'PENDENTE', 
+            tipo: 'DESPESA', 
+            categoria: 'Fornecedores / Compras' 
+        };
+        batch.set(finRef, finObj);
+        if (!Array.isArray(db.financeiro)) db.financeiro = [];
+        db.financeiro.unshift(finObj);
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+            window.FCCache.set('financeiro', db.financeiro);
+        }
     }
 
-    if(fornAvulso && !db.fornecedores.find(f => f.nome.toLowerCase() === fornAvulso.toLowerCase())) {
+    if (fornAvulso && !(db.fornecedores || []).find(f => f.nome && f.nome.toLowerCase() === fornAvulso.toLowerCase())) {
         const fornRef = window.getEmpresaRef().collection('fornecedores').doc();
-        batch.set(fornRef, { nome: fornAvulso, doc: '', cnpj: '', telefone: '' });
+        const novoFornObj = { id: fornRef.id, nome: fornAvulso, doc: '', cnpj: '', telefone: '' };
+        batch.set(fornRef, novoFornObj);
+        if (!Array.isArray(db.fornecedores)) db.fornecedores = [];
+        db.fornecedores.unshift(novoFornObj);
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+            window.FCCache.set('fornecedores', db.fornecedores);
+        }
     }
 
-    try {
-        await batch.commit();
-        fecharModalCompraManual(); renderComprasHist(); renderFinAbas('pagar');
-        showToast(isEdicao ? "Compra atualizada com sucesso!" : "Compra Manual lançada com sucesso!", "success");
-    } catch(err) { console.error(err); showToast('Erro', 'error'); }
+    fecharModalCompraManual(); 
+    if (typeof renderComprasHist === 'function') renderComprasHist(); 
+    if (typeof renderFinAbas === 'function') renderFinAbas('pagar');
+    showToast(isEdicao ? "Compra atualizada com sucesso!" : "Compra Manual lançada com sucesso!", "success");
+
+    batch.commit().catch(err => {
+        console.error('[Compras] Erro ao salvar compra manual no Firestore em background:', err);
+    });
 }
 
 function renderComprasHist() {
@@ -1998,10 +2162,18 @@ function renderComprasHist() {
 
 function excluirNF(id) { 
     abrirConfirmacao('Excluir Nota / Compra', 'Atenção: Não reverte o estoque nem o financeiro.', () => { 
-        window.getEmpresaRef().collection('compras').doc(String(id)).delete().then(() => {
-            renderComprasHist(); showToast('Compra excluída!'); 
-        }).catch(e => { console.error(e); showToast('Erro ao excluir NF.', 'error'); });
-    }); 
+        if (Array.isArray(db.compras)) {
+            db.compras = db.compras.filter(x => String(x.id) !== String(id));
+            if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+                window.FCCache.set('compras', db.compras);
+            }
+        }
+        if (typeof renderComprasHist === 'function') renderComprasHist(); 
+        showToast('Compra excluída com sucesso!', 'success'); 
+        window.getEmpresaRef().collection('compras').doc(String(id)).delete().catch(e => {
+            console.error('[Compras] Erro ao excluir NF no Firestore:', e);
+        });
+    });
 }
 
 function verDetalhesNF(id) { 
@@ -5794,6 +5966,7 @@ async function gerarRelatorioComIA(descricaoRelatorio) {
     var divRes = document.getElementById('ia-rel-resultado');
     if (!divRes) return;
     divRes.innerHTML = '<div class="flex flex-col items-center justify-center py-12"><div class="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-600 flex items-center justify-center mb-4 shadow-lg shadow-indigo-500/25 animate-pulse"><i class="fa-solid fa-brain text-white text-2xl"></i></div><p class="text-slate-800 dark:text-slate-100 font-extrabold text-base mb-1">Analisando seus dados em tempo real...</p><p class="text-slate-500 dark:text-slate-400 text-xs">Cruzando vendas, estoque, clientes e fluxo financeiro com IA...</p><div class="mt-4 flex gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-bounce"></span><span class="w-2.5 h-2.5 rounded-full bg-purple-500 animate-bounce" style="animation-delay:150ms"></span><span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-bounce" style="animation-delay:300ms"></span></div></div>';
+    try { divRes.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch(eScroll){}
     var inputLivre = document.getElementById('ia-rel-pergunta-livre');
     var btnLivre = document.getElementById('btn-ia-rel-livre');
     if (inputLivre) inputLivre.disabled = true;
@@ -5829,7 +6002,7 @@ async function gerarRelatorioComIA(descricaoRelatorio) {
         divRes.innerHTML = '<div class="p-4 text-center text-red-400 text-sm"><i class="fa-solid fa-xmark mr-2"></i>Erro: '+(e.message||'Tente novamente')+'</div>';
     } finally {
         if (inputLivre) inputLivre.disabled = false;
-        if (btnLivre) { btnLivre.disabled = false; btnLivre.innerHTML = '<i class="fa-solid fa-paper-plane"></i><span class="hidden sm:inline">Perguntar</span>'; }
+        if (btnLivre) { btnLivre.disabled = false; btnLivre.innerHTML = '<span>Analisar com IA</span> <i class="fa-solid fa-sparkles text-indigo-200 group-hover/btn:rotate-12 transition-transform"></i>'; }
     }
 }
 
@@ -5863,9 +6036,7 @@ function renderizarRelatorioIA(resposta) {
         .replace(/^---$/gm,'<hr class="border-slate-200 dark:border-slate-700/60 my-6">');
 
     // Parse de Tabelas Markdown com estilo executivo de alta legibilidade em ambos os temas
-    html = html.replace(/(?:^[^
-]*\|[^
-]*\n?)+/gm, function(match) {
+    html = html.replace(/(?:^[^\n]*\|[^\n]*\n?)+/gm, function(match) {
         if (!match.includes('|')) return match;
         var rows = match.trim().split('\n');
         var tableHtml = '<div class="overflow-x-auto my-5 rounded-xl border border-slate-200/90 dark:border-slate-700/80 shadow-xs bg-white dark:bg-slate-900/40"><table class="w-full text-left border-collapse text-xs md:text-sm text-slate-700 dark:text-slate-300">';

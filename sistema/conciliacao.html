@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <script>
+        (function() {
+            const t = localStorage.getItem('fc_theme_sistema') || 'dark';
+            if (t === 'light') {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.classList.add('light');
+                document.documentElement.setAttribute('data-theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                document.documentElement.classList.remove('light');
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+    <style>
+        :root { color-scheme: dark; background-color: #0f172a; }
+        html, body { background-color: #0f172a; }
+        html.light, html.light body, html[data-theme="light"], html[data-theme="light"] body { background-color: #f1f5f9; color-scheme: light; }
+    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FC Gestão - Conciliação Bancária</title>
+        
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css?v=20261008194435">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261008194435">
+    <link rel="stylesheet" href="conciliacao.css?v=20261008194435">
+</head>
+<body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="conciliacao">
+
+    <div id="toast-container"></div>
+    
+    <div id="app-container" class="flex w-full h-full relative">
+        <div id="sidebar-overlay" class="fixed inset-0 bg-slate-900/60 z-30 hidden md:hidden transition-opacity" onclick="toggleMenu()"></div>
+
+        <!-- BARRA LATERAL (MENU) -->
+        <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 w-64 bg-slate-900 text-slate-300 flex flex-col h-full shrink-0 shadow-2xl z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out no-print">
+            <div class="p-5 flex items-center justify-between gap-3 border-b border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors" onclick="window.location.href='index.html'">
+                <div class="flex items-center gap-3 pointer-events-none">
+                    <img id="menu-logo" src="../icons/icon.svg" class="w-8 h-8 rounded-lg object-cover bg-slate-800 shadow-md">
+                    <div>
+                        <h1 id="menu-empresa-nome" class="font-bold text-white text-sm tracking-wide leading-tight">FC Gestão</h1>
+                        <p class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Sistema Ativo</p>
+                    </div>
+                </div>
+                <button onclick="event.stopPropagation(); toggleMenu()" class="md:hidden text-slate-400 hover:text-white text-2xl"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1 custom-scrollbar">
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-2 mb-1">Visão Geral</p>
+                <a href="index.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-chart-pie w-5 text-center"></i> Dashboard</a>
+                
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Operação</p>
+                <a href="pdv.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-cash-register w-5 text-center"></i> Frente de Caixa (PDV)</a>
+                <a href="vendas_operacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-receipt w-5 text-center"></i> Histórico Vendas/Serviços</a>
+                <a href="orcamentos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-file-invoice w-5 text-center"></i> Meus Orçamentos</a>
+                <a href="fiscal.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-file-invoice text-emerald-400 w-5 text-center"></i> Emissor Fiscal (NF-e)</a>
+                
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Cadastros</p>
+                <a href="produtos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-boxes-stacked w-5 text-center"></i> Produtos & Serviços</a>
+                <a href="clientes.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-users w-5 text-center"></i> Clientes</a>
+                <a href="fornecedores.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-truck w-5 text-center"></i> Fornecedores</a>
+                <a href="funcionarios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-user-tie w-5 text-center"></i> Funcionários / Vendedores</a>
+                
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
+                <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
+                <a href="conciliacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold bg-blue-600 text-white shadow-md"><i class="fa-solid fa-scale-balanced w-5 text-center"></i> Conciliação Bancária</a>
+                <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
+                <a href="caixa_loja.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-chart-bar w-5 text-center"></i> Caixa da Loja</a>
+                <a href="compras.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & Estoque</a>
+                <a href="relatorios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
+                
+                <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Sistema</p>
+                <a href="sistema.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-gear w-5 text-center"></i> Configurações</a>
+                <a href="suporte.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-sky-400"><i class="fa-solid fa-headset w-5 text-center text-sky-400"></i> Suporte & Ajuda</a>
+            </nav>
+            <div class="p-4 border-t border-slate-800">
+                <button onclick="fazerLogout()" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-white text-sm font-medium transition-colors"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair do Sistema</button>
+            </div>
+        </aside>
+
+        <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
+        <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
+            <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
+                <div class="flex items-center gap-3 min-w-0">
+                    <button onclick="toggleMenu()" class="md:hidden text-slate-600 dark:text-slate-300 hover:text-blue-600 p-2 -ml-2 rounded-lg transition-colors" title="Abrir Menu"><i class="fa-solid fa-bars text-xl"></i></button>
+                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate flex items-center gap-2" id="header-title">
+                        <i class="fa-solid fa-scale-balanced text-blue-600"></i> Conciliação Bancária
+                    </h2>
+                </div>
+                <div class="flex items-center gap-2 md:gap-3 shrink-0" id="header-right-actions">
+                    <a href="financeiro.html" class="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-lg font-bold text-xs flex items-center gap-2 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors whitespace-nowrap">
+                        <i class="fa-solid fa-arrow-left"></i> <span class="hidden sm:inline">Voltar ao Financeiro</span>
+                    </a>
+                    <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs shrink-0 select-none shadow-sm" id="user-avatar-icon">AM</div>
+                </div>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth custom-scrollbar w-full relative">
+                <div class="max-w-7xl mx-auto space-y-4 md:space-y-6">
+
+                    <!-- ABAS DE NAVEGAÇÃO -->
+                    <div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-3">
+                        <button id="tab-btn-pendencias" onclick="mudarAbaConcilia('pendencias')" class="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white shadow-sm flex items-center gap-2 transition-all">
+                            <i class="fa-solid fa-clock"></i> Pendências de Conciliação
+                            <span id="badge-tab-pendencias" class="ml-1 px-2 py-0.5 rounded-full text-[10px] bg-blue-800 text-white">0</span>
+                        </button>
+                        <button id="tab-btn-historico" onclick="mudarAbaConcilia('historico')" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white flex items-center gap-2 transition-all">
+                            <i class="fa-solid fa-circle-check text-emerald-500"></i> Histórico / Conciliados
+                            <span id="badge-tab-historico" class="ml-1 px-2 py-0.5 rounded-full text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">0</span>
+                        </button>
+                    </div>
+
+                    <!-- ÁREA 1: PENDÊNCIAS -->
+                    <div id="area-pendencias" class="space-y-4 md:space-y-6">
+                        <!-- TOP BAR: IMPORTAÇÃO E AÇÕES -->
+                        <div class="concilia-top-bar bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <div class="flex flex-wrap items-center gap-3">
+                                <button type="button" onclick="document.getElementById('fileInput').click()" class="cursor-pointer bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 border border-slate-300 dark:border-slate-600 px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-slate-700 dark:text-slate-200">
+                                    <i class="fa-solid fa-file-arrow-up text-blue-500 text-sm"></i> Importar Extrato (.csv, .ofx)
+                                </button>
+                                <input type="file" id="fileInput" accept=".csv, .ofx, .txt" onchange="processarArquivoExtrato(this)" class="hidden">
+
+                                <button id="btnAutoMatch" onclick="executarAutoMatch()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-sm">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Conciliar
+                                </button>
+
+                                <button id="btnManualMatch" onclick="vincularManual()" disabled class="bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-400 dark:text-slate-500 border border-slate-300 dark:border-slate-600 px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i class="fa-solid fa-link"></i> Vincular Selecionados
+                                </button>
+                            </div>
+
+                            <div class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3.5 py-2 rounded-xl">
+                                <span id="matchStats" class="text-xs font-bold text-slate-600 dark:text-slate-400">Pendentes: 0 Extrato | 0 Sistema</span>
+                            </div>
+                        </div>
+
+                        <!-- GRADE DE CONCILIAÇÃO (2 COLUNAS) -->
+                        <div class="concilia-grid">
+                            <!-- Coluna 1: Extrato Bancário -->
+                            <div class="concilia-panel bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+                                <div class="concilia-panel-header border-b border-slate-200 dark:border-slate-700">
+                                    <div class="flex items-center gap-2">
+                                        <h3 class="font-bold text-sm text-slate-800 dark:text-white flex items-center gap-2">
+                                            <i class="fa-solid fa-building-columns text-amber-500"></i> Extrato Bancário
+                                        </h3>
+                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 uppercase">Arquivo</span>
+                                    </div>
+                                    <span id="extratoCountBadge" class="badge-pendente text-[11px] font-bold px-2.5 py-0.5 rounded-full">0 Pendentes</span>
+                                </div>
+                                <div id="extratoList" class="concilia-cards-list">
+                                    <p class="text-xs text-slate-400 text-center py-10 italic">Nenhum extrato importado. Selecione um arquivo .csv ou .ofx acima.</p>
+                                </div>
+                            </div>
+
+                            <!-- Coluna 2: Lançamentos do Sistema -->
+                            <div class="concilia-panel bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+                                <div class="concilia-panel-header border-b border-slate-200 dark:border-slate-700 pb-2">
+                                    <div class="flex items-center gap-2">
+                                        <h3 class="font-bold text-sm text-slate-800 dark:text-white flex items-center gap-2">
+                                            <i class="fa-solid fa-receipt text-blue-500"></i> Lançamentos do Sistema
+                                        </h3>
+                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 uppercase">Pagar / Receber</span>
+                                    </div>
+                                    <span id="sistemaCountBadge" class="badge-pendente text-[11px] font-bold px-2.5 py-0.5 rounded-full">0 Pendentes</span>
+                                </div>
+
+                                <!-- BARRA DE FILTRO E AÇÕES EM LOTE -->
+                                <div class="space-y-2 mb-3 pt-1">
+                                    <!-- ABAS / PILLS DE VISUALIZAÇÃO: PENDENTES | OCULTADOS -->
+                                    <div class="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+                                        <button id="pill-visao-pendentes" type="button" onclick="mudarVisualizacaoSistema('pendentes')" class="flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5 bg-blue-600 text-white shadow-sm cursor-pointer">
+                                            <span>👀 Pendentes</span>
+                                            <span id="count-pill-pendentes" class="px-1.5 py-0.2 rounded-full text-[10px] bg-blue-700 text-white">0</span>
+                                        </button>
+                                        <button id="pill-visao-ocultados" type="button" onclick="mudarVisualizacaoSistema('ocultados')" class="flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer">
+                                            <span>👁️‍🗨️ Ocultados</span>
+                                            <span id="count-pill-ocultados" class="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">0</span>
+                                        </button>
+                                    </div>
+
+                                    <div class="flex flex-wrap sm:flex-nowrap items-center gap-2">
+                                        <div class="relative flex-1">
+                                            <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+                                            <input type="text" id="buscaSistema" placeholder="Buscar por cliente, fornecedor, valor..." oninput="filtrarLancamentosSistema()" class="w-full pl-8 pr-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-blue-500">
+                                        </div>
+                                        <select id="filtroTipoSistema" onchange="filtrarLancamentosSistema()" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 outline-none focus:border-blue-500">
+                                            <option value="todos">Todos</option>
+                                            <option value="pagar">Contas a Pagar</option>
+                                            <option value="receber">Contas a Receber</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-slate-700/60">
+                                        <label class="flex items-center gap-2 font-bold text-slate-600 dark:text-slate-300 cursor-pointer select-none">
+                                            <input type="checkbox" id="checkTodosSistema" onchange="alternarSelecionarTodosSistema(this.checked)" class="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-0">
+                                            <span>Sel. Todos Visíveis</span>
+                                        </label>
+
+                                        <!-- Ações para modo PENDENTES -->
+                                        <div id="acoesModoPendentes" class="flex items-center gap-1.5 flex-wrap justify-end">
+                                            <button id="btnOcultarLote" onclick="ocultarLoteSistema()" disabled class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 transition-all" title="Ocultar da conciliação (sem alterar o financeiro)">
+                                                <i class="fa-solid fa-eye-slash"></i> Ocultar (<span id="contagemOcultar">0</span>)
+                                            </button>
+                                        </div>
+
+                                        <!-- Ações para modo OCULTADOS -->
+                                        <div id="acoesModoOcultados" class="hidden flex items-center gap-1.5 flex-wrap justify-end">
+                                            <button id="btnReexibirLote" onclick="reexibirOcultadosLote()" disabled class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 transition-all" title="Reexibir selecionados na lista de pendentes">
+                                                <i class="fa-solid fa-rotate-left"></i> Reexibir (<span id="contagemReexibir">0</span>)
+                                            </button>
+                                            <button onclick="reexibirTodosOcultados()" class="px-2 py-1 rounded-lg text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 flex items-center gap-1 transition-all">
+                                                Reexibir Todos
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="sistemaList" class="concilia-cards-list">
+                                    <p class="text-xs text-slate-400 text-center py-10 italic">Carregando lançamentos pendentes...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ÁREA 2: HISTÓRICO DE CONCILIADOS -->
+                    <div id="area-historico" class="space-y-4 md:space-y-6 hidden">
+                        <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-3">
+                            <div class="flex items-center gap-3 w-full sm:w-auto">
+                                <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
+                                <input type="text" id="buscaHistorico" placeholder="Filtrar por descrição ou valor..." oninput="filtrarHistorico(this.value)" class="w-full sm:w-80 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-500">
+                            </div>
+                            <div class="text-xs font-bold text-slate-500 dark:text-slate-400" id="statsHistorico">
+                                0 transações conciliadas no histórico
+                            </div>
+                        </div>
+
+                        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
+                            <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                                <h3 class="font-bold text-sm text-slate-800 dark:text-white flex items-center gap-2">
+                                    <i class="fa-solid fa-list-check text-emerald-500"></i> Transações Conciliadas
+                                </h3>
+                                <span class="text-xs text-slate-400">Auditoria & Rastreabilidade</span>
+                            </div>
+                            <div id="historicoList" class="divide-y divide-slate-100 dark:divide-slate-700/60 max-h-[600px] overflow-y-auto">
+                                <p class="text-xs text-slate-400 text-center py-12 italic">Nenhuma transação conciliada ainda no histórico.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function toggleMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+        function fazerLogout() {
+            localStorage.clear();
+            window.location.href = '../index.html';
+        }
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
+    <script src="../sistema/config_banco.js?v=20261008194435"></script>
+    <script src="saas_licenca.js?v=20261008194435"></script>
+    <script src="../global.js?v=20261008194435"></script>
+    <script src="fc_cache.js?v=20261008194435"></script>
+    <script src="conciliacao.js?v=20261008194435"></script>
+</body>
+</html>

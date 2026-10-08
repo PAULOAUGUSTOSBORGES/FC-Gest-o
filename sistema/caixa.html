@@ -32,13 +32,13 @@
     <meta name="apple-mobile-web-app-title" content="FC Gestão">
     <link rel="apple-touch-icon" href="../icons/icon-apple-touch.png">
     <link rel="icon" type="image/png" href="../icons/favicon.png">
-    <title>FC Gestão - Gestão de Caixa</title>
+    <title>FC Gestão - Caixa Físico</title>
         
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link rel="stylesheet" href="../style.css?v=20261006135537">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261006135537">
+    <link rel="stylesheet" href="../style.css?v=20261008194435">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261008194435">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="caixa">
 
@@ -79,6 +79,7 @@
 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
                 <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
+                <a href="conciliacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="conciliacao"><i class="fa-solid fa-scale-balanced w-5 text-center text-blue-400"></i> Conciliação Bancária</a>
                 <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
                 <a href="caixa_loja.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa_loja"><i class="fa-solid fa-chart-bar w-5 text-center"></i> Caixa da Loja</a>
                 <a href="compras.html" id="nav-compras" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & Estoque</a>
@@ -98,13 +99,13 @@
         <!-- ÁREA DE CONTEÉDO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
             <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
-                <div class="flex items-center gap-3">
-                    <button onclick="toggleMenu()" class="md:hidden text-slate-600 dark:text-slate-300 hover:text-blue-600 p-2"><i class="fa-solid fa-bars text-xl"></i></button>
-                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate" id="header-title">Gestão de Caixa Local</h2>
+                <div class="flex items-center gap-3 min-w-0">
+                    <button onclick="toggleMenu()" class="md:hidden text-slate-600 dark:text-slate-300 hover:text-blue-600 p-2 -ml-2 rounded-lg transition-colors" title="Abrir Menu"><i class="fa-solid fa-bars text-xl"></i></button>
+                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate flex items-center gap-2" id="header-title">Caixa Físico</h2>
                 </div>
-                <div class="flex items-center gap-2 md:gap-4">
+                <div class="flex items-center gap-2 md:gap-4 shrink-0" id="header-right-actions">
                     <a href="pdv.html" class="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-3 md:px-4 py-2 rounded-lg font-bold text-xs md:text-sm flex items-center gap-2 transition-colors whitespace-nowrap"><i class="fa-solid fa-cash-register"></i> <span class="hidden sm:inline">Ir para PDV</span></a>
-                    <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs shrink-0">FC</div>
+                    <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs shrink-0 select-none shadow-sm" id="user-avatar-icon">AM</div>
                 </div>
             </header>
 
@@ -148,6 +149,7 @@
                             <i class="fa-solid fa-vault absolute -right-4 -bottom-4 text-6xl md:text-8xl opacity-10"></i>
                             <p class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 relative z-10">Saldo Físico (Gaveta)</p>
                             <h3 class="text-3xl md:text-4xl font-black text-emerald-400 relative z-10" id="caixa-saldo-display">R$ 0,00</h3>
+                            <p class="text-[10px] text-slate-400 relative z-10 mt-1"><i class="fa-solid fa-circle-info text-blue-400 mr-1"></i>Apenas dinheiro em espécie. Vendas em Cartão e PIX caem no Banco e constam no <a href="caixa_loja.html" class="text-sky-400 underline font-bold">Caixa da Loja</a>.</p>
                         </div>
 
                         <div class="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-center gap-2 md:gap-3">
@@ -159,6 +161,50 @@
                             <button onclick="abrirUltimoMapaCaixa()" class="w-full h-full min-h-[52px] bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 py-3 rounded-xl font-bold text-xs md:text-sm transition-colors flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-600">
                                 <i class="fa-solid fa-receipt text-blue-500 text-base"></i> Mapa de Fechamento
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- RESUMO DE VENDAS CONCLUÍDAS HOJE -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
+                        <div class="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 flex items-center justify-center text-lg shrink-0">
+                                <i class="fa-solid fa-receipt"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Vendas Hoje</span>
+                                <h4 class="text-base md:text-lg font-black text-slate-800 dark:text-white truncate" id="kpi-vendas-hoje-total">R$ 0,00</h4>
+                                <span class="text-[10px] text-slate-400 font-medium" id="kpi-vendas-hoje-qtd">0 vendas</span>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-900/40 text-teal-600 flex items-center justify-center text-lg shrink-0">
+                                <i class="fa-brands fa-pix"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">PIX Hoje</span>
+                                <h4 class="text-base md:text-lg font-black text-teal-600 dark:text-teal-400 truncate" id="kpi-vendas-hoje-pix">R$ 0,00</h4>
+                                <span class="text-[10px] text-slate-400 font-medium">Conta Bancária</span>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 flex items-center justify-center text-lg shrink-0">
+                                <i class="fa-solid fa-credit-card"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Cartões Hoje</span>
+                                <h4 class="text-base md:text-lg font-black text-indigo-600 dark:text-indigo-400 truncate" id="kpi-vendas-hoje-cartoes">R$ 0,00</h4>
+                                <span class="text-[10px] text-slate-400 font-medium">Crédito & Débito</span>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 flex items-center justify-center text-lg shrink-0">
+                                <i class="fa-solid fa-money-bill-wave"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Dinheiro Hoje</span>
+                                <h4 class="text-base md:text-lg font-black text-emerald-600 dark:text-emerald-400 truncate" id="kpi-vendas-hoje-dinheiro">R$ 0,00</h4>
+                                <span class="text-[10px] text-slate-400 font-medium">Na Gaveta</span>
+                            </div>
                         </div>
                     </div>
 
@@ -271,6 +317,11 @@
                     <p class="mt-0.5">Informe os valores contados fisicamente na gaveta e maquininhas. O sistema fará a conferência automática e apontará sobras ou quebras no Mapa de Caixa.</p>
                 </div>
 
+                <div class="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 p-2.5 rounded-xl">
+                    <span class="text-xs font-semibold text-blue-800 dark:text-blue-300"><i class="fa-solid fa-wand-magic-sparkles mr-1 text-blue-600"></i> Deseja conciliar com os valores do sistema?</span>
+                    <button type="button" onclick="preencherValoresSistemaFechamento()" class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm transition-colors whitespace-nowrap">Preencher com Sistema</button>
+                </div>
+
                 <div class="space-y-3">
                     <div>
                         <label class="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 flex items-center justify-between">
@@ -331,7 +382,10 @@
                 <!-- Conteúdo renderizado via JS -->
             </div>
             <div class="bg-white dark:bg-slate-800 p-4 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center gap-3 shrink-0">
-                <button onclick="document.getElementById('modal-mapa-caixa').classList.add('hidden')" class="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg font-bold text-slate-700 dark:text-slate-200 text-sm">Fechar</button>
+                <div class="flex items-center gap-2">
+                    <button onclick="document.getElementById('modal-mapa-caixa').classList.add('hidden')" class="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg font-bold text-slate-700 dark:text-slate-200 text-sm">Fechar</button>
+                    <button type="button" onclick="excluirUltimoFechamento()" class="text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 dark:border-red-900/50 dark:bg-red-950/40 px-3 py-2 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5" title="Excluir este fechamento caso tenha sido realizado incorretamente"><i class="fa-solid fa-trash-can"></i> Excluir</button>
+                </div>
                 <div class="flex gap-2">
                     <button onclick="imprimirArea('mapa-caixa-conteudo')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-lg text-sm flex items-center gap-2"><i class="fa-solid fa-print"></i> Imprimir Cupom</button>
                     <button onclick="baixarPDF('mapa-caixa-conteudo', 'Mapa_Caixa')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-sm flex items-center gap-2"><i class="fa-solid fa-file-pdf"></i> Salvar PDF</button>
@@ -656,11 +710,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20261006135537"></script>
-    <script src="saas_licenca.js?v=20261006135537"></script>
-    <script src="../global.js?v=20261006135537"></script>
-    <script src="fc_cache.js?v=20261006135537"></script>
-    <script src="caixa.js?v=20261006135537"></script>
+    <script src="../sistema/config_banco.js?v=20261008194435"></script>
+    <script src="saas_licenca.js?v=20261008194435"></script>
+    <script src="../global.js?v=20261008194435"></script>
+    <script src="fc_cache.js?v=20261008194435"></script>
+    <script src="caixa.js?v=20261008194435"></script>
 </body>
 </html>
 

@@ -39,8 +39,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- CORRIGIDO: Removido o ?v=20260831113500 que estava quebrando o carregamento offline -->
-    <link rel="stylesheet" href="../style.css?v=20261006135537">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261006135537">
+    <link rel="stylesheet" href="../style.css?v=20261008194435">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261008194435">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="vendas">
 
@@ -82,9 +82,10 @@
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
                 <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
+                <a href="conciliacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="conciliacao"><i class="fa-solid fa-scale-balanced w-5 text-center text-blue-400"></i> Conciliação Bancária</a>
                 <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
                 <a href="caixa_loja.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa_loja"><i class="fa-solid fa-chart-bar w-5 text-center"></i> Caixa da Loja</a>
-                <a href="compras.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & NF-e XML</a>
+                <a href="compras.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & Estoque</a>
                 <a href="relatorios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
                 <a href="agenda.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="agenda"><i class="fa-regular fa-calendar w-5 text-center"></i> Agenda</a>
                 <a href="marketing.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="marketing"><i class="fa-solid fa-bullhorn w-5 text-center"></i> Marketing & Lembretes</a>
@@ -101,12 +102,12 @@
         <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
             <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
-                <div class="flex items-center gap-3">
-                    <button onclick="toggleMenu()" class="md:hidden text-slate-600 dark:text-slate-300 hover:text-blue-600 p-2"><i class="fa-solid fa-bars text-xl"></i></button>
-                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate" id="header-title">Histórico Vendas/Serviços</h2>
+                <div class="flex items-center gap-3 min-w-0">
+                    <button onclick="toggleMenu()" class="md:hidden text-slate-600 dark:text-slate-300 hover:text-blue-600 p-2 -ml-2 rounded-lg transition-colors" title="Abrir Menu"><i class="fa-solid fa-bars text-xl"></i></button>
+                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate flex items-center gap-2" id="header-title">Histórico Vendas/Serviços</h2>
                 </div>
-                <div class="flex items-center gap-2 md:gap-4">
-                    <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs shrink-0">PA</div>
+                <div class="flex items-center gap-2 md:gap-4 shrink-0" id="header-right-actions">
+                    <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs shrink-0 select-none shadow-sm" id="user-avatar-icon">AM</div>
                 </div>
             </header>
 
@@ -835,13 +836,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
     
-    <script src="../sistema/config_banco.js?v=20261006135537"></script>
-    <script src="saas_licenca.js?v=20261006135537"></script>
-    <script src="../global.js?v=20261006135537"></script>
-    <script src="fc_cache.js?v=20261006135537"></script>
-    <script src="tabela_ncm.js?v=20261006135537"></script>
-    <script src="ncm_helper.js?v=20261006135537"></script>
-    <script src="vendas_operacao.js?v=20261006135537"></script>
+    <script src="../sistema/config_banco.js?v=20261008194435"></script>
+    <script src="saas_licenca.js?v=20261008194435"></script>
+    <script src="../global.js?v=20261008194435"></script>
+    <script src="fc_cache.js?v=20261008194435"></script>
+    <script src="tabela_ncm.js?v=20261008194435"></script>
+    <script src="ncm_helper.js?v=20261008194435"></script>
+    <script src="vendas_operacao.js?v=20261008194435"></script>
 </body>
 </html>
 

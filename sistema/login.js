@@ -1,4 +1,4 @@
-﻿// Função para os avisos na tela
+// Função para os avisos na tela
 function showToast(msg, type = 'info') {
     const container = document.getElementById('toast-container');
     if(!container) return;
@@ -231,6 +231,7 @@ async function fazerLogin() {
         }
 
         showToast('Acesso liberado! Entrando...', 'success');
+        try { sessionStorage.setItem('fc_recem_logado', 'true'); } catch(e) {}
         setTimeout(() => { window.location.href = rotaInicial; }, 600);
 
     } catch (e) {
@@ -384,6 +385,7 @@ async function finalizarLoginGoogle(user) {
     }
 
     showToast('Login com Google realizado com sucesso! Entrando...', 'success');
+    try { sessionStorage.setItem('fc_recem_logado', 'true'); } catch(e) {}
     setTimeout(() => { window.location.href = rotaInicial; }, 500);
 }
 

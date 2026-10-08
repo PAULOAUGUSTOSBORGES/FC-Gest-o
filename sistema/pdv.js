@@ -493,6 +493,11 @@ function esconderCardClientePDV() {
     if (card) {
         card.classList.add('hidden');
     }
+    const btnDeb = document.getElementById('btn-pdv-ver-debitos');
+    if (btnDeb) btnDeb.classList.add('hidden');
+    window._ultimoClienteSelecionado = null;
+    window._clienteDebitosAtual = null;
+    window._titulosPendentesClienteAtual = [];
 }
 window.esconderCardClientePDV = esconderCardClientePDV;
 
@@ -592,32 +597,48 @@ function renderizarCardClientePDV(c) {
     if (elFin) {
         const idStr = String(c.id || c._id || '').trim();
         const nomeLower = (c.nome || '').trim().toLowerCase();
+        const docClean = String(c.doc || c.cpfCnpj || c.documento || '').replace(/\D/g, '');
         const titulosPendentes = (db.financeiro || []).filter(f => {
             if (!f) return false;
-            const isReceita = f.tipo === 'RECEITA';
+            const isReceita = f.tipo === 'RECEITA' || f.tipo === 'RECEBER';
             const isPendente = f.status === 'PENDENTE' || f.status === 'ATRASADO';
             if (!isReceita || !isPendente) return false;
             if (idStr && f.clienteId && String(f.clienteId).trim() === idStr) return true;
-            if (f.pessoa && f.pessoa.trim().toLowerCase() === nomeLower) return true;
+            const fPessoa = String(f.pessoa || f.clienteNome || '').trim().toLowerCase();
+            if (fPessoa && fPessoa === nomeLower) return true;
+            if (docClean && docClean.length >= 8) {
+                const fDoc = String(f.doc || f.cpfCnpj || f.cpf || '').replace(/\D/g, '');
+                if (fDoc && fDoc === docClean) return true;
+            }
             return false;
         });
+
+        window._ultimoClienteSelecionado = c;
+        window._clienteDebitosAtual = c;
+        window._titulosPendentesClienteAtual = titulosPendentes;
+
+        const btnDebCard = document.getElementById('btn-pdv-ver-debitos');
 
         const totalDebito = titulosPendentes.reduce((acc, t) => acc + (Number(t.valor) || 0), 0);
         if (totalDebito > 0) {
             const valorFmt = typeof formatMoney === 'function' ? formatMoney(totalDebito) : `R$ ${totalDebito.toFixed(2)}`;
-            elFin.className = 'inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-lg pdv-card-cli-status-debito shadow-2xs cursor-pointer transition-colors';
-            elFin.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${titulosPendentes.length} débito(s) em aberto: ${valorFmt}`;
+            elFin.className = 'inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-lg pdv-card-cli-status-debito shadow-2xs cursor-pointer transition-all hover:scale-[1.02] active:scale-95';
+            elFin.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${titulosPendentes.length} débito(s) em aberto: ${valorFmt} <i class="fa-solid fa-arrow-up-right-from-square text-[9px] opacity-80 ml-0.5"></i>`;
             elFin.title = 'Clique para ver detalhes do saldo devedor';
-            elFin.onclick = () => {
-                if (typeof showToast === 'function') {
-                    showToast(`Atenção: Cliente possui ${titulosPendentes.length} débito(s) pendente(s) somando ${valorFmt}.`, 'warning');
-                }
+            elFin.onclick = (e) => {
+                if (e) e.stopPropagation();
+                abrirModalDebitosClientePDV(c);
             };
+            if (btnDebCard) btnDebCard.classList.remove('hidden');
         } else {
-            elFin.className = 'inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-lg pdv-card-cli-status-ok shadow-2xs transition-colors';
+            elFin.className = 'inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-lg pdv-card-cli-status-ok shadow-2xs cursor-pointer transition-all hover:scale-[1.02] active:scale-95';
             elFin.innerHTML = '<i class="fa-solid fa-circle-check text-[10px]"></i> Sem débitos pendentes';
-            elFin.title = 'Cliente sem débitos pendentes';
-            elFin.onclick = null;
+            elFin.title = 'Cliente sem débitos pendentes. Clique para conferir situação.';
+            elFin.onclick = (e) => {
+                if (e) e.stopPropagation();
+                abrirModalDebitosClientePDV(c);
+            };
+            if (btnDebCard) btnDebCard.classList.add('hidden');
         }
     }
 
@@ -636,6 +657,494 @@ function renderizarCardClientePDV(c) {
     card.classList.remove('hidden');
 }
 window.renderizarCardClientePDV = renderizarCardClientePDV;
+
+// ==========================================
+// DETALHES DE DÉBITOS DO CLIENTE (PDV)
+// ==========================================
+window._filtroDebitosAtivo = 'TODOS';
+window._titulosDebitosModalCache = [];
+window._clienteDebitosModalCache = null;
+
+function formatarTelefoneBR(foneRaw) {
+    if (!foneRaw) return 'Sem telefone informado';
+    let digitos = String(foneRaw).replace(/\D/g, '');
+    if (digitos.startsWith('55') && (digitos.length === 12 || digitos.length === 13)) {
+        digitos = digitos.slice(2);
+    }
+    if (digitos.length === 11) {
+        return `(${digitos.slice(0, 2)}) ${digitos.slice(2, 7)}-${digitos.slice(7)}`;
+    } else if (digitos.length === 10) {
+        return `(${digitos.slice(0, 2)}) ${digitos.slice(2, 6)}-${digitos.slice(6)}`;
+    } else if (digitos.length === 9) {
+        return `${digitos.slice(0, 5)}-${digitos.slice(5)}`;
+    } else if (digitos.length === 8) {
+        return `${digitos.slice(0, 4)}-${digitos.slice(4)}`;
+    }
+    return foneRaw;
+}
+
+function formatarReferenciaTitulo(f) {
+    let ref = String(f.ref || f.descricao || f.desc || '').trim();
+    const vendaId = f.origemVendaId || f.vendaId;
+    
+    // Tenta encontrar a venda correspondente em db.vendas
+    let vendaObj = null;
+    if (vendaId && window.db && Array.isArray(window.db.vendas)) {
+        vendaObj = window.db.vendas.find(v => String(v.id || '').trim() === String(vendaId).trim());
+    }
+
+    let numPedidoStr = '';
+    if (vendaObj) {
+        numPedidoStr = vendaObj.numeroPedido ? `#${String(vendaObj.numeroPedido).padStart(4, '0')}` : `#${String(vendaObj.id || '').slice(-4)}`;
+    } else if (vendaId) {
+        numPedidoStr = `#${String(vendaId).slice(-4)}`;
+    }
+
+    // Se a referência for vazia ou inválida tipo "[/]" ou "[ / ]"
+    if (!ref || ref === '[/]' || ref === '[ / ]' || ref === '[]' || ref.startsWith('[/') || ref.endsWith('/]')) {
+        if (numPedidoStr) {
+            ref = `Venda ${numPedidoStr} (Crediário / Fiado)`;
+        } else {
+            ref = 'Parcela em Aberto (Crediário)';
+        }
+    } else {
+        // Se a referência contiver um ID Firestore longo em hexadecimal/alfanumérico (#pljZxFsWKC2nbmaG0gLa), limpa
+        if (numPedidoStr && /#[a-zA-Z0-9_-]{10,}/.test(ref)) {
+            ref = ref.replace(/#[a-zA-Z0-9_-]{10,}/, numPedidoStr);
+        }
+    }
+
+    return {
+        titulo: ref,
+        numPedido: numPedidoStr,
+        vendaObj: vendaObj
+    };
+}
+
+function filtrarTabelaDebitosPDV(filtro) {
+    window._filtroDebitosAtivo = filtro || 'TODOS';
+    
+    ['todos', 'vencidos', 'avencer'].forEach(tab => {
+        const btn = document.getElementById(`tab-deb-${tab}`);
+        if (btn) {
+            if (tab.toUpperCase() === window._filtroDebitosAtivo.toUpperCase()) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        }
+    });
+
+    renderizarLinhasTabelaDebitos();
+}
+window.filtrarTabelaDebitosPDV = filtrarTabelaDebitosPDV;
+
+function renderizarLinhasTabelaDebitos() {
+    const tbody = document.getElementById('modal-deb-tabela-corpo');
+    const ttotal = document.getElementById('modal-deb-tabela-total');
+    const contador = document.getElementById('modal-deb-tabela-contador');
+    if (!tbody) return;
+
+    const todos = window._titulosDebitosModalCache || [];
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    const obterDataVenc = (f) => {
+        const raw = f.dataVencimento || f.data || f.vencimento || f.dataEmissao;
+        if (!raw) return null;
+        if (typeof raw === 'object' && raw.seconds !== undefined) return new Date(raw.seconds * 1000);
+        const d = new Date(raw);
+        return isNaN(d.getTime()) ? null : d;
+    };
+
+    let lista = todos;
+    if (window._filtroDebitosAtivo === 'VENCIDOS') {
+        lista = todos.filter(f => {
+            const d = obterDataVenc(f);
+            if (!d) return false;
+            const dc = new Date(d);
+            dc.setHours(0, 0, 0, 0);
+            return dc < hoje;
+        });
+    } else if (window._filtroDebitosAtivo === 'AVENCER') {
+        lista = todos.filter(f => {
+            const d = obterDataVenc(f);
+            if (!d) return true;
+            const dc = new Date(d);
+            dc.setHours(0, 0, 0, 0);
+            return dc >= hoje;
+        });
+    }
+
+    const fm = typeof formatMoney === 'function' ? formatMoney : (val => `R$ ${Number(val || 0).toFixed(2)}`);
+    const somaFiltrada = lista.reduce((acc, f) => acc + (Number(f.valor) || 0), 0);
+
+    if (ttotal) ttotal.textContent = fm(somaFiltrada);
+    if (contador) contador.textContent = `${lista.length} de ${todos.length} título(s)`;
+
+    if (lista.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="py-10 text-center">
+                    <div class="flex flex-col items-center justify-center">
+                        <div class="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center text-2xl mb-2">
+                            <i class="fa-solid fa-filter-circle-xmark"></i>
+                        </div>
+                        <h4 class="font-bold text-sm text-slate-700 dark:text-slate-200">Nenhum título encontrado neste filtro</h4>
+                        <p class="text-xs text-slate-400 max-w-xs mt-0.5">Selecione a aba "Todos" para visualizar todas as parcelas deste cliente.</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = lista.map((f, idx) => {
+        const d = obterDataVenc(f);
+        let badgeVenc = '';
+        let dataFmt = '--/--/----';
+
+        if (d) {
+            dataFmt = d.toLocaleDateString('pt-BR');
+            const dComp = new Date(d);
+            dComp.setHours(0, 0, 0, 0);
+            const diffDias = Math.round((dComp.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+
+            if (diffDias < 0) {
+                const absDias = Math.abs(diffDias);
+                badgeVenc = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/25"><i class="fa-solid fa-clock-rotate-left text-[9px]"></i> Atrasado há ${absDias} ${absDias === 1 ? 'dia' : 'dias'}</span>`;
+            } else if (diffDias === 0) {
+                badgeVenc = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/25"><i class="fa-solid fa-hourglass-half text-[9px]"></i> Vence hoje!</span>`;
+            } else {
+                badgeVenc = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25"><i class="fa-regular fa-calendar-check text-[9px]"></i> Vence em ${diffDias} ${diffDias === 1 ? 'dia' : 'dias'}</span>`;
+            }
+        } else {
+            badgeVenc = `<span class="text-slate-400 text-[10px]">Data não inf.</span>`;
+        }
+
+        const infoRef = formatarReferenciaTitulo(f);
+        const descPrincipal = infoRef.titulo;
+
+        const subDescPartes = [];
+        if (infoRef.numPedido) subDescPartes.push(`Pedido ${infoRef.numPedido}`);
+        else if (f.origemVendaId) subDescPartes.push(`Venda #${String(f.origemVendaId).slice(-4)}`);
+        if (f.categoria) subDescPartes.push(f.categoria);
+        if (f.obs) subDescPartes.push(f.obs);
+        const subDesc = subDescPartes.join(' • ');
+
+        // Forma de pagamento com ícone
+        const formaOriginal = String(f.metodoPagamento || f.metodo || f.contaBancaria || 'A Prazo / Crediário').trim();
+        let iconeForma = 'fa-solid fa-receipt text-amber-500';
+        if (formaOriginal.toLowerCase().includes('boleto')) iconeForma = 'fa-solid fa-barcode text-purple-500';
+        else if (formaOriginal.toLowerCase().includes('cheque')) iconeForma = 'fa-solid fa-money-check text-blue-500';
+        else if (formaOriginal.toLowerCase().includes('promiss')) iconeForma = 'fa-solid fa-file-signature text-rose-500';
+        else if (formaOriginal.toLowerCase().includes('pix')) iconeForma = 'fa-brands fa-pix text-teal-500';
+
+        const docExtra = [f.numNF ? `NF: ${f.numNF}` : '', f.numBoleto ? `Bol: ${f.numBoleto}` : ''].filter(Boolean).join(' | ');
+
+        const isAtrasado = badgeVenc.includes('Atrasado') || f.status === 'ATRASADO';
+        const statusBadge = isAtrasado
+            ? `<span class="inline-flex items-center gap-1 bg-rose-500/15 text-rose-600 dark:text-rose-400 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider border border-rose-500/30">ATRASADO</span>`
+            : `<span class="inline-flex items-center gap-1 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider border border-emerald-500/30">NO PRAZO</span>`;
+
+        const safeDescPrincipal = typeof escapeHtml === 'function' ? escapeHtml(descPrincipal) : descPrincipal;
+        const safeSubDesc = typeof escapeHtml === 'function' ? escapeHtml(subDesc) : subDesc;
+        const safeFormaPgto = typeof escapeHtml === 'function' ? escapeHtml(formaOriginal) : formaOriginal;
+        const safeDocExtra = typeof escapeHtml === 'function' ? escapeHtml(docExtra) : docExtra;
+
+        return `
+            <tr class="transition-colors">
+                <td class="p-3.5 pl-4">
+                    <div class="font-extrabold text-sm text-slate-900 dark:text-slate-100">${dataFmt}</div>
+                    <div class="mt-1">${badgeVenc}</div>
+                </td>
+                <td class="p-3.5">
+                    <div class="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-1.5">${safeDescPrincipal}</div>
+                    ${subDesc ? `<div class="text-[11px] text-slate-400 dark:text-slate-400 truncate max-w-sm mt-0.5">${safeSubDesc}</div>` : ''}
+                </td>
+                <td class="p-3.5">
+                    <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                        <i class="${iconeForma}"></i> <span>${safeFormaPgto}</span>
+                    </div>
+                    ${docExtra ? `<div class="text-[10px] text-slate-400 font-mono mt-0.5">${safeDocExtra}</div>` : ''}
+                </td>
+                <td class="p-3.5 text-center">
+                    ${statusBadge}
+                </td>
+                <td class="p-3.5 pr-4 text-right">
+                    <span class="font-black text-base text-rose-600 dark:text-rose-400">${fm(f.valor)}</span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function abrirModalDebitosClientePDV(clienteParam) {
+    const modal = document.getElementById('modal-debitos-cliente');
+    if (!modal) return;
+
+    let c = clienteParam || window._clienteDebitosAtual || window._ultimoClienteSelecionado;
+    if (!c && window.db && window.db.clientes) {
+        const hiddenId = document.getElementById('pdv-cliente');
+        const cId = hiddenId ? hiddenId.value : null;
+        if (cId) {
+            c = window.db.clientes.find(x => String(x.id || x._id || '').trim() === String(cId).trim());
+        }
+    }
+
+    if (!c) {
+        if (typeof showToast === 'function') {
+            showToast('Nenhum cliente selecionado no momento.', 'warning');
+        }
+        return;
+    }
+
+    const idStr = String(c.id || c._id || '').trim();
+    const nomeLower = (c.nome || '').trim().toLowerCase();
+    const docClean = String(c.doc || c.cpfCnpj || c.documento || '').replace(/\D/g, '');
+
+    // Busca atualizada em db.financeiro
+    const titulos = (db.financeiro || []).filter(f => {
+        if (!f) return false;
+        const isReceita = f.tipo === 'RECEITA' || f.tipo === 'RECEBER';
+        const isPendente = f.status === 'PENDENTE' || f.status === 'ATRASADO';
+        if (!isReceita || !isPendente) return false;
+        if (idStr && f.clienteId && String(f.clienteId).trim() === idStr) return true;
+        const fPessoa = String(f.pessoa || f.clienteNome || '').trim().toLowerCase();
+        if (fPessoa && fPessoa === nomeLower) return true;
+        if (docClean && docClean.length >= 8) {
+            const fDoc = String(f.doc || f.cpfCnpj || f.cpf || '').replace(/\D/g, '');
+            if (fDoc && fDoc === docClean) return true;
+        }
+        return false;
+    });
+
+    const obterDataVenc = (f) => {
+        const raw = f.dataVencimento || f.data || f.vencimento || f.dataEmissao;
+        if (!raw) return null;
+        if (typeof raw === 'object' && raw.seconds !== undefined) return new Date(raw.seconds * 1000);
+        const d = new Date(raw);
+        return isNaN(d.getTime()) ? null : d;
+    };
+
+    // Ordena do mais antigo / vencido para o mais futuro
+    titulos.sort((a, b) => {
+        const da = obterDataVenc(a);
+        const dbDate = obterDataVenc(b);
+        if (!da && !dbDate) return 0;
+        if (!da) return 1;
+        if (!dbDate) return -1;
+        return da.getTime() - dbDate.getTime();
+    });
+
+    window._clienteDebitosModalCache = c;
+    window._titulosDebitosModalCache = titulos;
+
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    let somaTotal = 0;
+    let somaVencidos = 0;
+    let qtdVencidos = 0;
+    let somaAVencer = 0;
+    let qtdAVencer = 0;
+
+    titulos.forEach(f => {
+        const v = Number(f.valor) || 0;
+        somaTotal += v;
+        const d = obterDataVenc(f);
+        if (d) {
+            const dComp = new Date(d);
+            dComp.setHours(0, 0, 0, 0);
+            if (dComp < hoje) {
+                qtdVencidos++;
+                somaVencidos += v;
+            } else {
+                qtdAVencer++;
+                somaAVencer += v;
+            }
+        } else {
+            qtdAVencer++;
+            somaAVencer += v;
+        }
+    });
+
+    const fm = typeof formatMoney === 'function' ? formatMoney : (val => `R$ ${Number(val || 0).toFixed(2)}`);
+
+    // Atualiza cabeçalho do cliente
+    const elNome = document.getElementById('modal-deb-cli-nome');
+    if (elNome) elNome.textContent = c.nome || 'Cliente Selecionado';
+
+    const elDoc = document.getElementById('modal-deb-cli-doc');
+    if (elDoc) {
+        const docLimpo = (c.doc || c.cpfCnpj || c.documento || '').trim();
+        let docFmt = docLimpo;
+        const numApenas = docLimpo.replace(/\D/g, '');
+        if (numApenas.length === 11) {
+            docFmt = numApenas.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        } else if (numApenas.length === 14) {
+            docFmt = numApenas.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+        }
+        elDoc.innerHTML = `<i class="fa-solid fa-id-card text-slate-400"></i> ${docFmt || 'Sem documento'}`;
+    }
+
+    const foneRaw = (c.wpp || c.telefone || c.fixo || '').trim();
+    const foneFmt = formatarTelefoneBR(foneRaw);
+    const elFone = document.getElementById('modal-deb-cli-fone');
+    const elFoneLink = document.getElementById('modal-deb-cli-fone-link');
+    if (elFone) elFone.textContent = foneFmt;
+    if (elFoneLink) {
+        const digitos = foneRaw.replace(/\D/g, '');
+        if (digitos.length >= 10) {
+            const ddi = digitos.length <= 11 ? '55' : '';
+            elFoneLink.href = `https://wa.me/${ddi}${digitos}`;
+            elFoneLink.classList.remove('hidden');
+        } else {
+            elFoneLink.href = '#';
+            if (!foneRaw) elFoneLink.classList.add('hidden');
+        }
+    }
+
+    const elTag = document.getElementById('modal-deb-tag-total');
+    if (elTag) {
+        elTag.textContent = titulos.length > 0 ? `${titulos.length} débito(s)` : 'Sem débitos';
+    }
+
+    const elStatusTag = document.getElementById('modal-deb-cli-status-tag');
+    if (elStatusTag) {
+        if (titulos.length > 0) {
+            elStatusTag.className = 'px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center gap-1.5 shadow-2xs';
+            elStatusTag.innerHTML = qtdVencidos > 0 
+                ? `<i class="fa-solid fa-triangle-exclamation"></i> ${qtdVencidos} Título(s) Vencido(s)` 
+                : `<i class="fa-solid fa-clock text-amber-500"></i> ${titulos.length} Parcela(s) Pendente(s)`;
+        } else {
+            elStatusTag.className = 'px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-2xs';
+            elStatusTag.innerHTML = `<i class="fa-solid fa-circle-check"></i> Situação Regular`;
+        }
+    }
+
+    // KPIs
+    const elKpiTotal = document.getElementById('modal-deb-kpi-total');
+    if (elKpiTotal) elKpiTotal.textContent = fm(somaTotal);
+
+    const elKpiVencidosVal = document.getElementById('modal-deb-kpi-vencidos-val');
+    if (elKpiVencidosVal) elKpiVencidosVal.textContent = fm(somaVencidos);
+
+    const elKpiVencidosQtd = document.getElementById('modal-deb-kpi-vencidos-qtd');
+    if (elKpiVencidosQtd) elKpiVencidosQtd.textContent = `${qtdVencidos} ${qtdVencidos === 1 ? 'título vencido' : 'títulos vencidos'}`;
+
+    const elKpiAVencerVal = document.getElementById('modal-deb-kpi-avencer-val');
+    if (elKpiAVencerVal) elKpiAVencerVal.textContent = fm(somaAVencer);
+
+    const elKpiAVencerQtd = document.getElementById('modal-deb-kpi-avencer-qtd');
+    if (elKpiAVencerQtd) elKpiAVencerQtd.textContent = `${qtdAVencer} ${qtdAVencer === 1 ? 'título no prazo' : 'títulos no prazo'}`;
+
+    const elKpiQtd = document.getElementById('modal-deb-kpi-qtd');
+    if (elKpiQtd) elKpiQtd.textContent = `${titulos.length} ${titulos.length === 1 ? 'parcela' : 'parcelas'}`;
+
+    const elKpiMedia = document.getElementById('modal-deb-kpi-media');
+    if (elKpiMedia) {
+        const media = titulos.length > 0 ? (somaTotal / titulos.length) : 0;
+        elKpiMedia.textContent = `Média: ${fm(media)} / título`;
+    }
+
+    // Badges nas abas de filtro
+    const bTodos = document.getElementById('badge-tab-todos');
+    if (bTodos) bTodos.textContent = String(titulos.length);
+
+    const bVencidos = document.getElementById('badge-tab-vencidos');
+    if (bVencidos) bVencidos.textContent = String(qtdVencidos);
+
+    const bAVencer = document.getElementById('badge-tab-avencer');
+    if (bAVencer) bAVencer.textContent = String(qtdAVencer);
+
+    // Inicializa tabela no filtro Todos
+    window._filtroDebitosAtivo = 'TODOS';
+    ['todos', 'vencidos', 'avencer'].forEach(tab => {
+        const btn = document.getElementById(`tab-deb-${tab}`);
+        if (btn) {
+            if (tab === 'todos') btn.classList.add('active');
+            else btn.classList.remove('active');
+        }
+    });
+
+    renderizarLinhasTabelaDebitos();
+
+    // Prepara texto para copiar e link WhatsApp
+    let resumoTexto = `📋 EXTRATO DE DÉBITOS DO CLIENTE\n`;
+    resumoTexto += `Cliente: ${c.nome || 'Consumidor'}\n`;
+    if (c.doc || c.cpfCnpj) resumoTexto += `Documento: ${c.doc || c.cpfCnpj}\n`;
+    resumoTexto += `Total em Aberto: ${fm(somaTotal)} (${titulos.length} parcela(s))\n`;
+    if (qtdVencidos > 0) resumoTexto += `Atenção: ${qtdVencidos} parcela(s) já vencida(s) somando ${fm(somaVencidos)}\n`;
+    resumoTexto += `----------------------------------------\n`;
+    titulos.forEach((f, i) => {
+        const d = obterDataVenc(f);
+        const dataFmt = d ? d.toLocaleDateString('pt-BR') : 'Sem data';
+        const info = formatarReferenciaTitulo(f);
+        resumoTexto += `${i + 1}. ${info.titulo} | Venc: ${dataFmt} | Valor: ${fm(f.valor)}\n`;
+    });
+    resumoTexto += `----------------------------------------\n`;
+    resumoTexto += `Emitido via FC Móveis e Interiores - PDV`;
+
+    window._resumoDebitosTextoAtual = resumoTexto;
+
+    // WhatsApp
+    const btnWpp = document.getElementById('modal-deb-btn-wpp');
+    if (btnWpp) {
+        const digitosFone = (c.wpp || c.telefone || '').replace(/\D/g, '');
+        if (digitosFone.length >= 10 && titulos.length > 0) {
+            const ddi = digitosFone.length <= 11 ? '55' : '';
+            const msgWpp = `Olá, *${c.nome}*! Tudo bem?\n\nPassando para enviar o extrato de débitos pendentes em aberto junto à *FC Móveis*:\n\n*Total em Aberto:* ${fm(somaTotal)} (${titulos.length} parcela(s))\n${qtdVencidos > 0 ? `*Em atraso:* ${qtdVencidos} parcela(s) (${fm(somaVencidos)})\n` : ''}\nFicamos à disposição para qualquer dúvida ou para combinarmos a quitação. Muito obrigado!`;
+            btnWpp.href = `https://wa.me/${ddi}${digitosFone}?text=${encodeURIComponent(msgWpp)}`;
+            btnWpp.classList.remove('hidden');
+        } else {
+            btnWpp.classList.add('hidden');
+        }
+    }
+
+    modal.classList.remove('hidden');
+}
+window.abrirModalDebitosClientePDV = abrirModalDebitosClientePDV;
+
+function fecharModalDebitosClientePDV() {
+    const modal = document.getElementById('modal-debitos-cliente');
+    if (modal) modal.classList.add('hidden');
+}
+window.fecharModalDebitosClientePDV = fecharModalDebitosClientePDV;
+
+function copiarResumoDebitosPDV() {
+    if (!window._resumoDebitosTextoAtual) {
+        if (typeof showToast === 'function') showToast('Nenhum dado de débito para copiar.', 'warning');
+        return;
+    }
+    const txt = window._resumoDebitosTextoAtual;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt).then(() => {
+            if (typeof showToast === 'function') showToast('Extrato copiado para a área de transferência!', 'success');
+        }).catch(() => {
+            copiarTextoFallbackPDV(txt);
+        });
+    } else {
+        copiarTextoFallbackPDV(txt);
+    }
+}
+window.copiarResumoDebitosPDV = copiarResumoDebitosPDV;
+
+function copiarTextoFallbackPDV(texto) {
+    const ta = document.createElement('textarea');
+    ta.value = texto;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+        document.execCommand('copy');
+        if (typeof showToast === 'function') showToast('Extrato copiado para a área de transferência!', 'success');
+    } catch (e) {
+        if (typeof showToast === 'function') showToast('Não foi possível copiar automaticamente.', 'error');
+    }
+    if (ta.parentNode) ta.parentNode.removeChild(ta);
+}
 
 function desvincularClientePDV() {
     selecionarClientePDV(null);
@@ -2074,6 +2583,15 @@ function togglePanelServico() {
     }
 }
 
+let _debouncePdvTimer = null;
+function debouncedFiltrarProdutosPDV(termo) {
+    if (_debouncePdvTimer) clearTimeout(_debouncePdvTimer);
+    _debouncePdvTimer = setTimeout(() => {
+        filtrarProdutosPDV(termo);
+    }, 150);
+}
+window.debouncedFiltrarProdutosPDV = debouncedFiltrarProdutosPDV;
+
 function filtrarProdutosPDV(termo) {
     const dropdown = document.getElementById('pdv-busca-resultados'); 
     if (!dropdown) return; 
@@ -2174,6 +2692,7 @@ function filtrarProdutosPDV(termo) {
 }
 
 function buscarProdutoPorEAN(termo) {
+    if (_debouncePdvTimer) clearTimeout(_debouncePdvTimer);
     if (!termo) return;
     const busca = String(termo).trim();
     if (busca === '') return;
@@ -3357,8 +3876,31 @@ async function finalizarVendaMultipla() {
         const caixaRef = (typeof window.obterCaixaDocRef === 'function') 
             ? window.obterCaixaDocRef() 
             : window.getEmpresaRef().collection('caixa').doc('caixa_atual');
-        const cxFinalData = { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo };
+        
+        // Garante que o documento 'caixa_atual' nunca ultrapasse o limite de 1MB mantendo os 50 registros mais recentes no resumo
+        const historicoResumo = cxHistoricoNovo.slice(0, 50);
+        const cxFinalData = { ...cxAtual, saldo: cxSaldoNovo, historico: historicoResumo };
         batch.set(caixaRef, cxFinalData, { merge: true });
+
+        // Salva os lançamentos individuais na subcoleção permanente 'movimentacoes' do caixa
+        pagamentosVendaAtual.forEach(p => {
+            let valorMov = p.valor || 0;
+            if (p.metodo === 'Dinheiro' && valorTroco > 0) valorMov = Math.max(0, valorMov - valorTroco);
+            if (valorMov > 0) {
+                const movRef = caixaRef.collection('movimentacoes').doc();
+                batch.set(movRef, {
+                    id: movRef.id,
+                    data: dataIso,
+                    tipo: p.metodo === 'Dinheiro' ? 'ENTRADA' : `ENTRADA (${p.metodo || 'OUTROS'})`,
+                    metodo: p.metodo || 'Dinheiro',
+                    desc: `${tipoVenda} #${numPedStr} - ${cliInfo.nome || 'Consumidor'}`,
+                    valor: valorMov,
+                    operador: opNomeVenda,
+                    origemVendaId: idFinalVenda,
+                    saldoApos: cxSaldoNovo
+                });
+            }
+        });
 
         // Atualiza repositório e cache local do caixa imediatamente
         db.caixa = cxFinalData;

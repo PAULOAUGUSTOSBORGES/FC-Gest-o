@@ -35,8 +35,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link rel="stylesheet" href="../style.css?v=20261006135537">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261006135537">
+    <link rel="stylesheet" href="../style.css?v=20261008194435">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261008194435">
     
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -80,8 +80,9 @@
 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
                 <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
+                <a href="conciliacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="conciliacao"><i class="fa-solid fa-scale-balanced w-5 text-center text-blue-400"></i> Conciliação Bancária</a>
                 <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
-                <a href="caixa_loja.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors bg-purple-600 text-white" data-target="caixa_loja"><i class="fa-solid fa-chart-bar w-5 text-center"></i> Caixa da Loja</a>
+                <a href="caixa_loja.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-colors bg-blue-600 text-white shadow-md" data-target="caixa_loja"><i class="fa-solid fa-chart-bar w-5 text-center"></i> Caixa da Loja</a>
                 <a href="compras.html" id="nav-compras" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & Estoque</a>
                 <a href="relatorios.html" id="nav-relatorios" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
                 <a href="agenda.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="agenda"><i class="fa-regular fa-calendar w-5 text-center"></i> Agenda</a>
@@ -99,9 +100,13 @@
         <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
             <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
-                <div class="flex items-center gap-3">
-                    <button onclick="toggleMenu()" class="md:hidden text-slate-600 dark:text-slate-300 hover:text-blue-600 p-2"><i class="fa-solid fa-bars text-xl"></i></button>
-                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate">Caixa da Loja - Dashboard</h2>
+                <div class="flex items-center gap-3 min-w-0">
+                    <button onclick="toggleMenu()" class="md:hidden text-slate-600 dark:text-slate-300 hover:text-blue-600 p-2 -ml-2 rounded-lg transition-colors" title="Abrir Menu"><i class="fa-solid fa-bars text-xl"></i></button>
+                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate flex items-center gap-2" id="header-title">Caixa da Loja</h2>
+                </div>
+                <div class="flex items-center gap-2 md:gap-4 shrink-0" id="header-right-actions">
+                    <a href="pdv.html" class="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-3 md:px-4 py-2 rounded-lg font-bold text-xs md:text-sm flex items-center gap-2 transition-colors whitespace-nowrap"><i class="fa-solid fa-cart-shopping"></i> <span class="hidden sm:inline">Abrir PDV</span></a>
+                    <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs shrink-0 select-none shadow-sm" id="user-avatar-icon">AM</div>
                 </div>
             </header>
 
@@ -168,7 +173,12 @@
                             <div class="w-full h-64"><canvas id="chart-resumo-7dias"></canvas></div>
                         </div>
                         <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow border border-slate-200 dark:border-slate-700 flex flex-col gap-3">
-                            <h3 class="font-bold text-slate-700 dark:text-slate-200 mb-2">Ações Rápidas</h3>
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="font-bold text-slate-700 dark:text-slate-200">Ações Rápidas</h3>
+                                <div id="resumo-status-caixa-badge" class="px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                                    <span class="w-2 h-2 rounded-full bg-slate-400"></span> Identificando...
+                                </div>
+                            </div>
                             <button onclick="abrirModalCaixa('abrir')" class="w-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 py-2 rounded-lg font-bold text-sm transition-colors text-left px-4"><i class="fa-solid fa-lock-open mr-2"></i> Abrir Caixa</button>
                             <button onclick="abrirModalFechamentoCego()" class="w-full bg-red-100 text-red-700 hover:bg-red-200 py-2 rounded-lg font-bold text-sm transition-colors text-left px-4"><i class="fa-solid fa-lock mr-2"></i> Fechar Caixa</button>
                             <button onclick="abrirModalCaixa('suprimento')" class="w-full bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 py-2 rounded-lg font-bold text-sm transition-colors text-left px-4"><i class="fa-solid fa-arrow-down mr-2"></i> Suprimento</button>
@@ -409,7 +419,16 @@
                     <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow border border-slate-200 dark:border-slate-700 flex flex-wrap gap-4 items-end no-print">
                         <div>
                             <label class="text-xs font-bold text-slate-500 block mb-1">Mês de Referência</label>
-                            <input type="month" id="filtro-fechamentos-mes" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm outline-none" onchange="renderTabFechamentos()">
+                            <input type="month" id="filtro-fechamentos-mes" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm outline-none" onchange="mudarFiltroFechamentoMes(this.value)">
+                        </div>
+                        <div class="flex items-center gap-1.5 pt-4">
+                            <button type="button" id="btn-fech-mes-atual" onclick="filtrarFechamentosPeriodo('mes_atual')" class="btn-fech-filtro px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white shadow-xs transition-colors">Este Mês</button>
+                            <button type="button" id="btn-fech-mes-anterior" onclick="filtrarFechamentosPeriodo('mes_anterior')" class="btn-fech-filtro px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 transition-colors">Mês Anterior</button>
+                            <button type="button" id="btn-fech-todos" onclick="filtrarFechamentosPeriodo('todos')" class="btn-fech-filtro px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 transition-colors">Ver Todos</button>
+                        </div>
+                        <div class="flex-1 flex justify-end items-center gap-2 pt-4">
+                            <span id="fechamentos-badge-total" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-bold">0 fechamentos</span>
+                            <button onclick="exportarCSVFechamentos()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"><i class="fa-solid fa-file-excel"></i> Exportar</button>
                         </div>
                     </div>
                     
@@ -487,6 +506,12 @@
                 <button onclick="fecharModalFechamentoCego()" class="text-white/70 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             <div class="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 flex-1 overflow-y-auto custom-scrollbar space-y-4">
+                <div class="flex items-center justify-between bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 p-3 rounded-xl">
+                    <span class="text-xs text-blue-800 dark:text-blue-300 font-medium">Preencher cartões e PIX automaticamente?</span>
+                    <button type="button" onclick="preencherValoresSistemaFechamento()" class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-xs">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Puxar do Sistema
+                    </button>
+                </div>
                 <div class="space-y-3">
                     <div>
                         <label class="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 flex items-center justify-between">
@@ -517,6 +542,12 @@
                             <span><i class="fa-solid fa-receipt text-purple-600 mr-1"></i> Outros</span>
                         </label>
                         <input type="text" data-mask="money" inputmode="numeric" id="fc-outros" oninput="recalcularTotalDeclarado()" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm font-black outline-none dark:text-white" placeholder="0,00" value="0">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 block">
+                            <i class="fa-solid fa-comment-dots text-slate-500 mr-1"></i> Observações / Justificativa
+                        </label>
+                        <input type="text" id="fc-obs" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none dark:text-white" placeholder="Opcional: Ex: Troco retirado p/ depósito">
                     </div>
                 </div>
                 <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center">
@@ -586,11 +617,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20261006135537"></script>
-    <script src="saas_licenca.js?v=20261006135537"></script>
-    <script src="../global.js?v=20261006135537"></script>
-    <script src="fc_cache.js?v=20261006135537"></script>
-    <script src="caixa_loja.js?v=20261006135537"></script>
+    <script src="../sistema/config_banco.js?v=20261008194435"></script>
+    <script src="saas_licenca.js?v=20261008194435"></script>
+    <script src="../global.js?v=20261008194435"></script>
+    <script src="fc_cache.js?v=20261008194435"></script>
+    <script src="caixa_loja.js?v=20261008194435"></script>
 </body>
 </html>
 

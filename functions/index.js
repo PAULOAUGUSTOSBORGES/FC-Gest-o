@@ -24,8 +24,14 @@ exports.chamarGemini = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot
     if (!isPermitido) throw new functions.https.HttpsError("permission-denied", "Sem permissão para usar IA.");
 
     const configSnap = await empresaRef.collection("configuracoes").doc("config").get();
-    const configGemini = configSnap.data()?.geminiApiKey;
-    if (!configGemini) throw new functions.https.HttpsError("failed-precondition", "API Key não configurada.");
+    let configGemini = configSnap.data()?.geminiApiKey;
+    if (!configGemini) {
+        const masterSnap = await db.collection("saas_config").doc("master").get();
+        if (masterSnap.exists && masterSnap.data()?.geminiKeyMaster) {
+            configGemini = masterSnap.data().geminiKeyMaster;
+        }
+    }
+    if (!configGemini) throw new functions.https.HttpsError("failed-precondition", "API Key de IA não configurada.");
 
     try {
         const res = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${configGemini}`, {

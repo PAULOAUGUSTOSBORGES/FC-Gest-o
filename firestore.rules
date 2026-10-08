@@ -10,10 +10,14 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // NOVO: Descobre qual a empresa do usuario lendo a colecao global 'usuarios'
+    // Descobre qual a empresa do usuario lendo claims ou fallback na colecao global 'usuarios'
     function getEmpresaUsuario() {
-      return isAutenticado() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
-        ? get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.empresaId
+      return isAutenticado()
+        ? (request.auth.token.get('empresaId', null) != null
+            ? request.auth.token.empresaId
+            : (exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+                ? get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.empresaId
+                : null))
         : null;
     }
 
@@ -35,6 +39,8 @@ service cloud.firestore {
     function isAdmin(empresaId) {
       return isAutenticado() && (
         isSuperAdmin() ||
+        request.auth.token.get('isAdmin', false) == true ||
+        request.auth.token.get('role', '') == 'admin' ||
         getFuncionarioDoc(empresaId).get('isAdmin', false) == true || 
         getFuncionarioDoc(empresaId).get('isAdmin', false) == 'true'
       );
@@ -125,7 +131,7 @@ service cloud.firestore {
         allow read: if docId == 'loja_publica' || (isAutenticado() && (getEmpresaUsuario() == empresaId || isSuperAdmin()));
         allow write: if docId != 'loja_publica' && (
           isSuperAdmin() ||
-          (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_config') || temPermissao(empresaId, 'perm_gestao')) && empresaEstaAtiva(empresaId))
+          (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_config') || temPermissao(empresaId, 'perm_gestao') || (docId == 'contadores' && temPermissao(empresaId, 'perm_pdv'))) && empresaEstaAtiva(empresaId))
         );
         allow create: if docId != 'loja_publica' && (isDonoNoOnboarding(empresaId) || isSuperAdmin()); // Permite no batch de criacao
       }
@@ -148,7 +154,9 @@ service cloud.firestore {
       // 2. Catalogo de Produtos e Movimentacoes
       // ==========================================
       match /produtos/{produtoId} {
-        allow read: if true; // Publico para a loja virtual (vitrine)
+        // Leitura protegida: autenticados da empresa ou SuperAdmin; para acesso publico, apenas produtos ativos com exibirLoja == true
+        allow read: if (isAutenticado() && (getEmpresaUsuario() == empresaId || isSuperAdmin())) ||
+                       (resource.data.get('exibirLoja', false) == true && resource.data.get('ativo', true) != false);
         allow create, delete: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
           isSuperAdmin() || (getEmpresaUsuario() == empresaId && podeCadastrarProdutos(empresaId))
         );
@@ -342,8 +350,7 @@ service cloud.firestore {
     }
 
     match /saas_config/{docId} {
-      allow read: if isAutenticado();
-      allow write: if isSuperAdmin();
+      allow read, write: if isSuperAdmin();
     }
 
     // FAQ Dinâmico / Base de conhecimento compartilhada

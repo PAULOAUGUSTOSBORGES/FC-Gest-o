@@ -60,8 +60,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    <link rel="stylesheet" href="../style.css?v=20261006135537">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261006135537">
+    <link rel="stylesheet" href="../style.css?v=20261008194435">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261008194435">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="relatorios">
 
@@ -103,6 +103,7 @@
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
                 <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
+                <a href="conciliacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="conciliacao"><i class="fa-solid fa-scale-balanced w-5 text-center text-blue-400"></i> Conciliação Bancária</a>
                 <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
                 <a href="caixa_loja.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa_loja"><i class="fa-solid fa-chart-bar w-5 text-center"></i> Caixa da Loja</a>
                 <a href="compras.html" id="nav-compras" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & Estoque</a>
@@ -122,13 +123,13 @@
         <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
         <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
             <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
-                <div class="flex items-center gap-3">
-                    <button onclick="toggleMenu()" class="md:hidden text-slate-600 dark:text-slate-300 hover:text-blue-600 p-2"><i class="fa-solid fa-bars text-xl"></i></button>
-                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate" id="header-title">Relatórios & DRE</h2>
+                <div class="flex items-center gap-3 min-w-0">
+                    <button onclick="toggleMenu()" class="md:hidden text-slate-600 dark:text-slate-300 hover:text-blue-600 p-2 -ml-2 rounded-lg transition-colors" title="Abrir Menu"><i class="fa-solid fa-bars text-xl"></i></button>
+                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate flex items-center gap-2" id="header-title">Relatórios & DRE</h2>
                 </div>
-                <div class="flex items-center gap-2 md:gap-4">
+                <div class="flex items-center gap-2 md:gap-4 shrink-0" id="header-right-actions">
                     <a href="pdv.html" class="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-3 md:px-4 py-2 rounded-lg font-bold text-xs md:text-sm flex items-center gap-2 transition-colors whitespace-nowrap"><i class="fa-solid fa-cart-shopping"></i> <span class="hidden sm:inline">Abrir PDV</span></a>
-                    <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs shrink-0">PA</div>
+                    <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs shrink-0 select-none shadow-sm" id="user-avatar-icon">AM</div>
                 </div>
             </header>
 
@@ -176,232 +177,193 @@
                     </div>
 
                     <!-- PAINEL INTELIGENTE IA - ASSISTENTE DE RELATÓRIOS -->
-                    <div class="relative bg-white/80 dark:bg-slate-900/60 backdrop-blur-2xl p-6 md:p-8 rounded-[2rem] shadow-2xl border border-white/50 dark:border-slate-700/50 mb-8 overflow-hidden group shadow-indigo-500/10">
-                        <!-- Fundo de grade e glow sutil -->
-                        <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLW9wYWNpdHk9IjAuMDUiIHN0cm9rZS13aWR0aD0iMC41Ii8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-20 pointer-events-none"></div>
-                        <div class="absolute -top-32 -right-32 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px] group-hover:bg-indigo-500/30 transition-all duration-700 pointer-events-none"></div>
-                        <div class="absolute -bottom-32 -left-32 w-64 h-64 bg-purple-500/20 rounded-full blur-[80px] group-hover:bg-purple-500/30 transition-all duration-700 pointer-events-none"></div>
+                    <div class="ia-panel-container no-print">
+                        <!-- Fundo decorativo sutil -->
+                        <div class="absolute -top-24 -right-24 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                        <div class="absolute -bottom-24 -left-24 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-                        <div class="relative z-10 flex flex-col xl:flex-row gap-6 lg:gap-8 items-stretch">
+                        <!-- Cabeçalho Principal do Assistente -->
+                        <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-5 border-b border-slate-200/80 dark:border-slate-700/60">
+                            <div class="flex items-center gap-3.5">
+                                <div class="relative w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 p-0.5 shadow-lg shadow-indigo-500/25 shrink-0 flex items-center justify-center">
+                                    <div class="w-full h-full bg-slate-900 rounded-[10px] flex items-center justify-center text-white">
+                                        <i class="fa-solid fa-robot text-xl text-indigo-300"></i>
+                                    </div>
+                                    <span class="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+                                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                        <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-slate-900"></span>
+                                    </span>
+                                </div>
+                                <div>
+                                    <h3 class="text-xl md:text-2xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
+                                        Assistente Inteligente <span class="px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold uppercase tracking-widest border border-indigo-200 dark:border-indigo-500/30">IA</span>
+                                    </h3>
+                                    <p class="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-0.5 font-medium leading-relaxed">Converse com seus dados comerciais. Descubra padrões, lucros e oportunidades de forma instantânea com IA.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <span class="px-3 py-1.5 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    <span>IA Pronta para Analisar</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Grid Principal: Controles na Esquerda, Histórico na Direita -->
+                        <div class="relative z-10 ia-main-grid">
                             
-                            <!-- Esquerda: Interação com a IA -->
-                            <div class="flex-1 flex flex-col min-w-0">
-                                <!-- Cabeçalho da IA -->
-                                <div class="flex items-start gap-4 mb-8">
-                                    <div class="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 p-0.5 shadow-lg shadow-indigo-500/30 shrink-0 transform transition-transform hover:scale-105 hover:rotate-3 duration-500">
-                                        <div class="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl blur-md opacity-50"></div>
-                                        <div class="relative w-full h-full bg-slate-900 rounded-[14px] flex items-center justify-center text-white">
-                                            <i class="fa-solid fa-robot text-2xl bg-clip-text text-transparent bg-gradient-to-br from-indigo-300 to-purple-300"></i>
-                                        </div>
-                                        <div class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-slate-900 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]"></div>
-                                    </div>
-                                    <div>
-                                        <h3 class="text-2xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
-                                            Assistente Inteligente <span class="px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold uppercase tracking-widest border border-indigo-200 dark:border-indigo-500/30">IA</span>
-                                        </h3>
-                                        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium leading-relaxed">Converse com seus dados comerciais. Descubra padrões, lucros e oportunidades de forma instantânea usando Inteligência Artificial.</p>
-                                    </div>
-                                </div>
-
+                            <!-- Coluna Esquerda: Consultas, Categorias e Input -->
+                            <div class="ia-col-consultas">
+                                
                                 <!-- Tabs Estilo Segmented Control -->
-                                <div class="bg-slate-100/80 dark:bg-slate-900/50 p-1.5 rounded-xl border border-slate-200/60 dark:border-slate-700/50 backdrop-blur-md mb-6 overflow-x-auto custom-scrollbar flex gap-1 items-center">
-                                    <button id="ia-tab-vendas" onclick="mudarAbaRelIA('vendas')" class="ia-rel-tab flex-1 px-4 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap min-w-max flex justify-center items-center gap-2 bg-indigo-600 text-white shadow-md"><i class="fa-solid fa-tags text-indigo-200"></i> Vendas</button>
-                                    <button id="ia-tab-estoque" onclick="mudarAbaRelIA('estoque')" class="ia-rel-tab flex-1 px-4 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap min-w-max flex justify-center items-center gap-2 bg-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50"><i class="fa-solid fa-boxes-stacked opacity-70"></i> Estoque</button>
-                                    <button id="ia-tab-financeiro" onclick="mudarAbaRelIA('financeiro')" class="ia-rel-tab flex-1 px-4 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap min-w-max flex justify-center items-center gap-2 bg-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50"><i class="fa-solid fa-chart-line opacity-70"></i> Financeiro</button>
-                                    <button id="ia-tab-pessoas" onclick="mudarAbaRelIA('pessoas')" class="ia-rel-tab flex-1 px-4 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap min-w-max flex justify-center items-center gap-2 bg-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50"><i class="fa-solid fa-users opacity-70"></i> Pessoas</button>
-                                    <button id="ia-tab-geral" onclick="mudarAbaRelIA('geral')" class="ia-rel-tab flex-1 px-4 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap min-w-max flex justify-center items-center gap-2 bg-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50"><i class="fa-solid fa-building-columns opacity-70"></i> Geral / DRE</button>
+                                <div class="ia-tabs-container">
+                                    <button id="ia-tab-vendas" onclick="mudarAbaRelIA('vendas')" class="ia-rel-tab bg-indigo-600 text-white shadow-md"><i class="fa-solid fa-tags text-indigo-200"></i> Vendas</button>
+                                    <button id="ia-tab-estoque" onclick="mudarAbaRelIA('estoque')" class="ia-rel-tab bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50"><i class="fa-solid fa-boxes-stacked opacity-70"></i> Estoque</button>
+                                    <button id="ia-tab-financeiro" onclick="mudarAbaRelIA('financeiro')" class="ia-rel-tab bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50"><i class="fa-solid fa-chart-line opacity-70"></i> Financeiro</button>
+                                    <button id="ia-tab-pessoas" onclick="mudarAbaRelIA('pessoas')" class="ia-rel-tab bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50"><i class="fa-solid fa-users opacity-70"></i> Pessoas</button>
+                                    <button id="ia-tab-geral" onclick="mudarAbaRelIA('geral')" class="ia-rel-tab bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50"><i class="fa-solid fa-building-columns opacity-70"></i> Geral / DRE</button>
                                 </div>
 
-                                <!-- Sugestões Area -->
-                                <div class="flex-1">
+                                <!-- Sugestões de Perguntas (Chips em Grid) -->
+                                <div class="ia-chips-wrapper">
                                     <!-- Vendas -->
                                     <div id="ia-chips-vendas" class="ia-chips-area grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        <button onclick="gerarRelatorioComIA('Resuma os resultados de vendas do período.')" class="group relative flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/10 hover:-translate-y-0.5 hover:border-indigo-300 dark:hover:border-indigo-500/50">
-                                            <div class="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-500/20 transition-all duration-300">
-                                                <i class="fa-solid fa-chart-line text-indigo-500 text-lg"></i>
-                                            </div>
-                                            <div>
-                                                <p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 mb-0.5">Resumo de Vendas</p>
-                                                <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Visão geral rápida do faturamento no período.</p>
-                                            </div>
+                                        <button onclick="gerarRelatorioComIA('Resuma os resultados de vendas do período.')" class="ia-chip-btn">
+                                            <div class="w-9 h-9 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0 text-base"><i class="fa-solid fa-chart-line"></i></div>
+                                            <div class="min-w-0"><p class="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">Resumo de Vendas</p><p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Faturamento e volume do período.</p></div>
                                         </button>
-                                        <button onclick="gerarRelatorioComIA('Faça um comparativo de vendas deste período com o período anterior.')" class="group relative flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/10 hover:-translate-y-0.5 hover:border-purple-300 dark:hover:border-purple-500/50">
-                                            <div class="w-10 h-10 rounded-lg bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-purple-100 dark:group-hover:bg-purple-500/20 transition-all duration-300">
-                                                <i class="fa-solid fa-code-compare text-purple-500 text-lg"></i>
-                                            </div>
-                                            <div>
-                                                <p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 mb-0.5">Comparativo</p>
-                                                <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Compare os resultados com o período anterior.</p>
-                                            </div>
+                                        <button onclick="gerarRelatorioComIA('Faça um comparativo de vendas deste período com o período anterior.')" class="ia-chip-btn">
+                                            <div class="w-9 h-9 rounded-lg bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0 text-base"><i class="fa-solid fa-code-compare"></i></div>
+                                            <div class="min-w-0"><p class="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">Comparativo</p><p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Compare com o período anterior.</p></div>
                                         </button>
-                                        <button onclick="gerarRelatorioComIA('Qual é o ticket médio das vendas e como podemos aumentá-lo?')" class="group relative flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/10 hover:-translate-y-0.5 hover:border-emerald-300 dark:hover:border-emerald-500/50">
-                                            <div class="w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-500/20 transition-all duration-300">
-                                                <i class="fa-solid fa-receipt text-emerald-500 text-lg"></i>
-                                            </div>
-                                            <div>
-                                                <p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 mb-0.5">Ticket Médio</p>
-                                                <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Média de gasto por cliente e estratégias.</p>
-                                            </div>
+                                        <button onclick="gerarRelatorioComIA('Qual é o ticket médio das vendas e como podemos aumentá-lo?')" class="ia-chip-btn">
+                                            <div class="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0 text-base"><i class="fa-solid fa-receipt"></i></div>
+                                            <div class="min-w-0"><p class="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">Ticket Médio</p><p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Média de gasto por cliente.</p></div>
                                         </button>
-                                        <button onclick="gerarRelatorioComIA('Quais são os dias da semana e horários de maior movimento na loja?')" class="group relative flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/10 hover:-translate-y-0.5 hover:border-amber-300 dark:hover:border-amber-500/50">
-                                            <div class="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-amber-100 dark:group-hover:bg-amber-500/20 transition-all duration-300">
-                                                <i class="fa-solid fa-clock text-amber-500 text-lg"></i>
-                                            </div>
-                                            <div>
-                                                <p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 mb-0.5">Horários de Pico</p>
-                                                <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Melhores dias e horas de movimento.</p>
-                                            </div>
+                                        <button onclick="gerarRelatorioComIA('Quais são os dias da semana e horários de maior movimento na loja?')" class="ia-chip-btn">
+                                            <div class="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 text-base"><i class="fa-solid fa-clock"></i></div>
+                                            <div class="min-w-0"><p class="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">Horários de Pico</p><p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Melhores dias e horários.</p></div>
                                         </button>
                                     </div>
                                     
                                     <!-- Estoque -->
                                     <div id="ia-chips-estoque" class="ia-chips-area grid grid-cols-1 sm:grid-cols-2 gap-3 hidden">
-                                        <button onclick="gerarRelatorioComIA('Faça um resumo geral dos meus produtos cadastrados.')" class="group relative flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/10 hover:-translate-y-0.5 hover:border-indigo-300 dark:hover:border-indigo-500/50">
-                                            <div class="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-500/20 transition-all duration-300"><i class="fa-solid fa-boxes-stacked text-indigo-500 text-lg"></i></div>
-                                            <div><p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 mb-0.5">Resumo de Produtos</p><p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Visão geral do cadastro e quantidade.</p></div>
+                                        <button onclick="gerarRelatorioComIA('Faça um resumo geral dos meus produtos cadastrados.')" class="ia-chip-btn">
+                                            <div class="w-9 h-9 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0 text-base"><i class="fa-solid fa-boxes-stacked"></i></div>
+                                            <div class="min-w-0"><p class="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">Resumo de Produtos</p><p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Visão geral do cadastro e quantidade.</p></div>
                                         </button>
-                                        <button onclick="gerarRelatorioComIA('Quais foram os produtos mais vendidos e qual a margem de lucro deles?')" class="group relative flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/10 hover:-translate-y-0.5 hover:border-emerald-300 dark:hover:border-emerald-500/50">
-                                            <div class="w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-500/20 transition-all duration-300"><i class="fa-solid fa-box-open text-emerald-500 text-lg"></i></div>
-                                            <div><p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 mb-0.5">Mais Vendidos</p><p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Produtos campeões e margem de lucro.</p></div>
+                                        <button onclick="gerarRelatorioComIA('Quais foram os produtos mais vendidos e qual a margem de lucro deles?')" class="ia-chip-btn">
+                                            <div class="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0 text-base"><i class="fa-solid fa-box-open"></i></div>
+                                            <div class="min-w-0"><p class="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">Mais Vendidos</p><p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Campeões e margem de lucro.</p></div>
                                         </button>
-                                        <button onclick="gerarRelatorioComIA('Quais produtos estão acabando e eu preciso comprar urgente para não faltar?')" class="group relative flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-red-500/10 hover:-translate-y-0.5 hover:border-red-300 dark:hover:border-red-500/50">
-                                            <div class="w-10 h-10 rounded-lg bg-red-50 dark:bg-red-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-red-100 dark:group-hover:bg-red-500/20 transition-all duration-300"><i class="fa-solid fa-cart-shopping text-red-500 text-lg"></i></div>
-                                            <div><p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 mb-0.5">Sugestão de Reposição</p><p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Itens acabando e compras urgentes.</p></div>
+                                        <button onclick="gerarRelatorioComIA('Quais produtos estão acabando e eu preciso comprar urgente para não faltar?')" class="ia-chip-btn">
+                                            <div class="w-9 h-9 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center shrink-0 text-base"><i class="fa-solid fa-cart-shopping"></i></div>
+                                            <div class="min-w-0"><p class="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">Sugestão de Reposição</p><p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Itens acabando e compras urgentes.</p></div>
                                         </button>
-                                        <button onclick="gerarRelatorioComIA('Faça a análise da Curva ABC do meu estoque atualmente.')" class="group relative flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/10 hover:-translate-y-0.5 hover:border-purple-300 dark:hover:border-purple-500/50">
-                                            <div class="w-10 h-10 rounded-lg bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-purple-100 dark:group-hover:bg-purple-500/20 transition-all duration-300"><i class="fa-solid fa-layer-group text-purple-500 text-lg"></i></div>
-                                            <div><p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 mb-0.5">Curva ABC</p><p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Classificação de importância do estoque.</p></div>
+                                        <button onclick="gerarRelatorioComIA('Faça a análise da Curva ABC do meu estoque atualmente.')" class="ia-chip-btn">
+                                            <div class="w-9 h-9 rounded-lg bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0 text-base"><i class="fa-solid fa-layer-group"></i></div>
+                                            <div class="min-w-0"><p class="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">Curva ABC</p><p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Classificação de relevância do estoque.</p></div>
                                         </button>
-                                        <button onclick="gerarRelatorioComIA('Quais produtos estão parados há muito tempo sem vendas (estoque obsoleto)?')" class="group relative flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-slate-500/10 hover:-translate-y-0.5 hover:border-slate-300 dark:hover:border-slate-500/50">
-                                            <div class="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-slate-200 dark:group-hover:bg-slate-600 transition-all duration-300"><i class="fa-solid fa-spider text-slate-500 dark:text-slate-300 text-lg"></i></div>
-                                            <div><p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 mb-0.5">Produtos Parados</p><p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Identifique o estoque obsoleto.</p></div>
+                                        <button onclick="gerarRelatorioComIA('Quais produtos estão parados há muito tempo sem vendas (estoque obsoleto)?')" class="ia-chip-btn">
+                                            <div class="w-9 h-9 rounded-lg bg-slate-500/10 text-slate-400 flex items-center justify-center shrink-0 text-base"><i class="fa-solid fa-spider"></i></div>
+                                            <div class="min-w-0"><p class="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">Produtos Parados</p><p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Identifique o estoque obsoleto.</p></div>
                                         </button>
-                                        <button onclick="gerarRelatorioComIA('Qual o valor total do meu estoque atual imobilizado em dinheiro?')" class="group relative flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/10 hover:-translate-y-0.5 hover:border-amber-300 dark:hover:border-amber-500/50">
-                                            <div class="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-amber-100 dark:group-hover:bg-amber-500/20 transition-all duration-300"><i class="fa-solid fa-sack-dollar text-amber-500 text-lg"></i></div>
-                                            <div><p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 mb-0.5">Valor do Estoque</p><p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Total imobilizado em dinheiro.</p></div>
+                                        <button onclick="gerarRelatorioComIA('Qual o valor total do meu estoque atual imobilizado em dinheiro?')" class="ia-chip-btn">
+                                            <div class="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 text-base"><i class="fa-solid fa-sack-dollar"></i></div>
+                                            <div class="min-w-0"><p class="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">Valor do Estoque</p><p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Total imobilizado em dinheiro.</p></div>
                                         </button>
                                     </div>
                                     
                                     <!-- Financeiro -->
                                     <div id="ia-chips-financeiro" class="ia-chips-area grid grid-cols-1 sm:grid-cols-2 gap-3 hidden">
-                                        <button onclick="gerarRelatorioComIA('Faça um resumo analítico do fluxo de caixa (entradas e saídas).')" class="group relative flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/10 hover:-translate-y-0.5 hover:border-emerald-300 dark:hover:border-emerald-500/50">
-                                            <div class="w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-500/20 transition-all duration-300"><i class="fa-solid fa-money-bill-transfer text-emerald-500 text-lg"></i></div>
-                                            <div><p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 mb-0.5">Fluxo de Caixa</p><p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Entradas, saídas e saldo.</p></div>
+                                        <button onclick="gerarRelatorioComIA('Faça um resumo analítico do fluxo de caixa (entradas e saídas).')" class="ia-chip-btn">
+                                            <div class="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0 text-base"><i class="fa-solid fa-money-bill-transfer"></i></div>
+                                            <div class="min-w-0"><p class="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">Fluxo de Caixa</p><p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Entradas, saídas e saldo.</p></div>
                                         </button>
-                                        <button onclick="gerarRelatorioComIA('Quais são as minhas contas em aberto (a receber) e quem está devendo?')" class="group relative flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/10 hover:-translate-y-0.5 hover:border-indigo-300 dark:hover:border-indigo-500/50">
-                                            <div class="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-500/20 transition-all duration-300"><i class="fa-solid fa-file-invoice-dollar text-indigo-500 text-lg"></i></div>
-                                            <div><p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 mb-0.5">Contas a Receber</p><p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Valores em aberto e devedores.</p></div>
+                                        <button onclick="gerarRelatorioComIA('Quais são as minhas contas em aberto (a receber) e quem está devendo?')" class="ia-chip-btn">
+                                            <div class="w-9 h-9 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0 text-base"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                                            <div class="min-w-0"><p class="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">Contas a Receber</p><p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Valores em aberto e inadimplentes.</p></div>
                                         </button>
-                                        <button onclick="gerarRelatorioComIA('Quais são as contas a pagar para os próximos 15 dias?')" class="group relative flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/10 hover:-translate-y-0.5 hover:border-amber-300 dark:hover:border-amber-500/50">
-                                            <div class="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-amber-100 dark:group-hover:bg-amber-500/20 transition-all duration-300"><i class="fa-solid fa-hand-holding-dollar text-amber-500 text-lg"></i></div>
-                                            <div><p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 mb-0.5">Contas a Pagar</p><p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Previsão para os próximos 15 dias.</p></div>
+                                        <button onclick="gerarRelatorioComIA('Quais são as contas a pagar para os próximos 15 dias?')" class="ia-chip-btn">
+                                            <div class="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 text-base"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                                            <div class="min-w-0"><p class="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">Contas a Pagar</p><p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Previsão para os próximos 15 dias.</p></div>
                                         </button>
-                                        <button onclick="gerarRelatorioComIA('Quais são minhas maiores e principais despesas no período selecionado?')" class="group relative flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-red-500/10 hover:-translate-y-0.5 hover:border-red-300 dark:hover:border-red-500/50">
-                                            <div class="w-10 h-10 rounded-lg bg-red-50 dark:bg-red-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-red-100 dark:group-hover:bg-red-500/20 transition-all duration-300"><i class="fa-solid fa-chart-pie text-red-500 text-lg"></i></div>
-                                            <div><p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 mb-0.5">Maiores Despesas</p><p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Onde o dinheiro está sendo gasto.</p></div>
+                                        <button onclick="gerarRelatorioComIA('Quais são minhas maiores e principais despesas no período selecionado?')" class="ia-chip-btn">
+                                            <div class="w-9 h-9 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center shrink-0 text-base"><i class="fa-solid fa-chart-pie"></i></div>
+                                            <div class="min-w-0"><p class="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">Maiores Despesas</p><p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Onde o dinheiro está sendo gasto.</p></div>
                                         </button>
-                                        <button onclick="gerarRelatorioComIA('Como está o nível de inadimplência dos clientes e como reverter?')" class="group relative flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-orange-500/10 hover:-translate-y-0.5 hover:border-orange-300 dark:hover:border-orange-500/50">
-                                            <div class="w-10 h-10 rounded-lg bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-orange-100 dark:group-hover:bg-orange-500/20 transition-all duration-300"><i class="fa-solid fa-triangle-exclamation text-orange-500 text-lg"></i></div>
-                                            <div><p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 mb-0.5">Inadimplência</p><p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Nível de calotes e atrasos.</p></div>
+                                        <button onclick="gerarRelatorioComIA('Como está o nível de inadimplência dos clientes e como reverter?')" class="ia-chip-btn">
+                                            <div class="w-9 h-9 rounded-lg bg-orange-500/10 text-orange-500 flex items-center justify-center shrink-0 text-base"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                                            <div class="min-w-0"><p class="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">Inadimplência</p><p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Nível de calotes e atrasos.</p></div>
                                         </button>
                                     </div>
                                     
                                     <!-- Pessoas -->
                                     <div id="ia-chips-pessoas" class="ia-chips-area grid grid-cols-1 sm:grid-cols-2 gap-3 hidden">
-                                        <button onclick="gerarRelatorioComIA('Faça um ranking dos funcionários/vendedores com melhor desempenho nas vendas.')" class="group relative flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/10 hover:-translate-y-0.5 hover:border-amber-300 dark:hover:border-amber-500/50">
-                                            <div class="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-amber-100 dark:group-hover:bg-amber-500/20 transition-all duration-300"><i class="fa-solid fa-ranking-star text-amber-500 text-lg"></i></div>
-                                            <div><p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 mb-0.5">Desempenho da Equipe</p><p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Ranking dos melhores vendedores.</p></div>
+                                        <button onclick="gerarRelatorioComIA('Faça um ranking dos funcionários/vendedores com melhor desempenho nas vendas.')" class="ia-chip-btn">
+                                            <div class="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 text-base"><i class="fa-solid fa-ranking-star"></i></div>
+                                            <div class="min-w-0"><p class="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">Desempenho da Equipe</p><p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Ranking dos melhores vendedores.</p></div>
                                         </button>
-                                        <button onclick="gerarRelatorioComIA('Análise do perfil dos nossos clientes: quais compram mais e com maior frequência?')" class="group relative flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/10 hover:-translate-y-0.5 hover:border-indigo-300 dark:hover:border-indigo-500/50">
-                                            <div class="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-500/20 transition-all duration-300"><i class="fa-solid fa-users text-indigo-500 text-lg"></i></div>
-                                            <div><p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 mb-0.5">Melhores Clientes</p><p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Perfil de compra e frequência.</p></div>
+                                        <button onclick="gerarRelatorioComIA('Análise do perfil dos nossos clientes: quais compram mais e com maior frequência?')" class="ia-chip-btn">
+                                            <div class="w-9 h-9 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0 text-base"><i class="fa-solid fa-users"></i></div>
+                                            <div class="min-w-0"><p class="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">Melhores Clientes</p><p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Perfil de compra e frequência.</p></div>
                                         </button>
-                                        <button onclick="gerarRelatorioComIA('Quais clientes pararam de comprar recentemente ou diminuíram a frequência?')" class="group relative flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-slate-500/10 hover:-translate-y-0.5 hover:border-slate-300 dark:hover:border-slate-500/50">
-                                            <div class="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-slate-200 dark:group-hover:bg-slate-600 transition-all duration-300"><i class="fa-solid fa-users-slash text-slate-500 dark:text-slate-300 text-lg"></i></div>
-                                            <div><p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 mb-0.5">Clientes Inativos</p><p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Clientes que pararam de comprar.</p></div>
+                                        <button onclick="gerarRelatorioComIA('Quais clientes pararam de comprar recentemente ou diminuíram a frequência?')" class="ia-chip-btn">
+                                            <div class="w-9 h-9 rounded-lg bg-slate-500/10 text-slate-400 flex items-center justify-center shrink-0 text-base"><i class="fa-solid fa-users-slash"></i></div>
+                                            <div class="min-w-0"><p class="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">Clientes Inativos</p><p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Clientes que pararam de comprar.</p></div>
                                         </button>
-                                        <button onclick="gerarRelatorioComIA('Faça um resumo geral dos funcionários cadastrados no sistema.')" class="group relative flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-teal-500/10 hover:-translate-y-0.5 hover:border-teal-300 dark:hover:border-teal-500/50">
-                                            <div class="w-10 h-10 rounded-lg bg-teal-50 dark:bg-teal-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-teal-100 dark:group-hover:bg-teal-500/20 transition-all duration-300"><i class="fa-solid fa-id-card text-teal-500 text-lg"></i></div>
-                                            <div><p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 mb-0.5">Resumo de Funcionários</p><p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Controle de acesso e equipe.</p></div>
+                                        <button onclick="gerarRelatorioComIA('Faça um resumo geral dos funcionários cadastrados no sistema.')" class="ia-chip-btn">
+                                            <div class="w-9 h-9 rounded-lg bg-teal-500/10 text-teal-500 flex items-center justify-center shrink-0 text-base"><i class="fa-solid fa-id-card"></i></div>
+                                            <div class="min-w-0"><p class="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">Resumo de Funcionários</p><p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Controle de acesso e equipe.</p></div>
                                         </button>
                                     </div>
 
                                     <!-- Geral -->
                                     <div id="ia-chips-geral" class="ia-chips-area grid grid-cols-1 sm:grid-cols-2 gap-3 hidden">
-                                        <button onclick="gerarRelatorioComIA('Faça um diagnóstico geral da saúde financeira e operacional da empresa baseada no DRE.')" class="group relative flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-sky-500/10 hover:-translate-y-0.5 hover:border-sky-300 dark:hover:border-sky-500/50">
-                                            <div class="w-10 h-10 rounded-lg bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-sky-100 dark:group-hover:bg-sky-500/20 transition-all duration-300"><i class="fa-solid fa-stethoscope text-sky-500 text-lg"></i></div>
-                                            <div><p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 mb-0.5">Diagnóstico DRE</p><p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Análise profunda de lucros/prejuízos.</p></div>
+                                        <button onclick="gerarRelatorioComIA('Faça um diagnóstico geral da saúde financeira e operacional da empresa baseada no DRE.')" class="ia-chip-btn">
+                                            <div class="w-9 h-9 rounded-lg bg-sky-500/10 text-sky-500 flex items-center justify-center shrink-0 text-base"><i class="fa-solid fa-stethoscope"></i></div>
+                                            <div class="min-w-0"><p class="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">Diagnóstico DRE</p><p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Análise profunda de lucros/prejuízos.</p></div>
                                         </button>
-                                        <button onclick="gerarRelatorioComIA('Quais as principais oportunidades de redução de custos que você enxerga?')" class="group relative flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-rose-500/10 hover:-translate-y-0.5 hover:border-rose-300 dark:hover:border-rose-500/50">
-                                            <div class="w-10 h-10 rounded-lg bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-rose-100 dark:group-hover:bg-rose-500/20 transition-all duration-300"><i class="fa-solid fa-scissors text-rose-500 text-lg"></i></div>
-                                            <div><p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 mb-0.5">Redução de Custos</p><p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Oportunidades de economia.</p></div>
+                                        <button onclick="gerarRelatorioComIA('Quais as principais oportunidades de redução de custos que você enxerga?')" class="ia-chip-btn">
+                                            <div class="w-9 h-9 rounded-lg bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0 text-base"><i class="fa-solid fa-scissors"></i></div>
+                                            <div class="min-w-0"><p class="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">Redução de Custos</p><p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Oportunidades de economia.</p></div>
                                         </button>
-                                        <button onclick="gerarRelatorioComIA('Crie um planejamento estratégico com 3 metas práticas para o próximo mês.')" class="group relative flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/10 hover:-translate-y-0.5 hover:border-purple-300 dark:hover:border-purple-500/50">
-                                            <div class="w-10 h-10 rounded-lg bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-purple-100 dark:group-hover:bg-purple-500/20 transition-all duration-300"><i class="fa-solid fa-chess-knight text-purple-500 text-lg"></i></div>
-                                            <div><p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 mb-0.5">Estratégia Mensal</p><p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Metas e planejamento focado.</p></div>
+                                        <button onclick="gerarRelatorioComIA('Crie um planejamento estratégico com 3 metas práticas para o próximo mês.')" class="ia-chip-btn">
+                                            <div class="w-9 h-9 rounded-lg bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0 text-base"><i class="fa-solid fa-chess-knight"></i></div>
+                                            <div class="min-w-0"><p class="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">Estratégia Mensal</p><p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Metas e planejamento focado.</p></div>
                                         </button>
                                     </div>
                                 </div>
 
-                                <!-- Input Box Inteligente -->
-                                <div class="mt-8 relative group/input">
-                                    <div class="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500 rounded-2xl blur opacity-25 group-focus-within/input:opacity-75 transition duration-500 group-hover/input:duration-200"></div>
-                                    <div class="relative bg-white dark:bg-slate-900 rounded-xl flex flex-col shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden focus-within:border-indigo-400 dark:focus-within:border-indigo-500">
-                                        <textarea id="ia-rel-pergunta-livre" rows="1" placeholder="Ex: Qual foi o faturamento total em Pix ontem?" class="w-full bg-transparent border-0 px-5 py-4 text-[15px] focus:ring-0 text-slate-700 dark:text-slate-100 resize-none placeholder:text-slate-400/80 min-h-[60px] custom-scrollbar" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
-                                        <div class="flex items-center justify-between px-3 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800 flex-wrap gap-3">
-                                            <div class="flex items-center gap-2 pl-2 flex-wrap">
-                                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-calendar-day text-indigo-400"></i> Período:</span>
-                                                <input type="date" id="ia-data-inicio" class="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs outline-none focus:border-indigo-400 dark:text-white font-medium">
-                                                <span class="text-slate-400 text-xs">até</span>
-                                                <input type="date" id="ia-data-fim" class="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs outline-none focus:border-indigo-400 dark:text-white font-medium">
-                                            </div>
-                                            <button id="btn-ia-rel-livre" onclick="gerarRelatorioLivre()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-lg text-sm font-bold transition-all shadow-md flex items-center gap-2 transform active:scale-95 group/btn">
-                                                <span>Analisar</span> <i class="fa-solid fa-sparkles text-indigo-200 group-hover/btn:rotate-12 transition-transform"></i>
-                                            </button>
+                                <!-- Input Box Inteligente com Período e Botão -->
+                                <div class="ia-input-card">
+                                    <textarea id="ia-rel-pergunta-livre" rows="2" placeholder="Ou digite sua pergunta... Ex: Qual foi o produto mais lucrativo na semana passada?" class="w-full bg-transparent border-0 px-4 py-3.5 text-sm focus:ring-0 text-slate-800 dark:text-slate-100 resize-none placeholder:text-slate-400 dark:placeholder:text-slate-500 min-h-[58px] custom-scrollbar outline-none"></textarea>
+                                    <div class="flex items-center justify-between px-3 py-2.5 border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 flex-wrap gap-2.5">
+                                        <div class="flex items-center gap-1.5 flex-wrap text-xs">
+                                            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-calendar-day text-indigo-400 mr-1"></i> Período:</span>
+                                            <input type="date" id="ia-data-inicio" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-2 py-1 text-xs outline-none focus:border-indigo-400 text-slate-800 dark:text-white font-medium" title="Data Inicial">
+                                            <span class="text-slate-400 text-xs">até</span>
+                                            <input type="date" id="ia-data-fim" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-2 py-1 text-xs outline-none focus:border-indigo-400 text-slate-800 dark:text-white font-medium" title="Data Final">
                                         </div>
+                                        <button id="btn-ia-rel-livre" onclick="gerarRelatorioLivre()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-lg text-sm font-bold transition-all shadow-md flex items-center gap-2 transform active:scale-95 group/btn cursor-pointer">
+                                            <span>Analisar com IA</span> <i class="fa-solid fa-sparkles text-indigo-200 group-hover/btn:rotate-12 transition-transform"></i>
+                                        </button>
                                     </div>
                                 </div>
-                                
-                                <!-- Campo Destinado ao Relatório -->
-                                <div class="mt-8 pt-6 border-t border-slate-200/80 dark:border-slate-700/60 flex-1 flex flex-col">
-                                    <div class="flex items-center justify-between mb-4">
-                                        <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                                            <i class="fa-solid fa-wand-magic-sparkles text-indigo-500"></i> Área do Relatório
-                                        </h4>
-                                        <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                                            <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span> Análise Dinâmica
-                                        </span>
-                                    </div>
-                                    <div id="ia-rel-resultado" class="flex-1 bg-white/95 dark:bg-slate-900/80 border border-slate-200/90 dark:border-indigo-500/30 rounded-2xl p-6 md:p-8 min-h-[280px] flex flex-col justify-center transition-all shadow-sm dark:shadow-2xl dark:shadow-indigo-950/20">
-                                        <div class="flex flex-col items-center justify-center text-center py-8">
-                                            <div class="relative w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 p-0.5 shadow-lg shadow-indigo-500/20 mb-4 flex items-center justify-center">
-                                                <div class="w-full h-full bg-white dark:bg-slate-900 rounded-[14px] flex items-center justify-center">
-                                                    <i class="fa-solid fa-brain text-2xl bg-clip-text text-transparent bg-gradient-to-tr from-indigo-500 to-purple-500"></i>
-                                                </div>
-                                            </div>
-                                            <h5 class="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">Pronto para Gerar Insights Estratégicos</h5>
-                                            <p class="text-xs text-slate-500 dark:text-slate-400 max-w-md leading-relaxed mb-4">Selecione uma das perguntas sugeridas acima ou digite sua dúvida comercial para cruzar vendas, estoque e finanças em tempo real.</p>
-                                            <div class="flex flex-wrap items-center justify-center gap-2 text-[11px] text-slate-600 dark:text-slate-400">
-                                                <span class="px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/40 text-indigo-700 dark:text-indigo-300 font-semibold"><i class="fa-solid fa-chart-pie mr-1 text-indigo-500"></i> DRE & Margens</span>
-                                                <span class="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-300 font-semibold"><i class="fa-solid fa-boxes-stacked mr-1 text-emerald-500"></i> Curva ABC</span>
-                                                <span class="px-2.5 py-1 rounded-full bg-purple-50 dark:bg-purple-950/40 border border-purple-200/80 dark:border-purple-800/40 text-purple-700 dark:text-purple-300 font-semibold"><i class="fa-solid fa-users mr-1 text-purple-500"></i> Melhores Clientes</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+
                             </div>
-                            
-                            <!-- Direita: Histórico -->
-                            <div class="w-full xl:w-96 shrink-0 flex flex-col max-w-full">
-                                <div class="ia-historico-container h-full min-h-[520px] bg-slate-50/80 dark:bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-200/90 dark:border-slate-700/60 flex flex-col overflow-hidden shadow-sm">
-                                    <div class="px-5 py-4 border-b border-slate-200/80 dark:border-slate-700/60 bg-white/90 dark:bg-slate-800/60 flex items-center justify-between shrink-0">
+
+                            <!-- Coluna Direita: Histórico de Análises -->
+                            <div class="ia-col-historico">
+                                <div class="ia-historico-card">
+                                    <div class="ia-historico-header">
                                         <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
-                                            <i class="fa-solid fa-clock-rotate-left text-indigo-500"></i> Suas Análises
+                                            <i class="fa-solid fa-clock-rotate-left text-indigo-400"></i> Suas Análises
                                         </h4>
-                                        <span class="text-[10px] font-bold bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 px-2.5 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-500/30" id="ia-historico-count">0</span>
+                                        <span class="text-[11px] font-bold bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 px-2.5 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-500/30" id="ia-historico-count">0</span>
                                     </div>
                                     
-                                    <div id="ia-historico-lista" class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2.5 min-h-[440px]">
+                                    <div id="ia-historico-lista" class="ia-historico-body custom-scrollbar">
                                         <!-- Preenchido via JS -->
                                         <div class="text-center py-16 text-slate-400 dark:text-slate-500 flex flex-col items-center justify-center gap-3">
                                             <div class="w-8 h-8 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
@@ -410,12 +372,39 @@
                                     </div>
                                 </div>
                             </div>
+
                         </div>
 
-                        <!-- Onde o relatório gerado vai aparecer -->
-                        <!-- O relatório agora aparece no campo dedicado acima -->
-                    </div>
+                        <!-- Área do Relatório Gerado (Full Width Abaixo do Grid) -->
+                        <div class="ia-relatorio-wrapper">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                                    <i class="fa-solid fa-wand-magic-sparkles text-indigo-500"></i> Área do Relatório
+                                </h4>
+                                <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span> Análise Dinâmica
+                                </span>
+                            </div>
+                            <div id="ia-rel-resultado">
+                                <div class="flex flex-col items-center justify-center text-center py-8">
+                                    <div class="relative w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 p-0.5 shadow-lg shadow-indigo-500/20 mb-4 flex items-center justify-center">
+                                        <div class="w-full h-full bg-white dark:bg-slate-900 rounded-[14px] flex items-center justify-center">
+                                            <i class="fa-solid fa-brain text-2xl bg-clip-text text-transparent bg-gradient-to-tr from-indigo-500 to-purple-500"></i>
+                                        </div>
+                                    </div>
+                                    <h5 class="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">Pronto para Gerar Insights Estratégicos</h5>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400 max-w-md leading-relaxed mb-4">Selecione uma das perguntas sugeridas acima ou digite sua dúvida comercial para cruzar vendas, estoque e finanças em tempo real.</p>
+                                    <div class="flex flex-wrap items-center justify-center gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                                        <span class="px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/40 text-indigo-700 dark:text-indigo-300 font-semibold"><i class="fa-solid fa-chart-pie mr-1 text-indigo-500"></i> DRE & Margens</span>
+                                        <span class="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-300 font-semibold"><i class="fa-solid fa-boxes-stacked mr-1 text-emerald-500"></i> Curva ABC</span>
+                                        <span class="px-2.5 py-1 rounded-full bg-purple-50 dark:bg-purple-950/40 border border-purple-200/80 dark:border-purple-800/40 text-purple-700 dark:text-purple-300 font-semibold"><i class="fa-solid fa-users mr-1 text-purple-500"></i> Melhores Clientes</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
+                    </div>
+                    
                     <div id="print-area-relatorios" class="space-y-6">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             
@@ -2264,11 +2253,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20261006135537"></script>
-    <script src="saas_licenca.js?v=20261006135537"></script>
-    <script src="../global.js?v=20261006135537"></script>
-    <script src="fc_cache.js?v=20261006135537"></script>
-    <script src="relatorios_v2.js?v=20261006135537"></script>
+    <script src="../sistema/config_banco.js?v=20261008194435"></script>
+    <script src="saas_licenca.js?v=20261008194435"></script>
+    <script src="../global.js?v=20261008194435"></script>
+    <script src="fc_cache.js?v=20261008194435"></script>
+    <script src="relatorios_v2.js?v=20261008194435"></script>
 </body>
 </html>
 

@@ -3,7 +3,7 @@
 // Cache inteligente, carregamento ultra-rápido e suporte Offline
 // ==============================================================
 
-const CACHE_NAME = 'fc-gestao-cache-v20261006135537';
+const CACHE_NAME = 'fc-gestao-cache-v20261008194435';
 
 // Arquivos do App Shell para pré-armazenamento em cache
 const SHELL_ASSETS = [
@@ -19,6 +19,8 @@ const SHELL_ASSETS = [
     '/icons/icon-maskable-512.png',
     '/icons/favicon.png',
     '/icons/icon.svg',
+    '/icons/icone_primas.png',
+    '/icons/logo_primas.png',
     '/sistema/config_banco.js',
     '/sistema/index.html',
     '/sistema/index.js',
@@ -44,8 +46,13 @@ const SHELL_ASSETS = [
     '/sistema/funcionarios.js',
     '/sistema/financeiro.html',
     '/sistema/financeiro.js',
+    '/sistema/conciliacao.html',
+    '/sistema/conciliacao.js',
+    '/sistema/conciliacao.css',
     '/sistema/caixa.html',
     '/sistema/caixa.js',
+    '/sistema/caixa_loja.html',
+    '/sistema/caixa_loja.js',
     '/sistema/compras.html',
     '/sistema/compras.js',
     '/sistema/relatorios.html',
@@ -56,6 +63,10 @@ const SHELL_ASSETS = [
     '/sistema/marketing.js',
     '/sistema/sistema.html',
     '/sistema/sistema.js',
+    '/sistema/suporte.html',
+    '/sistema/suporte.js',
+    '/sistema/operacao.html',
+    '/sistema/operacao.js',
     '/sistema/fc_cache.js',
     '/sistema/tabela_ncm.js',
     '/sistema/ncm_helper.js'

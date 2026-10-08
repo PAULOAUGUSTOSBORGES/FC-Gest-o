@@ -19,6 +19,7 @@ function Bump-Version($htmlFile, $jsFile) {
 
 Get-ChildItem -Path $folder -Filter "*.html" | ForEach-Object {
     Bump-Version $_.Name "fc_cache.js"
+    Bump-Version $_.Name "global.js"
 }
 
 Bump-Version "gestao.html" "gestao_v2.js"
@@ -30,6 +31,7 @@ Bump-Version "relatorios.html" "relatorios_v2.js"
 Bump-Version "produtos.html" "produtos.js"
 Bump-Version "cadastro.html" "cadastro.js"
 Bump-Version "index.html" "index.js"
+Bump-Version "pdv.html" "pdv.js"
 
 Write-Output "Cache busters updated."
 
