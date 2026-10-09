@@ -19,6 +19,8 @@ setTimeout(() => { window._pdvCarregandoInicial = false; }, 3000);
 // ==========================================
 let isProcessingVenda = false;
 let vendaIdempotencyKey = null;
+let _vendaLockTimestamp = 0;
+let _vendaSafetyTimeout = null;
 
 /** Gera uma nova chave unica de idempotencia para a sessao de venda atual */
 function gerarIdempotencyKey() {
@@ -30,6 +32,11 @@ function gerarIdempotencyKey() {
 /** Libera o botao de finalizar e reseta a flag de processamento */
 function liberarBotaoFinalizar() {
     isProcessingVenda = false;
+    _vendaLockTimestamp = 0;
+    if (_vendaSafetyTimeout) {
+        clearTimeout(_vendaSafetyTimeout);
+        _vendaSafetyTimeout = null;
+    }
     vendaIdempotencyKey = null;
     const btn = document.getElementById('btn-finalizar-venda');
     if (btn) {
@@ -38,6 +45,7 @@ function liberarBotaoFinalizar() {
         if (typeof atualizarResumoPagamentosVenda === 'function') atualizarResumoPagamentosVenda();
     }
 }
+window.liberarBotaoFinalizar = liberarBotaoFinalizar;
 
 // Evita o "piscar" da tela carregando as abas instantaneamente antes do Firebase
 document.addEventListener('DOMContentLoaded', () => {
@@ -223,10 +231,35 @@ function inicializarOperacao() {
     });
     _listen('vendas', function(dados) {
         db.vendas = dados;
-        const v = document.getElementById('view-vendas');
+        if (typeof renderVendas === 'function') renderVendas();
         const o = document.getElementById('view-orcamentos');
-        if (document.getElementById('view-vendas_operacao') && document.getElementById('view-vendas_operacao').classList.contains('active')) renderVendas();
-        if(o && o.classList.contains('active')) renderOrcamentos();
+        if (o && o.classList.contains('active') && typeof renderOrcamentos === 'function') renderOrcamentos();
+    });
+
+    // Reatividade cross-tab e restauração de foco instantânea
+    window.addEventListener('fc-dados-locais-atualizados', function(ev) {
+        if (ev && ev.detail && ev.detail.colecao === 'vendas') {
+            db.vendas = ev.detail.dados || [];
+            if (typeof renderVendas === 'function') renderVendas();
+        }
+    });
+    window.addEventListener('focus', function() {
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.get === 'function') {
+            const vAtual = window.FCCache.get('vendas');
+            if (Array.isArray(vAtual) && vAtual.length > 0) {
+                db.vendas = vAtual;
+                if (typeof renderVendas === 'function') renderVendas();
+            }
+        }
+    });
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden && typeof window.FCCache !== 'undefined' && typeof window.FCCache.get === 'function') {
+            const vAtual = window.FCCache.get('vendas');
+            if (Array.isArray(vAtual) && vAtual.length > 0) {
+                db.vendas = vAtual;
+                if (typeof renderVendas === 'function') renderVendas();
+            }
+        }
     });
     _listenDoc('caixa', 'caixa_atual', function(data) {
         db.caixa = data || { status: 'FECHADO', saldo: 0, historico: [] };
@@ -1810,56 +1843,54 @@ function removerPagamentoVenda(index) {
 }
 
 async function finalizarVendaMultipla() {
-    // === PROTECAO ANTI-VENDA DUPLICADA (Camada 1: flag de processamento) ===
-    if (isProcessingVenda) {
-        showToast('Aguarde... A venda esta sendo processada.', 'warning');
+    const agora = Date.now();
+    // === PROTECAO ANTI-VENDA DUPLICADA (Camada 1: flag de processamento com expiração automática) ===
+    if (isProcessingVenda && (agora - _vendaLockTimestamp) < 6000) {
+        showToast('Aguarde... A venda está sendo processada.', 'warning');
         return;
     }
     isProcessingVenda = true;
+    _vendaLockTimestamp = agora;
 
-    // Gera chave de idempotencia unica para esta tentativa de venda
-    const chaveIdempotencia = gerarIdempotencyKey();
-
-    // Bloqueia o botao imediatamente com estado de loading
-    const btnFinalizar = document.getElementById('btn-finalizar-venda');
-    if (btnFinalizar) {
-        btnFinalizar.disabled = true;
-        btnFinalizar.classList.add('opacity-75', 'cursor-wait');
-        btnFinalizar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Aguarde...';
-    }
-
-    const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : 'Venda';
-    const isOrcamento = op === 'Orçamento'; 
-    const isServico = op === 'Serviço';
-    
-    let tipoVenda = 'VENDA'; 
-    if (isOrcamento) tipoVenda = 'ORÇAMENTO'; 
-    if (isServico) tipoVenda = 'SERVIÇO';
-    
-    if(cart.length === 0) { liberarBotaoFinalizar(); return showToast('Nenhum item na operação!', 'error'); }
-    
-    if (!isOrcamento) { 
-        if(pagamentosVendaAtual.length === 0) { liberarBotaoFinalizar(); return showToast('Insira ao menos um pagamento!', 'error');  }
-        if(!db.caixa || db.caixa.status !== 'ABERTO') { liberarBotaoFinalizar(); return showToast('O Caixa está FECHADO. Abra o caixa antes.', 'error');  }
-    }
-
-    // === PROTECAO ANTI-VENDA DUPLICADA (Camada 2: verificacao no Firestore) ===
-    const isEdicaoAntecipada = window.vendaEmEdicao != null;
-    if (!isEdicaoAntecipada && chaveIdempotencia) {
-        try {
-            const snapCheck = await window.getEmpresaRef()
-                .collection('vendas')
-                .where('idempotencyKey', '==', chaveIdempotencia)
-                .limit(1)
-                .get();
-            if (!snapCheck.empty) {
-                liberarBotaoFinalizar();
-                return showToast('Esta venda ja foi registrada! Verifique o historico.', 'warning');
-            }
-        } catch(eCheck) {
-            console.warn('[Anti-Duplicata] Verificacao Firestore indisponivel:', eCheck);
+    // Timeout de segurança absoluta: nunca deixa o PDV bloqueado por mais de 8s
+    if (_vendaSafetyTimeout) clearTimeout(_vendaSafetyTimeout);
+    _vendaSafetyTimeout = setTimeout(() => {
+        if (isProcessingVenda) {
+            console.warn('[VendasOp] Desbloqueio de segurança automático acionado.');
+            liberarBotaoFinalizar();
         }
-    }
+    }, 8000);
+
+    try {
+        // Gera chave de idempotencia unica para esta tentativa de venda
+        const chaveIdempotencia = gerarIdempotencyKey();
+
+        // Bloqueia o botao imediatamente com estado de loading
+        const btnFinalizar = document.getElementById('btn-finalizar-venda');
+        const textoOriginalBtn = btnFinalizar ? btnFinalizar.innerHTML : '';
+        if (btnFinalizar) {
+            btnFinalizar.disabled = true;
+            btnFinalizar.classList.add('opacity-75', 'cursor-wait');
+            btnFinalizar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Aguarde...';
+        }
+
+        const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : 'Venda';
+        const isOrcamento = op === 'Orçamento'; 
+        const isServico = op === 'Serviço';
+        
+        let tipoVenda = 'VENDA'; 
+        if (isOrcamento) tipoVenda = 'ORÇAMENTO'; 
+        if (isServico) tipoVenda = 'SERVIÇO';
+        
+        if(cart.length === 0) { liberarBotaoFinalizar(); return showToast('Nenhum item na operação!', 'error'); }
+        
+        if (!isOrcamento) { 
+            if(pagamentosVendaAtual.length === 0) { liberarBotaoFinalizar(); return showToast('Insira ao menos um pagamento!', 'error');  }
+            if(!db.caixa || db.caixa.status !== 'ABERTO') { liberarBotaoFinalizar(); return showToast('O Caixa está FECHADO. Abra o caixa antes.', 'error');  }
+        }
+
+        // === PROTECAO ANTI-VENDA DUPLICADA ===
+        // Chave de idempotencia única registrada para controle de integridade sem chamadas de rede blocantes.
 
     const { sub, desc, frete, tot } = pdvAtualizarTotais(); 
     const custoTotal = cart.reduce((acc, i) => acc + ((i.custo || 0) * (i.qtd || 1)), 0);
@@ -2238,23 +2269,19 @@ async function finalizarVendaMultipla() {
 
     if (window.FCCache && typeof window.FCCache.isModoEconomia === 'function' && window.FCCache.isModoEconomia()) {
         console.log('[VendasOp] Venda registrada no repositório local (Modo Economia). Enfileirada para sincronização.');
-        isProcessingVenda = false;
-        vendaIdempotencyKey = null;
         if (typeof showToast === 'function') {
             showToast('Operação registrada com sucesso! (Salva localmente. Clique em SINCRONIZAR quando desejar enviar à nuvem)', 'success');
         }
     } else {
         try {
-            await batch.commit();
+            const commitPromise = batch.commit();
+            const commitTimeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout batch.commit Firestore')), 4000));
+            await Promise.race([commitPromise, commitTimeout]);
             if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.removerDaFila === 'function') {
                 window.FCCache.removerDaFila('vendas', idFinalVenda);
             }
-            isProcessingVenda = false;
-            vendaIdempotencyKey = null;
         } catch(err) {
             console.warn('Aviso: Operacao salva no repositorio local (pendente de sincronizacao com Firebase):', err);
-            isProcessingVenda = false;
-            vendaIdempotencyKey = null;
             if (typeof showToast === 'function') {
                 showToast('Operacao salva no dispositivo! Sera sincronizada assim que voce clicar em SINCRONIZAR.', 'info');
             }
@@ -2273,8 +2300,10 @@ async function finalizarVendaMultipla() {
             fContainer.classList.remove('hidden');
             const fStatus = document.getElementById('fiscal-status-container');
             if (fStatus) { fStatus.classList.add('hidden'); fStatus.innerHTML = ''; }
-            const bNfce = document.getElementById('btn-emitir-nfce'); if (bNfce) bNfce.disabled = false;
-            const bNfe = document.getElementById('btn-emitir-nfe'); if (bNfe) bNfe.disabled = false;
+            const podeNfce = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfce') : true;
+            const podeNfe = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfe') : true;
+            const bNfce = document.getElementById('btn-emitir-nfce'); if (bNfce) { bNfce.disabled = false; bNfce.style.display = podeNfce ? '' : 'none'; }
+            const bNfe = document.getElementById('btn-emitir-nfe'); if (bNfe) { bNfe.disabled = false; bNfe.style.display = podeNfe ? '' : 'none'; }
         } else {
             fContainer.classList.add('hidden');
         }
@@ -2304,6 +2333,12 @@ async function finalizarVendaMultipla() {
 
     pdvLimpar(); 
     showToast(isOrcamento ? "Orçamento salvo!" : (isServico ? "Serviço registrado!" : "Venda registrada com sucesso!"), "success");
+    } catch(errGeral) {
+        console.error('[VendasOp] Erro crítico ao finalizar venda:', errGeral);
+        showToast('Erro ao processar venda: ' + (errGeral.message || 'Tente novamente'), 'error');
+    } finally {
+        liberarBotaoFinalizar();
+    }
 }
 
 async function salvarLembretePDV() {
@@ -2401,6 +2436,9 @@ function fecharModalOpcoesRecibo() {
 }
 
 async function emitirNota(tipo) {
+    if (typeof window.temPermissaoNotaFiscal === 'function' && !window.temPermissaoNotaFiscal(tipo)) {
+        return showToast(`Seu plano atual não possui permissão para emitir ${String(tipo || '').toUpperCase()}. Fale com o suporte!`, "warning");
+    }
     if(!window.vendaAtualImpressao || !window.vendaAtualImpressao.id) {
         return showToast("Erro: Venda não identificada.", "error");
     }
@@ -2541,7 +2579,7 @@ function renderVendas() {
     if (dataIni) { const dIni = new Date(dataIni + 'T00:00:00').getTime(); filtrados = filtrados.filter(v => v.data && new Date(v.data).getTime() >= dIni); }
     if (dataFim) { const dFim = new Date(dataFim + 'T23:59:59').getTime(); filtrados = filtrados.filter(v => v.data && new Date(v.data).getTime() <= dFim); }
     
-    filtrados.sort((a,b) => new Date(b.data || 0) - new Date(a.data || 0));
+    filtrados.sort((a,b) => (new Date(b.data || 0) - new Date(a.data || 0)) || ((Number(b.numeroPedido) || 0) - (Number(a.numeroPedido) || 0)));
     window.vendasFiltradasAtuais = filtrados;
 
     let totalLucro = 0;

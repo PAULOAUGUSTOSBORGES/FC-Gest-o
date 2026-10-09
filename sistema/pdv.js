@@ -83,6 +83,8 @@ window.calcularMargemLucroItem = calcularMargemLucroItem;
 
 let isProcessingVenda = false;
 let vendaIdempotencyKey = null;
+let _vendaLockTimestamp = 0;
+let _vendaSafetyTimeout = null;
 
 /** Gera uma nova chave unica de idempotencia para a sessao de venda atual */
 function gerarIdempotencyKey() {
@@ -94,6 +96,11 @@ function gerarIdempotencyKey() {
 /** Libera o botao de finalizar e reseta a flag de processamento */
 function liberarBotaoFinalizar() {
     isProcessingVenda = false;
+    _vendaLockTimestamp = 0;
+    if (_vendaSafetyTimeout) {
+        clearTimeout(_vendaSafetyTimeout);
+        _vendaSafetyTimeout = null;
+    }
     vendaIdempotencyKey = null;
     const btn = document.getElementById('btn-finalizar-venda');
     if (btn) {
@@ -102,6 +109,7 @@ function liberarBotaoFinalizar() {
         if (typeof atualizarResumoPagamentosVenda === 'function') atualizarResumoPagamentosVenda();
     }
 }
+window.liberarBotaoFinalizar = liberarBotaoFinalizar;
 
 function obterDataHojeLocalYYYYMMDD() {
     const d = new Date();
@@ -3287,30 +3295,42 @@ function removerPagamentoVenda(index) {
 }
 
 async function finalizarVendaMultipla() {
-    // === PROTECAO ANTI-VENDA DUPLICADA (Camada 1: flag de processamento) ===
-    if (isProcessingVenda) {
-        showToast('Aguarde... A venda esta sendo processada.', 'warning');
+    const agora = Date.now();
+    // === PROTECAO ANTI-VENDA DUPLICADA (Camada 1: flag de processamento com expiração automática) ===
+    if (isProcessingVenda && (agora - _vendaLockTimestamp) < 6000) {
+        showToast('Aguarde... A venda está sendo processada.', 'warning');
         return;
     }
     isProcessingVenda = true;
+    _vendaLockTimestamp = agora;
 
-    // Gera chave de idempotencia unica para esta tentativa de venda
-    const chaveIdempotencia = gerarIdempotencyKey();
+    // Timeout de segurança absoluta: nunca deixa o PDV bloqueado por mais de 8s
+    if (_vendaSafetyTimeout) clearTimeout(_vendaSafetyTimeout);
+    _vendaSafetyTimeout = setTimeout(() => {
+        if (isProcessingVenda) {
+            console.warn('[PDV] Desbloqueio de segurança automático acionado.');
+            liberarBotaoFinalizar();
+        }
+    }, 8000);
 
-    // Bloqueia o botao imediatamente com estado de loading
-    const btnFinalizar = document.getElementById('btn-finalizar-venda');
-    const textoOriginalBtn = btnFinalizar ? btnFinalizar.innerHTML : '';
-    if (btnFinalizar) {
-        btnFinalizar.disabled = true;
-        btnFinalizar.classList.add('opacity-75', 'cursor-wait');
-        btnFinalizar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Aguarde...';
-    }
+    try {
+        // Gera chave de idempotencia unica para esta tentativa de venda
+        const chaveIdempotencia = gerarIdempotencyKey();
 
-    const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : '';
-    if (!op) {
-        liberarBotaoFinalizar();
-        return showToast('Por favor, selecione o tipo de operação (Venda, Orçamento, Serviço ou Venda Balcão).', 'warning');
-    }
+        // Bloqueia o botao imediatamente com estado de loading
+        const btnFinalizar = document.getElementById('btn-finalizar-venda');
+        const textoOriginalBtn = btnFinalizar ? btnFinalizar.innerHTML : '';
+        if (btnFinalizar) {
+            btnFinalizar.disabled = true;
+            btnFinalizar.classList.add('opacity-75', 'cursor-wait');
+            btnFinalizar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Aguarde...';
+        }
+
+        const op = document.getElementById('pdv-operacao') ? document.getElementById('pdv-operacao').value : '';
+        if (!op) {
+            liberarBotaoFinalizar();
+            return showToast('Por favor, selecione o tipo de operação (Venda, Orçamento, Serviço ou Venda Balcão).', 'warning');
+        }
     const isOrcamento = op === 'Orçamento'; 
     const isServico = op === 'Serviço';
     const isVendaBalcao = op === 'VendaBalcao';
@@ -3406,24 +3426,9 @@ async function finalizarVendaMultipla() {
         }
     }
 
-    // === PROTECAO ANTI-VENDA DUPLICADA (Camada 2: verificacao no Firestore) ===
-    const isEdicaoAntecipada = window.vendaEmEdicao != null;
-    if (!isEdicaoAntecipada && chaveIdempotencia) {
-        try {
-            const snapCheck = await window.getEmpresaRef()
-                .collection('vendas')
-                .where('idempotencyKey', '==', chaveIdempotencia)
-                .limit(1)
-                .get();
-            if (!snapCheck.empty) {
-                liberarBotaoFinalizar();
-                return showToast('Esta venda ja foi registrada! Verifique o historico.', 'warning');
-            }
-        } catch(eCheck) {
-            // Firebase offline: a flag local ja garante protecao, continua
-            console.warn('[Anti-Duplicata] Verificacao Firestore indisponivel:', eCheck);
-        }
-    }
+    // === PROTECAO ANTI-VENDA DUPLICADA ===
+    // Chave de idempotencia e flag local garantem unicidade sem travar com requisicao de rede blocking.
+
 
     const { sub, desc, frete, tot } = pdvAtualizarTotais(); 
     const custoTotal = cart.reduce((acc, i) => acc + ((i.custo || 0) * (i.qtd || 1)), 0);
@@ -3794,6 +3799,7 @@ async function finalizarVendaMultipla() {
         let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
         let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
         let cxSaldoNovo = cxAtual.saldo || 0;
+        const opNomeVenda = (window.currentUserInfo && window.currentUserInfo.nome) || (window.currentUser && (window.currentUser.displayName || window.currentUser.email)) || 'Operador';
         
         pagamentosVendaAtual.forEach((p, idx) => {
             let valorParaCaixa = p.valor || 0; 
@@ -3845,7 +3851,6 @@ async function finalizarVendaMultipla() {
                 if (cliInfo.nome && cliInfo.nome !== 'Consumidor Final') {
                     descMov += ' - ' + cliInfo.nome;
                 }
-                const opNomeVenda = (window.currentUserInfo && window.currentUserInfo.nome) || (window.currentUser && (window.currentUser.displayName || window.currentUser.email)) || 'Operador';
 
                 if(p.metodo === 'Dinheiro') { 
                     cxSaldoNovo += valorParaCaixa; 
@@ -3952,26 +3957,22 @@ async function finalizarVendaMultipla() {
 
     if (window.FCCache && typeof window.FCCache.isModoEconomia === 'function' && window.FCCache.isModoEconomia()) {
         console.log('[PDV] Venda registrada no repositório local (Modo Economia). Enfileirada para sincronização.');
-        isProcessingVenda = false;
-        vendaIdempotencyKey = null;
         if (typeof showToast === 'function') {
             showToast('Venda registrada com sucesso! (Salva localmente. Clique em SINCRONIZAR quando desejar enviar à nuvem)', 'success');
         }
     } else {
         try {
-            await batch.commit();
+            const commitPromise = batch.commit();
+            const commitTimeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout batch.commit Firestore')), 4000));
+            await Promise.race([commitPromise, commitTimeout]);
             if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.removerDaFila === 'function') {
                 window.FCCache.removerDaFila('vendas', idFinalVenda);
                 novosLancamentosFinanceiro.forEach(fItem => {
                     window.FCCache.removerDaFila('financeiro', fItem.id);
                 });
             }
-            isProcessingVenda = false;
-            vendaIdempotencyKey = null;
         } catch(err) {
             console.warn('Aviso: Operacao salva no repositorio local (pendente de sincronizacao com Firebase):', err);
-            isProcessingVenda = false;
-            vendaIdempotencyKey = null;
             if (typeof showToast === 'function') {
                 showToast('Operacao salva no dispositivo! Sera sincronizada assim que voce clicar em SINCRONIZAR.', 'info');
             }
@@ -4048,8 +4049,22 @@ async function finalizarVendaMultipla() {
                 fContainer.classList.remove('hidden');
                 const fStatus = document.getElementById('fiscal-status-container');
                 if (fStatus) { fStatus.classList.add('hidden'); fStatus.innerHTML = ''; }
-                const bNfce = document.getElementById('btn-emitir-nfce'); if (bNfce) bNfce.disabled = false;
-                const bNfe = document.getElementById('btn-emitir-nfe'); if (bNfe) bNfe.disabled = false;
+                const podeNfce = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfce') : true;
+                const podeNfe = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfe') : true;
+                const podeNfse = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfse') : true;
+
+                const bNfce = document.getElementById('btn-emitir-nfce'); 
+                if (bNfce) { bNfce.disabled = false; bNfce.style.display = podeNfce ? '' : 'none'; }
+                const bNfe = document.getElementById('btn-emitir-nfe'); 
+                if (bNfe) { bNfe.disabled = false; bNfe.style.display = podeNfe ? '' : 'none'; }
+                const empIdAtivo = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
+                const isFc = (empIdAtivo === 'emp_fc_moveis' || !empIdAtivo || String(db.config?.empresa?.cnpj || '').includes('37638679'));
+                const nfseHabilitada = podeNfse && (db.config?.empresa?.habilitarNFSe !== undefined ? Boolean(db.config?.empresa?.habilitarNFSe) : isFc);
+                const bNfse = document.getElementById('btn-emitir-nfse');
+                if (bNfse) {
+                    bNfse.disabled = false;
+                    bNfse.style.display = nfseHabilitada ? '' : 'none';
+                }
             } else {
                 fContainer.classList.add('hidden');
             }
@@ -4080,6 +4095,12 @@ async function finalizarVendaMultipla() {
 
     pdvLimpar(); 
     showToast(isOrcamento ? "Orçamento completo gerado com sucesso!" : (isLancarCaixa ? ("Pedido #" + numPedStr + " lançado para o Caixa com sucesso!") : "Venda registrada com sucesso!"), "success");
+    } catch (errGeral) {
+        console.error('[PDV] Erro crítico ao finalizar venda:', errGeral);
+        showToast('Erro ao processar venda: ' + (errGeral.message || 'Tente novamente'), 'error');
+    } finally {
+        liberarBotaoFinalizar();
+    }
 }
 
 async function salvarLembretePDV() {
@@ -4183,16 +4204,30 @@ function fecharModalOpcoesRecibo() {
 
 
 async function emitirNota(tipo) {
+    if (typeof window.temPermissaoNotaFiscal === 'function' && !window.temPermissaoNotaFiscal(tipo)) {
+        return showToast(`Seu plano atual não possui permissão para emitir ${String(tipo || '').toUpperCase()}. Fale com o suporte!`, "warning");
+    }
     if(!window.vendaAtualImpressao || !window.vendaAtualImpressao.id) {
         return showToast("Erro: Venda não identificada.", "error");
     }
     
     const btnNfce = document.getElementById('btn-emitir-nfce');
     const btnNfe = document.getElementById('btn-emitir-nfe');
+    const btnNfse = document.getElementById('btn-emitir-nfse');
     const statusContainer = document.getElementById('fiscal-status-container');
     
+    if (tipo === 'nfse') {
+        const vId = window.vendaAtualImpressao.id;
+        showToast('Abrindo Módulo Fiscal para emissão da NFS-e...', 'info');
+        setTimeout(() => {
+            window.location.href = `fiscal.html?nfse_venda=${encodeURIComponent(vId)}`;
+        }, 400);
+        return;
+    }
+
     if (btnNfce) btnNfce.disabled = true;
     if (btnNfe) btnNfe.disabled = true;
+    if (btnNfse) btnNfse.disabled = true;
     if (statusContainer) {
         statusContainer.classList.remove('hidden');
         statusContainer.classList.remove('border-red-500', 'bg-red-50', 'border-emerald-500', 'bg-emerald-50', 'border-amber-500', 'bg-amber-50');
@@ -5100,8 +5135,18 @@ window.carregarEstadoPDV = function() {
         if (document.getElementById('pdv-obs') && estado.observacao) {
             document.getElementById('pdv-obs').value = estado.observacao;
         }
-        if (document.getElementById('pdv-data') && estado.dataVenda) {
-            document.getElementById('pdv-data').value = estado.dataVenda;
+        if (document.getElementById('pdv-data')) {
+            const hojeLocal = (typeof obterDataHojeLocalYYYYMMDD === 'function') 
+                ? obterDataHojeLocalYYYYMMDD() 
+                : new Date().toISOString().split('T')[0];
+            if (window.vendaEmEdicao && estado.dataVenda) {
+                document.getElementById('pdv-data').value = estado.dataVenda;
+            } else if (estado.dataVenda && estado.dataVenda === hojeLocal) {
+                document.getElementById('pdv-data').value = estado.dataVenda;
+            } else {
+                // Nova venda sempre recebe a data de hoje para não herdar rascunho de dias anteriores
+                document.getElementById('pdv-data').value = hojeLocal;
+            }
         }
         if (document.getElementById('pdv-data-entrega') && estado.dataEntrega) {
             document.getElementById('pdv-data-entrega').value = estado.dataEntrega;

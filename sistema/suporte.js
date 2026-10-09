@@ -1,4 +1,4 @@
-﻿// ======================================================================
+// ======================================================================
 // SUPORTE.JS - Módulo de Suporte & Autoatendimento Especialista FC-Gestão
 // v2.0 - FAQ Dinâmico com Aprendizado da IA
 // ======================================================================
@@ -129,6 +129,17 @@ const FAQ_FC_GESTAO = [
             <li>Clique em <strong>Transmitir para SEFAZ</strong>.</li>
             <li>Após autorizada, você pode baixar o XML oficial ou imprimir o DANFE em PDF com 1 clique.</li>
         </ol>`
+    },
+    {
+        id: 'faq_fiscal_nfse',
+        categoria: 'Fiscal (NF-e/NFC-e)',
+        pergunta: 'Como funciona a emissão de Nota Fiscal de Serviços (NFS-e) e em quais cidades?',
+        resposta: `O módulo de NFS-e é opcional e pode ser ativado em <strong>Configurações</strong> &rarr; aba <strong>Fiscal</strong>:
+        <ul class="list-disc list-inside space-y-1.5 mt-2">
+            <li><strong>Empresas de Goiânia - GO:</strong> Possui conexão direta via Web Service oficial (padrão ABRASF 2.04 / SEFIN Goiânia) com Certificado Digital A1. Em Configurações, há o botão <em>[Copiar E-mail p/ Prefeitura]</em> para solicitar a liberação do seu CNPJ na SEFIN com 1 clique.</li>
+            <li><strong>Empresas de Outros Municípios:</strong> O sistema opera em modo <strong>RPS Oficial / Espelho Fiscal Municipal</strong>, gerando a numeração e espelho fiscal para escrituração contábil e importação no portal da sua prefeitura local, sem custos adicionais.</li>
+            <li><strong>Notas de Mercadorias (NFC-e e NF-e):</strong> Funcionam diretamente com os servidores da SEFAZ em todo o território nacional.</li>
+        </ul>`
     },
     {
         id: 'faq_fiscal_certificado',
@@ -559,6 +570,7 @@ function buscarMelhorRespostaNoFaq(pergunta) {
         if (tokens.some(t => ['fechar', 'fechamento', 'encerrar'].some(k => t.includes(k))) && item.id === 'faq_fechamento_caixa') pontos += 30;
         if (tokens.some(t => ['cancel', 'estorn', 'devolver'].some(k => t.includes(k))) && item.id === 'faq_cancelar_venda') pontos += 30;
         if (tokens.some(t => ['fiscal', 'nfce', 'nfe', 'nota', 'danfe'].some(k => t.includes(k))) && item.id === 'faq_fiscal_nfe') pontos += 25;
+        if (tokens.some(t => ['nfse', 'servico', 'serviço', 'rps', 'goiania', 'goiânia', 'prefeitura'].some(k => t.includes(k))) && item.id === 'faq_fiscal_nfse') pontos += 35;
         if (tokens.some(t => ['xml', 'fornecedor', 'compra', 'entrada'].some(k => t.includes(k))) && item.id === 'faq_compras_xml') pontos += 25;
         if (tokens.some(t => ['relator', 'dre', 'lucro', 'resultado'].some(k => t.includes(k))) && item.id === 'faq_dre_lucro') pontos += 25;
         if (tokens.some(t => ['comissao', 'comiss', 'vendedor'].some(k => t.includes(k))) && item.id === 'faq_comissoes') pontos += 25;
@@ -814,7 +826,8 @@ MAPA DE MENUS E OPERAÇÕES DO SISTEMA:
    - Impressora térmica: Em 'Configurações' -> seção 'Impressão & Cupom' -> selecionar 58mm ou 80mm.
 
 5. FISCAL:
-   - Emissão de NF-e (mod. 55) e NFC-e (mod. 65): Menu 'Emissor Fiscal NF-e/NFC-e' -> gerar a partir de venda existente ou avulsa -> validar dados e tributos (NCM, CFOP 5102, ICMS) -> Transmitir para SEFAZ.
+   - Emissão de NF-e (mod. 55) e NFC-e (mod. 65): Menu 'Emissor Fiscal NF-e/NFC-e' -> gerar a partir de venda existente ou avulsa -> validar dados e tributos (NCM, CFOP 5102, ICMS) -> Transmitir para SEFAZ (nacional para todos os estados).
+   - Emissão de NFS-e (Serviços): Habilitada em 'Configurações' -> aba Fiscal. Para Goiânia/GO, possui integração direta via Web Service com a SEFIN/Prefeitura com botão de copiar modelo de e-mail de liberação. Para outros municípios, opera em modo RPS Oficial / Espelho Fiscal Municipal para escrituração local.
    - Certificado Digital: Em 'Configurações' -> Dados Fiscais -> carregar Certificado A1 (.pfx) e senha.
 
 6. FINANCEIRO & DRE:

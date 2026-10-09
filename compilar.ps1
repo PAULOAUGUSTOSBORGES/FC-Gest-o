@@ -24,8 +24,8 @@ $htmlFiles = Get-ChildItem -Path $root -Filter "*.html" -Recurse -ErrorAction Si
 $arquivosAtualizados = 0
 
 foreach ($file in $htmlFiles) {
-    # Ignora pastas ocultas (como .git)
-    if ($file.FullName -match "\\\.") { continue }
+    # Ignora pastas ocultas (como .git) e node_modules
+    if ($file.FullName -match "\\\." -or $file.FullName -match "node_modules") { continue }
 
     $content = [System.IO.File]::ReadAllText($file.FullName, [System.Text.Encoding]::UTF8)
     $originalContent = $content

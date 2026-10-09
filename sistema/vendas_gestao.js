@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // GESTO.JS - ERP FINANCEIRO, DASHBOARD E PROJE‡ES
 // ==========================================
 
@@ -167,6 +167,33 @@ function inicializarGestao() {
     _listen('vendas', function(dados) {
         db.vendas = dados;
         tentarRefresh();
+        if (typeof renderVendas === 'function') renderVendas();
+    });
+
+    // Reatividade cross-tab e restauração de foco instantânea
+    window.addEventListener('fc-dados-locais-atualizados', function(ev) {
+        if (ev && ev.detail && ev.detail.colecao === 'vendas') {
+            db.vendas = ev.detail.dados || [];
+            if (typeof renderVendas === 'function') renderVendas();
+        }
+    });
+    window.addEventListener('focus', function() {
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.get === 'function') {
+            const vAtual = window.FCCache.get('vendas');
+            if (Array.isArray(vAtual) && vAtual.length > 0 && (!db.vendas || vAtual.length !== db.vendas.length)) {
+                db.vendas = vAtual;
+                if (typeof renderVendas === 'function') renderVendas();
+            }
+        }
+    });
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden && typeof window.FCCache !== 'undefined' && typeof window.FCCache.get === 'function') {
+            const vAtual = window.FCCache.get('vendas');
+            if (Array.isArray(vAtual) && vAtual.length > 0 && (!db.vendas || vAtual.length !== db.vendas.length)) {
+                db.vendas = vAtual;
+                if (typeof renderVendas === 'function') renderVendas();
+            }
+        }
     });
     _listen('financeiro', function(dados) {
         db.financeiro = dados;
@@ -2697,10 +2724,16 @@ function renderVendas() {
     const tipoFiltro = tipoEl ? tipoEl.value : 'TODOS';
     
     let filtrados = db.vendas || [];
-    filtrados = filtrados.filter(v => v.tipo !== 'ORAMENTO');
+    filtrados = filtrados.filter(v => {
+        const tp = String(v.tipo || '').toUpperCase();
+        return tp !== 'ORÇAMENTO' && tp !== 'ORAMENTO' && tp !== 'ORCAMENTO';
+    });
     
     if (tipoFiltro === 'VENDAS') filtrados = filtrados.filter(v => v.tipo === 'VENDA' || !v.tipo);
-    if (tipoFiltro === 'SERVIOS') filtrados = filtrados.filter(v => v.tipo === 'SERVIO');
+    if (tipoFiltro === 'SERVIÇOS' || tipoFiltro === 'SERVIOS') filtrados = filtrados.filter(v => {
+        const tp = String(v.tipo || '').toUpperCase();
+        return tp === 'SERVIÇO' || tp === 'SERVIO' || tp === 'SERVICO';
+    });
     if (termoNorm) {
         filtrados = filtrados.filter(v => {
             const textoNorm = typeof normalizarTexto === 'function'
@@ -2726,7 +2759,7 @@ function renderVendas() {
             filtrados.sort((a, b) => (a.clienteNome || '').localeCompare(b.clienteNome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
         }
     } else {
-        filtrados.sort((a,b) => new Date(b.data || 0) - new Date(a.data || 0));
+        filtrados.sort((a,b) => (new Date(b.data || 0) - new Date(a.data || 0)) || ((Number(b.numeroPedido) || 0) - (Number(a.numeroPedido) || 0)));
     }
 
     let totalLucro = 0;

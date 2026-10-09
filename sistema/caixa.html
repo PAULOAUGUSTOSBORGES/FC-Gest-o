@@ -37,8 +37,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link rel="stylesheet" href="../style.css?v=20261008194435">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261008194435">
+    <link rel="stylesheet" href="../style.css?v=20261009175646">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261009175646">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="caixa">
 
@@ -80,7 +80,7 @@
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Gestão</p>
                 <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="financeiro"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
                 <a href="conciliacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="conciliacao"><i class="fa-solid fa-scale-balanced w-5 text-center text-blue-400"></i> Conciliação Bancária</a>
-                <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
+                <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white active" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
                 <a href="caixa_loja.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa_loja"><i class="fa-solid fa-chart-bar w-5 text-center"></i> Caixa da Loja</a>
                 <a href="compras.html" id="nav-compras" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & Estoque</a>
                 <a href="relatorios.html" id="nav-relatorios" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
@@ -588,7 +588,7 @@
                         <div class="flex-1 h-px bg-slate-200 dark:bg-slate-700/60"></div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2.5 mb-2.5">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-2.5">
                         <button onclick="emitirNota('nfce')" id="btn-emitir-nfce" class="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white p-3 rounded-xl font-bold flex flex-col items-center justify-center gap-1 transition-all text-xs shadow-sm shadow-emerald-600/20 cursor-pointer">
                             <i class="fa-solid fa-receipt text-lg text-emerald-200"></i> 
                             <span>Emitir NFC-e</span>
@@ -596,6 +596,10 @@
                         <button onclick="emitirNota('nfe')" id="btn-emitir-nfe" class="w-full bg-teal-700 hover:bg-teal-800 active:scale-95 text-white p-3 rounded-xl font-bold flex flex-col items-center justify-center gap-1 transition-all text-xs shadow-sm shadow-teal-700/20 cursor-pointer">
                             <i class="fa-solid fa-file-invoice text-lg text-teal-200"></i> 
                             <span>Emitir NF-e</span>
+                        </button>
+                        <button onclick="emitirNota('nfse')" id="btn-emitir-nfse" class="w-full col-span-2 sm:col-span-1 bg-purple-600 hover:bg-purple-700 active:scale-95 text-white p-3 rounded-xl font-bold flex flex-col items-center justify-center gap-1 transition-all text-xs shadow-sm shadow-purple-600/20 cursor-pointer">
+                            <i class="fa-solid fa-screwdriver-wrench text-lg text-purple-200"></i> 
+                            <span>Emitir NFS-e</span>
                         </button>
                     </div>
                 </div>
@@ -710,11 +714,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20261008194435"></script>
-    <script src="saas_licenca.js?v=20261008194435"></script>
-    <script src="../global.js?v=20261008194435"></script>
-    <script src="fc_cache.js?v=20261008194435"></script>
-    <script src="caixa.js?v=20261008194435"></script>
+    <script src="../sistema/config_banco.js?v=20261009175646"></script>
+    <script src="saas_licenca.js?v=20261009175646"></script>
+    <script src="../global.js?v=639271666512967567"></script>
+    <script src="fc_cache.js?v=639271666507860717"></script>
+    <script src="caixa.js?v=639271666886541195"></script>
 </body>
 </html>
 

@@ -55,7 +55,19 @@
     const _listeners = {};
     const _syncStateListeners = [];
     let _isSyncing = false;
+    let _syncStartTime = 0;
     let _dbPromise = null;
+
+    function _withTimeout(promise, ms, desc) {
+        return Promise.race([
+            promise,
+            new Promise(function (_, reject) {
+                setTimeout(function () {
+                    reject(new Error(`Timeout (${ms}ms) em ${desc || 'operação'}`));
+                }, ms);
+            })
+        ]);
+    }
 
     // ----------------------------------------------------------------------
     // 1. Camada de IndexedDB (Armazenamento Persistente de Longo Prazo)
@@ -498,6 +510,32 @@
         window.addEventListener('focus', function () {
             _sincronizarAbaComIndexedDB();
         });
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden) {
+                _sincronizarAbaComIndexedDB();
+            }
+        });
+
+        // Heartbeat periódico (3.5s) para detectar alterações no IndexedDB feitas por outras abas (essencial para protocolo file:///)
+        setInterval(async function () {
+            try {
+                if (typeof document !== 'undefined' && document.hidden) return;
+                const vIdb = await _idbLerColecao('vendas');
+                if (Array.isArray(vIdb) && vIdb.length > 0) {
+                    const vMem = _memoria['vendas'];
+                    const precisaAtualizar = !Array.isArray(vMem) ||
+                        vIdb.length !== vMem.length ||
+                        (vIdb[0] && vMem[0] && String(vIdb[0].id) !== String(vMem[0].id));
+                    if (precisaAtualizar) {
+                        _memoria['vendas'] = vIdb;
+                        _salvarSession('vendas', vIdb);
+                        if (typeof window.db !== 'undefined') window.db.vendas = vIdb;
+                        _notificarListeners('vendas', vIdb);
+                        window.dispatchEvent(new CustomEvent('fc-dados-locais-atualizados', { detail: { colecao: 'vendas', dados: vIdb } }));
+                    }
+                }
+            } catch (e) {}
+        }, 3500);
     }
 
     async function _processarAtualizacaoLocal(col) {
@@ -525,23 +563,31 @@
 
     async function _sincronizarAbaComIndexedDB() {
         try {
-            PRINCIPAIS_COLECOES.forEach(async function (col) {
+            for (let i = 0; i < PRINCIPAIS_COLECOES.length; i++) {
+                const col = PRINCIPAIS_COLECOES[i];
                 const dados = await _idbLerColecao(col);
                 if (dados !== null && Array.isArray(dados)) {
                     _memoria[col] = dados;
                     _salvarSession(col, dados);
                     if (typeof window.db !== 'undefined') {
                         window.db[col] = dados;
+                        if (col === 'produtos') window._produtosCarregados = true;
                     }
                     _notificarListeners(col, dados);
+                    if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('fc-dados-locais-atualizados', { detail: { colecao: col, dados: dados } }));
+                    }
                 }
-            });
+            }
             const cx = await _idbLerColecao('caixa');
             if (cx) {
                 _memoria['caixa'] = cx;
                 _salvarSession('caixa', cx);
                 if (typeof window.db !== 'undefined') window.db.caixa = cx;
                 _notificarListeners('caixa', cx);
+                if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('fc-dados-locais-atualizados', { detail: { colecao: 'caixa', dados: cx } }));
+                }
             }
             await _atualizarBadgePendencias();
         } catch (e) {}
@@ -694,8 +740,16 @@
 
     async function sincronizarComFirebase(silencioso, options = {}) {
         if (_isSyncing) {
-            console.warn('[FCRepo] Sincronização já em andamento. Aguarde...');
-            return false;
+            const agora = Date.now();
+            if (_syncStartTime && agora - _syncStartTime > 12000) {
+                console.warn('[FCRepo] ⚠️ Sincronização anterior travada há mais de 12s. Forçando desbloqueio...');
+                _isSyncing = false;
+                _syncStartTime = 0;
+                _notificarSyncState({ syncing: false });
+            } else {
+                console.warn('[FCRepo] Sincronização já em andamento. Aguarde...');
+                return false;
+            }
         }
 
         if (typeof firestore === 'undefined') {
@@ -707,6 +761,7 @@
         }
 
         _isSyncing = true;
+        _syncStartTime = Date.now();
         _notificarSyncState({ syncing: true, progresso: 'Iniciando sincronização...' });
 
         try {
@@ -738,18 +793,24 @@
                         }
 
                         if (item.operacao === 'delete') {
-                            await refDoc.delete();
+                            await _withTimeout(refDoc.delete(), 5000, `Delete ${item.docId}`);
                         } else {
                             // Prevenção de conflito de numeração de venda na subida para a nuvem
                             if (item.colecao === 'vendas' && item.dados && item.dados.numeroPedido) {
                                 try {
-                                    const conflitoSnap = await empRef.collection('vendas')
-                                        .where('numeroPedido', '==', item.dados.numeroPedido)
-                                        .get();
+                                    const conflitoSnap = await _withTimeout(
+                                        empRef.collection('vendas').where('numeroPedido', '==', item.dados.numeroPedido).get(),
+                                        3000,
+                                        'Verificação conflito numeração'
+                                    );
                                     const outroDoc = conflitoSnap.docs.find(d => d.id !== String(item.docId));
                                     if (outroDoc) {
                                         // Conflito detectado! Renumera para o próximo número livre
-                                        const topoSnap = await empRef.collection('vendas').orderBy('numeroPedido', 'desc').limit(1).get();
+                                        const topoSnap = await _withTimeout(
+                                            empRef.collection('vendas').orderBy('numeroPedido', 'desc').limit(1).get(),
+                                            3000,
+                                            'Topo numeração'
+                                        );
                                         const topoNum = topoSnap.empty ? 1 : (Number(topoSnap.docs[0].data().numeroPedido) || 0);
                                         const novoNum = topoNum + 1;
                                         const velhoStr = String(item.dados.numeroPedido).padStart(4, '0');
@@ -773,7 +834,7 @@
 
                             // IDEMPOTÊNCIA TOTAL: .set com { merge: true } garante que o mesmo docId
                             // jamais será duplicado, mesmo que a sincronização seja disparada repetidamente.
-                            await refDoc.set(item.dados, { merge: true });
+                            await _withTimeout(refDoc.set(item.dados, { merge: true }), 5000, `Set ${item.docId}`);
                         }
 
                         // Remove da fila pendente após envio bem-sucedido
@@ -800,29 +861,46 @@
                         queryRef = queryRef.orderBy('data', 'desc').limit(100);
                     }
 
-                    const snap = await queryRef.get();
+                    const snap = await _withTimeout(queryRef.get(), 6000, `PULL colecao "${col}"`);
                     const docsRemotos = snap.docs.map(function (doc) {
                         return Object.assign({ id: doc.id }, doc.data());
                     });
 
                     // Deduplicação estrita via Map por ID único - preservando dados locais existentes
                     const mapa = new Map();
-                    const dadosLocais = (Array.isArray(_memoria[col]) && _memoria[col].length > 0)
-                        ? _memoria[col]
-                        : (await _idbLerColecao(col) || []);
-                    if (Array.isArray(dadosLocais)) {
-                        dadosLocais.forEach(function (doc) {
+
+                    // 1. Carrega dados já presentes na memória desta aba
+                    if (Array.isArray(_memoria[col])) {
+                        _memoria[col].forEach(function (doc) {
                             if (doc && doc.id) mapa.set(String(doc.id), doc);
                         });
                     }
 
+                    // 2. Carrega dados do IndexedDB (que podem conter vendas/registros salvos por outra aba, ex: PDV)
+                    try {
+                        const dadosIdb = await _idbLerColecao(col);
+                        if (Array.isArray(dadosIdb)) {
+                            dadosIdb.forEach(function (doc) {
+                                if (doc && doc.id) {
+                                    const anterior = mapa.get(String(doc.id));
+                                    if (!anterior) {
+                                        mapa.set(String(doc.id), doc);
+                                    } else {
+                                        mapa.set(String(doc.id), Object.assign({}, anterior, doc));
+                                    }
+                                }
+                            });
+                        }
+                    } catch (eIdb) {}
+
+                    // 3. Documentos remotos do Firestore
                     docsRemotos.forEach(function (doc) {
                         if (doc && doc.id) {
                             mapa.set(String(doc.id), doc);
                         }
                     });
 
-                    // Preserva mutações pendentes locais que ainda não foram sincronizadas
+                    // 4. Preserva mutações pendentes locais que ainda não foram sincronizadas
                     const filaAtual = await _idbListarFila();
                     filaAtual.filter(f => f.colecao === col).forEach(function (f) {
                         if (f.operacao === 'delete') {
@@ -834,7 +912,7 @@
 
                     const deduplicado = Array.from(mapa.values());
                     if (col === 'vendas') {
-                        deduplicado.sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0));
+                        deduplicado.sort((a, b) => (new Date(b.data || 0) - new Date(a.data || 0)) || ((Number(b.numeroPedido) || 0) - (Number(a.numeroPedido) || 0)));
                     }
 
                     // Salva nas 3 camadas: Memória, Session e IndexedDB
@@ -849,16 +927,19 @@
 
                     // Notifica a tela que estiver aberta
                     _notificarListeners(col, deduplicado);
+                    if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('fc-dados-locais-atualizados', { detail: { colecao: col, dados: deduplicado } }));
+                    }
                 } catch (colErr) {
-                    console.warn(`[FCRepo] Erro ao sincronizar coleção "${col}":`, colErr);
+                    console.warn(`[FCRepo] Aviso na sincronização da coleção "${col}":`, colErr.message || colErr);
                 }
             });
 
             // Baixa doc de caixa com suporte a todos os aliases
             pullPromessas.push((async function () {
                 try {
-                    const cxSnap = await empRef.collection('caixa').doc('caixa_atual').get();
-                    if (cxSnap.exists) {
+                    const cxSnap = await _withTimeout(empRef.collection('caixa').doc('caixa_atual').get(), 5000, 'PULL caixa_atual');
+                    if (cxSnap && cxSnap.exists) {
                         const cxData = cxSnap.data();
                         ['caixa', 'fc_moveis_caixa', 'caixa_caixa_atual', 'caixa_atual'].forEach(k => {
                             _memoria[k] = cxData;
@@ -874,11 +955,11 @@
             // Baixa doc de configurações com suporte a todos os aliases e fallback legado
             pullPromessas.push((async function () {
                 try {
-                    let cfgSnap = await empRef.collection('configuracoes').doc('config').get();
-                    if ((!cfgSnap.exists || !cfgSnap.data()?.empresa?.logo) && _obterEmpresaId() === 'emp_fc_moveis') {
+                    let cfgSnap = await _withTimeout(empRef.collection('configuracoes').doc('config').get(), 5000, 'PULL config');
+                    if (cfgSnap && (!cfgSnap.exists || !cfgSnap.data()?.empresa?.logo) && _obterEmpresaId() === 'emp_fc_moveis') {
                         try {
-                            const legSnap = await firestore.collection('fc_moveis').doc('config').get();
-                            if (legSnap.exists && legSnap.data()) {
+                            const legSnap = await _withTimeout(firestore.collection('fc_moveis').doc('config').get(), 4000, 'PULL config legado');
+                            if (legSnap && legSnap.exists && legSnap.data()) {
                                 const legD = legSnap.data();
                                 const atualD = (cfgSnap && cfgSnap.exists) ? cfgSnap.data() : {};
                                 const merged = { ...legD, ...atualD, empresa: { ...(legD.empresa || {}), ...(atualD.empresa || {}) }, loja: { ...(legD.loja || {}), ...(atualD.loja || {}) } };
@@ -907,8 +988,8 @@
                 try {
                     const u = window.currentUser || (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser);
                     if (u && u.uid) {
-                        const uSnap = await empRef.collection('funcionarios').doc(u.uid).get();
-                        if (uSnap.exists) {
+                        const uSnap = await _withTimeout(empRef.collection('funcionarios').doc(u.uid).get(), 5000, 'PULL funcionario');
+                        if (uSnap && uSnap.exists) {
                             const uData = uSnap.data();
                             window.currentUserInfo = uData;
                             const uKey = 'funcionario_' + u.uid;
@@ -926,13 +1007,13 @@
                 try {
                     const empId = _obterEmpresaId();
                     if (empId && typeof window.consultarLicencaCentral === 'function') {
-                        const lic = await window.consultarLicencaCentral(empId, 'fc_gestao', true);
+                        const lic = await _withTimeout(window.consultarLicencaCentral(empId, 'fc_gestao', true), 5000, 'PULL licença central');
                         if (lic) window.currentEmpresaData = lic;
                     }
                 } catch (e) {}
             })());
 
-            await Promise.all(pullPromessas);
+            await _withTimeout(Promise.all(pullPromessas), 12000, 'PULL total promessas');
 
             // --------------------------------------------------------------
             // FASE 3: Conclusão e Feedback
@@ -946,6 +1027,7 @@
             await _atualizarBadgePendencias();
 
             _isSyncing = false;
+            _syncStartTime = 0;
             _notificarSyncState({ syncing: false, sucesso: true, timestamp: agoraIso });
 
             console.log('[FCRepo] ✅ Sincronização com Firebase concluída com sucesso!');
@@ -962,6 +1044,7 @@
         } catch (errGeral) {
             console.error('[FCRepo] Erro durante a sincronização:', errGeral);
             _isSyncing = false;
+            _syncStartTime = 0;
             _notificarSyncState({ syncing: false, erro: errGeral.message });
 
             const msgErro = (options && options.mensagemErro)
@@ -972,6 +1055,10 @@
                 window.showToast(msgErro, 'warning');
             }
             return false;
+        } finally {
+            _isSyncing = false;
+            _syncStartTime = 0;
+            _notificarSyncState({ syncing: false });
         }
     }
 
@@ -1423,40 +1510,47 @@
             });
         } catch (e) {}
 
-        // Se online, utiliza transação atômica em 'configuracoes/contadores' para evitar colisão
+        const proximoLocal = Math.max(maxLocal, maxFila) + 1;
+
+        // Se estiver em Modo Economia, utiliza o contador local imediatamente sem tráfego de rede
+        const emModoEconomia = (window.FCCache && typeof window.FCCache.isModoEconomia === 'function') 
+            ? window.FCCache.isModoEconomia() 
+            : false;
+        if (emModoEconomia) {
+            console.log(`[FCRepo] 🔢 Próximo Pedido (Modo Economia): #${proximoLocal} (Local: ${maxLocal}, Fila: ${maxFila})`);
+            return proximoLocal;
+        }
+
+        // Se online e fora do modo economia, tenta transação com limite estrito de 2 segundos para nunca travar a venda
         if (navigator.onLine && typeof firestore !== 'undefined') {
             try {
                 let empRef = (typeof window.getEmpresaRef === 'function') ? window.getEmpresaRef() : firestore.collection('empresas').doc(_obterEmpresaId());
                 if (empRef) {
                     const contadoresRef = empRef.collection('configuracoes').doc('contadores');
-                    const proximoTransacional = await firestore.runTransaction(async (transaction) => {
+                    const transactionPromise = firestore.runTransaction(async (transaction) => {
                         const cSnap = await transaction.get(contadoresRef);
                         let base = Math.max(maxLocal, maxFila);
                         if (cSnap.exists && cSnap.data().ultimoNumeroPedido) {
                             base = Math.max(base, Number(cSnap.data().ultimoNumeroPedido) || 0);
-                        } else {
-                            const snap = await empRef.collection('vendas').orderBy('numeroPedido', 'desc').limit(1).get();
-                            if (!snap.empty) {
-                                base = Math.max(base, Number(snap.docs[0].data().numeroPedido) || 0);
-                            }
                         }
                         const novo = base + 1;
                         transaction.set(contadoresRef, { ultimoNumeroPedido: novo, atualizadoEm: new Date().toISOString() }, { merge: true });
                         return novo;
                     });
+                    const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout contador firestore')), 2000));
+                    const proximoTransacional = await Promise.race([transactionPromise, timeoutPromise]);
                     if (proximoTransacional) {
                         console.log(`[FCRepo] 🔢 Próximo Pedido Atômico: #${proximoTransacional}`);
                         return proximoTransacional;
                     }
                 }
             } catch (err) {
-                console.warn('[FCRepo] Falha na transação atômica do contador:', err);
+                console.warn('[FCRepo] Transação do contador indisponível ou lenta, usando numeração contingência:', err);
             }
         }
 
-        const proximo = Math.max(maxLocal, maxFila) + 1;
-        console.log(`[FCRepo] 🔢 Próximo Pedido Contingência: #${proximo} (Local: ${maxLocal}, Fila: ${maxFila})`);
-        return proximo;
+        console.log(`[FCRepo] 🔢 Próximo Pedido Contingência: #${proximoLocal} (Local: ${maxLocal}, Fila: ${maxFila})`);
+        return proximoLocal;
     };
     window.FCCache.obterProximoNumeroPedido = window.obterProximoNumeroPedidoSeguro;
 

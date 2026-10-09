@@ -304,7 +304,77 @@ document.addEventListener('DOMContentLoaded', function () {
 
     _atualizarBotaoTemaSistema();
     _iniciarRodapesSistema();
+    _destacarMenuAtualGlobal();
 });
+
+// Sincronização e destaque automático do item ativo do menu lateral
+function _destacarMenuAtualGlobal() {
+    try {
+        const sidebar = document.getElementById('sidebar');
+        if (!sidebar) return;
+
+        const fullPath = window.location.pathname || '';
+        let file = fullPath.split('/').pop().split('\\').pop() || '';
+        file = file.split('?')[0].split('#')[0].toLowerCase().trim();
+
+        if (!file || file === '' || file === 'sistema') {
+            file = 'index.html';
+        }
+
+        const navLinks = Array.from(sidebar.querySelectorAll('a.nav-btn, nav a'));
+        if (!navLinks.length) return;
+
+        const aliases = {
+            'index.html': ['index.html', 'dashboard'],
+            'marketing.html': ['marketing.html', 'marketing'],
+            'relatorios.html': ['relatorios.html', 'relatorios'],
+            'suporte.html': ['suporte.html', 'suporte'],
+            'sistema.html': ['sistema.html', 'config', 'sistema'],
+            'pdv.html': ['pdv.html', 'pdv'],
+            'produtos.html': ['produtos.html', 'produtos'],
+            'clientes.html': ['clientes.html', 'clientes'],
+            'fornecedores.html': ['fornecedores.html', 'fornecedores'],
+            'funcionarios.html': ['funcionarios.html', 'funcionarios'],
+            'financeiro.html': ['financeiro.html', 'financeiro'],
+            'conciliacao.html': ['conciliacao.html', 'conciliacao'],
+            'caixa.html': ['caixa.html', 'caixa'],
+            'caixa_loja.html': ['caixa_loja.html', 'caixa_loja'],
+            'compras.html': ['compras.html', 'compras'],
+            'agenda.html': ['agenda.html', 'agenda'],
+            'orcamentos.html': ['orcamentos.html', 'orcamentos'],
+            'vendas_operacao.html': ['vendas_operacao.html', 'vendas_operacao'],
+            'fiscal.html': ['fiscal.html', 'fiscal']
+        };
+
+        const targets = aliases[file] || [file];
+
+        let linkEncontrado = null;
+
+        navLinks.forEach(link => {
+            const href = (link.getAttribute('href') || '').toLowerCase().trim();
+            const hrefFile = href.split('/').pop().split('\\').pop().split('?')[0].split('#')[0];
+            const dataTarget = (link.getAttribute('data-target') || '').toLowerCase().trim();
+
+            const match = targets.some(t => (hrefFile && hrefFile === t) || (dataTarget && dataTarget === t));
+            if (match && !linkEncontrado) {
+                linkEncontrado = link;
+            } else if (!match) {
+                link.classList.remove('bg-blue-600', 'bg-sky-600', 'text-white', 'active', 'shadow-md', 'shadow-lg', 'shadow-sky-600/20');
+                if (!link.classList.contains('text-emerald-400') && !link.classList.contains('text-sky-400')) {
+                    link.classList.add('text-slate-300');
+                }
+            }
+        });
+
+        if (linkEncontrado) {
+            linkEncontrado.classList.add('bg-blue-600', 'text-white', 'active');
+            linkEncontrado.classList.remove('hover:bg-slate-800', 'text-slate-300', 'text-sky-400');
+        }
+    } catch (err) {
+        console.warn('[Global] Erro ao sincronizar link ativo do menu:', err);
+    }
+}
+window._destacarMenuAtualGlobal = _destacarMenuAtualGlobal;
 
 // --- INJEÇÃO GLOBAL: RODAPÉ DA EMPRESA CRIADORA (PRIMAS TECNOLOGIA) & VERSÃO 1.0 ---
 function _obterCaminhoIconePrimas() {
@@ -2186,6 +2256,11 @@ function aplicarIdentidadeVisualGlobal() {
 
     // Aplica o tema salvo pelo usuário (Light ou Dark)
     aplicarTema();
+
+    // Sincroniza destaque do menu lateral para a página atual
+    if (typeof _destacarMenuAtualGlobal === 'function') {
+        _destacarMenuAtualGlobal();
+    }
 }
 
 function aplicarTema() {

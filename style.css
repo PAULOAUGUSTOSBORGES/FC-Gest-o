@@ -57,14 +57,293 @@ body.light {
     color: #0f172a !important;
 }
 
+/* Fundo Geral da Aplicação e Contêineres no Modo Claro */
+html.light #app-container,
+html[data-theme="light"] #app-container,
+body.light #app-container,
+html.light main,
+html[data-theme="light"] main,
+body.light main,
+html.light main > .overflow-y-auto,
+html.light main > div.flex-1.overflow-y-auto,
+html.light #container-relatorios-scroll,
+html[data-theme="light"] main > .overflow-y-auto,
+html[data-theme="light"] main > div.flex-1.overflow-y-auto,
+html[data-theme="light"] #container-relatorios-scroll {
+    background-color: #eaf1f8 !important;
+}
+
 /* =============================================
-   SIDEBAR (PADRÃO ESCURO EM AMBOS OS TEMAS)
+   SIDEBAR & MENU LATERAL - DESIGN MODERNO
+   Suporte Completo ao Modo Claro & Modo Escuro
    ============================================= */
-#sidebar {
-    background-color: #0f172a;
-    color: #f8fafc;
-    border-right: 1px solid #1e293b;
-    box-shadow: 4px 0 24px -2px rgba(15, 23, 42, 0.2);
+
+/* --- 1. MODO CLARO (LIGHT THEME) --- */
+/* Sidebar no Modo Claro: Fundo azul escuro elegante, moderno e com contraste superior */
+html.light #sidebar,
+html[data-theme="light"] #sidebar,
+body.light #sidebar {
+    background-color: #0b192c !important; /* Azul escuro refinado, mais escuro que o fundo da página */
+    color: #f8fafc !important;
+    border-right: 1px solid #1a2942 !important;
+    box-shadow: 4px 0 24px -2px rgba(11, 25, 44, 0.25) !important;
+}
+
+/* Topo do Menu (Logo e Nome do Sistema) no Modo Claro */
+html.light #sidebar > div:first-child,
+html[data-theme="light"] #sidebar > div:first-child,
+body.light #sidebar > div:first-child {
+    background-color: transparent !important;
+    border-bottom: 1px solid #1a2942 !important;
+}
+
+html.light #sidebar > div:first-child:hover,
+html[data-theme="light"] #sidebar > div:first-child:hover,
+body.light #sidebar > div:first-child:hover {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+html.light #sidebar h1#menu-empresa-nome,
+html[data-theme="light"] #sidebar h1#menu-empresa-nome,
+body.light #sidebar h1#menu-empresa-nome {
+    color: #ffffff !important;
+}
+
+html.light #sidebar p.text-emerald-400,
+html[data-theme="light"] #sidebar p.text-emerald-400,
+body.light #sidebar p.text-emerald-400 {
+    color: #34d399 !important;
+}
+
+html.light #sidebar #menu-logo,
+html.light #sidebar #menu-logo-placeholder,
+html[data-theme="light"] #sidebar #menu-logo,
+html[data-theme="light"] #sidebar #menu-logo-placeholder {
+    background-color: #1a2942 !important;
+    border: 1px solid #243b5e !important;
+}
+
+/* Títulos de Categorias no Menu (VISÃO GERAL, OPERAÇÃO, CADASTROS, GESTÃO, SISTEMA) */
+html.light #sidebar nav p,
+html[data-theme="light"] #sidebar nav p,
+body.light #sidebar nav p {
+    color: #94a3b8 !important; /* Slate-400 nítido */
+    font-weight: 700 !important;
+    letter-spacing: 0.05em !important;
+}
+
+/* Itens Inativos do Menu no Modo Claro */
+html.light #sidebar .nav-btn:not(.bg-blue-600):not(.bg-sky-600):not(.active),
+html[data-theme="light"] #sidebar .nav-btn:not(.bg-blue-600):not(.bg-sky-600):not(.active),
+body.light #sidebar .nav-btn:not(.bg-blue-600):not(.bg-sky-600):not(.active) {
+    color: #cbd5e1 !important; /* Texto claro e legível */
+    background-color: transparent !important;
+    background-image: none !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+html.light #sidebar .nav-btn:not(.bg-blue-600):not(.bg-sky-600):not(.active) i,
+html[data-theme="light"] #sidebar .nav-btn:not(.bg-blue-600):not(.bg-sky-600):not(.active) i,
+body.light #sidebar .nav-btn:not(.bg-blue-600):not(.bg-sky-600):not(.active) i {
+    color: #94a3b8 !important; /* Ícones claros e visíveis */
+}
+
+/* Hover nos Itens do Menu Lateral no Modo Claro */
+html.light #sidebar .nav-btn:not(.bg-blue-600):not(.bg-sky-600):not(.active):hover,
+html[data-theme="light"] #sidebar .nav-btn:not(.bg-blue-600):not(.bg-sky-600):not(.active):hover,
+body.light #sidebar .nav-btn:not(.bg-blue-600):not(.bg-sky-600):not(.active):hover {
+    background: linear-gradient(135deg, #162a45 0%, #0f1e36 100%) !important;
+    color: #60a5fa !important;
+    transform: translateX(4px) !important;
+}
+
+html.light #sidebar .nav-btn:not(.bg-blue-600):not(.bg-sky-600):not(.active):hover i,
+html[data-theme="light"] #sidebar .nav-btn:not(.bg-blue-600):not(.bg-sky-600):not(.active):hover i,
+body.light #sidebar .nav-btn:not(.bg-blue-600):not(.bg-sky-600):not(.active):hover i {
+    color: #60a5fa !important;
+}
+
+/* Item Ativo (Página Atual) no Modo Claro */
+html.light #sidebar .nav-btn.bg-blue-600,
+html.light #sidebar .nav-btn.bg-sky-600,
+html.light #sidebar .nav-btn.active,
+html[data-theme="light"] #sidebar .nav-btn.bg-blue-600,
+html[data-theme="light"] #sidebar .nav-btn.bg-sky-600,
+html[data-theme="light"] #sidebar .nav-btn.active,
+body.light #sidebar .nav-btn.bg-blue-600,
+body.light #sidebar .nav-btn.bg-sky-600,
+body.light #sidebar .nav-btn.active {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45) !important;
+    border-left: 3px solid #60a5fa !important;
+    border-radius: 0.625rem !important;
+}
+
+html.light #sidebar .nav-btn.bg-blue-600 i,
+html.light #sidebar .nav-btn.bg-sky-600 i,
+html.light #sidebar .nav-btn.active i,
+html[data-theme="light"] #sidebar .nav-btn.bg-blue-600 i,
+html[data-theme="light"] #sidebar .nav-btn.bg-sky-600 i,
+html[data-theme="light"] #sidebar .nav-btn.active i,
+body.light #sidebar .nav-btn.bg-blue-600 i,
+body.light #sidebar .nav-btn.bg-sky-600 i,
+body.light #sidebar .nav-btn.active i {
+    color: #ffffff !important;
+}
+
+/* Rodapé do Menu Lateral no Modo Claro */
+html.light #sidebar .p-4.border-t,
+html[data-theme="light"] #sidebar .p-4.border-t,
+body.light #sidebar .p-4.border-t {
+    border-top: 1px solid #1a2942 !important;
+}
+
+/* Botão Alternar Tema no Rodapé do Menu (Modo Claro) */
+html.light #btn-tema-sistema,
+html[data-theme="light"] #btn-tema-sistema,
+body.light #btn-tema-sistema {
+    background-color: #132238 !important;
+    border: 1px solid #1e3557 !important;
+    color: #f1f5f9 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+html.light #btn-tema-sistema:hover,
+html[data-theme="light"] #btn-tema-sistema:hover,
+body.light #btn-tema-sistema:hover {
+    background-color: #1a2e4c !important;
+    border-color: #2e4d7b !important;
+    color: #ffffff !important;
+}
+
+html.light #btn-tema-sistema .sistema-theme-btn-label,
+html[data-theme="light"] #btn-tema-sistema .sistema-theme-btn-label,
+body.light #btn-tema-sistema .sistema-theme-btn-label {
+    color: #f1f5f9 !important;
+    font-weight: 600 !important;
+}
+
+/* Botão Sair do Sistema no Modo Claro */
+html.light #sidebar button[onclick*="fazerLogout"],
+html[data-theme="light"] #sidebar button[onclick*="fazerLogout"],
+body.light #sidebar button[onclick*="fazerLogout"] {
+    color: #94a3b8 !important;
+}
+
+html.light #sidebar button[onclick*="fazerLogout"]:hover,
+html[data-theme="light"] #sidebar button[onclick*="fazerLogout"]:hover,
+body.light #sidebar button[onclick*="fazerLogout"]:hover {
+    color: #f87171 !important;
+}
+
+/* --- 2. MODO ESCURO (DARK THEME) --- */
+html:not(.light) #sidebar,
+html[data-theme="dark"] #sidebar,
+html.dark #sidebar {
+    background-color: #0f172a !important;
+    color: #f8fafc !important;
+    border-right: 1px solid #1e293b !important;
+    box-shadow: 4px 0 24px -2px rgba(15, 23, 42, 0.25) !important;
+}
+
+html:not(.light) #sidebar > div:first-child,
+html[data-theme="dark"] #sidebar > div:first-child,
+html.dark #sidebar > div:first-child {
+    background-color: transparent !important;
+    border-bottom: 1px solid #1e293b !important;
+}
+
+html:not(.light) #sidebar h1#menu-empresa-nome,
+html[data-theme="dark"] #sidebar h1#menu-empresa-nome,
+html.dark #sidebar h1#menu-empresa-nome {
+    color: #ffffff !important;
+}
+
+html:not(.light) #sidebar p.text-emerald-400,
+html[data-theme="dark"] #sidebar p.text-emerald-400,
+html.dark #sidebar p.text-emerald-400 {
+    color: #34d399 !important;
+}
+
+html:not(.light) #sidebar nav p,
+html[data-theme="dark"] #sidebar nav p,
+html.dark #sidebar nav p {
+    color: #94a3b8 !important;
+    font-weight: 700 !important;
+}
+
+html:not(.light) #sidebar .nav-btn:not(.bg-blue-600):not(.active),
+html[data-theme="dark"] #sidebar .nav-btn:not(.bg-blue-600):not(.active),
+html.dark #sidebar .nav-btn:not(.bg-blue-600):not(.active) {
+    color: #cbd5e1 !important;
+    background-color: transparent !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+html:not(.light) #sidebar .nav-btn:not(.bg-blue-600):not(.active) i,
+html[data-theme="dark"] #sidebar .nav-btn:not(.bg-blue-600):not(.active) i,
+html.dark #sidebar .nav-btn:not(.bg-blue-600):not(.active) i {
+    color: #94a3b8 !important;
+}
+
+html:not(.light) #sidebar .nav-btn:not(.bg-blue-600):not(.active):hover,
+html[data-theme="dark"] #sidebar .nav-btn:not(.bg-blue-600):not(.active):hover,
+html.dark #sidebar .nav-btn:not(.bg-blue-600):not(.active):hover {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+    color: #60a5fa !important;
+    transform: translateX(4px) !important;
+}
+
+html:not(.light) #sidebar .nav-btn:not(.bg-blue-600):not(.active):hover i,
+html[data-theme="dark"] #sidebar .nav-btn:not(.bg-blue-600):not(.active):hover i,
+html.dark #sidebar .nav-btn:not(.bg-blue-600):not(.active):hover i {
+    color: #60a5fa !important;
+}
+
+html:not(.light) #sidebar .nav-btn.bg-blue-600,
+html:not(.light) #sidebar .nav-btn.active,
+html[data-theme="dark"] #sidebar .nav-btn.bg-blue-600,
+html[data-theme="dark"] #sidebar .nav-btn.active,
+html.dark #sidebar .nav-btn.bg-blue-600,
+html.dark #sidebar .nav-btn.active {
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4) !important;
+    border-left: 3px solid #60a5fa !important;
+}
+
+html:not(.light) #sidebar .p-4.border-t,
+html[data-theme="dark"] #sidebar .p-4.border-t,
+html.dark #sidebar .p-4.border-t {
+    border-top: 1px solid #1e293b !important;
+}
+
+html:not(.light) #btn-tema-sistema,
+html[data-theme="dark"] #btn-tema-sistema,
+html.dark #btn-tema-sistema {
+    background-color: #1e293b !important;
+    border: 1px solid #334155 !important;
+    color: #f1f5f9 !important;
+}
+
+html:not(.light) #btn-tema-sistema:hover,
+html[data-theme="dark"] #btn-tema-sistema:hover,
+html.dark #btn-tema-sistema:hover {
+    background-color: #334155 !important;
+    color: #ffffff !important;
+}
+
+html:not(.light) #sidebar button[onclick*="fazerLogout"],
+html[data-theme="dark"] #sidebar button[onclick*="fazerLogout"],
+html.dark #sidebar button[onclick*="fazerLogout"] {
+    color: #94a3b8 !important;
+}
+
+html:not(.light) #sidebar button[onclick*="fazerLogout"]:hover,
+html[data-theme="dark"] #sidebar button[onclick*="fazerLogout"]:hover,
+html.dark #sidebar button[onclick*="fazerLogout"]:hover {
+    color: #f87171 !important;
 }
 
 #sidebar-overlay {
@@ -72,36 +351,50 @@ body.light {
     backdrop-filter: blur(2px);
 }
 
-#sidebar .nav-btn.bg-blue-600 {
-    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
-    color: #ffffff;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
-    border-left: 3px solid #60a5fa;
-}
-
-#sidebar .nav-btn:not(.bg-blue-600):hover {
-    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-    color: #60a5fa;
-    transform: translateX(4px);
-    transition: all 0.2s ease-in-out;
-}
-#sidebar .nav-btn:not(.bg-blue-600) {
-    transition: all 0.2s ease-in-out;
-}
-
-/* Cabeçalho */
+/* =============================================
+   CABEÇALHO (HEADER) - MODO CLARO & ESCURO
+   ============================================= */
 html:not(.light) header,
-html[data-theme="dark"] header {
-    background-color: #0f172a; /* bg-slate-900 */
-    border-bottom: 1px solid #1e293b;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+html:not(.light) main > header,
+html[data-theme="dark"] header,
+html[data-theme="dark"] main > header,
+html.dark header,
+html.dark main > header {
+    background-color: #0f172a !important; /* bg-slate-900 */
+    border-bottom: 1px solid #1e293b !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3) !important;
 }
 
 html.light header,
-html[data-theme="light"] header {
-    background-color: #ffffff;
-    border-bottom: 1px solid #cbd5e1;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+html.light main > header,
+html[data-theme="light"] header,
+html[data-theme="light"] main > header,
+body.light header,
+body.light main > header {
+    background-color: #ffffff !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04) !important;
+}
+
+html.light #header-title,
+html[data-theme="light"] #header-title,
+body.light #header-title {
+    color: #0f172a !important;
+}
+
+html.light #header-btn-tema,
+html[data-theme="light"] #header-btn-tema,
+body.light #header-btn-tema {
+    background-color: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #f59e0b !important;
+}
+
+html.light #header-btn-tema:hover,
+html[data-theme="light"] #header-btn-tema:hover,
+body.light #header-btn-tema:hover {
+    background-color: #f8fafc !important;
+    border-color: #cbd5e1 !important;
 }
 
 /* Cards e Contêineres de Conteúdo (NÃO aplicar em botões, links de ação nem elementos text-white intencionais) */
@@ -281,6 +574,351 @@ html[data-theme="light"] .kpi-stat-fornecedores {
 html.light .kpi-icon-pill,
 html[data-theme="light"] .kpi-icon-pill {
     box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.06);
+}
+
+/* ==============================================================
+   MINI MENU DE RELATÓRIOS - NAVEGAÇÃO RÁPIDA (COMPACTO & MODERNO)
+   ============================================================== */
+.mini-nav-container {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(51, 65, 85, 0.7);
+    border-radius: 1rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(12px);
+    transition: all 0.25s ease;
+}
+
+html.light .mini-nav-container,
+html[data-theme="light"] .mini-nav-container {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05) !important;
+}
+
+.mini-nav-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding-bottom: 0.625rem;
+    margin-bottom: 0.625rem;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+}
+
+html.light .mini-nav-topbar,
+html[data-theme="light"] .mini-nav-topbar {
+    border-bottom-color: #f1f5f9 !important;
+}
+
+.mini-nav-title-box {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.mini-nav-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 0.5rem;
+    background: rgba(99, 102, 241, 0.15);
+    color: #818cf8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+}
+
+.mini-nav-title-text {
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #f1f5f9;
+}
+
+html.light .mini-nav-title-text,
+html[data-theme="light"] .mini-nav-title-text {
+    color: #1e293b !important;
+}
+
+.mini-nav-badge {
+    font-size: 0.625rem;
+    font-weight: 700;
+    padding: 0.125rem 0.45rem;
+    border-radius: 9999px;
+    background: rgba(99, 102, 241, 0.2);
+    color: #a5b4fc;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+html.light .mini-nav-badge,
+html[data-theme="light"] .mini-nav-badge {
+    background: #e0e7ff !important;
+    color: #4338ca !important;
+    border-color: #c7d2fe !important;
+}
+
+/* Abas de Categorias (Segmented Strip) */
+.mini-nav-cats {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: rgba(30, 41, 59, 0.6);
+    padding: 0.2rem;
+    border-radius: 0.625rem;
+    border: 1px solid rgba(51, 65, 85, 0.6);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.mini-nav-cats::-webkit-scrollbar {
+    display: none;
+}
+
+html.light .mini-nav-cats,
+html[data-theme="light"] .mini-nav-cats {
+    background: #f1f5f9 !important;
+    border-color: #e2e8f0 !important;
+}
+
+.mini-nav-cat-btn {
+    border: none;
+    outline: none;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    padding: 0.25rem 0.625rem;
+    border-radius: 0.45rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.mini-nav-cat-btn:hover {
+    color: #ffffff;
+    background: rgba(51, 65, 85, 0.6);
+}
+
+html.light .mini-nav-cat-btn {
+    color: #64748b;
+}
+
+html.light .mini-nav-cat-btn:hover {
+    color: #0f172a;
+    background: #e2e8f0;
+}
+
+.mini-nav-cat-btn.active {
+    background: #4f46e5 !important;
+    color: #ffffff !important;
+    box-shadow: 0 1px 4px rgba(79, 70, 229, 0.4);
+}
+
+/* Seletor Rápido Dropdown */
+.mini-nav-select {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(71, 85, 105, 0.7);
+    color: #cbd5e1;
+    border-radius: 0.5rem;
+    padding: 0.3rem 0.65rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.mini-nav-select:focus {
+    border-color: #6366f1;
+}
+
+html.light .mini-nav-select,
+html[data-theme="light"] .mini-nav-select {
+    background: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+    color: #334155 !important;
+}
+
+/* Grid/Lista de Chips de Relatórios */
+.mini-nav-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    align-items: center;
+}
+
+.mini-nav-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid rgba(51, 65, 85, 0.6);
+    background: rgba(30, 41, 59, 0.55);
+    color: #cbd5e1;
+    cursor: pointer;
+    outline: none;
+    text-decoration: none;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.mini-nav-chip:hover {
+    background: rgba(30, 41, 59, 0.95);
+    border-color: #6366f1;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.mini-nav-chip:active {
+    transform: translateY(0);
+}
+
+html.light .mini-nav-chip,
+html[data-theme="light"] .mini-nav-chip {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+    color: #334155 !important;
+}
+
+html.light .mini-nav-chip:hover,
+html[data-theme="light"] .mini-nav-chip:hover {
+    background: #eef2ff !important;
+    border-color: #6366f1 !important;
+    color: #312e81 !important;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.12) !important;
+}
+
+.mini-nav-chip-icon {
+    font-size: 0.6875rem;
+    width: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Botão Flutuante Voltar ao Topo (Discreto, Redondo e Elegante) */
+#btn-flutuante-menu-relatorios {
+    position: fixed !important;
+    bottom: 24px !important;
+    right: 24px !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    max-width: 38px !important;
+    max-height: 38px !important;
+    border-radius: 50% !important;
+    background: rgba(15, 23, 42, 0.8) !important;
+    border: 1px solid rgba(148, 163, 184, 0.25) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    color: #94a3b8 !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    z-index: 9999 !important;
+    cursor: pointer !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateY(12px) scale(0.9) !important;
+    transition: opacity 0.25s ease, transform 0.25s ease, background 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
+}
+
+#btn-flutuante-menu-relatorios.visivel {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transform: translateY(0) scale(1) !important;
+}
+
+#btn-flutuante-menu-relatorios:hover {
+    background: rgba(30, 41, 59, 0.95) !important;
+    color: #f8fafc !important;
+    border-color: #6366f1 !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35) !important;
+    transform: translateY(-2px) scale(1.05) !important;
+}
+
+html.light #btn-flutuante-menu-relatorios,
+html[data-theme="light"] #btn-flutuante-menu-relatorios {
+    background: rgba(255, 255, 255, 0.9) !important;
+    border-color: #e2e8f0 !important;
+    color: #64748b !important;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.light #btn-flutuante-menu-relatorios:hover,
+html[data-theme="light"] #btn-flutuante-menu-relatorios:hover {
+    background: #ffffff !important;
+    color: #4f46e5 !important;
+    border-color: #c7d2fe !important;
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.15) !important;
+}
+
+/* Itens de Histórico da IA (Correção para Modo Escuro) */
+.ia-historico-item {
+    position: relative;
+    background: rgba(30, 41, 59, 0.75) !important;
+    border: 1px solid rgba(51, 65, 85, 0.7) !important;
+    border-radius: 0.75rem;
+    padding: 0.75rem 0.875rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.ia-historico-item:hover {
+    background: rgba(30, 41, 59, 0.95) !important;
+    border-color: #6366f1 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+html.light .ia-historico-item,
+html[data-theme="light"] .ia-historico-item {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05) !important;
+}
+
+html.light .ia-historico-item:hover,
+html[data-theme="light"] .ia-historico-item:hover {
+    background: #f8faff !important;
+    border-color: #6366f1 !important;
+}
+
+.ia-historico-item-title {
+    color: #f1f5f9 !important;
+    font-weight: 700;
+    font-size: 0.75rem;
+}
+
+html.light .ia-historico-item-title,
+html[data-theme="light"] .ia-historico-item-title {
+    color: #0f172a !important;
+}
+
+.ia-historico-item-preview {
+    color: #94a3b8 !important;
+    font-size: 0.6875rem;
+}
+
+html.light .ia-historico-item-preview,
+html[data-theme="light"] .ia-historico-item-preview {
+    color: #475569 !important;
 }
 
 /* ==============================================================
@@ -530,10 +1168,10 @@ html[data-theme="light"] #ia-rel-resultado {
 
 html.light .bg-slate-50,
 html[data-theme="light"] .bg-slate-50,
-html.light .dark\:bg-slate-900,
-html[data-theme="light"] .dark\:bg-slate-900,
-html.light .bg-slate-900,
-html[data-theme="light"] .bg-slate-900 {
+html.light .dark\:bg-slate-900:not(#sidebar):not(#sidebar *),
+html[data-theme="light"] .dark\:bg-slate-900:not(#sidebar):not(#sidebar *),
+html.light .bg-slate-900:not(#sidebar):not(#sidebar *),
+html[data-theme="light"] .bg-slate-900:not(#sidebar):not(#sidebar *) {
     background-color: #f8fafc !important;
 }
 
@@ -2519,9 +3157,17 @@ table[class*="min-w-"] {
 #sidebar h1#menu-empresa-nome {
     font-size: 14px !important;
     font-weight: 700 !important;
-    color: #ffffff !important;
     line-height: 1.2 !important;
     letter-spacing: 0.02em !important;
+}
+
+html.light #sidebar h1#menu-empresa-nome,
+html[data-theme="light"] #sidebar h1#menu-empresa-nome,
+body.light #sidebar h1#menu-empresa-nome,
+html:not(.light) #sidebar h1#menu-empresa-nome,
+html[data-theme="dark"] #sidebar h1#menu-empresa-nome,
+html.dark #sidebar h1#menu-empresa-nome {
+    color: #ffffff !important;
 }
 
 /* =============================================

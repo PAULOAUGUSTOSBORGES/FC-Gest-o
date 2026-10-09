@@ -1,4 +1,4 @@
-﻿// ==========================================================================
+// ==========================================================================
 // SAAS_LICENCA.JS - CLIENTE UNIVERSAL DE LICENCIAMENTO MULTI-SISTEMAS
 // Conecta ao banco central do SaaS Master para validar licença e módulos
 // Compatível com FC-Gestão, FC-Food, FC-Barber e qualquer novo aplicativo
@@ -21,7 +21,7 @@
     const NOMES_MODULOS = {
         pdv:        'Frente de Caixa (PDV)',
         vendas:     'Vendas & Orçamentos',
-        fiscal:     'Emissor Fiscal (NF-e/NFC-e)',
+        fiscal:     'Emissor Fiscal (NF-e, NFC-e & NFS-e*)',
         estoque:    'Controle de Estoque & Produtos',
         financeiro: 'Financeiro & Fluxo de Caixa',
         relatorios: 'Central de Relatórios Gerenciais',
@@ -433,9 +433,12 @@
                 </p>
 
                 <!-- Tabela de Planos -->
-                <div style="display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap;margin-bottom:1.5rem;">
+                <div style="display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap;margin-bottom:0.75rem;">
                     ${tabelaHtml}
                 </div>
+                <p style="color:#64748b;font-size:0.68rem;margin:0 0 1.25rem;line-height:1.4;">
+                    *Emissão Fiscal: NFC-e e NF-e diretas com a SEFAZ em todo o Brasil. NFS-e (Serviços) homologada via Web Service para Goiânia/GO e modo RPS/Espelho Fiscal para demais cidades.
+                </p>
 
                 <!-- Botões -->
                 <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
@@ -960,6 +963,49 @@
     }
 
     // -----------------------------------------------------------------------
+    // CONTROLE GRANULAR DE DOCUMENTOS FISCAIS (NFC-e, NF-e, Devolução, NFS-e)
+    // -----------------------------------------------------------------------
+    function _resolverNotasPermitidas(empData) {
+        empData = empData || window.currentSaaSLicense || window.currentEmpresaData || {};
+        if (Array.isArray(empData.notasPermitidas) && empData.notasPermitidas.length > 0) {
+            return empData.notasPermitidas;
+        }
+        if (empData.configEmpresa && Array.isArray(empData.configEmpresa.notasPermitidas) && empData.configEmpresa.notasPermitidas.length > 0) {
+            return empData.configEmpresa.notasPermitidas;
+        }
+        // Fallback: se o plano tem o módulo fiscal, libera todos os 4 tipos por padrão
+        const mods = empData.modulosLiberados || _resolverModulos(empData);
+        if (!mods.includes('fiscal')) {
+            return [];
+        }
+        return ['nfce', 'nfe', 'nfe_devolucao', 'nfse'];
+    }
+
+    function obterNotasPermitidas(licenca) {
+        return _resolverNotasPermitidas(licenca);
+    }
+
+    function temPermissaoNotaFiscal(tipoNota, licenca) {
+        licenca = licenca || window.currentSaaSLicense || window.currentEmpresaData || {};
+        // Se a empresa não tem o módulo fiscal ativo no SaaS, bloqueia qualquer emissão fiscal
+        if (!verificarAcessoModulo('fiscal')) return false;
+
+        let tipo = String(tipoNota || '').toLowerCase().trim();
+        if (tipo === 'devolucao' || tipo === 'nfe_devolucao' || tipo === 'estorno') {
+            tipo = 'nfe_devolucao';
+        } else if (tipo === 'nfce' || tipo === '65') {
+            tipo = 'nfce';
+        } else if (tipo === 'nfe' || tipo === '55') {
+            tipo = 'nfe';
+        } else if (tipo === 'nfse') {
+            tipo = 'nfse';
+        }
+
+        const permitidas = obterNotasPermitidas(licenca);
+        return permitidas.includes(tipo);
+    }
+
+    // -----------------------------------------------------------------------
     // CONTROLE DE LIMITE DE USUÁRIOS POR PLANO
     // -----------------------------------------------------------------------
     function obterLimiteUsuarios(licenca) {
@@ -1095,6 +1141,9 @@
     window.SAAS_RELATORIOS_POR_PLANO_PADRAO = RELATORIOS_POR_PLANO_PADRAO;
     window.obterRelatoriosPermitidos = obterRelatoriosPermitidos;
     window.verificarAcessoRelatorio = verificarAcessoRelatorio;
+    window._resolverNotasPermitidasSaaS = _resolverNotasPermitidas;
+    window.obterNotasPermitidas = obterNotasPermitidas;
+    window.temPermissaoNotaFiscal = temPermissaoNotaFiscal;
     window.obterLimiteUsuarios = obterLimiteUsuarios;
     window.verificarLimiteUsuarios = verificarLimiteUsuarios;
     window.exibirModalLimiteUsuarios = exibirModalLimiteUsuarios;

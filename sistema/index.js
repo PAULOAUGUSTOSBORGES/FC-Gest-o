@@ -76,6 +76,15 @@ function getCustoVenda(v) {
     return custo + (Number(v.taxaValor) || 0);
 }
 
+function isCategoriaFornecedorOuEstoque(cat) {
+    if (!cat) return false;
+    const c = String(cat).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return c.includes('fornecedor') || 
+           c.includes('compra') || 
+           c.includes('estoque') || 
+           c.includes('mercadoria');
+}
+
 function atualizarDashboard() {
     renderDashboard();
 }
@@ -196,8 +205,8 @@ function executarCalculosDashboard() {
     // 3. FINANCEIRO
     const contas = db.financeiro || [];
     
-    // Despesas = Rigorosamente pagas no período
-    const despesasPeriodo = contas.filter(c => {
+    // Despesas quitadas no período
+    const despesasPagasPeriodo = contas.filter(c => {
         const tipo = String(c.tipo || '').toUpperCase();
         if (tipo !== 'DESPESA') return false;
         const status = String(c.status || '').toUpperCase();
@@ -205,10 +214,26 @@ function executarCalculosDashboard() {
         const cat = String(c.categoria || '').toLowerCase();
         if (cat.includes('transferência') || cat.includes('transferencia')) return false;
         return dentroDoPeriodo(c.dataPagamento || c.data || c.dataVencimento);
-    }).reduce((a, b) => a + (Number(b.valorPago != null ? b.valorPago : b.valor) || 0), 0);
+    });
 
-    // Lucro Líquido Real = Lucro Bruto - Despesas Pagas no Período
-    const lucroLiquidoReal = lucroBruto - despesasPeriodo;
+    let despesasOperacionais = 0;
+    let comprasFornecedores = 0;
+    let totalDespesasPagas = 0;
+
+    despesasPagasPeriodo.forEach(c => {
+        const val = Number(c.valorPago != null ? c.valorPago : c.valor) || 0;
+        totalDespesasPagas += val;
+        if (isCategoriaFornecedorOuEstoque(c.categoria)) {
+            comprasFornecedores += val;
+        } else {
+            despesasOperacionais += val;
+        }
+    });
+
+    // Lucro Líquido Real = Lucro Bruto - Despesas Operacionais (Fixas/ADM)
+    // Contabilmente, pagamentos a fornecedores de estoque não são deduzidos novamente
+    // pois o custo das mercadorias já foi abatido no CMV do Lucro Bruto (evita duplicidade).
+    const lucroLiquidoReal = lucroBruto - despesasOperacionais;
 
     // Contas a Receber
     const aReceberTodas = contas.filter(c => {
@@ -298,10 +323,14 @@ function executarCalculosDashboard() {
         elLucro.innerHTML = fM(lucroLiquidoReal);
         elLucro.className = `text-xl md:text-2xl font-black relative z-10 ${lucroLiquidoReal >= 0 ? 'text-emerald-500' : 'text-red-500'}`;
     }
-    setHtml('dash-lucro-sub', `Bruto (${fM(lucroBruto)}) - Despesas (${fM(despesasPeriodo)})`);
+    setHtml('dash-lucro-sub', `Bruto (${fM(lucroBruto)}) - Desp. Operacionais (${fM(despesasOperacionais)})`);
 
-    setHtml('dash-despesas', fM(despesasPeriodo));
-    setHtml('dash-despesas-sub', 'Quitadas no período');
+    setHtml('dash-despesas', fM(totalDespesasPagas));
+    if (comprasFornecedores > 0) {
+        setHtml('dash-despesas-sub', `Fixas: ${fM(despesasOperacionais)} • Fornec: ${fM(comprasFornecedores)}`);
+    } else {
+        setHtml('dash-despesas-sub', 'Quitadas no período');
+    }
     
     setHtml('dash-caixa', fM(saldoCaixa));
 
@@ -313,9 +342,9 @@ function executarCalculosDashboard() {
     } else {
         const subR = [];
         if (qtdReceberVencidas > 0) {
-            subR.push(`<span class="text-amber-500 font-semibold dark:text-amber-400"><i class="fa-solid fa-triangle-exclamation"></i> ${qtdReceberVencidas} vencida${qtdReceberVencidas === 1 ? '' : 's'}</span>`);
+            subR.push(`<span class="text-amber-500 font-semibold dark:text-amber-400"><i class="fa-solid fa-triangle-exclamation"></i> ${qtdReceberVencidas} vencida${qtdReceberVencidas === 1 ? '' : 's'} (${fM(valorReceberVencido)})</span>`);
         }
-        subR.push(`Total: ${fM(valorReceberTotal)}`);
+        subR.push(`Geral pendente: ${fM(valorReceberTotal)}`);
         setHtml('dash-receber-vencido', subR.join(' • '));
     }
 
@@ -327,9 +356,9 @@ function executarCalculosDashboard() {
     } else {
         const subP = [];
         if (qtdPagarVencidas > 0) {
-            subP.push(`<span class="text-red-500 font-semibold dark:text-red-400"><i class="fa-solid fa-triangle-exclamation"></i> ${qtdPagarVencidas} vencida${qtdPagarVencidas === 1 ? '' : 's'}</span>`);
+            subP.push(`<span class="text-red-500 font-semibold dark:text-red-400"><i class="fa-solid fa-triangle-exclamation"></i> ${qtdPagarVencidas} vencida${qtdPagarVencidas === 1 ? '' : 's'} (${fM(valorPagarVencido)})</span>`);
         }
-        subP.push(`Total pendente: ${fM(valorPagarTotal)}`);
+        subP.push(`Geral pendente: ${fM(valorPagarTotal)}`);
         setHtml('dash-pagar-vencido', subP.join(' • '));
     }
     
@@ -625,15 +654,19 @@ function abrirInfoDashboard(tipo) {
             break;
         case 'lucro_liquido':
             titulo = 'Lucro Líquido Real';
-            conteudo = '<p class="mb-3">O <b>Lucro Líquido Real</b> é o resultado final da empresa no período selecionado (o que realmente sobrou no caixa após todas as obrigações quitadas).</p><ul class="list-disc pl-5 space-y-2"><li><b>Fórmula:</b> Lucro Bruto - Despesas Operacionais Pagas no período (aluguel, salários, contas fixas, fornecedores, etc).</li><li><b>Resultado:</b> Se estiver <span class="text-emerald-500 font-bold">Verde</span>, a loja obteve lucro operacional no período. Se estiver <span class="text-red-500 font-bold">Vermelho</span>, o volume de despesas pagas superou a margem bruta de vendas no período (déficit operacional).</li></ul>';
+            conteudo = '<p class="mb-3">O <b>Lucro Líquido Real</b> é o resultado contábil final do negócio no período selecionado (o que a operação gerou de lucro após pagar custos e despesas operacionais).</p><ul class="list-disc pl-5 space-y-2"><li><b>Fórmula:</b> Lucro Bruto (Vendas - CMV) - Despesas Operacionais Pagas no período (aluguel, salários, contas fixas, energia, internet, etc).</li><li><b>Sem Duplicação de Custos:</b> Boletos pagos a fornecedores de produtos NÃO são descontados novamente aqui, pois o custo das mercadorias já foi abatido no CMV do Lucro Bruto. Isso evita descontar os produtos duas vezes e distorcer seu lucro.</li><li><b>Resultado:</b> Se estiver <span class="text-emerald-500 font-bold">Verde</span>, a empresa obteve lucro operacional no período. Se estiver <span class="text-red-500 font-bold">Vermelho</span>, o volume de despesas operacionais superou a margem bruta de vendas.</li></ul>';
+            break;
+        case 'despesas_pagas':
+            titulo = 'Despesas Pagas no Período';
+            conteudo = '<p class="mb-3">Mostra todos os pagamentos e saídas financeiras liquidadas no período selecionado.</p><ul class="list-disc pl-5 space-y-2"><li><b>Despesas Operacionais / Fixas:</b> Custos para manter a empresa aberta (aluguel, salários, energia, internet, etc).</li><li><b>Fornecedores / Compras:</b> Pagamentos de títulos de fornecedores para compra e reposição de estoque (ativo).</li><li><b>Subtítulo:</b> Discrimina o quanto foi para custos fixos/operacionais e o quanto foi para pagamento de fornecedores.</li></ul>';
             break;
         case 'contas_pagar':
             titulo = 'Contas a Pagar';
-            conteudo = '<p class="mb-3">Mostra os compromissos financeiros a pagar da empresa.</p><ul class="list-disc pl-5 space-y-2"><li><b>Valor no Período:</b> Despesas com vencimento dentro do período selecionado (ex: neste mês).</li><li><b>Subtítulo Informativo:</b> Indica quantas contas estão vencidas e o total acumulado de todos os títulos em aberto no sistema para máxima transparência.</li></ul>';
+            conteudo = '<p class="mb-3">Mostra os compromissos financeiros a pagar da empresa.</p><ul class="list-disc pl-5 space-y-2"><li><b>Valor no Período:</b> Despesas com vencimento dentro do período selecionado (ex: neste mês).</li><li><b>Subtítulo Informativo:</b> Indica com clareza o valor e a quantidade de contas vencidas atrasadas de meses anteriores, além do total geral de todos os títulos em aberto na empresa.</li></ul>';
             break;
         case 'contas_receber':
             titulo = 'Contas a Receber';
-            conteudo = '<p class="mb-3">Mostra os recebimentos previstos de vendas e títulos a receber.</p><ul class="list-disc pl-5 space-y-2"><li><b>Valor no Período:</b> Recebimentos pendentes com vencimento dentro do período selecionado.</li><li><b>Subtítulo Informativo:</b> Indica títulos em atraso e o valor total acumulado pendente de clientes.</li></ul>';
+            conteudo = '<p class="mb-3">Mostra os recebimentos previstos de vendas e títulos a receber.</p><ul class="list-disc pl-5 space-y-2"><li><b>Valor no Período:</b> Recebimentos pendentes com vencimento dentro do período selecionado.</li><li><b>Subtítulo Informativo:</b> Indica com clareza o valor e a quantidade de títulos em atraso de meses anteriores, além do total geral acumulado a receber de clientes.</li></ul>';
             break;
         case 'estoque_valor':
             titulo = 'Valor Total em Estoque';

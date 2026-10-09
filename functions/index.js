@@ -5,6 +5,7 @@ const forge = require("node-forge");
 const crypto = require("crypto");
 const { emitirNotaDiretoSefaz, cancelarNotaDiretoSefaz, cartaCorrecaoDiretoSefaz, transmitirNotaContingenciaSefaz, consultarSituacaoNotaFiscal } = require("./fiscal/sefaz_engine");
 const { extrairChavesDoPfx } = require("./fiscal/sefaz_signer");
+const { transmitirNfseGoiania } = require("./fiscal/nfse_goiania_engine");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -1772,14 +1773,7 @@ exports.emitirNFSe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
     if (!hasPerm) throw new functions.https.HttpsError('permission-denied', 'Sem permissão para emitir NFS-e.');
 
     try {
-        if (!data || !data.permitirHomologacaoInterna) {
-            throw new functions.https.HttpsError(
-                'failed-precondition',
-                'O emissor de NFS-e Municipal encontra-se em processo de homologação técnica junto ao Padrão Nacional ADN. A emissão de notas fiscais de serviço oficiais ainda não está liberada para produção. Para vendas de produtos, utilize NFC-e ou NF-e.'
-            );
-        }
-
-        const { vendaId, tomador, servico, observacoes } = data;
+        const { vendaId, tomador, servico, observacoes, tipoEnvio, ambiente } = data || {};
 
         if (!servico || !servico.descricao) {
             throw new functions.https.HttpsError('invalid-argument', 'A descrição dos serviços prestados é obrigatória.');
@@ -1794,25 +1788,139 @@ exports.emitirNFSe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
         const empresa = config.empresa;
         if (!empresa) throw new functions.https.HttpsError('failed-precondition', 'Configurações da empresa não encontradas.');
 
+        const isInterno = (tipoEnvio === 'interno') || Boolean(data.permitirHomologacaoInterna && tipoEnvio !== 'oficial');
+
         const docTomador = String(tomador?.doc || tomador?.cpf || tomador?.cnpj || '').replace(/\D/g, '');
         const nomeTomador = tomador?.nome || tomador?.razaoSocial || 'TOMADOR DO SERVIÇO';
-
-        const numNFSe = parseInt(empresa.proximoNumeroNFSe || 1, 10);
-        const serieNFSe = String(empresa.serieNFSe || '1');
-        const dataEmissao = new Date().toISOString();
-
-        // Código de verificação de autenticidade (8 caracteres alfanuméricos únicos)
-        const hashBase = `${empresa.cnpj || 'emp'}_${numNFSe}_${Date.now()}`;
-        const codigoVerificacao = crypto.createHash('sha256').update(hashBase).digest('hex').substring(0, 9).toUpperCase();
-
-        // Alíquotas e Valores de ISS
         const aliqIss = parseFloat(servico.aliquotaIss || 2.0); // Padrão Simples Nacional
         const vIss = parseFloat(((vServico * aliqIss) / 100).toFixed(2));
         const itemLC116 = servico.itemListaServico || '14.01'; // Manutenção, restauração, conserto
         const codTributacaoMun = servico.codigoTributacao || itemLC116.replace(/\D/g, '');
 
-        // Montagem do XML RPS / NFS-e no padrão ABRASF 2.04
-        const xmlNFSe = `<?xml version="1.0" encoding="UTF-8"?>
+        let dadosRetorno;
+
+        if (!isInterno) {
+            // ========================================================
+            // TRANSMISSÃO OFICIAL DIRETA: PREFEITURA DE GOIÂNIA (SEFIN)
+            // Conexão direta via Web Service ABRASF 2.04 / ISSNet com Certificado A1
+            // ========================================================
+            if (!empresa.certificadoBase64) {
+                throw new functions.https.HttpsError(
+                    'failed-precondition',
+                    'Certificado Digital A1 (.pfx) não configurado! Para transmissão oficial à Prefeitura de Goiânia via Web Service, configure seu Certificado A1 em Configurações > Emissor Fiscal. Caso queira apenas salvar um registro interno provisório, selecione a opção "Espelho Interno (RPS)".'
+                );
+            }
+
+            console.log(`[NFS-e Goiânia] Iniciando transmissão direta para a SEFIN... Venda: ${vendaId || 'avulsa'}`);
+            const resultadoGoiania = await transmitirNfseGoiania({
+                empresa,
+                tomador: {
+                    doc: docTomador,
+                    nome: nomeTomador,
+                    email: tomador?.email || '',
+                    telefone: tomador?.telefone || '',
+                    rua: tomador?.rua || '',
+                    numero: tomador?.numero || '',
+                    bairro: tomador?.bairro || '',
+                    cep: tomador?.cep || '',
+                    ibge: tomador?.ibge || empresa.ibge || '5208707',
+                    uf: tomador?.uf || empresa.uf || 'GO'
+                },
+                servico: {
+                    descricao: servico.descricao,
+                    valor: vServico,
+                    aliquotaIss: aliqIss,
+                    itemListaServico: itemLC116,
+                    codigoTributacao: codTributacaoMun,
+                    issRetido: Boolean(servico.issRetido)
+                },
+                observacoes: observacoes || '',
+                vendaId: vendaId ? String(vendaId) : null,
+                ambiente: ambiente || empresa.ambienteFiscal || 'producao'
+            });
+
+            dadosRetorno = {
+                tipo: 'NFS-e',
+                modelo: 'NFS-e',
+                oficial: true,
+                status: 'autorizado',
+                status_sefaz: 'autorizado',
+                numero: resultadoGoiania.numero,
+                serie: resultadoGoiania.serie,
+                codigo_verificacao: resultadoGoiania.codigo_verificacao,
+                chave: resultadoGoiania.codigo_verificacao,
+                data_emissao: resultadoGoiania.data_emissao,
+                valor: vServico,
+                valor_iss: vIss,
+                aliquota_iss: aliqIss,
+                item_lista_servico: itemLC116,
+                discriminacao: servico.descricao,
+                tomador: {
+                    doc: docTomador,
+                    nome: nomeTomador,
+                    email: tomador?.email || '',
+                    telefone: tomador?.telefone || '',
+                    rua: tomador?.rua || '',
+                    numero: tomador?.numero || '',
+                    bairro: tomador?.bairro || '',
+                    cidade: tomador?.cidade || empresa.cidade || 'GOIANIA',
+                    uf: tomador?.uf || empresa.uf || 'GO'
+                },
+                prestador: {
+                    cnpj: String(empresa.cnpj || '').replace(/\D/g, ''),
+                    im: empresa.im || '107996359',
+                    nome: empresa.razaoSocial || empresa.nome || ''
+                },
+                xml_conteudo: resultadoGoiania.xml_conteudo,
+                link_consulta: resultadoGoiania.link_consulta,
+                motor: 'issnet_goiania_direto',
+                rps_numero: resultadoGoiania.rps_numero,
+                vendaId: vendaId ? String(vendaId) : null,
+                criadoEm: new Date().toISOString(),
+                emitidoPor: context.auth.uid
+            };
+
+            // Salva na coleção dedicada de notas de serviço
+            const docId = `nfse_${dadosRetorno.numero}_${dadosRetorno.codigo_verificacao}`;
+            await empresaRef.collection('notas_servico').doc(docId).set(dadosRetorno);
+
+            // Atualiza a venda vinculada
+            if (vendaId) {
+                await empresaRef.collection('vendas').doc(String(vendaId)).set({
+                    nfse: dadosRetorno,
+                    status_fiscal_nfse: 'autorizado',
+                    fiscal_numero_nfse: dadosRetorno.numero,
+                    fiscal_codigo_verificacao: dadosRetorno.codigo_verificacao
+                }, { merge: true });
+            }
+
+            // Incrementa o número do próximo RPS
+            const proxRps = (parseInt(resultadoGoiania.rps_numero, 10) || 1) + 1;
+            await empresaRef.collection('configuracoes').doc('config').set({
+                empresa: { proximoNumeroNFSe: proxRps }
+            }, { merge: true });
+
+            console.log(`[NFS-e Goiânia] Autorizada com sucesso! Nº ${dadosRetorno.numero}, Código: ${dadosRetorno.codigo_verificacao}`);
+
+            return {
+                success: true,
+                oficial: true,
+                message: `NFS-e Nº ${dadosRetorno.numero} emitida e homologada na Prefeitura de Goiânia! Código de Verificação: ${dadosRetorno.codigo_verificacao}`,
+                data: dadosRetorno
+            };
+
+        } else {
+            // ========================================================
+            // REGISTRO INTERNO / ESPELHO RPS (Sem envio à Prefeitura)
+            // ========================================================
+            const numNFSe = parseInt(empresa.proximoNumeroNFSe || 1, 10);
+            const serieNFSe = String(empresa.serieNFSe || '1');
+            const dataEmissao = new Date().toISOString();
+
+            const hashBase = `${empresa.cnpj || 'emp'}_${numNFSe}_${Date.now()}`;
+            const codigoVerificacao = crypto.createHash('sha256').update(hashBase).digest('hex').substring(0, 9).toUpperCase();
+
+            const xmlNFSe = `<?xml version="1.0" encoding="UTF-8"?>
 <CompNfse xmlns="http://www.abrasf.org.br/nfse.xsd">
     <Nfse versao="2.04">
         <InfNfse Id="NFSE${numNFSe}">
@@ -1893,71 +2001,70 @@ exports.emitirNFSe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
     </Nfse>
 </CompNfse>`.trim();
 
-        const dadosRetorno = {
-            tipo: 'NFS-e',
-            modelo: 'NFS-e',
-            status: 'autorizado',
-            numero: String(numNFSe),
-            serie: serieNFSe,
-            codigo_verificacao: codigoVerificacao,
-            chave: codigoVerificacao,
-            data_emissao: dataEmissao,
-            valor: vServico,
-            valor_iss: vIss,
-            aliquota_iss: aliqIss,
-            item_lista_servico: itemLC116,
-            discriminacao: servico.descricao,
-            tomador: {
-                doc: docTomador,
-                nome: nomeTomador,
-                email: tomador?.email || '',
-                telefone: tomador?.telefone || '',
-                rua: tomador?.rua || '',
-                numero: tomador?.numero || '',
-                bairro: tomador?.bairro || '',
-                cidade: tomador?.cidade || empresa.cidade || 'GOIANIA',
-                uf: tomador?.uf || empresa.uf || 'GO'
-            },
-            prestador: {
-                cnpj: String(empresa.cnpj || '').replace(/\D/g, ''),
-                im: empresa.im || '',
-                nome: empresa.razaoSocial || empresa.nome || ''
-            },
-            xml_conteudo: xmlNFSe,
-            vendaId: vendaId ? String(vendaId) : null,
-            criadoEm: dataEmissao,
-            emitidoPor: context.auth.uid
-        };
+            dadosRetorno = {
+                tipo: 'NFS-e',
+                modelo: 'NFS-e',
+                oficial: false,
+                status: 'autorizado',
+                numero: String(numNFSe),
+                serie: serieNFSe,
+                codigo_verificacao: codigoVerificacao,
+                chave: codigoVerificacao,
+                data_emissao: dataEmissao,
+                valor: vServico,
+                valor_iss: vIss,
+                aliquota_iss: aliqIss,
+                item_lista_servico: itemLC116,
+                discriminacao: servico.descricao,
+                tomador: {
+                    doc: docTomador,
+                    nome: nomeTomador,
+                    email: tomador?.email || '',
+                    telefone: tomador?.telefone || '',
+                    rua: tomador?.rua || '',
+                    numero: tomador?.numero || '',
+                    bairro: tomador?.bairro || '',
+                    cidade: tomador?.cidade || empresa.cidade || 'GOIANIA',
+                    uf: tomador?.uf || empresa.uf || 'GO'
+                },
+                prestador: {
+                    cnpj: String(empresa.cnpj || '').replace(/\D/g, ''),
+                    im: empresa.im || '',
+                    nome: empresa.razaoSocial || empresa.nome || ''
+                },
+                xml_conteudo: xmlNFSe,
+                motor: 'rps_interno',
+                vendaId: vendaId ? String(vendaId) : null,
+                criadoEm: dataEmissao,
+                emitidoPor: context.auth.uid
+            };
 
-        // Salva na coleção dedicada de notas de serviço
-        const docId = `nfse_${numNFSe}_${codigoVerificacao}`;
-        await empresaRef.collection('notas_servico').doc(docId).set(dadosRetorno);
+            const docId = `nfse_${numNFSe}_${codigoVerificacao}`;
+            await empresaRef.collection('notas_servico').doc(docId).set(dadosRetorno);
 
-        // Se vinculado a uma venda/serviço, atualiza o documento da venda
-        if (vendaId) {
-            await empresaRef.collection('vendas').doc(String(vendaId)).set({
-                nfse: dadosRetorno,
-                status_fiscal_nfse: 'autorizado'
+            if (vendaId) {
+                await empresaRef.collection('vendas').doc(String(vendaId)).set({
+                    nfse: dadosRetorno,
+                    status_fiscal_nfse: 'autorizado'
+                }, { merge: true });
+            }
+
+            await empresaRef.collection('configuracoes').doc('config').set({
+                empresa: { proximoNumeroNFSe: numNFSe + 1 }
             }, { merge: true });
+
+            return {
+                success: true,
+                oficial: false,
+                message: `Espelho interno de NFS-e (RPS Nº ${numNFSe}) gerado com sucesso!`,
+                data: dadosRetorno
+            };
         }
-
-        // Incrementa o número da próxima NFS-e
-        await empresaRef.collection('configuracoes').doc('config').set({
-            empresa: { proximoNumeroNFSe: numNFSe + 1 }
-        }, { merge: true });
-
-        console.log(`[NFS-e] Emitida com sucesso! Nº ${numNFSe}, Codigo: ${codigoVerificacao}, Valor: R$ ${vServico}`);
-
-        return {
-            success: true,
-            message: `NFS-e Nº ${numNFSe} emitida com sucesso! Código de Verificação: ${codigoVerificacao}`,
-            data: dadosRetorno
-        };
 
     } catch (error) {
         console.error('Erro ao emitir NFS-e:', error);
         if (error instanceof functions.https.HttpsError) throw error;
-        throw new functions.https.HttpsError('internal', error.message);
+        throw new functions.https.HttpsError('failed-precondition', error.message || 'Falha na emissão de NFS-e.');
     }
 });
 

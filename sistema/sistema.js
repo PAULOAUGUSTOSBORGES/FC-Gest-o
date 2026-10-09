@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // SISTEMA.JS - Lógica de Configurações, Tema, Empresa e Taxas 1 a 12x
 // ==========================================
 
@@ -326,6 +326,8 @@ function carregarConfiguracoesNaTela() {
         { prop: 'proximoNumeroNFe', id: 'emp-numero-nfe', default: 1 },
         { prop: 'serieNFCe', id: 'emp-serie-nfce', default: '1' },
         { prop: 'proximoNumeroNFCe', id: 'emp-numero-nfce', default: 1 },
+        { prop: 'serieNFSe', id: 'emp-serie-nfse', default: '1' },
+        { prop: 'proximoNumeroNFSe', id: 'emp-numero-nfse', default: 1 },
         { prop: 'naturezaOperacao', id: 'emp-natureza-operacao', default: 'VENDA DE MERCADORIA' }
     ];
 
@@ -335,6 +337,16 @@ function carregarConfiguracoesNaTela() {
             el.value = emp[prop] !== undefined ? emp[prop] : (defVal || '');
         }
     });
+
+    const elHabilNFSe = document.getElementById('emp-habilitar-nfse');
+    if (elHabilNFSe) {
+        const empIdAtivo = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
+        const isFc = (empIdAtivo === 'emp_fc_moveis' || !empIdAtivo || String(emp.cnpj || '').includes('37638679'));
+        elHabilNFSe.checked = emp.habilitarNFSe !== undefined ? Boolean(emp.habilitarNFSe) : isFc;
+        if (typeof window.alternarModuloNFSeConfig === 'function') {
+            window.alternarModuloNFSeConfig();
+        }
+    }
 
     function formatarStatusCertificado(nome, validadeStr) {
         let validadeTexto = '';
@@ -757,6 +769,9 @@ async function salvarConfiguracoes() {
         proximoNumeroNFe: document.getElementById('emp-numero-nfe') ? (parseInt(document.getElementById('emp-numero-nfe').value.trim(), 10) || 1) : 1,
         serieNFCe: document.getElementById('emp-serie-nfce') ? document.getElementById('emp-serie-nfce').value.trim() : '1',
         proximoNumeroNFCe: document.getElementById('emp-numero-nfce') ? (parseInt(document.getElementById('emp-numero-nfce').value.trim(), 10) || 1) : 1,
+        habilitarNFSe: document.getElementById('emp-habilitar-nfse') ? document.getElementById('emp-habilitar-nfse').checked : (db.config?.empresa?.habilitarNFSe || false),
+        serieNFSe: document.getElementById('emp-serie-nfse') ? document.getElementById('emp-serie-nfse').value.trim() : '1',
+        proximoNumeroNFSe: document.getElementById('emp-numero-nfse') ? (parseInt(document.getElementById('emp-numero-nfse').value.trim(), 10) || 1) : 1,
         naturezaOperacao: document.getElementById('emp-natureza-operacao') ? document.getElementById('emp-natureza-operacao').value.trim() : 'VENDA DE MERCADORIA',
         geminiKey: (db.config?.empresa?.geminiKey || ''),
         logo: (document.getElementById('emp-logo-base64') && document.getElementById('emp-logo-base64').value) ? document.getElementById('emp-logo-base64').value : (db.config?.empresa?.logo || '')
@@ -1109,3 +1124,74 @@ async function sisRemoverOpcaoPers(catKey, idx) {
 window.renderPainelPersonalizacaoSistema = renderPainelPersonalizacaoSistema;
 window.sisAdicionarOpcaoPers = sisAdicionarOpcaoPers;
 window.sisRemoverOpcaoPers = sisRemoverOpcaoPers;
+
+// ==========================================
+// MÓDULO DE SERVIÇOS / NFS-e (MUNICIPAL)
+// ==========================================
+function alternarModuloNFSeConfig() {
+    const elHabil = document.getElementById('emp-habilitar-nfse');
+    const container = document.getElementById('container-nfse-detalhes');
+    const badge = document.getElementById('badge-nfse-cidade-status');
+    const txtAjuda = document.getElementById('texto-ajuda-nfse-cidade');
+    const btnCopiar = document.getElementById('btn-copiar-email-prefeitura');
+    if (!elHabil || !container) return;
+
+    const habilitado = elHabil.checked;
+    container.classList.toggle('hidden', !habilitado);
+
+    const emp = db.config?.empresa || {};
+    const cidade = String(document.getElementById('emp-cidade')?.value || emp.cidade || '').trim();
+    const ibge = String(document.getElementById('emp-ibge')?.value || emp.ibge || '').trim();
+    const isGoiania = ibge === '5208707' || cidade.toLowerCase().includes('goiânia') || cidade.toLowerCase().includes('goiania');
+
+    if (!habilitado) {
+        if (badge) badge.className = 'hidden';
+        return;
+    }
+
+    if (badge) badge.className = 'text-[11px] font-bold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5';
+
+    if (isGoiania) {
+        if (badge) {
+            badge.className += ' bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700';
+            badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Web Service Goiânia (SEFIN / ISSNet)';
+        }
+        if (txtAjuda) {
+            txtAjuda.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-600 mr-1"></i> <strong>Sua empresa está em Goiânia - GO:</strong> A emissão é transmitida diretamente via Web Service (ABRASF 2.04 / ISSNet) com Certificado Digital A1. Caso seja sua primeira emissão, use o botão acima para solicitar a liberação do seu CNPJ na SEFIN Goiânia.';
+        }
+        if (btnCopiar) btnCopiar.style.display = '';
+    } else {
+        if (badge) {
+            badge.className += ' bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300 border border-purple-300 dark:border-purple-700';
+            badge.innerHTML = '<i class="fa-solid fa-receipt"></i> Modo RPS / Espelho Oficial';
+        }
+        if (txtAjuda) {
+            txtAjuda.innerHTML = `<i class="fa-solid fa-circle-info text-purple-600 mr-1"></i> A transmissão Web Service direta está homologada para <strong>Goiânia - GO</strong>. Para <strong>${cidade || 'seu município'}</strong>, o sistema emite o <strong>RPS / Espelho Oficial</strong> com numeração e código de autenticidade para controle interno e posterior escrituração municipal.`;
+        }
+        if (btnCopiar) btnCopiar.style.display = 'none';
+    }
+}
+
+function copiarEmailLiberacaoPrefeitura() {
+    const emp = db.config?.empresa || {};
+    const razaoSocial = document.getElementById('emp-razao-social')?.value || emp.razaoSocial || emp.nome || 'FC MÓVEIS EIRELI';
+    const cnpj = document.getElementById('emp-cnpj')?.value || emp.cnpj || '37.638.679/0001-59';
+    const im = document.getElementById('emp-im')?.value || emp.im || '107996359';
+    const cnae = emp.cnae || '95.24-0-00';
+
+    const texto = `Para: suporte.nfse@goiania.go.gov.br\nAssunto: Solicitação de Liberação de NFS-e via Web Service / RPS — CNPJ ${cnpj}\n\nPrezados, bom dia.\n\nVenho por meio deste solicitar a liberação e autorização de emissão de NFS-e via Web Service / integração de RPS em ambiente de Produção para a nossa empresa, utilizando o padrão ABRASF 2.04 (ISSNet) e Certificado Digital ICP-Brasil A1.\n\nSeguem os dados cadastrais da empresa:\n- Razão Social: ${razaoSocial}\n- CNPJ: ${cnpj}\n- Inscrição Municipal (IM): ${im}\n- Município: Goiânia - GO\n- CNAE Principal: ${cnae}\n- Padrão de Integração: Web Service ABRASF 2.04 / Provedor ISSNet\n- Tipo de Certificado: Certificado Digital A1 (.pfx)\n\nSolicitamos a habilitação do CNPJ para recepção e processamento síncrono de lotes de RPS via software próprio.\n\nFicamos no aguardo da confirmação.\n\nAtenciosamente,\n${razaoSocial}`;
+
+    navigator.clipboard.writeText(texto).then(() => {
+        if (typeof showToast === 'function') {
+            showToast('Modelo de e-mail copiado! Cole no seu e-mail e envie para suporte.nfse@goiania.go.gov.br', 'success');
+        } else {
+            alert('Modelo de e-mail copiado para a área de transferência!');
+        }
+    }).catch(() => {
+        if (typeof showToast === 'function') showToast('Não foi possível copiar automaticamente.', 'warning');
+    });
+}
+
+window.alternarModuloNFSeConfig = alternarModuloNFSeConfig;
+window.copiarEmailLiberacaoPrefeitura = copiarEmailLiberacaoPrefeitura;
+

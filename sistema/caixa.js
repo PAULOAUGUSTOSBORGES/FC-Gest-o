@@ -4422,6 +4422,14 @@ window.confirmarRecebimentoPDVNoCaixa = async function() {
                     if (fStatus) { fStatus.classList.add('hidden'); fStatus.innerHTML = ''; }
                     const bNfce = document.getElementById('btn-emitir-nfce'); if (bNfce) bNfce.disabled = false;
                     const bNfe = document.getElementById('btn-emitir-nfe'); if (bNfe) bNfe.disabled = false;
+                    const empIdAtivo = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
+                    const isFc = (empIdAtivo === 'emp_fc_moveis' || !empIdAtivo || String(db.config?.empresa?.cnpj || '').includes('37638679'));
+                    const nfseHabilitada = db.config?.empresa?.habilitarNFSe !== undefined ? Boolean(db.config?.empresa?.habilitarNFSe) : isFc;
+                    const bNfse = document.getElementById('btn-emitir-nfse');
+                    if (bNfse) {
+                        bNfse.disabled = false;
+                        bNfse.style.display = nfseHabilitada ? '' : 'none';
+                    }
                 } else {
                     fContainer.classList.add('hidden');
                 }
@@ -4637,10 +4645,21 @@ window.emitirNota = async function(tipo) {
     
     const btnNfce = document.getElementById('btn-emitir-nfce');
     const btnNfe = document.getElementById('btn-emitir-nfe');
+    const btnNfse = document.getElementById('btn-emitir-nfse');
     const statusContainer = document.getElementById('fiscal-status-container');
     
+    if (tipo === 'nfse') {
+        const vId = window.vendaAtualImpressao.id;
+        showToast('Abrindo Módulo Fiscal para emissão da NFS-e...', 'info');
+        setTimeout(() => {
+            window.location.href = `fiscal.html?nfse_venda=${encodeURIComponent(vId)}`;
+        }, 400);
+        return;
+    }
+
     if (btnNfce) btnNfce.disabled = true;
     if (btnNfe) btnNfe.disabled = true;
+    if (btnNfse) btnNfse.disabled = true;
     if (statusContainer) {
         statusContainer.classList.remove('hidden');
         statusContainer.classList.remove('border-red-500', 'bg-red-50', 'border-emerald-500', 'bg-emerald-50', 'border-amber-500', 'bg-amber-50');

@@ -60,8 +60,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    <link rel="stylesheet" href="../style.css?v=20261008194435">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261008194435">
+    <link rel="stylesheet" href="../style.css?v=20261009175646">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261009175646">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="relatorios">
 
@@ -107,7 +107,7 @@
                 <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
                 <a href="caixa_loja.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="caixa_loja"><i class="fa-solid fa-chart-bar w-5 text-center"></i> Caixa da Loja</a>
                 <a href="compras.html" id="nav-compras" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="compras"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & Estoque</a>
-                <a href="relatorios.html" id="nav-relatorios" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
+                <a href="relatorios.html" id="nav-relatorios" class="nav-btn bg-blue-600 text-white active w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-colors" data-target="relatorios"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
                 <a href="agenda.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="agenda"><i class="fa-regular fa-calendar w-5 text-center"></i> Agenda</a>
                 <a href="marketing.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="marketing"><i class="fa-solid fa-bullhorn w-5 text-center"></i> Marketing & Lembretes</a>
                 
@@ -133,7 +133,7 @@
                 </div>
             </header>
 
-            <div class="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth custom-scrollbar w-full relative">
+            <div id="container-relatorios-scroll" class="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth custom-scrollbar w-full relative">
 
                 <!-- RELATÓRIOS GERENCIAIS E BI -->
                 <div id="view-relatorios" class="max-w-7xl mx-auto space-y-6">
@@ -176,8 +176,155 @@
                         </div>
                     </div>
 
+                    <!-- MINI MENU DE RELATÓRIOS / NAVEGAÇÃO RÁPIDA (SLIM & MODERNO) -->
+                    <div id="mini-menu-relatorios" class="mini-nav-container no-print scroll-mt-6">
+                        <!-- Topbar: Título, Filtro de Categorias e Dropdown de Salto -->
+                        <div class="mini-nav-topbar">
+                            <div class="mini-nav-title-box">
+                                <div class="mini-nav-icon">
+                                    <i class="fa-solid fa-compass"></i>
+                                </div>
+                                <span class="mini-nav-title-text">Atalhos</span>
+                                <span class="mini-nav-badge">18</span>
+                            </div>
+
+                            <!-- Categorias (Segmented Strip Horizontal) -->
+                            <div class="mini-nav-cats">
+                                <button type="button" onclick="filtrarCategoriaMiniMenu('todas', this)" class="mini-nav-cat-btn active" data-cat="todas">
+                                    <i class="fa-solid fa-border-all"></i> Todos
+                                </button>
+                                <button type="button" onclick="filtrarCategoriaMiniMenu('vendas', this)" class="mini-nav-cat-btn" data-cat="vendas">
+                                    <i class="fa-solid fa-receipt text-blue-400"></i> Vendas
+                                </button>
+                                <button type="button" onclick="filtrarCategoriaMiniMenu('financeiro', this)" class="mini-nav-cat-btn" data-cat="financeiro">
+                                    <i class="fa-solid fa-file-invoice-dollar text-emerald-400"></i> DRE & Gestão
+                                </button>
+                                <button type="button" onclick="filtrarCategoriaMiniMenu('estoque', this)" class="mini-nav-cat-btn" data-cat="estoque">
+                                    <i class="fa-solid fa-boxes-stacked text-purple-400"></i> Estoque
+                                </button>
+                                <button type="button" onclick="filtrarCategoriaMiniMenu('despesas', this)" class="mini-nav-cat-btn" data-cat="despesas">
+                                    <i class="fa-solid fa-tags text-amber-400"></i> Despesas
+                                </button>
+                                <button type="button" onclick="filtrarCategoriaMiniMenu('compras', this)" class="mini-nav-cat-btn" data-cat="compras">
+                                    <i class="fa-solid fa-cart-shopping text-sky-400"></i> Compras
+                                </button>
+                            </div>
+
+                            <!-- Seletor Dropdown Compacto -->
+                            <div>
+                                <select id="select-navegacao-relatorios" onchange="if(this.value){ irParaRelatorio(this.value); }" class="mini-nav-select">
+                                    <option value="">⚡ Ir rápido para...</option>
+                                    <optgroup label="Visão Geral & IA">
+                                        <option value="card-ia-assistente">🤖 Assistente Inteligente IA</option>
+                                        <option value="card-raio-x-executivo">⚡ Raio-X Diagnóstico Executivo</option>
+                                        <option value="card-dre-gerencial">📊 DRE Gerencial Completo</option>
+                                    </optgroup>
+                                    <optgroup label="Vendas & Clientes">
+                                        <option value="card-historico-vendas">🧾 Histórico Geral de Vendas</option>
+                                        <option value="card-comissao-vendedores">👥 Comissão de Vendedores</option>
+                                        <option value="card-top-vendas">🏆 Top Produtos Mais Vendidos</option>
+                                        <option value="card-top-clientes">🤝 Top Melhores Clientes</option>
+                                    </optgroup>
+                                    <optgroup label="Estoque & Custos">
+                                        <option value="card-estoque-kardex">📦 Kardex / Extrato de Estoque</option>
+                                        <option value="card-curva-abc-produtos">📈 Curva ABC (Pareto)</option>
+                                        <option value="card-sugestao-compras">📋 Sugestão de Reposição</option>
+                                        <option value="card-evolucao-custos">📉 Evolução de Custo por Produto</option>
+                                    </optgroup>
+                                    <optgroup label="Despesas & Saídas">
+                                        <option value="card-despesas-categoria">🏷️ Despesas por Categoria</option>
+                                        <option value="card-despesas-centro-custo">🏢 Despesas por Centro de Custo</option>
+                                        <option value="card-despesas-favorecido">💳 Despesas por Favorecido</option>
+                                        <option value="card-despesas-funcionario">👔 Despesas por Funcionário (Folha)</option>
+                                    </optgroup>
+                                    <optgroup label="Compras & Fornecedores">
+                                        <option value="card-top-compras">🛒 Top Compras (Volume)</option>
+                                        <option value="card-top-fornecedores">🚚 Top Fornecedores</option>
+                                        <option value="card-estatisticas-compras">📊 Estatísticas de Compras</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Chips / Pílulas Compactas dos Relatórios -->
+                        <div id="grid-botoes-mini-menu" class="mini-nav-chips">
+                            <button type="button" onclick="irParaRelatorio('card-dre-gerencial')" data-cat="financeiro" class="mini-nav-chip">
+                                <i class="fa-solid fa-file-invoice-dollar mini-nav-chip-icon text-emerald-400"></i>
+                                <span>DRE Gerencial</span>
+                            </button>
+                            <button type="button" onclick="irParaRelatorio('card-raio-x-executivo')" data-cat="financeiro" class="mini-nav-chip">
+                                <i class="fa-solid fa-gauge-high mini-nav-chip-icon text-indigo-400"></i>
+                                <span>Raio-X Executivo</span>
+                            </button>
+                            <button type="button" onclick="irParaRelatorio('card-historico-vendas')" data-cat="vendas" class="mini-nav-chip">
+                                <i class="fa-solid fa-receipt mini-nav-chip-icon text-blue-400"></i>
+                                <span>Vendas Detalhadas</span>
+                            </button>
+                            <button type="button" onclick="irParaRelatorio('card-comissao-vendedores')" data-cat="vendas" class="mini-nav-chip">
+                                <i class="fa-solid fa-hand-holding-dollar mini-nav-chip-icon text-emerald-400"></i>
+                                <span>Comissões</span>
+                            </button>
+                            <button type="button" onclick="irParaRelatorio('card-top-vendas')" data-cat="vendas" class="mini-nav-chip">
+                                <i class="fa-solid fa-trophy mini-nav-chip-icon text-amber-400"></i>
+                                <span>Mais Vendidos</span>
+                            </button>
+                            <button type="button" onclick="irParaRelatorio('card-top-clientes')" data-cat="vendas" class="mini-nav-chip">
+                                <i class="fa-solid fa-users mini-nav-chip-icon text-sky-400"></i>
+                                <span>Top Clientes</span>
+                            </button>
+                            <button type="button" onclick="irParaRelatorio('card-estoque-kardex')" data-cat="estoque" class="mini-nav-chip">
+                                <i class="fa-solid fa-boxes-stacked mini-nav-chip-icon text-purple-400"></i>
+                                <span>Estoque & Kardex</span>
+                            </button>
+                            <button type="button" onclick="irParaRelatorio('card-curva-abc-produtos')" data-cat="estoque" class="mini-nav-chip">
+                                <i class="fa-solid fa-chart-pie mini-nav-chip-icon text-amber-400"></i>
+                                <span>Curva ABC</span>
+                            </button>
+                            <button type="button" onclick="irParaRelatorio('card-sugestao-compras')" data-cat="estoque" class="mini-nav-chip">
+                                <i class="fa-solid fa-boxes-packing mini-nav-chip-icon text-teal-400"></i>
+                                <span>Sugestão Reposição</span>
+                            </button>
+                            <button type="button" onclick="irParaRelatorio('card-evolucao-custos')" data-cat="estoque" class="mini-nav-chip">
+                                <i class="fa-solid fa-arrow-trend-up mini-nav-chip-icon text-cyan-400"></i>
+                                <span>Evolução Custos</span>
+                            </button>
+                            <button type="button" onclick="irParaRelatorio('card-despesas-categoria')" data-cat="despesas" class="mini-nav-chip">
+                                <i class="fa-solid fa-tags mini-nav-chip-icon text-amber-400"></i>
+                                <span>Despesas Categoria</span>
+                            </button>
+                            <button type="button" onclick="irParaRelatorio('card-despesas-centro-custo')" data-cat="despesas" class="mini-nav-chip">
+                                <i class="fa-solid fa-building mini-nav-chip-icon text-blue-400"></i>
+                                <span>Centro de Custo</span>
+                            </button>
+                            <button type="button" onclick="irParaRelatorio('card-despesas-favorecido')" data-cat="despesas" class="mini-nav-chip">
+                                <i class="fa-solid fa-credit-card mini-nav-chip-icon text-rose-400"></i>
+                                <span>Por Favorecido</span>
+                            </button>
+                            <button type="button" onclick="irParaRelatorio('card-despesas-funcionario')" data-cat="despesas" class="mini-nav-chip">
+                                <i class="fa-solid fa-user-tie mini-nav-chip-icon text-violet-400"></i>
+                                <span>Folha / Equipe</span>
+                            </button>
+                            <button type="button" onclick="irParaRelatorio('card-top-compras')" data-cat="compras" class="mini-nav-chip">
+                                <i class="fa-solid fa-cart-arrow-down mini-nav-chip-icon text-blue-400"></i>
+                                <span>Top Compras</span>
+                            </button>
+                            <button type="button" onclick="irParaRelatorio('card-top-fornecedores')" data-cat="compras" class="mini-nav-chip">
+                                <i class="fa-solid fa-truck mini-nav-chip-icon text-purple-400"></i>
+                                <span>Top Fornecedores</span>
+                            </button>
+                            <button type="button" onclick="irParaRelatorio('card-estatisticas-compras')" data-cat="compras" class="mini-nav-chip">
+                                <i class="fa-solid fa-chart-bar mini-nav-chip-icon text-emerald-400"></i>
+                                <span>Estatísticas Compras</span>
+                            </button>
+                            <button type="button" onclick="irParaRelatorio('card-ia-assistente')" data-cat="todas" class="mini-nav-chip" style="border-color: rgba(99, 102, 241, 0.4); background: rgba(99, 102, 241, 0.15);">
+                                <i class="fa-solid fa-robot mini-nav-chip-icon text-indigo-400"></i>
+                                <span style="color: #a5b4fc; font-weight: 700;">Assistente IA</span>
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- PAINEL INTELIGENTE IA - ASSISTENTE DE RELATÓRIOS -->
-                    <div class="ia-panel-container no-print">
+                    <div id="card-ia-assistente" class="ia-panel-container no-print scroll-mt-6 transition-all duration-300">
                         <!-- Fundo decorativo sutil -->
                         <div class="absolute -top-24 -right-24 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
                         <div class="absolute -bottom-24 -left-24 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -409,7 +556,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             
                             <!-- RAIO-X EXECUTIVO & PONTO DE EQUILÍBRIO (BREAK-EVEN) -->
-                            <div id="card-raio-x-executivo" class="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 text-white p-6 rounded-2xl shadow-lg border border-slate-800 md:col-span-2 relative overflow-hidden">
+                            <div id="card-raio-x-executivo" class="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 text-white p-6 rounded-2xl shadow-lg border border-slate-800 md:col-span-2 relative overflow-hidden scroll-mt-6 transition-all duration-300">
                                 <div class="absolute -right-12 -bottom-12 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
                                 
                                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800/80 pb-4 mb-5">
@@ -491,7 +638,7 @@
                                 </div>
                             </div>
                             <!-- DRE GERENCIAL COMPLETO E ESTRUTURADO -->
-                            <div id="card-dre-gerencial" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 md:col-span-2">
+                            <div id="card-dre-gerencial" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 md:col-span-2 scroll-mt-6 transition-all duration-300">
                                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 dark:border-slate-700 pb-3 mb-4 gap-2">
                                     <div>
                                         <h3 class="font-bold text-base text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -643,7 +790,7 @@
                             </div>
                             
                             <!-- Curva ABC de Compras e Fornecedores -->
-                            <div id="card-top-compras" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <div id="card-top-compras" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 scroll-mt-6 transition-all duration-300">
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b border-slate-100 dark:border-slate-700 pb-2 mb-4 flex justify-between items-center">
                                     <span><i class="fa-solid fa-cart-arrow-down mr-1 text-blue-500"></i> Top Compras (Dinheiro Gasto)</span>
                                     <div class="flex items-center gap-1.5 print:hidden">
@@ -657,7 +804,7 @@
                             </div>
 
                             <!-- Curva ABC Vendas -->
-                            <div id="card-top-vendas" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <div id="card-top-vendas" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 scroll-mt-6 transition-all duration-300">
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b border-slate-100 dark:border-slate-700 pb-2 mb-4 flex justify-between items-center">
                                     <span><i class="fa-solid fa-chart-pie mr-1 text-indigo-500"></i> Curva ABC de Vendas (Top 5 Produtos)</span>
                                     <div class="flex items-center gap-1.5 print:hidden">
@@ -671,7 +818,7 @@
                             </div>
                             
                             <!-- Estatísticas de Compras -->
-                            <div id="card-estatisticas-compras" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <div id="card-estatisticas-compras" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 scroll-mt-6 transition-all duration-300">
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b border-slate-100 dark:border-slate-700 pb-2 mb-4 flex justify-between items-center">
                                     <span><i class="fa-solid fa-chart-bar mr-1 text-emerald-500"></i> Estatísticas de Compras</span>
                                     <div class="flex items-center gap-1.5 print:hidden">
@@ -687,7 +834,7 @@
                             </div>
 
                             <!-- Top Clientes e Fornecedores -->
-                            <div id="card-top-clientes" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <div id="card-top-clientes" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 scroll-mt-6 transition-all duration-300">
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b border-slate-100 dark:border-slate-700 pb-2 mb-4 flex justify-between items-center">
                                     <span><i class="fa-solid fa-users mr-1 text-sky-500"></i> Top Clientes</span>
                                     <div class="flex items-center gap-1.5 print:hidden">
@@ -700,7 +847,7 @@
                                 <div id="bi-top-clientes" class="space-y-3"></div>
                             </div>
                             
-                            <div id="card-top-fornecedores" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <div id="card-top-fornecedores" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 scroll-mt-6 transition-all duration-300">
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b border-slate-100 dark:border-slate-700 pb-2 mb-4 flex justify-between items-center">
                                     <span><i class="fa-solid fa-truck mr-1 text-purple-500"></i> Top Fornecedores (Gastos)</span>
                                     <div class="flex items-center gap-1.5 print:hidden">
@@ -714,7 +861,7 @@
                             </div>
 
                             <!-- Despesas por Categoria e Centro de Custo -->
-                            <div id="card-despesas-categoria" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <div id="card-despesas-categoria" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 scroll-mt-6 transition-all duration-300">
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b border-slate-100 dark:border-slate-700 pb-2 mb-4 flex justify-between items-center">
                                     <span><i class="fa-solid fa-tags text-amber-500 mr-2"></i> Despesas por Categoria</span>
                                     <div class="flex items-center gap-1.5 print:hidden">
@@ -730,7 +877,7 @@
                                 <div id="bi-despesas-categoria" class="space-y-3"></div>
                             </div>
                             
-                            <div id="card-despesas-centro-custo" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <div id="card-despesas-centro-custo" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 scroll-mt-6 transition-all duration-300">
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b border-slate-100 dark:border-slate-700 pb-2 mb-4 flex justify-between items-center">
                                     <span><i class="fa-solid fa-building text-blue-500 mr-2"></i> Despesas por Centro de Custo</span>
                                     <div class="flex items-center gap-1.5 print:hidden">
@@ -750,7 +897,7 @@
                                 <div id="bi-despesas-centro-custo" class="space-y-3"></div>
                             </div>
 
-                            <div id="card-despesas-favorecido" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <div id="card-despesas-favorecido" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 scroll-mt-6 transition-all duration-300">
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b border-slate-100 dark:border-slate-700 pb-2 mb-4 flex justify-between items-center">
                                     <span><i class="fa-solid fa-hand-holding-dollar text-emerald-500 mr-2"></i> Despesas por Favorecido</span>
                                     <div class="flex items-center gap-1.5 print:hidden">
@@ -763,7 +910,7 @@
                                 <div id="bi-despesas-favorecido" class="space-y-3"></div>
                             </div>
                             
-                            <div id="card-despesas-funcionario" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <div id="card-despesas-funcionario" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 scroll-mt-6 transition-all duration-300">
                                 <h3 class="font-bold text-slate-800 dark:text-slate-100 border-b border-slate-100 dark:border-slate-700 pb-2 mb-4 flex justify-between items-center">
                                     <span><i class="fa-solid fa-user-tie text-indigo-500 mr-2"></i> Despesas por Funcionário (Folha)</span>
                                     <div class="flex items-center gap-1.5 print:hidden">
@@ -777,7 +924,7 @@
                             </div>
 
                             <!-- Evolução de Custos por Produto -->
-                            <div id="card-evolucao-custos" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 md:col-span-2">
+                            <div id="card-evolucao-custos" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 md:col-span-2 scroll-mt-6 transition-all duration-300">
                                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 dark:border-slate-700 pb-3 mb-4 gap-2">
                                     <div>
                                         <h3 class="font-bold text-base text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -823,7 +970,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                             
                             <!-- Curva ABC de Produtos -->
-                            <div id="card-curva-abc-produtos" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 md:col-span-2">
+                            <div id="card-curva-abc-produtos" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 md:col-span-2 scroll-mt-6 transition-all duration-300">
                                 <div class="flex flex-col lg:flex-row lg:items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3 mb-4 gap-3">
                                     <div>
                                         <h3 class="font-bold text-base text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -885,7 +1032,7 @@
                             </div>
 
                             <!-- Sugestão Inteligente de Compras -->
-                            <div id="card-sugestao-compras" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 md:col-span-2">
+                            <div id="card-sugestao-compras" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 md:col-span-2 scroll-mt-6 transition-all duration-300">
                                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 dark:border-slate-700 pb-3 mb-4 gap-2">
                                     <div>
                                         <h3 class="font-bold text-base text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -1266,7 +1413,6 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
                 </div>
 
             </div>
@@ -2253,11 +2399,73 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20261008194435"></script>
-    <script src="saas_licenca.js?v=20261008194435"></script>
-    <script src="../global.js?v=20261008194435"></script>
-    <script src="fc_cache.js?v=20261008194435"></script>
-    <script src="relatorios_v2.js?v=20261008194435"></script>
+    <script src="../sistema/config_banco.js?v=20261009175646"></script>
+    <script src="saas_licenca.js?v=20261009175646"></script>
+    <script src="../global.js?v=639271666746854031"></script>
+    <script src="fc_cache.js?v=639271666719566549"></script>
+    <script src="relatorios_v2.js?v=639271666925418388"></script>
+    <script>
+        // Suporte imediato ao Mini Menu de Relatórios
+        window.irParaRelatorio = function(targetId) {
+            if (!targetId) return;
+            const el = document.getElementById(targetId);
+            if (!el) return;
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (targetId !== 'mini-menu-relatorios') {
+                el.classList.add('ring-4', 'ring-indigo-500/80', 'ring-offset-2', 'dark:ring-offset-slate-900', 'shadow-2xl');
+                setTimeout(() => {
+                    el.classList.remove('ring-4', 'ring-indigo-500/80', 'ring-offset-2', 'dark:ring-offset-slate-900', 'shadow-2xl');
+                }, 2200);
+            }
+            const sel = document.getElementById('select-navegacao-relatorios');
+            if (sel && sel.value !== targetId) sel.value = targetId;
+        };
+
+        window.filtrarCategoriaMiniMenu = function(cat, btn) {
+            document.querySelectorAll('.mini-nav-cat-btn').forEach(b => b.classList.remove('active'));
+            if (btn) {
+                btn.classList.add('active');
+            } else {
+                const found = document.querySelector(`.mini-nav-cat-btn[data-cat="${cat}"]`);
+                if (found) found.classList.add('active');
+            }
+
+            document.querySelectorAll('#grid-botoes-mini-menu .mini-nav-chip').forEach(chip => {
+                const itemCat = chip.getAttribute('data-cat');
+                if (cat === 'todas' || itemCat === cat || itemCat === 'todas') {
+                    chip.style.display = 'inline-flex';
+                } else {
+                    chip.style.display = 'none';
+                }
+            });
+        };
+
+        (function() {
+            function setupScrollMiniMenu() {
+                const container = document.getElementById('container-relatorios-scroll');
+                const btnFlutuante = document.getElementById('btn-flutuante-menu-relatorios');
+                if (container && btnFlutuante) {
+                    container.addEventListener('scroll', () => {
+                        if (container.scrollTop > 350) {
+                            btnFlutuante.classList.add('visivel');
+                        } else {
+                            btnFlutuante.classList.remove('visivel');
+                        }
+                    });
+                }
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', setupScrollMiniMenu);
+            } else {
+                setupScrollMiniMenu();
+            }
+        })();
+    </script>
+
+    <!-- BOTÃO FLUTUANTE VOLTAR AO TOPO (DISCRETO & ELEGANTE) -->
+    <button id="btn-flutuante-menu-relatorios" type="button" onclick="irParaRelatorio('mini-menu-relatorios')" title="Voltar ao início" aria-label="Voltar ao topo">
+        <i class="fa-solid fa-arrow-up text-xs"></i>
+    </button>
 </body>
 </html>
 

@@ -334,8 +334,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <link rel="stylesheet" href="../style.css?v=20261008194435">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261008194435">
+    <link rel="stylesheet" href="../style.css?v=20261009175646">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261009175646">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="fiscal">
 
@@ -366,7 +366,7 @@
                 <a href="pdv.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="pdv"><i class="fa-solid fa-cash-register w-5 text-center"></i> Frente de Caixa (PDV)</a>
                 <a href="vendas_operacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="vendas_operacao"><i class="fa-solid fa-receipt w-5 text-center"></i> Histórico Vendas/Serviços</a>
                 <a href="orcamentos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="orcamentos"><i class="fa-solid fa-file-invoice w-5 text-center"></i> Meus Orçamentos</a>
-                <a href="fiscal.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-colors bg-blue-600 text-white shadow-md" data-target="fiscal"><i class="fa-solid fa-file-invoice text-emerald-400 w-5 text-center"></i> Emissor Fiscal (NF-e)</a>
+                <a href="fiscal.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-colors bg-blue-600 text-white shadow-md active" data-target="fiscal"><i class="fa-solid fa-file-invoice text-emerald-400 w-5 text-center"></i> Emissor Fiscal (NF-e)</a>
 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Cadastros</p>
                 <a href="produtos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="produtos"><i class="fa-solid fa-boxes-stacked w-5 text-center"></i> Produtos & Serviços</a>
@@ -507,7 +507,7 @@
                             <button onclick="abrirModalDevolucaoCompra()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all hover:shadow hover:-translate-y-0.5 active:translate-y-0 whitespace-nowrap" title="Emitir NF-e de Devolução de Mercadoria para Fornecedor / Indústria (via XML ou Manual)">
                                 <i class="fa-solid fa-truck-ramp-box"></i> Devolver ao Fornecedor
                             </button>
-                            <button onclick="abrirModalNFSe()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all hover:shadow hover:-translate-y-0.5 active:translate-y-0 whitespace-nowrap" title="Emitir Nota Fiscal de Serviços (NFS-e Municipal)">
+                            <button onclick="abrirModalNFSe()" id="btn-top-emitir-nfse" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all hover:shadow hover:-translate-y-0.5 active:translate-y-0 whitespace-nowrap" title="Emitir Nota Fiscal de Serviços (NFS-e Municipal)">
                                 <i class="fa-solid fa-screwdriver-wrench"></i> Emitir NFS-e
                             </button>
                             <button onclick="baixarLoteMensalXML()" id="btn-exportar-lote" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all hover:shadow hover:-translate-y-0.5 active:translate-y-0 whitespace-nowrap" title="Baixar todos os arquivos XML em pacote ZIP para contabilidade">
@@ -706,7 +706,12 @@
                 <h3 class="font-bold text-base flex items-center gap-2"><i class="fa-solid fa-file-circle-plus text-emerald-400"></i> Faturar Venda do Histórico</h3>
                 <button onclick="document.getElementById('modal-selecionar-venda').classList.add('hidden')" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            <div class="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+            <div class="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 space-y-2.5">
+                <div class="flex items-center gap-1.5 p-1 bg-slate-200/70 dark:bg-slate-700/60 rounded-xl text-xs">
+                    <button type="button" onclick="setFiltroTipoFaturar('todos')" id="tab-fat-todos" class="flex-1 py-1.5 px-2 rounded-lg font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-xs transition-all text-center">Todos</button>
+                    <button type="button" onclick="setFiltroTipoFaturar('servicos')" id="tab-fat-servicos" class="flex-1 py-1.5 px-2 rounded-lg font-bold text-purple-700 dark:text-purple-300 hover:bg-white/50 dark:hover:bg-slate-800/50 transition-all text-center flex items-center justify-center gap-1"><i class="fa-solid fa-screwdriver-wrench text-[10px]"></i> Serviços (PDV)</button>
+                    <button type="button" onclick="setFiltroTipoFaturar('produtos')" id="tab-fat-produtos" class="flex-1 py-1.5 px-2 rounded-lg font-bold text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50 transition-all text-center flex items-center justify-center gap-1"><i class="fa-solid fa-box text-[10px]"></i> Mercadorias</button>
+                </div>
                 <input type="text" id="busca-venda-avulsa" oninput="renderVendasParaFaturar()" placeholder="Filtrar venda por número ou cliente..." class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-3 py-2 rounded-lg text-xs outline-none focus:border-blue-500">
             </div>
             <div class="p-4 overflow-y-auto custom-scrollbar flex-1 space-y-2 text-xs" id="lista-vendas-avulsas">
@@ -1229,6 +1234,32 @@
                 </button>
             </div>
             <div class="overflow-y-auto p-5 space-y-5 custom-scrollbar">
+                <!-- Seção Inteligente: Puxar Serviço / Venda do PDV -->
+                <div class="bg-purple-50/90 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/70 rounded-2xl p-4 space-y-2.5 shadow-xs">
+                    <div class="flex items-center justify-between">
+                        <label class="block text-xs font-black text-purple-900 dark:text-purple-300 flex items-center gap-1.5 uppercase tracking-wide">
+                            <i class="fa-solid fa-cloud-arrow-down text-purple-600 dark:text-purple-400"></i> Puxar Serviço Realizado no PDV
+                        </label>
+                        <span id="nfse-badge-vinculo" class="hidden text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                            <i class="fa-solid fa-check mr-1"></i> Vinculado ao PDV
+                        </span>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <div class="flex-1">
+                            <select id="nfse-select-venda-pdv" onchange="selecionarServicoPDVParaNFSe(this.value)" class="w-full border border-purple-300 dark:border-purple-700 rounded-xl px-3 py-2 text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <option value="">-- Selecione uma Ordem de Serviço ou Venda do PDV --</option>
+                            </select>
+                        </div>
+                        <button type="button" onclick="limparVinculoServicoNFSe()" id="btn-limpar-vinculo-nfse" class="hidden px-3.5 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs whitespace-nowrap transition-colors flex items-center justify-center gap-1.5" title="Limpar seleção e preencher manualmente">
+                            <i class="fa-solid fa-rotate-left"></i> Limpar
+                        </button>
+                    </div>
+                    <input type="hidden" id="nfse-venda-id-vinculada" value="">
+                    <p class="text-[11px] text-purple-700 dark:text-purple-400 flex items-center gap-1">
+                        <i class="fa-solid fa-circle-info"></i> Selecione um serviço do PDV acima para preencher cliente, valor e discriminação automaticamente.
+                    </p>
+                </div>
+
                 <!-- Tomador do Serviço -->
                 <div>
                     <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 border-b border-slate-100 dark:border-slate-700 pb-1.5 flex items-center gap-2">
@@ -1315,6 +1346,38 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Modalidade de Transmissão / Web Service Goiânia -->
+                <div class="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 space-y-2.5">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-1.5">
+                        <i class="fa-solid fa-tower-broadcast text-purple-600 dark:text-purple-400"></i> Modalidade de Emissão
+                    </label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <label id="nfse-label-opcao-oficial" class="relative flex items-start gap-2.5 p-3 rounded-xl border-2 border-purple-500 bg-purple-50/60 dark:bg-purple-950/30 cursor-pointer transition-all hover:bg-purple-100/50">
+                            <input type="radio" id="nfse-radio-oficial" name="nfse_tipo_envio" value="oficial" checked class="mt-0.5 text-purple-600 focus:ring-purple-500">
+                            <div class="text-xs">
+                                <span class="font-black text-purple-950 dark:text-purple-200 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    Oficial — Prefeitura de Goiânia
+                                </span>
+                                <p id="nfse-desc-opcao-oficial" class="text-[11px] text-purple-700 dark:text-purple-300/80 mt-0.5 leading-snug">
+                                    Transmissão direta via Web Service ISSNet com Certificado Digital A1.
+                                </p>
+                            </div>
+                        </label>
+                        <label id="nfse-label-opcao-interno" class="relative flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 cursor-pointer transition-all hover:border-slate-300">
+                            <input type="radio" id="nfse-radio-interno" name="nfse_tipo_envio" value="interno" class="mt-0.5 text-purple-600 focus:ring-purple-500">
+                            <div class="text-xs">
+                                <span class="font-bold text-slate-700 dark:text-slate-200">
+                                    Espelho Interno / RPS
+                                </span>
+                                <p id="nfse-desc-opcao-interno" class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                                    Registro interno de RPS no sistema para conferência sem envio imediato à SEFIN.
+                                </p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
             </div>
             <div class="p-5 border-t border-slate-200 dark:border-slate-700 flex items-center gap-3 shrink-0">
                 <button onclick="fecharModalNFSe()" class="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
@@ -1332,13 +1395,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20261008194435"></script>
-    <script src="saas_licenca.js?v=20261008194435"></script>
-    <script src="../global.js?v=20261008194435"></script>
-    <script src="fc_cache.js?v=20261008194435"></script>
-    <script src="tabela_ncm.js?v=20261008194435"></script>
-    <script src="ncm_helper.js?v=20261008194435"></script>
-    <script src="fiscal.js?v=20261008194435"></script>
+    <script src="../sistema/config_banco.js?v=20261009175646"></script>
+    <script src="saas_licenca.js?v=20261009175646"></script>
+    <script src="../global.js?v=639271666658886156"></script>
+    <script src="fc_cache.js?v=639271666654781155"></script>
+    <script src="tabela_ncm.js?v=20261009175646"></script>
+    <script src="ncm_helper.js?v=20261009175646"></script>
+    <script src="fiscal.js?v=639271666965748918"></script>
 </body>
 </html>
 

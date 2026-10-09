@@ -40,6 +40,9 @@ function inicializarFiscal() {
             if (elNFe && document.activeElement !== elNFe) {
                 elNFe.value = dados.empresa.proximoNumeroNFe || 1;
             }
+            if (typeof atualizarVisibilidadeModuloNFSe === 'function') {
+                atualizarVisibilidadeModuloNFSe();
+            }
         }
     });
 
@@ -335,11 +338,13 @@ function processarNotasFiscais() {
                 clienteDoc: v.nfse.tomador?.doc || v.clienteDoc || '',
                 valor: Number(v.nfse.valor || v.tot || 0),
                 status: (v.nfse.status || 'autorizado').toLowerCase(),
-                mensagemSefaz: 'NFS-e Autorizada',
+                mensagemSefaz: v.nfse.oficial ? 'NFS-e Oficial Goiânia' : 'NFS-e Espelho RPS',
                 danfeUrl: '',
                 xmlUrl: '',
                 xmlConteudo: v.nfse.xml_conteudo || '',
-                rawVenda: v
+                oficial: Boolean(v.nfse.oficial),
+                rawVenda: v,
+                rawServico: v.nfse
             });
         }
     });
@@ -398,10 +403,11 @@ function processarNotasFiscais() {
             clienteDoc: ns.tomador?.doc || '',
             valor: Number(ns.valor || 0),
             status: (ns.status || 'autorizado').toLowerCase(),
-            mensagemSefaz: 'NFS-e Autorizada',
+            mensagemSefaz: ns.oficial ? 'NFS-e Oficial Goiânia' : 'NFS-e Espelho RPS',
             danfeUrl: '',
             xmlUrl: '',
             xmlConteudo: ns.xml_conteudo || '',
+            oficial: Boolean(ns.oficial),
             rawServico: ns
         });
     });
@@ -532,7 +538,9 @@ function renderNotasFiscais() {
         const isDev = n.isDevolucao || n.tipo === 'NF-e Devolução';
 
         const badgeMod = isNFSe 
-            ? `<span class="inline-flex items-center gap-1 bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 font-bold px-2.5 py-0.5 rounded-full text-[10px] whitespace-nowrap"><i class="fa-solid fa-screwdriver-wrench text-[9px]"></i> NFS-e (Serviço)</span>`
+            ? (n.oficial 
+                ? `<span class="inline-flex items-center gap-1 bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 font-bold px-2.5 py-0.5 rounded-full text-[10px] whitespace-nowrap" title="Nota Fiscal de Serviços Eletrônica homologada oficialmente pela Prefeitura de Goiânia"><i class="fa-solid fa-building-columns text-[9px]"></i> NFS-e Goiânia (Oficial)</span>`
+                : `<span class="inline-flex items-center gap-1 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 font-bold px-2.5 py-0.5 rounded-full text-[10px] whitespace-nowrap" title="Espelho / Recibo Provisório de Serviços interno no sistema"><i class="fa-solid fa-receipt text-[9px]"></i> NFS-e (RPS Interno)</span>`)
             : (isDev
                 ? `<span class="inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-bold px-2.5 py-0.5 rounded-full text-[10px] whitespace-nowrap"><i class="fa-solid fa-rotate-left text-[9px]"></i> Devolução (55)</span>`
                 : (isNFe 
@@ -586,6 +594,9 @@ function renderNotasFiscais() {
 
         if (isNFSe) {
             btnDanfe = `<button type="button" onclick="imprimirDanfse('${n.numero}', '${n.vendaId}')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/60 font-bold text-xs transition-colors border border-purple-200 dark:border-purple-800 shadow-xs" title="Imprimir / Visualizar NFS-e"><i class="fa-solid fa-print"></i> DANFSE</button>`;
+            if (n.xmlConteudo || n.xmlUrl) {
+                btnXml = `<button type="button" onclick="baixarXmlNativo('${n.vendaId}', 'NFS-e')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 font-bold text-xs transition-colors border border-slate-200 dark:border-slate-600 shadow-xs" title="Baixar Arquivo XML da NFS-e"><i class="fa-solid fa-code"></i> XML</button>`;
+            }
         } else if (isDev) {
             btnDanfe = `<button type="button" onclick="imprimirDanfeNativo('${n.vendaId}', 'NF-e Devolução')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60 font-bold text-xs transition-colors border border-amber-200 dark:border-amber-800 shadow-xs" title="Imprimir DANFE da Devolução (A4)"><i class="fa-solid fa-print"></i> DANFE</button>`;
             btnXml = `<button type="button" onclick="baixarXmlNativo('${n.vendaId}', 'NF-e Devolução')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 font-bold text-xs transition-colors border border-slate-200 dark:border-slate-600 shadow-xs" title="Baixar Arquivo XML da Devolução"><i class="fa-solid fa-code"></i> XML</button>`;
@@ -1262,9 +1273,34 @@ async function baixarLoteMensalXML() {
 // ==========================================
 // FATURAR VENDA PENDENTE DO HISTÓRICO
 // ==========================================
+let _filtroTipoFaturar = 'todos';
+
+function setFiltroTipoFaturar(tipo) {
+    _filtroTipoFaturar = tipo;
+    ['todos', 'servicos', 'produtos'].forEach(t => {
+        const btn = document.getElementById(`tab-fat-${t}`);
+        if (!btn) return;
+        if (t === tipo) {
+            btn.className = "flex-1 py-1.5 px-2 rounded-lg font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-xs transition-all text-center";
+            if (t === 'servicos') {
+                btn.className += " text-purple-700 dark:text-purple-300";
+            }
+        } else {
+            btn.className = "flex-1 py-1.5 px-2 rounded-lg font-bold hover:bg-white/50 dark:hover:bg-slate-800/50 transition-all text-center text-slate-500 dark:text-slate-400";
+        }
+    });
+    renderVendasParaFaturar();
+}
+
 function abrirModalEmitirAvulsa() {
     renderVendasParaFaturar();
     document.getElementById('modal-selecionar-venda').classList.remove('hidden');
+}
+
+function faturarComoNFSe(vendaId) {
+    const modalFat = document.getElementById('modal-selecionar-venda');
+    if (modalFat) modalFat.classList.add('hidden');
+    abrirModalNFSe(vendaId);
 }
 
 function renderVendasParaFaturar() {
@@ -1272,9 +1308,15 @@ function renderVendasParaFaturar() {
     if (!lista) return;
 
     const termo = (document.getElementById('busca-venda-avulsa')?.value || '').toLowerCase().trim();
-    const vendasSemNota = (db.vendas || []).filter(v => !v.nfe && !v.nfce && v.tipo !== 'ORÇAMENTO');
+    const vendasSemNota = (db.vendas || []).filter(v => !v.nfe && !v.nfce && !v.nfse && v.tipo !== 'ORÇAMENTO');
 
     let filtradas = vendasSemNota;
+    if (_filtroTipoFaturar === 'servicos') {
+        filtradas = filtradas.filter(v => v.tipo === 'SERVIÇO' || v.servicoDetalhes || (v.itens && v.itens.some(i => i.tipo === 'servico' || (i.categoria && i.categoria.toLowerCase().includes('servi')))));
+    } else if (_filtroTipoFaturar === 'produtos') {
+        filtradas = filtradas.filter(v => v.tipo !== 'SERVIÇO' && !v.servicoDetalhes);
+    }
+
     if (termo) {
         filtradas = filtradas.filter(v => 
             String(v.clienteNome || '').toLowerCase().includes(termo) ||
@@ -1286,7 +1328,7 @@ function renderVendasParaFaturar() {
     filtradas.sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0));
 
     if (filtradas.length === 0) {
-        lista.innerHTML = '<p class="text-center text-slate-400 py-6">Nenhuma venda pendente encontrada.</p>';
+        lista.innerHTML = '<p class="text-center text-slate-400 py-6">Nenhuma venda ou serviço pendente encontrado.</p>';
         return;
     }
 
@@ -1294,27 +1336,54 @@ function renderVendasParaFaturar() {
         const numPedStr = String(v.numeroPedido || v.id || '0').padStart(4, '0');
         const dataStr = v.data ? new Date(v.data).toLocaleDateString('pt-BR') : '-';
         const valorFmt = typeof formatMoney === 'function' ? formatMoney(v.tot || 0) : `R$ ${(v.tot || 0).toFixed(2)}`;
+        const isServ = v.tipo === 'SERVIÇO' || v.servicoDetalhes || (v.itens && v.itens.some(i => i.tipo === 'servico' || (i.categoria && i.categoria.toLowerCase().includes('servi'))));
+        const badgeTipo = isServ 
+            ? `<span class="bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-bold px-1.5 py-0.5 rounded text-[10px] inline-flex items-center gap-1"><i class="fa-solid fa-screwdriver-wrench text-[9px]"></i> SERVIÇO</span>` 
+            : `<span class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium px-1.5 py-0.5 rounded text-[10px]">VENDA</span>`;
+
+        let botoesAcao = '';
+        if (isServ) {
+            botoesAcao = `
+                <button onclick="faturarComoNFSe('${v.id}')" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-2.5 py-1.5 rounded text-[11px] transition-colors flex items-center gap-1 shadow-xs" title="Emitir NFS-e Municipal para este serviço do PDV">
+                    <i class="fa-solid fa-screwdriver-wrench"></i> NFS-e
+                </button>
+                <button onclick="emitirNotaDireta('${v.id}', 'nfce', false)" class="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold px-2 py-1.5 rounded text-[11px] transition-colors" title="Emitir NFC-e">
+                    NFC-e
+                </button>
+                <button onclick="emitirNotaDireta('${v.id}', 'nfe')" class="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold px-2 py-1.5 rounded text-[11px] transition-colors" title="Emitir NF-e">
+                    NF-e
+                </button>
+            `;
+        } else {
+            botoesAcao = `
+                <button onclick="emitirNotaDireta('${v.id}', 'nfce', false)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded text-[11px] transition-colors flex items-center gap-1" title="Emitir NFC-e Online">
+                    <i class="fa-solid fa-store"></i> NFC-e
+                </button>
+                <button onclick="emitirNotaDireta('${v.id}', 'nfce', true)" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-2 py-1.5 rounded text-[11px] transition-colors flex items-center gap-1" title="Emitir NFC-e em Contingência Off-line">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Contingência
+                </button>
+                <button onclick="emitirNotaDireta('${v.id}', 'nfe')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-2.5 py-1.5 rounded text-[11px] transition-colors flex items-center gap-1" title="Emitir NF-e Completa (Mod 55)">
+                    <i class="fa-solid fa-file-invoice"></i> NF-e
+                </button>
+                <button onclick="faturarComoNFSe('${v.id}')" class="bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-bold px-2 py-1.5 rounded text-[11px] transition-colors flex items-center gap-1" title="Emitir NFS-e de Serviço">
+                    <i class="fa-solid fa-screwdriver-wrench"></i> NFS-e
+                </button>
+            `;
+        }
 
         return `
             <div class="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-between gap-3 hover:border-blue-500 transition-colors">
                 <div>
                     <div class="flex items-center gap-2">
                         <span class="font-mono font-bold text-slate-800 dark:text-slate-100 text-xs">#${numPedStr}</span>
+                        ${badgeTipo}
                         <span class="text-[10px] text-slate-400">${dataStr}</span>
                     </div>
                     <p class="font-bold text-slate-700 dark:text-slate-200 text-xs mt-0.5">${v.clienteNome || 'Consumidor Final'}</p>
                     <span class="text-[11px] font-black text-emerald-600">${valorFmt}</span>
                 </div>
                 <div class="flex items-center gap-1.5">
-                    <button onclick="emitirNotaDireta('${v.id}', 'nfce', false)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded text-[11px] transition-colors flex items-center gap-1" title="Emitir NFC-e Online">
-                        <i class="fa-solid fa-store"></i> NFC-e
-                    </button>
-                    <button onclick="emitirNotaDireta('${v.id}', 'nfce', true)" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-2 py-1.5 rounded text-[11px] transition-colors flex items-center gap-1" title="Emitir NFC-e em Contingência Off-line">
-                        <i class="fa-solid fa-triangle-exclamation"></i> Contingência
-                    </button>
-                    <button onclick="emitirNotaDireta('${v.id}', 'nfe')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-2.5 py-1.5 rounded text-[11px] transition-colors flex items-center gap-1" title="Emitir NF-e Completa (Mod 55)">
-                        <i class="fa-solid fa-file-invoice"></i> NF-e
-                    </button>
+                    ${botoesAcao}
                 </div>
             </div>
         `;
@@ -1322,6 +1391,9 @@ function renderVendasParaFaturar() {
 }
 
 async function emitirNotaDireta(vendaId, tipo, contingencia = false) {
+    if (typeof window.temPermissaoNotaFiscal === 'function' && !window.temPermissaoNotaFiscal(tipo)) {
+        return showToast(`Seu plano atual não possui permissão para emitir ${String(tipo || '').toUpperCase()}. Fale com o suporte para upgrade!`, 'warning');
+    }
     // Se modo contingência estiver ativado no toggle, força contingência em NFC-e
     if (tipo === 'nfce' && !contingencia) {
         contingencia = localStorage.getItem('fc_modo_contingencia') === 'true';
@@ -1506,22 +1578,44 @@ async function baixarXmlNativo(vendaId, tipo = 'NFC-e') {
     if (typeof window.baixarXmlNativoGlobal === 'function') {
         return window.baixarXmlNativoGlobal(vendaId, tipo);
     }
-    const v = await obterVendaParaImpressao(vendaId);
-    if (!v) {
-        showToast('Venda não encontrada.', 'error');
-        return;
-    }
+    const isNFSe = (tipo === 'NFS-e' || tipo === 'nfse');
     const isDev = (tipo === 'NF-e Devolução' || tipo === 'devolucao');
-    const xml = isDev 
-        ? (v.nfe_devolucao?.xml_conteudo || v.fiscal_xml || '') 
-        : (v.fiscal_xml || v.nfce?.xml_conteudo || v.nfe?.xml_conteudo || '');
+
+    let v = await obterVendaParaImpressao(vendaId);
+    let xml = '';
+    let chave = '';
+
+    if (isNFSe) {
+        if (!v) {
+            const ns = (db.notasServico || []).find(x => String(x.vendaId) === String(vendaId) || String(x.id) === String(vendaId) || String(x.numero) === String(vendaId));
+            if (ns) {
+                xml = ns.xml_conteudo || '';
+                chave = ns.codigo_verificacao || ns.chave || `nfse_${ns.numero || vendaId}`;
+            }
+        } else {
+            xml = v.nfse?.xml_conteudo || v.fiscal_xml || '';
+            chave = v.nfse?.codigo_verificacao || v.nfse?.chave || `nfse_${v.nfse?.numero || vendaId}`;
+        }
+    } else if (isDev) {
+        if (!v) {
+            showToast('Venda não encontrada.', 'error');
+            return;
+        }
+        xml = v.nfe_devolucao?.xml_conteudo || v.fiscal_xml || '';
+        chave = v.nfe_devolucao?.chave_nfe || `devolucao_${vendaId}`;
+    } else {
+        if (!v) {
+            showToast('Venda não encontrada.', 'error');
+            return;
+        }
+        xml = v.fiscal_xml || v.nfce?.xml_conteudo || v.nfe?.xml_conteudo || '';
+        chave = v.fiscal_chave || v.nfce?.chave_nfe || v.nfe?.chave_nfe || `nota_${vendaId}`;
+    }
+
     if (!xml) {
         showToast('Conteúdo do arquivo XML não encontrado no banco de dados.', 'warning');
         return;
     }
-    const chave = isDev 
-        ? (v.nfe_devolucao?.chave_nfe || `devolucao_${vendaId}`) 
-        : (v.fiscal_chave || v.nfce?.chave_nfe || v.nfe?.chave_nfe || `nota_${vendaId}`);
     const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1894,6 +1988,9 @@ async function confirmarDevolucaoVenda() {
 let _devCompraItens = [];
 
 function abrirModalDevolucaoCompra() {
+    if (typeof window.temPermissaoNotaFiscal === 'function' && !window.temPermissaoNotaFiscal('nfe_devolucao')) {
+        return showToast('Seu plano atual não possui permissão para emitir NF-e de Devolução ao Fornecedor.', 'warning');
+    }
     const modal = document.getElementById('modal-devolucao-compra');
     if (!modal) return showToast('Modal de devolução de compra não encontrado.', 'error');
 
@@ -2668,32 +2765,233 @@ async function emitirNotaAvulsaModal() {
 // ==========================================
 // MODAL — EMISSÃO DE NFS-e (SERVIÇOS)
 // ==========================================
-function abrirModalNFSe(vendaId = null) {
-    const modal = document.getElementById('modal-emitir-nfse');
-    if (!modal) return showToast('Modal de NFS-e não encontrado.', 'error');
+window._nfseVendaIdAtual = null;
 
-    // Limpar campos
+function popularSelectServicosPDV(vendaIdSelecionada = null) {
+    const sel = document.getElementById('nfse-select-venda-pdv');
+    if (!sel) return;
+
+    const vendas = db.vendas || [];
+    // Filtra serviços do PDV pendentes de NFS-e
+    const servicos = vendas.filter(v => (v.tipo === 'SERVIÇO' || v.servicoDetalhes || (v.itens && v.itens.some(i => i.tipo === 'servico' || (i.categoria && i.categoria.toLowerCase().includes('servi'))))) && !v.nfse && v.tipo !== 'ORÇAMENTO');
+    const outrasVendas = vendas.filter(v => !servicos.some(s => s.id === v.id) && !v.nfse && !v.nfe && !v.nfce && v.tipo !== 'ORÇAMENTO');
+
+    servicos.sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0));
+    outrasVendas.sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0));
+
+    let html = '<option value="">-- Selecione uma Ordem de Serviço ou Venda do PDV --</option>';
+
+    if (servicos.length > 0) {
+        html += '<optgroup label="🛠️ Serviços Realizados no PDV (Sem NFS-e)">';
+        servicos.forEach(v => {
+            const num = String(v.numeroPedido || v.id || '').padStart(4, '0');
+            const dataStr = v.data ? new Date(v.data).toLocaleDateString('pt-BR') : '';
+            const cli = v.clienteNome || 'Consumidor Final';
+            const val = typeof formatMoney === 'function' ? formatMoney(v.tot || 0) : `R$ ${(v.tot || 0).toFixed(2)}`;
+            const desc = (v.itens && v.itens[0]?.nome) ? ` - ${v.itens[0].nome}` : (v.servicoDetalhes?.desc ? ` - ${v.servicoDetalhes.desc.slice(0, 25)}...` : '');
+            const selected = String(v.id) === String(vendaIdSelecionada) ? 'selected' : '';
+            html += `<option value="${v.id}" ${selected}>#${num} | ${cli} | ${val} (${dataStr})${desc}</option>`;
+        });
+        html += '</optgroup>';
+    }
+
+    if (outrasVendas.length > 0) {
+        html += '<optgroup label="📦 Outras Vendas do PDV sem Nota">';
+        outrasVendas.slice(0, 30).forEach(v => {
+            const num = String(v.numeroPedido || v.id || '').padStart(4, '0');
+            const dataStr = v.data ? new Date(v.data).toLocaleDateString('pt-BR') : '';
+            const cli = v.clienteNome || 'Consumidor Final';
+            const val = typeof formatMoney === 'function' ? formatMoney(v.tot || 0) : `R$ ${(v.tot || 0).toFixed(2)}`;
+            const selected = String(v.id) === String(vendaIdSelecionada) ? 'selected' : '';
+            html += `<option value="${v.id}" ${selected}>#${num} | ${cli} | ${val} (${dataStr})</option>`;
+        });
+        html += '</optgroup>';
+    }
+
+    if (servicos.length === 0 && outrasVendas.length === 0) {
+        html += '<option value="" disabled>Nenhum serviço pendente encontrado no momento</option>';
+    }
+
+    sel.innerHTML = html;
+}
+
+function selecionarServicoPDVParaNFSe(vendaId) {
+    if (!vendaId) {
+        limparVinculoServicoNFSe();
+        return;
+    }
+    const v = (db.vendas || []).find(x => String(x.id) === String(vendaId) || String(x.numeroPedido) === String(vendaId));
+    if (!v) {
+        showToast('Serviço/Venda não encontrado.', 'warning');
+        return;
+    }
+
+    window._nfseVendaIdAtual = v.id;
+    const inputHidden = document.getElementById('nfse-venda-id-vinculada');
+    if (inputHidden) inputHidden.value = v.id;
+
+    // Sincroniza o select caso tenha sido disparado programaticamente
+    const sel = document.getElementById('nfse-select-venda-pdv');
+    if (sel && sel.value !== String(v.id)) {
+        sel.value = String(v.id);
+    }
+
+    // Tomador
+    const docTomador = v.clienteDoc || v.clienteCpf || v.destinatario?.doc || v.destinatario?.cpf || v.destinatario?.cnpj || '';
+    const nomeTomador = v.clienteNome || v.destinatario?.nome || '';
+    const emailTomador = v.destinatario?.email || v.clienteEmail || '';
+    const telTomador = v.destinatario?.telefone || v.clienteTel || v.clienteTelefone || '';
+    const ruaTomador = v.destinatario?.rua ? ((v.destinatario.rua || '') + (v.destinatario.numero ? ', ' + v.destinatario.numero : '')) : (v.clienteEndereco || '');
+    const emp = db.config?.empresa || {};
+    const cidadeTomador = v.destinatario?.cidade || emp.cidade || 'Goiânia';
+    const ufTomador = (v.destinatario?.uf || emp.uf || 'GO').toUpperCase();
+
+    if (document.getElementById('nfse-tomador-doc')) document.getElementById('nfse-tomador-doc').value = docTomador;
+    if (document.getElementById('nfse-tomador-nome')) document.getElementById('nfse-tomador-nome').value = nomeTomador;
+    if (document.getElementById('nfse-tomador-email')) document.getElementById('nfse-tomador-email').value = emailTomador;
+    if (document.getElementById('nfse-tomador-tel')) document.getElementById('nfse-tomador-tel').value = telTomador;
+    if (document.getElementById('nfse-tomador-rua')) document.getElementById('nfse-tomador-rua').value = ruaTomador;
+    if (document.getElementById('nfse-tomador-cidade')) document.getElementById('nfse-tomador-cidade').value = cidadeTomador;
+    if (document.getElementById('nfse-tomador-uf')) document.getElementById('nfse-tomador-uf').value = ufTomador;
+
+    // Valores
+    const valorTot = parseFloat(v.tot || v.valorLiquido || 0);
+    if (document.getElementById('nfse-servico-valor')) document.getElementById('nfse-servico-valor').value = valorTot > 0 ? valorTot.toFixed(2) : '';
+
+    // Discriminação dos Serviços
+    const itens = v.itens || v.produtos || [];
+    let descPartes = [];
+    if (itens.length > 0) {
+        const itensTexto = itens.map(i => `${i.nome || i.descricao || 'Serviço'} (qtd: ${i.qtd || 1})`).join('; ');
+        descPartes.push(`Serviço(s): ${itensTexto}`);
+    }
+    if (v.servicoDetalhes?.desc) {
+        descPartes.push(`Escopo/Diagnóstico: ${v.servicoDetalhes.desc}`);
+    }
+    if (v.servicoDetalhes?.garantia) {
+        descPartes.push(`Garantia: ${v.servicoDetalhes.garantia}`);
+    }
+    const descFinal = descPartes.join(' | ') || 'Prestação de serviços';
+    if (document.getElementById('nfse-servico-desc')) document.getElementById('nfse-servico-desc').value = descFinal;
+
+    // Observações
+    const numPed = String(v.numeroPedido || v.id || '').padStart(4, '0');
+    let obsTexto = `Ref. Pedido PDV #${numPed}`;
+    if (v.obs) obsTexto += ` - ${v.obs}`;
+    if (document.getElementById('nfse-obs')) document.getElementById('nfse-obs').value = obsTexto;
+
+    // Badges visuais
+    const badge = document.getElementById('nfse-badge-vinculo');
+    if (badge) {
+        badge.classList.remove('hidden');
+        badge.innerHTML = `<i class="fa-solid fa-check mr-1"></i> Pedido #${numPed} Vinculado`;
+    }
+    const btnLimpar = document.getElementById('btn-limpar-vinculo-nfse');
+    if (btnLimpar) btnLimpar.classList.remove('hidden');
+
+    showToast(`Serviço do Pedido #${numPed} puxado com sucesso!`, 'success');
+}
+
+function limparVinculoServicoNFSe() {
+    window._nfseVendaIdAtual = null;
+    const inputHidden = document.getElementById('nfse-venda-id-vinculada');
+    if (inputHidden) inputHidden.value = '';
+
+    const sel = document.getElementById('nfse-select-venda-pdv');
+    if (sel) sel.value = '';
+
+    const badge = document.getElementById('nfse-badge-vinculo');
+    if (badge) badge.classList.add('hidden');
+
+    const btnLimpar = document.getElementById('btn-limpar-vinculo-nfse');
+    if (btnLimpar) btnLimpar.classList.add('hidden');
+
     ['nfse-tomador-doc', 'nfse-tomador-nome', 'nfse-tomador-email', 'nfse-tomador-tel', 'nfse-tomador-rua', 'nfse-servico-valor', 'nfse-servico-desc', 'nfse-obs'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
+}
+
+function atualizarVisibilidadeModuloNFSe() {
+    const emp = db.config?.empresa || {};
+    const empId = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
+    const isFc = (empId === 'emp_fc_moveis' || !empId || String(emp.cnpj || '').includes('37638679'));
+
+    const podeNfse = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfse') : true;
+    const podeNfe = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfe') : true;
+    const podeNfce = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfce') : true;
+    const podeDevolucao = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfe_devolucao') : true;
+
+    const habilitadoNFSe = podeNfse && (emp.habilitarNFSe !== undefined ? Boolean(emp.habilitarNFSe) : isFc);
+
+    const btnTop = document.getElementById('btn-top-emitir-nfse');
+    if (btnTop) btnTop.style.display = habilitadoNFSe ? '' : 'none';
+
+    const tabServicos = document.getElementById('tab-fat-servicos');
+    if (tabServicos) tabServicos.style.display = habilitadoNFSe ? '' : 'none';
+
+    const optNFSe = document.querySelector('#filtro-tipo-fiscal option[value="NFSE"]');
+    if (optNFSe) optNFSe.style.display = habilitadoNFSe ? '' : 'none';
+
+    const optNFe = document.querySelector('#filtro-tipo-fiscal option[value="NFE"]');
+    if (optNFe) optNFe.style.display = podeNfe ? '' : 'none';
+
+    const optNFCe = document.querySelector('#filtro-tipo-fiscal option[value="NFCE"]');
+    if (optNFCe) optNFCe.style.display = podeNfce ? '' : 'none';
+
+    const optDev = document.querySelector('#filtro-tipo-fiscal option[value="DEVOLUCAO"]');
+    if (optDev) optDev.style.display = podeDevolucao ? '' : 'none';
+
+    const btnDevFornec = document.querySelector('button[onclick="abrirModalDevolucaoCompra()"]');
+    if (btnDevFornec) btnDevFornec.style.display = podeDevolucao ? '' : 'none';
+
+    const optAvulsaNFe = document.querySelector('#avulsa-tipo option[value="nfe"]');
+    if (optAvulsaNFe) optAvulsaNFe.style.display = podeNfe ? '' : 'none';
+    const optAvulsaNFCe = document.querySelector('#avulsa-tipo option[value="nfce"]');
+    if (optAvulsaNFCe) optAvulsaNFCe.style.display = podeNfce ? '' : 'none';
+}
+window.atualizarVisibilidadeModuloNFSe = atualizarVisibilidadeModuloNFSe;
+
+function abrirModalNFSe(vendaId = null) {
+    if (typeof window.temPermissaoNotaFiscal === 'function' && !window.temPermissaoNotaFiscal('nfse')) {
+        return showToast('Seu plano atual não possui permissão para emitir NFS-e (Serviços). Fale com o suporte para upgrade!', 'warning');
+    }
+    const modal = document.getElementById('modal-emitir-nfse');
+    if (!modal) return showToast('Modal de NFS-e não encontrado.', 'error');
+
+    // Limpar campos anteriores
+    limparVinculoServicoNFSe();
+
+    // Popular dropdown de serviços do PDV
+    popularSelectServicosPDV(vendaId);
 
     const emp = db.config?.empresa || {};
+    const cidadeEmp = String(emp.cidade || '').trim();
+    const ibgeEmp = String(emp.ibge || '').trim();
+    const isGoiania = ibgeEmp === '5208707' || cidadeEmp.toLowerCase().includes('goiânia') || cidadeEmp.toLowerCase().includes('goiania');
+
     if (document.getElementById('nfse-tomador-cidade')) document.getElementById('nfse-tomador-cidade').value = emp.cidade || 'Goiânia';
     if (document.getElementById('nfse-tomador-uf')) document.getElementById('nfse-tomador-uf').value = emp.uf || 'GO';
     if (document.getElementById('nfse-servico-aliq')) document.getElementById('nfse-servico-aliq').value = '2.00';
 
-    // Se veio vinculado a uma venda de serviço
+    // Ajusta opções de transmissão conforme a cidade da empresa
+    const radioOficial = document.getElementById('nfse-radio-oficial');
+    const radioInterno = document.getElementById('nfse-radio-interno');
+    const descOficial = document.getElementById('nfse-desc-opcao-oficial');
+    const descInterno = document.getElementById('nfse-desc-opcao-interno');
+
+    if (isGoiania) {
+        if (radioOficial) radioOficial.checked = true;
+        if (descOficial) descOficial.textContent = 'Transmissão direta via Web Service ISSNet com Certificado Digital A1.';
+        if (descInterno) descInterno.textContent = 'Registro interno de RPS no sistema para conferência sem envio imediato à SEFIN.';
+    } else {
+        if (radioInterno) radioInterno.checked = true;
+        if (descOficial) descOficial.innerHTML = `<span class="text-amber-600 dark:text-amber-400 font-bold">Aviso:</span> Web Service direto homologado para Goiânia - GO.`;
+        if (descInterno) descInterno.textContent = `Emissão de RPS / Espelho Oficial para ${cidadeEmp || 'seu município'}.`;
+    }
+
     if (vendaId) {
-        const v = (db.vendas || []).find(x => String(x.id) === String(vendaId));
-        if (v) {
-            if (document.getElementById('nfse-tomador-doc')) document.getElementById('nfse-tomador-doc').value = v.clienteDoc || v.clienteCpf || '';
-            if (document.getElementById('nfse-tomador-nome')) document.getElementById('nfse-tomador-nome').value = v.clienteNome || '';
-            if (document.getElementById('nfse-servico-valor')) document.getElementById('nfse-servico-valor').value = parseFloat(v.tot || v.valorLiquido || 0).toFixed(2);
-            const itens = v.itens || v.produtos || [];
-            const desc = itens.map(i => `${i.nome || i.descricao || 'Serviço'} (qtd: ${i.qtd || 1})`).join('; ') || 'Prestação de serviços';
-            if (document.getElementById('nfse-servico-desc')) document.getElementById('nfse-servico-desc').value = desc;
-        }
+        selecionarServicoPDVParaNFSe(vendaId);
     }
 
     modal.classList.remove('hidden');
@@ -2720,29 +3018,117 @@ async function emitirNFSeModal() {
     const desc = document.getElementById('nfse-servico-desc')?.value?.trim();
     const issRetido = document.getElementById('nfse-servico-iss-retido')?.value === 'sim';
     const obs = document.getElementById('nfse-obs')?.value?.trim() || '';
+    const vendaId = window._nfseVendaIdAtual || document.getElementById('nfse-venda-id-vinculada')?.value || null;
+    const tipoEnvio = document.querySelector('input[name="nfse_tipo_envio"]:checked')?.value || 'oficial';
 
     if (!desc) return showToast('Preencha a discriminação dos serviços prestados.', 'error');
     if (!valor || valor <= 0) return showToast('Informe um valor válido para o serviço.', 'error');
 
     const btn = document.getElementById('btn-emitir-nfse-modal');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Emitindo NFS-e...'; }
-    showToast('Processando e registrando NFS-e...', 'info');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = tipoEnvio === 'oficial'
+            ? '<i class="fa-solid fa-spinner fa-spin"></i> Transmitindo à Prefeitura...'
+            : '<i class="fa-solid fa-spinner fa-spin"></i> Gerando RPS...';
+    }
+    showToast(tipoEnvio === 'oficial' ? 'Transmitindo à Prefeitura de Goiânia via Web Service...' : 'Processando espelho interno...', 'info');
 
     try {
-        const fn = firebase.functions().httpsCallable('emitirNFSe');
-        const res = await fn({
-            tomador: { doc, nome, email, telefone: tel, rua, cidade, uf },
-            servico: {
-                itemListaServico,
-                descricao: desc,
-                valor,
-                aliquotaIss: aliqIss,
-                issRetido
-            },
-            observacoes: obs
-        });
+        const empIdAtual = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis';
+        let dadosRetorno = null;
 
-        showToast(res.data?.message || 'NFS-e emitida com sucesso!', 'success');
+        try {
+            const fn = firebase.functions().httpsCallable('emitirNFSe');
+            const res = await fn({
+                vendaId: vendaId,
+                tipoEnvio: tipoEnvio,
+                empId: empIdAtual,
+                tomador: { doc, nome, email, telefone: tel, rua, cidade, uf },
+                servico: {
+                    itemListaServico,
+                    descricao: desc,
+                    valor,
+                    aliquotaIss: aliqIss,
+                    issRetido
+                },
+                observacoes: obs
+            });
+            dadosRetorno = res.data?.data || res.data;
+        } catch (fnErr) {
+            if (tipoEnvio === 'oficial') {
+                console.error('[NFS-e Oficial] Erro na transmissão à Prefeitura de Goiânia:', fnErr);
+                throw new Error(fnErr.message || 'Falha na comunicação com o Web Service da Prefeitura de Goiânia.');
+            }
+
+            console.warn('[NFS-e Interno] Cloud function indisponível, gravando no Firestore:', fnErr);
+            const empRef = (typeof window.getEmpresaRef === 'function') 
+                ? window.getEmpresaRef() 
+                : firestore.collection('empresas').doc(empIdAtual);
+
+            const configSnap = await empRef.get();
+            const empCfg = configSnap.exists ? (configSnap.data()?.empresa || {}) : (db.config?.empresa || {});
+            const numNFSe = parseInt(empCfg.proximoNumeroNFSe || 1, 10);
+            const serieNFSe = String(empCfg.serieNFSe || '1');
+            const dataEmissao = new Date().toISOString();
+            const codigoVerificacao = 'RPS' + Math.random().toString(36).substring(2, 10).toUpperCase();
+
+            dadosRetorno = {
+                tipo: 'NFS-e',
+                modelo: 'NFS-e',
+                oficial: false,
+                status: 'autorizado',
+                numero: String(numNFSe),
+                serie: serieNFSe,
+                codigo_verificacao: codigoVerificacao,
+                chave: codigoVerificacao,
+                data_emissao: dataEmissao,
+                valor: valor,
+                valor_iss: parseFloat(((valor * aliqIss) / 100).toFixed(2)),
+                aliquota_iss: aliqIss,
+                item_lista_servico: itemListaServico,
+                discriminacao: desc,
+                tomador: { doc, nome, email, telefone: tel, rua, cidade, uf },
+                prestador: {
+                    cnpj: String(empCfg.cnpj || '').replace(/\D/g, ''),
+                    im: empCfg.im || '',
+                    nome: empCfg.razaoSocial || empCfg.nome || 'PRESTADOR'
+                },
+                xml_conteudo: '',
+                vendaId: vendaId ? String(vendaId) : null,
+                criadoEm: dataEmissao,
+                emitidoPor: (window.currentUser && window.currentUser.uid) || 'sistema'
+            };
+
+            const docId = `nfse_${numNFSe}_${codigoVerificacao}`;
+            await empRef.collection('notas_servico').doc(docId).set(dadosRetorno);
+
+            if (vendaId) {
+                await empRef.collection('vendas').doc(String(vendaId)).set({
+                    nfse: dadosRetorno,
+                    status_fiscal_nfse: 'autorizado'
+                }, { merge: true });
+            }
+
+            await empRef.set({
+                empresa: {
+                    proximoNumeroNFSe: numNFSe + 1
+                }
+            }, { merge: true });
+        }
+
+        // Se vinculado a uma venda, sincroniza array local
+        if (vendaId) {
+            const vIndex = (db.vendas || []).findIndex(x => String(x.id) === String(vendaId));
+            if (vIndex !== -1) {
+                db.vendas[vIndex].nfse = dadosRetorno;
+                db.vendas[vIndex].status_fiscal_nfse = 'autorizado';
+            }
+        }
+
+        const msgSucesso = dadosRetorno?.oficial
+            ? `NFS-e Nº ${dadosRetorno.numero || ''} autorizada oficialmente pela Prefeitura de Goiânia!`
+            : `Espelho interno de NFS-e (RPS Nº ${dadosRetorno?.numero || ''}) gerado com sucesso!`;
+        showToast(msgSucesso, 'success');
         fecharModalNFSe();
         processarNotasFiscais();
         renderNotasFiscais();
@@ -2885,4 +3271,29 @@ window.toggleAllItensDevolucaoCompra = toggleAllItensDevolucaoCompra;
 window.alterarQtdItemDevolucaoCompra = alterarQtdItemDevolucaoCompra;
 window.removerItemDevolucaoCompra = removerItemDevolucaoCompra;
 window.emitirDevolucaoCompraModal = emitirDevolucaoCompraModal;
+window.setFiltroTipoFaturar = setFiltroTipoFaturar;
+window.faturarComoNFSe = faturarComoNFSe;
+window.popularSelectServicosPDV = popularSelectServicosPDV;
+window.selecionarServicoPDVParaNFSe = selecionarServicoPDVParaNFSe;
+window.limparVinculoServicoNFSe = limparVinculoServicoNFSe;
+
+// Autodetectar requisição de abertura de NFS-e via URL (ex: fiscal.html?nfse_venda=ID)
+(function checarAberturaNfseURL() {
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const vendaIdParam = urlParams.get('nfse_venda') || urlParams.get('faturar_nfse');
+        if (vendaIdParam) {
+            let tentativas = 0;
+            const timer = setInterval(() => {
+                tentativas++;
+                if ((db.vendas && db.vendas.length > 0) || tentativas >= 15) {
+                    clearInterval(timer);
+                    abrirModalNFSe(vendaIdParam);
+                }
+            }, 300);
+        }
+    } catch(e) {
+        console.warn('Erro ao processar parâmetro de URL fiscal:', e);
+    }
+})();
 

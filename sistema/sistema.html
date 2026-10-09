@@ -35,8 +35,8 @@
     <title>FC Gestão - Configurações</title>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css?v=20261008194435">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261008194435">
+    <link rel="stylesheet" href="../style.css?v=20261009175646">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261009175646">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -86,7 +86,7 @@
                 <a href="marketing.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="marketing"><i class="fa-solid fa-bullhorn w-5 text-center"></i> Marketing & Lembretes</a>
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Sistema</p>
-                <a href="sistema.html" class="nav-btn bg-blue-600 text-white w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"><i class="fa-solid fa-gear w-5 text-center"></i> Configurações</a>
+                <a href="sistema.html" class="nav-btn bg-blue-600 text-white w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors active"><i class="fa-solid fa-gear w-5 text-center"></i> Configurações</a>
                 <a href="suporte.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-sky-400" data-target="suporte"><i class="fa-solid fa-headset w-5 text-center text-sky-400"></i> Suporte & Ajuda</a>
             </nav>
             <div class="p-4 border-t border-slate-800">
@@ -398,6 +398,39 @@
                             <div class="md:col-span-2">
                                 <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">Natureza da Operação Padrão</label>
                                 <input type="text" id="emp-natureza-operacao" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-sm outline-none focus:border-blue-500 dark:text-white" value="VENDA DE MERCADORIA" placeholder="Ex: VENDA DE MERCADORIA">
+                            </div>
+
+                            <!-- MÓDULO DE SERVIÇOS / NFS-e (MUNICIPAL) -->
+                            <div class="col-span-1 md:col-span-3 bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/60 rounded-xl p-4 mt-2">
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
+                                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                                        <input type="checkbox" id="emp-habilitar-nfse" onchange="alternarModuloNFSeConfig()" class="w-4 h-4 text-purple-600 rounded focus:ring-purple-500">
+                                        <span class="text-xs font-bold text-purple-900 dark:text-purple-200 flex items-center gap-1.5">
+                                            <i class="fa-solid fa-screwdriver-wrench text-purple-600"></i> Habilitar Módulo de NFS-e (Nota Fiscal de Serviços)
+                                        </span>
+                                    </label>
+                                    <span id="badge-nfse-cidade-status" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300">
+                                    </span>
+                                </div>
+                                <div id="container-nfse-detalhes" class="grid grid-cols-1 md:grid-cols-3 gap-3 hidden pt-2 border-t border-purple-200/60 dark:border-purple-800/50">
+                                    <div>
+                                        <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Série NFS-e</label>
+                                        <input type="text" id="emp-serie-nfse" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-sm outline-none focus:border-purple-500 dark:text-white" value="1" placeholder="Ex: 1">
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Próximo RPS / NFS-e</label>
+                                        <input type="number" id="emp-numero-nfse" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2 rounded-lg text-sm outline-none focus:border-purple-500 dark:text-white font-bold text-purple-600 dark:text-purple-400" value="1" placeholder="Ex: 1">
+                                    </div>
+                                    <div class="flex items-end">
+                                        <button type="button" onclick="copiarEmailLiberacaoPrefeitura()" id="btn-copiar-email-prefeitura" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs p-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow-sm cursor-pointer" title="Copiar modelo de e-mail pronto para solicitar liberação na SEFIN">
+                                            <i class="fa-regular fa-copy"></i> Copiar E-mail p/ Prefeitura
+                                        </button>
+                                    </div>
+                                    <div class="col-span-1 md:col-span-3">
+                                        <p id="texto-ajuda-nfse-cidade" class="text-[11px] text-purple-800 dark:text-purple-300 leading-relaxed"></p>
+                                    </div>
+                                </div>
+                            </div>
                             </div>
                         </div>
                     </div>
@@ -726,11 +759,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
     
-    <script src="../sistema/config_banco.js?v=20261008194435"></script>
-    <script src="saas_licenca.js?v=20261008194435"></script>
-    <script src="../global.js?v=20261008194435"></script>
-    <script src="fc_cache.js?v=20261008194435"></script>
-    <script src="sistema.js?v=20261008194435"></script>
+    <script src="../sistema/config_banco.js?v=20261009175646"></script>
+    <script src="saas_licenca.js?v=20261009175646"></script>
+    <script src="../global.js?v=639271666798430703"></script>
+    <script src="fc_cache.js?v=639271666793792614"></script>
+    <script src="sistema.js?v=639271666980709994"></script>
 <!-- MODAL DE GERENCIAMENTO DE OPCOES PERSONALIZADAS (MADEIRAS, TECIDOS, CORES) -->
     <div id="modal-opcoes-personalizadas" class="fixed inset-0 bg-slate-900/70 z-[170] hidden flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in duration-150 max-h-[90vh]">
@@ -755,45 +788,4 @@
                     <button type="button" onclick="alternarAbaOpcoesPersonalizacao('madeiras')" id="aba-pers-btn-madeiras" class="py-2 px-3 rounded-lg font-bold text-xs transition border flex items-center justify-center gap-1.5 bg-amber-500/10 border-amber-500 text-amber-600 dark:text-amber-400">
                         <i class="fa-solid fa-tree"></i> Madeiras
                     </button>
-                    <button type="button" onclick="alternarAbaOpcoesPersonalizacao('cores_madeira')" id="aba-pers-btn-cores_madeira" class="py-2 px-3 rounded-lg font-bold text-xs transition border flex items-center justify-center gap-1.5 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100">
-                        <i class="fa-solid fa-palette"></i> Cores Madeira
-                    </button>
-                    <button type="button" onclick="alternarAbaOpcoesPersonalizacao('tecidos')" id="aba-pers-btn-tecidos" class="py-2 px-3 rounded-lg font-bold text-xs transition border flex items-center justify-center gap-1.5 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100">
-                        <i class="fa-solid fa-rug"></i> Tecidos
-                    </button>
-                    <button type="button" onclick="alternarAbaOpcoesPersonalizacao('cores_estofado')" id="aba-pers-btn-cores_estofado" class="py-2 px-3 rounded-lg font-bold text-xs transition border flex items-center justify-center gap-1.5 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100">
-                        <i class="fa-solid fa-brush"></i> Cores Tecido
-                    </button>
-                </div>
-
-                <!-- Adicionar Nova Opcao -->
-                <div>
-                    <label id="label-nova-opcao-pers" class="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">Adicionar Novo Tipo de Madeira:</label>
-                    <div class="flex gap-2">
-                        <input type="text" id="input-nova-opcao-pers" placeholder="Ex: Cedro Rosa, Peroba, Imbuia, Suede, Linho..." class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-amber-500 dark:text-white" onkeydown="if(event.key==='Enter'){ event.preventDefault(); adicionarOpcaoPersonalizacaoAtiva(); }">
-                        <button type="button" onclick="adicionarOpcaoPersonalizacaoAtiva()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2.5 rounded-lg text-xs transition shadow-sm flex items-center gap-1.5 active:scale-95 shrink-0">
-                            <i class="fa-solid fa-plus"></i> Adicionar
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Lista de Opcoes Cadastradas -->
-                <div>
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="font-bold text-slate-700 dark:text-slate-300">Opções Disponíveis:</span>
-                        <span id="contador-opcoes-pers" class="text-[11px] text-slate-500">0 cadastradas</span>
-                    </div>
-                    <div id="lista-opcoes-pers-tags" class="flex flex-wrap gap-2 p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700/80 min-h-[100px] items-start content-start">
-                        <!-- Tags injetadas via JS -->
-                    </div>
-                </div>
-            </div>
-
-            <div class="p-3.5 bg-slate-100 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-700 flex justify-end shrink-0">
-                <button type="button" onclick="fecharModalOpcoesPersonalizadas()" class="px-5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-white hover:bg-slate-700 transition">Concluído</button>
-            </div>
-        </div>
-    </div>
-</body>
-</html>
-
+                    <button type

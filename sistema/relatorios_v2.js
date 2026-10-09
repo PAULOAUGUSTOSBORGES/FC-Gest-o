@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // GESTÃO.JS - ERP FINANCEIRO, DASHBOARD E PROJEÇÕES
 // ==========================================
 
@@ -109,6 +109,52 @@ function inicializarGestao() {
         db.vendas = dados;
         tentarRefresh();
         debouncedRenderDashboard();
+    });
+
+    // Reatividade cross-tab e restauração de foco instantânea nos relatórios
+    window.addEventListener('fc-dados-locais-atualizados', function(ev) {
+        if (ev && ev.detail && ev.detail.colecao) {
+            const col = ev.detail.colecao;
+            if (col === 'vendas' || col === 'financeiro' || col === 'compras') {
+                if (Array.isArray(ev.detail.dados)) {
+                    db[col] = ev.detail.dados;
+                    try { refreshCurrentView(); } catch(e) {}
+                    debouncedRenderDashboard();
+                }
+            }
+        }
+    });
+    window.addEventListener('focus', function() {
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.get === 'function') {
+            let alterado = false;
+            ['vendas', 'financeiro', 'compras'].forEach(function(col) {
+                const cAtual = window.FCCache.get(col);
+                if (Array.isArray(cAtual) && (!db[col] || cAtual.length !== db[col].length)) {
+                    db[col] = cAtual;
+                    alterado = true;
+                }
+            });
+            if (alterado) {
+                try { refreshCurrentView(); } catch(e) {}
+                debouncedRenderDashboard();
+            }
+        }
+    });
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden && typeof window.FCCache !== 'undefined' && typeof window.FCCache.get === 'function') {
+            let alterado = false;
+            ['vendas', 'financeiro', 'compras'].forEach(function(col) {
+                const cAtual = window.FCCache.get(col);
+                if (Array.isArray(cAtual) && (!db[col] || cAtual.length !== db[col].length)) {
+                    db[col] = cAtual;
+                    alterado = true;
+                }
+            });
+            if (alterado) {
+                try { refreshCurrentView(); } catch(e) {}
+                debouncedRenderDashboard();
+            }
+        }
     });
     _listen('financeiro', function(dados) {
         db.financeiro = dados;
@@ -2331,13 +2377,16 @@ function renderDashboard() {
     // Despesas Operacionais e Impostos: rigorosamente apenas despesas pagas no período
     let despesasOperacionais = 0;
     let impostosTotal = 0;
+    let comprasFornecedoresTotal = 0;
 
     despesasPagas.forEach(d => {
-        const cat = String(d.categoria || '').toLowerCase();
+        const cat = String(d.categoria || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         const val = Number(d.valorPago || d.valor || 0);
 
         if (cat.includes('imposto') || cat.includes('das') || cat.includes('icms') || cat.includes('simples') || cat.includes('tributo')) {
             impostosTotal += val;
+        } else if (cat.includes('fornecedor') || cat.includes('compra') || cat.includes('estoque') || cat.includes('mercadoria')) {
+            comprasFornecedoresTotal += val;
         } else {
             despesasOperacionais += val;
         }
@@ -2916,8 +2965,10 @@ function abrirDrilldownDRE(tipo, parametroExtra = null) {
             iconeCor = 'text-red-400';
             corTotal = 'text-red-500 dark:text-red-400';
             listaItens = despesasPagas.filter(d => {
-                const cat = String(d.categoria || '').toLowerCase();
-                return !(cat.includes('imposto') || cat.includes('das') || cat.includes('icms') || cat.includes('simples') || cat.includes('tributo'));
+                const cat = String(d.categoria || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                const isImposto = cat.includes('imposto') || cat.includes('das') || cat.includes('icms') || cat.includes('simples') || cat.includes('tributo');
+                const isFornecedor = cat.includes('fornecedor') || cat.includes('compra') || cat.includes('estoque') || cat.includes('mercadoria');
+                return !isImposto && !isFornecedor;
             }).map(d => {
                 const docRef = [
                     d.ref || d.descricao || 'Despesa',
@@ -2974,11 +3025,12 @@ function abrirDrilldownDRE(tipo, parametroExtra = null) {
             const recL = fatT - taxT;
             const cmvT = vendas.reduce((a, b) => a + Number(b.custoTotal || 0), 0);
             const lucB = recL - cmvT;
-            let despOp = 0; let impT = 0;
+            let despOp = 0; let impT = 0; let fornT = 0;
             despesasPagas.forEach(d => {
-                const cat = String(d.categoria || '').toLowerCase();
+                const cat = String(d.categoria || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
                 const v = Number(d.valorPago || d.valor || 0);
                 if (cat.includes('imposto') || cat.includes('das') || cat.includes('icms') || cat.includes('simples') || cat.includes('tributo')) impT += v;
+                else if (cat.includes('fornecedor') || cat.includes('compra') || cat.includes('estoque') || cat.includes('mercadoria')) fornT += v;
                 else despOp += v;
             });
             const resL = lucB - despOp - impT;
@@ -2989,9 +3041,12 @@ function abrirDrilldownDRE(tipo, parametroExtra = null) {
                 { data: periodo.fim.toISOString(), descricao: '(=) RECEITA OPERACIONAL LÍQUIDA', pessoa: 'Resultado após deduções de taxas', categoria: 'Receita Líquida', centroCusto: 'Geral', metodo: '-', banco: '-', valor: recL, badge: 'SUBTOTAL (=)', corValor: 'text-blue-600 dark:text-blue-400' },
                 { data: periodo.fim.toISOString(), descricao: '(-) Custo das Mercadorias Vendidas (CMV)', pessoa: 'Custo de reposição do estoque', categoria: 'CMV Direto', centroCusto: 'Estoque', metodo: 'Kardex', banco: 'Estoque', valor: -cmvT, badge: 'CMV (-)', corValor: 'text-red-500 dark:text-red-400' },
                 { data: periodo.fim.toISOString(), descricao: '(=) LUCRO BRUTO OPERACIONAL (Margem de Contribuição)', pessoa: 'Sobra limpa das vendas para cobrir custos fixos', categoria: 'Margem Contribuição', centroCusto: 'Geral', metodo: '-', banco: '-', valor: lucB, badge: 'SUBTOTAL (=)', corValor: 'text-emerald-600 dark:text-emerald-400' },
-                { data: periodo.fim.toISOString(), descricao: '(-) Despesas Operacionais, Fixas & Boletos Pagos', pessoa: 'Salários, aluguel, água, energia, fornecedores pagos', categoria: 'Despesas Fixas / Variáveis', centroCusto: 'Operacional / ADM', metodo: 'Boletos / PIX Pagos', banco: 'Contas Bancárias', valor: -despOp, badge: 'DESPESAS (-)', corValor: 'text-red-500 dark:text-red-400' },
+                { data: periodo.fim.toISOString(), descricao: '(-) Despesas Operacionais, Fixas & Boletos Pagos', pessoa: 'Salários, aluguel, água, energia, internet, etc.', categoria: 'Despesas Fixas / ADM', centroCusto: 'Operacional / ADM', metodo: 'Boletos / PIX Pagos', banco: 'Contas Bancárias', valor: -despOp, badge: 'DESPESAS (-)', corValor: 'text-red-500 dark:text-red-400' },
                 { data: periodo.fim.toISOString(), descricao: '(-) Impostos e Tributos Pagos (DAS / Simples)', pessoa: 'Receita Federal / Fazenda', categoria: 'Impostos', centroCusto: 'Fiscal', metodo: 'Guias Pagas', banco: 'Conta Bancária', valor: -impT, badge: 'IMPOSTOS (-)', corValor: 'text-red-500 dark:text-red-400' }
             ];
+            if (fornT > 0) {
+                listaItens.push({ data: periodo.fim.toISOString(), descricao: '(i) Pagamentos a Fornecedores no Período (Informativo DFC)', pessoa: 'Custo de mercadorias já deduzido no CMV acima', categoria: 'Aquisição de Estoque', centroCusto: 'Compras', metodo: 'Boletos Pagos', banco: 'Fornecedores', valor: -fornT, badge: 'INFORMATIVO', corValor: 'text-slate-400' });
+            }
             break;
 
         case 'CATEGORIA':
@@ -5577,10 +5632,12 @@ function coletarDadosCompletosParaIA(perguntaUsuario) {
     let despesasOperacionais = 0;
     let impostosTotal = 0;
     despesasPagasObj.forEach(d => {
-        const cat = String(d.categoria || '').toLowerCase();
+        const cat = String(d.categoria || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         const val = Number(d.valorPago || d.valor || 0);
         if (cat.includes('imposto') || cat.includes('das') || cat.includes('icms') || cat.includes('simples') || cat.includes('tributo')) {
             impostosTotal += val;
+        } else if (cat.includes('fornecedor') || cat.includes('compra') || cat.includes('estoque') || cat.includes('mercadoria')) {
+            // Custo de reposição de mercadoria coberto no CMV
         } else {
             despesasOperacionais += val;
         }
@@ -6266,18 +6323,18 @@ async function carregarHistoricoRelatoriosIA() {
                 .substring(0, 95);
             if (preview.length >= 95) preview += '...';
 
-            html += '<div class="shrink-0 relative bg-white dark:bg-slate-800/70 hover:bg-indigo-50/40 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-700/60 hover:border-indigo-400 dark:hover:border-indigo-500 rounded-xl p-3.5 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md group" onclick="verRelatorioHistorico(\''+item.id+'\')">' +
+            html += '<div class="ia-historico-item group" onclick="verRelatorioHistorico(\''+item.id+'\')">' +
                 ('<div class="flex items-start justify-between gap-2 mb-1.5">' +
                     '<div class="flex items-center gap-2 min-w-0">' +
-                        '<span class="w-6 h-6 rounded-md bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 text-[10px]"><i class="fa-solid fa-robot"></i></span>' +
-                        '<h5 class="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 truncate leading-snug">'+titulo+'</h5>' +
+                        '<span class="w-6 h-6 rounded-md bg-indigo-500/15 text-indigo-400 flex items-center justify-center shrink-0 text-[10px]"><i class="fa-solid fa-robot"></i></span>' +
+                        '<h5 class="ia-historico-item-title group-hover:text-indigo-400 truncate leading-snug">'+titulo+'</h5>' +
                     '</div>' +
-                    '<span class="text-[10px] font-medium text-slate-400 dark:text-slate-500 shrink-0">'+dataFmt+'</span>' +
+                    '<span class="text-[10px] font-medium text-slate-400 shrink-0">'+dataFmt+'</span>' +
                 '</div>' +
-                '<p class="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed pl-8">'+(preview || 'Clique para visualizar o relatório completo gerado.')+'</p>' +
-                '<div class="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-700/50 flex items-center justify-between text-[11px] text-indigo-600 dark:text-indigo-400 font-bold pl-8">' +
+                '<p class="ia-historico-item-preview line-clamp-2 leading-relaxed pl-8">'+(preview || 'Clique para visualizar o relatório completo gerado.')+'</p>' +
+                '<div class="mt-2.5 pt-2 border-t border-slate-700/50 flex items-center justify-between text-[11px] text-indigo-400 font-bold pl-8">' +
                     '<span class="flex items-center gap-1.5 group-hover:underline"><i class="fa-solid fa-eye text-[10px]"></i> Ver Relatório</span>' +
-                    '<button type="button" onclick="event.stopPropagation(); deletarRelatorioHistorico(\''+item.id+'\')" class="text-slate-400 hover:text-red-500 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="Excluir do histórico">' +
+                    '<button type="button" onclick="event.stopPropagation(); deletarRelatorioHistorico(\''+item.id+'\')" class="text-slate-400 hover:text-red-400 p-1 rounded hover:bg-red-500/10 transition-colors" title="Excluir do histórico">' +
                         '<i class="fa-solid fa-trash-can text-[10px]"></i>' +
                     '</button>' +
                 '</div>') +
@@ -6931,3 +6988,65 @@ window.atualizarLimiteExtratoVendedor = function() {
         }).join('');
     }
 };
+
+// -------------------------------------------------------------------------
+// MINI MENU DE RELATÓRIOS - NAVEGAÇÃO RÁPIDA E SCROLL SUAVE
+// -------------------------------------------------------------------------
+function irParaRelatorio(targetId) {
+    if (!targetId) return;
+    const elemento = document.getElementById(targetId);
+    if (!elemento) return;
+
+    // Rola suavemente até o elemento desejado
+    elemento.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // Efeito de destaque visual no card de destino (se não for o próprio menu de atalhos)
+    if (targetId !== 'mini-menu-relatorios') {
+        elemento.classList.add('ring-4', 'ring-indigo-500/80', 'ring-offset-2', 'dark:ring-offset-slate-900', 'shadow-2xl');
+        setTimeout(() => {
+            elemento.classList.remove('ring-4', 'ring-indigo-500/80', 'ring-offset-2', 'dark:ring-offset-slate-900', 'shadow-2xl');
+        }, 2200);
+    }
+
+    // Sincroniza o seletor do mini menu se existir
+    const select = document.getElementById('select-navegacao-relatorios');
+    if (select && select.value !== targetId) {
+        select.value = targetId;
+    }
+}
+window.irParaRelatorio = irParaRelatorio;
+
+function filtrarCategoriaMiniMenu(cat, btn) {
+    document.querySelectorAll('.mini-nav-cat-btn').forEach(b => b.classList.remove('active'));
+    if (btn) {
+        btn.classList.add('active');
+    } else {
+        const found = document.querySelector(`.mini-nav-cat-btn[data-cat="${cat}"]`);
+        if (found) found.classList.add('active');
+    }
+
+    document.querySelectorAll('#grid-botoes-mini-menu .mini-nav-chip').forEach(chip => {
+        const itemCat = chip.getAttribute('data-cat');
+        if (cat === 'todas' || itemCat === cat || itemCat === 'todas') {
+            chip.style.display = 'inline-flex';
+        } else {
+            chip.style.display = 'none';
+        }
+    });
+}
+window.filtrarCategoriaMiniMenu = filtrarCategoriaMiniMenu;
+
+// Inicialização dos listeners de scroll para o botão flutuante discreto
+document.addEventListener('DOMContentLoaded', () => {
+    const scrollContainer = document.getElementById('container-relatorios-scroll');
+    const btnFlutuante = document.getElementById('btn-flutuante-menu-relatorios');
+    if (scrollContainer && btnFlutuante) {
+        scrollContainer.addEventListener('scroll', () => {
+            if (scrollContainer.scrollTop > 350) {
+                btnFlutuante.classList.add('visivel');
+            } else {
+                btnFlutuante.classList.remove('visivel');
+            }
+        });
+    }
+});

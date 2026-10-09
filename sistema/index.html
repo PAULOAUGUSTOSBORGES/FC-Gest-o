@@ -36,8 +36,8 @@
         
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../style.css?v=20261008194435">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261008194435">
+    <link rel="stylesheet" href="../style.css?v=20261009175646">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261009175646">
 </head>
 <body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900">
 
@@ -63,7 +63,7 @@
             
             <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1 custom-scrollbar">
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-2 mb-1">Visão Geral</p>
-                <a href="index.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="dashboard"><i class="fa-solid fa-chart-pie w-5 text-center"></i> Dashboard</a>
+                <a href="index.html" class="nav-btn bg-blue-600 text-white active w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-colors" data-target="dashboard"><i class="fa-solid fa-chart-pie w-5 text-center"></i> Dashboard</a>
                 
                 <p class="px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-4 mb-1">Operação</p>
                 <a href="pdv.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300" data-target="pdv"><i class="fa-solid fa-cash-register w-5 text-center"></i> Frente de Caixa (PDV)</a>
@@ -196,6 +196,7 @@
                                     <span class="w-7 h-7 rounded-lg bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 text-xs shadow-xs"><i class="fa-solid fa-money-bill-transfer"></i></span>
                                     <span>Despesas Pagas (<span class="periodo-label">Mês</span>)</span>
                                 </p>
+                                <button onclick="event.stopPropagation(); abrirInfoDashboard('despesas_pagas')" class="text-slate-400 hover:text-rose-500 transition-colors p-0.5 text-xs" title="Como é calculado?"><i class="fa-solid fa-circle-question"></i></button>
                             </div>
                             <h3 class="text-xl md:text-2xl font-black text-rose-600 dark:text-rose-400 my-1" id="dash-despesas"><i class="fa-solid fa-spinner fa-spin text-sm text-slate-400"></i></h3>
                             <p class="text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate" id="dash-despesas-sub">Quitadas no período</p>
@@ -425,11 +426,11 @@
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     
     <!-- Scripts -->
-    <script src="../sistema/config_banco.js?v=20261008194435"></script>
-    <script src="saas_licenca.js?v=20261008194435"></script>
-    <script src="../global.js?v=20261008194435"></script>
-    <script src="fc_cache.js?v=20261008194435"></script>
-    <script src="index.js?v=20261008194435"></script>
+    <script src="../sistema/config_banco.js?v=20261009175646"></script>
+    <script src="saas_licenca.js?v=20261009175646"></script>
+    <script src="../global.js?v=639271666663086111"></script>
+    <script src="fc_cache.js?v=639271666662441734"></script>
+    <script src="index.js?v=639271666962708727"></script>
 </body>
 </html>
 
