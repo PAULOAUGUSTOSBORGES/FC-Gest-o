@@ -1,4 +1,4 @@
-﻿// cadastro.js - Lógica de Produtos, Clientes, Fornecedores e Estoque
+// cadastro.js - Lógica de Produtos, Clientes, Fornecedores e Estoque
 
 let acaoConfirmacaoPendente = null;
 
@@ -611,7 +611,7 @@ function renderKardex() {
         let badgeClass = m.tipo.includes('ENTRADA') ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400' : (m.tipo === 'VENDA' || m.tipo === 'SAIDA' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400');
         let tipoHtml = String(m.tipo || '').split('<br>').map(t => `<span class="px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 ${badgeClass}">${t}</span>`).join('<br>');
         let dataFormatada = (m.data && typeof formatData === 'function') ? formatData(m.data).replace(',', '') : (m.data || '-');
-        return `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 text-xs text-slate-500 dark:text-slate-400">${dataFormatada}</td><td class="p-4 whitespace-nowrap">${tipoHtml}</td><td class="p-4 font-bold text-slate-800 dark:text-slate-100">${m.prodNome}</td><td class="p-4 text-slate-600 dark:text-slate-300 text-xs">${m.ref}</td><td class="p-4 text-right font-black ${m.qtd > 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-red-500 dark:text-red-400'}">${m.qtd > 0 ? '+' + m.qtd : m.qtd}</td></tr>`;
+        return `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 text-xs text-slate-500 dark:text-slate-400">${dataFormatada}</td><td class="p-4 whitespace-nowrap">${tipoHtml}</td><td class="p-4 font-bold text-slate-800 dark:text-slate-100">${m.prodNome || m.produtoNome || (m.prodId || m.produtoId ? ((db.produtos || []).find(p => String(p.id) === String(m.prodId || m.produtoId))?.nome || 'Produto') : 'Produto')}</td><td class="p-4 text-slate-600 dark:text-slate-300 text-xs">${m.ref}</td><td class="p-4 text-right font-black ${m.qtd > 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-red-500 dark:text-red-400'}">${m.qtd > 0 ? '+' + m.qtd : m.qtd}</td></tr>`;
     }).join('') || '<tr><td colspan="5" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhuma movimentação de estoque.</td></tr>';
 }
 
@@ -1153,12 +1153,24 @@ function excluirFuncionario(id) {
         try {
             await window.getEmpresaRef().collection('funcionarios').doc(id).delete();
 
+            // SEGURANÇA: Remove o documento em /usuarios/{id} para impedir que ex-funcionários
+            // recebam perfil administrativo residual ou mantenham acesso no login
+            try {
+                const fs = (typeof firestore !== 'undefined' && firestore) ? firestore : firebase.firestore();
+                await fs.collection('usuarios').doc(id).delete();
+            } catch(eUsr) {
+                console.warn('Aviso ao remover usuario global:', eUsr);
+            }
+
             // Remove do SaaS Master também
             if (typeof window.obterInstanciaSaaS === 'function') {
                 try {
                     const sDb = window.obterInstanciaSaaS();
                     const empAtiva = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
-                    if (sDb && empAtiva) await sDb.collection('empresas').doc(empAtiva).collection('funcionarios').doc(id).delete();
+                    if (sDb && empAtiva) {
+                        await sDb.collection('empresas').doc(empAtiva).collection('funcionarios').doc(id).delete();
+                        await sDb.collection('usuarios').doc(id).delete().catch(() => {});
+                    }
                 } catch(e) {}
             }
 

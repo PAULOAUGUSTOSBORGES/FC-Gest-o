@@ -2,7 +2,24 @@
 
 let renderTimeout = null;
 
+// Cache de performance: a mesma string de data é interpretada várias vezes por renderização
+// (KPIs, rankings e gráficos dos últimos 7 dias). O resultado é puro, então é seguro reutilizar.
+const _cacheParseDataSegura = new Map();
 function parseDataSegura(dataStr) {
+    const cacheavel = typeof dataStr === 'string' || typeof dataStr === 'number';
+    if (cacheavel) {
+        const hit = _cacheParseDataSegura.get(dataStr);
+        if (hit !== undefined) return hit;
+    }
+    const resultado = _parseDataSeguraInterno(dataStr);
+    if (cacheavel) {
+        if (_cacheParseDataSegura.size > 60000) _cacheParseDataSegura.clear();
+        _cacheParseDataSegura.set(dataStr, resultado);
+    }
+    return resultado;
+}
+
+function _parseDataSeguraInterno(dataStr) {
     if (!dataStr) return null;
     if (typeof window.parseDataGenerica === 'function') {
         const dGen = window.parseDataGenerica(dataStr);
@@ -603,6 +620,19 @@ function inicializarDashboard() {
     _listenDoc('caixa', 'caixa_atual', function(data) {
         db.caixa = data || { saldo: 0 };
         renderDashboard();
+    });
+
+    window.addEventListener('fc-dados-locais-atualizados', function(ev) {
+        if (ev && ev.detail && ev.detail.colecao) {
+            const col = ev.detail.colecao;
+            if (['produtos', 'vendas', 'financeiro', 'clientes', 'fornecedores', 'caixa'].includes(col)) {
+                if (ev.detail.dados && typeof db !== 'undefined') {
+                    db[col] = ev.detail.dados;
+                    if (col === 'produtos') window._produtosCarregados = true;
+                }
+                renderDashboard();
+            }
+        }
     });
 
     // Fallback ativo: se produtos demorarem para carregar via snapshot, busca diretamente

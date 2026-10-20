@@ -274,6 +274,9 @@ function construirXmlNota(dados) {
         if (!rawMun && (destCep.startsWith('7380') || destCep.startsWith('7381'))) {
             rawMun = 'FORMOSA';
             if (!rawUf) rawUf = 'GO';
+        } else if (!rawMun && (destCep.startsWith('7525') || destCep.startsWith('7526'))) {
+            rawMun = 'SENADOR CANEDO';
+            if (!rawUf) rawUf = 'GO';
         }
 
         const destMun = limparTexto(rawMun || emitMun);
@@ -285,10 +288,24 @@ function construirXmlNota(dados) {
         const munNorm = destMun.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
         if (destUf === 'GO' && (munNorm === 'FORMOSA' || destCep.startsWith('7380') || destCep.startsWith('7381'))) {
             destIbge = '5208004';
-        } else if (destUf === 'GO' && munNorm === 'ANAPOLIS') {
+        } else if (destUf === 'GO' && (munNorm === 'SENADOR CANEDO' || destCep.startsWith('7525') || destCep.startsWith('7526'))) {
+            destIbge = '5220454';
+        } else if (destUf === 'GO' && (munNorm === 'ANAPOLIS' || destCep.startsWith('750') || destCep.startsWith('751'))) {
             destIbge = '5201108';
-        } else if (destUf === 'GO' && (munNorm === 'APARECIDA DE GOIANIA' || munNorm === 'APARECIDA DE GOIÂNIA')) {
+        } else if (destUf === 'GO' && (munNorm === 'APARECIDA DE GOIANIA' || munNorm === 'APARECIDA DE GOIÂNIA' || destCep.startsWith('749'))) {
             destIbge = '5201405';
+        } else if (destUf === 'GO' && (munNorm === 'GOIANIA' || munNorm === 'GOIÂNIA' || destCep.startsWith('74'))) {
+            destIbge = '5208707';
+        } else if (destUf === 'GO' && munNorm === 'TRINDADE') {
+            destIbge = '5221403';
+        } else if (destUf === 'GO' && munNorm === 'RIO VERDE') {
+            destIbge = '5218805';
+        } else if (destUf === 'GO' && munNorm === 'ITUMBIARA') {
+            destIbge = '5211503';
+        } else if (destUf === 'GO' && munNorm === 'LUZIANIA') {
+            destIbge = '5212501';
+        } else if (destUf === 'GO' && (munNorm === 'VALPARAISO DE GOIAS' || munNorm === 'VALPARAISO DE GOIÁS')) {
+            destIbge = '5221858';
         } else if (!destIbge || destIbge.length < 7 || !destIbge.startsWith(ufCod)) {
             const emitMunNorm = limparTexto(emitMun).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
             if (destUf === ufSigla && munNorm === emitMunNorm && cMunFG) {

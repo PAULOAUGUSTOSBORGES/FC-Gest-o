@@ -1052,7 +1052,8 @@ async function carregarHistoricoProdutoModal(idStr, prodNome = '') {
                     data: m.data,
                     tipo: m.tipo || 'MOVIMENTAÇÃO',
                     ref: m.ref || '-',
-                    qtd: Number(m.qtd) || 0
+                    qtd: Number(m.qtd) || 0,
+                    vendaId: m.vendaId || m.origemVendaId || null
                 });
             }
         });
@@ -1066,50 +1067,75 @@ async function carregarHistoricoProdutoModal(idStr, prodNome = '') {
                 col.where('prodId', '==', idStr).limit(50).get().catch(() => null),
                 col.where('produtoId', '==', idStr).limit(50).get().catch(() => null)
             ]);
-            if (q1 && !q1.empty) {
-                q1.forEach(doc => {
-                    const m = doc.data();
-                    mapa.set(doc.id, {
-                        data: m.data,
-                        tipo: m.tipo || 'MOVIMENTAÇÃO',
-                        ref: m.ref || '-',
-                        qtd: Number(m.qtd) || 0
-                    });
+            const processarDocMov = (doc) => {
+                const m = doc.data();
+                // Remove eventual chave provisória sem ID se for a mesma movimentação
+                const fallbackKey = `${m.data}_${m.ref}_${m.qtd}`;
+                if (doc.id !== fallbackKey && mapa.has(fallbackKey)) {
+                    mapa.delete(fallbackKey);
+                }
+                mapa.set(doc.id, {
+                    data: m.data,
+                    tipo: m.tipo || 'MOVIMENTAÇÃO',
+                    ref: m.ref || '-',
+                    qtd: Number(m.qtd) || 0,
+                    vendaId: m.vendaId || m.origemVendaId || null
                 });
-            }
-            if (q2 && !q2.empty) {
-                q2.forEach(doc => {
-                    const m = doc.data();
-                    mapa.set(doc.id, {
-                        data: m.data,
-                        tipo: m.tipo || 'MOVIMENTAÇÃO',
-                        ref: m.ref || '-',
-                        qtd: Number(m.qtd) || 0
-                    });
-                });
-            }
+            };
+            if (q1 && !q1.empty) q1.forEach(processarDocMov);
+            if (q2 && !q2.empty) q2.forEach(processarDocMov);
         }
     } catch (err) {
         console.warn('[Produtos] Erro ao carregar movimentações do Firestore:', err);
     }
 
-    // 3. Complementa com histórico de saídas em db.vendas
+    // 3. Complementa com histórico de saídas em db.vendas (apenas se ainda não constar no Kardex)
     if (Array.isArray(db.vendas)) {
         db.vendas.forEach(v => {
-            if (!v.itens || !Array.isArray(v.itens)) return;
-            const item = v.itens.find(it => String(it.id || it.prodId).trim() === idStr);
-            if (item) {
+            if (!v || !v.itens || !Array.isArray(v.itens)) return;
+            const tipoUpper = String(v.tipo || '').toUpperCase();
+            const statusUpper = String(v.status || '').toUpperCase();
+            if (tipoUpper === 'ORÇAMENTO' || tipoUpper === 'ORCAMENTO' || statusUpper === 'ORCAMENTO' || statusUpper === 'ORÇAMENTO' || statusUpper === 'CANCELADA' || statusUpper === 'CANCELADO') return;
+
+            const itensProd = v.itens.filter(it => String(it.id || it.prodId).trim() === idStr);
+            if (itensProd.length > 0) {
+                const qtdTotalItem = itensProd.reduce((acc, it) => acc + (Math.abs(Number(it.qtd)) || 1), 0);
                 const numPed = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id || '').slice(-4);
+                const numPedRaw = v.numeroPedido ? String(v.numeroPedido).trim() : '';
                 const tipoVenda = v.tipo || 'VENDA';
                 const refVenda = `${tipoVenda} #${numPed}${v.clienteNome ? ' (' + v.clienteNome + ')' : ''}`;
-                const key = `venda_${v.id}_${idStr}`;
-                if (!mapa.has(key)) {
-                    mapa.set(key, {
-                        data: v.data || v.dataCriacao || '',
-                        tipo: tipoVenda,
-                        ref: refVenda,
-                        qtd: -Math.abs(Number(item.qtd) || 1)
-                    });
+
+                // Verifica se já existe a baixa correspondente no Kardex (movimentacoes)
+                let movExistente = null;
+                const regexNumPed = numPedRaw ? new RegExp('#0*' + numPedRaw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:\\b|\\s|$)', 'i') : null;
+                for (const mov of mapa.values()) {
+                    const movTipoUpper = String(mov.tipo || '').toUpperCase();
+                    if (movTipoUpper.includes('ESTORNO') || Number(mov.qtd) >= 0) continue;
+                    const movRefStr = String(mov.ref || '');
+                    const mesmoVendaId = mov.vendaId && v.id && String(mov.vendaId) === String(v.id);
+                    const mesmoNumPed = movRefStr.includes(`#${numPed}`) || (regexNumPed && regexNumPed.test(movRefStr));
+                    if (mesmoVendaId || mesmoNumPed) {
+                        movExistente = mov;
+                        break;
+                    }
+                }
+
+                if (movExistente) {
+                    // Enriquece a referência existente com o nome do cliente se ainda não tiver
+                    if (v.clienteNome && !String(movExistente.ref || '').includes(v.clienteNome)) {
+                        movExistente.ref = `${movExistente.ref} (${v.clienteNome})`;
+                    }
+                } else {
+                    const key = `venda_${v.id}_${idStr}`;
+                    if (!mapa.has(key)) {
+                        mapa.set(key, {
+                            data: v.data || v.dataCriacao || '',
+                            tipo: tipoVenda,
+                            ref: refVenda,
+                            qtd: -qtdTotalItem,
+                            vendaId: v.id || null
+                        });
+                    }
                 }
             }
         });
@@ -1123,7 +1149,7 @@ async function carregarHistoricoProdutoModal(idStr, prodNome = '') {
 
     if (lista.length > 0) {
         tbody.innerHTML = lista.map(m => {
-            const dataFmt = (m.data && typeof formatData === 'function') ? formatData(m.data).split(' ')[0] : (m.data ? String(m.data).slice(0, 10) : '-');
+            const dataFmt = (m.data && typeof formatData === 'function') ? formatData(m.data).split(' ')[0].replace(/,$/, '') : (m.data ? String(m.data).slice(0, 10) : '-');
             const qtdNum = Number(m.qtd) || 0;
             const qtdFmt = qtdNum > 0 ? '+' + qtdNum : qtdNum;
             const corQtd = qtdNum > 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-red-500 dark:text-red-400';
@@ -1387,7 +1413,7 @@ function renderKardex() {
         let badgeClass = m.tipo.includes('ENTRADA') ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400' : (m.tipo === 'VENDA' || m.tipo === 'SAIDA' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400');
         let tipoHtml = String(m.tipo || '').split('<br>').map(t => `<span class="px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 ${badgeClass}">${t}</span>`).join('<br>');
         let dataFormatada = (m.data && typeof formatData === 'function') ? formatData(m.data).replace(',', '') : (m.data || '-');
-        return `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 text-xs text-slate-500 dark:text-slate-400">${dataFormatada}</td><td class="p-4 whitespace-nowrap">${tipoHtml}</td><td class="p-4 font-bold text-slate-800 dark:text-slate-100">${m.prodNome}</td><td class="p-4 text-slate-600 dark:text-slate-300 text-xs">${m.ref}</td><td class="p-4 text-right font-black ${m.qtd > 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-red-500 dark:text-red-400'}">${m.qtd > 0 ? '+' + m.qtd : m.qtd}</td></tr>`;
+        return `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 text-xs text-slate-500 dark:text-slate-400">${dataFormatada}</td><td class="p-4 whitespace-nowrap">${tipoHtml}</td><td class="p-4 font-bold text-slate-800 dark:text-slate-100">${m.prodNome || m.produtoNome || (m.prodId || m.produtoId ? ((db.produtos || []).find(p => String(p.id) === String(m.prodId || m.produtoId))?.nome || 'Produto') : 'Produto')}</td><td class="p-4 text-slate-600 dark:text-slate-300 text-xs">${m.ref}</td><td class="p-4 text-right font-black ${m.qtd > 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-red-500 dark:text-red-400'}">${m.qtd > 0 ? '+' + m.qtd : m.qtd}</td></tr>`;
     }).join('') || '<tr><td colspan="5" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhuma movimentação de estoque.</td></tr>';
 }
 

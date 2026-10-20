@@ -21,28 +21,154 @@ window.isContaMaster = isContaMaster;
 
 let modoAtual = 'login';
 
-function mudarAbaLogin(modo) {
-    if (modo === 'register') {
-        window.location.href = `${URL_PORTAL_PRIMAS}/acesso.html?sistema=fc_gestao`;
-        return;
-    }
-    modoAtual = 'login';
+function alternarModoAuth(modo) {
+    modoAtual = modo;
     const tabLogin = document.getElementById('tab-login');
-    const tabRegister = document.getElementById('tab-register');
-    const btnAcao = document.getElementById('btn-acao');
-    const subtitulo = document.getElementById('subtitulo-form');
+    const tabCadastro = document.getElementById('tab-cadastro');
+    const formLogin = document.getElementById('form-login');
+    const formCadastro = document.getElementById('form-cadastro-trial');
+    const divisorSocial = document.getElementById('divisor-social');
+    const btnGoogle = document.getElementById('btn-google');
     const esqueciSenhaLink = document.getElementById('esqueci-senha-link');
-    const txtBtnGoogle = document.getElementById('txt-btn-google');
-    const badgeTrial = document.getElementById('badge-trial');
+    const subtitulo = document.getElementById('subtitulo-form');
 
-    if (tabLogin) tabLogin.className = 'flex-1 pb-2 font-bold text-blue-600 border-b-2 border-blue-600 transition-colors';
-    if (tabRegister) tabRegister.className = 'flex-1 pb-2 font-bold text-slate-400 border-b-2 border-transparent transition-colors hover:text-slate-600 dark:hover:text-slate-300';
-    if (btnAcao) btnAcao.innerText = 'Entrar';
-    if (subtitulo) subtitulo.innerText = 'Acesso ao sistema integrado';
-    if (esqueciSenhaLink) esqueciSenhaLink.classList.remove('hidden');
-    if (txtBtnGoogle) txtBtnGoogle.innerText = 'Entrar com Google';
-    if (badgeTrial) badgeTrial.classList.add('hidden');
+    if (modo === 'cadastro') {
+        if (tabCadastro) tabCadastro.className = 'flex-1 pb-2.5 font-bold text-sm text-amber-500 border-b-2 border-amber-500 transition-colors cursor-pointer flex items-center justify-center gap-1.5';
+        if (tabLogin) tabLogin.className = 'flex-1 pb-2.5 font-bold text-sm text-slate-400 border-b-2 border-transparent hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer';
+        if (formLogin) formLogin.classList.add('hidden');
+        if (formCadastro) formCadastro.classList.remove('hidden');
+        if (divisorSocial) divisorSocial.classList.add('hidden');
+        if (btnGoogle) btnGoogle.classList.add('hidden');
+        if (esqueciSenhaLink) esqueciSenhaLink.classList.add('hidden');
+        if (subtitulo) subtitulo.innerText = 'Crie sua loja e ganhe 7 dias de teste grátis';
+    } else {
+        if (tabLogin) tabLogin.className = 'flex-1 pb-2.5 font-bold text-sm text-blue-600 border-b-2 border-blue-600 transition-colors cursor-pointer';
+        if (tabCadastro) tabCadastro.className = 'flex-1 pb-2.5 font-bold text-sm text-slate-400 border-b-2 border-transparent hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer flex items-center justify-center gap-1.5';
+        if (formLogin) formLogin.classList.remove('hidden');
+        if (formCadastro) formCadastro.classList.add('hidden');
+        if (divisorSocial) divisorSocial.classList.remove('hidden');
+        if (btnGoogle) btnGoogle.classList.remove('hidden');
+        if (esqueciSenhaLink) esqueciSenhaLink.classList.remove('hidden');
+        if (subtitulo) subtitulo.innerText = 'Portal de Acesso para Lojistas e Funcionários';
+    }
 }
+window.alternarModoAuth = alternarModoAuth;
+
+// CADASTRO AUTOMÁTICO DE NOVO CLIENTE COM 7 DIAS GRÁTIS (TRIAL)
+async function fazerCadastroGratuitoTrial() {
+    const nomeEmpresa = (document.getElementById('cad-nome-empresa')?.value || '').trim();
+    const responsavel = (document.getElementById('cad-responsavel')?.value || '').trim();
+    const whatsapp = (document.getElementById('cad-whatsapp')?.value || '').trim();
+    const email = (document.getElementById('cad-email')?.value || '').trim().toLowerCase();
+    const senha = (document.getElementById('cad-senha')?.value || '');
+
+    if (!nomeEmpresa) return showToast('Informe o nome da sua loja ou empresa.', 'warning');
+    if (!responsavel) return showToast('Informe seu nome ou do responsável.', 'warning');
+    if (!whatsapp || whatsapp.replace(/\D/g, '').length < 10) return showToast('Informe um número de WhatsApp válido.', 'warning');
+    if (!email || !email.includes('@')) return showToast('Informe um e-mail válido.', 'warning');
+    if (!senha || senha.length < 6) return showToast('A senha deve ter no mínimo 6 caracteres.', 'warning');
+
+    const btn = document.getElementById('btn-cad-trial');
+    const txtOrig = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Criando sua loja...'; }
+
+    try {
+        // 1. Criar usuário no Firebase Authentication
+        const cred = await firebase.auth().createUserWithEmailAndPassword(email, senha);
+        const user = cred.user;
+
+        // 2. Definir vencimento estrito de 7 dias a partir de agora
+        const agora = new Date();
+        const venc7Dias = new Date(agora.getTime() + (7 * 24 * 60 * 60 * 1000));
+        venc7Dias.setHours(23, 59, 59, 999);
+        const vencStr = venc7Dias.toISOString().split('T')[0];
+
+        const empresaId = 'emp_' + user.uid.substring(0, 10);
+        const db = firebase.firestore();
+        const batch = db.batch();
+
+        // 3. Documento da Empresa (Multi-tenant) com 7 dias de Trial Grátis
+        const empRef = db.collection('empresas').doc(empresaId);
+        batch.set(empRef, {
+            donoUid: user.uid,
+            nomeEmpresa: nomeEmpresa,
+            nome: nomeEmpresa,
+            responsavel: responsavel,
+            whatsapp: whatsapp,
+            telefone: whatsapp,
+            emailAcesso: email,
+            status: 'TRIAL',
+            plano: 'FREE',
+            nomePlano: 'Período de Avaliação (7 Dias)',
+            pago: false,
+            dataCriacao: firebase.firestore.FieldValue.serverTimestamp(),
+            dataVencimento: firebase.firestore.Timestamp.fromDate(venc7Dias),
+            dataVencimentoStr: vencStr,
+            sistemaId: 'fc_gestao',
+            modulosLiberados: ['pdv', 'vendas', 'produtos', 'clientes', 'fornecedores', 'financeiro', 'caixa', 'compras', 'relatorios', 'suporte']
+        });
+
+        // 4. Mapeamento Global de Usuário
+        const userRef = db.collection('usuarios').doc(user.uid);
+        batch.set(userRef, {
+            email: email,
+            nome: responsavel,
+            empresaId: empresaId,
+            ativo: true,
+            criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // 5. Configurações Iniciais da Loja
+        const configRef = empRef.collection('configuracoes').doc('config');
+        batch.set(configRef, {
+            empresa: {
+                nome: nomeEmpresa,
+                fantasia: nomeEmpresa,
+                telefone: whatsapp,
+                email: email
+            },
+            pdv: { permite_estoque_negativo: false }
+        });
+
+        // 6. Funcionário Admin com Acesso Completo
+        const funcRef = empRef.collection('funcionarios').doc(user.uid);
+        batch.set(funcRef, {
+            nome: responsavel,
+            email: email,
+            isAdmin: true,
+            perm_gestao: true,
+            perm_fiscal: true,
+            perm_operacao: true,
+            perm_pdv: true,
+            ativo: true,
+            criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Grava todas as coleções de uma só vez (atômico)
+        await batch.commit();
+
+        // Configura sessão local
+        localStorage.setItem('fc_empresa_ativa', empresaId);
+        localStorage.setItem('fc_nome_empresa_ativa', nomeEmpresa);
+        localStorage.setItem('fc_sessao_data', agora.toDateString());
+        localStorage.setItem('fc_sessao_uid', user.uid);
+
+        showToast('🎉 Loja criada com sucesso! Seus 7 dias grátis estão ativos.', 'success');
+        setTimeout(() => {
+            window.location.href = 'index.html';
+        }, 1200);
+
+    } catch (err) {
+        console.error('[Cadastro] Erro ao cadastrar:', err);
+        let msg = err.message;
+        if (err.code === 'auth/email-already-in-use') {
+            msg = 'Este e-mail já está cadastrado. Faça login na aba "Entrar" ou use a recuperação de senha.';
+        }
+        showToast(msg, 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = txtOrig; }
+    }
+}
+window.fazerCadastroGratuitoTrial = fazerCadastroGratuitoTrial;
 
 // Máscara dinâmica para o campo WhatsApp/Telefone
 document.addEventListener('DOMContentLoaded', () => {
@@ -76,6 +202,78 @@ function acaoPrincipal() {
 }
 // Expõe globalmente para o onclick do HTML funcionar em todos os navegadores (incluindo mobile)
 window.acaoPrincipal = acaoPrincipal;
+
+// ==========================================
+// SEGURANCA: CONTROLE DE TENTATIVAS DE LOGIN (ANTI BRUTE-FORCE)
+// ==========================================
+const LIMITE_TENTATIVAS_LOGIN = 5;
+const TEMPO_BLOQUEIO_LOGIN_MS = 15 * 60 * 1000; // 15 minutos
+
+function obterChaveTentativasLogin(email) {
+    const limpo = (email || '').toLowerCase().trim();
+    try { return 'fc_bruteforce_' + btoa(limpo).replace(/=/g, ''); }
+    catch(e) { return 'fc_bruteforce_' + limpo.replace(/[^a-z0-9]/g, ''); }
+}
+
+function verificarBloqueioLogin(email) {
+    try {
+        const chave = obterChaveTentativasLogin(email);
+        const raw = localStorage.getItem(chave);
+        if (!raw) return true;
+        const dados = JSON.parse(raw);
+        if (dados.bloqueadoAte && dados.bloqueadoAte > Date.now()) {
+            const minutos = Math.ceil((dados.bloqueadoAte - Date.now()) / 60000);
+            showToast('Acesso temporariamente bloqueado (' + minutos + ' min restantes) por excesso de tentativas incorretas.', 'error');
+            return false;
+        }
+        if (dados.bloqueadoAte && dados.bloqueadoAte <= Date.now()) {
+            localStorage.removeItem(chave);
+        }
+    } catch (e) {
+        console.warn('Erro ao verificar bloqueio de login:', e);
+    }
+    return true;
+}
+
+function registrarFalhaLogin(email, forcarBloqueio = false) {
+    try {
+        const chave = obterChaveTentativasLogin(email);
+        const raw = localStorage.getItem(chave);
+        let dados = raw ? JSON.parse(raw) : { tentativas: 0, inicio: Date.now() };
+
+        if (Date.now() - (dados.inicio || 0) > 60 * 60 * 1000) {
+            dados = { tentativas: 0, inicio: Date.now() };
+        }
+
+        dados.tentativas = (dados.tentativas || 0) + 1;
+        dados.ultimoErro = Date.now();
+
+        if (forcarBloqueio || dados.tentativas >= LIMITE_TENTATIVAS_LOGIN) {
+            dados.bloqueadoAte = Date.now() + TEMPO_BLOQUEIO_LOGIN_MS;
+            localStorage.setItem(chave, JSON.stringify(dados));
+            showToast('Muitas tentativas incorretas! Acesso temporariamente suspenso por 15 minutos por seguranca.', 'error');
+        } else {
+            localStorage.setItem(chave, JSON.stringify(dados));
+            const restantes = LIMITE_TENTATIVAS_LOGIN - dados.tentativas;
+            if (restantes <= 2) {
+                showToast('Aviso: Senha incorreta! Restam ' + restantes + ' tentativa(s) antes do bloqueio temporario.', 'warning');
+            } else {
+                showToast('E-mail não encontrado ou senha incorreta!', 'error');
+            }
+        }
+    } catch (e) {
+        console.warn('Erro ao registrar falha de login:', e);
+        showToast('E-mail nao encontrado ou senha incorreta!', 'error');
+    }
+}
+
+function limparTentativasLogin(email) {
+    try {
+        const chave = obterChaveTentativasLogin(email);
+        localStorage.removeItem(chave);
+    } catch (e) {}
+}
+
 async function fazerLogin() {
     const u = (document.getElementById('login-user').value || '').trim();
     const p = document.getElementById('login-pass').value;
@@ -174,23 +372,10 @@ async function fazerLogin() {
                     localStorage.setItem('fc_nome_empresa_ativa', nomeEmp);
 
                     const statusEmp = empData.status;
-                    if (statusEmp === 'PENDENTE_PAGAMENTO') {
-                        await firebase.auth().signOut();
-                        localStorage.removeItem('fc_empresa_ativa');
-                        sessionStorage.clear();
-                        window._fazendoLogin = false;
-                        if (btn) { btn.innerText = 'Entrar no Sistema'; btn.disabled = false; }
-                        showToast('A ativação da sua loja está pendente de pagamento.', 'warning');
-                        setTimeout(() => { window.location.href = `${URL_PORTAL_PRIMAS}/cadastro.html`; }, 2000);
-                        return;
-                    } else if (statusEmp === 'BLOQUEADO') {
-                        await firebase.auth().signOut();
-                        localStorage.removeItem('fc_empresa_ativa');
-                        sessionStorage.clear();
-                        window._fazendoLogin = false;
-                        if (btn) { btn.innerText = 'Entrar no Sistema'; btn.disabled = false; }
-                        showToast('O acesso desta empresa está temporariamente bloqueado. Contate o suporte.', 'error');
-                        return;
+                    if (statusEmp === 'PENDENTE_PAGAMENTO' || statusEmp === 'BLOQUEADO') {
+                        // Permite a entrada no sistema para que o motor de licença saas_licenca.js
+                        // renderize a tela de bloqueio com o botão de pagamento do Mercado Pago e PIX direto.
+                        console.log('[Login] Empresa com pendência/bloqueio detectada. Direcionando para regularização no sistema.');
                     }
                 }
             } catch (errCheck) {
@@ -252,7 +437,7 @@ async function fazerLogin() {
         } else if (e.code === 'auth/network-request-failed') {
             showToast('Sem conexão com a internet. Verifique sua rede e tente novamente.', 'error');
         } else if (e.code === 'auth/too-many-requests') {
-            showToast('Muitas tentativas. Aguarde alguns minutos e tente novamente.', 'error');
+            registrarFalhaLogin(u, true);
         } else {
             showToast('Erro ao entrar: ' + (e.message || e.code || 'Erro desconhecido'), 'error');
             console.error('Erro login:', e);
@@ -265,9 +450,16 @@ async function fazerCadastro() {
 }
 
 // Detecta se o dispositivo é mobile/tablet
-function isMobileDevice() {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+// Detecta se o ambiente é PWA (Standalone/App instalado) ou dispositivo móvel/tablet
+function isPwaOuDispositivoMovel() {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+        || window.matchMedia('(display-mode: minimal-ui)').matches
+        || window.matchMedia('(display-mode: fullscreen)').matches
+        || window.navigator.standalone === true
+        || document.referrer.includes('android-app://');
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
         || (navigator.maxTouchPoints > 1 && /Macintosh/i.test(navigator.userAgent));
+    return Boolean(isStandalone || isMobile);
 }
 
 async function finalizarLoginGoogle(user) {
@@ -347,23 +539,10 @@ async function finalizarLoginGoogle(user) {
                 const statusEmp = empDoc.data().status;
                 const nomeEmp = empDoc.data().nomeEmpresa || empDoc.data().nome || 'Minha Loja';
                 localStorage.setItem('fc_nome_empresa_ativa', nomeEmp);
-                if (statusEmp === 'PENDENTE_PAGAMENTO') {
-                    await firebase.auth().signOut();
-                    localStorage.removeItem('fc_empresa_ativa');
-                    sessionStorage.clear();
-                    window._fazendoLogin = false;
-                    showToast('A ativação da sua loja está pendente de pagamento.', 'warning');
-                    setTimeout(() => {
-                        window.location.href = `${URL_PORTAL_PRIMAS}/cadastro.html`;
-                    }, 2000);
-                    return;
-                } else if (statusEmp === 'BLOQUEADO') {
-                    await firebase.auth().signOut();
-                    localStorage.removeItem('fc_empresa_ativa');
-                    sessionStorage.clear();
-                    window._fazendoLogin = false;
-                    showToast('O acesso desta empresa está temporariamente bloqueado por pendência financeira. Contate o suporte.', 'error');
-                    return;
+                if (statusEmp === 'PENDENTE_PAGAMENTO' || statusEmp === 'BLOQUEADO') {
+                    // Permite a entrada no sistema para que o saas_licenca.js renderize o bloqueio
+                    // com a opção de pagamento via Mercado Pago e PIX direto para auto-desbloqueio.
+                    console.log('[Login Google] Empresa com pendência/bloqueio detectada. Direcionando para regularização no sistema.');
                 }
             }
         } catch (errCheck) {
@@ -390,29 +569,63 @@ async function finalizarLoginGoogle(user) {
 }
 
 // Processa o resultado do redirect do Google (necessário quando o navegador usa redirect)
+let _redirectGoogleEmAndamento = false;
+
+async function tratarUsuarioLogadoGoogle(user) {
+    if (!user || _redirectGoogleEmAndamento) return;
+    _redirectGoogleEmAndamento = true;
+    sessionStorage.removeItem('fc_google_redirect_pendente');
+    window._fazendoLogin = true;
+    const btnGoogle = document.getElementById('btn-google');
+    const txtGoogle = document.getElementById('txt-btn-google');
+    if (btnGoogle) btnGoogle.disabled = true;
+    if (txtGoogle) txtGoogle.innerText = 'Conta verificada! Entrando...';
+    await finalizarLoginGoogle(user);
+}
+
+// Processa o resultado do redirect do Google (PWA e Mobile)
 async function processarRedirectResult() {
+    if (!sessionStorage.getItem('fc_google_redirect_pendente')) return;
+
+    const btnGoogle = document.getElementById('btn-google');
+    const txtGoogle = document.getElementById('txt-btn-google');
+    if (btnGoogle) btnGoogle.disabled = true;
+    if (txtGoogle) txtGoogle.innerText = 'Conectando ao Google...';
+
     try {
         const cred = await firebase.auth().getRedirectResult();
-        if (!cred || !cred.user) {
-            if (firebase.auth().currentUser && sessionStorage.getItem('fc_google_redirect_pendente')) {
-                window._fazendoLogin = true;
-                await finalizarLoginGoogle(firebase.auth().currentUser);
-                return;
-            }
-            sessionStorage.removeItem('fc_google_redirect_pendente');
+        if (cred && cred.user) {
+            await tratarUsuarioLogadoGoogle(cred.user);
             return;
         }
-        window._fazendoLogin = true;
-        await finalizarLoginGoogle(cred.user);
+        if (firebase.auth().currentUser) {
+            await tratarUsuarioLogadoGoogle(firebase.auth().currentUser);
+            return;
+        }
     } catch (e) {
         sessionStorage.removeItem('fc_google_redirect_pendente');
         window._fazendoLogin = false;
+        if (btnGoogle) btnGoogle.disabled = false;
+        if (txtGoogle) txtGoogle.innerText = 'Entrar com Google';
         if (e.code === 'auth/popup-blocked' || e.code === 'auth/redirect-cancelled-by-user') {
             showToast('Login com Google cancelado.', 'info');
         } else if (e.code && e.code !== 'auth/no-auth-event') {
             showToast('Erro ao entrar com Google: ' + (e.message || e), 'error');
             console.error('Erro Google getRedirectResult:', e);
         }
+    }
+}
+
+// Listener para capturar o retorno de redirect do Google assim que o Firebase autenticar
+if (typeof firebase !== 'undefined' && firebase.auth) {
+    try {
+        firebase.auth().onAuthStateChanged(async (user) => {
+            if (user && sessionStorage.getItem('fc_google_redirect_pendente')) {
+                await tratarUsuarioLogadoGoogle(user);
+            }
+        });
+    } catch(errAuth) {
+        console.warn('Aviso no listener auth login:', errAuth);
     }
 }
 
@@ -490,20 +703,38 @@ async function fazerLoginGoogle() {
         if (btnGoogle) btnGoogle.disabled = true;
         if (txtGoogle) txtGoogle.innerText = 'Conectando ao Google...';
 
+        // Garantir persistência LOCAL antes de iniciar autenticação
+        try {
+            await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+        } catch (persErr) {
+            console.warn('Persistência LOCAL Google:', persErr);
+        }
+
         const provider = new firebase.auth.GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
 
+        // Em PWA (Standalone/App instalado) ou dispositivos móveis:
+        // O navegador Chromium isola janelas filhas e bloqueia popups cruzadas (abre tela branca travada).
+        // Nesses ambientes, o signInWithRedirect é o método nativo recomendado.
+        if (isPwaOuDispositivoMovel()) {
+            if (txtGoogle) txtGoogle.innerText = 'Redirecionando para o Google...';
+            sessionStorage.setItem('fc_google_redirect_pendente', '1');
+            await firebase.auth().signInWithRedirect(provider);
+            return;
+        }
+
+        // Em abas comuns de desktop, tenta signInWithPopup com fallback robusto
         let cred;
         try {
-            // Executa popup imediatamente no clique do usuário (sem await prévio, evitando bloqueio do navegador)
             cred = await firebase.auth().signInWithPopup(provider);
         } catch (popupErr) {
-            console.warn('Tentativa popup Google:', popupErr);
-            // Se o navegador bloqueou o popup ou não suporta popup (ex: PWA / webview móvel restrita), faz fallback para redirect
+            console.warn('Tentativa popup Google falhou, acionando fallback redirect:', popupErr);
+            // Se o popup foi bloqueado, cancelado ou não suportado, faz fallback automático para redirect
             if (popupErr.code === 'auth/popup-blocked' || 
                 popupErr.code === 'auth/cancelled-popup-request' || 
-                popupErr.code === 'auth/operation-not-supported-in-this-environment') {
-                if (txtGoogle) txtGoogle.innerText = 'Redirecionando...';
+                popupErr.code === 'auth/operation-not-supported-in-this-environment' ||
+                popupErr.code === 'auth/internal-error') {
+                if (txtGoogle) txtGoogle.innerText = 'Redirecionando para o Google...';
                 sessionStorage.setItem('fc_google_redirect_pendente', '1');
                 await firebase.auth().signInWithRedirect(provider);
                 return;
@@ -525,7 +756,11 @@ async function fazerLoginGoogle() {
         if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') {
             showToast('Login com Google cancelado.', 'info');
         } else if (e.code === 'auth/popup-blocked') {
-            showToast('O navegador bloqueou a janela pop-up do Google. Permita pop-ups para continuar.', 'error');
+            showToast('Pop-up bloqueado. Redirecionando para o Google...', 'info');
+            sessionStorage.setItem('fc_google_redirect_pendente', '1');
+            const provider = new firebase.auth.GoogleAuthProvider();
+            provider.setCustomParameters({ prompt: 'select_account' });
+            await firebase.auth().signInWithRedirect(provider);
         } else if (e.code === 'auth/operation-not-supported-in-this-environment') {
             showToast('O login com Google requer acesso via HTTP/HTTPS ou Servidor Local (localhost).', 'warning');
         } else if (e.code === 'auth/account-exists-with-different-credential') {

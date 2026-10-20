@@ -353,16 +353,20 @@ function printHtmlSeguro(htmlCompleto) {
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { margin: 10mm; }
-                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                @page { size: A4 portrait; margin: 10mm 12mm 12mm 12mm; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
                 .print\\\\:hidden { display: none !important; }
-                table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
+                .overflow-x-auto, .table-wrapper, .fc-table-wrap { overflow: visible !important; display: block !important; }
+                table { page-break-inside: auto; width: 100% !important; max-width: 100% !important; min-width: 0 !important; border-collapse: collapse; }
+                th, td { word-break: break-word !important; }
                 tr { page-break-inside: avoid; page-break-after: auto; }
                 thead { display: table-header-group; }
                 tfoot { display: table-footer-group; }
+                @media print { body { padding: 4mm 6mm !important; margin: 0 !important; box-sizing: border-box !important; } }
             </style>
         </head>
-        <body class="bg-white dark:bg-slate-800 p-4">
+        <body class="bg-white text-black p-0">
             ${htmlCompleto}
         </body>
         </html>
@@ -387,8 +391,8 @@ function imprimirArea(areaId) {
     
     const printContent = element.innerHTML; 
     const htmlCompleto = `
-        <div style="padding: 20px; font-family: Arial, sans-serif; background: #fff; color: #000;">
-            <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
+        <div style="padding: 10px 0; font-family: Arial, sans-serif; background: #fff; color: #000; width: 100%; box-sizing: border-box;">
+            <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px;">
                 ${logoHtml}
                 <h2 style="font-size: 20px; font-weight: bold; margin: 5px 0; text-transform: uppercase;">${empNome}</h2>
                 <p style="margin: 0; font-size: 12px; color: #555;">Documento Gerencial Oficial</p>
@@ -419,20 +423,23 @@ function baixarPDF(areaId, filename) {
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { margin: 15mm; size: A4; }
-                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 20px; max-width: 1000px; margin: 0 auto; }
+                @page { margin: 10mm 12mm 12mm 12mm; size: A4 portrait; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
                 .print\\:hidden { display: none !important; }
-                table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
+                .overflow-x-auto, .table-wrapper, .fc-table-wrap { overflow: visible !important; display: block !important; }
+                table { page-break-inside: auto; width: 100% !important; max-width: 100% !important; min-width: 0 !important; border-collapse: collapse; }
+                th, td { word-break: break-word !important; }
                 tr { page-break-inside: avoid; page-break-after: auto; }
                 thead { display: table-header-group; }
                 tfoot { display: table-footer-group; }
                 
                 @media print {
-                    body { padding: 0; max-width: none; }
+                    body { padding: 4mm 6mm !important; margin: 0 !important; max-width: 100% !important; box-sizing: border-box !important; }
                 }
             </style>
         </head>
-        <body class="bg-white text-black">
+        <body class="bg-white text-black p-0">
             ${printContent}
             
             <script>
@@ -612,22 +619,27 @@ function renderCaixaDiario() {
             const st = String(v.status || '').toUpperCase();
             if (st === 'CANCELADA' || st === 'AGUARDANDO_PAGAMENTO') return;
             
-            const numStr = String(v.numero || v.id || '');
+            const numVal = v.numeroPedido || v.numero || '';
+            const numStr = numVal ? String(numVal) : String(v.id || '');
             const jaExiste = todosHistorico.some(h => {
                 const desc = String(h.desc || '');
-                return numStr && (desc.includes('#' + numStr) || desc.includes('#' + numStr.padStart(4, '0')));
+                if (h.origemVendaId && String(h.origemVendaId) === String(v.id)) return true;
+                return numVal && (desc.includes('#' + numStr) || desc.includes('#' + numStr.padStart(4, '0')));
             });
 
             if (!jaExiste) {
                 const metodo = v.pag || (Array.isArray(v.pagamentos) && v.pagamentos[0]?.metodo) || 'Outros';
                 const isDinheiro = String(metodo).includes('Dinheiro');
+                const numExibicao = numVal ? String(numVal).padStart(4, '0') : String(v.id || '').slice(-4);
+                const cliNome = v.clienteNome || v.cliente?.nome || v.cliente || 'Consumidor';
                 todosHistorico.push({
                     data: v.data?.toDate ? v.data.toDate().toISOString() : (v.data || new Date().toISOString()),
                     tipo: 'ENTRADA (' + metodo.toUpperCase() + ')',
                     metodo: metodo,
-                    desc: `Venda #${String(v.numero || v.id).padStart(4, '0')} - ${v.cliente?.nome || v.cliente || 'Consumidor'} (${metodo})`,
+                    desc: `Venda #${numExibicao} - ${cliNome} (${metodo})`,
                     valor: Number(v.tot || v.subtotal || 0),
                     operador: v.vendedor || v.operador || 'Balcão',
+                    origemVendaId: v.id,
                     naoAfetaGaveta: !isDinheiro,
                     sintetico: true
                 });
@@ -1319,7 +1331,7 @@ function imprimirArea(areaId) {
     
     const printContent = element.innerHTML; 
     const htmlCompleto = `
-        <div style="padding: 20px; font-family: Arial, sans-serif; background: #fff; color: #000;">
+        <div style="padding: 10px 0; font-family: Arial, sans-serif; background: #fff; color: #000; width: 100%; box-sizing: border-box;">
             <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
                 ${logoHtml}
                 <h2 style="font-size: 20px; font-weight: bold; margin: 5px 0; text-transform: uppercase;">${empNome}</h2>
@@ -1351,20 +1363,23 @@ function baixarPDF(areaId, filename) {
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { margin: 15mm; size: A4; }
-                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 20px; max-width: 1000px; margin: 0 auto; }
+                @page { margin: 10mm 12mm 12mm 12mm; size: A4 portrait; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
                 .print\\:hidden { display: none !important; }
-                table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
+                .overflow-x-auto, .table-wrapper, .fc-table-wrap { overflow: visible !important; display: block !important; }
+                table { page-break-inside: auto; width: 100% !important; max-width: 100% !important; min-width: 0 !important; border-collapse: collapse; }
+                th, td { word-break: break-word !important; }
                 tr { page-break-inside: avoid; page-break-after: auto; }
                 thead { display: table-header-group; }
                 tfoot { display: table-footer-group; }
                 
                 @media print {
-                    body { padding: 0; max-width: none; }
+                    body { padding: 4mm 6mm !important; margin: 0 !important; max-width: 100% !important; box-sizing: border-box !important; }
                 }
             </style>
         </head>
-        <body class="bg-white text-black">
+        <body class="bg-white text-black p-0">
             ${printContent}
             
             <script>
@@ -3688,11 +3703,15 @@ function renderVendasPendentesPDV() {
     const todasVendas = Array.isArray(db.vendas) ? db.vendas : [];
 
     // Filtra vendas do PDV pendentes de pagamento
+    // Filtra vendas do PDV pendentes de pagamento ou saldo na entrega
     const pendentesVendas = todasVendas.filter(v => {
         if (!v) return false;
         const st = String(v.status || '').toUpperCase().trim();
         const tp = String(v.tipo || '').toUpperCase().trim();
-        if (st === 'CANCELADA' || st === 'CONCLUIDA' || st === 'PAGO' || tp === 'ORÇAMENTO') return false;
+        if (st === 'CANCELADA' || tp === 'ORÇAMENTO') return false;
+        // Se for venda com entrada + saldo na entrega e o saldo ainda não foi quitado
+        if (v.vendaComEntradaEntrega && !v.saldoEntregaPago) return true;
+        if (st === 'CONCLUIDA' || st === 'PAGO') return false;
         return st === 'AGUARDANDO_PAGAMENTO' || st === 'PENDENTE' || st === 'AGUARDANDO' || v.origem === 'PDV' || v.origem === 'PDV_BALCAO';
     });
 
@@ -3749,6 +3768,9 @@ function renderVendasPendentesPDV() {
                 const totalValor = Number(v.tot || v.subtotal || 0);
                 const qtdItens = Array.isArray(v.itens) ? v.itens.reduce((acc, i) => acc + (Number(i.qtd) || 1), 0) : 0;
                 
+                const isEE = !!v.vendaComEntradaEntrega;
+                const isEntradaPaga = isEE && !!(v.entradaPaga || v.status === 'AGUARDANDO_ENTREGA' || (Array.isArray(v.pagamentos) && v.pagamentos[0]?.tipoSub === 'ENTRADA' && v.pagamentos[0]?.status === 'PAGO'));
+                
                 let dataFormatada = '-';
                 if (v.data) {
                     try {
@@ -3775,17 +3797,25 @@ function renderVendasPendentesPDV() {
                     if (m && m[1]) prevVendTexto = m[1];
                 }
 
+                const cliEndCard = (typeof window.formatarEnderecoCompletoCliente === 'function') ? window.formatarEnderecoCompletoCliente(v) : (v.clienteEnd || '');
+
                 return `
-                    <div class="bg-slate-50 dark:bg-slate-900 border border-amber-200 dark:border-amber-900/50 rounded-xl p-3.5 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow">
+                    <div class="bg-slate-50 dark:bg-slate-900 border ${isEE ? (isEntradaPaga ? 'border-amber-400 dark:border-amber-700 ring-1 ring-amber-400/30' : 'border-amber-300 dark:border-amber-800') : 'border-amber-200 dark:border-amber-900/50'} rounded-xl p-3.5 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow">
                         <div>
                             <div class="flex justify-between items-start mb-2">
-                                ${v.isPedidoSite ? `
+                                ${isEE ? (isEntradaPaga ? `
+                                <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-black text-xs px-2.5 py-1 rounded-lg font-mono flex items-center gap-1 border border-amber-300 dark:border-amber-800">
+                                    <i class="fa-solid fa-truck-ramp-box text-amber-600"></i> SALDO ENTREGA #${numPedStr}
+                                </span>` : `
+                                <span class="bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-black text-xs px-2.5 py-1 rounded-lg font-mono flex items-center gap-1 border border-emerald-300 dark:border-emerald-800">
+                                    <i class="fa-solid fa-couch text-emerald-600"></i> ENTRADA MÓVEIS #${numPedStr}
+                                </span>`) : (v.isPedidoSite ? `
                                 <span class="bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-black text-xs px-2.5 py-1 rounded-lg font-mono flex items-center gap-1">
                                     <i class="fa-solid fa-globe text-emerald-600"></i> SITE #${numPedStr}
                                 </span>` : `
                                 <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-black text-xs px-2.5 py-1 rounded-lg font-mono">
                                     PEDIDO #${numPedStr}
-                                </span>`}
+                                </span>`)}
                                 <span class="text-[10px] text-slate-400 font-medium">
                                     <i class="fa-regular fa-clock mr-1"></i>${dataFormatada}
                                 </span>
@@ -3794,10 +3824,24 @@ function renderVendasPendentesPDV() {
                             <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm truncate" title="${cliNome}">
                                 ${cliNome}
                             </h4>
+                            ${cliEndCard && cliEndCard !== 'Não informado' ? `<div class="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5" title="${cliEndCard}"><i class="fa-solid fa-location-dot text-amber-500 mr-1"></i>${cliEndCard}</div>` : ''}
                             <div class="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                                 <span class="truncate"><i class="fa-solid fa-user-tag text-slate-400 mr-1"></i>Vend: <strong>${vendNome}</strong></span>
                                 ${prevVendTexto ? `<span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-800 shrink-0 ml-1" title="Condição prevista pelo vendedor"><i class="fa-solid fa-hand-holding-dollar text-[9px] mr-1"></i>${prevVendTexto}</span>` : ''}
                             </div>
+
+                            ${isEE ? `
+                            <div class="bg-amber-50 dark:bg-amber-950/40 p-2 rounded-lg border border-amber-200 dark:border-amber-800 my-2 text-[11px] text-amber-900 dark:text-amber-200">
+                                <div class="flex justify-between items-center">
+                                    <span><strong>1. Sinal/Entrada:</strong> ${typeof formatMoney === 'function' ? formatMoney(v.valorEntrada) : 'R$ ' + v.valorEntrada} (${v.formaEntrada || 'Dinheiro'}${v.parcelasEntrada && v.parcelasEntrada > 1 ? ' ' + v.parcelasEntrada + 'x' : ''})</span>
+                                    <span class="${isEntradaPaga ? 'text-emerald-700 dark:text-emerald-400 font-bold' : 'text-amber-700 dark:text-amber-300 font-bold'}">${isEntradaPaga ? '<i class="fa-solid fa-circle-check"></i> PAGA' : '<i class="fa-regular fa-clock"></i> A RECEBER'}</span>
+                                </div>
+                                <div class="flex justify-between items-center mt-1 pt-1 border-t border-amber-200/60 dark:border-amber-800/60">
+                                    <span><strong>2. Saldo Entrega:</strong> ${typeof formatMoney === 'function' ? formatMoney(v.saldoEntrega) : 'R$ ' + v.saldoEntrega} (${v.formaEntregaPrevista || 'Na Entrega'}${v.parcelasEntrega && v.parcelasEntrega > 1 ? ' ' + v.parcelasEntrega + 'x' : ''})</span>
+                                    <span class="text-amber-700 dark:text-amber-400 font-bold">${v.dataEntregaPrevista ? v.dataEntregaPrevista.split('-').reverse().join('/') : (v.dataEntrega ? v.dataEntrega.split('-').reverse().join('/') : 'A COMBINAR')}</span>
+                                </div>
+                            </div>
+                            ` : ''}
                             
                             <div class="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700 my-2 text-[11px] text-slate-600 dark:text-slate-300">
                                 <span class="font-bold block text-slate-400 text-[10px] uppercase">${qtdItens} ${qtdItens === 1 ? 'item' : 'itens'}:</span>
@@ -3805,6 +3849,43 @@ function renderVendasPendentesPDV() {
                             </div>
                         </div>
 
+                        ${isEE ? (isEntradaPaga ? `
+                        <div class="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 mt-2">
+                            <div>
+                                <span class="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400 block leading-none">Saldo na Entrega</span>
+                                <span class="text-base font-black text-amber-600 dark:text-amber-400">
+                                    ${typeof formatMoney === 'function' ? formatMoney(v.saldoEntrega) : 'R$ ' + (v.saldoEntrega || 0).toFixed(2)}
+                                </span>
+                                <span class="text-[9px] text-slate-400 block">Total: ${typeof formatMoney === 'function' ? formatMoney(totalValor) : 'R$ ' + totalValor.toFixed(2)}</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <button type="button" onclick="cancelarVendaPendentePDV('${String(v.id || '').replace(/'/g, "\\'")}')" class="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 text-xs transition" title="Cancelar / Excluir Pedido">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                                <button type="button" onclick="abrirModalReceberSaldoEntrega('${v.id}')" class="bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold text-xs px-3.5 py-2 rounded-lg shadow-sm transition flex items-center gap-1.5">
+                                    <i class="fa-solid fa-hand-holding-dollar"></i> Receber Saldo
+                                </button>
+                            </div>
+                        </div>
+                        ` : `
+                        <div class="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 mt-2">
+                            <div>
+                                <span class="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 block leading-none">Entrada a Receber</span>
+                                <span class="text-base font-black text-emerald-600 dark:text-emerald-400">
+                                    ${typeof formatMoney === 'function' ? formatMoney(v.valorEntrada) : 'R$ ' + (v.valorEntrada || 0).toFixed(2)}
+                                </span>
+                                <span class="text-[9px] text-slate-400 block">Total: ${typeof formatMoney === 'function' ? formatMoney(totalValor) : 'R$ ' + totalValor.toFixed(2)}</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <button type="button" onclick="cancelarVendaPendentePDV('${String(v.id || '').replace(/'/g, "\\'")}')" class="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 text-xs transition" title="Cancelar / Excluir Pedido">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                                <button type="button" onclick="abrirModalReceberPDV('${v.id}')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs px-3.5 py-2 rounded-lg shadow-sm transition flex items-center gap-1.5">
+                                    <i class="fa-solid fa-cash-register"></i> Receber Entrada
+                                </button>
+                            </div>
+                        </div>
+                        `) : `
                         <div class="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 mt-2">
                             <div>
                                 <span class="text-[10px] uppercase font-bold text-slate-400 block leading-none">Total</span>
@@ -3821,6 +3902,7 @@ function renderVendasPendentesPDV() {
                                 </button>
                             </div>
                         </div>
+                        `}
                     </div>
                 `;
             }).join('')}
@@ -3836,9 +3918,14 @@ window.abrirModalReceberPDV = function(vendaId) {
 
     window.vendaPendenteRecebendoAtual = v;
     const numPedStr = String(v.numeroPedido || v.id || '0').padStart(4, '0');
-    const cliNome = v.clienteNome || v.cliente || 'Consumidor Final';
+    const cliInfo = (typeof window.obterDadosClientePDV === 'function') ? window.obterDadosClientePDV(v.clienteId) : null;
+    const cliNome = (cliInfo && cliInfo.nome !== 'Consumidor Final') ? cliInfo.nome : (v.clienteNome || v.cliente || 'Consumidor Final');
+    const cliEndFmt = (typeof window.formatarEnderecoCompletoCliente === 'function') ? window.formatarEnderecoCompletoCliente(v, cliInfo) : (v.clienteEnd || '');
     const vendNome = v.vendedor || 'PDV Balcão';
     const total = Number(v.tot || v.subtotal || 0);
+
+    const isEE = !!v.vendaComEntradaEntrega;
+    const valorReceberNoCaixa = isEE ? (Number(v.valorEntrada) || total) : total;
 
     const inputId = document.getElementById('modal-receber-venda-id');
     const titEl = document.getElementById('modal-receber-titulo');
@@ -3849,9 +3936,17 @@ window.abrirModalReceberPDV = function(vendaId) {
     const itensListaEl = document.getElementById('modal-receber-itens-lista');
 
     if (inputId) inputId.value = v.id;
-    if (titEl) titEl.textContent = `Receber Pedido #${numPedStr}`;
-    if (subEl) subEl.textContent = `Cliente: ${cliNome}`;
-    if (totalEl) totalEl.textContent = typeof formatMoney === 'function' ? formatMoney(total) : 'R$ ' + total.toFixed(2);
+    if (titEl) titEl.textContent = isEE ? `Receber Entrada Móveis - Pedido #${numPedStr}` : `Receber Pedido #${numPedStr}`;
+    if (subEl) {
+        subEl.innerHTML = `Cliente: <strong>${cliNome}</strong>${cliEndFmt && cliEndFmt !== 'Não informado' ? `<br><span class="text-xs font-normal opacity-90"><i class="fa-solid fa-location-dot mr-1 text-amber-500"></i>${cliEndFmt}</span>` : ''}${isEE ? `<br><span class="text-xs font-bold text-amber-600 dark:text-amber-400"><i class="fa-solid fa-couch mr-1"></i>Sinal/Entrada: ${typeof formatMoney === 'function' ? formatMoney(valorReceberNoCaixa) : 'R$ ' + valorReceberNoCaixa.toFixed(2)} | Saldo na Entrega: ${typeof formatMoney === 'function' ? formatMoney(v.saldoEntrega) : 'R$ ' + Number(v.saldoEntrega || 0).toFixed(2)}</span>` : ''}`;
+    }
+    if (totalEl) {
+        if (isEE) {
+            totalEl.innerHTML = `${typeof formatMoney === 'function' ? formatMoney(valorReceberNoCaixa) : 'R$ ' + valorReceberNoCaixa.toFixed(2)} <span class="text-[11px] block font-normal text-slate-400">Entrada / Sinal (Total Venda: ${typeof formatMoney === 'function' ? formatMoney(total) : 'R$ ' + total.toFixed(2)})</span>`;
+        } else {
+            totalEl.textContent = typeof formatMoney === 'function' ? formatMoney(total) : 'R$ ' + total.toFixed(2);
+        }
+    }
     if (vendEl) vendEl.textContent = `Vend: ${vendNome}`;
 
     const qtdItens = Array.isArray(v.itens) ? v.itens.reduce((acc, i) => acc + (Number(i.qtd) || 1), 0) : 0;
@@ -3873,17 +3968,17 @@ window.abrirModalReceberPDV = function(vendaId) {
     // 1. Identificar condição de pagamento prévia definida pelo vendedor no PDV
     let condVendedor = v.condicaoPagamentoVendedor || (v.pagamentos && v.pagamentos.length > 0 ? v.pagamentos[0] : null);
     
-    let metodoPre = 'Dinheiro';
-    let parcelasPre = 1;
+    let metodoPre = isEE ? (v.formaEntrada || 'Dinheiro') : 'Dinheiro';
+    let parcelasPre = isEE ? (parseInt(v.parcelasEntrada) || 1) : 1;
     let vencimentoBasePre = '';
     let vencimentosPersonalizadosPre = [];
 
-    if (condVendedor && condVendedor.metodo) {
+    if (condVendedor && condVendedor.metodo && !isEE) {
         metodoPre = condVendedor.metodo;
         parcelasPre = parseInt(condVendedor.parcelas) || 1;
         vencimentoBasePre = condVendedor.vencimentoBase || '';
         vencimentosPersonalizadosPre = Array.isArray(condVendedor.vencimentosPersonalizados) ? condVendedor.vencimentosPersonalizados : [];
-    } else if (typeof v.pag === 'string' && v.pag) {
+    } else if (typeof v.pag === 'string' && v.pag && !isEE) {
         const pagUpper = v.pag.toUpperCase();
         if (pagUpper.includes('FIADO')) metodoPre = 'Fiado';
         else if (pagUpper.includes('BOLETO')) metodoPre = 'Boleto';
@@ -3909,7 +4004,10 @@ window.abrirModalReceberPDV = function(vendaId) {
     // Atualizar badge da condição do vendedor no modal
     const condEl = document.getElementById('modal-receber-condicao-vendedor');
     if (condEl) {
-        if (metodoPre && (metodoPre !== 'Dinheiro' || (condVendedor && condVendedor.metodo))) {
+        if (isEE) {
+            condEl.innerHTML = `<i class="fa-solid fa-couch mr-1 text-amber-500"></i>Entrada: <strong>${typeof formatMoney === 'function' ? formatMoney(valorReceberNoCaixa) : 'R$ ' + valorReceberNoCaixa} (${v.formaEntrada || metodoPre})</strong> &bull; Saldo: <strong>${typeof formatMoney === 'function' ? formatMoney(v.saldoEntrega) : 'R$ ' + v.saldoEntrega}</strong> na entrega`;
+            condEl.classList.remove('hidden');
+        } else if (metodoPre && (metodoPre !== 'Dinheiro' || (condVendedor && condVendedor.metodo))) {
             condEl.innerHTML = `<i class="fa-solid fa-hand-holding-dollar mr-1"></i>Previsão: <strong>${metodoPre}${parcelasPre > 1 ? ' (' + parcelasPre + 'x)' : ''}</strong>`;
             condEl.classList.remove('hidden');
         } else {
@@ -3934,7 +4032,7 @@ window.abrirModalReceberPDV = function(vendaId) {
 
     const inputPago = document.getElementById('modal-receber-valor-pago');
     if (inputPago) {
-        inputPago.value = total > 0 ? (typeof formatMoney === 'function' ? formatMoney(total).replace('R$', '').trim() : total.toFixed(2)) : '';
+        inputPago.value = valorReceberNoCaixa > 0 ? (typeof formatMoney === 'function' ? formatMoney(valorReceberNoCaixa).replace('R$', '').trim() : valorReceberNoCaixa.toFixed(2)) : '';
     }
     const trocoEl = document.getElementById('modal-receber-troco-display');
     if (trocoEl) trocoEl.textContent = 'R$ 0,00';
@@ -3988,7 +4086,8 @@ window.selecionarMetodoCaixa = function(metodo) {
 window.renderizarParcelasCaixa = function() {
     const v = window.vendaPendenteRecebendoAtual;
     if (!v) return;
-    const total = Number(v.tot || v.subtotal || 0);
+    const isEE = !!v.vendaComEntradaEntrega;
+    const total = isEE ? (Number(v.valorEntrada) || Number(v.tot || v.subtotal || 0)) : Number(v.tot || v.subtotal || 0);
     const selParc = document.getElementById('modal-receber-parcelas');
     const qtd = parseInt(selParc?.value) || 1;
     const metodo = window.metodoSelecionadoCaixa || 'Fiado';
@@ -4000,7 +4099,11 @@ window.renderizarParcelasCaixa = function() {
     const fm = (val) => typeof formatMoney === 'function' ? formatMoney(val) : 'R$ ' + Number(val || 0).toFixed(2);
 
     if (resumoTopo) {
-        resumoTopo.textContent = `${qtd}x de ${fm(valParc)} (Total: ${fm(total)})`;
+        if (isEE) {
+            resumoTopo.textContent = `${qtd}x de ${fm(valParc)} (Entrada: ${fm(total)} | Saldo Entrega: ${fm(v.saldoEntrega)})`;
+        } else {
+            resumoTopo.textContent = `${qtd}x de ${fm(valParc)} (Total: ${fm(total)})`;
+        }
     }
 
     // Prazo padrão do método em dias
@@ -4148,6 +4251,10 @@ window.confirmarRecebimentoPDVNoCaixa = async function() {
     try {
         const metodo = window.metodoSelecionadoCaixa || 'Dinheiro';
         const totalVenda = Number(v.tot || v.subtotal || 0);
+        const isEE = !!v.vendaComEntradaEntrega;
+        const valorReceber = isEE ? (Number(v.valorEntrada) || totalVenda) : totalVenda;
+        const saldoEntregaValor = isEE ? (Number(v.saldoEntrega) || Math.max(0, totalVenda - valorReceber)) : 0;
+
         let parcelas = 1;
         let parcelasArray = [];
         let vencimentosPersonalizados = [];
@@ -4158,8 +4265,8 @@ window.confirmarRecebimentoPDVNoCaixa = async function() {
                 const dataEl = document.getElementById(`cx-parc-data-${i}`);
                 const valEl = document.getElementById(`cx-parc-valor-${i}`);
                 const dataVal = dataEl?.value || '';
-                const valorDigitado = valEl ? (typeof parseInputMoney === 'function' ? parseInputMoney(valEl.value) : parseFloat(String(valEl.value).replace(',', '.'))) : (totalVenda / parcelas);
-                const valorVal = isNaN(valorDigitado) ? (totalVenda / parcelas) : valorDigitado;
+                const valorDigitado = valEl ? (typeof parseInputMoney === 'function' ? parseInputMoney(valEl.value) : parseFloat(String(valEl.value).replace(',', '.'))) : (valorReceber / parcelas);
+                const valorVal = isNaN(valorDigitado) ? (valorReceber / parcelas) : valorDigitado;
 
                 parcelasArray.push({
                     parcela: i,
@@ -4171,9 +4278,9 @@ window.confirmarRecebimentoPDVNoCaixa = async function() {
         }
 
         const inputPago = document.getElementById('modal-receber-valor-pago');
-        const valorDigitado = inputPago ? (typeof parseInputMoney === 'function' ? parseInputMoney(inputPago.value) : parseFloat(String(inputPago.value).replace(',', '.'))) : totalVenda;
-        const valorPago = (metodo === 'Dinheiro' && !isNaN(valorDigitado) && valorDigitado > 0) ? valorDigitado : totalVenda;
-        const troco = (metodo === 'Dinheiro' && valorPago > totalVenda) ? valorPago - totalVenda : 0;
+        const valorDigitado = inputPago ? (typeof parseInputMoney === 'function' ? parseInputMoney(inputPago.value) : parseFloat(String(inputPago.value).replace(',', '.'))) : valorReceber;
+        const valorPago = (metodo === 'Dinheiro' && !isNaN(valorDigitado) && valorDigitado > 0) ? valorDigitado : valorReceber;
+        const troco = (metodo === 'Dinheiro' && valorPago > valorReceber) ? valorPago - valorReceber : 0;
         const obsCaixa = document.getElementById('modal-receber-obs')?.value.trim() || '';
 
         const opAtual = (typeof window.obterOperadorAtual === 'function') ? window.obterOperadorAtual() : null;
@@ -4189,22 +4296,52 @@ window.confirmarRecebimentoPDVNoCaixa = async function() {
         const batch = firestore.batch();
 
         // 1. Atualizar Venda com pagamentos completos
-        const pagTexto = `${metodo}${parcelas > 1 ? ' (' + parcelas + 'x)' : ''} (${typeof formatMoney === 'function' ? formatMoney(totalVenda) : totalVenda})`;
+        let pagTexto = '';
+        let pagamentosObj = [];
+
+        if (isEE) {
+            pagTexto = `Entrada ${metodo}${parcelas > 1 ? ' (' + parcelas + 'x)' : ''} (${typeof formatMoney === 'function' ? formatMoney(valorReceber) : valorReceber}) + Saldo Entrega (${typeof formatMoney === 'function' ? formatMoney(saldoEntregaValor) : saldoEntregaValor})`;
+            pagamentosObj = [
+                {
+                    metodo: metodo,
+                    valor: valorReceber,
+                    parcelas: parcelas,
+                    vencimentoBase: parcelasArray[0]?.vencimento || '',
+                    vencimentosPersonalizados: vencimentosPersonalizados,
+                    detalhesParcelas: parcelasArray,
+                    valorRecebido: valorPago,
+                    troco: troco,
+                    tipoSub: 'ENTRADA',
+                    status: 'PAGO',
+                    dataPagamento: now
+                },
+                {
+                    metodo: v.formaEntregaPrevista || 'A Definir',
+                    valor: saldoEntregaValor,
+                    parcelas: 1,
+                    tipoSub: 'SALDO_ENTREGA',
+                    status: 'PENDENTE',
+                    vencimentoBase: v.dataEntregaPrevista || ''
+                }
+            ];
+        } else {
+            pagTexto = `${metodo}${parcelas > 1 ? ' (' + parcelas + 'x)' : ''} (${typeof formatMoney === 'function' ? formatMoney(totalVenda) : totalVenda})`;
+            pagamentosObj = [{
+                metodo: metodo,
+                valor: totalVenda,
+                parcelas: parcelas,
+                vencimentoBase: parcelasArray[0]?.vencimento || '',
+                vencimentosPersonalizados: vencimentosPersonalizados,
+                detalhesParcelas: parcelasArray,
+                valorRecebido: valorPago,
+                troco: troco
+            }];
+        }
+
         const vendaRef = window.getEmpresaRef().collection('vendas').doc(String(v.id));
 
-        const pagamentosObj = [{
-            metodo: metodo,
-            valor: totalVenda,
-            parcelas: parcelas,
-            vencimentoBase: parcelasArray[0]?.vencimento || '',
-            vencimentosPersonalizados: vencimentosPersonalizados,
-            detalhesParcelas: parcelasArray,
-            valorRecebido: valorPago,
-            troco: troco
-        }];
-
         const updateVendaObj = {
-            status: 'CONCLUIDA',
+            status: isEE ? 'AGUARDANDO_ENTREGA' : 'CONCLUIDA',
             pag: pagTexto,
             pagamentos: pagamentosObj,
             valorRecebido: valorPago,
@@ -4216,7 +4353,15 @@ window.confirmarRecebimentoPDVNoCaixa = async function() {
             obsCaixa: obsCaixa,
             ultimaAlteracao: Date.now()
         };
-        batch.update(vendaRef, updateVendaObj);
+
+        if (isEE) {
+            updateVendaObj.entradaPaga = true;
+            updateVendaObj.saldoEntregaPago = false;
+            updateVendaObj.valorEntrada = valorReceber;
+            updateVendaObj.formaEntrada = metodo;
+            updateVendaObj.parcelasEntrada = parcelas;
+            updateVendaObj.saldoEntrega = saldoEntregaValor;
+        }
 
         // 2. Dar baixa de estoque e kardex se não foi baixado na pré-venda
         if (Array.isArray(v.itens) && v.estoqueBaixado !== true) {
@@ -4232,28 +4377,34 @@ window.confirmarRecebimentoPDVNoCaixa = async function() {
                         prodId: item.id,
                         prodNome: item.nome || 'Produto',
                         qtd: -(item.qtd || 1),
-                        tipo: 'VENDA'
+                        tipo: 'VENDA',
+                        vendaId: v.id
                     });
                 }
             });
             updateVendaObj.estoqueBaixado = true;
         }
 
-        // 3. Atualizar Caixa Físico do Operador
+        batch.update(vendaRef, updateVendaObj);
+
+        // 3. Atualizar Caixa Físico do Operador (apenas o valor da Entrada se for venda móveis com entrega)
         let cxAtual = db.caixa || { status: 'FECHADO', saldo: 0, historico: [] };
         let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
         let cxSaldoNovo = cxAtual.saldo || 0;
 
-        const descMov = `Venda #${numPedStr} (${metodo}${parcelas > 1 ? ' ' + parcelas + 'x' : ''}) - ${cliNome}`;
+        const valorCreditarCaixa = isEE ? valorReceber : totalVenda;
+        const descMov = isEE 
+            ? `Entrada Venda #${numPedStr} (${metodo}${parcelas > 1 ? ' ' + parcelas + 'x' : ''}) - ${cliNome} [Saldo na Entrega: ${typeof formatMoney === 'function' ? formatMoney(saldoEntregaValor) : saldoEntregaValor}]`
+            : `Venda #${numPedStr} (${metodo}${parcelas > 1 ? ' ' + parcelas + 'x' : ''}) - ${cliNome}`;
 
         if (metodo === 'Dinheiro') {
-            cxSaldoNovo += totalVenda;
+            cxSaldoNovo += valorCreditarCaixa;
             cxHistoricoNovo.unshift({
                 data: now,
                 tipo: 'ENTRADA',
                 metodo: 'Dinheiro',
                 desc: descMov,
-                valor: totalVenda,
+                valor: valorCreditarCaixa,
                 operador: opNome,
                 saldoApos: cxSaldoNovo
             });
@@ -4263,7 +4414,7 @@ window.confirmarRecebimentoPDVNoCaixa = async function() {
                 tipo: `ENTRADA (${metodo})`,
                 metodo: metodo,
                 desc: descMov,
-                valor: totalVenda,
+                valor: valorCreditarCaixa,
                 operador: opNome,
                 saldoApos: cxSaldoNovo,
                 naoAfetaGaveta: true
@@ -4282,7 +4433,7 @@ window.confirmarRecebimentoPDVNoCaixa = async function() {
                 const finDataVenc = p.vencimento ? new Date(p.vencimento + 'T12:00:00').toISOString() : now;
                 const finObj = {
                     id: finRef.id,
-                    ref: `Venda #${numPedStr} (${metodo}) [${p.parcela}/${parcelas}]`,
+                    ref: isEE ? `Entrada Venda #${numPedStr} (${metodo}) [${p.parcela}/${parcelas}]` : `Venda #${numPedStr} (${metodo}) [${p.parcela}/${parcelas}]`,
                     data: finDataVenc,
                     dataVencimento: finDataVenc,
                     pessoa: cliNome,
@@ -4307,7 +4458,7 @@ window.confirmarRecebimentoPDVNoCaixa = async function() {
                 const finDataVenc = p.vencimento ? new Date(p.vencimento + 'T12:00:00').toISOString() : now;
                 const finObj = {
                     id: finRef.id,
-                    ref: `Venda #${numPedStr} (${metodo})${parcelas > 1 ? ` [${p.parcela}/${parcelas}]` : ''}`,
+                    ref: isEE ? `Entrada Venda #${numPedStr} (${metodo})${parcelas > 1 ? ` [${p.parcela}/${parcelas}]` : ''}` : `Venda #${numPedStr} (${metodo})${parcelas > 1 ? ` [${p.parcela}/${parcelas}]` : ''}`,
                     data: isDebitoAVista ? now : finDataVenc,
                     dataPagamento: isDebitoAVista ? now : null,
                     dataVencimento: finDataVenc,
@@ -4331,12 +4482,12 @@ window.confirmarRecebimentoPDVNoCaixa = async function() {
             const finRef = window.getEmpresaRef().collection('financeiro').doc();
             const finObj = {
                 id: finRef.id,
-                ref: `Venda #${numPedStr} (${metodo})`,
+                ref: isEE ? `Entrada Venda #${numPedStr} (${metodo})` : `Venda #${numPedStr} (${metodo})`,
                 data: now,
                 dataPagamento: now,
                 pessoa: cliNome,
-                valor: totalVenda,
-                valorPago: totalVenda,
+                valor: valorReceber,
+                valorPago: valorReceber,
                 status: 'PAGO',
                 tipo: 'RECEITA',
                 categoria: 'Vendas',
@@ -4347,6 +4498,31 @@ window.confirmarRecebimentoPDVNoCaixa = async function() {
             };
             batch.set(finRef, finObj);
             novosRegistrosFinanceiro.push(finObj);
+        }
+
+        // Se for venda de móveis com Saldo na Entrega pendente, lança no financeiro a previsão de recebimento
+        if (isEE && saldoEntregaValor > 0) {
+            const finSaldoRef = window.getEmpresaRef().collection('financeiro').doc();
+            const finDataEntrega = v.dataEntregaPrevista ? new Date(v.dataEntregaPrevista + 'T12:00:00').toISOString() : (v.dataEntrega ? new Date(v.dataEntrega + 'T12:00:00').toISOString() : now);
+            const finSaldoObj = {
+                id: finSaldoRef.id,
+                ref: `Saldo Entrega - Venda #${numPedStr} (${v.formaEntregaPrevista || 'Na Entrega'})`,
+                data: finDataEntrega,
+                dataVencimento: finDataEntrega,
+                pessoa: cliNome,
+                wpp: '',
+                valor: saldoEntregaValor,
+                valorPago: 0,
+                status: 'PENDENTE',
+                tipo: 'RECEITA',
+                categoria: 'Vendas - Saldo na Entrega',
+                metodoPagamento: v.formaEntregaPrevista || 'A Combinar',
+                origemVendaId: String(v.id),
+                operador: opNome,
+                caixaId: caixaDocId
+            };
+            batch.set(finSaldoRef, finSaldoObj);
+            novosRegistrosFinanceiro.push(finSaldoObj);
         }
 
         await batch.commit();
@@ -4420,11 +4596,12 @@ window.confirmarRecebimentoPDVNoCaixa = async function() {
                     fContainer.classList.remove('hidden');
                     const fStatus = document.getElementById('fiscal-status-container');
                     if (fStatus) { fStatus.classList.add('hidden'); fStatus.innerHTML = ''; }
-                    const bNfce = document.getElementById('btn-emitir-nfce'); if (bNfce) bNfce.disabled = false;
-                    const bNfe = document.getElementById('btn-emitir-nfe'); if (bNfe) bNfe.disabled = false;
-                    const empIdAtivo = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
-                    const isFc = (empIdAtivo === 'emp_fc_moveis' || !empIdAtivo || String(db.config?.empresa?.cnpj || '').includes('37638679'));
-                    const nfseHabilitada = db.config?.empresa?.habilitarNFSe !== undefined ? Boolean(db.config?.empresa?.habilitarNFSe) : isFc;
+                    const podeNfce = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfce') : true;
+                    const podeNfe = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfe') : true;
+                    const podeNfse = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfse') : false;
+                    const bNfce = document.getElementById('btn-emitir-nfce'); if (bNfce) { bNfce.disabled = false; bNfce.style.display = podeNfce ? '' : 'none'; }
+                    const bNfe = document.getElementById('btn-emitir-nfe'); if (bNfe) { bNfe.disabled = false; bNfe.style.display = podeNfe ? '' : 'none'; }
+                    const nfseHabilitada = Boolean(podeNfse && (db.config?.empresa?.habilitarNFSe !== undefined ? db.config?.empresa?.habilitarNFSe : false));
                     const bNfse = document.getElementById('btn-emitir-nfse');
                     if (bNfse) {
                         bNfse.disabled = false;
@@ -4455,7 +4632,11 @@ window.confirmarRecebimentoPDVNoCaixa = async function() {
             }
         }
 
-        showToast(`Venda #${numPedStr} recebida com sucesso (${metodo})!`, 'success');
+        if (isEE) {
+            showToast(`Entrada de ${typeof formatMoney === 'function' ? formatMoney(valorReceber) : valorReceber} da Venda #${numPedStr} recebida com sucesso! Saldo de ${typeof formatMoney === 'function' ? formatMoney(saldoEntregaValor) : saldoEntregaValor} aguardando entrega.`, 'success');
+        } else {
+            showToast(`Venda #${numPedStr} recebida com sucesso (${metodo})!`, 'success');
+        }
 
     } catch(err) {
         console.error('Erro ao confirmar recebimento no caixa:', err);
@@ -4477,10 +4658,13 @@ window.gerarHtmlReciboParaImpressao = function(v) {
     const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id || '').slice(-4);
     const vend = v.vendedor || '-';
 
-    const cliNome = v.clienteNome || v.cliente || 'Consumidor Final';
-    const cliDoc = v.clienteDoc || 'Não informado';
-    const cliTel = v.clienteTel || 'Não informado';
-    const cliEnd = v.clienteEnd || 'Não informado';
+    const cliInfo = (typeof obterDadosClientePDV === 'function') ? obterDadosClientePDV(v.clienteId) : (typeof window.obterDadosClientePDV === 'function' ? window.obterDadosClientePDV(v.clienteId) : null);
+    const cliNome = (cliInfo && cliInfo.nome !== 'Consumidor Final') ? cliInfo.nome : (v.clienteNome || v.cliente || 'Consumidor Final');
+    const cliDoc = (cliInfo && cliInfo.doc !== 'Não informado') ? cliInfo.doc : (v.clienteDoc || 'Não informado');
+    const cliTel = (cliInfo && cliInfo.tel !== 'Não informado') ? cliInfo.tel : (v.clienteTel || 'Não informado');
+    const cliEnd = (typeof window.formatarEnderecoCompletoCliente === 'function')
+        ? window.formatarEnderecoCompletoCliente(v, cliInfo)
+        : ((cliInfo && cliInfo.endCompleto !== 'Não informado') ? cliInfo.endCompleto : (v.clienteEnd || 'Não informado'));
 
     const frete = v.taxaFrete || 0;
     const tot = v.tot || 0;
@@ -4514,7 +4698,7 @@ window.gerarHtmlReciboParaImpressao = function(v) {
                 Nome: ${cliNome}<br>
                 CPF/CNPJ: ${cliDoc}<br>
                 Telefone: ${cliTel}<br>
-                Endereço: ${cliEnd}
+                Endereço Completo: ${cliEnd}
             </div>
             <div style="text-align: right; border-left: 1px solid #ccc; padding-left: 15px;">
                 <strong>DADOS DA OPERAÇÃO</strong><br>
@@ -4566,6 +4750,30 @@ window.gerarHtmlReciboParaImpressao = function(v) {
                 `).join('')}
             </tbody>
         </table>
+
+        ${v.vendaComEntradaEntrega ? `
+        <div style="border: 2px solid #d97706; background-color: #fffbeb; border-radius: 6px; padding: 10px; margin-bottom: 15px; font-size: 13px;">
+            <div style="font-weight: 900; color: #b45309; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+                <span>CONDICIONAL DE ENTREGA / SINAL DE MÓVEIS</span>
+                <span>${v.saldoEntregaPago ? '<span style="color: #059669; font-weight: bold;">[ SALDO QUITADO ]</span>' : '<span style="color: #d97706; font-weight: bold;">[ SALDO PENDENTE NA ENTREGA ]</span>'}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span>1. ENTRADA / SINAL (PAGO NO PEDIDO):</span>
+                <strong style="color: #059669;">${fm(v.valorEntrada || (v.pagamentos && v.pagamentos[0]?.valor) || 0)} (${v.formaEntrada || (v.pagamentos && v.pagamentos[0]?.metodo) || 'Dinheiro'}${v.parcelasEntrada && v.parcelasEntrada > 1 ? ' ' + v.parcelasEntrada + 'x' : ''})</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span>2. SALDO A PAGAR NA ENTREGA:</span>
+                <strong style="color: ${v.saldoEntregaPago ? '#059669' : '#d97706'};">${fm(v.saldoEntrega || (v.pagamentos && v.pagamentos[1]?.valor) || 0)}</strong>
+            </div>
+            <div style="font-size: 11px; color: #78350f; margin-top: 4px; border-top: 1px dashed #fde68a; padding-top: 4px;">
+                Forma Prevista na Entrega: <strong>${v.formaEntregaPrevista || 'A Definir'}${v.parcelasEntrega && v.parcelasEntrega > 1 ? ' (' + v.parcelasEntrega + 'x)' : ''}</strong> | Previsão de Entrega: <strong>${v.dataEntregaPrevista ? v.dataEntregaPrevista.split('-').reverse().join('/') : (v.dataEntrega ? v.dataEntrega.split('-').reverse().join('/') : 'A Combinar')}</strong>
+            </div>
+            ${!v.saldoEntregaPago ? `
+            <div style="margin-top: 6px; background-color: #fef3c7; border: 1px solid #f59e0b; padding: 6px; border-radius: 4px; font-weight: bold; color: #92400e; font-size: 12px; text-align: center;">
+                ATENÇÃO MOTORISTA / ENTREGADOR: COBRAR O VALOR DE ${fm(v.saldoEntrega || 0)} NO ATO DO DESCARREGAMENTO.
+            </div>` : ''}
+        </div>
+        ` : ''}
 
         <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; margin-bottom: 20px; font-size: 13px;">
             <div style="flex: 1; min-width: 280px; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-right: 5px; margin-bottom: 5px;">
@@ -4623,7 +4831,7 @@ window.printAction = function(type) {
     const area = document.getElementById('print-area');
     if (!area) return;
     const printContent = area.innerHTML; 
-    const widthStyle = type === 'thermal' ? 'width: 80mm; font-size: 12px; font-family: monospace; padding: 2mm; margin: 0 auto;' : 'width: 210mm; font-size: 14px; font-family: Arial, sans-serif; padding: 15mm; margin: 0 auto;'; 
+    const widthStyle = type === 'thermal' ? 'width: 80mm; font-size: 12px; font-family: monospace; padding: 2mm; margin: 0 auto;' : 'width: 100%; max-width: 100%; box-sizing: border-box; font-size: 13px; font-family: Arial, sans-serif; padding: 0; margin: 0 auto;'; 
     const htmlCompleto = `<div style="${widthStyle} background: #fff; color: #000;">${printContent}</div>`; 
     printHtmlSeguro(htmlCompleto);
 };
@@ -4643,6 +4851,12 @@ window.emitirNota = async function(tipo) {
         return showToast("Erro: Venda não identificada.", "error");
     }
     
+    if (typeof window.temPermissaoNotaFiscal === 'function' && !window.temPermissaoNotaFiscal(tipo)) {
+        return showToast(tipo === 'nfse'
+            ? 'A emissão de NFS-e (Serviços) não está habilitada para sua licença. Entre em contato com o administrador/suporte para liberação manual.'
+            : `Seu plano atual não possui permissão para emitir ${tipo.toUpperCase()}. Fale com o suporte para upgrade!`, 'warning');
+    }
+
     const btnNfce = document.getElementById('btn-emitir-nfce');
     const btnNfe = document.getElementById('btn-emitir-nfe');
     const btnNfse = document.getElementById('btn-emitir-nfse');
@@ -4831,23 +5045,45 @@ window.salvarLembreteCaixa = async function() {
 
 window.imprimirContratoAtual = function() {
     if (window.vendaAtualImpressao) {
-        window.imprimirContratoObj(window.vendaAtualImpressao);
+        if (typeof window.abrirModalContrato === 'function') {
+            window.abrirModalContrato(window.vendaAtualImpressao);
+        } else {
+            window.imprimirContratoObj(window.vendaAtualImpressao);
+        }
     } else {
         showToast("Nenhuma venda selecionada para imprimir.", "error");
     }
 };
 
+window.imprimirTermoEntregaAtual = function() {
+    if (window.vendaAtualImpressao) {
+        if (typeof window.abrirTermoEntrega === 'function') {
+            window.abrirTermoEntrega(window.vendaAtualImpressao);
+        } else {
+            showToast("Função de Termo de Entrega não disponível.", "warning");
+        }
+    } else {
+        showToast("Nenhuma venda selecionada para imprimir o Termo de Entrega.", "error");
+    }
+};
+
 window.imprimirContratoObj = function(v) {
     if (!v) return;
+    if (typeof window.abrirModalContrato === 'function') {
+        window.abrirModalContrato(v);
+        return;
+    }
     const empAtivaIdContr = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
     const fallbackNomeContr = (window.currentEmpresaData?.nomeEmpresa) || localStorage.getItem('fc_nome_empresa_ativa') || (empAtivaIdContr === 'emp_fc_moveis' ? 'FC MÓVEIS' : 'MINHA LOJA');
     const emp = (typeof obterDadosEmpresa === 'function') ? obterDadosEmpresa() : { nome: fallbackNomeContr, cnpj: '', end: '', tel: '', logoHtml: '' };
     const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id || '').slice(-4);
-    const cliInfo = (typeof obterDadosClientePDV === 'function') ? obterDadosClientePDV(v.clienteId) : null;
+    const cliInfo = (typeof obterDadosClientePDV === 'function') ? obterDadosClientePDV(v.clienteId) : (typeof window.obterDadosClientePDV === 'function' ? window.obterDadosClientePDV(v.clienteId) : null);
     const cliNome = (cliInfo && cliInfo.nome !== 'Consumidor Final') ? cliInfo.nome : (v.clienteNome || v.cliente || 'Consumidor Final');
     const cliCpf = (cliInfo && cliInfo.doc !== 'Não informado') ? cliInfo.doc : (v.clienteDoc || 'Não informado');
     const cliTel = (cliInfo && cliInfo.tel !== 'Não informado') ? cliInfo.tel : (v.clienteTel || 'Não informado');
-    const cliEndCompleto = (cliInfo && cliInfo.endCompleto !== 'Não informado') ? cliInfo.endCompleto : (v.clienteEnd || 'Não informado');
+    const cliEndCompleto = (typeof window.formatarEnderecoCompletoCliente === 'function')
+        ? window.formatarEnderecoCompletoCliente(v, cliInfo)
+        : ((cliInfo && cliInfo.endCompleto !== 'Não informado') ? cliInfo.endCompleto : (v.clienteEnd || 'Não informado'));
 
     let totalDescontoItens = 0;
     let subtotalItensBruto = 0;
@@ -4900,7 +5136,7 @@ window.imprimirContratoObj = function(v) {
             <strong>Nome completo:</strong> ${cliNome}<br>
             <strong>CPF/CNPJ:</strong> ${cliCpf}<br>
             <strong>Telefone / WhatsApp:</strong> ${cliTel}<br>
-            <strong>Endereço:</strong> ${cliEndCompleto}
+            <strong>Endereço Completo:</strong> ${cliEndCompleto}
         </p>
 
         <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">OBJETO DO CONTRATO</h3>
@@ -4928,7 +5164,7 @@ window.imprimirContratoObj = function(v) {
     </div>
     `;
 
-    printHtmlSeguro(`<div style="width: 210mm; margin: 0 auto; padding: 15mm; background: #fff;">${html}</div>`);
+    printHtmlSeguro(`<div style="width: 100%; max-width: 100%; box-sizing: border-box; margin: 0 auto; padding: 0; background: #fff;">${html}</div>`);
 };
 
 function obterDadosEmpresa() {
@@ -5067,7 +5303,11 @@ window.imprimirReciboRecebimentoCaixa = function(venda) {
     if (!venda) return;
     const emp = (typeof obterDadosEmpresa === 'function') ? obterDadosEmpresa() : { nome: 'FC Gestão', cnpj: '', tel: '', end: '', logoHtml: '' };
     const numPedStr = String(venda.numeroPedido || venda.id || '0').padStart(4, '0');
-    const cliNome = venda.clienteNome || venda.cliente || 'Consumidor Final';
+    const cliInfo = (typeof window.obterDadosClientePDV === 'function') ? window.obterDadosClientePDV(venda.clienteId) : null;
+    const cliNome = (cliInfo && cliInfo.nome !== 'Consumidor Final') ? cliInfo.nome : (venda.clienteNome || venda.cliente || 'Consumidor Final');
+    const cliEndCompleto = (typeof window.formatarEnderecoCompletoCliente === 'function')
+        ? window.formatarEnderecoCompletoCliente(venda, cliInfo)
+        : (venda.clienteEnd || '');
     const vendNome = venda.vendedor || 'PDV Balcão';
     const cxOp = venda.operadorCaixa || 'Operador Caixa';
     const total = Number(venda.tot || venda.subtotal || 0);
@@ -5100,6 +5340,7 @@ window.imprimirReciboRecebimentoCaixa = function(venda) {
             <div style="border-bottom: 1px dashed #000; padding-bottom: 6px; margin-bottom: 6px; font-size: 10px;">
                 <div>Data/Hora: ${dataHoraStr}</div>
                 <div>Cliente: ${cliNome}</div>
+                ${cliEndCompleto && cliEndCompleto !== 'Não informado' ? `<div>Endereço: ${cliEndCompleto}</div>` : ''}
                 <div>Vendedor: ${vendNome}</div>
                 <div>Operador Caixa: ${cxOp}</div>
             </div>

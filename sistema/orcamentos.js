@@ -98,23 +98,31 @@ function aplicarIdentidadeVisualNoMenu() {
 
 function obterDadosClientePDV(cId) {
     const c = cId && cId !== "0" && db.clientes ? db.clientes.find(x => String(x.id) === String(cId)) : null;
-    if(!c) return { nome: 'Consumidor Final', doc: 'Não informado', tel: 'Não informado', endCompleto: 'Não informado', bairro: '', cidade: '', cep: '' };
+    if(!c) return { id: '', nome: 'Consumidor Final', doc: 'Não informado', tel: 'Não informado', endCompleto: 'Não informado', rua: '', numero: '', complemento: '', bairro: '', cidade: '', uf: '', cep: '' };
     
     const doc = c.cpfCnpj || c.documento || c.cnpj || c.cpf || c.doc || c.cpf_cnpj || 'Não informado';
     const tel = c.whatsapp || c.wpp || c.celular || c.telefone || c.telefoneFixo || c.tel || 'Não informado';
     
     const rua = c.rua || c.logradouro || c.endereco || c.end || '';
     const num = c.numero ? ', ' + c.numero : '';
-    const endCompleto = rua ? (rua + num) : 'Não informado';
+    const endCompleto = (typeof window.formatarEnderecoCompletoCliente === 'function')
+        ? window.formatarEnderecoCompletoCliente(c)
+        : (rua ? (rua + num) : 'Não informado');
     
     return {
+        id: c.id,
         nome: c.nome || c.razaoSocial || 'Consumidor Final',
         doc: doc,
         tel: tel,
+        rua: rua,
+        numero: c.numero || 'S/N',
+        complemento: c.complemento || '',
         endCompleto: endCompleto,
-        bairro: c.bairro || 'Não informado',
-        cidade: c.cidade || 'Não informado',
-        cep: c.cep || 'Não informado'
+        bairro: c.bairro || '',
+        cidade: c.cidade || '',
+        uf: c.uf || '',
+        cep: c.cep || '',
+        raw: c
     };
 }
 
@@ -745,16 +753,20 @@ function printHtmlSeguro(htmlCompleto) {
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { margin: 10mm; }
-                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                @page { size: A4 portrait; margin: 10mm 12mm 12mm 12mm; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
                 .print\\\\:hidden { display: none !important; }
-                table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
+                .overflow-x-auto, .table-wrapper, .fc-table-wrap { overflow: visible !important; display: block !important; }
+                table { page-break-inside: auto; width: 100% !important; max-width: 100% !important; min-width: 0 !important; border-collapse: collapse; }
+                th, td { word-break: break-word !important; }
                 tr { page-break-inside: avoid; page-break-after: auto; }
                 thead { display: table-header-group; }
                 tfoot { display: table-footer-group; }
+                @media print { body { padding: 4mm 6mm !important; margin: 0 !important; box-sizing: border-box !important; } }
             </style>
         </head>
-        <body class="bg-white dark:bg-slate-800 p-4">
+        <body class="bg-white text-black p-0">
             ${htmlCompleto}
         </body>
         </html>
@@ -776,14 +788,14 @@ function imprimirArea(areaId) {
     const element = document.getElementById(areaId);
     if(!element) return showToast("Área de impressão não encontrada.", "error");
     const printContent = element.innerHTML; 
-    const htmlCompleto = `<div style="padding: 20px; font-family: Arial, sans-serif; background: #fff; color: #000;"><div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">${logoHtml}<h2 style="font-size: 20px; font-weight: bold; margin: 5px 0; text-transform: uppercase;">${empNome}</h2><p style="margin: 0; font-size: 12px; color: #555;">Documento Gerencial Oficial</p></div>${printContent}</div>`; 
+    const htmlCompleto = `<div style="padding: 10px 0; font-family: Arial, sans-serif; background: #fff; color: #000; width: 100%; box-sizing: border-box;"><div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px;">${logoHtml}<h2 style="font-size: 20px; font-weight: bold; margin: 5px 0; text-transform: uppercase;">${empNome}</h2><p style="margin: 0; font-size: 12px; color: #555;">Documento Gerencial Oficial</p></div>${printContent}</div>`; 
     printHtmlSeguro(htmlCompleto);
 }
 
 function printAction(type) { 
     const area = document.getElementById('print-area'); if(!area) return;
     const printContent = area.innerHTML; 
-    const widthStyle = type === 'thermal' ? 'width: 80mm; font-size: 12px; font-family: monospace; padding: 2mm; margin: 0 auto;' : 'width: 210mm; font-size: 14px; font-family: Arial, sans-serif; padding: 15mm; margin: 0 auto;'; 
+    const widthStyle = type === 'thermal' ? 'width: 80mm; font-size: 12px; font-family: monospace; padding: 2mm; margin: 0 auto;' : 'width: 100%; max-width: 100%; box-sizing: border-box; font-size: 13px; font-family: Arial, sans-serif; padding: 0; margin: 0 auto;'; 
     const htmlCompleto = `<div style="${widthStyle} background: #fff; color: #000;">${printContent}</div>`; 
     printHtmlSeguro(htmlCompleto);
 }
@@ -808,20 +820,23 @@ function baixarPDF(areaId, filename) {
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { margin: 15mm; size: A4; }
-                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 20px; max-width: 1000px; margin: 0 auto; }
+                @page { margin: 10mm 12mm 12mm 12mm; size: A4 portrait; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
                 .print\\:hidden { display: none !important; }
-                table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
+                .overflow-x-auto, .table-wrapper, .fc-table-wrap { overflow: visible !important; display: block !important; }
+                table { page-break-inside: auto; width: 100% !important; max-width: 100% !important; min-width: 0 !important; border-collapse: collapse; }
+                th, td { word-break: break-word !important; }
                 tr { page-break-inside: avoid; page-break-after: auto; }
                 thead { display: table-header-group; }
                 tfoot { display: table-footer-group; }
                 
                 @media print {
-                    body { padding: 0; max-width: none; }
+                    body { padding: 4mm 6mm !important; margin: 0 !important; max-width: 100% !important; box-sizing: border-box !important; }
                 }
             </style>
         </head>
-        <body class="bg-white text-black">
+        <body class="bg-white text-black p-0">
             ${printContent}
             
             <script>
@@ -885,7 +900,9 @@ function enviarPDFWhatsApp(id) {
     const cliNome = (cliInfo && cliInfo.nome !== 'Consumidor Final') ? cliInfo.nome : (v.clienteNome || 'Consumidor Final');
     const cliCpf = (cliInfo && cliInfo.doc !== 'Não informado') ? cliInfo.doc : (v.clienteDoc || 'Não informado');
     const cliTel = (cliInfo && cliInfo.tel !== 'Não informado') ? cliInfo.tel : (v.clienteTel || ''); 
-    const cliEndCompleto = (cliInfo && cliInfo.endCompleto !== 'Não informado') ? cliInfo.endCompleto : (v.clienteEnd || 'Não informado');
+    const cliEndCompleto = (typeof window.formatarEnderecoCompletoCliente === 'function')
+        ? window.formatarEnderecoCompletoCliente(v, cliInfo)
+        : ((cliInfo && cliInfo.endCompleto !== 'Não informado') ? cliInfo.endCompleto : (v.clienteEnd || 'Não informado'));
     const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
     
     let numLimpo = cliTel.replace(/\D/g, '');
@@ -929,7 +946,7 @@ function enviarPDFWhatsApp(id) {
                 Nome: ${cliNome}<br>
                 CPF/CNPJ: ${cliCpf}<br>
                 Telefone: ${cliTel || 'Não Informado'}<br>
-                Endereço: ${cliEndCompleto}
+                Endereço Completo: ${cliEndCompleto}
             </div>
             <div style="text-align: right; border-left: 1px solid #ccc; padding-left: 15px;">
                 <strong>DADOS DA OPERAÇÃO</strong><br>
@@ -1042,8 +1059,9 @@ function enviarPDFWhatsApp(id) {
             <title>${filename}</title>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { margin: 15mm; size: A4; }
-                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 20px; max-width: 900px; margin: 0 auto; }
+                @page { margin: 10mm 12mm 12mm 12mm; size: A4 portrait; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0 !important; padding: 20px; width: 100%; max-width: 900px; margin: 0 auto; }
                 .barra-acoes { 
                     position: sticky; top: 0; z-index: 100; background: #1e293b; padding: 12px 20px; 
                     display: flex; gap: 10px; justify-content: center; align-items: center;
@@ -1061,8 +1079,9 @@ function enviarPDFWhatsApp(id) {
                     display: flex; align-items: center; gap: 8px;
                 }
                 .btn-pdf:hover { background: #b91c1c; }
+                table { width: 100% !important; max-width: 100% !important; border-collapse: collapse; }
                 @media print { 
-                    body { padding: 0; max-width: none; }
+                    html, body { padding: 4mm 6mm !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
                     .barra-acoes { display: none !important; } 
                 }
             </style>
@@ -1095,7 +1114,9 @@ function imprimirContratoObj(v) {
     const cliNome = (cliInfo && cliInfo.nome !== 'Consumidor Final') ? cliInfo.nome : (v.clienteNome || 'Consumidor Final');
     const cliCpf = (cliInfo && cliInfo.doc !== 'Não informado') ? cliInfo.doc : (v.clienteDoc || 'Não informado');
     const cliTel = (cliInfo && cliInfo.tel !== 'Não informado') ? cliInfo.tel : (v.clienteTel || 'Não informado');
-    const cliEndCompleto = (cliInfo && cliInfo.endCompleto !== 'Não informado') ? cliInfo.endCompleto : (v.clienteEnd || 'Não informado');
+    const cliEndCompleto = (typeof window.formatarEnderecoCompletoCliente === 'function')
+        ? window.formatarEnderecoCompletoCliente(v, cliInfo)
+        : ((cliInfo && cliInfo.endCompleto !== 'Não informado') ? cliInfo.endCompleto : (v.clienteEnd || 'Não informado'));
 
     let totalDescontoItens = 0;
     let subtotalItensBruto = 0;
@@ -1169,7 +1190,7 @@ function imprimirContratoObj(v) {
             <strong>Nome completo:</strong> ${cliNome}<br>
             <strong>CPF/CNPJ:</strong> ${cliCpf}<br>
             <strong>Telefone / WhatsApp:</strong> ${cliTel}<br>
-            <strong>Endereço:</strong> ${cliEndCompleto}
+            <strong>Endereço Completo:</strong> ${cliEndCompleto}
         </p>
 
         <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">OBJETO DO CONTRATO</h3>
@@ -1192,7 +1213,7 @@ function imprimirContratoObj(v) {
         ${dataEntregaFormatada !== '___/___/20__' ? `<p style="margin-top: 8px; font-weight: bold; background-color: #f1f5f9; padding: 6px 10px; border-left: 4px solid #2563eb; border-radius: 2px;">Data Prevista de Entrega Acordada: <span style="font-size: 15px; color: #1e3a8a;">${dataEntregaFormatada}</span></p>` : ''}
 
         <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">LOCAL DE ENTREGA</h3>
-        <p style="margin-top: 0;"><strong>Endereço:</strong> ${cliEndCompleto}<br><strong>Data prevista de entrega:</strong> <span style="font-weight: bold; ${dataEntregaFormatada !== '___/___/20__' ? 'color: #1e3a8a; font-size: 15px;' : ''}">${dataEntregaFormatada}</span></p>
+        <p style="margin-top: 0;"><strong>Endereço de Entrega:</strong> ${cliEndCompleto}<br><strong>Data prevista de entrega:</strong> <span style="font-weight: bold; ${dataEntregaFormatada !== '___/___/20__' ? 'color: #1e3a8a; font-size: 15px;' : ''}">${dataEntregaFormatada}</span></p>
 
         <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">TRANSPORTE E MONTAGEM</h3>
         <p style="margin-top: 0;">( ) Entrega realizada pela empresa &nbsp;&nbsp;&nbsp; ( ) Retirada pelo cliente<br>Montagem: ( ) Inclusa &nbsp;&nbsp;&nbsp; ( ) Não inclusa<br>Caso a entrega seja realizada pela empresa, o cliente deve garantir acesso adequado ao local.</p>
@@ -1228,7 +1249,7 @@ function imprimirContratoObj(v) {
     </div>
     `;
 
-    printHtmlSeguro(`<div style="width: 210mm; margin: 0 auto; padding: 15mm; background: #fff;">${html}</div>`);
+    printHtmlSeguro(`<div style="width: 100%; max-width: 100%; box-sizing: border-box; margin: 0 auto; padding: 0; background: #fff;">${html}</div>`);
 }
 
 // ==========================================
@@ -1901,7 +1922,7 @@ async function finalizarVendaMultipla() {
                 Nome: ${cliInfo.nome}<br>
                 CPF/CNPJ: ${cliInfo.doc}<br>
                 Telefone: ${cliInfo.tel}<br>
-                Endereço: ${cliInfo.endCompleto}
+                Endereço Completo: ${cliInfo.endCompleto}
             </div>
             <div style="text-align: right; border-left: 1px solid #ccc; padding-left: 15px;">
                 <strong>DADOS DA OPERAÇÃO</strong><br>
@@ -2019,7 +2040,8 @@ async function finalizarVendaMultipla() {
                     prodId: p.id,
                     prodNome: p.nome,
                     qtd: -(item.qtd || 1),
-                    tipo: tipoVenda
+                    tipo: tipoVenda,
+                    vendaId: idFinalVenda
                 });
             } 
         }); 
@@ -2053,6 +2075,25 @@ async function finalizarVendaMultipla() {
         clienteDoc: cliInfo.doc || 'Não informado',
         clienteTel: cliInfo.tel || 'Não informado',
         clienteEnd: cliInfo.endCompleto || 'Não informado',
+        clienteRua: cliInfo.rua || '',
+        clienteNumero: cliInfo.numero || '',
+        clienteComplemento: cliInfo.complemento || '',
+        clienteBairro: cliInfo.bairro || '',
+        clienteCidade: cliInfo.cidade || '',
+        clienteUf: cliInfo.uf || '',
+        clienteCep: cliInfo.cep || '',
+        cliente: cliInfo.raw ? { ...cliInfo.raw } : null,
+        destinatario: cliInfo.raw ? {
+            nome: cliInfo.nome,
+            doc: cliInfo.doc,
+            rua: cliInfo.rua,
+            numero: cliInfo.numero,
+            complemento: cliInfo.complemento || '',
+            bairro: cliInfo.bairro,
+            cidade: cliInfo.cidade,
+            uf: cliInfo.uf,
+            cep: cliInfo.cep
+        } : null,
         subtotal: sub || 0, 
         frete: frete || 0, 
         desconto: desc || 0, 
@@ -2068,7 +2109,8 @@ async function finalizarVendaMultipla() {
         tipo: tipoVenda || 'VENDA',
         dataEntrega: dataEntregaFinal || '', 
         servicoDetalhes: isServico ? { prazo: dataEntregaFinal || osPrazo || '', garantia: osGarantia || '', desc: osDesc || '', fotos: osFotosParaSalvar || [] } : null, 
-        itens: itensLimpados 
+        itens: itensLimpados,
+        estoqueBaixado: !isOrcamento
     };
     
     batch.set(vendaRef, novaVendaObj, { merge: true });
@@ -2538,6 +2580,19 @@ function verDetalhesVenda(id) {
     let tipoTexto = v.tipo || 'VENDA';
     
     document.getElementById('det-venda-cliente').innerText = v.clienteNome || 'Desconhecido'; 
+    const detEndEl = document.getElementById('det-venda-endereco');
+    if (detEndEl) {
+        const endFmt = (typeof window.formatarEnderecoCompletoCliente === 'function')
+            ? window.formatarEnderecoCompletoCliente(v)
+            : (v.clienteEnd || '');
+        if (endFmt && endFmt !== 'Não informado') {
+            detEndEl.innerHTML = `<i class="fa-solid fa-location-dot text-rose-500 mr-1"></i><span class="font-bold text-slate-700 dark:text-slate-200">Endereço Completo:</span> ${endFmt}`;
+            detEndEl.classList.remove('hidden');
+        } else {
+            detEndEl.textContent = '';
+            detEndEl.classList.add('hidden');
+        }
+    }
     document.getElementById('det-venda-data').innerText = `${v.data ? formatData(v.data).split(' ')[0] : '-'} | #${numPedStr}`; 
     document.getElementById('det-venda-pag').innerText = tipoTexto === 'OR\u00c7AMENTO' ? 'Or\u00e7amento' : (v.pag || '-'); 
     

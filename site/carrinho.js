@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // CARRINHO DE COMPRAS & CHECKOUT WHATSAPP
 // ==========================================
 
@@ -214,6 +214,7 @@ async function finalizarPedidoWhatsApp() {
                 clienteNome: nomeCliente,
                 vendedor: 'Loja Virtual',
                 data: new Date().toISOString(),
+                atualizadoEm: new Date().toISOString(),
                 tot: totalPedido,
                 subtotal: totalPedido,
                 desconto: 0,
@@ -231,11 +232,11 @@ async function finalizarPedidoWhatsApp() {
                 })),
                 obs: 'Solicitação de orçamento recebida via Loja Virtual (WhatsApp)'
             };
-            await firebase.firestore().collection('empresas').doc(empId).collection('vendas').doc(orcamentoId).set(orcamentoDoc);
-            console.log(`[Site Orçamentos] Orçamento ${orcamentoId} registrado com sucesso em vendas da empresa ${empId}.`);
+            await firebase.firestore().collection('empresas').doc(empId).collection('pedidos_site').doc(orcamentoId).set(orcamentoDoc);
+            console.log(`[Site Orçamentos] Orçamento ${orcamentoId} registrado com sucesso em pedidos_site da empresa ${empId}.`);
         }
     } catch (eSave) {
-        console.warn('[Site Orçamentos] Aviso ao gravar orçamento em vendas:', eSave);
+        console.warn('[Site Orçamentos] Aviso ao gravar orçamento em pedidos_site:', eSave);
     }
     
     // 2. Monta mensagem limpa do WhatsApp: SEM NÚMERO DE PEDIDO e SEM VALORES
@@ -260,7 +261,7 @@ async function finalizarPedidoWhatsApp() {
     }
     
     const numeroFormatado = formatarNumeroWhatsApp(wpp);
-    const url = `https://wa.me/${numeroFormatado || '5511999999999'}?text=${encodeURIComponent(mensagem)}`;
+    const url = `https://wa.me/${numeroFormatado || '5562981111011'}?text=${encodeURIComponent(mensagem)}`;
     
     // 3. Limpa o carrinho e fecha após disparar
     limparCarrinho();

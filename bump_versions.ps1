@@ -36,6 +36,7 @@ Bump-Version "pdv.html" "pdv.js"
 Bump-Version "fiscal.html" "fiscal.js"
 Bump-Version "sistema.html" "sistema.js"
 Bump-Version "suporte.html" "suporte.js"
+Bump-Version "conciliacao.html" "conciliacao.js"
 
 Write-Output "Cache busters updated."
 

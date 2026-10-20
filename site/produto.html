@@ -43,7 +43,7 @@
             html[data-theme="dark"], html[data-theme="dark"] body { background-color: #0f172a !important; color: #f1f5f9 !important; }
         }
     </style>
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261009181930">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261020085630">
 </head>
 <body class="bg-gray-50 dark:bg-slate-900 text-gray-800 dark:text-slate-100 antialiased selection:bg-brand selection:text-white flex flex-col min-h-screen transition-colors duration-200">
 
@@ -79,10 +79,15 @@
                         <i class="fa-solid fa-moon theme-toggle-icon text-lg"></i>
                     </button>
 
-                    <button onclick="abrirCarrinho()" class="text-gray-500 dark:text-slate-400 hover:text-brand dark:hover:text-brand-light transition-colors p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 relative">
+                    <button onclick="abrirCarrinho()" class="text-gray-500 dark:text-slate-400 hover:text-brand dark:hover:text-brand-light transition-colors p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 relative cursor-pointer" title="Ver Carrinho">
                         <i class="fa-solid fa-cart-shopping text-xl"></i>
                         <span class="cart-badge hidden absolute top-1 right-1 bg-red-500 text-white text-[10px] font-bold h-4 w-4 rounded-full flex items-center justify-center shadow">0</span>
                     </button>
+
+                    <!-- WhatsApp -->
+                    <a id="nav-whatsapp" href="https://wa.me/5562981111011?text=Ol%C3%A1!%20Vim%20pelo%20site%20da%20FC%20M%C3%B3veis%20e%20gostaria%20de%20mais%20informa%C3%A7%C3%B5es." target="_blank" rel="noopener noreferrer" onclick="abrirWhatsAppLoja(event)" class="text-green-500 hover:text-green-600 dark:text-green-400 dark:hover:text-green-300 transition-colors p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 flex items-center justify-center cursor-pointer" title="Fale Conosco no WhatsApp">
+                        <i class="fa-brands fa-whatsapp text-2xl"></i>
+                    </a>
                 </div>
             </div>
         </div>
@@ -237,9 +242,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     
     <!-- Config Firebase -->
-    <script src="../sistema/config_banco.js?v=20261009181930"></script>
-    <script src="firebase-site.js?v=20261009181930"></script>
-    <script src="carrinho.js?v=20261009181930"></script>
-    <script src="loja_produto.js?v=20261009181930"></script>
+    <script src="../sistema/config_banco.js?v=20261020085630"></script>
+    <script src="firebase-site.js?v=20261020085630"></script>
+    <script src="carrinho.js?v=20261020085630"></script>
+    <script src="loja_produto.js?v=20261020085630"></script>
 </body>
 </html>

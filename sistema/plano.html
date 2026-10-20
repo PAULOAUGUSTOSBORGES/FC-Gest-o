@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <!-- Anti-FOUC: Previne flash branco ao alternar páginas no sistema -->
+    <script>
+        (function() {
+            const t = localStorage.getItem('fc_theme_sistema') || 'dark';
+            if (t === 'light') {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.classList.add('light');
+                document.documentElement.setAttribute('data-theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                document.documentElement.classList.remove('light');
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+    <style>
+        :root { color-scheme: dark; background-color: #0f172a; }
+        html, body { background-color: #0f172a; }
+        html.light, html.light body, html[data-theme="light"], html[data-theme="light"] body { background-color: #f1f5f9; color-scheme: light; }
+    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="apple-touch-icon" href="../icons/icon-v2-apple-touch.png">
+    <link rel="icon" type="image/png" href="../icons/favicon-v2.png">
+    <title>Meu Plano & Renovação - FC Gestão</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css?v=20261020085630">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261020085630">
+<style>
+        /* Oculta botão de sincronização delta local no header nesta tela específica */
+        #header-btn-sync { display: none !important; }
+    </style>
+</head>
+<body class="flex h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900 font-['Inter',sans-serif]">
+
+    <div id="toast-container"></div>
+    
+    <div id="app-container" class="flex w-full h-full relative">
+        <div id="sidebar-overlay" class="fixed inset-0 bg-slate-900/60 z-30 hidden md:hidden transition-opacity" onclick="toggleMenu()"></div>
+
+        <!-- BARRA LATERAL (MENU) -->
+        <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 w-64 bg-slate-900 text-slate-300 flex flex-col h-full shrink-0 shadow-2xl z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out no-print">
+            <div class="p-5 flex items-center justify-between gap-3 border-b border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors" onclick="window.location.href='index.html'">
+                <div class="flex items-center gap-3 pointer-events-none">
+                    <img id="menu-logo" src="../icons/icon-v2.svg" class="w-8 h-8 rounded-lg object-cover bg-slate-800 shadow-md">
+                    <div id="menu-logo-placeholder" class="hidden w-8 h-8 bg-slate-800 border border-slate-600 rounded-lg flex items-center justify-center text-slate-400 text-base shadow-md"><i class="fa-solid fa-store"></i></div>
+                    <div>
+                        <h1 id="menu-empresa-nome" class="font-bold text-white text-sm tracking-wide leading-tight">FC Gestão</h1>
+                        <p class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Sistema Ativo</p>
+                    </div>
+                </div>
+                <button onclick="event.stopPropagation(); toggleMenu()" class="md:hidden text-slate-400 hover:text-white text-2xl"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1 custom-scrollbar">
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase mt-2 mb-1">Visão Geral</p>
+                <a href="index.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-chart-pie w-5 text-center"></i> Dashboard</a>
+                
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase mt-4 mb-1">Operação</p>
+                <a href="pdv.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-cash-register w-5 text-center"></i> Frente de Caixa (PDV)</a>
+                <a href="vendas_operacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-receipt w-5 text-center"></i> Histórico Vendas/Serviços</a>
+                <a href="orcamentos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-file-invoice w-5 text-center"></i> Meus Orçamentos</a>
+                <a href="fiscal.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-file-invoice text-emerald-400 w-5 text-center"></i> Emissor Fiscal (NF-e)</a>
+                
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase mt-4 mb-1">Cadastros</p>
+                <a href="produtos.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-boxes-stacked w-5 text-center"></i> Produtos & Serviços</a>
+                <a href="clientes.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-users w-5 text-center"></i> Clientes</a>
+                <a href="fornecedores.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-truck w-5 text-center"></i> Fornecedores</a>
+                <a href="funcionarios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-user-tie w-5 text-center"></i> Funcionários</a>
+                
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase mt-4 mb-1">Gestão</p>
+                <a href="financeiro.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Contas a Pagar/Receber</a>
+                <a href="conciliacao.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-scale-balanced w-5 text-center text-blue-400"></i> Conciliação Bancária</a>
+                <a href="caixa.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-cash-register w-5 text-center"></i> Caixa Físico</a>
+                <a href="caixa_loja.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-chart-bar w-5 text-center"></i> Caixa da Loja</a>
+                <a href="compras.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Compras & Estoque</a>
+                <a href="relatorios.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-chart-line w-5 text-center"></i> Relatórios & DRE</a>
+                <a href="agenda.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-regular fa-calendar w-5 text-center"></i> Agenda</a>
+                <a href="marketing.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-bullhorn w-5 text-center"></i> Marketing & Lembretes</a>
+                
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase mt-4 mb-1">Sistema & Assinatura</p>
+                <a href="plano.html" class="nav-btn bg-amber-500 text-slate-950 font-extrabold w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all shadow-md active">
+                    <i class="fa-solid fa-crown w-5 text-center text-slate-950"></i> 
+                    <span>Meu Plano & Renovação</span>
+                    <span id="menu-badge-tempo" class="ml-auto text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-950/20 text-slate-950 border border-slate-950/30">...</span>
+                </a>
+                <a href="sistema.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-slate-300"><i class="fa-solid fa-gear w-5 text-center"></i> Configurações</a>
+                <a href="suporte.html" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 text-sky-400"><i class="fa-solid fa-headset w-5 text-center text-sky-400"></i> Suporte & Ajuda</a>
+            </nav>
+            <div class="p-4 border-t border-slate-800">
+                <button onclick="fazerLogout()" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-white text-sm font-medium transition-colors"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair do Sistema</button>
+            </div>
+        </aside>
+
+        <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
+        <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
+            <header class="bg-white dark:bg-slate-800 h-16 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 shadow-sm no-print">
+                <div class="flex items-center gap-3 min-w-0">
+                    <button onclick="toggleMenu()" class="md:hidden text-slate-600 dark:text-slate-300 hover:text-blue-600 p-2 -ml-2 rounded-lg transition-colors" title="Abrir Menu"><i class="fa-solid fa-bars text-xl"></i></button>
+                    <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate flex items-center gap-2">
+                        <i class="fa-solid fa-crown text-amber-500"></i> Meu Plano & Renovação
+                    </h2>
+                </div>
+                <div class="flex items-center gap-2 md:gap-3 shrink-0">
+                    <button onclick="recarregarDadosPlano()" id="btn-atualizar-status-plano" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm">
+                        <i class="fa-solid fa-arrows-rotate"></i> Atualizar Status
+                    </button>
+                    <div class="w-8 h-8 bg-amber-500 text-slate-950 rounded-full flex items-center justify-center font-black text-xs shrink-0 select-none shadow-sm" id="user-avatar-icon">FC</div>
+                </div>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth custom-scrollbar w-full">
+                <div class="max-w-5xl mx-auto space-y-6">
+
+                    <!-- CARD DE STATUS PRINCIPAL COM CONTAGEM REGRESSIVA -->
+                    <div id="card-status-plano" class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 border border-slate-700/80 p-6 md:p-8 text-white shadow-xl">
+                        <!-- Efeito de brilho de fundo -->
+                        <div class="absolute -right-16 -top-16 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                        <div class="absolute -left-16 -bottom-16 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                        <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                            <div class="space-y-3 flex-1 min-w-0">
+                                <div class="flex items-center gap-2.5 flex-wrap">
+                                    <span id="badge-tipo-assinatura" class="text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1.5">
+                                        <i class="fa-solid fa-sparkles text-amber-400"></i> Período de Avaliação (Trial 7 Dias)
+                                    </span>
+                                    <span id="badge-status-operacional" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Ativo
+                                    </span>
+                                </div>
+
+                                <h3 id="titulo-nome-plano" class="text-2xl md:text-3xl font-black tracking-tight text-white flex items-center gap-2 flex-wrap">
+                                    Plano Start Express
+                                </h3>
+
+                                <p id="descricao-status-tempo" class="text-sm text-slate-300 leading-relaxed">
+                                    Calculando informações da sua assinatura em tempo real...
+                                </p>
+
+                                <!-- DETALHES DE DATAS -->
+                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2 text-xs">
+                                    <div class="bg-slate-800/80 border border-slate-700/60 p-2.5 rounded-xl">
+                                        <span class="text-slate-400 block font-medium">Data de Ativação:</span>
+                                        <strong id="info-data-inicio" class="text-white font-bold">-</strong>
+                                    </div>
+                                    <div class="bg-slate-800/80 border border-slate-700/60 p-2.5 rounded-xl">
+                                        <span class="text-slate-400 block font-medium">Data de Vencimento:</span>
+                                        <strong id="info-data-vencimento" class="text-amber-300 font-bold">-</strong>
+                                    </div>
+                                    <div class="bg-slate-800/80 border border-slate-700/60 p-2.5 rounded-xl col-span-2 sm:col-span-1">
+                                        <span class="text-slate-400 block font-medium">Forma de Pagamento:</span>
+                                        <strong id="info-forma-pagamento" class="text-blue-300 font-bold">-</strong>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- CONTADOR REGRESSIVO GRANDE (HERO) -->
+                            <div class="bg-slate-800/90 border border-slate-700/90 p-5 rounded-2xl flex flex-col items-center justify-center text-center min-w-[200px] shadow-lg shrink-0 w-full sm:w-auto">
+                                <span class="text-[11px] font-black uppercase tracking-wider text-slate-400 mb-1">Tempo Restante</span>
+                                <div id="contador-numero-dias" class="text-4xl md:text-5xl font-black text-amber-400 tracking-tight leading-none my-1">
+                                    --
+                                </div>
+                                <span id="contador-label-dias" class="text-xs font-bold text-slate-300">dias restantes</span>
+
+                                <!-- BARRA DE PROGRESSO -->
+                                <div class="w-full bg-slate-700 h-2 rounded-full mt-3 overflow-hidden">
+                                    <div id="barra-progresso-tempo" class="bg-gradient-to-r from-amber-500 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: 100%;"></div>
+                                </div>
+                                <span id="percentual-tempo-texto" class="text-[10px] text-slate-400 mt-1.5 font-medium">100% de acesso disponível</span>
+                            </div>
+                        </div>
+
+                        <!-- ALERTA DE RENOVAÇÃO / URGÊNCIA -->
+                        <div id="box-aviso-urgencia" class="hidden mt-6 p-4 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-between flex-wrap gap-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-lg shrink-0">
+                                    <i class="fa-solid fa-clock-rotate-left"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-sm text-amber-300">Seu plano está próximo do vencimento!</h4>
+                                    <p class="text-xs text-slate-300">Renove antecipadamente para manter o PDV, Emissor Fiscal e relatórios funcionando sem interrupção.</p>
+                                </div>
+                            </div>
+                            <button onclick="rolarParaPlanos()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs px-4 py-2.5 rounded-lg transition shadow-md flex items-center gap-1.5 cursor-pointer">
+                                <i class="fa-solid fa-bolt"></i> Renovar Agora
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- SEÇÃO: ESCOLHA DO PLANO & RENOVAÇÃO ONLINE (MERCADO PAGO) -->
+                    <div id="secao-planos-escolha" class="space-y-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                    <i class="fa-solid fa-layer-group text-blue-600"></i> Planos Disponíveis para Renovação & Upgrade
+                                </h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Escolha o plano ideal para o tamanho da sua loja. A liberação do pagamento via Mercado Pago é imediata.</p>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-800/60 self-start sm:self-auto">
+                                <i class="fa-solid fa-shield-check"></i> Pagamento 100% Seguro via Mercado Pago
+                            </div>
+                        </div>
+
+                                                <!-- SELETOR DE CICLO: MENSAL VS ANUAL COM 20% OFF -->
+                        <div class="flex items-center justify-center my-6">
+                            <div class="inline-flex items-center p-1 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-inner">
+                                <button type="button" id="btn-ciclo-mensal" onclick="alternarCicloCobranca('mensal')" class="px-6 py-2 rounded-xl text-xs font-extrabold transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm cursor-pointer">
+                                    Mensal
+                                </button>
+                                <button type="button" id="btn-ciclo-anual" onclick="alternarCicloCobranca('anual')" class="px-6 py-2 rounded-xl text-xs font-extrabold transition-all text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white flex items-center gap-1.5 cursor-pointer">
+                                    Anual <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">-20% OFF</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- GRID DE CARDS DOS PLANOS (RENDERIZADO DINAMICAMENTE PELO JS) -->
+                        <div id="grid-planos-saas" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                            <!-- Inserido dinamicamente por plano.js -->
+                        </div>
+                    </div>
+
+                    <!-- SEÇÃO: PAGAMENTO ALTERNATIVO VIA PIX DIRETO DO FUNDADOR -->
+                    <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3 mb-4 flex-wrap gap-2">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 text-base">
+                                <i class="fa-brands fa-pix text-emerald-500"></i> Pagamento Direto via Chave PIX Oficial
+                            </h3>
+                            <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Titular Oficial: <strong class="text-slate-700 dark:text-slate-200" id="pix-titular-label">Paulo Augusto Silva Borges</strong></span>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Chave PIX Copia e Cola -->
+                            <div class="md:col-span-2 bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 block uppercase tracking-wider">Chave PIX (E-mail Oficial)</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="text" id="campo-chave-pix" readonly value="pauloaugusto.silvaborges@gmail.com" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 font-mono text-sm font-bold text-blue-600 dark:text-blue-400 px-3 py-2.5 rounded-lg w-full select-all">
+                                    <button onclick="copiarChavePixSaaS()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition shrink-0 flex items-center gap-1.5 cursor-pointer shadow-sm">
+                                        <i class="fa-solid fa-copy"></i> Copiar
+                                    </button>
+                                </div>
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                                    Copie a chave acima e realize a transferência pelo aplicativo do seu banco. Envie o comprovante pelo botão ao lado para liberação.
+                                </p>
+                            </div>
+
+                            <!-- Enviar Comprovante no WhatsApp -->
+                            <div class="bg-emerald-50/60 dark:bg-emerald-950/20 p-4 rounded-xl border border-emerald-200 dark:border-emerald-900/50 flex flex-col justify-between space-y-3">
+                                <div>
+                                    <h4 class="font-bold text-xs text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                                        <i class="fa-brands fa-whatsapp text-sm"></i> Enviar Comprovante
+                                    </h4>
+                                    <p class="text-xs text-slate-600 dark:text-slate-300 mt-1">
+                                        Pagou via PIX manual? Clique abaixo para notificar nosso suporte no WhatsApp.
+                                    </p>
+                                </div>
+                                <a id="btn-whats-comprovante" href="https://wa.me/5562999676874" target="_blank" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 px-3 rounded-lg transition flex items-center justify-center gap-2 shadow-sm text-center">
+                                    <i class="fa-brands fa-whatsapp text-sm"></i> Falar com o Suporte
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PERGUNTAS FREQUENTES & GARANTIAS -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-600 dark:text-slate-400">
+                        <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <h5 class="font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-1.5 text-sm">
+                                <i class="fa-solid fa-bolt text-amber-500"></i> Desbloqueio Instantâneo
+                            </h5>
+                            <p>Ao pagar via Mercado Pago (PIX ou Cartão), nosso sistema detecta em segundos e libera o acesso automaticamente.</p>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <h5 class="font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-1.5 text-sm">
+                                <i class="fa-solid fa-lock text-blue-500"></i> Seus Dados Estão Seguros
+                            </h5>
+                            <p>Mesmo se o plano vencer, seus produtos, clientes e histórico de vendas ficam salvos e guardados para quando renovar.</p>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <h5 class="font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-1.5 text-sm">
+                                <i class="fa-solid fa-headset text-emerald-500"></i> Atendimento Dedicado
+                            </h5>
+                            <p>Dúvidas sobre notas fiscais ou migração de plano? Nosso suporte no WhatsApp está disponível de Segunda a Sábado.</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- SCRIPTS CORE FIREBASE & SISTEMA -->
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
+    
+    <script src="config_banco.js?v=20261020085630"></script>
+    <script src="saas_licenca.js?v=20261020085630"></script>
+    <script src="../global.js?v=20261020085630"></script>
+    <script src="fc_cache.js?v=20261020085630"></script>
+    <script src="plano.js?v=20261020085630"></script>
+</body>
+</html>

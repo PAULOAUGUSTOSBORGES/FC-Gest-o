@@ -28,8 +28,8 @@ foreach ($file in $htmlFiles) {
     $metaAppleCapable = "<meta name=`"apple-mobile-web-app-capable`" content=`"yes`">"
     $metaAppleStatus = "<meta name=`"apple-mobile-web-app-status-bar-style`" content=`"black-translucent`">"
     $metaAppleTitle = "<meta name=`"apple-mobile-web-app-title`" content=`"FC Gestão`">"
-    $appleIconTag = "<link rel=`"apple-touch-icon`" href=`"$prefix" + "icons/icon-apple-touch.png`">"
-    $faviconTag = "<link rel=`"icon`" type=`"image/png`" href=`"$prefix" + "icons/favicon.png`">"
+    $appleIconTag = "<link rel=`"apple-touch-icon`" href=`"$prefix" + "icons/icon-v2-apple-touch.png`">"
+    $faviconTag = "<link rel=`"icon`" type=`"image/png`" href=`"$prefix" + "icons/favicon-v2.png`">"
 
     $pwaBlock = @"
     <!-- PWA Configurações e Ícones -->

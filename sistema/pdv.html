@@ -30,8 +30,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="FC Gestão">
-    <link rel="apple-touch-icon" href="../icons/icon-apple-touch.png">
-    <link rel="icon" type="image/png" href="../icons/favicon.png">
+    <link rel="apple-touch-icon" href="../icons/icon-v2-apple-touch.png">
+    <link rel="icon" type="image/png" href="../icons/favicon-v2.png">
     <title>FC Gestão - Frente de Caixa (PDV)</title>
         
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -39,8 +39,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- CORRIGIDO: Removido o ?v=20260831113500 que estava quebrando o carregamento offline -->
-    <link rel="stylesheet" href="../style.css?v=20261009181930">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261009181930">
+    <link rel="stylesheet" href="../style.css?v=20261020085630">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261020085630">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="pdv">
 
@@ -213,7 +213,7 @@
                     </div>
 
                     <div class="flex flex-col lg:flex-row gap-4 lg:h-full min-h-0 lg:min-h-[600px] w-full">
-                        <div class="flex-1 flex flex-col gap-4">
+                        <div class="flex-1 min-w-0 flex flex-col gap-4">
                             <!-- BUSCA INTELIGENTE -->
                             <div class="bg-white dark:bg-slate-800 p-3 md:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex gap-2 relative shrink-0">
                                 <div class="relative flex-1">
@@ -234,8 +234,8 @@
                                     <span>Itens da Operação</span>
                                     <span id="pdv-qtd-itens">0 itens</span>
                                 </div>
-                                <div class="flex-1 overflow-y-auto p-2 md:p-4 custom-scrollbar">
-                                    <table class="w-full text-left border-collapse">
+                                <div class="flex-1 overflow-y-auto overflow-x-auto p-2 md:p-4 custom-scrollbar">
+                                    <table class="w-full text-left border-collapse min-w-[520px] sm:min-w-full">
                                         <thead>
                                             <tr class="text-[10px] md:text-xs font-bold text-slate-400 uppercase border-b border-slate-100 dark:border-slate-700">
                                                 <th scope="col" class="pb-2 w-10 md:w-12 text-center"><i class="fa-solid fa-image"></i></th>
@@ -282,7 +282,7 @@
                         </div>
 
                         <!-- COLUNA DA DIREITA: TOTAIS E PAGAMENTO -->
-                        <div class="w-full lg:w-96 flex flex-col gap-4 z-10 shrink-0">
+                        <div class="w-full lg:w-80 xl:w-96 flex flex-col gap-4 z-10 shrink-0">
                             <!-- TOTALIZADORES -->
                             <div class="bg-slate-900 p-4 md:p-6 text-white rounded-xl shadow-lg relative overflow-hidden shrink-0">
                                 <div class="absolute -right-4 -bottom-4 opacity-10"><i class="fa-solid fa-calculator text-9xl"></i></div>
@@ -307,9 +307,9 @@
                                         </div>
                                         <p id="pdv-alerta-margem-msg" class="text-[11px] text-amber-200 leading-tight">O desconto aplicado deixa o lucro abaixo da porcentagem mínima configurada no sistema.</p>
                                     </div>
-                                    <div class="flex justify-between items-end">
-                                        <span class="text-xs md:text-sm font-bold uppercase text-slate-300 tracking-wider">Total Final</span>
-                                        <span class="text-3xl md:text-4xl font-black text-emerald-400" id="pdv-total">R$ 0,00</span>
+                                    <div class="flex justify-between items-end gap-2">
+                                        <span class="text-xs md:text-sm font-bold uppercase text-slate-300 tracking-wider shrink-0">Total Final</span>
+                                        <span class="text-2xl sm:text-3xl xl:text-4xl font-black text-emerald-400 tracking-tight text-right truncate" id="pdv-total">R$ 0,00</span>
                                     </div>
                                 </div>
                             </div>
@@ -322,7 +322,93 @@
                                         <strong>Envio para o Caixa:</strong> Este pedido será enviado ao Caixa Físico para recebimento financeiro. Previsão de pagamento abaixo é opcional.
                                     </div>
                                 </div>
-                                <label class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 block tracking-wider">Múltiplos Pagamentos (Opcional p/ Caixa)</label>
+                                <!-- OPÇÃO ESPECIAL PARA MÓVEIS: ENTRADA (SINAL) + SALDO NA ENTREGA -->
+                                <div class="mb-6 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-orange-500/10 dark:from-amber-950/40 dark:via-slate-900/70 dark:to-orange-950/30 border border-amber-300 dark:border-amber-700/80 rounded-2xl p-3.5 shadow-xs transition-all duration-200">
+                                    <div class="flex items-center justify-between cursor-pointer select-none" onclick="if(event.target.tagName !== 'INPUT') { const c = document.getElementById('pdv-chk-entrada-entrega'); c.checked = !c.checked; togglePagamentoEntradaEntrega(c.checked); }">
+                                        <label class="flex items-center gap-2.5 cursor-pointer font-black text-xs text-amber-900 dark:text-amber-200">
+                                            <input type="checkbox" id="pdv-chk-entrada-entrega" onchange="togglePagamentoEntradaEntrega(this.checked)" class="w-4 h-4 text-amber-600 rounded focus:ring-amber-500 border-amber-300 dark:border-amber-600 cursor-pointer">
+                                            <span class="flex items-center gap-1.5">
+                                                <i class="fa-solid fa-truck-ramp-box text-amber-600 dark:text-amber-400 text-sm"></i>
+                                                Entrada (Sinal) + Saldo na Entrega
+                                            </span>
+                                        </label>
+                                        <span class="text-[9px] bg-amber-500/20 dark:bg-amber-400/20 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60 font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">Móveis</span>
+                                    </div>
+
+                                    <!-- PAINEL DETALHADO QUANDO ATIVO: ENTRADA E SALDO COM MÚLTIPLAS FORMAS -->
+                                    <div id="pdv-painel-entrada-entrega" class="hidden mt-3 pt-3 border-t border-amber-200/80 dark:border-amber-800/60 space-y-3.5">
+                                        <!-- CARD 1: ENTRADA / SINAL (NO PEDIDO) -->
+                                        <div class="pdv-card-entrada rounded-xl p-3 shadow-xs space-y-2.5">
+                                            <div class="flex flex-wrap justify-between items-center gap-1.5 pb-2 border-b border-amber-200/70 dark:border-amber-700/50">
+                                                <span class="text-[11px] uppercase font-black text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                                                    <i class="fa-solid fa-hand-holding-dollar text-amber-600 dark:text-amber-400"></i>
+                                                    1. Entrada / Sinal (No Pedido)
+                                                </span>
+                                                <div class="flex items-center gap-1">
+                                                    <button type="button" onclick="definirPercEntradaPDV(0.3)" class="text-[9px] font-bold px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700/80 text-amber-900 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/60 transition cursor-pointer">30%</button>
+                                                    <button type="button" onclick="definirPercEntradaPDV(0.5)" class="text-[9px] font-bold px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700/80 text-amber-900 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/60 transition cursor-pointer">50%</button>
+                                                    <button type="button" onclick="definirPercEntradaPDV(0.7)" class="text-[9px] font-bold px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700/80 text-amber-900 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/60 transition cursor-pointer">70%</button>
+                                                </div>
+                                            </div>
+
+                                            <!-- LISTA DE FORMAS DA ENTRADA (CADA LINHA É UMA FORMA EDITÁVEL DIRETAMENTE) -->
+                                            <div id="pdv-ee-lista-entrada" class="space-y-2">
+                                                <!-- Gerado dinamicamente -->
+                                            </div>
+
+                                            <!-- BOTÃO PARA ADICIONAR OUTRA FORMA NA ENTRADA -->
+                                            <button type="button" onclick="adicionarNovaFormaEntradaEE()" class="w-full py-1.5 px-3 rounded-lg border border-dashed border-amber-400/80 dark:border-amber-600/60 hover:bg-amber-100/50 dark:hover:bg-amber-950/40 text-amber-900 dark:text-amber-300 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer">
+                                                <i class="fa-solid fa-plus-circle text-xs"></i> Adicionar outra forma de pagamento na entrada
+                                            </button>
+
+                                            <!-- SUBTOTAL DA ENTRADA -->
+                                            <div class="flex justify-between items-center pt-1 text-xs border-t border-amber-200/50 dark:border-amber-800/30">
+                                                <span class="text-slate-600 dark:text-slate-400 text-[10px] uppercase font-bold">Total Pago na Entrada:</span>
+                                                <span id="pdv-ee-total-entrada-badge" class="font-black text-emerald-600 dark:text-emerald-400 text-sm">R$ 0,00</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- CARD 2: SALDO A PAGAR NA ENTREGA -->
+                                        <div class="pdv-card-entrega rounded-xl p-3 shadow-xs space-y-2.5">
+                                            <div class="flex flex-wrap justify-between items-center gap-1.5 pb-2 border-b border-blue-200/70 dark:border-blue-700/50">
+                                                <span class="text-[11px] uppercase font-black text-blue-900 dark:text-blue-300 flex items-center gap-1.5">
+                                                    <i class="fa-solid fa-truck-fast text-blue-600 dark:text-blue-400"></i>
+                                                    2. Saldo a Pagar na Entrega
+                                                </span>
+                                                <span id="pdv-ee-saldo-display" class="text-xs font-black text-blue-800 dark:text-blue-200 bg-blue-100 dark:bg-blue-950/60 px-2 py-0.5 rounded-lg border border-blue-200 dark:border-blue-800/60">Saldo: R$ 0,00</span>
+                                            </div>
+
+                                            <div>
+                                                <label class="text-[9px] uppercase font-bold text-slate-600 dark:text-slate-400 block mb-0.5">Previsão da Entrega:</label>
+                                                <input type="date" id="pdv-ee-data-entrega" onchange="sincronizarDataEntregaEE()" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 p-2 rounded-lg text-xs font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500">
+                                            </div>
+
+                                            <!-- LISTA DE FORMAS DO SALDO DA ENTREGA (CADA LINHA É UMA FORMA EDITÁVEL DIRETAMENTE) -->
+                                            <div id="pdv-ee-lista-entrega" class="space-y-2">
+                                                <!-- Gerado dinamicamente -->
+                                            </div>
+
+                                            <!-- BOTÃO PARA ADICIONAR OUTRA FORMA NO SALDO -->
+                                            <button type="button" onclick="adicionarNovaFormaEntregaEE()" class="w-full py-1.5 px-3 rounded-lg border border-dashed border-blue-400/80 dark:border-blue-600/60 hover:bg-blue-100/50 dark:hover:bg-blue-950/40 text-blue-900 dark:text-blue-300 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer">
+                                                <i class="fa-solid fa-plus-circle text-xs"></i> Adicionar outra forma de saldo na entrega
+                                            </button>
+
+                                            <!-- SUBTOTAL DO SALDO -->
+                                            <div class="flex justify-between items-center pt-1 text-xs border-t border-blue-200/50 dark:border-blue-800/30">
+                                                <span class="text-slate-600 dark:text-slate-400 text-[10px] uppercase font-bold">Total Acordado p/ Entrega:</span>
+                                                <span id="pdv-ee-total-entrega-badge" class="font-black text-blue-700 dark:text-blue-400 text-sm">R$ 0,00</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- CARD 3: RESUMO CONSOLIDADO & CONFERÊNCIA -->
+                                        <div id="pdv-ee-resumo-consolidado" class="pdv-card-resumo rounded-xl p-3 text-xs space-y-2 shadow-xs">
+                                            <!-- Gerado dinamicamente por recalcularValoresEntradaEntrega() -->
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="pdv-area-pagamento-padrao" class="pt-2">
+                                    <label class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 block tracking-wider">Múltiplos Pagamentos (Opcional p/ Caixa)</label>
 
                                 <div class="flex gap-2 mb-3 items-center flex-wrap">
                                     <select id="pdv-metodo-atual" onchange="verificarParcelasPagamento()" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:border-blue-500 min-w-[110px] dark:text-white">
@@ -346,18 +432,19 @@
                                     <div class="text-xs text-slate-400 text-center mt-4">Nenhum pagamento inserido.</div>
                                 </div>
 
-                                <div class="flex justify-between bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-700 mb-4 items-center shrink-0">
-                                    <div>
-                                        <p class="text-[10px] uppercase text-slate-500 dark:text-slate-400 font-bold">Falta Pagar</p>
-                                        <p class="text-sm md:text-base font-bold text-red-500" id="pdv-falta">R$ 0,00</p>
+                                <div class="flex justify-between bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-700 mb-4 items-center shrink-0 min-w-0">
+                                    <div class="min-w-0">
+                                        <p class="text-[10px] uppercase text-slate-500 dark:text-slate-400 font-bold truncate">Falta Pagar</p>
+                                        <p class="text-sm md:text-base font-bold text-red-500 truncate" id="pdv-falta">R$ 0,00</p>
                                     </div>
-                                    <div class="text-right">
-                                        <p class="text-[10px] uppercase text-slate-500 dark:text-slate-400 font-bold">Troco p/ Cliente</p>
-                                        <p class="text-lg md:text-xl font-black text-emerald-600" id="pdv-troco">R$ 0,00</p>
+                                    <div class="text-right min-w-0">
+                                        <p class="text-[10px] uppercase text-slate-500 dark:text-slate-400 font-bold truncate">Troco p/ Cliente</p>
+                                        <p class="text-lg md:text-xl font-black text-emerald-600 truncate" id="pdv-troco">R$ 0,00</p>
                                     </div>
                                 </div>
+                                </div>
 
-                                                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-3 shrink-0">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-3 shrink-0">
                                     <div class="bg-slate-50/80 dark:bg-slate-900/60 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 hover:border-blue-400 dark:hover:border-blue-500/60 transition-colors flex flex-col justify-between">
                                         <label for="pdv-data" class="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase mb-1.5 flex items-center justify-between cursor-pointer h-5">
                                             <span class="flex items-center gap-1.5 truncate"><i class="fa-solid fa-calendar-day text-blue-500"></i> Data da Venda</span>
@@ -529,6 +616,10 @@
                             <i class="fa-solid fa-industry text-base"></i> 
                             <span class="tracking-wide">Ordem de Produção (Móveis)</span>
                         </button>
+                        <button onclick="imprimirTermoEntregaAtual()" id="btn-recibo-termo-entrega" class="col-span-2 w-full p-2.5 md:p-3 rounded-xl font-bold flex items-center justify-center gap-2.5 transition-all text-xs active:scale-95 cursor-pointer shadow-sm shadow-emerald-600/20 bg-emerald-600 hover:bg-emerald-700 text-white" style="background-color: #059669;">
+                            <i class="fa-solid fa-truck-ramp-box text-base"></i> 
+                            <span class="tracking-wide">Termo de Entrega e Recebimento</span>
+                        </button>
                     </div>
                 </div>
 
@@ -624,6 +715,7 @@
                         <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><i class="fa-solid fa-user text-4xl"></i></div>
                         <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Cliente</p>
                         <p class="font-black text-slate-800 dark:text-slate-100 text-sm md:text-base truncate relative z-10" id="det-venda-cliente">-</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 font-medium relative z-10 mt-1 break-words hidden" id="det-venda-endereco"></p>
                     </div>
                     <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700/50 hover:shadow-md transition-shadow relative overflow-hidden group">
                         <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><i class="fa-regular fa-calendar text-4xl"></i></div>
@@ -1286,13 +1378,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
 
-    <script src="../sistema/config_banco.js?v=20261009181930"></script>
-    <script src="saas_licenca.js?v=20261009181930"></script>
-    <script src="../global.js?v=20261009181930"></script>
-    <script src="fc_cache.js?v=20261009181930"></script>
-    <script src="tabela_ncm.js?v=20261009181930"></script>
-    <script src="ncm_helper.js?v=20261009181930"></script>
-    <script src="pdv.js?v=20261009181930"></script>
+    <script src="../sistema/config_banco.js?v=20261020085630"></script>
+    <script src="saas_licenca.js?v=20261020085630"></script>
+    <script src="../global.js?v=20261020085630"></script>
+    <script src="fc_cache.js?v=20261020085630"></script>
+    <script src="tabela_ncm.js?v=20261020085630"></script>
+    <script src="ncm_helper.js?v=20261020085630"></script>
+    <script src="pdv.js?v=20261020085630"></script>
 
     <!-- MODAL RELATÓRIO COMPLETO DO PDV -->
     <div id="modal-relatorio-pdv" class="fixed inset-0 bg-slate-900/70 z-[200] hidden flex items-center justify-center p-3 md:p-4 backdrop-blur-sm">

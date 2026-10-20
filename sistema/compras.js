@@ -220,16 +220,20 @@ function printHtmlSeguro(htmlCompleto) {
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { margin: 10mm; }
-                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                @page { size: A4 portrait; margin: 10mm 12mm 12mm 12mm; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
                 .print\\\\:hidden { display: none !important; }
-                table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
+                .overflow-x-auto, .table-wrapper, .fc-table-wrap { overflow: visible !important; display: block !important; }
+                table { page-break-inside: auto; width: 100% !important; max-width: 100% !important; min-width: 0 !important; border-collapse: collapse; }
+                th, td { word-break: break-word !important; }
                 tr { page-break-inside: avoid; page-break-after: auto; }
                 thead { display: table-header-group; }
                 tfoot { display: table-footer-group; }
+                @media print { body { padding: 4mm 6mm !important; margin: 0 !important; box-sizing: border-box !important; } }
             </style>
         </head>
-        <body class="bg-white dark:bg-slate-800 p-4">
+        <body class="bg-white text-black p-0">
             ${htmlCompleto}
         </body>
         </html>
@@ -254,7 +258,7 @@ function imprimirArea(areaId) {
     
     const printContent = element.innerHTML; 
     const htmlCompleto = `
-        <div style="padding: 20px; font-family: Arial, sans-serif; background: #fff; color: #000;">
+        <div style="padding: 10px 0; font-family: Arial, sans-serif; background: #fff; color: #000; width: 100%; box-sizing: border-box;">
             <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
                 ${logoHtml}
                 <h2 style="font-size: 20px; font-weight: bold; margin: 5px 0; text-transform: uppercase;">${empNome}</h2>
@@ -286,20 +290,23 @@ function baixarPDF(areaId, filename) {
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { margin: 15mm; size: A4; }
-                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 20px; max-width: 1000px; margin: 0 auto; }
+                @page { margin: 10mm 12mm 12mm 12mm; size: A4 portrait; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
                 .print\\:hidden { display: none !important; }
-                table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
+                .overflow-x-auto, .table-wrapper, .fc-table-wrap { overflow: visible !important; display: block !important; }
+                table { page-break-inside: auto; width: 100% !important; max-width: 100% !important; min-width: 0 !important; border-collapse: collapse; }
+                th, td { word-break: break-word !important; }
                 tr { page-break-inside: avoid; page-break-after: auto; }
                 thead { display: table-header-group; }
                 tfoot { display: table-footer-group; }
                 
                 @media print {
-                    body { padding: 0; max-width: none; }
+                    body { padding: 4mm 6mm !important; margin: 0 !important; max-width: 100% !important; box-sizing: border-box !important; }
                 }
             </style>
         </head>
-        <body class="bg-white text-black">
+        <body class="bg-white text-black p-0">
             ${printContent}
             
             <script>

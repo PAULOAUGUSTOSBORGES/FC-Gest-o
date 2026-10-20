@@ -3,7 +3,7 @@
 // Cache inteligente, carregamento ultra-rápido e suporte Offline
 // ==============================================================
 
-const CACHE_NAME = 'fc-gestao-cache-v20261009181930';
+const CACHE_NAME = 'fc-gestao-cache-v20261020085630';
 
 // Arquivos do App Shell para pré-armazenamento em cache
 const SHELL_ASSETS = [
@@ -14,11 +14,11 @@ const SHELL_ASSETS = [
     '/tailwind-built.css',
     '/global.js',
     '/manifest.json',
-    '/icons/icon-192.png',
-    '/icons/icon-512.png',
-    '/icons/icon-maskable-512.png',
-    '/icons/favicon.png',
-    '/icons/icon.svg',
+    '/icons/icon-v2-192.png',
+    '/icons/icon-v2-512.png',
+    '/icons/icon-v2-maskable-512.png',
+    '/icons/favicon-v2.png',
+    '/icons/icon-v2.svg',
     '/icons/icone_primas.png',
     '/icons/logo_primas.png',
     '/sistema/config_banco.js',
@@ -118,6 +118,11 @@ self.addEventListener('fetch', (event) => {
     if (request.method !== 'GET') return;
     if (!url.protocol.startsWith('http')) return;
 
+    // Ignora completamente rotas reservadas do Firebase Hosting / Firebase Auth (__/*)
+    if (url.pathname.startsWith('/__/')) {
+        return;
+    }
+
     // Ignora chamadas de APIs do Firebase/Firestore/Google (persistência nativa offline do Firebase)
     if (
         url.hostname.includes('firestore.googleapis.com') ||
@@ -126,7 +131,8 @@ self.addEventListener('fetch', (event) => {
         url.hostname.includes('securetoken.googleapis.com') ||
         url.hostname.includes('googleapis.com') ||
         url.hostname.includes('firebaseio.com') ||
-        url.hostname.includes('google.com')
+        url.hostname.includes('google.com') ||
+        url.hostname.includes('accounts.google.com')
     ) {
         return;
     }
@@ -172,6 +178,13 @@ self.addEventListener('fetch', (event) => {
     // Para arquivos estáticos (JS, CSS, Imagens, Fontes, CDN): Stale-While-Revalidate resiliente
     event.respondWith(
         caches.match(request).then(async (cachedResponse) => {
+            // Arquivos versionados (?v=...) são imutáveis dentro de um deploy: se já estão no cache,
+            // servem direto sem nenhuma requisição de revalidação (economiza rede em toda navegação)
+            const ehLocalhost = ['localhost', '127.0.0.1', '[::1]'].includes(self.location.hostname);
+            if (cachedResponse && !ehLocalhost && url.origin === self.location.origin && url.searchParams.has('v')) {
+                return cachedResponse;
+            }
+
             // Inicia o fetch em segundo plano para revalidar
             const fetchPromise = fetch(request)
                 .then((networkResponse) => {

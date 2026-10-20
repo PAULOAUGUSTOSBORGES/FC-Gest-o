@@ -1487,11 +1487,41 @@ html, body {
 }
 
 /* Seções e Abas */
-.view-section {
+.view-section,
+.view-section.hidden,
+.view-section:not(.active),
+#view-pdv.hidden,
+#view-pdv:not(.active),
+#view-operacao.hidden,
+#view-operacao:not(.active),
+#view-orcamentos.hidden,
+#view-orcamentos:not(.active),
+#view-produtos.hidden,
+#view-produtos:not(.active),
+#view-estoque.hidden,
+#view-estoque:not(.active),
+#view-clientes.hidden,
+#view-clientes:not(.active),
+#view-fornecedores.hidden,
+#view-fornecedores:not(.active),
+#view-funcionarios.hidden,
+#view-funcionarios:not(.active),
+#view-financeiro.hidden,
+#view-financeiro:not(.active),
+#view-relatorios.hidden,
+#view-relatorios:not(.active),
+#view-compras.hidden,
+#view-compras:not(.active),
+#view-caixa.hidden,
+#view-caixa:not(.active),
+#view-vendas_gestao.hidden,
+#view-vendas_gestao:not(.active),
+#view-vendas_operacao.hidden,
+#view-vendas_operacao:not(.active) {
     display: none !important;
 }
 
-.view-section.active {
+.view-section.active:not(.hidden) {
     display: block !important;
     animation: fadeIn 0.3s ease-in-out;
 }
@@ -1676,8 +1706,17 @@ html[data-theme="dark"] div.bg-white.rounded-xl {
     background-color: #3b82f6;
 }
 
-/* Impressão */
+/* Impressão Geral A4 Sem Cortes */
+@page {
+    size: A4 portrait;
+    margin: 10mm 12mm 12mm 12mm;
+}
+
 @media print {
+    *, *::before, *::after {
+        box-sizing: border-box !important;
+    }
+
     .no-print,
     #sidebar,
     header,
@@ -1688,11 +1727,14 @@ html[data-theme="dark"] div.bg-white.rounded-xl {
         display: none !important;
     }
 
-    body {
+    html, body {
         background-color: white !important;
         color: black !important;
-        margin: 0;
-        padding: 0;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: visible !important;
     }
     
     #print-area, .print-area {
@@ -1701,8 +1743,30 @@ html[data-theme="dark"] div.bg-white.rounded-xl {
         left: 0 !important;
         top: 0 !important;
         width: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
+        max-width: 100% !important;
+        margin: 0 auto !important;
+        padding: 4mm 6mm !important;
+        box-sizing: border-box !important;
+    }
+
+    .overflow-x-auto, .table-wrapper, .fc-table-wrap {
+        overflow: visible !important;
+        display: block !important;
+    }
+
+    table {
+        max-width: 100% !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        page-break-inside: auto;
+    }
+
+    th, td {
+        word-break: break-word !important;
+    }
+
+    tr {
+        page-break-inside: avoid;
     }
 }
 
@@ -2688,6 +2752,71 @@ body.light .alerta-margem-pdv {
 }
 
 /* ----------------------------------------------------------------
+   MODO EXPANSIVO / SIDEBAR RETRÁTIL (DESKTOP ≥ 768px)
+   Ao recolher a sidebar, libera 100% da largura útil da tela
+   ---------------------------------------------------------------- */
+@media (min-width: 768px) {
+    #sidebar {
+        transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                    min-width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                    max-width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                    opacity 0.2s ease,
+                    transform 0.28s ease !important;
+        will-change: width, min-width, max-width;
+    }
+
+    body.sidebar-recolhida #sidebar,
+    html.sidebar-recolhida #sidebar {
+        width: 0 !important;
+        min-width: 0 !important;
+        max-width: 0 !important;
+        overflow: hidden !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        border-right: none !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transform: none !important;
+        visibility: hidden !important;
+    }
+
+    body.sidebar-recolhida #app-container > main,
+    body.sidebar-recolhida main,
+    html.sidebar-recolhida main {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 1 1 100% !important;
+    }
+
+    /* Expansão plena do conteúdo para 100% da tela em modo expansivo */
+    body.sidebar-recolhida main > div.flex-1.overflow-y-auto > div.max-w-7xl,
+    body.sidebar-recolhida main > .flex-1 > .max-w-7xl,
+    body.sidebar-recolhida .view-section.max-w-7xl,
+    html.sidebar-recolhida main > div.flex-1.overflow-y-auto > div.max-w-7xl,
+    html.sidebar-recolhida main > .flex-1 > .max-w-7xl,
+    html.sidebar-recolhida .view-section.max-w-7xl {
+        max-width: 100% !important;
+    }
+
+    /* Indicador ativo no botão de menu do header */
+    header button[onclick*="toggleMenu"] {
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    header button[onclick*="toggleMenu"]:hover {
+        background-color: rgba(59, 130, 246, 0.12) !important;
+        color: #3b82f6 !important;
+    }
+
+    header button[onclick*="toggleMenu"].btn-menu-expansivo-ativo {
+        background-color: rgba(59, 130, 246, 0.2) !important;
+        color: #3b82f6 !important;
+        border: 1px solid rgba(59, 130, 246, 0.4) !important;
+    }
+}
+
+/* ----------------------------------------------------------------
    FIX #4 — touch-action: corrige bloqueio de scroll horizontal
    body tinha pan-y, impedindo tabelas de rolar no mobile.
    'manipulation' é mais permissivo: permite tap, scroll e zoom padrão
@@ -3135,11 +3264,13 @@ table[class*="min-w-"] {
         max-width: none !important;
         border-radius: 0 !important;
     }
-    .table-wrapper > table,
-    .fc-table-wrap > table,
-    .overflow-x-auto > table {
+    .table-wrapper table,
+    .fc-table-wrap table,
+    .overflow-x-auto table,
+    table {
         min-width: 0 !important;
         width: 100% !important;
+        max-width: 100% !important;
     }
 }
 
@@ -3667,12 +3798,18 @@ main > div.flex-1.overflow-y-auto > *:not(#fc-global-page-footer) {
     z-index: 5 !important;
 }
 
-/* 5. REGRAS ESPECÍFICAS PARA PDV NO MOBILE E TABLET (< 1024px) */
+/* 5. REGRAS ESPECÍFICAS PARA PDV, OPERAÇÃO E ORÇAMENTOS (MOBILE, TABLET E DESKTOP) */
 @media (max-width: 1023px) {
     /* Desbloqueia a altura rígida de 100% que impedia o PDV de rolar no mobile */
-    #view-pdv,
-    .view-section#view-pdv,
-    div[id="view-pdv"] {
+    #view-pdv.active:not(.hidden),
+    .view-section.active#view-pdv:not(.hidden),
+    div[id="view-pdv"].active:not(.hidden),
+    #view-operacao.active:not(.hidden),
+    .view-section.active#view-operacao:not(.hidden),
+    div[id="view-operacao"].active:not(.hidden),
+    #view-orcamentos.active:not(.hidden),
+    .view-section.active#view-orcamentos:not(.hidden),
+    div[id="view-orcamentos"].active:not(.hidden) {
         height: auto !important;
         min-height: 100% !important;
         flex: 1 0 auto !important;
@@ -3682,8 +3819,12 @@ main > div.flex-1.overflow-y-auto > *:not(#fc-global-page-footer) {
         padding-bottom: 24px !important;
     }
 
-    #view-pdv > div.flex-col.lg\:flex-row,
-    #view-pdv > .min-h-\[600px\] {
+    #view-pdv.active > div.flex-col.lg\:flex-row,
+    #view-pdv.active > .min-h-\[600px\],
+    #view-operacao.active > div.flex-col.lg\:flex-row,
+    #view-operacao.active > .min-h-\[600px\],
+    #view-orcamentos.active > div.flex-col.lg\:flex-row,
+    #view-orcamentos.active > .min-h-\[600px\] {
         height: auto !important;
         min-height: auto !important;
         flex-direction: column !important;
@@ -3691,14 +3832,21 @@ main > div.flex-1.overflow-y-auto > *:not(#fc-global-page-footer) {
     }
 
     /* Carrinho de Compras: altura controlada para não afastar a área de pagamentos */
-    #view-pdv .flex-1.flex.flex-col.overflow-hidden {
+    #view-pdv.active .flex-1.flex.flex-col.overflow-hidden,
+    #view-operacao.active .flex-1.flex.flex-col.overflow-hidden,
+    #view-orcamentos.active .flex-1.flex.flex-col.overflow-hidden {
         min-height: 180px !important;
         max-height: 360px !important;
         overflow: hidden !important;
     }
 
-    /* Coluna de Totais e Múltiplos Pagamentos */
-    #view-pdv .w-full.lg\:w-96 {
+    /* Coluna de Totais e Múltiplos Pagamentos no Mobile */
+    #view-pdv.active .w-full.lg\:w-96,
+    #view-pdv.active .w-full.lg\:w-80,
+    #view-operacao.active .w-full.lg\:w-96,
+    #view-operacao.active .w-full.lg\:w-80,
+    #view-orcamentos.active .w-full.lg\:w-96,
+    #view-orcamentos.active .w-full.lg\:w-80 {
         width: 100% !important;
         max-width: 100% !important;
     }
@@ -3712,6 +3860,92 @@ main > div.flex-1.overflow-y-auto > *:not(#fc-global-page-footer) {
         z-index: 25 !important;
         box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.4) !important;
     }
+}
+
+/* 5.1 DESKTOP E LAPTOP (≥ 1024px): PDV FLUIDO E ANTI-OVERFLOW */
+@media (min-width: 1024px) {
+    #view-pdv.active:not(.hidden),
+    #view-operacao.active:not(.hidden),
+    #view-orcamentos.active:not(.hidden) {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Coluna esquerda (Itens da Operação): min-width 0 é indispensável para flexbox não empurrar a coluna direita */
+    #view-pdv.active > div.flex-col.lg\:flex-row > div:first-child,
+    #view-operacao.active > div.flex-col.lg\:flex-row > div:first-child,
+    #view-orcamentos.active > div.flex-col.lg\:flex-row > div:first-child {
+        min-width: 0 !important;
+        flex: 1 1 0% !important;
+    }
+}
+
+/* Ajuste fino para Laptops e telas de 1024px a 1366px (elimina corte na coluna da direita) */
+@media (min-width: 1024px) and (max-width: 1366px) {
+    #view-pdv .w-full.lg\:w-96,
+    #view-pdv .w-full.lg\:w-80,
+    #view-operacao .w-full.lg\:w-96,
+    #view-operacao .w-full.lg\:w-80,
+    #view-orcamentos .w-full.lg\:w-96,
+    #view-orcamentos .w-full.lg\:w-80 {
+        width: 325px !important;
+        min-width: 310px !important;
+        max-width: 335px !important;
+        flex-shrink: 0 !important;
+    }
+
+    #view-pdv #pdv-total,
+    #view-operacao #pdv-total,
+    #view-orcamentos #pdv-total {
+        font-size: 1.85rem !important;
+    }
+
+    #pdv-carrinho-body input[data-mask="money"] {
+        width: 66px !important;
+        max-width: 70px !important;
+        font-size: 11px !important;
+        padding: 4px 6px !important;
+    }
+}
+
+/* Ajuste para telas grandes e ultrawide (≥ 1367px) */
+@media (min-width: 1367px) {
+    #view-pdv .w-full.lg\:w-96,
+    #view-pdv .w-full.lg\:w-80,
+    #view-operacao .w-full.lg\:w-96,
+    #view-operacao .w-full.lg\:w-80,
+    #view-orcamentos .w-full.lg\:w-96,
+    #view-orcamentos .w-full.lg\:w-80 {
+        width: 380px !important;
+        min-width: 360px !important;
+        max-width: 400px !important;
+        flex-shrink: 0 !important;
+    }
+}
+
+/* Responsividade de tipografia dos valores do PDV */
+#pdv-total {
+    font-size: clamp(1.6rem, 2.3vw, 2.25rem) !important;
+    line-height: 1.1 !important;
+    word-break: normal !important;
+    white-space: nowrap !important;
+}
+
+#pdv-troco {
+    font-size: clamp(1rem, 1.5vw, 1.25rem) !important;
+    word-break: normal !important;
+    white-space: nowrap !important;
+}
+
+#pdv-falta {
+    font-size: clamp(0.85rem, 1.2vw, 1rem) !important;
+    word-break: normal !important;
+    white-space: nowrap !important;
+}
+
+#pdv-frete, #pdv-desconto {
+    max-width: 82px !important;
 }
 
 /* 6. HEADER NO MOBILE (< 768px) */
@@ -3801,3 +4035,43 @@ main > div.flex-1.overflow-y-auto > *:not(#fc-global-page-footer) {
         font-size: 16px !important;
     }
 }
+
+/* ==============================================================
+   MÓDULO PDV: ENTRADA + SALDO NA ENTREGA (DESIGN PREMIUM ALTO CONTRASTE)
+   ============================================================== */
+.pdv-card-entrada {
+    background-color: #fffdf5;
+    border: 1.5px solid #fcd34d;
+}
+.dark .pdv-card-entrada,
+html.dark .pdv-card-entrada,
+[data-theme="dark"] .pdv-card-entrada,
+body.dark .pdv-card-entrada {
+    background-color: #1e293b !important;
+    border: 1.5px solid rgba(245, 158, 11, 0.45) !important;
+}
+
+.pdv-card-entrega {
+    background-color: #f8fafc;
+    border: 1.5px solid #bfdbfe;
+}
+.dark .pdv-card-entrega,
+html.dark .pdv-card-entrega,
+[data-theme="dark"] .pdv-card-entrega,
+body.dark .pdv-card-entrega {
+    background-color: #1e293b !important;
+    border: 1.5px solid rgba(59, 130, 246, 0.45) !important;
+}
+
+.pdv-card-resumo {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+}
+.dark .pdv-card-resumo,
+html.dark .pdv-card-resumo,
+[data-theme="dark"] .pdv-card-resumo,
+body.dark .pdv-card-resumo {
+    background-color: #0f172a !important;
+    border: 1px solid #334155 !important;
+}
+

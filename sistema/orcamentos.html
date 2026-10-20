@@ -30,8 +30,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="FC Gestão">
-    <link rel="apple-touch-icon" href="../icons/icon-apple-touch.png">
-    <link rel="icon" type="image/png" href="../icons/favicon.png">
+    <link rel="apple-touch-icon" href="../icons/icon-v2-apple-touch.png">
+    <link rel="icon" type="image/png" href="../icons/favicon-v2.png">
     <title>FC Gestão - Meus Orçamentos</title>
         
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -39,8 +39,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- CORRIGIDO: Removido o ?v=20260831113500 que estava quebrando o carregamento offline -->
-    <link rel="stylesheet" href="../style.css?v=20261009181930">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261009181930">
+    <link rel="stylesheet" href="../style.css?v=20261020085630">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261020085630">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="vendas">
 
@@ -53,7 +53,7 @@
         <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 w-64 bg-slate-900 text-slate-300 flex flex-col h-full shrink-0 shadow-2xl z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out no-print">
             <div class="p-5 flex items-center justify-between gap-3 border-b border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors" onclick="window.location.href='index.html'">
                 <div class="flex items-center gap-3 pointer-events-none">
-                    <img id="menu-logo" src="../icons/icon.svg" class="w-8 h-8 rounded-lg object-cover bg-slate-800 shadow-md">
+                    <img id="menu-logo" src="../icons/icon-v2.svg" class="w-8 h-8 rounded-lg object-cover bg-slate-800 shadow-md">
                     <div id="menu-logo-placeholder" class="hidden w-8 h-8 bg-slate-800 border border-slate-600 rounded-lg flex items-center justify-center text-slate-400 text-base shadow-md"><i class="fa-solid fa-store"></i></div>
                     <div>
                         <h1 id="menu-empresa-nome" class="font-bold text-white text-sm tracking-wide leading-tight">FC Gestão</h1>
@@ -140,7 +140,7 @@
                     </div>
 
                     <div class="flex flex-col lg:flex-row gap-4 lg:h-full min-h-0 lg:min-h-[600px] w-full">
-                        <div class="flex-1 flex flex-col gap-4">
+                        <div class="flex-1 min-w-0 flex flex-col gap-4">
                             <!-- BUSCA INTELIGENTE -->
                             <div class="bg-white dark:bg-slate-800 p-3 md:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex gap-2 relative shrink-0">
                                 <div class="relative flex-1">
@@ -161,8 +161,8 @@
                                     <span>Itens da Operação</span>
                                     <span id="pdv-qtd-itens">0 itens</span>
                                 </div>
-                                <div class="flex-1 overflow-y-auto p-2 md:p-4 custom-scrollbar">
-                                    <table class="w-full text-left border-collapse">
+                                <div class="flex-1 overflow-y-auto overflow-x-auto p-2 md:p-4 custom-scrollbar">
+                                    <table class="w-full text-left border-collapse min-w-[520px] sm:min-w-full">
                                         <thead>
                                             <tr class="text-[10px] md:text-xs font-bold text-slate-400 uppercase border-b border-slate-100 dark:border-slate-700">
                                                 <th class="pb-2 w-10 md:w-12 text-center"><i class="fa-solid fa-image"></i></th>
@@ -209,7 +209,7 @@
                             </div>
                         </div>
 
-                        <div class="w-full lg:w-96 flex flex-col gap-4 z-10 shrink-0">
+                        <div class="w-full lg:w-80 xl:w-96 flex flex-col gap-4 z-10 shrink-0">
                             <!-- TOTALIZADORES -->
                             <div class="bg-slate-900 p-4 md:p-6 text-white rounded-xl shadow-lg relative overflow-hidden shrink-0">
                                 <div class="absolute -right-4 -bottom-4 opacity-10"><i class="fa-solid fa-calculator text-9xl"></i></div>
@@ -226,9 +226,9 @@
                                         <span>Desconto (R$ -)</span>
                                         <input type="text" data-mask="money" inputmode="numeric" id="pdv-desconto" oninput="pdvAtualizarTotais(); atualizarResumoPagamentosVenda();" value="0" class="w-20 md:w-24 bg-slate-800 text-white text-right font-bold border border-slate-600 rounded px-2 py-1 outline-none focus:border-red-400 dark:text-white">
                                     </div>
-                                    <div class="flex justify-between items-end">
-                                        <span class="text-xs md:text-sm font-bold uppercase text-slate-300 tracking-wider">Total Final</span>
-                                        <span class="text-3xl md:text-4xl font-black text-emerald-400" id="pdv-total">R$ 0,00</span>
+                                    <div class="flex justify-between items-end gap-2">
+                                        <span class="text-xs md:text-sm font-bold uppercase text-slate-300 tracking-wider shrink-0">Total Final</span>
+                                        <span class="text-2xl sm:text-3xl xl:text-4xl font-black text-emerald-400 truncate text-right" id="pdv-total">R$ 0,00</span>
                                     </div>
                                 </div>
                             </div>
@@ -414,6 +414,10 @@
                             <i class="fa-solid fa-industry text-base"></i> 
                             <span class="tracking-wide">Ordem de Produção (Móveis)</span>
                         </button>
+                        <button onclick="imprimirTermoEntregaAtual()" id="btn-recibo-termo-entrega" class="col-span-2 w-full p-2.5 md:p-3 rounded-xl font-bold flex items-center justify-center gap-2.5 transition-all text-xs active:scale-95 cursor-pointer shadow-sm shadow-emerald-600/20 bg-emerald-600 hover:bg-emerald-700 text-white" style="background-color: #059669;">
+                            <i class="fa-solid fa-truck-ramp-box text-base"></i> 
+                            <span class="tracking-wide">Termo de Entrega e Recebimento</span>
+                        </button>
                     </div>
                 </div>
 
@@ -509,6 +513,7 @@
                         <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><i class="fa-solid fa-user text-4xl"></i></div>
                         <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Cliente</p>
                         <p class="font-black text-slate-800 dark:text-slate-100 text-sm md:text-base truncate relative z-10" id="det-venda-cliente">-</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 font-medium relative z-10 mt-1 break-words hidden" id="det-venda-endereco"></p>
                     </div>
                     <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700/50 hover:shadow-md transition-shadow relative overflow-hidden group">
                         <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><i class="fa-regular fa-calendar text-4xl"></i></div>
@@ -985,13 +990,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
 
-    <script src="../sistema/config_banco.js?v=20261009181930"></script>
-    <script src="saas_licenca.js?v=20261009181930"></script>
-    <script src="../global.js?v=20261009181930"></script>
-    <script src="fc_cache.js?v=20261009181930"></script>
-    <script src="tabela_ncm.js?v=20261009181930"></script>
-    <script src="ncm_helper.js?v=20261009181930"></script>
-    <script src="orcamentos.js?v=20261009181930"></script>
+    <script src="../sistema/config_banco.js?v=20261020085630"></script>
+    <script src="saas_licenca.js?v=20261020085630"></script>
+    <script src="../global.js?v=20261020085630"></script>
+    <script src="fc_cache.js?v=20261020085630"></script>
+    <script src="tabela_ncm.js?v=20261020085630"></script>
+    <script src="ncm_helper.js?v=20261020085630"></script>
+    <script src="orcamentos.js?v=20261020085630"></script>
 </body>
 </html>
 

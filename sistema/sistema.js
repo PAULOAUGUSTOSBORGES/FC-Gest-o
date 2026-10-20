@@ -338,13 +338,30 @@ function carregarConfiguracoesNaTela() {
         }
     });
 
+    const cardModuloNFSe = document.getElementById('card-modulo-nfse-empresa');
     const elHabilNFSe = document.getElementById('emp-habilitar-nfse');
+    const podeNfse = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfse') : false;
+
+    if (cardModuloNFSe) {
+        if (!podeNfse) {
+            cardModuloNFSe.style.display = 'none';
+            cardModuloNFSe.classList.add('hidden');
+        } else {
+            cardModuloNFSe.style.display = '';
+            cardModuloNFSe.classList.remove('hidden');
+        }
+    }
+
     if (elHabilNFSe) {
-        const empIdAtivo = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
-        const isFc = (empIdAtivo === 'emp_fc_moveis' || !empIdAtivo || String(emp.cnpj || '').includes('37638679'));
-        elHabilNFSe.checked = emp.habilitarNFSe !== undefined ? Boolean(emp.habilitarNFSe) : isFc;
-        if (typeof window.alternarModuloNFSeConfig === 'function') {
-            window.alternarModuloNFSeConfig();
+        if (!podeNfse) {
+            elHabilNFSe.checked = false;
+            elHabilNFSe.disabled = true;
+        } else {
+            elHabilNFSe.disabled = false;
+            elHabilNFSe.checked = Boolean(emp.habilitarNFSe);
+            if (typeof window.alternarModuloNFSeConfig === 'function') {
+                window.alternarModuloNFSeConfig();
+            }
         }
     }
 
@@ -595,7 +612,65 @@ function carregarConfiguracoesNaTela() {
         }
     }
 }
+    carregarCardPlanoSaaS();
 window.carregarConfiguracoesNaTela = carregarConfiguracoesNaTela;
+
+// -----------------------------------------------------------------------
+// CARD MEU PLANO & RENOVAÇÃO SAAS
+// -----------------------------------------------------------------------
+function carregarCardPlanoSaaS() {
+    const card = document.getElementById('card-plano-saas-config');
+    if (!card) return;
+
+    const lic = window.currentSaaSLicense || window.currentEmpresaData || {};
+    const statusExp = (typeof window._verificarExpiracaoSaaS === 'function')
+        ? window._verificarExpiracaoSaaS(lic)
+        : { expirado: false, diasRestantes: 30, isTrial: false, formatado: 'Ativo' };
+
+    const elNomePlano = document.getElementById('config-nome-plano-txt');
+    const elDescTempo = document.getElementById('config-descricao-tempo-txt');
+    const elDataVenc = document.getElementById('config-data-venc-txt');
+    const elBadge = document.getElementById('config-badge-plano-status');
+
+    const planoNome = (lic.plano || 'Start Express').toString().toUpperCase();
+    if (elNomePlano) elNomePlano.innerText = planoNome;
+
+    let dataVencStr = 'Não definida';
+    if (lic.dataVencimento) {
+        if (typeof lic.dataVencimento.toDate === 'function') {
+            dataVencStr = lic.dataVencimento.toDate().toLocaleDateString('pt-BR');
+        } else if (typeof lic.dataVencimento === 'string') {
+            const dt = new Date(lic.dataVencimento);
+            dataVencStr = !isNaN(dt.getTime()) ? dt.toLocaleDateString('pt-BR') : lic.dataVencimento;
+        }
+    } else if (lic.dataVencimentoStr) {
+        dataVencStr = lic.dataVencimentoStr;
+    }
+    if (elDataVenc) elDataVenc.innerText = dataVencStr;
+
+    if (elBadge && elDescTempo) {
+        if (statusExp.expirado) {
+            elBadge.className = 'text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 px-3 py-1 rounded-full border border-rose-200 dark:border-rose-800 flex items-center gap-1.5';
+            elBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Expirado';
+            elDescTempo.innerHTML = '<span class="text-rose-600 dark:text-rose-400 font-bold">Plano expirado. Renove para continuar com todos os recursos.</span>';
+        } else if (statusExp.isTrial) {
+            elBadge.className = 'text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-3 py-1 rounded-full border border-amber-200 dark:border-amber-800 flex items-center gap-1.5';
+            elBadge.innerHTML = '<i class="fa-solid fa-clock"></i> Teste Grátis (7 Dias)';
+            elDescTempo.innerHTML = 'Restam <strong class="text-amber-600 dark:text-amber-400 font-extrabold text-sm">' + statusExp.diasRestantes + ' dia(s)</strong> de teste.';
+        } else {
+            elBadge.className = 'text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1 rounded-full border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5';
+            elBadge.innerHTML = '<i class="fa-solid fa-circle-check"></i> Assinatura Ativa';
+            elDescTempo.innerHTML = 'Válido por mais <strong class="text-emerald-600 dark:text-emerald-400 font-extrabold text-sm">' + statusExp.diasRestantes + ' dia(s)</strong>.';
+        }
+    }
+}
+window.carregarCardPlanoSaaS = carregarCardPlanoSaaS;
+
+// Tenta atualizar quando a página carregar e também após consulta SaaS
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(carregarCardPlanoSaaS, 800);
+});
+
 
 function processarLogoEmpresa(event) {
     const file = event.target.files[0]; if(!file) return; const reader = new FileReader();
@@ -769,7 +844,7 @@ async function salvarConfiguracoes() {
         proximoNumeroNFe: document.getElementById('emp-numero-nfe') ? (parseInt(document.getElementById('emp-numero-nfe').value.trim(), 10) || 1) : 1,
         serieNFCe: document.getElementById('emp-serie-nfce') ? document.getElementById('emp-serie-nfce').value.trim() : '1',
         proximoNumeroNFCe: document.getElementById('emp-numero-nfce') ? (parseInt(document.getElementById('emp-numero-nfce').value.trim(), 10) || 1) : 1,
-        habilitarNFSe: document.getElementById('emp-habilitar-nfse') ? document.getElementById('emp-habilitar-nfse').checked : (db.config?.empresa?.habilitarNFSe || false),
+        habilitarNFSe: (document.getElementById('emp-habilitar-nfse') && !document.getElementById('emp-habilitar-nfse').disabled) ? document.getElementById('emp-habilitar-nfse').checked : false,
         serieNFSe: document.getElementById('emp-serie-nfse') ? document.getElementById('emp-serie-nfse').value.trim() : '1',
         proximoNumeroNFSe: document.getElementById('emp-numero-nfse') ? (parseInt(document.getElementById('emp-numero-nfse').value.trim(), 10) || 1) : 1,
         naturezaOperacao: document.getElementById('emp-natureza-operacao') ? document.getElementById('emp-natureza-operacao').value.trim() : 'VENDA DE MERCADORIA',
@@ -1192,6 +1267,33 @@ function copiarEmailLiberacaoPrefeitura() {
     });
 }
 
+function atualizarVisibilidadeNFSeSistema() {
+    const cardModuloNFSe = document.getElementById('card-modulo-nfse-empresa');
+    const elHabilNFSe = document.getElementById('emp-habilitar-nfse');
+    if (!cardModuloNFSe) return;
+
+    const podeNfse = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfse') : false;
+    if (podeNfse) {
+        cardModuloNFSe.style.display = '';
+        cardModuloNFSe.classList.remove('hidden');
+        if (elHabilNFSe) elHabilNFSe.disabled = false;
+    } else {
+        cardModuloNFSe.style.display = 'none';
+        cardModuloNFSe.classList.add('hidden');
+        if (elHabilNFSe) {
+            elHabilNFSe.checked = false;
+            elHabilNFSe.disabled = true;
+        }
+    }
+}
+window.atualizarVisibilidadeNFSeSistema = atualizarVisibilidadeNFSeSistema;
+
 window.alternarModuloNFSeConfig = alternarModuloNFSeConfig;
 window.copiarEmailLiberacaoPrefeitura = copiarEmailLiberacaoPrefeitura;
 
+// Executa verificação inicial logo no carregamento
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', atualizarVisibilidadeNFSeSistema);
+} else {
+    atualizarVisibilidadeNFSeSistema();
+}

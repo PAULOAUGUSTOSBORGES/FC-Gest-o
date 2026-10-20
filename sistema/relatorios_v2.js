@@ -297,16 +297,20 @@ function printHtmlSeguro(htmlCompleto) {
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { margin: 10mm; }
-                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                @page { size: A4 portrait; margin: 10mm 12mm 12mm 12mm; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
                 .print\\\\:hidden { display: none !important; }
-                table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
+                .overflow-x-auto, .table-wrapper, .fc-table-wrap { overflow: visible !important; display: block !important; }
+                table { page-break-inside: auto; width: 100% !important; max-width: 100% !important; min-width: 0 !important; border-collapse: collapse; }
+                th, td { word-break: break-word !important; }
                 tr { page-break-inside: avoid; page-break-after: auto; }
                 thead { display: table-header-group; }
                 tfoot { display: table-footer-group; }
+                @media print { body { padding: 4mm 6mm !important; margin: 0 !important; box-sizing: border-box !important; } }
             </style>
         </head>
-        <body class="bg-white dark:bg-slate-800 p-4">
+        <body class="bg-white text-black p-0">
             ${htmlCompleto}
         </body>
         </html>
@@ -334,7 +338,7 @@ function imprimirArea(areaId) {
     cloneElement.querySelectorAll('[data-relatorio-bloqueado="true"]').forEach(n => n.remove());
     const printContent = cloneElement.innerHTML; 
     const htmlCompleto = `
-        <div style="padding: 20px; font-family: Arial, sans-serif; background: #fff; color: #000;">
+        <div style="padding: 10px 0; font-family: Arial, sans-serif; background: #fff; color: #000; width: 100%; box-sizing: border-box;">
             <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
                 ${logoHtml}
                 <h2 style="font-size: 20px; font-weight: bold; margin: 5px 0; text-transform: uppercase;">${empNome}</h2>
@@ -366,20 +370,23 @@ function baixarPDF(areaId, filename) {
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { margin: 15mm; size: A4; }
-                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 20px; max-width: 1000px; margin: 0 auto; }
+                @page { margin: 10mm 12mm 12mm 12mm; size: A4 portrait; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
                 .print\\:hidden { display: none !important; }
-                table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
+                .overflow-x-auto, .table-wrapper, .fc-table-wrap { overflow: visible !important; display: block !important; }
+                table { page-break-inside: auto; width: 100% !important; max-width: 100% !important; min-width: 0 !important; border-collapse: collapse; }
+                th, td { word-break: break-word !important; }
                 tr { page-break-inside: avoid; page-break-after: auto; }
                 thead { display: table-header-group; }
                 tfoot { display: table-footer-group; }
                 
                 @media print {
-                    body { padding: 0; max-width: none; }
+                    body { padding: 4mm 6mm !important; margin: 0 !important; max-width: 100% !important; box-sizing: border-box !important; }
                 }
             </style>
         </head>
-        <body class="bg-white text-black">
+        <body class="bg-white text-black p-0">
             ${printContent}
             
             <script>
@@ -3381,7 +3388,7 @@ function imprimirDrilldownDRE() {
     let logoHtml = db?.config?.empresa?.logo ? `<img src="${db.config.empresa.logo}" style="max-height: 50px; margin-bottom: 8px;">` : '';
 
     const htmlImpressao = `
-        <div style="padding: 20px; font-family: Arial, sans-serif; background: #fff; color: #000;">
+        <div style="padding: 6mm 8mm; font-family: Arial, sans-serif; background: #fff; color: #000; width: 100%; box-sizing: border-box;">
             <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 12px; margin-bottom: 16px;">
                 ${logoHtml}
                 <h2 style="font-size: 18px; margin: 0; text-transform: uppercase;">${empNome}</h2>
@@ -4290,7 +4297,9 @@ window.exportarRelatorioExecutivoPDF = function() {
     showToast('Gerando Relatório Executivo em PDF...', 'info');
 
     const wrapper = document.createElement('div');
-    wrapper.style.padding = '20px';
+    wrapper.style.padding = '10px 14px';
+    wrapper.style.boxSizing = 'border-box';
+    wrapper.style.width = '100%';
     wrapper.style.fontFamily = 'Inter, sans-serif';
     wrapper.style.color = '#0f172a';
     wrapper.style.backgroundColor = '#ffffff';
@@ -4387,7 +4396,7 @@ window.imprimirRelatorioIndividual = function(containerId, tituloRelatorio) {
     }
 
     const htmlCompleto = `
-        <div style="padding: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #fff; color: #0f172a;">
+        <div style="padding: 6mm 8mm; width: 100%; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #fff; color: #0f172a;">
             <!-- Cabeçalho Oficial de Impressão -->
             <div style="border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: flex-end;">
                 <div>
@@ -5491,6 +5500,56 @@ function abrirDetalhesFuncionario(nomeFuncionario) {
 }
 
 function imprimirExtratoFuncionario() {
+    const modal = document.getElementById('modal-detalhes-funcionario');
+    if (modal && !modal.classList.contains('hidden')) {
+        const title = document.getElementById('modal-func-title')?.innerText || 'Extrato de Funcionário';
+        const total = document.getElementById('modal-func-total')?.innerText || 'R$ 0,00';
+        const count = document.getElementById('modal-func-count')?.innerText || '0';
+        const tbody = document.getElementById('modal-func-tbody')?.innerHTML || '';
+
+        let empNome = "FC Gestão Comercial";
+        if (typeof db !== 'undefined' && db?.config?.empresa?.nome) empNome = db.config.empresa.nome;
+        let logoHtml = "";
+        if (typeof db !== 'undefined' && db?.config?.empresa?.logo) {
+            logoHtml = `<img src="${db.config.empresa.logo}" style="max-height: 48px; margin-bottom: 6px; border-radius: 6px;">`;
+        }
+
+        const htmlCompleto = `
+            <div style="padding: 6mm 8mm; width: 100%; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #fff; color: #0f172a;">
+                <div style="border-bottom: 2px solid #059669; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div>
+                        ${logoHtml}
+                        <h2 style="font-size: 18px; font-weight: 800; margin: 0; color: #0f172a; text-transform: uppercase;">${empNome}</h2>
+                        <h3 style="font-size: 14px; font-weight: 700; margin: 3px 0 0 0; color: #059669;">${title}</h3>
+                    </div>
+                    <div style="text-align: right; font-size: 11px; color: #475569;">
+                        <div><b>Emissão:</b> ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+                        <div><b>Total:</b> ${total} (${count} lançamentos)</div>
+                    </div>
+                </div>
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px;">
+                    <thead>
+                        <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                            <th style="padding: 8px 6px; text-align: left; width: 25%;">Data</th>
+                            <th style="padding: 8px 6px; text-align: left; width: 50%;">Descrição / Categoria</th>
+                            <th style="padding: 8px 6px; text-align: right; width: 25%;">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody style="border-bottom: 1px solid #cbd5e1;">
+                        ${tbody}
+                    </tbody>
+                </table>
+                <div style="margin-top: 25px; padding-top: 8px; border-top: 1px solid #cbd5e1; display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8;">
+                    <span>FC Gestão - Sistema de Gestão Empresarial e Comercial</span>
+                    <span>Documento oficial de prestação de contas</span>
+                </div>
+            </div>
+        `;
+        if (typeof printHtmlSeguro === 'function') {
+            printHtmlSeguro(htmlCompleto);
+            return;
+        }
+    }
     if (typeof imprimirDrilldownDRE === 'function') {
         imprimirDrilldownDRE();
     } else {
@@ -6146,7 +6205,7 @@ function renderizarRelatorioIA(resposta) {
             <button onclick="baixarRelatorioWord()" class="text-xs bg-blue-50 hover:bg-blue-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-blue-800 dark:text-blue-300 font-bold px-3.5 py-2 rounded-xl border border-blue-300 dark:border-slate-600 transition-all flex items-center gap-1.5 shadow-2xs hover:shadow" title="Exportar para Microsoft Word">
                 <i class="fa-solid fa-file-word text-blue-600"></i> Word
             </button>
-            <button onclick="window.print()" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2 rounded-xl border border-indigo-700 transition-all flex items-center gap-1.5 shadow-sm hover:shadow-md">
+            <button onclick="imprimirRelatorioIA()" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2 rounded-xl border border-indigo-700 transition-all flex items-center gap-1.5 shadow-sm hover:shadow-md cursor-pointer">
                 <i class="fa-solid fa-print"></i> Imprimir
             </button>
         </div>
@@ -6261,6 +6320,50 @@ function baixarRelatorioPlanilha() {
     document.body.removeChild(link);
     setTimeout(function() { URL.revokeObjectURL(url); }, 100);
 }
+
+function imprimirRelatorioIA() {
+    var divRes = document.getElementById('ia-rel-conteudo-html');
+    if (!divRes) return showToast('Nenhum relatório IA disponível para impressão.', 'info');
+    
+    let empNome = "FC Gestão Comercial";
+    if (typeof db !== 'undefined' && db?.config?.empresa?.nome) {
+        empNome = db.config.empresa.nome;
+    }
+    let logoHtml = "";
+    if (typeof db !== 'undefined' && db?.config?.empresa?.logo) {
+        logoHtml = `<img src="${db.config.empresa.logo}" style="max-height: 48px; margin-bottom: 6px; border-radius: 6px;">`;
+    }
+
+    const htmlCompleto = `
+        <div style="padding: 6mm 8mm; width: 100%; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #fff; color: #0f172a;">
+            <div style="border-bottom: 2px solid #4f46e5; padding-bottom: 12px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div>
+                    ${logoHtml}
+                    <h2 style="font-size: 18px; font-weight: 800; margin: 0; color: #0f172a; text-transform: uppercase;">${empNome}</h2>
+                    <h3 style="font-size: 14px; font-weight: 700; margin: 3px 0 0 0; color: #4f46e5;">Diagnóstico e Análise Estratégica IA</h3>
+                </div>
+                <div style="text-align: right; font-size: 11px; color: #475569;">
+                    <div><b>Emissão:</b> ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+                    <div><b>Módulo:</b> Inteligência de Negócios (BI)</div>
+                </div>
+            </div>
+            <div class="ia-rel-print-body" style="font-size: 12px; line-height: 1.6; color: #1e293b;">
+                ${divRes.innerHTML}
+            </div>
+            <div style="margin-top: 25px; padding-top: 8px; border-top: 1px solid #cbd5e1; display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8;">
+                <span>FC Gestão - Sistema de Gestão Empresarial e Comercial</span>
+                <span>Documento confidencial gerado por Inteligência Artificial</span>
+            </div>
+        </div>
+    `;
+
+    if (typeof printHtmlSeguro === 'function') {
+        printHtmlSeguro(htmlCompleto);
+    } else {
+        window.print();
+    }
+}
+window.imprimirRelatorioIA = imprimirRelatorioIA;
 
 async function carregarHistoricoRelatoriosIA() {
     var list = document.getElementById('ia-historico-lista');
@@ -6806,7 +6909,10 @@ function imprimirExtratoIndividualVendedor() {
         <head>
             <title>Recibo de Comissão - ${v.nome}</title>
             <style>
-                body { font-family: 'Segoe UI', Arial, sans-serif; padding: 24px; color: #1e293b; max-width: 800px; margin: auto; }
+                @page { size: A4 portrait; margin: 8mm 10mm 10mm 10mm; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+                @media print { body { padding: 4mm 6mm !important; margin: 0 !important; } }
                 h1, h2, h3 { margin: 0; }
                 .header { border-bottom: 2px solid #059669; padding-bottom: 12px; margin-bottom: 16px; }
                 .grid { display: flex; justify-content: space-between; margin-bottom: 16px; font-size: 13px; }
@@ -6929,7 +7035,7 @@ function aplicarControleAcessoRelatoriosPorPlano() {
                     <p class="text-xs text-slate-300 max-w-sm mb-4 leading-relaxed">
                         Este relatório analítico avançado está disponível para contratação. Faça o upgrade do seu plano para liberá-lo imediatamente.
                     </p>
-                    <a href="https://wa.me/5562993341774?text=${encodeURIComponent('Olá! Gostaria de fazer upgrade do plano para liberar relatórios adicionais no FC-Gestão.')}" target="_blank" class="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 text-xs font-black rounded-xl shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95">
+                    <a href="https://wa.me/5562999676874?text=${encodeURIComponent('Olá! Gostaria de fazer upgrade do plano para liberar relatórios adicionais no FC-Gestão.')}" target="_blank" class="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 text-xs font-black rounded-xl shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95">
                         <i class="fa-brands fa-whatsapp text-sm"></i> Fazer Upgrade
                     </a>
                 `;

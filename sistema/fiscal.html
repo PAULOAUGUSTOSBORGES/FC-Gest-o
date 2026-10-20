@@ -334,8 +334,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <link rel="stylesheet" href="../style.css?v=20261009181930">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261009181930">
+    <link rel="stylesheet" href="../style.css?v=20261020085630">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261020085630">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="fiscal">
 
@@ -348,7 +348,7 @@
         <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 w-64 bg-slate-900 text-slate-300 flex flex-col h-full shrink-0 shadow-2xl z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out no-print">
             <div class="p-5 flex items-center justify-between gap-3 border-b border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors" onclick="window.location.href='index.html'">
                 <div class="flex items-center gap-3 pointer-events-none">
-                    <img id="menu-logo" src="../icons/icon.svg" class="w-8 h-8 rounded-lg object-cover bg-slate-800 shadow-md">
+                    <img id="menu-logo" src="../icons/icon-v2.svg" class="w-8 h-8 rounded-lg object-cover bg-slate-800 shadow-md">
                     <div id="menu-logo-placeholder" class="hidden w-8 h-8 bg-slate-800 border border-slate-600 rounded-lg flex items-center justify-center text-slate-400 text-base shadow-md"><i class="fa-solid fa-store"></i></div>
                     <div>
                         <h1 id="menu-empresa-nome" class="font-bold text-white text-sm tracking-wide leading-tight">FC Gestão</h1>
@@ -556,34 +556,34 @@
                         <!-- Filtro de Período -->
                         <div class="relative">
                             <select id="filtro-periodo-fiscal" onchange="mudarPeriodoFiscal()" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl text-xs font-semibold outline-none focus:border-blue-500 cursor-pointer">
-                                <option value="este_mes" selected>ðŸ“… Este Mês</option>
-                                <option value="mes_passado">ðŸ“… Mês Passado</option>
-                                <option value="ultimos_30">ðŸ“… Últimos 30 dias</option>
-                                <option value="todos">ðŸ“… Todo o Histórico</option>
+                                <option value="este_mes" selected>📅 Este Mês</option>
+                                <option value="mes_passado">📅 Mês Passado</option>
+                                <option value="ultimos_30">📅 Últimos 30 dias</option>
+                                <option value="todos">📅 Todo o Histórico</option>
                             </select>
                         </div>
 
                         <!-- Filtro de Modelo -->
                         <div class="relative">
                             <select id="filtro-tipo-fiscal" onchange="filtrarNotasFiscais()" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl text-xs font-semibold outline-none focus:border-blue-500 cursor-pointer">
-                                <option value="TODOS">ðŸ“„ Todos os Modelos</option>
-                                <option value="NFE">ðŸ”¹ NF-e (Mod 55)</option>
-                                <option value="NFCE">ðŸŸ¢ NFC-e (Mod 65)</option>
-                                <option value="DEVOLUCAO">ðŸŸ  Devoluções / Estornos</option>
-                                <option value="NFSE">ðŸŸ£ NFS-e (Serviço)</option>
+                                <option value="TODOS">📄 Todos os Modelos</option>
+                                <option value="NFE">🔹 NF-e (Mod 55)</option>
+                                <option value="NFCE">🟢 NFC-e (Mod 65)</option>
+                                <option value="DEVOLUCAO">🟠 Devoluções / Estornos</option>
+                                <option value="NFSE">🟣 NFS-e (Serviço)</option>
                             </select>
                         </div>
 
                         <!-- Filtro de Status -->
                         <div class="relative">
                             <select id="filtro-status-fiscal" onchange="filtrarNotasFiscais()" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl text-xs font-semibold outline-none focus:border-blue-500 cursor-pointer">
-                                <option value="TODOS">âš¡ Todos os Status</option>
-                                <option value="AUTORIZADO">âœ… Autorizadas</option>
-                                <option value="DEVOLVIDO">â†©ï¸ Devolvidas / Estornadas</option>
-                                <option value="CONTINGENCIA">âš ï¸ Em Contingência</option>
-                                <option value="PROCESSANDO">â³ Processando</option>
-                                <option value="CANCELADO">ðŸš« Canceladas</option>
-                                <option value="ERRO">âŒ Com Rejeição/Erro</option>
+                                <option value="TODOS">⚡ Todos os Status</option>
+                                <option value="AUTORIZADO">✅ Autorizadas</option>
+                                <option value="DEVOLVIDO">↩️ Devolvidas / Estornadas</option>
+                                <option value="CONTINGENCIA">⚠️ Em Contingência</option>
+                                <option value="PROCESSANDO">⏳ Processando</option>
+                                <option value="CANCELADO">🚫 Canceladas</option>
+                                <option value="ERRO">❌ Com Rejeição/Erro</option>
                             </select>
                         </div>
                     </div>
@@ -600,7 +600,7 @@
                         </div>
                         <span class="text-[11px] font-medium text-slate-400 flex items-center gap-1.5">
                             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            Transmissão em tempo real â€” SEFAZ Goiás
+                            Transmissão em tempo real — SEFAZ Goiás
                         </span>
                     </div>
                     <!-- BARRA DE ROLAGEM SUPERIOR (SINCRONIZADA COM A TABELA) -->
@@ -655,9 +655,20 @@
 
                 <div id="cancelar-info-nota" class="font-mono text-slate-700 dark:text-slate-300 text-xs bg-slate-50 dark:bg-slate-900 p-3 rounded-lg"></div>
 
+                <div id="cancelar-nfse-motivo-container" class="hidden">
+                    <label class="block font-bold text-slate-600 dark:text-slate-300 mb-1">Motivo Legal na Prefeitura (SEFIN Goiânia):</label>
+                    <select id="cancelar-nfse-codigo" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-red-500 dark:text-white font-medium">
+                        <option value="2" selected>2 - Serviço não prestado / Desistência da prestação</option>
+                        <option value="4">4 - Duplicidade da nota fiscal</option>
+                    </select>
+                    <p class="text-[10px] text-amber-600 dark:text-amber-400 mt-1 leading-relaxed">
+                        <i class="fa-solid fa-circle-info mr-0.5"></i> <strong>Atenção:</strong> Em Goiânia, a Prefeitura só permite cancelamento direto sem substituição pelos códigos <strong>2 (Serviço não prestado)</strong> ou <strong>4 (Duplicidade)</strong>.
+                    </p>
+                </div>
+
                 <div>
                     <label class="block font-bold text-slate-600 dark:text-slate-300 mb-1">Justificativa do Cancelamento (Mín. 15 caracteres):</label>
-                    <textarea id="cancelar-justificativa" rows="3" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-red-500 dark:text-white" placeholder="Ex: Cancelamento por desistência do comprador ou erro de dados"></textarea>
+                    <textarea id="cancelar-justificativa" rows="3" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-lg text-xs outline-none focus:border-red-500 dark:text-white" placeholder="Ex: Cancelamento por desistência do comprador ou serviço não executado"></textarea>
                     <p class="text-[10px] text-slate-400 mt-1" id="cancelar-char-count">0 / 15 caracteres</p>
                 </div>
             </div>
@@ -761,7 +772,7 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- MODAL â€” DEVOLUÇÃO DE VENDA                -->
+    <!-- MODAL — DEVOLUÇÃO DE VENDA                -->
     <!-- ========================================== -->
     <div id="modal-devolucao-venda" class="fixed inset-0 bg-slate-900/80 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
@@ -779,7 +790,7 @@
             <div class="overflow-y-auto p-5 space-y-4 custom-scrollbar">
                 <p class="text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-xl p-3">
                     <i class="fa-solid fa-triangle-exclamation mr-1"></i>
-                    Será emitida uma <strong>NF-e de Entrada (finNFe=4 â€” Devolução)</strong> referenciando a NF-e original. Isso registra a entrada das mercadorias de volta no seu estoque fiscal.
+                    Será emitida uma <strong>NF-e de Entrada (finNFe=4 — Devolução)</strong> referenciando a NF-e original. Isso registra a entrada das mercadorias de volta no seu estoque fiscal.
                 </p>
                 <div>
                     <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Selecione os itens a devolver:</h3>
@@ -814,7 +825,7 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- MODAL â€” DEVOLUÇÃO DE COMPRA AO FORNECEDOR / INDÚSTRIA -->
+    <!-- MODAL — DEVOLUÇÃO DE COMPRA AO FORNECEDOR / INDÚSTRIA -->
     <!-- ========================================== -->
     <div id="modal-devolucao-compra" class="fixed inset-0 bg-slate-900/80 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[95vh] modal-inner-card border border-slate-200 dark:border-slate-700">
@@ -1019,7 +1030,7 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- MODAL â€” NOTA AVULSA COMPLETA              -->
+    <!-- MODAL — NOTA AVULSA COMPLETA              -->
     <!-- ========================================== -->
     <div id="modal-nota-avulsa" class="fixed inset-0 bg-slate-950/80 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
         <div class="modal-card-avulsa bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[95vh]">
@@ -1095,7 +1106,7 @@
                             </div>
                             <div>
                                 <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">CEP</label>
-                                <input id="avulsa-dest-cep" type="text" placeholder="74000-000" maxlength="9" class="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                                <input id="avulsa-dest-cep" type="text" placeholder="74000-000" maxlength="9" onblur="buscarCepAvulsa(this.value)" oninput="if(this.value.replace(/\D/g,'').length===8) buscarCepAvulsa(this.value)" class="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
                             </div>
                         </div>
                     </div>
@@ -1218,7 +1229,7 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- MODAL â€” EMISSÃO DE NFS-e (SERVIÇOS)       -->
+    <!-- MODAL — EMISSÃO DE NFS-e (SERVIÇOS)       -->
     <!-- ========================================== -->
     <div id="modal-emitir-nfse" class="fixed inset-0 bg-slate-900/80 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[95vh]">
@@ -1227,7 +1238,7 @@
                     <h2 class="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
                         <i class="fa-solid fa-screwdriver-wrench text-purple-500"></i> Emitir NFS-e (Nota Fiscal de Serviços)
                     </h2>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Competência Municipal â€” Padrão ABRASF / RPS Nacional</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Competência Municipal — Padrão ABRASF / RPS Nacional</p>
                 </div>
                 <button onclick="fecharModalNFSe()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
                     <i class="fa-solid fa-xmark text-lg"></i>
@@ -1307,13 +1318,13 @@
                     <div class="space-y-3">
                         <div class="grid grid-cols-2 gap-2.5">
                             <div>
-                                <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Item da LC 116 / Atividade</label>
-                                <select id="nfse-servico-item" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-400">
-                                    <option value="14.01">14.01 - Manutenção, conserto e restauração</option>
-                                    <option value="14.06">14.06 - Instalação e montagem de móveis / equipamentos</option>
-                                    <option value="31.01">31.01 - Tapeçaria e reforma de móveis e estofados</option>
-                                    <option value="14.02">14.02 - Assistência técnica</option>
-                                    <option value="99.01">99.01 - Outros serviços</option>
+                                <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Item da LC 116 / Atividade Municipal</label>
+                                <select id="nfse-servico-item" onchange="atualizarAtividadeCnaeNFSe(this.value)" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                                    <option value="14.05" data-cnae="9529105" data-cod-trib="1405" selected>14.05 - Restauração, pintura e acabamento de móveis / objetos (Cód. 1405)</option>
+                                    <option value="07.02" data-cnae="4330404" data-cod-trib="702">07.02 - Pintura, acabamento, montagem e obras (Principal - Cód. 702)</option>
+                                    <option value="14.13" data-cnae="3101200" data-cod-trib="1413">14.13 - Carpintaria, marcenaria e serralheria (Cód. 1413)</option>
+                                    <option value="07.05" data-cnae="4330404" data-cod-trib="705">07.05 - Reparação, conservação e reforma de edifícios (Cód. 705)</option>
+                                    <option value="14.12" data-cnae="4520002" data-cod-trib="1412">14.12 - Funilaria e lanternagem (Cód. 1412)</option>
                                 </select>
                             </div>
                             <div class="grid grid-cols-2 gap-2">
@@ -1325,6 +1336,39 @@
                                     <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Alíquota ISS (%)</label>
                                     <input id="nfse-servico-aliq" type="number" step="0.01" min="0" value="2.00" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-400">
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- Parâmetros Fiscais da Prefeitura (CNAE, CTM e RPS) -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/80">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 flex items-center justify-between">
+                                    <span>Código CNAE</span>
+                                    <span class="text-[9px] text-purple-600 font-normal">Ficha Cadastral</span>
+                                </label>
+                                <select id="nfse-servico-cnae" class="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                                    <option value="9529105" selected>9529105 - Reparação de móveis</option>
+                                    <option value="4330404">4330404 - Pintura em geral</option>
+                                    <option value="3101200">3101200 - Fabr. móveis madeira</option>
+                                    <option value="1629301">1629301 - Artefatos diversos de madeira</option>
+                                    <option value="4520002">4520002 - Lanternagem e pintura</option>
+                                    <option value="4744002">4744002 - Comércio varejista madeira (Principal)</option>
+                                    <option value="vazio">-- Não enviar tag CNAE --</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 flex items-center justify-between">
+                                    <span>Cód. Tributação (CTM)</span>
+                                    <span class="text-[9px] text-purple-600 font-normal">Goiânia</span>
+                                </label>
+                                <input id="nfse-servico-cod-trib" type="text" value="1405" placeholder="1405" class="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 flex items-center justify-between">
+                                    <span>Nº RPS a Enviar</span>
+                                    <span class="text-[9px] text-emerald-600 font-normal">AIDF 69872 (1 a 10)</span>
+                                </label>
+                                <input id="nfse-num-rps" type="number" min="1" max="10" value="1" placeholder="1" class="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-bold focus:outline-none focus:ring-2 focus:ring-purple-400">
                             </div>
                         </div>
                         <div>
@@ -1395,13 +1439,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-functions-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20261009181930"></script>
-    <script src="saas_licenca.js?v=20261009181930"></script>
-    <script src="../global.js?v=20261009181930"></script>
-    <script src="fc_cache.js?v=20261009181930"></script>
-    <script src="tabela_ncm.js?v=20261009181930"></script>
-    <script src="ncm_helper.js?v=20261009181930"></script>
-    <script src="fiscal.js?v=20261009181930"></script>
+    <script src="../sistema/config_banco.js?v=20261020085630"></script>
+    <script src="saas_licenca.js?v=20261020085630"></script>
+    <script src="../global.js?v=20261020085630"></script>
+    <script src="fc_cache.js?v=20261020085630"></script>
+    <script src="tabela_ncm.js?v=20261020085630"></script>
+    <script src="ncm_helper.js?v=20261020085630"></script>
+    <script src="fiscal.js?v=20261020085630"></script>
 </body>
 </html>
 

@@ -1,4 +1,4 @@
-﻿const functions = require("firebase-functions");
+const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const axios = require("axios");
 
@@ -43,85 +43,96 @@ function traduzirStatusMP(statusDetail) {
   return traducoes[statusDetail] || 'Pagamento recusado. Verifique os dados e tente novamente.';
 }
 
-async function criarUsuarioFirebase(email, nomePlano, pagamentoId, senha, dadosExtras = {}) {
+async function criarUsuarioFirebase(email, nomePlano, pagamentoId, senha, dadosExtras = {}, empresaIdFornecido = null) {
   const auth = getAuth();
   const db = getDb();
-  let uid;
+  let uid = null;
 
-  try {
-    const novoUsuario = await auth.createUser({
-      email: email,
-      emailVerified: false,
-      password: senha || gerarSenhaTemporaria(),
-      displayName: email.split('@')[0]
-    });
-    uid = novoUsuario.uid;
-    console.log(`[criarUsuario] Novo usuário criado: ${uid}`);
-  } catch (err) {
-    if (err.code === 'auth/email-already-exists') {
-      const usuarioExistente = await auth.getUserByEmail(email);
-      uid = usuarioExistente.uid;
-      if (senha) {
-        await auth.updateUser(uid, { password: senha });
+  if (email) {
+    try {
+      const novoUsuario = await auth.createUser({
+        email: email,
+        emailVerified: false,
+        password: senha || gerarSenhaTemporaria(),
+        displayName: email.split('@')[0]
+      });
+      uid = novoUsuario.uid;
+      console.log(`[criarUsuario] Novo usuário criado: ${uid}`);
+    } catch (err) {
+      if (err.code === 'auth/email-already-exists') {
+        const usuarioExistente = await auth.getUserByEmail(email);
+        uid = usuarioExistente.uid;
+        if (senha) {
+          await auth.updateUser(uid, { password: senha });
+        }
+        console.log(`[criarUsuario] Usuário já existente: ${uid}`);
+      } else {
+        console.warn('[criarUsuario] Aviso ao criar Auth user:', err.message);
       }
-      console.log(`[criarUsuario] Usuário já existente: ${uid}`);
-    } else {
-      throw err;
     }
   }
 
   const nomeFinalEmpresa = (dadosExtras && dadosExtras.nomeEmpresa) ? dadosExtras.nomeEmpresa.trim() : 'Minha Loja';
 
-  // 1. Localiza a empresa cadastrada pelo cliente no cadastro.html
-  let empresaId = null;
-  try {
-    const empSnap = await db.collection('empresas')
-      .where('emailAcesso', '==', email)
-      .get();
+  // Calcula nova data de vencimento (+30 dias)
+  const agora = new Date();
+  const novaDataVenc = new Date(agora.getTime() + 30 * 24 * 60 * 60 * 1000);
+  novaDataVenc.setHours(23, 59, 59, 999);
+  const dataVencStr = novaDataVenc.toISOString().split('T')[0];
 
-    if (!empSnap.empty) {
-      const docs = empSnap.docs.sort((a, b) => {
-        const da = a.data().dataCriacao && a.data().dataCriacao.toMillis ? a.data().dataCriacao.toMillis() : 0;
-        const dbVal = b.data().dataCriacao && b.data().dataCriacao.toMillis ? b.data().dataCriacao.toMillis() : 0;
-        return dbVal - da;
-      });
-      const empDoc = docs[0];
-      empresaId = empDoc.id;
-      const empUpdate = {
-        status: 'ATIVO',
-        pago: true,
-        pagamentoId: String(pagamentoId),
-        planoAtivadoEm: admin.firestore.FieldValue.serverTimestamp()
-      };
-      if (nomeFinalEmpresa && (!empDoc.data().nomeEmpresa || empDoc.data().nomeEmpresa === 'Minha Loja')) {
-        empUpdate.nomeEmpresa = nomeFinalEmpresa;
+  const empUpdate = {
+    status: 'ATIVO',
+    pago: true,
+    dataVencimento: admin.firestore.Timestamp.fromDate(novaDataVenc),
+    dataVencimentoStr: dataVencStr,
+    plano: nomePlano || 'Start Express',
+    pagamentoId: String(pagamentoId),
+    formaPagamento: 'MERCADO_PAGO',
+    planoAtivadoEm: admin.firestore.FieldValue.serverTimestamp()
+  };
+
+  if (nomeFinalEmpresa && (!empUpdate.nomeEmpresa || empUpdate.nomeEmpresa === 'Minha Loja')) {
+    empUpdate.nomeEmpresa = nomeFinalEmpresa;
+  }
+  if (dadosExtras.whatsapp) empUpdate.whatsapp = dadosExtras.whatsapp;
+  if (dadosExtras.cidade) empUpdate.cidade = dadosExtras.cidade;
+  if (dadosExtras.nomeResponsavel) empUpdate.responsavel = dadosExtras.nomeResponsavel;
+
+  let empresaId = empresaIdFornecido || null;
+
+  // 1. Se foi passado empresaId diretamente (renovação/desbloqueio), usa ele
+  if (empresaId) {
+    await db.collection('empresas').doc(empresaId).set(empUpdate, { merge: true });
+    console.log(`[criarUsuario] Empresa ${empresaId} renovada e ativada até ${dataVencStr}!`);
+  } else if (email) {
+    // 2. Localiza a empresa cadastrada pelo email
+    try {
+      const empSnap = await db.collection('empresas')
+        .where('emailAcesso', '==', email)
+        .get();
+
+      if (!empSnap.empty) {
+        const docs = empSnap.docs.sort((a, b) => {
+          const da = a.data().dataCriacao && a.data().dataCriacao.toMillis ? a.data().dataCriacao.toMillis() : 0;
+          const dbVal = b.data().dataCriacao && b.data().dataCriacao.toMillis ? b.data().dataCriacao.toMillis() : 0;
+          return dbVal - da;
+        });
+        const empDoc = docs[0];
+        empresaId = empDoc.id;
+        await empDoc.ref.set(empUpdate, { merge: true });
+        console.log(`[criarUsuario] Empresa ${empresaId} localizada por email e ativada até ${dataVencStr}!`);
       }
-      if (dadosExtras.whatsapp) empUpdate.whatsapp = dadosExtras.whatsapp;
-      if (dadosExtras.cidade) empUpdate.cidade = dadosExtras.cidade;
-      if (dadosExtras.nomeResponsavel) empUpdate.responsavel = dadosExtras.nomeResponsavel;
-
-      await empDoc.ref.set(empUpdate, { merge: true });
-      console.log(`[criarUsuario] Empresa ${empresaId} ativada com sucesso!`);
+    } catch (eEmp) {
+      console.warn('[criarUsuario] Aviso ao buscar empresa:', eEmp.message);
     }
-  } catch (eEmp) {
-    console.warn('[criarUsuario] Aviso ao buscar empresa:', eEmp.message);
   }
 
-  // Se ainda não tiver empresaId, gera um id padrao
-  if (!empresaId) {
+  // 3. Se ainda não tiver empresaId, gera um id padrao
+  if (!empresaId && uid) {
     empresaId = 'emp_' + uid.substring(0, 10);
-    await db.collection('empresas').doc(empresaId).set({
-      nomeEmpresa: nomeFinalEmpresa,
-      responsavel: dadosExtras.nomeResponsavel || '',
-      whatsapp: dadosExtras.whatsapp || '',
-      cidade: dadosExtras.cidade || '',
-      emailAcesso: email,
-      plano: nomePlano,
-      status: 'ATIVO',
-      pago: true,
-      pagamentoId: String(pagamentoId),
-      dataCriacao: admin.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+    empUpdate.emailAcesso = email;
+    empUpdate.dataCriacao = admin.firestore.FieldValue.serverTimestamp();
+    await db.collection('empresas').doc(empresaId).set(empUpdate, { merge: true });
   }
 
   // Garante que o documento configuracoes/config seja criado com a identidade da nova empresa
@@ -201,7 +212,7 @@ exports.criarPagamento = functions.https.onRequest(async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(204).send('');
   if (req.method !== 'POST') return res.status(405).send('Método não permitido');
 
-  const { emailPagador, nomePlano, senha, nomeEmpresa, nomeResponsavel, whatsapp, cidade } = req.body;
+  const { emailPagador, nomePlano, senha, nomeEmpresa, nomeResponsavel, whatsapp, cidade, empresaId, valorCustom } = req.body;
   const db = getDb();
 
   try {
@@ -210,6 +221,11 @@ exports.criarPagamento = functions.https.onRequest(async (req, res) => {
     // 1. Validar e buscar o preço real do plano
     const planoNomeStr = (nomePlano || '').trim();
     let precoRealFinal = 0;
+
+    // Se veio um valor customizado (ex: licenca.valorMensalidade)
+    if (valorCustom && !isNaN(Number(valorCustom)) && Number(valorCustom) > 0) {
+      precoRealFinal = Number(Number(valorCustom).toFixed(2));
+    }
 
     // Tabela de fallback (caso o banco não tenha a collection planos_saas populada)
     const TABELA_PRECOS = {
@@ -221,13 +237,15 @@ exports.criarPagamento = functions.https.onRequest(async (req, res) => {
       'ultra completo': 349.90
     };
 
-    try {
-      const planoSnap = await db.collection('planos_saas').where('nome', '==', planoNomeStr).limit(1).get();
-      if (!planoSnap.empty) {
-        const pData = planoSnap.docs[0].data();
-        precoRealFinal = Number(pData.preco || pData.valor || 0);
-      }
-    } catch (err) {}
+    if (precoRealFinal <= 0) {
+      try {
+        const planoSnap = await db.collection('planos_saas').where('nome', '==', planoNomeStr).limit(1).get();
+        if (!planoSnap.empty) {
+          const pData = planoSnap.docs[0].data();
+          precoRealFinal = Number(pData.preco || pData.valor || 0);
+        }
+      } catch (err) {}
+    }
 
     // Se falhar no banco, usa fallback
     if (!precoRealFinal || precoRealFinal <= 0) {
@@ -242,13 +260,15 @@ exports.criarPagamento = functions.https.onRequest(async (req, res) => {
     }
 
     if (precoRealFinal <= 0) {
-      throw new Error("Plano inválido ou preço não encontrado.");
+      precoRealFinal = 99.90; // Fallback padrão seguro
     }
+
+    const extRef = empresaId ? `${empresaId}:::${emailPagador || ''}` : (emailPagador || 'cliente@primastecnologia.com');
 
     // Checkout Pro Oficial: gera link oficial com PIX, cartão, etc.
     const preferencePayload = {
       items: [{
-        title: `Plano ${planoNomeStr.substring(0, 50) || 'SaaS'}`,
+        title: `Assinatura ${planoNomeStr.substring(0, 50) || 'Sistema FC-Gestão'}`,
         quantity: 1,
         unit_price: precoRealFinal,
         currency_id: 'BRL'
@@ -259,13 +279,13 @@ exports.criarPagamento = functions.https.onRequest(async (req, res) => {
         installments: 12
       },
       back_urls: {
-        success: req.body.urlSucesso || 'https://lojafc-a31f9.web.app/sistema/login.html',
-        failure: req.body.urlFalha || 'https://lojafc-a31f9.web.app/sistema/login.html?erro=pagamento',
-        pending: req.body.urlSucesso || 'https://lojafc-a31f9.web.app/sistema/login.html'
+        success: req.body.urlSucesso || 'https://lojafc-a31f9.web.app/sistema/index.html?pagamento=aprovado',
+        failure: req.body.urlFalha || 'https://lojafc-a31f9.web.app/sistema/index.html?erro=pagamento',
+        pending: req.body.urlSucesso || 'https://lojafc-a31f9.web.app/sistema/index.html?pagamento=pendente'
       },
       auto_return: 'approved',
       notification_url: 'https://us-central1-lojafc-a31f9.cloudfunctions.net/webhookMercadoPago',
-      external_reference: emailPagador || 'cliente@primastecnologia.com',
+      external_reference: extRef,
       statement_descriptor: 'PRIMAS TECNOLOGIA'
     };
 
@@ -290,9 +310,10 @@ exports.criarPagamento = functions.https.onRequest(async (req, res) => {
     // Salva no Firestore para o webhook processar quando o pagamento for confirmado
     await db.collection('pagamentos_pendentes').doc(String(dados.id)).set({
       preferenceId: dados.id,
+      empresaId: empresaId || null,
       nomePlano: nomePlano || 'Padrao',
       email: emailPagador || null,
-      senha: senha || null,
+      // SEGURANCA: Senha nunca e persistida no Firestore
       nomeEmpresa: nomeEmpresa || null,
       nomeResponsavel: nomeResponsavel || null,
       whatsapp: whatsapp || null,
@@ -305,9 +326,10 @@ exports.criarPagamento = functions.https.onRequest(async (req, res) => {
     if (emailPagador) {
       await db.collection('pagamentos_pendentes_email').doc(emailPagador.toLowerCase().trim()).set({
         preferenceId: dados.id,
+        empresaId: empresaId || null,
         nomePlano: nomePlano || 'Padrao',
         email: emailPagador,
-        senha: senha || null,
+        // SEGURANCA: Senha nunca e persistida no Firestore
         nomeEmpresa: nomeEmpresa || null,
         nomeResponsavel: nomeResponsavel || null,
         whatsapp: whatsapp || null,
@@ -383,6 +405,14 @@ exports.verificarPix = functions.https.onRequest(async (req, res) => {
 
 // 3. Endpoint: webhookMercadoPago
 exports.webhookMercadoPago = functions.https.onRequest(async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, HEAD');
+  res.set('Access-Control-Allow-Headers', '*');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).send('OK');
+  }
+
   try {
     const body = req.body || {};
     const query = req.query || {};
@@ -391,12 +421,12 @@ exports.webhookMercadoPago = functions.https.onRequest(async (req, res) => {
     const type = body.type || query.topic || '';
     const dataId = body.data?.id || body.id || query.id || query['data.id'];
 
-    console.log(`[webhook] Notificação recebida: action=${action}, type=${type}, id=${dataId}`);
+    console.log(`[webhook] Notificação recebida: method=${req.method}, action=${action}, type=${type}, id=${dataId}`);
 
     // Se for simulação ou ping de teste do painel com ID 123456
-    if (!dataId || String(dataId) === '123456' || String(dataId) === '123456789') {
+    if (!dataId || String(dataId) === '123456' || String(dataId) === '123456789' || String(dataId).length < 5) {
       console.log('[webhook] Teste ou simulador detectado. Conexão validada com sucesso!');
-      return res.status(200).send('OK');
+      return res.status(200).json({ status: 200, message: 'OK' });
     }
 
     const db = getDb();
@@ -412,49 +442,64 @@ exports.webhookMercadoPago = functions.https.onRequest(async (req, res) => {
       const status = pagamento.status;
       console.log(`[webhook] Pagamento ${dataId} -> status: ${status}`);
 
-      // external_reference contém o email REAL do cliente (gravado na preferência)
-      const emailReal = pagamento.external_reference || pagamento.payer?.email;
+      // external_reference contém o email REAL do cliente ou empresaId:::email
+      const rawRef = String(pagamento.external_reference || pagamento.payer?.email || '').trim();
+      let empresaIdAlvo = null;
+      let emailReal = rawRef;
+      if (rawRef.includes(':::')) {
+        const parts = rawRef.split(':::');
+        empresaIdAlvo = parts[0] || null;
+        emailReal = parts[1] || pagamento.payer?.email;
+      }
 
       const docRef = db.collection('pagamentos_pendentes').doc(String(dataId));
       await docRef.set({ status, ultimaAtualizacao: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
 
-      if ((status === 'approved' || status === 'refunded') && emailReal) {
+      if (status === 'approved') {
         let nomePlano = 'SaaS Pro';
         let senhaCliente = null;
         let dadosExtras = {};
 
         try {
-          const docEmail = await db.collection('pagamentos_pendentes_email').doc(emailReal.toLowerCase().trim()).get();
-          if (docEmail.exists) {
-            const dataEmail = docEmail.data();
-            nomePlano = dataEmail.nomePlano || nomePlano;
-            senhaCliente = dataEmail.senha || null;
+          const docPag = await db.collection('pagamentos_pendentes').doc(String(dataId)).get();
+          if (docPag.exists) {
+            const dataPag = docPag.data();
+            nomePlano = dataPag.nomePlano || nomePlano;
+            senhaCliente = dataPag.senha || null;
+            if (!empresaIdAlvo && dataPag.empresaId) empresaIdAlvo = dataPag.empresaId;
             dadosExtras = {
-              nomeEmpresa: dataEmail.nomeEmpresa || null,
-              nomeResponsavel: dataEmail.nomeResponsavel || null,
-              whatsapp: dataEmail.whatsapp || null,
-              cidade: dataEmail.cidade || null
+              nomeEmpresa: dataPag.nomeEmpresa || null,
+              nomeResponsavel: dataPag.nomeResponsavel || null,
+              whatsapp: dataPag.whatsapp || null,
+              cidade: dataPag.cidade || null
             };
-          } else {
-            const docPag = await db.collection('pagamentos_pendentes').doc(String(dataId)).get();
-            if (docPag.exists) {
-              const dataPag = docPag.data();
-              nomePlano = dataPag.nomePlano || nomePlano;
-              senhaCliente = dataPag.senha || null;
-              dadosExtras = {
-                nomeEmpresa: dataPag.nomeEmpresa || null,
-                nomeResponsavel: dataPag.nomeResponsavel || null,
-                whatsapp: dataPag.whatsapp || null,
-                cidade: dataPag.cidade || null
-              };
-            }
           }
         } catch (e) {
-          console.warn('[webhook] Erro ao buscar dados pendentes por email:', e.message);
+          console.warn('[webhook] Erro ao buscar pagamentos_pendentes:', e.message);
         }
 
-        await criarUsuarioFirebase(emailReal, nomePlano, dataId, senhaCliente, dadosExtras);
-        console.log(`[webhook] Acesso liberado automaticamente para: ${emailReal} (Empresa: ${dadosExtras.nomeEmpresa || 'Minha Loja'})`);
+        if (emailReal) {
+          try {
+            const docEmail = await db.collection('pagamentos_pendentes_email').doc(emailReal.toLowerCase().trim()).get();
+            if (docEmail.exists) {
+              const dataEmail = docEmail.data();
+              nomePlano = dataEmail.nomePlano || nomePlano;
+              senhaCliente = dataEmail.senha || null;
+              if (!empresaIdAlvo && dataEmail.empresaId) empresaIdAlvo = dataEmail.empresaId;
+              dadosExtras = {
+                nomeEmpresa: dataEmail.nomeEmpresa || dadosExtras.nomeEmpresa || null,
+                nomeResponsavel: dataEmail.nomeResponsavel || dadosExtras.nomeResponsavel || null,
+                whatsapp: dataEmail.whatsapp || dadosExtras.whatsapp || null,
+                cidade: dataEmail.cidade || dadosExtras.cidade || null
+              };
+            }
+          } catch (e) {
+            console.warn('[webhook] Erro ao buscar dados pendentes por email:', e.message);
+          }
+        }
+
+        await criarUsuarioFirebase(emailReal, nomePlano, dataId, senhaCliente, dadosExtras, empresaIdAlvo);
+        console.log(`[webhook] Acesso liberado automaticamente para: ${emailReal || empresaIdAlvo} (Empresa: ${empresaIdAlvo || dadosExtras.nomeEmpresa || 'Minha Loja'})`);
       }
     }
 

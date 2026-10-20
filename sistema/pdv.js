@@ -196,14 +196,16 @@ function aplicarIdentidadeVisualNoMenu() {
 
 function obterDadosClientePDV(cId) {
     const c = cId && cId !== "0" && db.clientes ? db.clientes.find(x => String(x.id) === String(cId)) : null;
-    if(!c) return { nome: 'Consumidor Final', doc: 'Não informado', tel: 'Não informado', endCompleto: 'Não informado', rua: '', numero: '', bairro: '', cidade: '', uf: '', cep: '', ibge: '' };
+    if(!c) return { nome: 'Consumidor Final', doc: 'Não informado', tel: 'Não informado', endCompleto: 'Não informado', rua: '', numero: '', complemento: '', bairro: '', cidade: '', uf: '', cep: '', ibge: '' };
     
     const doc = c.cpfCnpj || c.documento || c.cnpj || c.cpf || c.doc || c.cpf_cnpj || 'Não informado';
     const tel = c.whatsapp || c.wpp || c.celular || c.telefone || c.telefoneFixo || c.tel || 'Não informado';
     
     const rua = c.rua || c.logradouro || c.endereco || c.end || '';
     const num = c.numero ? ', ' + c.numero : '';
-    const endCompleto = rua ? (rua + num) : 'Não informado';
+    const endCompleto = (typeof window.formatarEnderecoCompletoCliente === 'function')
+        ? window.formatarEnderecoCompletoCliente(c)
+        : (rua ? (rua + num) : 'Não informado');
 
     let cidadeLimpa = (c.cidade || '').trim();
     let ufLimpa = (c.uf || '').trim();
@@ -234,6 +236,7 @@ function obterDadosClientePDV(cId) {
         tel: tel,
         rua: rua,
         numero: c.numero || 'S/N',
+        complemento: c.complemento || '',
         endCompleto: endCompleto,
         bairro: c.bairro || '',
         cidade: cidadeLimpa,
@@ -1626,16 +1629,20 @@ function printHtmlSeguro(htmlCompleto) {
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { margin: 10mm; }
-                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                @page { size: A4 portrait; margin: 10mm 12mm 12mm 12mm; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
                 .print\\\\:hidden { display: none !important; }
-                table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
+                .overflow-x-auto, .table-wrapper, .fc-table-wrap { overflow: visible !important; display: block !important; }
+                table { page-break-inside: auto; width: 100% !important; max-width: 100% !important; min-width: 0 !important; border-collapse: collapse; }
+                th, td { word-break: break-word !important; }
                 tr { page-break-inside: avoid; page-break-after: auto; }
                 thead { display: table-header-group; }
                 tfoot { display: table-footer-group; }
+                @media print { body { padding: 4mm 6mm !important; margin: 0 !important; box-sizing: border-box !important; } }
             </style>
         </head>
-        <body class="bg-white dark:bg-slate-800 p-4">
+        <body class="bg-white text-black p-0">
             ${htmlCompleto}
         </body>
         </html>
@@ -1657,14 +1664,14 @@ function imprimirArea(areaId) {
     const element = document.getElementById(areaId);
     if(!element) return showToast("Área de impressão não encontrada.", "error");
     const printContent = element.innerHTML; 
-    const htmlCompleto = `<div style="padding: 20px; font-family: Arial, sans-serif; background: #fff; color: #000;"><div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">${logoHtml}<h2 style="font-size: 20px; font-weight: bold; margin: 5px 0; text-transform: uppercase;">${empNome}</h2><p style="margin: 0; font-size: 12px; color: #555;">Documento Gerencial Oficial</p></div>${printContent}</div>`; 
+    const htmlCompleto = `<div style="padding: 10px 0; font-family: Arial, sans-serif; background: #fff; color: #000; width: 100%; box-sizing: border-box;"><div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px;">${logoHtml}<h2 style="font-size: 20px; font-weight: bold; margin: 5px 0; text-transform: uppercase;">${empNome}</h2><p style="margin: 0; font-size: 12px; color: #555;">Documento Gerencial Oficial</p></div>${printContent}</div>`; 
     printHtmlSeguro(htmlCompleto);
 }
 
 function printAction(type) { 
     const area = document.getElementById('print-area'); if(!area) return;
     const printContent = area.innerHTML; 
-    const widthStyle = type === 'thermal' ? 'width: 80mm; font-size: 12px; font-family: monospace; padding: 2mm; margin: 0 auto;' : 'width: 210mm; font-size: 14px; font-family: Arial, sans-serif; padding: 15mm; margin: 0 auto;'; 
+    const widthStyle = type === 'thermal' ? 'width: 80mm; font-size: 12px; font-family: monospace; padding: 2mm; margin: 0 auto;' : 'width: 100%; max-width: 100%; box-sizing: border-box; font-size: 13px; font-family: Arial, sans-serif; padding: 0; margin: 0 auto;'; 
     const htmlCompleto = `<div style="${widthStyle} background: #fff; color: #000;">${printContent}</div>`; 
     printHtmlSeguro(htmlCompleto);
 }
@@ -1689,20 +1696,23 @@ function baixarPDF(areaId, filename) {
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { margin: 15mm; size: A4; }
-                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 20px; max-width: 1000px; margin: 0 auto; }
+                @page { margin: 10mm 12mm 12mm 12mm; size: A4 portrait; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
                 .print\\:hidden { display: none !important; }
-                table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
+                .overflow-x-auto, .table-wrapper, .fc-table-wrap { overflow: visible !important; display: block !important; }
+                table { page-break-inside: auto; width: 100% !important; max-width: 100% !important; min-width: 0 !important; border-collapse: collapse; }
+                th, td { word-break: break-word !important; }
                 tr { page-break-inside: avoid; page-break-after: auto; }
                 thead { display: table-header-group; }
                 tfoot { display: table-footer-group; }
                 
                 @media print {
-                    body { padding: 0; max-width: none; }
+                    body { padding: 4mm 6mm !important; margin: 0 !important; max-width: 100% !important; box-sizing: border-box !important; }
                 }
             </style>
         </head>
-        <body class="bg-white text-black">
+        <body class="bg-white text-black p-0">
             ${printContent}
             
             <script>
@@ -1789,7 +1799,9 @@ function enviarPDFWhatsApp(id) {
     const cliNome = (cliInfo && cliInfo.nome !== 'Consumidor Final') ? cliInfo.nome : (v.clienteNome || 'Consumidor Final');
     const cliCpf = (cliInfo && cliInfo.doc !== 'Não informado') ? cliInfo.doc : (v.clienteDoc || 'Não informado');
     const cliTel = (cliInfo && cliInfo.tel !== 'Não informado') ? cliInfo.tel : (v.clienteTel || ''); 
-    const cliEndCompleto = (cliInfo && cliInfo.endCompleto !== 'Não informado') ? cliInfo.endCompleto : (v.clienteEnd || 'Não informado');
+    const cliEndCompleto = (typeof window.formatarEnderecoCompletoCliente === 'function')
+        ? window.formatarEnderecoCompletoCliente(v, cliInfo)
+        : ((cliInfo && cliInfo.endCompleto !== 'Não informado') ? cliInfo.endCompleto : (v.clienteEnd || 'Não informado'));
     const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
     
     let numLimpo = cliTel.replace(/\D/g, '');
@@ -1816,6 +1828,7 @@ function enviarPDFWhatsApp(id) {
         }
     }
 
+    const isLancarCaixa = typeof lancarNoCaixa !== 'undefined' ? lancarNoCaixa : false;
     const htmlRecibo = `
     <div id="print-area-whatsapp" style="font-family: Arial, sans-serif; color: #000; width: 100%; max-width: 800px; margin: 0 auto; padding: 10px; background-color: #fff;">
         <div style="border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 15px; text-align: center;">
@@ -1834,7 +1847,7 @@ function enviarPDFWhatsApp(id) {
                 Nome: ${cliNome}<br>
                 CPF/CNPJ: ${cliCpf}<br>
                 Telefone: ${cliTel || 'Não Informado'}<br>
-                Endereço: ${cliEndCompleto}
+                Endereço Completo: ${cliEndCompleto}
             </div>
             <div style="text-align: right; border-left: 1px solid #ccc; padding-left: 15px;">
                 <strong>DADOS DA OPERAÇÃO</strong><br>
@@ -1963,8 +1976,9 @@ function enviarPDFWhatsApp(id) {
             <title>${filename}</title>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { margin: 15mm; size: A4; }
-                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 20px; max-width: 900px; margin: 0 auto; }
+                @page { margin: 10mm 12mm 12mm 12mm; size: A4 portrait; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0 !important; padding: 20px; width: 100%; max-width: 900px; margin: 0 auto; }
                 .barra-acoes { 
                     position: sticky; top: 0; z-index: 100; background: #1e293b; padding: 12px 20px; 
                     display: flex; gap: 10px; justify-content: center; align-items: center;
@@ -1982,8 +1996,9 @@ function enviarPDFWhatsApp(id) {
                     display: flex; align-items: center; gap: 8px;
                 }
                 .btn-pdf:hover { background: #b91c1c; }
+                table { width: 100% !important; max-width: 100% !important; border-collapse: collapse; }
                 @media print { 
-                    body { padding: 0; max-width: none; }
+                    html, body { padding: 4mm 6mm !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
                     .barra-acoes { display: none !important; } 
                 }
             </style>
@@ -2016,7 +2031,9 @@ function imprimirContratoObj(v) {
     const cliNome = (cliInfo && cliInfo.nome !== 'Consumidor Final') ? cliInfo.nome : (v.clienteNome || 'Consumidor Final');
     const cliCpf = (cliInfo && cliInfo.doc !== 'Não informado') ? cliInfo.doc : (v.clienteDoc || 'Não informado');
     const cliTel = (cliInfo && cliInfo.tel !== 'Não informado') ? cliInfo.tel : (v.clienteTel || 'Não informado');
-    const cliEndCompleto = (cliInfo && cliInfo.endCompleto !== 'Não informado') ? cliInfo.endCompleto : (v.clienteEnd || 'Não informado');
+    const cliEndCompleto = (typeof window.formatarEnderecoCompletoCliente === 'function')
+        ? window.formatarEnderecoCompletoCliente(v, cliInfo)
+        : ((cliInfo && cliInfo.endCompleto !== 'Não informado') ? cliInfo.endCompleto : (v.clienteEnd || 'Não informado'));
 
     let totalDescontoItens = 0;
     let subtotalItensBruto = 0;
@@ -2090,7 +2107,7 @@ function imprimirContratoObj(v) {
             <strong>Nome completo:</strong> ${cliNome}<br>
             <strong>CPF/CNPJ:</strong> ${cliCpf}<br>
             <strong>Telefone / WhatsApp:</strong> ${cliTel}<br>
-            <strong>Endereço:</strong> ${cliEndCompleto}
+            <strong>Endereço Completo:</strong> ${cliEndCompleto}
         </p>
 
         <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">OBJETO DO CONTRATO</h3>
@@ -2103,9 +2120,29 @@ function imprimirContratoObj(v) {
             ${temDescontoNoContrato ? `<strong>Desconto Total:</strong> - ${formatMoney(totalDescontoGeral)}<br>` : ''}
             ${v.frete && Number(v.frete) > 0 ? `<strong>Taxas / Frete (+):</strong> ${formatMoney(v.frete)}<br>` : ''}
             <strong>Valor total:</strong> ${formatMoney(v.tot)}<br>
+            ${v.vendaComEntradaEntrega ? `
+            <div style="margin: 8px 0; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 5px; padding: 10px; font-size: 13px;">
+                <strong style="color: #1e3a8a; text-transform: uppercase; font-size: 12px;"><i class="fa-solid fa-truck-ramp-box"></i> Condição Acordada: Móveis com Entrada + Saldo na Entrega</strong><br>
+                <div style="margin-top: 4px; display: flex; justify-content: space-between;">
+                    <span>▪ <strong>Entrada / Sinal (Pago no Pedido):</strong> ${v.formaEntrada || 'Pago'} ${v.parcelasEntrada > 1 ? '('+v.parcelasEntrada+'x de ' + formatMoney(v.valorEntrada / v.parcelasEntrada) + ')' : ''}</span>
+                    <strong style="color: #15803d;">${formatMoney(v.valorEntrada)} [QUITADO NO ATO]</strong>
+                </div>
+                <div style="margin-top: 4px; display: flex; justify-content: space-between;">
+                    <span>▪ <strong>Saldo Restante a Pagar na Entrega:</strong> ${v.formaEntregaPrevista || 'Forma combinada'} ${v.parcelasEntrega > 1 ? '('+v.parcelasEntrega+'x de ' + formatMoney(v.saldoEntrega / v.parcelasEntrega) + ' na Maquininha/Entrega)' : ''}</span>
+                    <strong style="color: #b91c1c;">${formatMoney(v.saldoEntrega)} ${v.saldoEntregaPago ? '<span style="color: #15803d;">[QUITADO]</span>' : '[PAGAMENTO OBRIGATÓRIO NA ENTREGA]'}</strong>
+                </div>
+            </div>
+            ` : ''}
             <strong>Forma de pagamento registrada:</strong> ${v.pag || '_________________________________'}<br>
             <strong>Data da Operação:</strong> ${dataEmissaoOperação}
         </p>
+
+        ${v.vendaComEntradaEntrega ? `
+        <h3 style="font-size: 14px; background: #fef3c7; color: #92400e; padding: 6px 10px; border: 1.5px solid #f59e0b; margin-bottom: 8px; text-transform: uppercase; font-weight: bold;">CLÁUSULA DE CONDICIONAMENTO DA ENTREGA AO PAGAMENTO DO SALDO</h3>
+        <p style="margin-top: 0; margin-bottom: 15px; text-align: justify; font-size: 12.5px; color: #78350f; background: #fffdf5; padding: 8px 10px; border: 1px dashed #fcd34d; border-radius: 4px;">
+            Fica expressamente acordado entre as partes que a entrega física do(s) móvel(is) e a respectiva transferência de posse estão <strong>estritamente condicionadas à quitação integral do Saldo Restante no valor de ${formatMoney(v.saldoEntrega)}</strong> no exato momento do recebimento/descarregamento, pela forma ajustada (<strong>${v.formaEntregaPrevista || 'conforme combinado'}${v.parcelasEntrega > 1 ? ' em ' + v.parcelasEntrega + 'x de ' + formatMoney(v.saldoEntrega / v.parcelasEntrega) : ''}</strong>). Em caso de não pagamento ou ausência dos meios acordados para quitação do saldo no ato da entrega, a equipe transportadora fica desde já autorizada a <strong>reter e retornar a mercadoria</strong> à empresa, respondendo o comprador pelas taxas de reentrega e novo agendamento.
+        </p>
+        ` : ''}
 
         <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">PRAZO DE ENTREGA E GARANTIA</h3>
         <p style="margin-top: 0; text-align: justify;">O prazo de entrega válido é a <strong>Data Prevista de Entrega Acordada</strong> informada neste pedido. Havendo eventuais imprevistos operacionais, de transporte, fabricação ou intempéries, fica acordado um prazo adicional de tolerância de até 7 (sete) dias corridos.<br>O produto/serviço possui garantia legal de 90 (noventa) dias contra defeitos de fabricação.</p>
@@ -2113,7 +2150,7 @@ function imprimirContratoObj(v) {
         ${dataEntregaFormatada !== '___/___/20__' ? `<p style="margin-top: 8px; font-weight: bold; background-color: #f1f5f9; padding: 6px 10px; border-left: 4px solid #2563eb; border-radius: 2px;">Data Prevista de Entrega Acordada: <span style="font-size: 15px; color: #1e3a8a;">${dataEntregaFormatada}</span></p>` : ''}
 
         <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">LOCAL DE ENTREGA</h3>
-        <p style="margin-top: 0;"><strong>Endereço:</strong> ${cliEndCompleto}<br><strong>Data prevista de entrega:</strong> <span style="font-weight: bold; ${dataEntregaFormatada !== '___/___/20__' ? 'color: #1e3a8a; font-size: 15px;' : ''}">${dataEntregaFormatada}</span></p>
+        <p style="margin-top: 0;"><strong>Endereço de Entrega:</strong> ${cliEndCompleto}<br><strong>Data prevista de entrega:</strong> <span style="font-weight: bold; ${dataEntregaFormatada !== '___/___/20__' ? 'color: #1e3a8a; font-size: 15px;' : ''}">${dataEntregaFormatada}</span></p>
 
         <h3 style="font-size: 14px; background: #f0f0f0; padding: 5px; border: 1px solid #ccc; margin-bottom: 10px;">TRANSPORTE E MONTAGEM</h3>
         <p style="margin-top: 0;">( ) Entrega realizada pela empresa &nbsp;&nbsp;&nbsp; ( ) Retirada pelo cliente<br>Montagem: ( ) Inclusa &nbsp;&nbsp;&nbsp; ( ) Não inclusa<br>Caso a entrega seja realizada pela empresa, o cliente deve garantir acesso adequado ao local.</p>
@@ -2149,7 +2186,7 @@ function imprimirContratoObj(v) {
     </div>
     `;
 
-    printHtmlSeguro(`<div style="width: 210mm; margin: 0 auto; padding: 15mm; background: #fff;">${html}</div>`);
+    printHtmlSeguro(`<div style="width: 100%; max-width: 100%; box-sizing: border-box; margin: 0 auto; padding: 0; background: #fff;">${html}</div>`);
 }
 
 function imprimirOrdemProducaoObj(v) {
@@ -2158,6 +2195,9 @@ function imprimirOrdemProducaoObj(v) {
 
     const cliInfo = (typeof obterDadosClientePDV === 'function') ? obterDadosClientePDV(v.clienteId) : {};
     const cliNome = (cliInfo && cliInfo.nome && cliInfo.nome !== 'Consumidor Final') ? cliInfo.nome : (v.clienteNome || 'Consumidor Final');
+    const cliEndCompleto = (typeof window.formatarEnderecoCompletoCliente === 'function')
+        ? window.formatarEnderecoCompletoCliente(v, cliInfo)
+        : ((cliInfo && cliInfo.endCompleto !== 'Não informado') ? cliInfo.endCompleto : (v.clienteEnd || 'Não informado'));
 
     const opAtual = (typeof window.obterOperadorAtual === 'function') ? window.obterOperadorAtual() : null;
     const vendedorNome = v.vendedorNome || v.vendedor || (opAtual && opAtual.nome) || (window.currentUserInfo && window.currentUserInfo.nome) || 'Atendente';
@@ -2274,7 +2314,7 @@ function imprimirOrdemProducaoObj(v) {
         return;
     }
 
-    const wppTexto = encodeURIComponent(`*ORDEM DE PRODUÇÃO #${numPedStr}*\nCliente: ${cliNome}\nVendedora: ${vendedorNome}\nData: ${dataExtenso}`);
+    const wppTexto = encodeURIComponent(`*ORDEM DE PRODUÇÃO #${numPedStr}*\nCliente: ${cliNome}${cliEndCompleto && cliEndCompleto !== 'Não informado' ? '\nEndereço: ' + cliEndCompleto : ''}\nVendedora: ${vendedorNome}\nData: ${dataExtenso}`);
     const wppLink = `https://api.whatsapp.com/send?text=${wppTexto}`;
 
     printWin.document.open();
@@ -2286,14 +2326,15 @@ function imprimirOrdemProducaoObj(v) {
             <title>Ordem de Produção #${numPedStr}</title>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { size: A4; margin: 12mm 15mm; }
-                * { box-sizing: border-box; }
-                body {
+                @page { size: A4 portrait; margin: 10mm 12mm 12mm 12mm; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body {
                     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
                     background: #f1f5f9;
                     margin: 0;
                     padding: 20px;
                     color: #1e293b;
+                    width: 100%;
                 }
                 .barra-acoes {
                     max-width: 800px;
@@ -2321,16 +2362,18 @@ function imprimirOrdemProducaoObj(v) {
                 .btn-print:hover { background: #334155; }
                 .folha-a4 {
                     max-width: 800px;
+                    width: 100%;
                     margin: 0 auto;
                     background: #ffffff;
-                    padding: 35px 45px;
+                    padding: 30px 40px;
                     border-radius: 12px;
                     box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+                    box-sizing: border-box;
                 }
                 @media print {
-                    body { background: #fff !important; padding: 0 !important; }
+                    html, body { background: #fff !important; padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; }
                     .barra-acoes { display: none !important; }
-                    .folha-a4 { box-shadow: none !important; border-radius: 0 !important; padding: 0 !important; max-width: none !important; }
+                    .folha-a4 { box-shadow: none !important; border: none !important; border-radius: 0 !important; padding: 4mm 8mm !important; margin: 0 auto !important; max-width: 100% !important; width: 100% !important; box-sizing: border-box !important; }
                     .bloco-item-op { page-break-inside: avoid; }
                 }
             </style>
@@ -2360,10 +2403,14 @@ function imprimirOrdemProducaoObj(v) {
                 </div>
 
                 <!-- Cliente e Vendedora -->
-                <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px;">
                     <div>Cliente: <span style="font-weight: 700; color: #0f172a;">${cliNome}</span></div>
                     <div>Vendedora: <span style="font-weight: 700; color: #0f172a;">${vendedorNome}</span></div>
                 </div>
+                ${cliEndCompleto && cliEndCompleto !== 'Não informado' ? `
+                <div style="font-size: 12px; font-weight: 500; color: #475569; margin-bottom: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 6px 10px;">
+                    <i class="fa-solid fa-location-dot" style="margin-right: 5px; color: #ef4444;"></i><strong>Endereço de Entrega:</strong> ${cliEndCompleto}
+                </div>` : ''}
 
                 <!-- Linha pontilhada e introdução -->
                 <div style="border-top: 1px dashed #cbd5e1; margin: 10px 0 12px 0;"></div>
@@ -2952,6 +2999,23 @@ function pdvLimpar() {
         osFotosArray = []; 
         renderizarFotosOS(); 
     } 
+    const chkEE = document.getElementById('pdv-chk-entrada-entrega');
+    if (chkEE) {
+        chkEE.checked = false;
+        if (document.getElementById('pdv-ee-valor-entrada')) document.getElementById('pdv-ee-valor-entrada').value = '';
+        if (document.getElementById('pdv-ee-forma-entrada')) document.getElementById('pdv-ee-forma-entrada').value = 'Dinheiro';
+        if (document.getElementById('pdv-ee-parcelas-entrada')) document.getElementById('pdv-ee-parcelas-entrada').value = '1';
+        if (document.getElementById('pdv-ee-valor-entrega')) document.getElementById('pdv-ee-valor-entrega').value = '';
+        if (document.getElementById('pdv-ee-forma-entrega')) document.getElementById('pdv-ee-forma-entrega').value = 'Cartão Crédito (Maquininha Móvel)';
+        if (document.getElementById('pdv-ee-parcelas-entrega')) document.getElementById('pdv-ee-parcelas-entrega').value = '1';
+        if (document.getElementById('pdv-ee-data-entrega')) document.getElementById('pdv-ee-data-entrega').value = '';
+        window.pagamentosEntradaEE = [];
+        window.pagamentosEntregaEE = [];
+        if (typeof togglePagamentoEntradaEntrega === 'function') togglePagamentoEntradaEntrega();
+    } else {
+        window.pagamentosEntradaEE = [];
+        window.pagamentosEntregaEE = [];
+    }
     pagamentosVendaAtual = []; 
     window.vendaEmEdicao = null; 
     window.vendaIdempotencyKey = null;
@@ -3024,6 +3088,11 @@ function pdvAtualizarTotais() {
     document.getElementById('pdv-qtd-itens').innerText = `${qtdFormatada} ${rotuloItens}`; 
     
     pdvTotalAtual = tot; 
+    if (document.getElementById('pdv-chk-entrada-entrega')?.checked) {
+        if (typeof window.atualizarTotaisEResumoEE === 'function') {
+            window.atualizarTotaisEResumoEE();
+        }
+    }
     atualizarResumoPagamentosVenda(); 
 
     // Atualiza badge de lucro mínimo no cabeçalho do PDV
@@ -3156,6 +3225,447 @@ function recalcularDatasParcelas(qtd) {
     }
 }
 
+// =========================================================================
+// MOTOR MULTI-PAGAMENTO: ENTRADA (SINAL) + SALDO NA ENTREGA (MÓVEIS)
+// =========================================================================
+window.pagamentosEntradaEE = window.pagamentosEntradaEE || [];
+window.pagamentosEntregaEE = window.pagamentosEntregaEE || [];
+
+window.atualizarMetodoEntradaEE = function(idx, val) {
+    if (!window.pagamentosEntradaEE || !window.pagamentosEntradaEE[idx]) return;
+    window.pagamentosEntradaEE[idx].metodo = val;
+    if (!val.includes('Crédito') && val !== 'Boleto') {
+        window.pagamentosEntradaEE[idx].parcelas = 1;
+    }
+    window.recalcularValoresEntradaEntrega();
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
+};
+
+window.atualizarParcelasEntradaEE = function(idx, val) {
+    if (!window.pagamentosEntradaEE || !window.pagamentosEntradaEE[idx]) return;
+    window.pagamentosEntradaEE[idx].parcelas = parseInt(val) || 1;
+    window.atualizarTotaisEResumoEE();
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
+};
+
+window.atualizarValorEntradaEE = function(idx, val) {
+    if (!window.pagamentosEntradaEE || !window.pagamentosEntradaEE[idx]) return;
+    const num = typeof parseInputMoney === 'function' ? parseInputMoney(val) : (parseFloat(String(val).replace(',', '.')) || 0);
+    window.pagamentosEntradaEE[idx].valor = Math.round(num * 100) / 100;
+    window.atualizarTotaisEResumoEE();
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
+};
+
+window.adicionarNovaFormaEntradaEE = function() {
+    if (!Array.isArray(window.pagamentosEntradaEE)) window.pagamentosEntradaEE = [];
+    window.pagamentosEntradaEE.push({
+        id: Date.now() + Math.random(),
+        metodo: 'Dinheiro',
+        parcelas: 1,
+        valor: 0
+    });
+    window.recalcularValoresEntradaEntrega();
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
+};
+
+window.removerItemEntradaEE = function(idx) {
+    if (!Array.isArray(window.pagamentosEntradaEE) || window.pagamentosEntradaEE.length <= 1) return;
+    window.pagamentosEntradaEE.splice(idx, 1);
+    window.recalcularValoresEntradaEntrega();
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
+};
+
+window.atualizarMetodoEntregaEE = function(idx, val) {
+    if (!window.pagamentosEntregaEE || !window.pagamentosEntregaEE[idx]) return;
+    window.pagamentosEntregaEE[idx].metodo = val;
+    if (!val.includes('Crédito') && !val.includes('Boleto') && !val.includes('Fiado') && !val.includes('Carnê')) {
+        window.pagamentosEntregaEE[idx].parcelas = 1;
+    }
+    window.recalcularValoresEntradaEntrega();
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
+};
+
+window.atualizarParcelasEntregaEE = function(idx, val) {
+    if (!window.pagamentosEntregaEE || !window.pagamentosEntregaEE[idx]) return;
+    window.pagamentosEntregaEE[idx].parcelas = parseInt(val) || 1;
+    window.atualizarTotaisEResumoEE();
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
+};
+
+window.atualizarValorEntregaEE = function(idx, val) {
+    if (!window.pagamentosEntregaEE || !window.pagamentosEntregaEE[idx]) return;
+    const num = typeof parseInputMoney === 'function' ? parseInputMoney(val) : (parseFloat(String(val).replace(',', '.')) || 0);
+    window.pagamentosEntregaEE[idx].valor = Math.round(num * 100) / 100;
+    window.atualizarTotaisEResumoEE();
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
+};
+
+window.adicionarNovaFormaEntregaEE = function() {
+    if (!Array.isArray(window.pagamentosEntregaEE)) window.pagamentosEntregaEE = [];
+    const total = (typeof pdvTotalAtual !== 'undefined') ? pdvTotalAtual : 0;
+    const totEntrada = window.pagamentosEntradaEE.reduce((a, b) => a + (b.valor || 0), 0);
+    const totEntrega = window.pagamentosEntregaEE.reduce((a, b) => a + (b.valor || 0), 0);
+    const falta = Math.max(0, Math.round((total - totEntrada - totEntrega) * 100) / 100);
+
+    window.pagamentosEntregaEE.push({
+        id: Date.now() + Math.random(),
+        metodo: 'Dinheiro na Entrega',
+        parcelas: 1,
+        valor: falta
+    });
+    window.recalcularValoresEntradaEntrega();
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
+};
+
+window.removerItemEntregaEE = function(idx) {
+    if (!Array.isArray(window.pagamentosEntregaEE) || window.pagamentosEntregaEE.length <= 1) return;
+    window.pagamentosEntregaEE.splice(idx, 1);
+    window.recalcularValoresEntradaEntrega();
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
+};
+
+window.completarSaldoRestanteEE = function() {
+    const total = (typeof pdvTotalAtual !== 'undefined') ? pdvTotalAtual : 0;
+    const totEntrada = (window.pagamentosEntradaEE || []).reduce((a, b) => a + (b.valor || 0), 0);
+    const totEntrega = (window.pagamentosEntregaEE || []).reduce((a, b) => a + (b.valor || 0), 0);
+    const diferenca = Math.round((total - totEntrada - totEntrega) * 100) / 100;
+    if (diferenca === 0) return;
+
+    if (!Array.isArray(window.pagamentosEntregaEE) || window.pagamentosEntregaEE.length === 0) {
+        window.pagamentosEntregaEE = [{
+            id: Date.now(),
+            metodo: 'Cartão Crédito (Maquininha Móvel)',
+            parcelas: 1,
+            valor: Math.max(0, diferenca)
+        }];
+    } else {
+        const lastIdx = window.pagamentosEntregaEE.length - 1;
+        window.pagamentosEntregaEE[lastIdx].valor = Math.max(0, Math.round((window.pagamentosEntregaEE[lastIdx].valor + diferenca) * 100) / 100);
+    }
+    window.recalcularValoresEntradaEntrega();
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
+};
+
+window.definirPercEntradaPDV = function(perc) {
+    const total = (typeof pdvTotalAtual !== 'undefined') ? pdvTotalAtual : 0;
+    const novoVal = Math.round((total * perc) * 100) / 100;
+    const metodoEnt = (window.pagamentosEntradaEE && window.pagamentosEntradaEE[0]) ? window.pagamentosEntradaEE[0].metodo : 'PIX';
+    const parcEnt = (window.pagamentosEntradaEE && window.pagamentosEntradaEE[0]) ? (window.pagamentosEntradaEE[0].parcelas || 1) : 1;
+
+    window.pagamentosEntradaEE = [{
+        id: Date.now(),
+        metodo: metodoEnt,
+        parcelas: parcEnt,
+        valor: novoVal
+    }];
+
+    const novoSaldo = Math.max(0, Math.round((total - novoVal) * 100) / 100);
+    const metodoEntr = (window.pagamentosEntregaEE && window.pagamentosEntregaEE[0]) ? window.pagamentosEntregaEE[0].metodo : 'Cartão Crédito (Maquininha Móvel)';
+    const parcEntr = (window.pagamentosEntregaEE && window.pagamentosEntregaEE[0]) ? (window.pagamentosEntregaEE[0].parcelas || 1) : 1;
+
+    window.pagamentosEntregaEE = [{
+        id: Date.now() + 1,
+        metodo: metodoEntr,
+        parcelas: parcEntr,
+        valor: novoSaldo
+    }];
+
+    window.recalcularValoresEntradaEntrega();
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
+};
+
+window.togglePagamentoEntradaEntrega = function(ativo) {
+    const chk = document.getElementById('pdv-chk-entrada-entrega');
+    if (chk && ativo !== undefined) chk.checked = ativo;
+    const isChecked = chk ? chk.checked : false;
+
+    const painel = document.getElementById('pdv-painel-entrada-entrega');
+    const areaPadrao = document.getElementById('pdv-area-pagamento-padrao');
+
+    if (painel) {
+        if (isChecked) {
+            painel.classList.remove('hidden');
+        } else {
+            painel.classList.add('hidden');
+        }
+    }
+
+    if (areaPadrao) {
+        if (isChecked) {
+            areaPadrao.classList.add('hidden');
+        } else {
+            areaPadrao.classList.remove('hidden');
+        }
+    }
+
+    if (isChecked) {
+        const total = (typeof pdvTotalAtual !== 'undefined') ? pdvTotalAtual : 0;
+        if (!Array.isArray(window.pagamentosEntradaEE) || window.pagamentosEntradaEE.length === 0) {
+            const metade = Math.round((total / 2) * 100) / 100;
+            window.pagamentosEntradaEE = [{ id: 1, metodo: 'PIX', parcelas: 1, valor: metade }];
+        }
+        if (!Array.isArray(window.pagamentosEntregaEE) || window.pagamentosEntregaEE.length === 0) {
+            const totEnt = window.pagamentosEntradaEE.reduce((a, b) => a + (b.valor || 0), 0);
+            const saldo = Math.max(0, Math.round((total - totEnt) * 100) / 100);
+            window.pagamentosEntregaEE = [{ id: 2, metodo: 'Cartão Crédito (Maquininha Móvel)', parcelas: 1, valor: saldo }];
+        }
+
+        const dtEntregaPdv = document.getElementById('pdv-data-entrega')?.value;
+        const dtEe = document.getElementById('pdv-ee-data-entrega');
+        if (dtEe && dtEntregaPdv && !dtEe.value) {
+            dtEe.value = dtEntregaPdv;
+        } else if (dtEe && dtEe.value && document.getElementById('pdv-data-entrega')) {
+            document.getElementById('pdv-data-entrega').value = dtEe.value;
+        }
+
+        window.recalcularValoresEntradaEntrega();
+    } else {
+        if (typeof pdvAtualizarTotais === 'function') pdvAtualizarTotais();
+        if (typeof atualizarResumoPagamentosVenda === 'function') atualizarResumoPagamentosVenda();
+    }
+    if (typeof window.salvarEstadoPDV === 'function') window.salvarEstadoPDV();
+};
+
+window.atualizarTotaisEResumoEE = function() {
+    const total = (typeof pdvTotalAtual !== 'undefined') ? pdvTotalAtual : 0;
+    const fm = typeof formatMoney === 'function' ? formatMoney : (v => 'R$ ' + Number(v||0).toFixed(2));
+
+    if (!Array.isArray(window.pagamentosEntradaEE)) window.pagamentosEntradaEE = [];
+    if (!Array.isArray(window.pagamentosEntregaEE)) window.pagamentosEntregaEE = [];
+
+    const totEntrada = window.pagamentosEntradaEE.reduce((a, b) => a + (b.valor || 0), 0);
+    const totEntrega = window.pagamentosEntregaEE.reduce((a, b) => a + (b.valor || 0), 0);
+    const saldoEsperado = Math.max(0, total - totEntrada);
+
+    const bEntrada = document.getElementById('pdv-ee-total-entrada-badge');
+    if (bEntrada) bEntrada.textContent = fm(totEntrada);
+
+    const dispSaldo = document.getElementById('pdv-ee-saldo-display');
+    if (dispSaldo) dispSaldo.textContent = `Saldo: ${fm(saldoEsperado)}`;
+
+    const bEntrega = document.getElementById('pdv-ee-total-entrega-badge');
+    if (bEntrega) bEntrega.textContent = fm(totEntrega);
+
+    // Atualiza Card 3 sem desmontar inputs
+    const resumoEl = document.getElementById('pdv-ee-resumo-consolidado');
+    if (resumoEl) {
+        const dtEntrega = document.getElementById('pdv-ee-data-entrega')?.value;
+        const dtFmt = dtEntrega ? dtEntrega.split('-').reverse().join('/') : 'A definir';
+
+        const totalDistribuido = totEntrada + totEntrega;
+        const diferenca = Math.round((total - totalDistribuido) * 100) / 100;
+        let statusBadgeHtml = '';
+
+        if (diferenca === 0 && total > 0 && totEntrada > 0) {
+            statusBadgeHtml = `
+            <div class="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 p-2 rounded-lg text-[11px] font-bold flex items-center justify-between">
+                <span class="flex items-center gap-1.5"><i class="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400"></i> Valores conferidos e 100% distribuídos!</span>
+                <span class="text-[10px] uppercase bg-emerald-600 text-white px-2 py-0.5 rounded-full font-black">OK</span>
+            </div>`;
+        } else if (diferenca > 0) {
+            statusBadgeHtml = `
+            <div class="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 p-2 rounded-lg text-[11px] flex items-center justify-between gap-1 flex-wrap">
+                <span class="flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Falta distribuir <strong>${fm(diferenca)}</strong> no saldo da entrega.</span>
+                <button type="button" onclick="completarSaldoRestanteEE()" class="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-[10px] font-bold px-2.5 py-1 rounded-md transition shrink-0 cursor-pointer shadow-xs">
+                    + Ajustar no Saldo
+                </button>
+            </div>`;
+        } else if (diferenca < 0) {
+            statusBadgeHtml = `
+            <div class="bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-800 text-red-800 dark:text-red-300 p-2 rounded-lg text-[11px] font-bold flex items-center gap-1.5">
+                <i class="fa-solid fa-circle-xmark text-red-600"></i> Atenção: A soma ultrapassa o total em ${fm(Math.abs(diferenca))}!
+            </div>`;
+        }
+
+        const linhasEntradaHtml = window.pagamentosEntradaEE.length > 0 
+            ? window.pagamentosEntradaEE.map(p => `<div>▪ ${p.metodo} ${p.parcelas > 1 ? '('+p.parcelas+'x)' : ''}: <strong>${fm(p.valor)}</strong></div>`).join('')
+            : `<div class="italic text-slate-400">Nenhuma forma definida</div>`;
+
+        const linhasEntregaHtml = window.pagamentosEntregaEE.length > 0 
+            ? window.pagamentosEntregaEE.map(p => `<div>▪ ${p.metodo} ${p.parcelas > 1 ? '('+p.parcelas+'x)' : ''}: <strong>${fm(p.valor)}</strong></div>`).join('')
+            : `<div class="italic text-slate-400">Nenhuma forma definida</div>`;
+
+        resumoEl.innerHTML = `
+            <div class="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-700">
+                <span class="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400">Total do Pedido:</span>
+                <span class="text-sm font-black text-slate-800 dark:text-slate-100">${fm(total)}</span>
+            </div>
+
+            <!-- ENTRADA -->
+            <div class="space-y-1">
+                <div class="flex justify-between items-center text-xs">
+                    <span class="font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1">
+                        <i class="fa-solid fa-circle-check text-xs text-emerald-600"></i> 1. Entrada / Sinal (No Pedido):
+                    </span>
+                    <strong class="font-black text-emerald-600 dark:text-emerald-400 text-xs">${fm(totEntrada)}</strong>
+                </div>
+                <div class="pl-4 text-[10px] text-slate-600 dark:text-slate-300 space-y-0.5">
+                    ${linhasEntradaHtml}
+                </div>
+            </div>
+
+            <!-- SALDO -->
+            <div class="space-y-1 pt-1.5 border-t border-slate-200/70 dark:border-slate-800">
+                <div class="flex justify-between items-center text-xs">
+                    <span class="font-bold text-blue-800 dark:text-blue-300 flex items-center gap-1">
+                        <i class="fa-solid fa-truck-fast text-xs text-blue-600"></i> 2. Saldo a Pagar na Entrega:
+                    </span>
+                    <strong class="font-black text-blue-700 dark:text-blue-400 text-xs">${fm(totEntrega)}</strong>
+                </div>
+                <div class="pl-4 text-[10px] text-slate-600 dark:text-slate-300 space-y-0.5">
+                    ${linhasEntregaHtml}
+                </div>
+            </div>
+
+            <!-- DATA E SEGURANÇA -->
+            <div class="pt-2 text-[10px] text-slate-500 dark:text-slate-400 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 border-t border-slate-200/60 dark:border-slate-800">
+                <span><i class="fa-solid fa-calendar mr-1 text-blue-500"></i>Previsão: <strong>${dtFmt}</strong></span>
+                <span class="text-amber-600 dark:text-amber-400 font-bold"><i class="fa-solid fa-shield-halved mr-1"></i>Entrega mediante quitação</span>
+            </div>
+
+            ${statusBadgeHtml ? `<div class="pt-1">${statusBadgeHtml}</div>` : ''}
+        `;
+    }
+
+    if (typeof atualizarResumoPagamentosVenda === 'function') {
+        atualizarResumoPagamentosVenda();
+    }
+};
+
+window.recalcularValoresEntradaEntrega = function() {
+    const total = (typeof pdvTotalAtual !== 'undefined') ? pdvTotalAtual : 0;
+    const fm = typeof formatMoney === 'function' ? formatMoney : (v => 'R$ ' + Number(v||0).toFixed(2));
+
+    if (!Array.isArray(window.pagamentosEntradaEE) || window.pagamentosEntradaEE.length === 0) {
+        const metade = Math.round((total / 2) * 100) / 100;
+        window.pagamentosEntradaEE = [{ id: 1, metodo: 'PIX', parcelas: 1, valor: metade }];
+    }
+    if (!Array.isArray(window.pagamentosEntregaEE) || window.pagamentosEntregaEE.length === 0) {
+        const totEnt = window.pagamentosEntradaEE.reduce((a, b) => a + (b.valor || 0), 0);
+        const saldo = Math.max(0, Math.round((total - totEnt) * 100) / 100);
+        window.pagamentosEntregaEE = [{ id: 2, metodo: 'Cartão Crédito (Maquininha Móvel)', parcelas: 1, valor: saldo }];
+    }
+
+    const opcoesEntrada = [
+        { val: 'PIX', label: 'PIX' },
+        { val: 'Dinheiro', label: 'Dinheiro' },
+        { val: 'Cartão Crédito', label: 'Cartão de Crédito' },
+        { val: 'Cartão Débito', label: 'Cartão de Débito' },
+        { val: 'Boleto', label: 'Boleto Bancário' }
+    ];
+
+    const opcoesEntrega = [
+        { val: 'Cartão Crédito (Maquininha Móvel)', label: 'Cartão Crédito (Maquininha)' },
+        { val: 'Cartão Débito (Maquininha Móvel)', label: 'Cartão Débito (Maquininha)' },
+        { val: 'PIX na Entrega', label: 'PIX na Entrega' },
+        { val: 'Dinheiro na Entrega', label: 'Dinheiro na Entrega' },
+        { val: 'Boleto na Entrega', label: 'Boleto Bancário' },
+        { val: 'Fiado / Carnê', label: 'Fiado / Carnê' }
+    ];
+
+    // 1. RENDERIZAR LISTA DE FORMAS DA ENTRADA
+    const listaEntradaEl = document.getElementById('pdv-ee-lista-entrada');
+    if (listaEntradaEl) {
+        listaEntradaEl.innerHTML = window.pagamentosEntradaEE.map((p, idx) => {
+            const temParcelas = p.metodo.includes('Crédito') || p.metodo === 'Boleto';
+            const numParcelas = p.parcelas || 1;
+            const valorStr = (Number(p.valor) || 0).toFixed(2).replace('.', ',');
+            const mostrarExcluir = window.pagamentosEntradaEE.length > 1;
+
+            return `
+            <div class="bg-white/80 dark:bg-slate-900/80 border border-amber-200/90 dark:border-amber-700/60 rounded-xl p-2.5 space-y-2 shadow-2xs">
+                <div class="flex items-center justify-between">
+                    <span class="text-[10px] font-bold text-amber-900 dark:text-amber-300 uppercase flex items-center gap-1.5">
+                        <span class="w-4 h-4 rounded-full bg-amber-500 text-white text-[9px] flex items-center justify-center font-black">${idx + 1}</span>
+                        Forma ${idx + 1}
+                    </span>
+                    ${mostrarExcluir ? `
+                        <button type="button" onclick="window.removerItemEntradaEE(${idx})" class="text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 text-[11px] font-bold flex items-center gap-1 transition px-1.5 py-0.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer">
+                            <i class="fa-solid fa-trash-can"></i> Remover
+                        </button>
+                    ` : ''}
+                </div>
+                <div class="grid grid-cols-12 gap-1.5">
+                    <div class="${temParcelas ? 'col-span-7' : 'col-span-12'}">
+                        <label class="text-[9px] uppercase font-bold text-slate-500 dark:text-slate-400 block mb-0.5">Forma:</label>
+                        <select onchange="window.atualizarMetodoEntradaEE(${idx}, this.value)" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-2 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-amber-500">
+                            ${opcoesEntrada.map(o => `<option value="${o.val}" ${p.metodo === o.val ? 'selected' : ''}>${o.label}</option>`).join('')}
+                        </select>
+                    </div>
+                    ${temParcelas ? `
+                    <div class="col-span-5">
+                        <label class="text-[9px] uppercase font-bold text-slate-500 dark:text-slate-400 block mb-0.5">Parcelas:</label>
+                        <select onchange="window.atualizarParcelasEntradaEE(${idx}, this.value)" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-2 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-amber-500">
+                            ${[1,2,3,4,5,6,7,8,9,10,11,12].map(n => `<option value="${n}" ${n === numParcelas ? 'selected' : ''}>${n}x ${n > 1 && p.valor > 0 ? '(' + fm(p.valor / n) + ')' : ''}</option>`).join('')}
+                        </select>
+                    </div>` : ''}
+                    <div class="col-span-12">
+                        <label class="text-[9px] uppercase font-bold text-slate-500 dark:text-slate-400 block mb-1">Valor (R$):</label>
+                        <input type="text" data-mask="money" inputmode="numeric" value="${valorStr}" oninput="window.atualizarValorEntradaEE(${idx}, this.value)" placeholder="0,00" class="w-full bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-600/70 px-3 py-2 rounded-lg text-xs font-black text-amber-900 dark:text-amber-100 outline-none focus:ring-2 focus:ring-amber-500 text-right">
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // 2. RENDERIZAR LISTA DE FORMAS DO SALDO DA ENTREGA
+    const listaEntregaEl = document.getElementById('pdv-ee-lista-entrega');
+    if (listaEntregaEl) {
+        listaEntregaEl.innerHTML = window.pagamentosEntregaEE.map((p, idx) => {
+            const temParcelas = p.metodo.includes('Crédito') || p.metodo.includes('Boleto') || p.metodo.includes('Fiado') || p.metodo.includes('Carnê');
+            const numParcelas = p.parcelas || 1;
+            const valorStr = (Number(p.valor) || 0).toFixed(2).replace('.', ',');
+            const mostrarExcluir = window.pagamentosEntregaEE.length > 1;
+
+            return `
+            <div class="bg-white/80 dark:bg-slate-900/80 border border-blue-200/90 dark:border-blue-700/60 rounded-xl p-2.5 space-y-2 shadow-2xs">
+                <div class="flex items-center justify-between">
+                    <span class="text-[10px] font-bold text-blue-900 dark:text-blue-300 uppercase flex items-center gap-1.5">
+                        <span class="w-4 h-4 rounded-full bg-blue-500 text-white text-[9px] flex items-center justify-center font-black">${idx + 1}</span>
+                        Forma na Entrega ${idx + 1}
+                    </span>
+                    ${mostrarExcluir ? `
+                        <button type="button" onclick="window.removerItemEntregaEE(${idx})" class="text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 text-[11px] font-bold flex items-center gap-1 transition px-1.5 py-0.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer">
+                            <i class="fa-solid fa-trash-can"></i> Remover
+                        </button>
+                    ` : ''}
+                </div>
+                <div class="grid grid-cols-12 gap-1.5">
+                    <div class="${temParcelas ? 'col-span-7' : 'col-span-12'}">
+                        <label class="text-[9px] uppercase font-bold text-slate-500 dark:text-slate-400 block mb-0.5">Forma:</label>
+                        <select onchange="window.atualizarMetodoEntregaEE(${idx}, this.value)" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-2 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500">
+                            ${opcoesEntrega.map(o => `<option value="${o.val}" ${p.metodo === o.val ? 'selected' : ''}>${o.label}</option>`).join('')}
+                        </select>
+                    </div>
+                    ${temParcelas ? `
+                    <div class="col-span-5">
+                        <label class="text-[9px] uppercase font-bold text-slate-500 dark:text-slate-400 block mb-0.5">Parcelas:</label>
+                        <select onchange="window.atualizarParcelasEntregaEE(${idx}, this.value)" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-2 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500">
+                            ${[1,2,3,4,5,6,7,8,9,10,11,12].map(n => `<option value="${n}" ${n === numParcelas ? 'selected' : ''}>${n}x ${n > 1 && p.valor > 0 ? '(' + fm(p.valor / n) + ')' : ''}</option>`).join('')}
+                        </select>
+                    </div>` : ''}
+                    <div class="col-span-12">
+                        <label class="text-[9px] uppercase font-bold text-slate-500 dark:text-slate-400 block mb-1">Valor (R$):</label>
+                        <input type="text" data-mask="money" inputmode="numeric" value="${valorStr}" oninput="window.atualizarValorEntregaEE(${idx}, this.value)" placeholder="0,00" class="w-full bg-white dark:bg-slate-800 border border-blue-300 dark:border-blue-600/70 px-3 py-2 rounded-lg text-xs font-black text-blue-900 dark:text-blue-100 outline-none focus:ring-2 focus:ring-blue-500 text-right">
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // 3. ATUALIZAR TOTAIS E RESUMO
+    window.atualizarTotaisEResumoEE();
+};
+
+window.sincronizarDataEntregaEE = function() {
+    const dtEe = document.getElementById('pdv-ee-data-entrega')?.value;
+    const dtPdv = document.getElementById('pdv-data-entrega');
+    if (dtPdv && dtEe) {
+        dtPdv.value = dtEe;
+    }
+    window.recalcularValoresEntradaEntrega();
+};
+
 function atualizarResumoPagamentosVenda() {
     const opSelect = document.getElementById('pdv-operacao'); 
     const op = opSelect ? opSelect.value : 'Venda';
@@ -3174,44 +3684,63 @@ function atualizarResumoPagamentosVenda() {
     }
 
     const lista = document.getElementById('lista-pagamentos-adicionados'); 
-    if(!lista) return;
     
     let totalVendaFinal = pdvTotalAtual; 
-    lista.innerHTML = ''; 
+    if (lista) lista.innerHTML = ''; 
     let totalPago = 0;
-    
-    if (pagamentosVendaAtual.length === 0) { 
-        if (isOrcamento) {
-            lista.innerHTML = '<div class="text-xs text-slate-400 text-center mt-4 italic">Orçamentos não exigem pagamentos prévios.</div>';
-        } else if (isLancarCaixa) {
-            lista.innerHTML = '<div class="text-xs text-slate-400 text-center mt-3 italic bg-slate-50 dark:bg-slate-900/60 p-2 rounded-lg border border-dashed border-slate-200 dark:border-slate-700"><i class="fa-solid fa-arrow-down mr-1 text-blue-500"></i>Clique no botão abaixo para lançar para o Caixa Físico. O pagamento será registrado lá.</div>';
-        } else {
-            lista.innerHTML = '<div class="text-xs text-slate-400 text-center mt-4 italic">Nenhum pagamento inserido.</div>';
+
+    const isEntradaEntrega = document.getElementById('pdv-chk-entrada-entrega')?.checked || false;
+    let valorEntrada = 0;
+    let saldoEntrega = 0;
+    let formaEntrada = 'PIX';
+    let formaEntrega = 'Cartão Crédito (Maquininha Móvel)';
+    let parcelasEntrada = 1;
+    let parcelasEntrega = 1;
+
+    if (isEntradaEntrega) {
+        valorEntrada = (window.pagamentosEntradaEE || []).reduce((a, b) => a + (b.valor || 0), 0);
+        saldoEntrega = Math.max(0, totalVendaFinal - valorEntrada);
+
+        const saldoDisp = document.getElementById('pdv-ee-saldo-display');
+        if (saldoDisp) saldoDisp.textContent = typeof formatMoney === 'function' ? `Saldo: ${formatMoney(saldoEntrega)}` : 'Saldo: R$ ' + saldoEntrega.toFixed(2);
+
+        totalPago = valorEntrada;
+    } else {
+        if (lista) {
+            if (pagamentosVendaAtual.length === 0) { 
+                if (isOrcamento) {
+                    lista.innerHTML = '<div class="text-xs text-slate-400 text-center mt-4 italic">Orçamentos não exigem pagamentos prévios.</div>';
+                } else if (isLancarCaixa) {
+                    lista.innerHTML = '<div class="text-xs text-slate-400 text-center mt-3 italic bg-slate-50 dark:bg-slate-900/60 p-2 rounded-lg border border-dashed border-slate-200 dark:border-slate-700"><i class="fa-solid fa-arrow-down mr-1 text-blue-500"></i>Clique no botão abaixo para lançar para o Caixa Físico. O pagamento será registrado lá.</div>';
+                } else {
+                    lista.innerHTML = '<div class="text-xs text-slate-400 text-center mt-4 italic">Nenhum pagamento inserido.</div>';
+                }
+            } else { 
+                pagamentosVendaAtual.forEach((pag, index) => { 
+                    totalPago += pag.valor; 
+                    let corMetodo = pag.metodo === 'Dinheiro' ? 'text-emerald-700' : 'text-blue-700'; 
+                    let txtParc = pag.parcelas > 1 ? `(${pag.parcelas}x)` : ''; 
+                    let txtVenc = (pag.metodo === 'Boleto' || pag.metodo === 'Fiado') && pag.vencimentoBase ? `<span class="text-[10px] text-amber-600 block">1º Venc: ${pag.vencimentoBase.split('-').reverse().join('/')}</span>` : ''; 
+                    
+                    lista.innerHTML += `
+                    <div class="flex justify-between items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2.5 rounded-lg text-xs shadow-sm mb-2">
+                        <div>
+                            <span class="font-bold uppercase ${corMetodo}"><i class="fa-solid fa-check mr-1"></i> ${pag.metodo} ${txtParc}</span>${txtVenc}
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="font-black text-slate-700 dark:text-slate-200">R$ ${pag.valor.toFixed(2).replace('.', ',')}</span>
+                            <button onclick="removerPagamentoVenda('${index}')" class="text-red-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>`; 
+                }); 
+            }
         }
-    } else { 
-        pagamentosVendaAtual.forEach((pag, index) => { 
-            totalPago += pag.valor; 
-            let corMetodo = pag.metodo === 'Dinheiro' ? 'text-emerald-700' : 'text-blue-700'; 
-            let txtParc = pag.parcelas > 1 ? `(${pag.parcelas}x)` : ''; 
-            let txtVenc = (pag.metodo === 'Boleto' || pag.metodo === 'Fiado') && pag.vencimentoBase ? `<span class="text-[10px] text-amber-600 block">1º Venc: ${pag.vencimentoBase.split('-').reverse().join('/')}</span>` : ''; 
-            
-            lista.innerHTML += `
-            <div class="flex justify-between items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2.5 rounded-lg text-xs shadow-sm mb-2">
-                <div>
-                    <span class="font-bold uppercase ${corMetodo}"><i class="fa-solid fa-check mr-1"></i> ${pag.metodo} ${txtParc}</span>${txtVenc}
-                </div>
-                <div class="flex items-center gap-3">
-                    <span class="font-black text-slate-700 dark:text-slate-200">R$ ${pag.valor.toFixed(2).replace('.', ',')}</span>
-                    <button onclick="removerPagamentoVenda('${index}')" class="text-red-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash"></i></button>
-                </div>
-            </div>`; 
-        }); 
     }
     
     totalVendaFinal = Math.round(totalVendaFinal * 100) / 100; 
     totalPago = Math.round(totalPago * 100) / 100; 
     
-    let falta = totalVendaFinal - totalPago; 
+    let falta = isEntradaEntrega ? 0 : (totalVendaFinal - totalPago); 
     let troco = 0; 
     
     if (falta <= 0) { 
@@ -3219,16 +3748,27 @@ function atualizarResumoPagamentosVenda() {
         falta = 0; 
     }
     
-    document.getElementById('pdv-falta').innerText = formatMoney(falta); 
-    document.getElementById('pdv-troco').innerText = formatMoney(troco);
+    const elFalta = document.getElementById('pdv-falta');
+    if (elFalta) {
+        elFalta.innerText = isEntradaEntrega ? formatMoney(saldoEntrega) : formatMoney(falta); 
+        const lblFalta = elFalta.previousElementSibling;
+        if (lblFalta) {
+            lblFalta.textContent = isEntradaEntrega ? 'Saldo na Entrega' : 'Falta Pagar';
+        }
+    }
+    const elTroco = document.getElementById('pdv-troco');
+    if (elTroco) {
+        elTroco.innerText = formatMoney(isEntradaEntrega ? 0 : troco);
+    }
     
     const inputAtual = document.getElementById('pdv-valor-atual'); 
-    if (inputAtual) { 
+    if (inputAtual && !isEntradaEntrega) { 
         inputAtual.value = falta > 0 ? falta.toFixed(2) : ''; 
     }
     
     const btnFinalizar = document.getElementById('btn-finalizar-venda');
     if (btnFinalizar) { 
+        const temPagamentoValidoBalcao = isEntradaEntrega ? (valorEntrada > 0) : (totalPago >= totalVendaFinal);
         if (isOrcamento && totalVendaFinal > 0) { 
             btnFinalizar.disabled = false; 
             btnFinalizar.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-emerald-500', 'hover:bg-emerald-600'); 
@@ -3239,11 +3779,11 @@ function atualizarResumoPagamentosVenda() {
             btnFinalizar.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-blue-600', 'hover:bg-blue-700'); 
             btnFinalizar.classList.add('active:scale-95', 'bg-emerald-600', 'hover:bg-emerald-700'); 
             btnFinalizar.innerHTML = window.vendaEmEdicao ? '<i class="fa-solid fa-paper-plane"></i> ATUALIZAR PEDIDO NO CAIXA' : (isServico ? '<i class="fa-solid fa-handshake"></i> LANÇAR SERVIÇO P/ O CAIXA' : '<i class="fa-solid fa-paper-plane"></i> LANÇAR VENDA P/ O CAIXA (F9)'); 
-        } else if (isVendaBalcao && totalPago >= totalVendaFinal && totalVendaFinal > 0) { 
+        } else if (isVendaBalcao && temPagamentoValidoBalcao && totalVendaFinal > 0) { 
             btnFinalizar.disabled = false; 
             btnFinalizar.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-blue-600', 'hover:bg-blue-700'); 
             btnFinalizar.classList.add('active:scale-95', 'bg-emerald-600', 'hover:bg-emerald-700'); 
-            btnFinalizar.innerHTML = window.vendaEmEdicao ? '<i class="fa-solid fa-circle-check"></i> FINALIZAR VENDA EDITADA' : '<i class="fa-solid fa-circle-check"></i> FINALIZAR VENDA NO BALCÃO'; 
+            btnFinalizar.innerHTML = window.vendaEmEdicao ? '<i class="fa-solid fa-circle-check"></i> FINALIZAR VENDA EDITADA' : (isEntradaEntrega ? '<i class="fa-solid fa-truck-ramp-box"></i> RECEBER ENTRADA & FINALIZAR' : '<i class="fa-solid fa-circle-check"></i> FINALIZAR VENDA NO BALCÃO'); 
         } else { 
             btnFinalizar.disabled = true; 
             btnFinalizar.classList.add('opacity-50', 'cursor-not-allowed'); 
@@ -3253,7 +3793,7 @@ function atualizarResumoPagamentosVenda() {
             } else if (isOrcamento) {
                 btnFinalizar.innerHTML = '<i class="fa-solid fa-file-invoice"></i> GERAR ORÇAMENTO COMPLETO';
             } else if (isVendaBalcao) {
-                btnFinalizar.innerHTML = '<i class="fa-solid fa-circle-check"></i> FINALIZAR VENDA NO BALCÃO';
+                btnFinalizar.innerHTML = isEntradaEntrega ? '<i class="fa-solid fa-truck-ramp-box"></i> DEFINA O VALOR DA ENTRADA' : '<i class="fa-solid fa-circle-check"></i> FINALIZAR VENDA NO BALCÃO';
             } else {
                 btnFinalizar.innerHTML = '<i class="fa-solid fa-paper-plane"></i> LANÇAR VENDA P/ O CAIXA (F9)';
             }
@@ -3416,6 +3956,70 @@ async function finalizarVendaMultipla() {
     }
     window._margemBaixaAutorizada = false;
     
+    const { sub, desc, frete, tot } = pdvAtualizarTotais(); 
+    const custoTotal = cart.reduce((acc, i) => acc + ((i.custo || 0) * (i.qtd || 1)), 0);
+
+    // === VENDA COM ENTRADA (SINAL) + SALDO NA ENTREGA (ESPECIAL LOJA DE MÓVEIS) ===
+    const chkEE = document.getElementById('pdv-chk-entrada-entrega');
+    const isEntradaEntrega = chkEE && chkEE.checked && !isOrcamento;
+    let valorEntradaEE = 0;
+    let formaEntradaEE = 'Dinheiro';
+    let parcelasEntradaEE = 1;
+    let saldoEntregaEE = 0;
+    let formaEntregaEE = 'Dinheiro';
+    let parcelasEntregaEE = 1;
+    let dataEntregaEE = '';
+
+    if (isEntradaEntrega) {
+        valorEntradaEE = (window.pagamentosEntradaEE || []).reduce((acc, p) => acc + (p.valor || 0), 0);
+        saldoEntregaEE = (window.pagamentosEntregaEE || []).reduce((acc, p) => acc + (p.valor || 0), 0);
+        dataEntregaEE = document.getElementById('pdv-ee-data-entrega')?.value || '';
+
+        // Se o saldo não foi lançado ou estiver zerado, mas há diferença (tot - valorEntradaEE), completa automaticamente
+        if (saldoEntregaEE === 0 && valorEntradaEE < tot) {
+            saldoEntregaEE = Math.round((tot - valorEntradaEE) * 100) / 100;
+            const fDigitada = (window.pagamentosEntregaEE && window.pagamentosEntregaEE[0]) ? window.pagamentosEntregaEE[0].metodo : 'Cartão Crédito (Maquininha Móvel)';
+            const pDigitada = (window.pagamentosEntregaEE && window.pagamentosEntregaEE[0]) ? (window.pagamentosEntregaEE[0].parcelas || 1) : 1;
+            window.pagamentosEntregaEE = [{ id: Date.now() + 2, metodo: fDigitada, parcelas: (fDigitada.includes('Crédito') || fDigitada.includes('Boleto') || fDigitada.includes('Fiado')) ? pDigitada : 1, valor: saldoEntregaEE }];
+        }
+
+        if (valorEntradaEE <= 0) {
+            liberarBotaoFinalizar();
+            return showToast('Informe ao menos uma forma de pagamento para a Entrada (Sinal)!', 'warning');
+        }
+        if (valorEntradaEE >= tot) {
+            liberarBotaoFinalizar();
+            return showToast('O valor da entrada não pode ser igual ou maior que o total da venda. Desmarque a opção ou ajuste os valores.', 'warning');
+        }
+
+        formaEntradaEE = (window.pagamentosEntradaEE || []).map(p => `${p.metodo}${p.parcelas > 1 ? ' (' + p.parcelas + 'x)' : ''}`).join(' + ');
+        parcelasEntradaEE = (window.pagamentosEntradaEE && window.pagamentosEntradaEE.length === 1) ? (window.pagamentosEntradaEE[0].parcelas || 1) : 1;
+
+        formaEntregaEE = (window.pagamentosEntregaEE || []).map(p => `${p.metodo}${p.parcelas > 1 ? ' (' + p.parcelas + 'x)' : ''}`).join(' + ');
+        parcelasEntregaEE = (window.pagamentosEntregaEE && window.pagamentosEntregaEE.length === 1) ? (window.pagamentosEntregaEE[0].parcelas || 1) : 1;
+
+        pagamentosVendaAtual = [];
+        (window.pagamentosEntradaEE || []).forEach(p => {
+            pagamentosVendaAtual.push({
+                metodo: p.metodo,
+                valor: p.valor,
+                parcelas: p.parcelas || 1,
+                status: 'PAGO',
+                tipoSub: 'ENTRADA'
+            });
+        });
+        (window.pagamentosEntregaEE || []).forEach(p => {
+            pagamentosVendaAtual.push({
+                metodo: p.metodo,
+                valor: p.valor,
+                parcelas: p.parcelas || 1,
+                status: 'PENDENTE',
+                tipoSub: 'SALDO_ENTREGA',
+                vencimentoBase: dataEntregaEE || ''
+            });
+        });
+    }
+    
     if (isVendaBalcao) { 
         if(pagamentosVendaAtual.length === 0) { liberarBotaoFinalizar(); return showToast('Insira ao menos um pagamento para venda com recebimento direto no balcão!', 'error');  }
         if(!db.caixa || db.caixa.status !== 'ABERTO') { 
@@ -3429,10 +4033,6 @@ async function finalizarVendaMultipla() {
     // === PROTECAO ANTI-VENDA DUPLICADA ===
     // Chave de idempotencia e flag local garantem unicidade sem travar com requisicao de rede blocking.
 
-
-    const { sub, desc, frete, tot } = pdvAtualizarTotais(); 
-    const custoTotal = cart.reduce((acc, i) => acc + ((i.custo || 0) * (i.qtd || 1)), 0);
-    
     // Se o pedido é lançado p/ o Caixa e a lista de pagamentos está vazia (o vendedor não clicou em '+'),
     // captura automaticamente a condição que o vendedor selecionou na tela (Método, Parcelas, Vencimentos)
     if (isLancarCaixa && pagamentosVendaAtual.length === 0) {
@@ -3465,7 +4065,11 @@ async function finalizarVendaMultipla() {
     let totalPago = pagamentosVendaAtual.reduce((acc, p) => acc + (p.valor || 0), 0); 
     let valorTroco = totalPago > tot ? (totalPago - tot) : 0;
     
-    const pagTexto = isOrcamento && pagamentosVendaAtual.length === 0 ? 'Orçamento (Sem Pagamento Exigido)' : pagamentosVendaAtual.map(p => `${p.metodo || ''} ${(p.parcelas || 1) > 1 ? '('+p.parcelas+'x)' : ''} (${formatMoney(p.valor || 0)})`).join(' + ');
+    const txtParcEnt = parcelasEntradaEE > 1 ? ` (${parcelasEntradaEE}x de ${formatMoney(valorEntradaEE / parcelasEntradaEE)})` : '';
+    const txtParcEntr = parcelasEntregaEE > 1 ? ` (${parcelasEntregaEE}x de ${formatMoney(saldoEntregaEE / parcelasEntregaEE)})` : '';
+    const pagTexto = isEntradaEntrega
+        ? `Entrada: ${formaEntradaEE}${txtParcEnt} (${formatMoney(valorEntradaEE)}) + Saldo na Entrega: ${formaEntregaEE}${txtParcEntr} (${formatMoney(saldoEntregaEE)})`
+        : (isOrcamento && pagamentosVendaAtual.length === 0 ? 'Orçamento (Sem Pagamento Exigido)' : pagamentosVendaAtual.map(p => `${p.metodo || ''} ${(p.parcelas || 1) > 1 ? '('+p.parcelas+'x)' : ''} (${formatMoney(p.valor || 0)})`).join(' + '));
     
     let taxaValorTotal = 0;
     if (!isOrcamento) { 
@@ -3539,7 +4143,7 @@ async function finalizarVendaMultipla() {
     const osPrazo = document.getElementById('os-prazo') ? document.getElementById('os-prazo').value : '';
     const elDataEnt = document.getElementById('pdv-data-entrega');
     const dataEntregaInput = elDataEnt ? elDataEnt.value : '';
-    const dataEntregaFinal = dataEntregaInput || osPrazo || '';
+    const dataEntregaFinal = (isEntradaEntrega && dataEntregaEE) ? dataEntregaEE : (dataEntregaInput || osPrazo || '');
     const dataEntregaFormatadaRecibo = dataEntregaFinal ? (dataEntregaFinal.includes('-') ? dataEntregaFinal.split('-').reverse().join('/') : dataEntregaFinal) : ''; 
     const osGarantia = document.getElementById('os-garantia') ? document.getElementById('os-garantia').value : ''; 
     const osDesc = document.getElementById('os-desc') ? document.getElementById('os-desc').value.trim() : ''; 
@@ -3564,7 +4168,7 @@ async function finalizarVendaMultipla() {
                 Nome: ${cliInfo.nome}<br>
                 CPF/CNPJ: ${cliInfo.doc}<br>
                 Telefone: ${cliInfo.tel}<br>
-                Endereço: ${cliInfo.endCompleto}
+                Endereço Completo: ${cliInfo.endCompleto}
             </div>
             <div style="text-align: right; border-left: 1px solid #ccc; padding-left: 15px;">
                 <strong>DADOS DA OPERAÇÃO</strong><br>
@@ -3623,7 +4227,43 @@ async function finalizarVendaMultipla() {
         <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; margin-bottom: 20px; font-size: 13px;">
             <div style="flex: 1; min-width: 280px; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-right: 5px; margin-bottom: 5px;">
                 <h3 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">${isOrcamento ? 'PREVISÃO DE PAGAMENTO' : (isLancarCaixa ? 'PREVISÃO DE PAGAMENTO (A RECEBER NO CAIXA)' : 'PAGAMENTOS REGISTRADOS')}</h3>
-                ${pagTexto !== 'Orçamento (Sem Pagamento Exigido)' ? pagamentosVendaAtual.map(p => `<div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>▪ ${p.metodo} ${p.parcelas > 1 ? `(${p.parcelas}x)` : ''}</span> <strong>${formatMoney(p.valor)}</strong></div>`).join('') : '<p style="font-style: italic; color: #555;">Nenhum pagamento registrado no orçamento.</p>'}
+                ${isEntradaEntrega ? `
+                <div style="background: #eff6ff; border: 1.5px solid #2563eb; border-radius: 6px; padding: 8px 10px; margin-bottom: 8px;">
+                    <div style="font-size: 11px; font-weight: bold; color: #1e40af; text-transform: uppercase; margin-bottom: 4px; border-bottom: 1px solid #bfdbfe; padding-bottom: 3px;">
+                        <i class="fa-solid fa-truck-ramp-box"></i> Móveis: Entrada + Saldo na Entrega
+                    </div>
+                    <div style="margin-bottom: 4px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px;">
+                        <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 2px;">
+                            <span>▪ Entrada / Sinal:</span>
+                            <span style="color: #16a34a;">${formatMoney(valorEntradaEE)} [PAGO]</span>
+                        </div>
+                        ${(window.pagamentosEntradaEE && window.pagamentosEntradaEE.length > 0)
+                            ? window.pagamentosEntradaEE.map(p => `
+                                <div style="display: flex; justify-content: space-between; font-size: 11.5px; padding-left: 8px; color: #334155;">
+                                    <span>- ${p.metodo}${p.parcelas > 1 ? ' (' + p.parcelas + 'x de ' + formatMoney(p.valor / p.parcelas) + ')' : ''}</span>
+                                    <span>${formatMoney(p.valor)}</span>
+                                </div>
+                            `).join('')
+                            : `<div style="display: flex; justify-content: space-between; font-size: 11.5px; padding-left: 8px; color: #334155;"><span>- ${formaEntradaEE}${parcelasEntradaEE > 1 ? ' ' + parcelasEntradaEE + 'x' : ''}</span><span>${formatMoney(valorEntradaEE)}</span></div>`
+                        }
+                    </div>
+                    <div>
+                        <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 2px;">
+                            <span>▪ Saldo na Entrega:</span>
+                            <span style="color: #dc2626;">${formatMoney(saldoEntregaEE)} [A RECEBER]</span>
+                        </div>
+                        ${(window.pagamentosEntregaEE && window.pagamentosEntregaEE.length > 0)
+                            ? window.pagamentosEntregaEE.map(p => `
+                                <div style="display: flex; justify-content: space-between; font-size: 11.5px; padding-left: 8px; color: #334155;">
+                                    <span>- ${p.metodo}${p.parcelas > 1 ? ' (' + p.parcelas + 'x de ' + formatMoney(p.valor / p.parcelas) + ' na Maquininha)' : ''}</span>
+                                    <span>${formatMoney(p.valor)}</span>
+                                </div>
+                            `).join('')
+                            : `<div style="display: flex; justify-content: space-between; font-size: 11.5px; padding-left: 8px; color: #334155;"><span>- ${formaEntregaEE}${parcelasEntregaEE > 1 ? ' ' + parcelasEntregaEE + 'x' : ''}</span><span>${formatMoney(saldoEntregaEE)}</span></div>`
+                        }
+                    </div>
+                </div>
+                ` : (pagTexto !== 'Orçamento (Sem Pagamento Exigido)' ? pagamentosVendaAtual.map(p => `<div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>▪ ${p.metodo} ${p.parcelas > 1 ? `(${p.parcelas}x)` : ''}</span> <strong>${formatMoney(p.valor)}</strong></div>`).join('') : '<p style="font-style: italic; color: #555;">Nenhum pagamento registrado no orçamento.</p>')}
                 ${valorTroco > 0 && !isOrcamento ? `<div style="display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #000;"><span>Troco Devolvido:</span> <strong style="color: red;">${formatMoney(valorTroco)}</strong></div>` : ''}
             </div>
             <div style="flex: 1; min-width: 280px; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-left: 5px; margin-bottom: 5px;">
@@ -3641,6 +4281,17 @@ async function finalizarVendaMultipla() {
                 <div style="display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 2px solid #000; font-size: 16px; font-weight: bold;"><span>TOTAL GERAL:</span> <span>${formatMoney(tot)}</span></div>
             </div>
         </div>
+
+        ${isEntradaEntrega ? `
+        <div style="border: 1.5px solid #f59e0b; background: #fffbeb; border-radius: 5px; padding: 10px; margin-bottom: 15px; font-size: 12px; color: #92400e;">
+            <strong style="text-transform: uppercase; color: #b45309;"><i class="fa-solid fa-triangle-exclamation"></i> Alerta de Cobrança ao Entregador:</strong><br>
+            A entrega dos móveis está condicionada ao recebimento integral do <strong>Saldo Restante de ${formatMoney(saldoEntregaEE)}</strong> via <strong>${formaEntregaEE}${parcelasEntregaEE > 1 ? ' (' + parcelasEntregaEE + 'x de ' + formatMoney(saldoEntregaEE / parcelasEntregaEE) + ' na Maquininha)' : ''}</strong>.
+            <div style="margin-top: 6px; border-top: 1px dashed #fcd34d; padding-top: 4px; display: flex; justify-content: space-between;">
+                <span>[ &nbsp; ] Saldo recebido pelo entregador em: ___/___/20___</span>
+                <span>Visto Entregador: ____________________________</span>
+            </div>
+        </div>
+        ` : ''}
         
         ${obsTexto ? `
         <div style="border: 1px solid #000; border-radius: 5px; padding: 12px; margin-bottom: 30px; font-size: 13px; background-color: #f8fafc;">
@@ -3694,7 +4345,8 @@ async function finalizarVendaMultipla() {
                     prodId: p.id,
                     prodNome: p.nome,
                     qtd: -qtdItemVendida,
-                    tipo: tipoVenda
+                    tipo: tipoVenda,
+                    vendaId: idFinalVenda
                 };
                 batch.set(kardexRef, kardexObj);
 
@@ -3732,7 +4384,7 @@ async function finalizarVendaMultipla() {
         };
     });
 
-    const statusFinalVenda = isOrcamento ? 'ORCAMENTO' : (isLancarCaixa ? 'AGUARDANDO_PAGAMENTO' : 'CONCLUIDA');
+    const statusFinalVenda = isOrcamento ? 'ORCAMENTO' : (isLancarCaixa ? 'AGUARDANDO_PAGAMENTO' : (isEntradaEntrega ? 'AGUARDANDO_ENTREGA' : 'CONCLUIDA'));
     const novaVendaObj = { 
         id: idFinalVenda,
         numeroPedido: numeroPedido, 
@@ -3746,6 +4398,7 @@ async function finalizarVendaMultipla() {
         clienteEnd: cliInfo.endCompleto || 'Não informado',
         clienteRua: cliInfo.rua || '',
         clienteNumero: cliInfo.numero || '',
+        clienteComplemento: cliInfo.complemento || '',
         clienteBairro: cliInfo.bairro || '',
         clienteCidade: cliInfo.cidade || '',
         clienteUf: cliInfo.uf || '',
@@ -3759,6 +4412,7 @@ async function finalizarVendaMultipla() {
             cnpj: cliInfo.cnpj,
             rua: cliInfo.rua,
             numero: cliInfo.numero,
+            complemento: cliInfo.complemento || '',
             bairro: cliInfo.bairro,
             cidade: cliInfo.cidade,
             uf: cliInfo.uf,
@@ -3777,6 +4431,17 @@ async function finalizarVendaMultipla() {
             ? (condicaoVendedor ? `Aguardando Pagamento no Caixa (${condicaoVendedor.metodo}${condicaoVendedor.parcelas > 1 ? ' ' + condicaoVendedor.parcelas + 'x' : ''})` : 'Aguardando Pagamento no Caixa') 
             : (pagTexto || ''), 
         pagamentos: pagamentosVendaAtual ? JSON.parse(JSON.stringify(pagamentosVendaAtual)) : [],
+        vendaComEntradaEntrega: !!isEntradaEntrega,
+        valorEntrada: isEntradaEntrega ? valorEntradaEE : 0,
+        formaEntrada: isEntradaEntrega ? formaEntradaEE : '',
+        parcelasEntrada: isEntradaEntrega ? parcelasEntradaEE : 1,
+        saldoEntrega: isEntradaEntrega ? saldoEntregaEE : 0,
+        formaEntregaPrevista: isEntradaEntrega ? formaEntregaEE : '',
+        parcelasEntrega: isEntradaEntrega ? parcelasEntregaEE : 1,
+        pagamentosEntrada: isEntradaEntrega ? JSON.parse(JSON.stringify(window.pagamentosEntradaEE || [])) : [],
+        pagamentosEntrega: isEntradaEntrega ? JSON.parse(JSON.stringify(window.pagamentosEntregaEE || [])) : [],
+        saldoEntregaPago: false,
+        dataEntregaPrevista: dataEntregaEE || dataEntregaFinal || '',
         vendedor: vend || '', 
         operador: (window.currentUserInfo && window.currentUserInfo.nome) || (window.currentUser && (window.currentUser.displayName || window.currentUser.email)) || 'Operador',
         operadorId: (window.currentUser && window.currentUser.uid) || '',
@@ -3802,6 +4467,31 @@ async function finalizarVendaMultipla() {
         const opNomeVenda = (window.currentUserInfo && window.currentUserInfo.nome) || (window.currentUser && (window.currentUser.displayName || window.currentUser.email)) || 'Operador';
         
         pagamentosVendaAtual.forEach((p, idx) => {
+            if (isEntradaEntrega && p.tipoSub === 'SALDO_ENTREGA') {
+                // NÃO movimenta o caixa com o saldo que será pago somente na entrega!
+                // Registra no Financeiro como RECEITA PENDENTE para cobrança no ato da entrega
+                const finRef = window.getEmpresaRef().collection('financeiro').doc();
+                const dataVencSaldo = dataEntregaEE ? new Date(dataEntregaEE + 'T12:00:00').toISOString() : (dataEntregaFinal ? new Date(dataEntregaFinal + 'T12:00:00').toISOString() : dataIso);
+                const finDados = {
+                    id: finRef.id,
+                    ref: `${tipoVenda} #${numPedStr} - Saldo na Entrega (${p.metodo || 'A Receber'})`,
+                    data: dataVencSaldo,
+                    dataVencimento: dataVencSaldo,
+                    pessoa: cliInfo.nome,
+                    wpp: (cliInfo.tel && cliInfo.tel !== 'Não informado') ? cliInfo.tel : '',
+                    valor: p.valor || 0,
+                    status: 'PENDENTE',
+                    tipo: 'RECEITA',
+                    categoria: 'Vendas',
+                    metodoPagamento: p.metodo,
+                    origemVendaId: idFinalVenda,
+                    tipoSub: 'SALDO_ENTREGA'
+                };
+                batch.set(finRef, finDados);
+                novosLancamentosFinanceiro.push(finDados);
+                return;
+            }
+
             let valorParaCaixa = p.valor || 0; 
             if(p.metodo === 'Dinheiro' && valorTroco > 0) { 
                 valorParaCaixa -= valorTroco; 
@@ -3889,6 +4579,7 @@ async function finalizarVendaMultipla() {
 
         // Salva os lançamentos individuais na subcoleção permanente 'movimentacoes' do caixa
         pagamentosVendaAtual.forEach(p => {
+            if (isEntradaEntrega && p.tipoSub === 'SALDO_ENTREGA') return; // Pula saldo na entrega
             let valorMov = p.valor || 0;
             if (p.metodo === 'Dinheiro' && valorTroco > 0) valorMov = Math.max(0, valorMov - valorTroco);
             if (valorMov > 0) {
@@ -4051,15 +4742,13 @@ async function finalizarVendaMultipla() {
                 if (fStatus) { fStatus.classList.add('hidden'); fStatus.innerHTML = ''; }
                 const podeNfce = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfce') : true;
                 const podeNfe = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfe') : true;
-                const podeNfse = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfse') : true;
+                const podeNfse = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfse') : false;
 
                 const bNfce = document.getElementById('btn-emitir-nfce'); 
                 if (bNfce) { bNfce.disabled = false; bNfce.style.display = podeNfce ? '' : 'none'; }
                 const bNfe = document.getElementById('btn-emitir-nfe'); 
                 if (bNfe) { bNfe.disabled = false; bNfe.style.display = podeNfe ? '' : 'none'; }
-                const empIdAtivo = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
-                const isFc = (empIdAtivo === 'emp_fc_moveis' || !empIdAtivo || String(db.config?.empresa?.cnpj || '').includes('37638679'));
-                const nfseHabilitada = podeNfse && (db.config?.empresa?.habilitarNFSe !== undefined ? Boolean(db.config?.empresa?.habilitarNFSe) : isFc);
+                const nfseHabilitada = Boolean(podeNfse && (db.config?.empresa?.habilitarNFSe !== undefined ? db.config?.empresa?.habilitarNFSe : false));
                 const bNfse = document.getElementById('btn-emitir-nfse');
                 if (bNfse) {
                     bNfse.disabled = false;
@@ -4205,7 +4894,9 @@ function fecharModalOpcoesRecibo() {
 
 async function emitirNota(tipo) {
     if (typeof window.temPermissaoNotaFiscal === 'function' && !window.temPermissaoNotaFiscal(tipo)) {
-        return showToast(`Seu plano atual não possui permissão para emitir ${String(tipo || '').toUpperCase()}. Fale com o suporte!`, "warning");
+        return showToast(tipo === 'nfse'
+            ? 'A emissão de NFS-e (Serviços) não está habilitada para sua licença. Entre em contato com o administrador/suporte para liberação manual deste recurso.'
+            : `Seu plano atual não possui permissão para emitir ${String(tipo || '').toUpperCase()}. Fale com o suporte!`, "warning");
     }
     if(!window.vendaAtualImpressao || !window.vendaAtualImpressao.id) {
         return showToast("Erro: Venda não identificada.", "error");
@@ -4474,6 +5165,19 @@ function verDetalhesVenda(id) {
     let tipoTexto = v.tipo || 'VENDA';
     
     document.getElementById('det-venda-cliente').innerText = v.clienteNome || 'Desconhecido'; 
+    const detEndEl = document.getElementById('det-venda-endereco');
+    if (detEndEl) {
+        const endFmt = (typeof window.formatarEnderecoCompletoCliente === 'function')
+            ? window.formatarEnderecoCompletoCliente(v)
+            : (v.clienteEnd || '');
+        if (endFmt && endFmt !== 'Não informado') {
+            detEndEl.innerHTML = `<i class="fa-solid fa-location-dot text-rose-500 mr-1"></i><span class="font-bold text-slate-700 dark:text-slate-200">Endereço Completo:</span> ${endFmt}`;
+            detEndEl.classList.remove('hidden');
+        } else {
+            detEndEl.textContent = '';
+            detEndEl.classList.add('hidden');
+        }
+    }
     document.getElementById('det-venda-data').innerText = `${v.data ? formatData(v.data).split(' ')[0] : '-'} | #${numPedStr}`; 
     document.getElementById('det-venda-pag').innerText = tipoTexto === 'OR\u00c7AMENTO' ? 'Or\u00e7amento' : (v.pag || '-'); 
     
@@ -4752,6 +5456,22 @@ async function executarEstornoEEdicao(id) {
                 elDataEntrega.value = v.dataEntrega || (v.servicoDetalhes ? v.servicoDetalhes.prazo : '') || '';
             }
 
+            if (v.vendaComEntradaEntrega) {
+                const chkEE = document.getElementById('pdv-chk-entrada-entrega');
+                if (chkEE) {
+                    chkEE.checked = true;
+                    window.pagamentosEntradaEE = Array.isArray(v.pagamentosEntrada) && v.pagamentosEntrada.length > 0 
+                        ? JSON.parse(JSON.stringify(v.pagamentosEntrada))
+                        : (v.valorEntrada ? [{ id: Date.now(), metodo: v.formaEntrada || 'Dinheiro', parcelas: v.parcelasEntrada || 1, valor: v.valorEntrada }] : []);
+                    window.pagamentosEntregaEE = Array.isArray(v.pagamentosEntrega) && v.pagamentosEntrega.length > 0 
+                        ? JSON.parse(JSON.stringify(v.pagamentosEntrega))
+                        : (v.saldoEntrega ? [{ id: Date.now() + 1, metodo: v.formaEntregaPrevista || 'Cartão Crédito (Maquininha Móvel)', parcelas: v.parcelasEntrega || 1, valor: v.saldoEntrega }] : []);
+                    if (document.getElementById('pdv-ee-data-entrega')) document.getElementById('pdv-ee-data-entrega').value = v.dataEntregaPrevista || v.dataEntrega || '';
+                    if (typeof togglePagamentoEntradaEntrega === 'function') togglePagamentoEntradaEntrega();
+                    if (typeof recalcularValoresEntradaEntrega === 'function') recalcularValoresEntradaEntrega();
+                }
+            }
+
             if(v.tipo === 'SERVIÇO' && v.servicoDetalhes) {
                 if(document.getElementById('os-prazo')) document.getElementById('os-prazo').value = v.servicoDetalhes.prazo || '';
                 if(document.getElementById('os-garantia')) document.getElementById('os-garantia').value = v.servicoDetalhes.garantia || '';
@@ -4914,10 +5634,81 @@ function reimprimirVenda(id) {
     const v = (db.vendas || []).find(x => String(x.id) === String(id));
     if (!v) return showToast('Venda não encontrada.', 'error');
     window.vendaAtualImpressao = v;
-    if (typeof imprimirRecibo === 'function') {
-        imprimirRecibo(v);
+    if (v.tipo === 'SERVIÇO' && typeof imprimirContratoObj === 'function') {
+        imprimirContratoObj(v);
+        return;
+    }
+    const emp = (typeof obterDadosEmpresa === 'function') ? obterDadosEmpresa() : { nome: 'FC MÓVEIS', cnpj: '', end: '', tel: '', logoHtml: '' };
+    const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
+    const cliInfoRecibo = (typeof obterDadosClientePDV === 'function') ? obterDadosClientePDV(v.clienteId) : null;
+    const cNome = (cliInfoRecibo && cliInfoRecibo.nome !== 'Consumidor Final') ? cliInfoRecibo.nome : (v.clienteNome || 'Consumidor Final');
+    const cDoc = (cliInfoRecibo && cliInfoRecibo.doc !== 'Não informado') ? cliInfoRecibo.doc : (v.clienteDoc || 'Não informado');
+    const cTel = (cliInfoRecibo && cliInfoRecibo.tel !== 'Não informado') ? cliInfoRecibo.tel : (v.clienteTel || 'Não informado');
+    const cEnd = (typeof window.formatarEnderecoCompletoCliente === 'function')
+        ? window.formatarEnderecoCompletoCliente(v, cliInfoRecibo)
+        : ((cliInfoRecibo && cliInfoRecibo.endCompleto !== 'Não informado') ? cliInfoRecibo.endCompleto : (v.clienteEnd || 'Não informado'));
+    const vend = v.vendedor || 'Balcão';
+    const tot = v.tot || v.valorLiquido || 0;
+    const isOrcamento = v.tipo === 'ORÇAMENTO';
+    const tituloRecibo = isOrcamento ? 'ORÇAMENTO - VÁLIDO POR 7 DIAS' : 'CUPOM NÃO FISCAL - SEM VALOR LEGAL';
+    
+    let itensHtml = (v.itens || []).map(i => `<tr><td style="padding: 4px 0;">${i.nome}</td><td style="padding: 4px 0; text-align: center;">${i.qtd}</td><td style="padding: 4px 0; text-align: right;">${typeof formatMoney === 'function' ? formatMoney(i.preco * i.qtd) : (i.preco * i.qtd)}</td></tr>`).join('');
+    
+    const htmlRecibo = `
+    <div style="font-family: Arial, sans-serif; color: #000; max-width: 800px; margin: 0 auto; padding: 10px;">
+        <div style="border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 15px; text-align: center;">
+            ${emp.logoHtml || ''}
+            <h1 style="margin: 0; font-size: 22px; text-transform: uppercase; font-weight: 900;">${emp.nome}</h1>
+            <p style="margin: 5px 0; font-size: 13px;">CNPJ: ${emp.cnpj}<br>${emp.end}<br>Tel: ${emp.tel} | Vend: ${vend}</p>
+        </div>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="margin: 0; font-size: 16px; font-weight: 900; border: 2px solid #000; display: inline-block; padding: 6px 15px; border-radius: 4px;">${tituloRecibo}</h2>
+        </div>
+        <div style="display: flex; justify-content: space-between; border: 1px solid #000; border-radius: 5px; padding: 12px; margin-bottom: 20px; font-size: 13px;">
+            <div>
+                <strong>DADOS DO CLIENTE</strong><br>
+                Nome: ${cNome}<br>
+                CPF/CNPJ: ${cDoc}<br>
+                Telefone: ${cTel}<br>
+                Endereço Completo: ${cEnd}
+            </div>
+            <div style="text-align: right; border-left: 1px solid #ccc; padding-left: 15px;">
+                <strong>DADOS DA OPERAÇÃO</strong><br>
+                Nº: #${numPedStr}<br>
+                Data Orig: ${v.data ? new Date(v.data).toLocaleString('pt-BR') : '-'}<br>
+                Op: REIMPRESSÃO
+            </div>
+        </div>
+        <table style="width: 100%; text-align: left; font-size: 13px; border-collapse: collapse; margin-bottom: 20px;">
+            <thead>
+                <tr style="border-bottom: 2px solid #000; border-top: 2px solid #000;">
+                    <th style="padding: 6px 0;">Item</th>
+                    <th style="padding: 6px 0; text-align: center;">Qtd</th>
+                    <th style="padding: 6px 0; text-align: right;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${itensHtml}
+            </tbody>
+        </table>
+        <div style="text-align: right; font-size: 14px;">
+            <h3 style="font-weight: bold; font-size: 16px; margin: 5px 0 0 0;">Total Final: ${typeof formatMoney === 'function' ? formatMoney(tot) : tot}</h3>
+        </div>
+        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #999; text-align: center; font-size: 13px;">
+            <p style="margin: 0; font-weight: bold; text-transform: uppercase;">PAGAMENTO: ${v.pag || 'Diversos'}</p>
+        </div>
+    </div>`;
+    
+    const printArea = document.getElementById('print-area');
+    const modalRecibo = document.getElementById('modal-opcoes-recibo');
+    if (printArea && modalRecibo) {
+        printArea.innerHTML = htmlRecibo; 
+        modalRecibo.classList.remove('hidden');
+    } else if (typeof printHtmlSeguro === 'function') {
+        printHtmlSeguro(htmlRecibo);
     }
 }
+window.reimprimirVenda = reimprimirVenda;
 
 function atualizarVendedoresPDV() {
     const select = document.getElementById('pdv-vendedor');
@@ -5070,6 +5861,15 @@ window.salvarEstadoPDV = function() {
                 numeroPedido: window.vendaEmEdicao.numeroPedido
             } : null
         };
+        const chkEE = document.getElementById('pdv-chk-entrada-entrega');
+        estado.isEntradaEntrega = chkEE ? chkEE.checked : false;
+        if (estado.isEntradaEntrega) {
+            estado.entradaEntrega = {
+                dataEntrega: document.getElementById('pdv-ee-data-entrega')?.value || '',
+                pagamentosEntrada: window.pagamentosEntradaEE || [],
+                pagamentosEntrega: window.pagamentosEntregaEE || []
+            };
+        }
         localStorage.setItem('pdvState', JSON.stringify(estado));
     } catch (e) {
         console.error("Erro interno ao salvar estado do PDV:", e);
@@ -5175,6 +5975,18 @@ window.carregarEstadoPDV = function() {
                     window._ultimoClienteSelecionado = c;
                     renderizarCardClientePDV(c);
                 }
+            }
+        }
+
+        if (estado.isEntradaEntrega && estado.entradaEntrega) {
+            const chkEE = document.getElementById('pdv-chk-entrada-entrega');
+            if (chkEE) {
+                chkEE.checked = true;
+                window.pagamentosEntradaEE = Array.isArray(estado.entradaEntrega.pagamentosEntrada) ? estado.entradaEntrega.pagamentosEntrada : [];
+                window.pagamentosEntregaEE = Array.isArray(estado.entradaEntrega.pagamentosEntrega) ? estado.entradaEntrega.pagamentosEntrega : [];
+                if (document.getElementById('pdv-ee-data-entrega')) document.getElementById('pdv-ee-data-entrega').value = estado.entradaEntrega.dataEntrega || '';
+                if (typeof togglePagamentoEntradaEntrega === 'function') togglePagamentoEntradaEntrega();
+                if (typeof recalcularValoresEntradaEntrega === 'function') recalcularValoresEntradaEntrega();
             }
         }
 

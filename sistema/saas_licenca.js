@@ -5,14 +5,17 @@
 // ==========================================================================
 
 (function() {
-    const SAAS_CONFIG = {
-        apiKey: "AIzaSyAvaDdhJSFP6WKs8UFRvlQmNGFlc1ZKgFk",
-        authDomain: "fcgestao-testes.firebaseapp.com",
-        projectId: "fcgestao-testes",
-        storageBucket: "fcgestao-testes.firebasestorage.app",
-        messagingSenderId: "126917183785",
-        appId: "1:126917183785:web:32cdc3fd9b8e1064658f38"
+    // Configuração oficial de produção do banco central SaaS (lojafc-a31f9)
+    const SAAS_CONFIG_PRODUCAO = {
+        apiKey: "AIzaSyDIlmd3zUTof-lwxyT7j3UxmenPKs_sMJg",
+        authDomain: "lojafc-a31f9.firebaseapp.com",
+        projectId: "lojafc-a31f9",
+        storageBucket: "lojafc-a31f9.firebasestorage.app",
+        messagingSenderId: "221558052645",
+        appId: "1:221558052645:web:ed942d019727a472096ccc"
     };
+
+    const SAAS_CONFIG = SAAS_CONFIG_PRODUCAO;
 
     // Número do WhatsApp de suporte (formato internacional sem +)
     const SUPORTE_WHATSAPP = '5562999676874';
@@ -21,7 +24,7 @@
     const NOMES_MODULOS = {
         pdv:        'Frente de Caixa (PDV)',
         vendas:     'Vendas & Orçamentos',
-        fiscal:     'Emissor Fiscal (NF-e, NFC-e & NFS-e*)',
+        fiscal:     'Emissor Fiscal (NF-e & NFC-e)',
         estoque:    'Controle de Estoque & Produtos',
         financeiro: 'Financeiro & Fluxo de Caixa',
         relatorios: 'Central de Relatórios Gerenciais',
@@ -38,18 +41,18 @@
     const PLANOS_INFO = {
         'plano_start':        { nome: 'Start Express (PDV Direto)',             preco: 'R$ 69,90/mês',  cor: '#64748b' },
         'plano_balcao_caixa': { nome: 'Varejo Balcão (Pré-Venda + Caixa)',      preco: 'R$ 99,90/mês',  cor: '#3b82f6' },
-        'plano_fiscal':       { nome: 'Fiscal & Vendas',                        preco: 'R$ 119,90/mês', cor: '#0ea5e9' },
-        'plano_pro':          { nome: 'Profissional',                           preco: 'R$ 169,90/mês', cor: '#f59e0b' },
+        'plano_fiscal':       { nome: 'Fiscal & Vendas',                        preco: 'R$ 139,99/mês', cor: '#0ea5e9' },
+        'plano_pro':          { nome: 'Profissional',                           preco: 'R$ 199,99/mês', cor: '#f59e0b' },
         'plano_enterprise':   { nome: 'Enterprise',                             preco: 'R$ 249,90/mês', cor: '#8b5cf6' },
-        'plano_ultra':        { nome: 'Ultra Completo',                         preco: 'R$ 349,90/mês', cor: '#10b981' },
+        'plano_ultra':        { nome: 'Ultra Completo',                         preco: 'R$ 310,99/mês', cor: '#10b981' },
         'START':              { nome: 'Start Express',                         preco: 'R$ 69,90/mês',  cor: '#64748b' },
         'BALCAO_CAIXA':       { nome: 'Varejo Balcão',                         preco: 'R$ 99,90/mês',  cor: '#3b82f6' },
         'BALCAO':             { nome: 'Varejo Balcão',                         preco: 'R$ 99,90/mês',  cor: '#3b82f6' },
         'VAREJO_BALCAO':      { nome: 'Varejo Balcão',                         preco: 'R$ 99,90/mês',  cor: '#3b82f6' },
-        'FISCAL':             { nome: 'Fiscal & Vendas',                        preco: 'R$ 119,90/mês', cor: '#0ea5e9' },
-        'PRO':                { nome: 'Profissional',                           preco: 'R$ 169,90/mês', cor: '#f59e0b' },
+        'FISCAL':             { nome: 'Fiscal & Vendas',                        preco: 'R$ 139,99/mês', cor: '#0ea5e9' },
+        'PRO':                { nome: 'Profissional',                           preco: 'R$ 199,99/mês', cor: '#f59e0b' },
         'ENTERPRISE':         { nome: 'Enterprise',                             preco: 'R$ 249,90/mês', cor: '#8b5cf6' },
-        'ULTRA':              { nome: 'Ultra Completo',                         preco: 'R$ 349,90/mês', cor: '#10b981' },
+        'ULTRA':              { nome: 'Ultra Completo',                         preco: 'R$ 310,99/mês', cor: '#10b981' },
         'FREE':               { nome: 'Gratuito (Trial)',                       preco: 'Trial',         cor: '#64748b' }
     };
 
@@ -58,7 +61,7 @@
         {
             id: 'plano_ultra',
             nome: 'Ultra Completo',
-            preco: 'R$ 349,90',
+            preco: 'R$ 310,99',
             cor: 'emerald',
             modulos: ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'caixa', 'compras', 'relatorios', 'agenda', 'site', 'ia', 'marketing', 'suporte']
         },
@@ -72,7 +75,7 @@
         {
             id: 'plano_pro',
             nome: 'Profissional',
-            preco: 'R$ 169,90',
+            preco: 'R$ 199,99',
             cor: 'amber',
             destaque: true,
             modulos: ['pdv', 'vendas', 'fiscal', 'estoque', 'financeiro', 'caixa', 'compras', 'relatorios', 'agenda', 'site', 'suporte']
@@ -80,7 +83,7 @@
         {
             id: 'plano_fiscal',
             nome: 'Fiscal',
-            preco: 'R$ 119,90',
+            preco: 'R$ 139,99',
             cor: 'cyan',
             modulos: ['pdv', 'vendas', 'fiscal', 'estoque', 'caixa', 'suporte']
         },
@@ -148,13 +151,33 @@
         if (typeof firebase === 'undefined') return null;
 
         try {
-            if (!SAAS_CONFIG.apiKey || SAAS_CONFIG.apiKey.includes('COLE_')) return null;
+            // Prioriza window.firebaseConfigAtivo (quando configurado no ERP), firebaseConfig ou produção (lojafc-a31f9)
+            const configAtiva = (typeof window !== 'undefined' && window.firebaseConfigAtivo)
+                || (typeof firebaseConfig !== 'undefined' ? firebaseConfig : null)
+                || SAAS_CONFIG;
+
+            if (!configAtiva || !configAtiva.apiKey || configAtiva.apiKey.includes('COLE_')) return null;
+
+            // Se o Firestore global/padrão já estiver inicializado para o mesmo projeto, reutiliza diretamente sem abrir conexões concorrentes
+            if (typeof window !== 'undefined' && window.db && typeof window.db.collection === 'function' && window.db.app && window.db.app.options && window.db.app.options.projectId === configAtiva.projectId) {
+                saasDb = window.db;
+                return saasDb;
+            }
+
+            if (firebase.apps && firebase.apps.length > 0) {
+                const defaultApp = firebase.apps.find(a => a.name === '[DEFAULT]');
+                if (defaultApp && defaultApp.options && defaultApp.options.projectId === configAtiva.projectId) {
+                    saasApp = defaultApp;
+                    saasDb = saasApp.firestore();
+                    return saasDb;
+                }
+            }
 
             const appExistente = firebase.apps.find(a => a.name === 'saasLicenseApp');
             if (appExistente) {
                 saasApp = appExistente;
             } else {
-                saasApp = firebase.initializeApp(SAAS_CONFIG, 'saasLicenseApp');
+                saasApp = firebase.initializeApp(configAtiva, 'saasLicenseApp');
             }
             saasDb = saasApp.firestore();
             return saasDb;
@@ -163,6 +186,124 @@
             return null;
         }
     }
+
+    // -----------------------------------------------------------------------
+    // CONFIGURAÇÕES DINÂMICAS DE PAGAMENTO & SUPORTE DO SAAS (FUNDADOR)
+    // -----------------------------------------------------------------------
+    const DADOS_PAGAMENTO_PADRAO = {
+        pixTipo: 'email',
+        pixChave: 'pauloaugusto.silvaborges@gmail.com',
+        pixTitular: 'Paulo Augusto Silva Borges',
+        pixEmail: 'pauloaugusto.silvaborges@gmail.com',
+        whatsapp: '5562999676874'
+    };
+
+    function obterDadosPagamentoSaaS() {
+        try {
+            const salvo = localStorage.getItem('saas_dados_pagamento');
+            if (salvo) {
+                const parsed = JSON.parse(salvo);
+                if (parsed && typeof parsed === 'object') {
+                    return { ...DADOS_PAGAMENTO_PADRAO, ...parsed };
+                }
+            }
+        } catch(e) {}
+        return { ...DADOS_PAGAMENTO_PADRAO };
+    }
+
+    async function atualizarDadosPagamentoSaaS() {
+        const sDb = obterInstanciaSaaS();
+        if (!sDb) return obterDadosPagamentoSaaS();
+        try {
+            const docSnap = await sDb.collection('sistemas_saas').doc('fc_gestao').get();
+            if (docSnap.exists) {
+                const data = docSnap.data();
+                const novosDados = {
+                    pixTipo: data.pixTipoSuporte || data.pixTipo || 'email',
+                    pixChave: data.pixChaveSuporte || data.chavePix || data.pixChave || data.emailSuporte || 'pauloaugusto.silvaborges@gmail.com',
+                    pixTitular: data.pixTitularSuporte || data.pixTitular || data.nomeSuporte || 'Paulo Augusto Silva Borges',
+                    pixEmail: data.emailSuporte || data.email || 'pauloaugusto.silvaborges@gmail.com',
+                    whatsapp: data.whatsappSuporte || data.whatsapp || '5562999676874'
+                };
+                localStorage.setItem('saas_dados_pagamento', JSON.stringify(novosDados));
+                return novosDados;
+            }
+        } catch(e) {
+            console.warn('[SaaS Licença] Aviso ao buscar dados de pagamento:', e.message);
+        }
+        return obterDadosPagamentoSaaS();
+    }
+
+    // Dispara atualização em background sem bloquear
+    setTimeout(() => {
+        try { atualizarDadosPagamentoSaaS().catch(() => {}); } catch(e) {}
+    }, 1500);
+
+    // -----------------------------------------------------------------------
+    // PAGAMENTO ONLINE VIA MERCADO PAGO COM LIBERAÇÃO AUTOMÁTICA
+    // -----------------------------------------------------------------------
+    async function iniciarPagamentoMercadoPagoSaaS(planoEscolhido, precoStr) {
+        let btn = document.getElementById('btn-mp-bloqueio');
+        if (typeof event !== 'undefined' && event && event.currentTarget) {
+            btn = event.currentTarget;
+        }
+        const txtOriginal = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Gerando link seguro...';
+        }
+
+        try {
+            const lic = window.currentSaaSLicense || window.currentEmpresaData || {};
+            const empresaId = lic.id || window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || 'empresa_padrao';
+            const user = typeof firebase !== 'undefined' ? firebase.auth().currentUser : null;
+            const email = (user && user.email) || lic.emailAcesso || '';
+            const plano = planoEscolhido || lic.plano || 'Start Express';
+
+            let valorNumerico = null;
+            if (precoStr) {
+                const match = String(precoStr).replace(/[^\d,\.]/g, '').replace(',', '.');
+                if (match && !isNaN(parseFloat(match))) valorNumerico = parseFloat(match);
+            }
+            if (!valorNumerico && lic.valorMensalidade) {
+                valorNumerico = parseFloat(lic.valorMensalidade);
+            }
+
+            const payload = {
+                empresaId: empresaId,
+                emailPagador: email,
+                nomePlano: plano,
+                valorCustom: valorNumerico || undefined,
+                nomeEmpresa: lic.nomeEmpresa || lic.nome || 'Minha Loja',
+                whatsapp: lic.whatsapp || ''
+            };
+
+            const resp = await fetch('https://us-central1-lojafc-a31f9.cloudfunctions.net/criarPagamento', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await resp.json();
+            if (data.sucesso && data.initPoint) {
+                window.open(data.initPoint, '_blank');
+                if (typeof showToast === 'function') {
+                    showToast('Abrindo Mercado Pago! Assim que o pagamento for concluído, o sistema libera seu acesso automaticamente.', 'success');
+                }
+            } else {
+                alert('Não foi possível gerar a cobrança: ' + (data.erro || 'Tente novamente em instantes.'));
+            }
+        } catch (err) {
+            console.error('[SaaS] Erro ao criar pagamento Mercado Pago:', err);
+            alert('Erro de conexão ao gerar link de pagamento: ' + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = txtOriginal;
+            }
+        }
+    }
+    window.iniciarPagamentoMercadoPagoSaaS = iniciarPagamentoMercadoPagoSaaS;
 
     // -----------------------------------------------------------------------
     // CONSULTA DE LICENÇA CENTRAL
@@ -189,6 +330,10 @@
             } else {
                 removerBannerTrial();
             }
+            sincronizarMenuPlano(expInfo.diasRestantes, expInfo.expirado, expInfo.isTrial);
+
+            if (typeof window.atualizarVisibilidadeNFSeSistema === 'function') window.atualizarVisibilidadeNFSeSistema();
+            if (typeof window.atualizarVisibilidadeModuloNFSe === 'function') window.atualizarVisibilidadeModuloNFSe();
 
             // Revalidação assíncrona em segundo plano após 2.5s para não disputar banda com a abertura da página
             const agora = Date.now();
@@ -221,7 +366,7 @@
                     plano: dados.plano,
                     status: dados.status,
                     modulos: dados.modulosLiberados,
-                    banco: 'fcgestao-testes'
+                    banco: (saasApp && saasApp.options && saasApp.options.projectId) || 'lojafc-a31f9'
                 });
                 // Invalida cache local se o servidor tiver dados mais recentes
                 const ultimaAtualServidor = dados.ultimaAtualizacaoMaster ? dados.ultimaAtualizacaoMaster.toMillis() : 0;
@@ -236,6 +381,7 @@
                 dados._expInfo = expInfo;
                 localStorage.setItem(cacheKey, JSON.stringify(dados));
                 window.currentSaaSLicense = dados;
+                window.currentEmpresaData = dados;
 
                 if (expInfo.expirado) {
                     aplicarBloqueioTotal(expInfo.motivo, dados);
@@ -244,6 +390,11 @@
                 } else {
                     removerBannerTrial();
                 }
+                sincronizarMenuPlano(expInfo.diasRestantes, expInfo.expirado, expInfo.isTrial);
+                protegerPaginaAtualSaaS(dados);
+
+                if (typeof window.atualizarVisibilidadeNFSeSistema === 'function') window.atualizarVisibilidadeNFSeSistema();
+                if (typeof window.atualizarVisibilidadeModuloNFSe === 'function') window.atualizarVisibilidadeModuloNFSe();
 
                 return dados;
             } else if (licencaCached) {
@@ -445,8 +596,11 @@
                     <a href="index.html" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.6rem 1.25rem;background:#334155;border-radius:0.625rem;color:#cbd5e1;font-size:0.75rem;font-weight:700;text-decoration:none;border:1px solid #475569;transition:all .2s;">
                         <i class="fa-solid fa-arrow-left"></i> Voltar ao Painel
                     </a>
+                    <a href="plano.html" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.6rem 1.25rem;background:linear-gradient(135deg,#3b82f6,#2563eb);border-radius:0.625rem;color:#ffffff;font-size:0.75rem;font-weight:800;text-decoration:none;box-shadow:0 4px 15px rgba(37,99,235,0.3);transition:all .2s;">
+                        <i class="fa-solid fa-crown text-amber-300"></i> Ver Planos & Renovar
+                    </a>
                     <a href="https://wa.me/${SUPORTE_WHATSAPP}?text=${msgWpp}" target="_blank" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.6rem 1.25rem;background:linear-gradient(135deg,#f59e0b,#eab308);border-radius:0.625rem;color:#0f172a;font-size:0.75rem;font-weight:900;text-decoration:none;box-shadow:0 4px 15px rgba(245,158,11,0.25);transition:all .2s;">
-                        <i class="fa-brands fa-whatsapp" style="font-size:0.9rem;"></i> Falar com Suporte para Upgrade
+                        <i class="fa-brands fa-whatsapp" style="font-size:0.9rem;"></i> Falar com Suporte
                     </a>
                 </div>
             </div>
@@ -515,13 +669,17 @@
 
         if (dataVenc && !isNaN(dataVenc.getTime())) {
             const agora = new Date();
-            const diffMês = dataVenc.getTime() - agora.getTime();
-            const diasRestantes = Math.ceil(diffMês / (1000 * 60 * 60 * 24));
+            const diffMs = dataVenc.getTime() - agora.getTime();
+            // Para Trial: no dia da criação (7 dias até 23:59:59), diffMs ~ 7.5 dias -> Math.floor dá exatamente 7 dias!
+            // No dia do vencimento -> 0 dias ("Último dia"). Quando diffMs < 0 -> Expirado!
+            const diasRestantes = isTrial
+                ? Math.min(7, Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24))))
+                : Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-            if (diffMês < 0) {
+            if (diffMs < 0) {
                 const motivo = isTrial
                     ? 'Seu período de teste gratuito de 7 dias chegou ao fim. Ative seu plano para continuar operando sua loja sem interrupções.'
-                    : 'A sua assinatura mensal expirou. Regularize o pagamento via PIX para reativar seu acesso imediatamente.';
+                    : 'A sua assinatura mensal expirou. Regularize o pagamento via Mercado Pago ou PIX para reativar seu acesso imediatamente.';
                 return {
                     expirado: true,
                     motivo: motivo,
@@ -543,7 +701,7 @@
     }
 
     // -----------------------------------------------------------------------
-    // BANNER DE CONTAGEM REGRESSIVA DO TRIAL (Topo da Tela)
+    // BANNER DE CONTAGEM REGRESSIVA DO TRIAL (Barra Fixa Superior Horizontal)
     // -----------------------------------------------------------------------
     function renderizarBannerTrial(diasRestantes, licenca) {
         if (!document.body) {
@@ -551,38 +709,47 @@
             return;
         }
 
-        if (document.getElementById('fc-saas-overlay-bloqueio')) return;
+        // Não exibe se houver tela de bloqueio total ou se o usuário já estiver na tela de planos/renovação
+        if (document.getElementById('fc-saas-overlay-bloqueio') || document.getElementById('fc-saas-overlay-plano')) return;
+        const pathAtual = window.location.pathname.toLowerCase();
+        if (pathAtual.includes('plano.html') || pathAtual.includes('login.html')) {
+            removerBannerTrial();
+            return;
+        }
 
         let banner = document.getElementById('fc-saas-trial-banner');
         const dias = Math.max(0, diasRestantes);
-        const textoDias = dias === 0 ? 'Último dia de teste!' : (dias === 1 ? 'Resta apenas 1 dia de avaliação' : `Restam ${dias} dias de teste gratuito`);
+        const textoDias = dias === 0 ? 'Último dia de teste gratuito!' : (dias === 1 ? 'Resta apenas 1 dia de avaliação' : `Restam ${dias} dias de teste gratuito`);
 
         if (!banner) {
             banner = document.createElement('div');
             banner.id = 'fc-saas-trial-banner';
             banner.style.cssText = `
-                position: sticky; top: 0; left: 0; right: 0; z-index: 9998;
+                position: fixed; top: 0; left: 0; right: 0; width: 100vw; height: 36px; z-index: 9999;
                 background: linear-gradient(90deg, #d97706, #f59e0b, #d97706);
-                color: #0f172a; padding: 6px 16px;
+                color: #0f172a; padding: 0 16px;
                 display: flex; align-items: center; justify-content: space-between;
                 font-family: 'Inter', system-ui, sans-serif;
                 font-size: 0.75rem; font-weight: 800;
                 box-shadow: 0 2px 10px rgba(245, 158, 11, 0.35);
+                box-sizing: border-box;
             `;
-            document.body.prepend(banner);
+            document.body.appendChild(banner);
+            document.body.style.paddingTop = '36px';
+            document.body.style.boxSizing = 'border-box';
         }
 
         banner.innerHTML = `
-            <div style="display:flex;align-items:center;gap:0.5rem;">
-                <span style="background:rgba(15,23,42,0.15);padding:2px 8px;border-radius:12px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.05em;color:#0f172a;border:1px solid rgba(15,23,42,0.2);">
+            <div style="display:flex;align-items:center;gap:0.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                <span style="background:rgba(15,23,42,0.15);padding:2px 8px;border-radius:12px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.05em;color:#0f172a;border:1px solid rgba(15,23,42,0.2);flex-shrink:0;">
                     <i class="fa-solid fa-clock-rotate-left"></i> Modo Avaliação
                 </span>
-                <span>${textoDias} — Aproveite todos os recursos da sua loja!</span>
+                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${textoDias} — Aproveite todos os recursos da sua loja!</span>
             </div>
-            <div style="display:flex;align-items:center;gap:0.5rem;">
-                <button onclick="window.abrirModalContratarPlano && window.abrirModalContratarPlano()" style="background:#0f172a;color:#fbbf24;border:none;padding:4px 12px;border-radius:6px;font-size:0.7rem;font-weight:900;cursor:pointer;display:flex;align-items:center;gap:0.3rem;transition:all .2s;">
-                    <i class="fa-solid fa-crown"></i> Ativar Assinatura
-                </button>
+            <div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0;">
+                <a href="plano.html" style="background:#0f172a;color:#fbbf24;border:none;padding:5px 14px;border-radius:6px;font-size:0.72rem;font-weight:900;text-decoration:none;display:flex;align-items:center;gap:0.35rem;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,0.25);white-space:nowrap;">
+                    <i class="fa-solid fa-crown text-amber-400"></i> Ativar / Renovar Plano
+                </a>
             </div>
         `;
     }
@@ -590,7 +757,131 @@
     function removerBannerTrial() {
         const banner = document.getElementById('fc-saas-trial-banner');
         if (banner) banner.remove();
+        if (document.body) document.body.style.paddingTop = '';
     }
+
+    // -----------------------------------------------------------------------
+    // ROUTE GUARD AUTOMÁTICO DE SEGURANÇA SAAS (Bloqueio Imediato de Páginas Não Contratadas)
+    // -----------------------------------------------------------------------
+    function protegerPaginaAtualSaaS(licenca) {
+        if (typeof window === 'undefined') return;
+        const path = window.location.pathname.toLowerCase();
+
+        // Páginas públicas, cadastrais ou de renovação
+        if (path.includes('login.html') || path.includes('cadastro.html') || path.includes('plano.html') || path.includes('sistema.html') || path.includes('suporte.html') || path.includes('index.html') || path.endsWith('/sistema/') || path.endsWith('/sistema')) {
+            return;
+        }
+
+        // Bypass de emergência exclusivo para SuperAdmin Global do SaaS
+        const emailAtual = (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser ? (firebase.auth().currentUser.email || '').toLowerCase().trim() : '')
+            || (licenca && licenca.emailAcesso ? licenca.emailAcesso.toLowerCase().trim() : '');
+        if (emailAtual === 'pauloaugusto.silvaborges@gmail.com' || emailAtual === 'fabricadecoresgoiania@gmail.com') {
+            return;
+        }
+
+        licenca = licenca || window.currentSaaSLicense || window.currentEmpresaData;
+        if (!licenca) {
+            const empId = localStorage.getItem('fc_empresa_ativa');
+            if (empId) {
+                try {
+                    const cache = localStorage.getItem(`saas_licenca_${empId}`) || localStorage.getItem(`fc_empresa_cache_${empId}`);
+                    if (cache) licenca = JSON.parse(cache);
+                } catch(e) {}
+            }
+        }
+
+        if (!licenca) return;
+
+        const mods = (licenca.modulosLiberados && Array.isArray(licenca.modulosLiberados) && licenca.modulosLiberados.length > 0)
+            ? licenca.modulosLiberados
+            : _resolverModulos(licenca);
+
+        const mapaPaginas = [
+            { rotas: ['fiscal.html'], modulo: 'fiscal', nome: 'Emissor Fiscal (NF-e/NFC-e)' },
+            { rotas: ['financeiro.html', 'conciliacao.html'], modulo: 'financeiro', nome: 'Financeiro & Fluxo de Caixa' },
+            { rotas: ['compras.html'], modulo: 'compras', nome: 'Compras & NF-e XML' },
+            { rotas: ['relatorios.html'], modulo: 'relatorios', nome: 'Relatórios & DRE' },
+            { rotas: ['agenda.html'], modulo: 'agenda', nome: 'Agenda & Lembretes' },
+            { rotas: ['marketing.html'], modulo: 'ia', nome: 'Marketing & IA Comercial' },
+            { rotas: ['caixa.html', 'caixa_loja.html'], modulo: 'caixa', nome: 'Caixa Físico & Caixa da Loja' },
+            { rotas: ['pdv.html'], modulo: 'pdv', nome: 'Frente de Caixa (PDV)' },
+            { rotas: ['vendas_operacao.html', 'vendas_gestao.html', 'orcamentos.html', 'operacao.html'], modulo: 'vendas', nome: 'Vendas & Orçamentos' }
+        ];
+
+        for (const item of mapaPaginas) {
+            const estaNaRota = item.rotas.some(r => path.endsWith('/' + r) || path.endsWith(r) || path.includes('/' + r));
+            if (estaNaRota && !temPermissaoModulo(item.modulo, mods)) {
+                window.__paginaBloqueadaPorPlano = true;
+                window.__paginaBloqueadaPorPermissao = true;
+                aplicarBloqueioPlano(item.modulo, item.nome);
+                const main = document.querySelector('main');
+                if (main) {
+                    main.style.visibility = 'hidden';
+                    main.innerHTML = '';
+                }
+                break;
+            }
+        }
+    }
+    window.protegerPaginaAtualSaaS = protegerPaginaAtualSaaS;
+
+    // Executa auto-verificação imediatamente
+    try { protegerPaginaAtualSaaS(); } catch(e) {}
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            try { protegerPaginaAtualSaaS(); } catch(e) {}
+        });
+    }
+
+    // -----------------------------------------------------------------------
+    // SINCRONIZAÇÃO DINÂMICA DO MENU LATERAL (MEU PLANO & DIAS RESTANTES)
+    // -----------------------------------------------------------------------
+    function sincronizarMenuPlano(diasRestantes, expirado, isTrial) {
+        if (typeof document === 'undefined') return;
+        const atualizar = () => {
+            const asideNav = document.querySelector('aside nav');
+            if (!asideNav) return;
+
+            let linkPlano = document.querySelector('aside nav a[href*="plano.html"]');
+            const dias = Math.max(0, diasRestantes);
+            const textoBadge = expirado ? 'Expirado' : (dias === 0 ? 'Hoje' : `${dias}d`);
+            const corBadge = expirado 
+                ? 'bg-red-500/20 text-red-400 border-red-500/30' 
+                : (dias <= 3 
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' 
+                    : (isTrial ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'));
+
+            if (!linkPlano) {
+                const linkConfig = document.querySelector('aside nav a[href*="sistema.html"]');
+                linkPlano = document.createElement('a');
+                linkPlano.href = 'plano.html';
+                linkPlano.className = 'nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors text-amber-400 hover:bg-slate-800';
+                linkPlano.innerHTML = `<i class="fa-solid fa-crown w-5 text-center text-amber-400"></i> <span>Meu Plano & Renovação</span> <span class="badge-tempo-plano ml-auto text-[10px] font-black px-2 py-0.5 rounded-full border ${corBadge}">${textoBadge}</span>`;
+                if (linkConfig && linkConfig.parentNode) {
+                    linkConfig.parentNode.insertBefore(linkPlano, linkConfig);
+                } else {
+                    asideNav.appendChild(linkPlano);
+                }
+            } else {
+                let badge = linkPlano.querySelector('.badge-tempo-plano') || linkPlano.querySelector('#menu-badge-tempo') || linkPlano.querySelector('span:last-child');
+                if (badge) {
+                    badge.innerText = textoBadge;
+                    badge.className = `badge-tempo-plano ml-auto text-[10px] font-black px-2 py-0.5 rounded-full border ${corBadge}`;
+                }
+            }
+
+            if (typeof window.carregarCardPlanoSaaS === 'function') {
+                window.carregarCardPlanoSaaS();
+            }
+        };
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', atualizar);
+        } else {
+            atualizar();
+        }
+    }
+    window.sincronizarMenuPlano = sincronizarMenuPlano;
 
     // -----------------------------------------------------------------------
     // MODAL DE CONTRATAÇÃO DE PLANOS & PAGAMENTO PIX
@@ -598,6 +889,13 @@
     function abrirModalContratarPlano() {
         const antigo = document.getElementById('fc-saas-modal-contratar');
         if (antigo) antigo.remove();
+
+        const dadosPag = obterDadosPagamentoSaaS();
+        const chavePix = dadosPag.pixChave || 'pauloaugusto.silvaborges@gmail.com';
+        const titularPix = dadosPag.pixTitular || 'Paulo Augusto Silva Borges';
+        const tipoPixLabel = dadosPag.pixTipo === 'telefone' ? 'Telefone / Celular' : (dadosPag.pixTipo === 'cpf_cnpj' ? 'CPF / CNPJ' : (dadosPag.pixTipo === 'aleatoria' ? 'Chave Aleatória' : 'E-mail'));
+        const numWpp = String(dadosPag.whatsapp || SUPORTE_WHATSAPP).replace(/\D/g, '');
+        const linkWpp = numWpp.startsWith('55') ? numWpp : ('55' + numWpp);
 
         const modal = document.createElement('div');
         modal.id = 'fc-saas-modal-contratar';
@@ -614,9 +912,14 @@
                     <div style="font-size:0.75rem;font-weight:900;color:${p.destaque ? '#fbbf24' : '#f8fafc'};">${p.nome}</div>
                     <div style="font-size:0.85rem;font-weight:900;color:#4ade80;margin:0.25rem 0;">${p.preco}<span style="font-size:0.65rem;color:#94a3b8;">/mês</span></div>
                 </div>
-                <a href="https://wa.me/${SUPORTE_WHATSAPP}?text=${encodeURIComponent('Olá! Gostaria de contratar o plano ' + p.nome + ' (' + p.preco + '/mês) para minha loja.')}" target="_blank" style="margin-top:0.5rem;padding:0.4rem 0.5rem;background:${p.destaque ? '#f59e0b' : '#334155'};color:${p.destaque ? '#0f172a' : '#f8fafc'};border-radius:0.5rem;font-size:0.68rem;font-weight:800;text-decoration:none;text-align:center;display:block;">
-                    Escolher
-                </a>
+                <div style="display:flex;flex-direction:column;gap:0.35rem;margin-top:0.5rem;">
+                    <button type="button" onclick="window.iniciarPagamentoMercadoPagoSaaS && window.iniciarPagamentoMercadoPagoSaaS('${p.nome}', '${p.preco}')" style="padding:0.4rem 0.5rem;background:#009ee3;color:white;border:none;border-radius:0.5rem;font-size:0.68rem;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.3rem;width:100%;">
+                        <i class="fa-solid fa-bolt" style="color:#ffd700;"></i> Pagar Online
+                    </button>
+                    <a href="https://wa.me/${linkWpp}?text=${encodeURIComponent('Olá! Gostaria de contratar o plano ' + p.nome + ' (' + p.preco + '/mês) para minha loja.')}" target="_blank" style="padding:0.35rem 0.5rem;background:${p.destaque ? '#f59e0b' : '#334155'};color:${p.destaque ? '#0f172a' : '#f8fafc'};border-radius:0.5rem;font-size:0.65rem;font-weight:700;text-decoration:none;text-align:center;display:block;">
+                        Chamar WhatsApp
+                    </a>
+                </div>
             </div>
         `).join('');
 
@@ -641,20 +944,20 @@
                 </div>
 
                 <div style="background:#1e293b;border:1px solid #334155;border-radius:1rem;padding:0.9rem;margin-bottom:1.25rem;">
-                    <div style="font-size:0.72rem;font-weight:800;color:#38bdf8;margin-bottom:0.4rem;"><i class="fa-brands fa-pix"></i> Chave PIX Oficial (Ativação Imediata)</div>
+                    <div style="font-size:0.72rem;font-weight:800;color:#38bdf8;margin-bottom:0.4rem;"><i class="fa-brands fa-pix"></i> Chave PIX Oficial (${tipoPixLabel})</div>
                     <div style="display:flex;align-items:center;justify-content:space-between;background:#0f172a;border:1px solid #475569;border-radius:0.5rem;padding:0.5rem 0.75rem;">
-                        <span style="font-family:monospace;font-size:0.8rem;color:#f8fafc;font-weight:700;">62993341774</span>
-                        <button type="button" onclick="navigator.clipboard.writeText('62993341774').then(()=>{ this.innerText='Copiado!'; setTimeout(()=>this.innerText='Copiar', 2000); })" style="padding:0.3rem 0.6rem;background:#38bdf8;border:none;border-radius:0.4rem;color:#0f172a;font-size:0.68rem;font-weight:800;cursor:pointer;">
+                        <span style="font-family:monospace;font-size:0.8rem;color:#f8fafc;font-weight:700;">${chavePix}</span>
+                        <button type="button" onclick="navigator.clipboard.writeText('${chavePix}').then(()=>{ this.innerText='Copiado!'; setTimeout(()=>this.innerText='Copiar', 2000); })" style="padding:0.3rem 0.6rem;background:#38bdf8;border:none;border-radius:0.4rem;color:#0f172a;font-size:0.68rem;font-weight:800;cursor:pointer;">
                             Copiar
                         </button>
                     </div>
                     <div style="font-size:0.68rem;color:#94a3b8;margin-top:0.4rem;">
-                        Paulo Augusto Silva Borges • Envie o comprovante pelo WhatsApp para liberação imediata.
+                        👤 <strong>Titular:</strong> ${titularPix} • Envie o comprovante pelo WhatsApp para liberação imediata.
                     </div>
                 </div>
 
                 <div style="display:flex;gap:0.5rem;">
-                    <a href="https://wa.me/${SUPORTE_WHATSAPP}?text=${encodeURIComponent('Olá! Quero tirar dúvidas sobre a assinatura do sistema.')}" target="_blank" style="flex:1;padding:0.65rem;background:#22c55e;color:white;border-radius:0.75rem;font-size:0.78rem;font-weight:900;text-decoration:none;text-align:center;display:flex;align-items:center;justify-content:center;gap:0.4rem;">
+                    <a href="https://wa.me/${linkWpp}?text=${encodeURIComponent('Olá! Quero tirar dúvidas sobre a assinatura do sistema.')}" target="_blank" style="flex:1;padding:0.65rem;background:#22c55e;color:white;border-radius:0.75rem;font-size:0.78rem;font-weight:900;text-decoration:none;text-align:center;display:flex;align-items:center;justify-content:center;gap:0.4rem;">
                         <i class="fa-brands fa-whatsapp text-sm"></i> Falar com Suporte WhatsApp
                     </a>
                     <button onclick="document.getElementById('fc-saas-modal-contratar').remove()" style="padding:0.65rem 1rem;background:#334155;color:#cbd5e1;border:none;border-radius:0.75rem;font-size:0.75rem;font-weight:700;cursor:pointer;">
@@ -676,6 +979,11 @@
             return;
         }
 
+        // Se o cliente estiver na página dedicada de planos, permite a navegação normal para que possa escolher e pagar
+        if (typeof window !== 'undefined' && window.location.pathname.includes('plano.html')) {
+            return;
+        }
+
         licenca = licenca || window.currentSaaSLicense || window.currentEmpresaData || {};
         const antigo = document.getElementById('fc-saas-overlay-bloqueio');
         if (antigo) antigo.remove();
@@ -692,8 +1000,14 @@
             ? 'Seu período de avaliação de 7 dias terminou. Ative seu plano para continuar vendendo.' 
             : 'O acesso à sua loja está temporariamente suspenso por pendência na mensalidade.');
 
-        const chavePix = '62993341774';
-        const chavePixEmail = 'fabricadecoresgoiania@gmail.com';
+        const dadosPag = obterDadosPagamentoSaaS();
+        const chavePix = dadosPag.pixChave || 'pauloaugusto.silvaborges@gmail.com';
+        const chavePixEmail = dadosPag.pixEmail || 'pauloaugusto.silvaborges@gmail.com';
+        const titularPix = dadosPag.pixTitular || 'Paulo Augusto Silva Borges';
+        const tipoPixLabel = dadosPag.pixTipo === 'telefone' ? 'Telefone / Celular' : (dadosPag.pixTipo === 'cpf_cnpj' ? 'CPF / CNPJ' : (dadosPag.pixTipo === 'aleatoria' ? 'Chave Aleatória' : 'E-mail'));
+        const numWpp = String(dadosPag.whatsapp || SUPORTE_WHATSAPP).replace(/\D/g, '');
+        const linkWpp = numWpp.startsWith('55') ? numWpp : ('55' + numWpp);
+
         const nomeEmpresa = licenca.nomeEmpresa || licenca.nome || 'Minha Loja';
         const plano = licenca.plano || 'Start Express';
         const valorSugerido = licenca.valorMensalidade ? `R$ ${Number(licenca.valorMensalidade).toFixed(2).replace('.', ',')}` : 'R$ 99,90';
@@ -730,7 +1044,7 @@
 
                     <div style="background:#1e293b;border:1px solid #475569;border-radius:0.75rem;padding:0.6rem 0.8rem;display:flex;align-items:center;justify-content:space-between;gap:0.5rem;margin-bottom:0.5rem;">
                         <div style="overflow:hidden;">
-                            <div style="font-size:0.65rem;color:#94a3b8;font-weight:600;">Chave PIX (Telefone Celular):</div>
+                            <div style="font-size:0.65rem;color:#94a3b8;font-weight:600;">Chave PIX (${tipoPixLabel}):</div>
                             <div style="font-size:0.85rem;font-family:monospace;font-weight:700;color:#f8fafc;" id="fc-pix-key-val">${chavePix}</div>
                         </div>
                         <button type="button" onclick="navigator.clipboard.writeText('${chavePix}').then(()=>{ this.innerHTML='<i class=\\'fa-solid fa-check\\'></i> Copiado!'; setTimeout(()=>this.innerHTML='<i class=\\'fa-solid fa-copy\\'></i> Copiar', 2000); })" style="padding:0.45rem 0.8rem;background:#38bdf8;border:none;border-radius:0.5rem;color:#0f172a;font-size:0.72rem;font-weight:800;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:0.35rem;">
@@ -739,17 +1053,25 @@
                     </div>
 
                     <div style="font-size:0.7rem;color:#94a3b8;line-height:1.4;">
-                        👤 <strong>Titular:</strong> Paulo Augusto Silva Borges<br>
-                        🔑 <strong>Chave alternativa (E-mail):</strong> ${chavePixEmail}
+                        👤 <strong>Titular:</strong> ${titularPix}<br>
+                        ${chavePix !== chavePixEmail ? `🔑 <strong>Chave alternativa (E-mail):</strong> ${chavePixEmail}` : ''}
                     </div>
                 </div>
 
                 <!-- Botões de Ação -->
                 <div style="display:flex;flex-direction:column;gap:0.65rem;align-items:center;">
-                    <a href="https://wa.me/${SUPORTE_WHATSAPP}?text=${msgWpp}" target="_blank" style="display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;padding:0.75rem 1.5rem;width:100%;background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:0.75rem;color:white;font-size:0.82rem;font-weight:900;text-decoration:none;box-shadow:0 4px 15px rgba(34,197,94,0.3);">
+                    <button type="button" onclick="window.iniciarPagamentoMercadoPagoSaaS && window.iniciarPagamentoMercadoPagoSaaS()" id="btn-mp-bloqueio" style="display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;padding:0.8rem 1.5rem;width:100%;background:linear-gradient(135deg,#009ee3,#007eb5);border:none;border-radius:0.75rem;color:white;font-size:0.85rem;font-weight:900;cursor:pointer;box-shadow:0 4px 15px rgba(0,158,227,0.35);transition:all .2s;">
+                        <i class="fa-solid fa-bolt" style="font-size:1rem;color:#ffd700;"></i> Pagar Online via Mercado Pago (Liberação Imediata)
+                    </button>
+
+                    <a href="https://wa.me/${linkWpp}?text=${msgWpp}" target="_blank" style="display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;padding:0.75rem 1.5rem;width:100%;background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:0.75rem;color:white;font-size:0.82rem;font-weight:900;text-decoration:none;box-shadow:0 4px 15px rgba(34,197,94,0.3);">
                         <i class="fa-brands fa-whatsapp" style="font-size:1.1rem;"></i> Enviar Comprovante no WhatsApp
                     </a>
                     
+                    <a href="plano.html" style="display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;padding:0.7rem 1.5rem;width:100%;background:#1e293b;border:1px solid #3b82f6;border-radius:0.75rem;color:#60a5fa;font-size:0.8rem;font-weight:800;text-decoration:none;box-shadow:0 2px 10px rgba(59,130,246,0.15);transition:all .2s;">
+                        <i class="fa-solid fa-crown text-amber-400"></i> Ver Todos os Planos & Recursos Disponíveis
+                    </a>
+
                     <button onclick="window.__fcSaasRevalidar && window.__fcSaasRevalidar()" style="display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;padding:0.6rem 1.5rem;background:#334155;border:1px solid #475569;border-radius:0.625rem;color:#f1f5f9;font-size:0.75rem;font-weight:700;cursor:pointer;width:100%;">
                         <i class="fa-solid fa-rotate-right"></i> Já realizei o pagamento — Verificar Acesso
                     </button>
@@ -825,6 +1147,8 @@
                         removerBannerTrial();
                     }
 
+                    protegerPaginaAtualSaaS(novaLicenca);
+
                     // Reaplica controle de módulos em tempo real se o master alterou os módulos
                     if (modulosMudaram) {
                         if (typeof window.atualizarMenuLateralPorPlanoSaaS === 'function') {
@@ -834,28 +1158,10 @@
                             const userAtual = typeof firebase !== 'undefined' ? firebase.auth().currentUser : null;
                             if (userAtual) window.aplicarControleDeModulosSaaS(novaLicenca, userAtual);
                             if (typeof window.aplicarControleAcessoRelatoriosPorPlano === 'function') window.aplicarControleAcessoRelatoriosPorPlano();
+                            if (typeof window.atualizarVisibilidadeNFSeSistema === 'function') window.atualizarVisibilidadeNFSeSistema();
+                            if (typeof window.atualizarVisibilidadeModuloNFSe === 'function') window.atualizarVisibilidadeModuloNFSe();
                         }
-                        // Verifica se a página atual agora está bloqueada
-                        const pathAtual = window.location.pathname.toLowerCase();
-                        const paginasModulos = [
-                            { rotas: ['fiscal.html'],         modulo: 'fiscal' },
-                            { rotas: ['financeiro.html'],      modulo: 'financeiro' },
-                            { rotas: ['compras.html'],         modulo: 'compras' },
-                            { rotas: ['relatorios.html'],      modulo: 'relatorios' },
-                            { rotas: ['agenda.html'],          modulo: 'agenda' },
-                            { rotas: ['marketing.html'],       modulo: 'ia' },
-                            { rotas: ['caixa.html', 'caixa_loja.html'], modulo: 'caixa' },
-                            { rotas: ['pdv.html'],             modulo: 'pdv' },
-                            { rotas: ['vendas_operacao.html', 'vendas_gestao.html', 'orcamentos.html'], modulo: 'vendas' },
-                        ];
-                        for (const item of paginasModulos) {
-                            const estaNaRota = item.rotas.some(r => pathAtual.endsWith('/' + r) || pathAtual.endsWith(r));
-                            if (estaNaRota && !temPermissaoModulo(item.modulo, novaLicenca.modulosLiberados)) {
-                                if (typeof showToast === 'function') showToast('⚠️ Seu acesso a esta área foi removido pelo administrador.', 'warning');
-                                setTimeout(() => window.location.href = 'index.html', 2500);
-                                break;
-                            }
-                        }
+                        protegerPaginaAtualSaaS(novaLicenca);
                     }
                 }
             }, (err) => {
@@ -973,12 +1279,13 @@
         if (empData.configEmpresa && Array.isArray(empData.configEmpresa.notasPermitidas) && empData.configEmpresa.notasPermitidas.length > 0) {
             return empData.configEmpresa.notasPermitidas;
         }
-        // Fallback: se o plano tem o módulo fiscal, libera todos os 4 tipos por padrão
+        // Fallback: se o plano tem o módulo fiscal, libera apenas NFC-e, NF-e e Devolução por padrão.
+        // A NFS-e NÃO é liberada por plano base, necessitando de liberação manual exclusiva no SaaS Master.
         const mods = empData.modulosLiberados || _resolverModulos(empData);
         if (!mods.includes('fiscal')) {
             return [];
         }
-        return ['nfce', 'nfe', 'nfe_devolucao', 'nfse'];
+        return ['nfce', 'nfe', 'nfe_devolucao'];
     }
 
     function obterNotasPermitidas(licenca) {
@@ -1137,6 +1444,8 @@
     window.SAAS_CONFIG = SAAS_CONFIG;
     window.SAAS_NOMES_MODULOS = NOMES_MODULOS;
     window._resolverModulosSaaS = _resolverModulos;
+    window.resolverModulosPorPlanoSaaS = _resolverModulos;
+    window.protegerPaginaAtualSaaS = protegerPaginaAtualSaaS;
     window.SAAS_CATALOGO_RELATORIOS = CATALOGO_RELATORIOS;
     window.SAAS_RELATORIOS_POR_PLANO_PADRAO = RELATORIOS_POR_PLANO_PADRAO;
     window.obterRelatoriosPermitidos = obterRelatoriosPermitidos;

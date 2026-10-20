@@ -460,6 +460,47 @@ function toggleFaq(id) {
     if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
 }
 
+function _obterDbAtivoSuporte() {
+    // 1. Reutiliza conexão ativa do Firestore se window.db for uma instância válida
+    if (typeof window !== 'undefined' && window.db && typeof window.db.collection === 'function') {
+        return window.db;
+    }
+    // 2. Reutiliza instância do SaaS já conectada
+    if (typeof window !== 'undefined' && typeof window.obterInstanciaSaaS === 'function') {
+        const sDb = window.obterInstanciaSaaS();
+        if (sDb) return sDb;
+    }
+    // 3. Reutiliza instância de suporte já aberta
+    if (_saasAppSuporte && typeof _saasAppSuporte.firestore === 'function') {
+        return _saasAppSuporte.firestore();
+    }
+    // 4. Reutiliza app Firebase padrão inicializado
+    if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
+        const defaultApp = firebase.apps.find(a => a.name === '[DEFAULT]');
+        if (defaultApp) return defaultApp.firestore();
+    }
+    // 5. Conecta utilizando window.firebaseConfigAtivo ou SAAS_CONFIG
+    if (typeof firebase !== 'undefined') {
+        const config = (typeof window !== 'undefined' && window.firebaseConfigAtivo) || (typeof window !== 'undefined' && window.SAAS_CONFIG);
+        if (config && config.apiKey) {
+            let saasApp = firebase.apps.find(a => a.name === 'saasSuporteDb');
+            if (!saasApp) {
+                try {
+                    saasApp = firebase.initializeApp(config, 'saasSuporteDb');
+                } catch (e) {}
+            }
+            if (saasApp) {
+                _saasAppSuporte = saasApp;
+                return saasApp.firestore();
+            }
+        }
+        if (firebase.firestore) {
+            try { return firebase.firestore(); } catch (e) {}
+        }
+    }
+    return null;
+}
+
 async function obterWhatsappSaaS() {
     // 1. Tenta carregar do cache da licença SaaS já carregada pelo saas_licenca.js
     try {
@@ -469,15 +510,10 @@ async function obterWhatsappSaaS() {
         }
     } catch(e) {}
 
-    // 2. Consulta diretamente o banco central do SaaS (fcgestao-testes)
+    // 2. Consulta diretamente o banco ativo (Firestore)
     try {
-        let saasApp = firebase.apps.find(a => a.name === 'saasSuporteDb');
-        if (!saasApp && window.SAAS_CONFIG) {
-            saasApp = firebase.initializeApp(window.SAAS_CONFIG, 'saasSuporteDb');
-        }
-        if (saasApp) {
-            _saasAppSuporte = saasApp; // Reutilizado em carregarFaqDinamico e salvarRespostaIaComoFaq
-            const dbCentral = saasApp.firestore();
+        const dbCentral = _obterDbAtivoSuporte();
+        if (dbCentral) {
             
             // 1. Tenta buscar em sistemas_saas/fc_gestao (permissão pública liberada nas regras)
             try {
@@ -599,18 +635,7 @@ function buscarMelhorRespostaNoFaq(pergunta) {
 async function carregarFaqDinamico() {
     if (_faqDinamicoCarregado) return;
     try {
-        let db = null;
-        let saasApp = _saasAppSuporte || firebase.apps.find(a => a.name === 'saasSuporteDb');
-        if (!saasApp && window.SAAS_CONFIG) {
-            try { saasApp = firebase.initializeApp(window.SAAS_CONFIG, 'saasSuporteDb'); } catch(e){}
-        }
-        if (saasApp) {
-            _saasAppSuporte = saasApp;
-            db = saasApp.firestore();
-        } else if (typeof firebase !== 'undefined' && firebase.firestore) {
-            db = firebase.firestore();
-        }
-
+        const db = _obterDbAtivoSuporte();
         if (!db) return;
 
         let snap = null;
@@ -662,18 +687,7 @@ async function salvarRespostaIaComoFaq(pergunta, respostaTexto, categoriaDetecta
         if (limpa.length < 60) return; // Resposta muito curta
         if (/cpf|cnpj|senha|telefone|\d{3}\.\d{3}|\d{11}/i.test(pergunta)) return; // Contém dados pessoais
 
-        let db = null;
-        let saasApp = _saasAppSuporte || firebase.apps.find(a => a.name === 'saasSuporteDb');
-        if (!saasApp && window.SAAS_CONFIG) {
-            try { saasApp = firebase.initializeApp(window.SAAS_CONFIG, 'saasSuporteDb'); } catch(e){}
-        }
-        if (saasApp) {
-            _saasAppSuporte = saasApp;
-            db = saasApp.firestore();
-        } else if (typeof firebase !== 'undefined' && firebase.firestore) {
-            db = firebase.firestore();
-        }
-
+        const db = _obterDbAtivoSuporte();
         if (!db) return;
 
         // Gera ID seguro e legível para o documento (evita duplicatas)

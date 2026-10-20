@@ -319,16 +319,20 @@ function printHtmlSeguro(htmlCompleto) {
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { margin: 10mm; }
-                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                @page { size: A4 portrait; margin: 10mm 12mm 12mm 12mm; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
                 .print\\\\:hidden { display: none !important; }
-                table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
+                .overflow-x-auto, .table-wrapper, .fc-table-wrap { overflow: visible !important; display: block !important; }
+                table { page-break-inside: auto; width: 100% !important; max-width: 100% !important; min-width: 0 !important; border-collapse: collapse; }
+                th, td { word-break: break-word !important; }
                 tr { page-break-inside: avoid; page-break-after: auto; }
                 thead { display: table-header-group; }
                 tfoot { display: table-footer-group; }
+                @media print { body { padding: 4mm 6mm !important; margin: 0 !important; box-sizing: border-box !important; } }
             </style>
         </head>
-        <body class="bg-white dark:bg-slate-800 p-4">
+        <body class="bg-white text-black p-0">
             ${htmlCompleto}
         </body>
         </html>
@@ -343,18 +347,18 @@ function printHtmlSeguro(htmlCompleto) {
 }
 
 function imprimirArea(areaId) {
-    let empNome = "Relatrio Oficial do Sistema";
+    let empNome = "Relatório Oficial do Sistema";
     if (db && db.config && db.config.empresa && db.config.empresa.nome) empNome = db.config.empresa.nome;
     let logoHtml = "";
     if (db && db.config && db.config.empresa && db.config.empresa.logo) logoHtml = `<img src="${db.config.empresa.logo}" style="max-height: 60px; margin-bottom: 10px; border-radius: 8px;">`;
     
     const element = document.getElementById(areaId);
-    if(!element) return showToast("rea de impresso no encontrada.", "error");
+    if(!element) return showToast("Área de impressão não encontrada.", "error");
     
     const printContent = element.innerHTML; 
     const htmlCompleto = `
-        <div style="padding: 20px; font-family: Arial, sans-serif; background: #fff; color: #000;">
-            <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
+        <div style="padding: 10px 0; font-family: Arial, sans-serif; background: #fff; color: #000; width: 100%; box-sizing: border-box;">
+            <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px;">
                 ${logoHtml}
                 <h2 style="font-size: 20px; font-weight: bold; margin: 5px 0; text-transform: uppercase;">${empNome}</h2>
                 <p style="margin: 0; font-size: 12px; color: #555;">Documento Gerencial Oficial</p>
@@ -385,20 +389,23 @@ function baixarPDF(areaId, filename) {
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { margin: 15mm; size: A4; }
-                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 20px; max-width: 1000px; margin: 0 auto; }
+                @page { margin: 10mm 12mm 12mm 12mm; size: A4 portrait; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
                 .print\\:hidden { display: none !important; }
-                table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
+                .overflow-x-auto, .table-wrapper, .fc-table-wrap { overflow: visible !important; display: block !important; }
+                table { page-break-inside: auto; width: 100% !important; max-width: 100% !important; min-width: 0 !important; border-collapse: collapse; }
+                th, td { word-break: break-word !important; }
                 tr { page-break-inside: avoid; page-break-after: auto; }
                 thead { display: table-header-group; }
                 tfoot { display: table-footer-group; }
                 
                 @media print {
-                    body { padding: 0; max-width: none; }
+                    body { padding: 4mm 6mm !important; margin: 0 !important; max-width: 100% !important; box-sizing: border-box !important; }
                 }
             </style>
         </head>
-        <body class="bg-white text-black">
+        <body class="bg-white text-black p-0">
             ${printContent}
             
             <script>
@@ -2779,19 +2786,31 @@ function renderVendas() {
             
             const badgeTipo = v.tipo === 'SERVIO' ? `<span class="bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">SERVIO</span><br>` : `<span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 whitespace-nowrap">VENDA</span><br>`;
             
+            let badgeEntradaEntrega = '';
+            let btnReceberSaldo = '';
+            if (v.vendaComEntradaEntrega) {
+                const fm = (val) => typeof formatMoney === 'function' ? formatMoney(val) : 'R$ ' + Number(val || 0).toFixed(2);
+                if (v.saldoEntregaPago) {
+                    badgeEntradaEntrega = `<br><span class="bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 px-1.5 py-0.5 rounded text-[9px] font-black inline-flex items-center gap-1 mt-1 border border-emerald-300 dark:border-emerald-800"><i class="fa-solid fa-circle-check text-emerald-600"></i> Saldo Quitado</span>`;
+                } else {
+                    badgeEntradaEntrega = `<br><span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 px-1.5 py-0.5 rounded text-[9px] font-black inline-flex items-center gap-1 mt-1 border border-amber-300 dark:border-amber-800" title="Saldo a pagar na entrega"><i class="fa-solid fa-truck-ramp-box text-amber-600"></i> Saldo: ${fm(v.saldoEntrega)}</span>`;
+                    btnReceberSaldo = `<button onclick="abrirModalReceberSaldoEntrega('${v.id}')" class="text-amber-600 hover:text-amber-800 bg-amber-50 px-2 py-1.5 rounded font-bold text-xs ml-1 transition-colors" title="Receber Saldo na Entrega (${fm(v.saldoEntrega)})"><i class="fa-solid fa-hand-holding-dollar"></i></button>`;
+                }
+            }
+
             return `
             <tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
                 <td class="p-3 text-slate-500 dark:text-slate-400 text-xs">${dataRender}</td>
                 <td class="p-3 font-mono font-bold text-slate-700 dark:text-slate-200">${badgeTipo}#${numPedStr}</td>
                 <td class="p-3 font-bold text-slate-800 dark:text-slate-100">${clienteRender} <br> <span class="text-[10px] text-slate-400 font-normal">Vend: ${vendRender}</span></td>
-                <td class="p-3"><span class="bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap">${pagRender}</span></td>
+                <td class="p-3"><span class="bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap">${pagRender}</span>${badgeEntradaEntrega}</td>
                 <td class="p-3 text-right font-black text-slate-700 dark:text-slate-200">${typeof formatMoney === 'function' ? formatMoney(v.tot || 0) : (v.tot || 0)}</td>
                 <td class="p-3 text-right font-bold text-red-500">-${typeof formatMoney === 'function' ? formatMoney(custoTotalDaVenda) : custoTotalDaVenda}</td>
                 <td class="p-3 text-right">
                     <div class="font-black text-emerald-600">${typeof formatMoney === 'function' ? formatMoney(lucroDaVenda) : lucroDaVenda}</div>
                     <div class="text-[10px] text-blue-500 dark:text-blue-400 font-bold mt-0.5">${margemDaVenda.toFixed(1)}% Margem</div>
                 </td>
-                <td class="p-3 text-center print:hidden"><button onclick="verDetalhesVenda('${v.id}')" class="text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1.5 rounded font-bold text-xs"><i class="fa-solid fa-eye"></i></button></td>
+                <td class="p-3 text-center print:hidden flex items-center justify-center gap-1"><button onclick="verDetalhesVenda('${v.id}')" class="text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1.5 rounded font-bold text-xs"><i class="fa-solid fa-eye"></i></button>${btnReceberSaldo}</td>
             </tr>`;
         } catch (e) { console.error(e); return ''; }
     }).join('') || '<tr><td colspan="8" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhum registro encontrado com os filtros atuais.</td></tr>';
@@ -2855,8 +2874,44 @@ function verDetalhesVenda(id) {
         const dEntFormat = dEntVal.includes('-') ? dEntVal.split('-').reverse().join('/') : dEntVal;
         entregaInfoModal = `<div class="mt-3 bg-blue-50 dark:bg-blue-900/20 p-2.5 rounded-lg border border-blue-200 dark:border-blue-800/40 text-xs text-blue-900 dark:text-blue-200 flex items-center gap-2"><i class="fa-solid fa-truck-fast text-blue-600 dark:text-blue-400 text-sm"></i> <strong>Previsão de Entrega:</strong> <span class="font-bold text-sm text-blue-700 dark:text-blue-300">${dEntFormat}</span></div>`;
     }
+
+    let entradaEntregaModal = '';
+    if (v.vendaComEntradaEntrega) {
+        const fm = (val) => typeof formatMoney === 'function' ? formatMoney(val) : 'R$ ' + Number(val || 0).toFixed(2);
+        entradaEntregaModal = `
+            <div class="mt-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl p-3 text-xs">
+                <div class="flex items-center justify-between border-b border-amber-200 dark:border-amber-800 pb-2 mb-2">
+                    <span class="font-black text-amber-800 dark:text-amber-300 uppercase tracking-wide flex items-center gap-1.5">
+                        <i class="fa-solid fa-couch"></i> Venda de Móveis (Entrada + Saldo na Entrega)
+                    </span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-black ${v.saldoEntregaPago ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300' : 'bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-200'}">
+                        ${v.saldoEntregaPago ? '<i class="fa-solid fa-circle-check mr-1"></i>SALDO QUITADO' : '<i class="fa-solid fa-clock mr-1"></i>AGUARDANDO PAGTO NA ENTREGA'}
+                    </span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-slate-700 dark:text-slate-200">
+                    <div>
+                        <span class="text-slate-400 block text-[10px] uppercase font-bold">1. Entrada / Sinal (No Pedido)</span>
+                        <strong class="text-sm font-black text-emerald-600 dark:text-emerald-400">${fm(v.valorEntrada)}</strong>
+                        <div class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">${v.formaEntrada || 'Dinheiro'}${v.parcelasEntrada > 1 ? ' (' + v.parcelasEntrada + 'x)' : ''} &bull; <span class="text-emerald-600 font-bold">Recebido</span></div>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block text-[10px] uppercase font-bold">2. Saldo a Pagar na Entrega</span>
+                        <strong class="text-sm font-black ${v.saldoEntregaPago ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}">${fm(v.saldoEntrega)}</strong>
+                        <div class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Previsto: ${v.formaEntregaPrevista || 'A Definir'}${v.parcelasEntrega > 1 ? ' (' + v.parcelasEntrega + 'x)' : ''}${v.dataEntregaPrevista ? ' &bull; Data: ' + v.dataEntregaPrevista.split('-').reverse().join('/') : ''}</div>
+                    </div>
+                </div>
+                ${!v.saldoEntregaPago ? `
+                    <div class="mt-2.5 pt-2 border-t border-amber-200 dark:border-amber-800 flex justify-end">
+                        <button type="button" onclick="fecharModalDetalhesVenda(); abrirModalReceberSaldoEntrega('${v.id}')" class="bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-black text-xs px-3 py-1.5 rounded-lg shadow-sm transition flex items-center gap-1.5 cursor-pointer">
+                            <i class="fa-solid fa-hand-holding-dollar"></i> Baixar Recebimento do Saldo (${fm(v.saldoEntrega)})
+                        </button>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
     
-    document.getElementById('det-venda-obs').innerHTML = (v.obs ? v.obs : '<span class="text-slate-400 italic">Nenhuma observação geral vinculada a esta venda.</span>') + entregaInfoModal + osInfoHtml;
+    document.getElementById('det-venda-obs').innerHTML = (v.obs ? v.obs : '<span class="text-slate-400 italic">Nenhuma observação geral vinculada a esta venda.</span>') + entradaEntregaModal + entregaInfoModal + osInfoHtml;
     
     let totalCusto = 0;
     document.getElementById('det-venda-itens').innerHTML = (v.itens || []).map(i => {

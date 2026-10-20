@@ -915,16 +915,20 @@ function printHtmlSeguro(htmlCompleto) {
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { margin: 10mm; }
-                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                @page { size: A4 portrait; margin: 10mm 12mm 12mm 12mm; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
                 .print\\\\:hidden { display: none !important; }
-                table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
+                .overflow-x-auto, .table-wrapper, .fc-table-wrap { overflow: visible !important; display: block !important; }
+                table { page-break-inside: auto; width: 100% !important; max-width: 100% !important; min-width: 0 !important; border-collapse: collapse; }
+                th, td { word-break: break-word !important; }
                 tr { page-break-inside: avoid; page-break-after: auto; }
                 thead { display: table-header-group; }
                 tfoot { display: table-footer-group; }
+                @media print { body { padding: 4mm 6mm !important; margin: 0 !important; box-sizing: border-box !important; } }
             </style>
         </head>
-        <body class="bg-white dark:bg-slate-800 p-4">
+        <body class="bg-white text-black p-0">
             ${htmlCompleto}
         </body>
         </html>
@@ -949,7 +953,7 @@ function imprimirArea(areaId) {
     
     const printContent = element.innerHTML; 
     const htmlCompleto = `
-        <div style="padding: 20px; font-family: Arial, sans-serif; background: #fff; color: #000;">
+        <div style="padding: 10px 0; font-family: Arial, sans-serif; background: #fff; color: #000; width: 100%; box-sizing: border-box;">
             <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
                 ${logoHtml}
                 <h2 style="font-size: 20px; font-weight: bold; margin: 5px 0; text-transform: uppercase;">${empNome}</h2>
@@ -981,20 +985,23 @@ function baixarPDF(areaId, filename) {
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { margin: 15mm; size: A4; }
-                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 20px; max-width: 1000px; margin: 0 auto; }
+                @page { margin: 10mm 12mm 12mm 12mm; size: A4 portrait; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
                 .print\\:hidden { display: none !important; }
-                table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
+                .overflow-x-auto, .table-wrapper, .fc-table-wrap { overflow: visible !important; display: block !important; }
+                table { page-break-inside: auto; width: 100% !important; max-width: 100% !important; min-width: 0 !important; border-collapse: collapse; }
+                th, td { word-break: break-word !important; }
                 tr { page-break-inside: avoid; page-break-after: auto; }
                 thead { display: table-header-group; }
                 tfoot { display: table-footer-group; }
                 
                 @media print {
-                    body { padding: 0; max-width: none; }
+                    body { padding: 4mm 6mm !important; margin: 0 !important; max-width: 100% !important; box-sizing: border-box !important; }
                 }
             </style>
         </head>
-        <body class="bg-white text-black">
+        <body class="bg-white text-black p-0">
             ${printContent}
             
             <script>
@@ -1473,7 +1480,7 @@ function imprimirArea(areaId) {
     
     const printContent = element.innerHTML; 
     const htmlCompleto = `
-        <div style="padding: 20px; font-family: Arial, sans-serif; background: #fff; color: #000;">
+        <div style="padding: 10px 0; font-family: Arial, sans-serif; background: #fff; color: #000; width: 100%; box-sizing: border-box;">
             <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
                 ${logoHtml}
                 <h2 style="font-size: 20px; font-weight: bold; margin: 5px 0; text-transform: uppercase;">${empNome}</h2>
@@ -1505,20 +1512,23 @@ function baixarPDF(areaId, filename) {
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { margin: 15mm; size: A4; }
-                body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 20px; max-width: 1000px; margin: 0 auto; }
+                @page { margin: 10mm 12mm 12mm 12mm; size: A4 portrait; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
                 .print\\:hidden { display: none !important; }
-                table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
+                .overflow-x-auto, .table-wrapper, .fc-table-wrap { overflow: visible !important; display: block !important; }
+                table { page-break-inside: auto; width: 100% !important; max-width: 100% !important; min-width: 0 !important; border-collapse: collapse; }
+                th, td { word-break: break-word !important; }
                 tr { page-break-inside: avoid; page-break-after: auto; }
                 thead { display: table-header-group; }
                 tfoot { display: table-footer-group; }
                 
                 @media print {
-                    body { padding: 0; max-width: none; }
+                    body { padding: 4mm 6mm !important; margin: 0 !important; max-width: 100% !important; box-sizing: border-box !important; }
                 }
             </style>
         </head>
-        <body class="bg-white text-black">
+        <body class="bg-white text-black p-0">
             ${printContent}
             
             <script>
@@ -2023,6 +2033,56 @@ function decodificarLinhaDigitavelBoleto() {
 }
 
 function imprimirExtratoFuncionario() {
+    const modal = document.getElementById('modal-detalhes-funcionario');
+    if (modal && !modal.classList.contains('hidden')) {
+        const title = document.getElementById('modal-func-title')?.innerText || 'Extrato de Funcionário';
+        const total = document.getElementById('modal-func-total')?.innerText || 'R$ 0,00';
+        const count = document.getElementById('modal-func-count')?.innerText || '0';
+        const tbody = document.getElementById('modal-func-tbody')?.innerHTML || '';
+
+        let empNome = "FC Gestão Comercial";
+        if (typeof db !== 'undefined' && db?.config?.empresa?.nome) empNome = db.config.empresa.nome;
+        let logoHtml = "";
+        if (typeof db !== 'undefined' && db?.config?.empresa?.logo) {
+            logoHtml = `<img src="${db.config.empresa.logo}" style="max-height: 48px; margin-bottom: 6px; border-radius: 6px;">`;
+        }
+
+        const htmlCompleto = `
+            <div style="padding: 6mm 8mm; width: 100%; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #fff; color: #0f172a;">
+                <div style="border-bottom: 2px solid #059669; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div>
+                        ${logoHtml}
+                        <h2 style="font-size: 18px; font-weight: 800; margin: 0; color: #0f172a; text-transform: uppercase;">${empNome}</h2>
+                        <h3 style="font-size: 14px; font-weight: 700; margin: 3px 0 0 0; color: #059669;">${title}</h3>
+                    </div>
+                    <div style="text-align: right; font-size: 11px; color: #475569;">
+                        <div><b>Emissão:</b> ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+                        <div><b>Total Recebido:</b> ${total} (${count} lançamentos)</div>
+                    </div>
+                </div>
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px;">
+                    <thead>
+                        <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                            <th style="padding: 8px 6px; text-align: left; width: 25%;">Data</th>
+                            <th style="padding: 8px 6px; text-align: left; width: 50%;">Descrição / Categoria</th>
+                            <th style="padding: 8px 6px; text-align: right; width: 25%;">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody style="border-bottom: 1px solid #cbd5e1;">
+                        ${tbody}
+                    </tbody>
+                </table>
+                <div style="margin-top: 25px; padding-top: 8px; border-top: 1px solid #cbd5e1; display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8;">
+                    <span>FC Gestão - Sistema de Gestão Empresarial e Comercial</span>
+                    <span>Documento oficial de prestação de contas</span>
+                </div>
+            </div>
+        `;
+        if (typeof printHtmlSeguro === 'function') {
+            printHtmlSeguro(htmlCompleto);
+            return;
+        }
+    }
     window.print();
 }
 
@@ -2398,11 +2458,12 @@ async function estornarTitulo(id) {
         
         try {
             await batch.commit();
+            const metodoEstornado = f.metodoPagamento;
             f.status = 'PENDENTE';
             f.dataPagamento = '';
             f.metodoPagamento = '';
             f.ultimaAlteracao = Date.now();
-            if (f.metodoPagamento === 'Dinheiro' && db.caixa) {
+            if (metodoEstornado === 'Dinheiro' && db.caixa) {
                 db.caixa.saldo = cxSaldoNovo;
                 db.caixa.historico = cxHistoricoNovo;
                 if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
@@ -4762,6 +4823,16 @@ window.confirmarConciliacaoModalOFX = confirmarConciliacaoModalOFX;
 
 window.mudarVisualizacaoFin = mudarVisualizacaoFin;
 window.renderFinAbas = renderFinAbas;
+
+function renderFinanceiro() {
+    const tabReceber = document.getElementById('fin-tab-receber');
+    const isReceberAtivo = tabReceber && (tabReceber.classList.contains('bg-white') || tabReceber.classList.contains('border-blue-600') || tabReceber.classList.contains('bg-blue-600') || tabReceber.classList.contains('text-blue-600'));
+    const abaAtiva = isReceberAtivo ? 'receber' : 'pagar';
+    if (typeof renderFinAbas === 'function') renderFinAbas(abaAtiva);
+    if (typeof atualizarCardsFluxoDeCaixa === 'function') atualizarCardsFluxoDeCaixa();
+}
+window.renderFinanceiro = renderFinanceiro;
+window.carregarFinanceiro = renderFinanceiro;
 
 
 

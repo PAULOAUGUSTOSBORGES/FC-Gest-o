@@ -5,43 +5,115 @@ const forge = require("node-forge");
 const crypto = require("crypto");
 const { emitirNotaDiretoSefaz, cancelarNotaDiretoSefaz, cartaCorrecaoDiretoSefaz, transmitirNotaContingenciaSefaz, consultarSituacaoNotaFiscal } = require("./fiscal/sefaz_engine");
 const { extrairChavesDoPfx } = require("./fiscal/sefaz_signer");
-const { transmitirNfseGoiania } = require("./fiscal/nfse_goiania_engine");
+const { transmitirNfseGoiania, cancelarNfseGoiania } = require("./fiscal/nfse_goiania_engine");
 
 admin.initializeApp();
 const db = admin.firestore();
+
+// ==========================================
+// SEGURANCA: RATE LIMITING & PREVENCAO DE ABUSO
+// ==========================================
+const rateLimitCache = new Map();
+function verificarRateLimit(chave, maxReq = 20, janelaMs = 60000) {
+    const agora = Date.now();
+    const timestamps = rateLimitCache.get(chave) || [];
+    const recentes = timestamps.filter(t => agora - t < janelaMs);
+    if (recentes.length >= maxReq) return false;
+    recentes.push(agora);
+    rateLimitCache.set(chave, recentes);
+    if (rateLimitCache.size > 2000) {
+        for (const [k, v] of rateLimitCache.entries()) {
+            if (!v.some(t => agora - t < janelaMs)) rateLimitCache.delete(k);
+        }
+    }
+    return true;
+}
+
 
 /**
  * Função para Emitir NFC-e (Cupom Fiscal)
  * Chamada pelo Frontend passando { vendaId: '...' }
  */
 exports.chamarGemini = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuario nao autenticado.");
+    
+    // 1. Validacao de Entrada e Tamanho do Prompt
+    if (!data || !data.prompt || typeof data.prompt !== 'string') {
+        throw new functions.https.HttpsError("invalid-argument", "Prompt nao informado ou formato invalido.");
+    }
+    if (data.prompt.length > 8000) {
+        throw new functions.https.HttpsError("invalid-argument", "Prompt muito longo (limite maximo: 8.000 caracteres).");
+    }
+
+    // 2. Rate Limiting por Usuario (max 10 requisicoes/minuto)
+    if (!verificarRateLimit('ia_' + context.auth.uid, 10, 60000)) {
+        throw new functions.https.HttpsError("resource-exhausted", "Muitas requisicoes de IA em curto periodo. Aguarde 1 minuto.");
+    }
+
     const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
     const empresaRef = db.collection('empresas').doc(empId);
-    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
-    
-    // Validar se tem permissão (Admin, Gestão ou Marketing)
-    const funcSnap = await empresaRef.collection("funcionarios").doc(context.auth.uid).get();
-    const isPermitido = funcSnap.exists && (funcSnap.data().isAdmin || funcSnap.data().perm_gestao);
-    if (!isPermitido) throw new functions.https.HttpsError("permission-denied", "Sem permissão para usar IA.");
 
+    // 3. Validacao de Permissao de Acesso e Pertencimento a Empresa
+    const userEmail = (context.auth.token && context.auth.token.email) ? context.auth.token.email.toLowerCase() : '';
+    const isMaster = userEmail === 'pauloaugusto.silvaborges@gmail.com' || userEmail === 'fabricadecoresgoiania@gmail.com';
+    const funcSnap = await empresaRef.collection("funcionarios").doc(context.auth.uid).get();
+    const isPermitido = isMaster || (funcSnap.exists && (funcSnap.data().isAdmin || funcSnap.data().perm_gestao || funcSnap.data().perm_marketing));
+    if (!isPermitido) throw new functions.https.HttpsError("permission-denied", "Sem permissao para utilizar os recursos de IA nesta empresa.");
+
+    // 4. Limite de Cota Mensal de Consumo por Loja (Prevencao de Custos Excessivos)
+    const mesAtual = new Date().toISOString().substring(0, 7); // ex: 2026-10
+    const metricaRef = empresaRef.collection("metricas").doc('consumo_ia_' + mesAtual);
+    const metricaSnap = await metricaRef.get();
+    const totalMes = metricaSnap.exists ? (metricaSnap.data().totalChamadas || 0) : 0;
+    const limiteMensal = 300; // Limite padrao seguro de chamadas por mes
+    if (!isMaster && totalMes >= limiteMensal) {
+        throw new functions.https.HttpsError("resource-exhausted", "Limite mensal de IA atingido (" + limiteMensal + " chamadas). Solicite ampliacao do plano.");
+    }
+
+    // 5. Resolucao Segura da API Key (Empresa -> Master Fallback)
     const configSnap = await empresaRef.collection("configuracoes").doc("config").get();
-    let configGemini = configSnap.data()?.geminiApiKey;
+    const empSnap = await empresaRef.get();
+    let configGemini = configSnap.data()?.empresa?.geminiKey || configSnap.data()?.geminiApiKey || empSnap.data()?.geminiKey;
+    if (configGemini && (typeof configGemini !== 'string' || configGemini.trim().length < 15)) {
+        configGemini = null;
+    }
     if (!configGemini) {
         const masterSnap = await db.collection("saas_config").doc("master").get();
         if (masterSnap.exists && masterSnap.data()?.geminiKeyMaster) {
             configGemini = masterSnap.data().geminiKeyMaster;
         }
     }
-    if (!configGemini) throw new functions.https.HttpsError("failed-precondition", "API Key de IA não configurada.");
+    if (!configGemini) throw new functions.https.HttpsError("failed-precondition", "Chave de integracao com IA nao configurada no sistema.");
 
-    try {
-        const res = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${configGemini}`, {
-            contents: [{ parts: [{ text: data.prompt }] }]
-        });
-        return res.data.candidates?.[0]?.content?.parts?.[0]?.text || "Resposta indisponível.";
-    } catch (e) {
-        throw new functions.https.HttpsError("internal", "Falha ao chamar API.");
+    const modelosBackend = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+    let respostaTexto = null;
+    let ultimoErro = null;
+
+    for (const mod of modelosBackend) {
+        try {
+            const res = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/${mod}:generateContent?key=${configGemini}`, {
+                contents: [{ parts: [{ text: data.prompt }] }]
+            });
+            respostaTexto = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (respostaTexto) break;
+        } catch (errAxios) {
+            ultimoErro = errAxios.response?.data?.error?.message || errAxios.message;
+        }
     }
+
+    if (!respostaTexto) {
+        console.error("[chamarGemini] Erro ao consultar Gemini API:", ultimoErro);
+        throw new functions.https.HttpsError("internal", ultimoErro || "Falha na comunicacao com o servico de Inteligencia Artificial.");
+    }
+
+    // Incrementa consumo mensal de IA com sucesso
+    await metricaRef.set({
+        totalChamadas: admin.firestore.FieldValue.increment(1),
+        ultimaChamada: admin.firestore.FieldValue.serverTimestamp(),
+        ultimoUsuario: context.auth.uid
+    }, { merge: true }).catch(() => {});
+
+    return respostaTexto;
 });
 
 // ==========================================
@@ -137,7 +209,7 @@ async function montarItensFocus(produtosVenda) {
                     const pSnap = await empresaRef.collection("produtos").doc(String(item.id)).get();
                     if (pSnap.exists) {
                         const pData = pSnap.data();
-                        if (!ncm && pData.ncm) ncm = String(pData.ncm).replace(/\D/g, "");
+                        if ((!ncm || ncm === "00000000") && pData.ncm) ncm = String(pData.ncm).replace(/\D/g, "");
                         if (!cfop && pData.cfop) cfop = String(pData.cfop).replace(/\D/g, "");
                         if (!csosn && pData.csosn) csosn = String(pData.csosn).replace(/\D/g, "");
                         if (!origem && pData.origem !== undefined) origem = String(pData.origem);
@@ -151,7 +223,6 @@ async function montarItensFocus(produtosVenda) {
         }
 
         // Padrões fiscais seguros caso ainda não preenchidos
-        if (!ncm || ncm.length < 8) ncm = "94036000"; // Móveis de madeira / Outros móveis
         if (!cfop) cfop = "5102"; // Venda de mercadoria adquirida de terceiros dentro do estado
         if (!csosn) csosn = "102"; // Tributada pelo Simples Nacional sem permissão de crédito
         if (!origem) origem = "0"; // Nacional
@@ -257,30 +328,10 @@ async function localizarVendaEConfig(vendaId, empId, vendaDadosFallback = null) 
         } catch (e) {}
     }
 
-    // 5. Tenta em collectionGroup('vendas') em caso de empId divergente ou multi-tenant
-    try {
-        if (!isNaN(numId) && numId > 0) {
-            const cgNum = await db.collectionGroup("vendas").where("numeroPedido", "==", numId).limit(1).get();
-            if (!cgNum.empty) {
-                const foundSnap = cgNum.docs[0];
-                const parentEmp = foundSnap.ref.parent ? foundSnap.ref.parent.parent : null;
-                if (parentEmp) empresaRef = parentEmp;
-                return { vendaSnap: foundSnap, empresaRef, vendaRef: foundSnap.ref };
-            }
-        }
-        for (const testId of [rawId, cleanId]) {
-            if (!testId) continue;
-            const cgId = await db.collectionGroup("vendas").where("id", "==", testId).limit(1).get();
-            if (!cgId.empty) {
-                const foundSnap = cgId.docs[0];
-                const parentEmp = foundSnap.ref.parent ? foundSnap.ref.parent.parent : null;
-                if (parentEmp) empresaRef = parentEmp;
-                return { vendaSnap: foundSnap, empresaRef, vendaRef: foundSnap.ref };
-            }
-        }
-    } catch (e) {
-        console.warn("[localizarVendaEConfig] Aviso na busca collectionGroup:", e.message);
-    }
+    // 5. ATENÇÃO DE SEGURANÇA MULTI-TENANT (Prevenção de IDOR / Cross-Tenant):
+    // A busca irrestrita em collectionGroup("vendas") foi desativada porque substituía empresaRef
+    // pelo tenant de outra empresa sem validar permissão, possibilitando uso indevido de certificados
+    // e emissões cruzadas entre empresas. Todas as buscas são estritamente isoladas pelo tenant da empresaRef.
 
     // 6. Fallback com dados da venda fornecidos no payload (offline / cache local pendente de sincronização)
     if (vendaDadosFallback && typeof vendaDadosFallback === 'object') {
@@ -679,6 +730,72 @@ exports.emitirNFe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gs
 });
 
 // ==========================================
+// SINCRONIZAÇÃO SEGURA DE SENHA MASTER NO AUTH
+// ==========================================
+exports.sincronizarSenhaMasterAuth = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
+    // 1. Exige autenticação estrita
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
+    }
+
+    // 2. Validação rigorosa de SuperAdmin
+    const authEmail = (context.auth.token?.email || '').toLowerCase().trim();
+    const emailsMasterPermitidos = [
+        'pauloaugusto.silvaborges@gmail.com',
+        'fabricadecoresgoiania@gmail.com'
+    ];
+
+    let isSuperAdmin = Boolean(context.auth.token?.superadmin || emailsMasterPermitidos.includes(authEmail));
+
+    if (!isSuperAdmin) {
+        try {
+            const masterDoc = await db.collection("saas_config").doc("master").get();
+            if (masterDoc.exists) {
+                const superAdminsCadastrados = (masterDoc.data()?.superAdmins || []).map(e => String(e).toLowerCase().trim());
+                if (superAdminsCadastrados.includes(authEmail)) {
+                    isSuperAdmin = true;
+                }
+            }
+        } catch (eCheck) {
+            console.warn("[sincronizarSenhaMasterAuth] Falha ao consultar saas_config:", eCheck.message);
+        }
+    }
+
+    if (!isSuperAdmin) {
+        throw new functions.https.HttpsError("permission-denied", "Acesso restrito ao SuperAdmin.");
+    }
+
+    // 3. Validação dos dados de entrada
+    const { targetUid, targetEmail, novaSenha } = data || {};
+    if (!novaSenha || typeof novaSenha !== 'string' || novaSenha.trim().length < 6) {
+        throw new functions.https.HttpsError("invalid-argument", "A nova senha deve conter no mínimo 6 caracteres.");
+    }
+
+    let uid = targetUid;
+    if (!uid && targetEmail) {
+        try {
+            const userRecord = await admin.auth().getUserByEmail(String(targetEmail).trim());
+            uid = userRecord.uid;
+        } catch (errUser) {
+            throw new functions.https.HttpsError("not-found", "Usuário não encontrado no Firebase Auth.");
+        }
+    }
+
+    if (!uid) {
+        throw new functions.https.HttpsError("invalid-argument", "UID ou e-mail de destino não fornecido.");
+    }
+
+    // 4. Atualização segura no Firebase Auth
+    try {
+        await admin.auth().updateUser(uid, { password: novaSenha.trim() });
+        return { success: true, message: "Senha redefinida com sucesso no Firebase Auth." };
+    } catch (errUpdate) {
+        console.error("[sincronizarSenhaMasterAuth] Erro ao atualizar senha no Auth:", errUpdate);
+        throw new functions.https.HttpsError("internal", errUpdate.message || "Erro ao atualizar senha no Firebase Auth.");
+    }
+});
+
+// ==========================================
 // 3. CANCELAMENTO DE NOTA FISCAL (NF-e OU NFC-e)
 // ==========================================
 exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.gserviceaccount.com' }).https.onCall(async (data, context) => {
@@ -800,14 +917,63 @@ exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@a
 
         // Cancelamento específico para NFS-e (Competência Municipal / Padrão ABRASF - sem SEFAZ)
         if (targetCollection === "notas_servico" || tipoNormalizado === "nfse" || targetDoc.tipo === "NFS-e") {
+            const config = await obterConfigEmpresaComFallback(empresaRef);
+            const empresa = config.empresa || {};
+
+            const numNota = String(
+                numeroParam || 
+                targetDoc.nfse?.numero || 
+                targetDoc.numero || 
+                targetDoc.fiscal_numero_nfse || 
+                ''
+            ).replace(/\D/g, '');
+
+            if (!numNota) {
+                throw new functions.https.HttpsError("invalid-argument", "Número da NFS-e não identificado para efetuar o cancelamento.");
+            }
+
+            const isOficialNfse = Boolean(
+                targetDoc.oficial || 
+                targetDoc.motor === 'issnet_goiania_direto' || 
+                targetDoc.nfse?.oficial || 
+                targetDoc.nfse?.motor === 'issnet_goiania_direto' ||
+                targetDoc.codigo_verificacao ||
+                targetDoc.nfse?.codigo_verificacao ||
+                (empresa.certificadoBase64 && targetDoc.motor !== 'rps_interno')
+            );
+
+            const codCancelamentoEscolhido = String(data.codigoCancelamento || '2');
+
+            let retornoPrefeitura = null;
+            if (isOficialNfse) {
+                if (!empresa.certificadoBase64) {
+                    throw new functions.https.HttpsError(
+                        "failed-precondition",
+                        "Certificado Digital A1 (.pfx) não configurado para realizar o cancelamento oficial da NFS-e junto à Prefeitura de Goiânia."
+                    );
+                }
+
+                console.log(`[Cancelamento NFS-e] Transmitindo cancelamento da NFS-e Oficial Nº ${numNota} para SEFIN Goiânia (Motivo Código: ${codCancelamentoEscolhido})...`);
+                retornoPrefeitura = await cancelarNfseGoiania({
+                    empresa,
+                    numeroNfse: numNota,
+                    motivoCancelamento: justificativa.trim(),
+                    codigoCancelamento: codCancelamentoEscolhido,
+                    ambiente: empresa.ambienteFiscal || 'producao'
+                });
+            }
+
             const dadosCancelamento = {
                 status: "cancelado",
                 status_sefaz: "cancelado",
                 status_fiscal: "cancelado",
+                canceladoNaPrefeitura: Boolean(isOficialNfse),
                 justificativa_cancelamento: justificativa.trim(),
-                data_cancelamento: new Date().toISOString(),
+                data_cancelamento: retornoPrefeitura?.dataHora || new Date().toISOString(),
                 canceladoPor: context.auth.uid,
-                mensagem_cancelamento: "NFS-e cancelada com sucesso no sistema"
+                mensagem_cancelamento: isOficialNfse 
+                    ? "NFS-e cancelada e homologada com sucesso junto à Prefeitura de Goiânia!" 
+                    : "NFS-e cancelada com sucesso no sistema"
             };
 
             if (targetRef) {
@@ -821,22 +987,41 @@ exports.cancelarNotaFiscal = functions.runWith({ serviceAccount: 'lojafc-a31f9@a
                     "nfse.status": "cancelado",
                     "nfse.status_sefaz": "cancelado",
                     "nfse.justificativa_cancelamento": justificativa.trim(),
-                    "nfse.data_cancelamento": dadosCancelamento.data_cancelamento
+                    "nfse.data_cancelamento": dadosCancelamento.data_cancelamento,
+                    "nfse.canceladoNaPrefeitura": Boolean(isOficialNfse)
                 }, { merge: true });
             }
 
-            if (targetCollection === "vendas" && targetDoc.nfse?.codigo_verificacao) {
-                const qSnap = await empresaRef.collection("notas_servico").where("codigo_verificacao", "==", targetDoc.nfse.codigo_verificacao).limit(1).get();
-                if (!qSnap.empty) {
-                    await qSnap.docs[0].ref.set(dadosCancelamento, { merge: true });
+            // Sincroniza em notas_servico pelo número e/ou código de verificação
+            if (numNota) {
+                try {
+                    const nsSnap = await empresaRef.collection("notas_servico").where("numero", "==", String(numNota)).get();
+                    for (const d of nsSnap.docs) {
+                        await d.ref.set(dadosCancelamento, { merge: true });
+                    }
+                } catch (eNs) {
+                    console.warn('[Cancelamento NFS-e] Aviso ao sincronizar notas_servico por número:', eNs.message);
+                }
+            }
+            const codVerif = targetDoc.codigo_verificacao || targetDoc.nfse?.codigo_verificacao;
+            if (codVerif) {
+                try {
+                    const qSnap = await empresaRef.collection("notas_servico").where("codigo_verificacao", "==", String(codVerif).trim()).get();
+                    for (const d of qSnap.docs) {
+                        await d.ref.set(dadosCancelamento, { merge: true });
+                    }
+                } catch (eCod) {
+                    console.warn('[Cancelamento NFS-e] Aviso ao sincronizar notas_servico por código de verificação:', eCod.message);
                 }
             }
 
-            console.log(`[NFS-e] Nota Nº ${targetDoc.numero || targetDoc.nfse?.numero || numeroParam || ''} cancelada com sucesso! Justificativa: ${justificativa}`);
+            console.log(`[NFS-e] Nota Nº ${numNota} cancelada com sucesso! Oficial: ${isOficialNfse}`);
 
             return {
                 success: true,
-                message: `NFS-e Nº ${targetDoc.numero || targetDoc.nfse?.numero || numeroParam || ''} cancelada com sucesso!`,
+                message: isOficialNfse 
+                    ? `NFS-e Nº ${numNota} cancelada com sucesso na Prefeitura de Goiânia!` 
+                    : `NFS-e Nº ${numNota} cancelada com sucesso no sistema!`,
                 data: dadosCancelamento
             };
         }
@@ -1076,6 +1261,10 @@ exports.consultarStatusNota = functions.runWith({ serviceAccount: 'lojafc-a31f9@
     const empId = (data && data.empId) ? data.empId : 'emp_fc_moveis';
     let empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
+
+    // Validação de permissão multi-tenant
+    const hasPerm = await verificarPermissaoUsuario(empresaRef, context.auth.uid, ['isAdmin', 'perm_pdv', 'perm_gestao']);
+    if (!hasPerm) throw new functions.https.HttpsError("permission-denied", "Sem permissão para consultar status da nota.");
 
     try {
         const { vendaId, tipo } = data;
@@ -1509,6 +1698,10 @@ exports.limparDevolucoesRejeitadas = functions.runWith({ serviceAccount: 'lojafc
     let empresaRef = db.collection('empresas').doc(empId);
     if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Usuário não autenticado.');
 
+    // Validação de permissão multi-tenant
+    const hasPerm = await verificarPermissaoUsuario(empresaRef, context.auth.uid, ['isAdmin', 'perm_gestao']);
+    if (!hasPerm) throw new functions.https.HttpsError('permission-denied', 'Sem permissão para executar a limpeza de devoluções.');
+
     try {
         let removidas = 0;
         let vendasCorrigidas = 0;
@@ -1574,6 +1767,12 @@ exports.emitirNotaAvulsa = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
 
         if (!itens || itens.length === 0) throw new functions.https.HttpsError('invalid-argument', 'A nota avulsa precisa ter pelo menos 1 item.');
 
+        const config = await obterConfigEmpresaComFallback(empresaRef);
+        if (!config || !config.empresa) throw new functions.https.HttpsError('failed-precondition', 'Configurações da empresa incompletas.');
+        const empresa = config.empresa;
+        if (!empresa?.certificadoBase64) throw new functions.https.HttpsError('failed-precondition', 'Certificado A1 não configurado.');
+        if (!empresa.ambienteFiscal) empresa.ambienteFiscal = 'producao';
+
         const modelo = tipo === 'nfce' ? '65' : '55';
 
         let dest = destinatario || {};
@@ -1625,15 +1824,49 @@ exports.emitirNotaAvulsa = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
         }
 
         const cepLimpo = String(finalCep).replace(/\D/g, '');
-        if (finalCidade.toUpperCase() === 'FORMOSA' || cepLimpo.startsWith('7380') || cepLimpo.startsWith('7381')) {
+        const munNorm = finalCidade.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+
+        if (munNorm === 'FORMOSA' || cepLimpo.startsWith('7380') || cepLimpo.startsWith('7381')) {
             if (!finalCidade) finalCidade = 'FORMOSA';
             if (!finalUf) finalUf = 'GO';
             if (!finalIbge || finalIbge === '5208707') finalIbge = '5208004';
+        } else if (munNorm === 'SENADOR CANEDO' || cepLimpo.startsWith('7525') || cepLimpo.startsWith('7526')) {
+            if (!finalCidade) finalCidade = 'SENADOR CANEDO';
+            if (!finalUf) finalUf = 'GO';
+            if (!finalIbge) finalIbge = '5220454';
+        } else if (munNorm === 'ANAPOLIS' || cepLimpo.startsWith('750') || cepLimpo.startsWith('751')) {
+            if (!finalCidade) finalCidade = 'ANAPOLIS';
+            if (!finalUf) finalUf = 'GO';
+            if (!finalIbge) finalIbge = '5201108';
+        } else if (munNorm === 'APARECIDA DE GOIANIA' || cepLimpo.startsWith('749')) {
+            if (!finalCidade) finalCidade = 'APARECIDA DE GOIANIA';
+            if (!finalUf) finalUf = 'GO';
+            if (!finalIbge) finalIbge = '5201405';
+        } else if (munNorm === 'GOIANIA' || cepLimpo.startsWith('74')) {
+            if (!finalCidade) finalCidade = 'GOIANIA';
+            if (!finalUf) finalUf = 'GO';
+            if (!finalIbge) finalIbge = '5208707';
+        }
+
+        // Se ainda não possui IBGE mas temos um CEP válido de 8 dígitos, consulta ViaCEP rapidamente
+        if (!finalIbge && cepLimpo.length === 8) {
+            try {
+                const cepRes = await axios.get(`https://viacep.com.br/ws/${cepLimpo}/json/`, { timeout: 3000 });
+                if (cepRes.data && !cepRes.data.erro && cepRes.data.ibge) {
+                    finalIbge = cepRes.data.ibge;
+                    if (!finalCidade) finalCidade = cepRes.data.localidade;
+                    if (!finalUf) finalUf = cepRes.data.uf;
+                }
+            } catch (errCep) {
+                console.warn('[NOTA AVULSA] Aviso ao consultar ViaCEP na Cloud Function:', errCep.message);
+            }
         }
 
         if (!finalCidade) finalCidade = empresa.cidade || 'GOIANIA';
         if (!finalUf) finalUf = empresa.uf || 'GO';
-        if (!finalIbge) finalIbge = empresa.ibge || '';
+        if (!finalIbge && finalCidade.toUpperCase() === (empresa.cidade || '').toUpperCase()) {
+            finalIbge = empresa.ibge || '';
+        }
         if (!finalRua) finalRua = 'RUA';
 
         const clienteAvulso = (destinatario || clienteCadastrado) ? {
@@ -1650,11 +1883,6 @@ exports.emitirNotaAvulsa = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
             ie: finalIe,
             ibge: finalIbge
         } : null;
-
-        const config = await obterConfigEmpresaComFallback(empresaRef);
-        const empresa = config.empresa;
-        if (!empresa?.certificadoBase64) throw new functions.https.HttpsError('failed-precondition', 'Certificado A1 não configurado.');
-        if (!empresa.ambienteFiscal) empresa.ambienteFiscal = 'producao';
 
         // Calcula total bruto, descontos dos itens e total líquido
         let totalBruto = 0;
@@ -1728,6 +1956,7 @@ exports.emitirNotaAvulsa = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
             formaPagamento: pagamentosNota[0]?.metodo || 'Dinheiro',
             itens: itensFormatados,
             destinatario: clienteAvulso || destinatario || null,
+            observacoes: observacoes || '',
             motor: 'sefaz_direto'
         };
 
@@ -1735,6 +1964,7 @@ exports.emitirNotaAvulsa = functions.runWith({ serviceAccount: 'lojafc-a31f9@app
         const docId = resultadoSefaz.chave || `avulsa_${Date.now()}`;
         await empresaRef.collection('notas_avulsas').doc(docId).set({
             ...dadosRetorno,
+            observacoes: observacoes || '',
             criadoEm: new Date().toISOString(),
             emitidoPor: context.auth.uid
         });
@@ -1773,7 +2003,7 @@ exports.emitirNFSe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
     if (!hasPerm) throw new functions.https.HttpsError('permission-denied', 'Sem permissão para emitir NFS-e.');
 
     try {
-        const { vendaId, tomador, servico, observacoes, tipoEnvio, ambiente } = data || {};
+        const { vendaId, tomador, servico, observacoes, tipoEnvio, ambiente, numRps, serieRps } = data || {};
 
         if (!servico || !servico.descricao) {
             throw new functions.https.HttpsError('invalid-argument', 'A descrição dos serviços prestados é obrigatória.');
@@ -1794,8 +2024,10 @@ exports.emitirNFSe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
         const nomeTomador = tomador?.nome || tomador?.razaoSocial || 'TOMADOR DO SERVIÇO';
         const aliqIss = parseFloat(servico.aliquotaIss || 2.0); // Padrão Simples Nacional
         const vIss = parseFloat(((vServico * aliqIss) / 100).toFixed(2));
-        const itemLC116 = servico.itemListaServico || '14.01'; // Manutenção, restauração, conserto
-        const codTributacaoMun = servico.codigoTributacao || itemLC116.replace(/\D/g, '');
+        const itemLC116 = servico.itemListaServico || '14.05'; // 14.05 - Restauração, pintura e acabamento
+        const codTributacaoMun = (servico.codigoTributacao !== undefined) 
+            ? servico.codigoTributacao 
+            : (itemLC116 === '07.02' ? '702' : (itemLC116 === '14.05' ? '1405' : itemLC116.replace(/\D/g, '')));
 
         let dadosRetorno;
 
@@ -1831,9 +2063,12 @@ exports.emitirNFSe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
                     valor: vServico,
                     aliquotaIss: aliqIss,
                     itemListaServico: itemLC116,
-                    codigoTributacao: codTributacaoMun,
+                    codigoTributacao: servico.codigoTributacao || codTributacaoMun,
+                    cnae: servico.cnae !== undefined ? servico.cnae : empresa.cnae,
                     issRetido: Boolean(servico.issRetido)
                 },
+                numRps: numRps ? parseInt(numRps, 10) : undefined,
+                serieRps: serieRps ? String(serieRps) : undefined,
                 observacoes: observacoes || '',
                 vendaId: vendaId ? String(vendaId) : null,
                 ambiente: ambiente || empresa.ambienteFiscal || 'producao'
@@ -1868,7 +2103,7 @@ exports.emitirNFSe = functions.runWith({ serviceAccount: 'lojafc-a31f9@appspot.g
                 },
                 prestador: {
                     cnpj: String(empresa.cnpj || '').replace(/\D/g, ''),
-                    im: empresa.im || '107996359',
+                    im: empresa.im || '5118565',
                     nome: empresa.razaoSocial || empresa.nome || ''
                 },
                 xml_conteudo: resultadoGoiania.xml_conteudo,

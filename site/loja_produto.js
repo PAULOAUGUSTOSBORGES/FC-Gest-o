@@ -1,4 +1,4 @@
-﻿let lojaConfig = {};
+let lojaConfig = {};
 let produtoUrlId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -81,26 +81,91 @@ window.atualizarIconesTema = atualizarIconesTema;
 })();
 
 
+// Suporte a cache IndexedDB para abertura instantânea do produto
+const DB_CATALOGO_NAME = 'FC_Catalogo_DB';
+const DB_CATALOGO_STORE = 'catalogo';
+
+function abrirBancoCatalogo() {
+    return new Promise((resolve) => {
+        if (!('indexedDB' in window)) return resolve(null);
+        try {
+            const req = indexedDB.open(DB_CATALOGO_NAME, 1);
+            req.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(DB_CATALOGO_STORE)) {
+                    db.createObjectStore(DB_CATALOGO_STORE);
+                }
+            };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => resolve(null);
+        } catch (e) {
+            resolve(null);
+        }
+    });
+}
+
+async function obterCacheCatalogo(chave) {
+    try {
+        const db = await abrirBancoCatalogo();
+        if (!db) return null;
+        return new Promise((resolve) => {
+            const tx = db.transaction(DB_CATALOGO_STORE, 'readonly');
+            const store = tx.objectStore(DB_CATALOGO_STORE);
+            const req = store.get(chave);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+        });
+    } catch (e) {
+        return null;
+    }
+}
+
 async function initProduto() {
+    // Timeout de segurança: NUNCA deixa a tela travada no loader por mais de 3.5 segundos
+    const timeoutSeguranca = setTimeout(() => {
+        const loader = document.getElementById('loader');
+        if (loader) loader.classList.add('opacity-0', 'pointer-events-none');
+    }, 3500);
+
     try {
         const empresaAtiva = window.empresaAtivaSite || 'emp_fc_moveis';
-        // Configuração pública da vitrine (doc 'loja_publica'; nunca lança erro)
-        const configPublica = await carregarConfigPublicaLoja(empresaAtiva);
-        if (configPublica) {
-            lojaConfig = configPublica.loja || {};
-            aplicarConfiguracoesLoja(configPublica.empresa || {});
+
+        // 1. Abertura Instantânea com Cache Local se disponível
+        const [cacheConfig, cacheProdutos] = await Promise.all([
+            obterCacheCatalogo('config_' + empresaAtiva),
+            obterCacheCatalogo('produtos_' + empresaAtiva)
+        ]);
+
+        if (cacheConfig && cacheConfig.loja) {
+            lojaConfig = cacheConfig.loja || {};
+            aplicarConfiguracoesLoja(cacheConfig.empresa || {});
         }
 
-        let prodDoc;
-        if (empresaAtiva === 'emp_fc_moveis') {
-            prodDoc = await firebase.firestore().collection('empresas').doc('emp_fc_moveis').collection('produtos').doc(produtoUrlId).get();
-            if (!prodDoc.exists) {
-                prodDoc = await firebase.firestore().collection('produtos').doc(produtoUrlId).get();
+        if (cacheProdutos && Array.isArray(cacheProdutos.produtos)) {
+            const prodCache = cacheProdutos.produtos.find(x => x.id === produtoUrlId);
+            if (prodCache) {
+                renderizarProduto(prodCache);
+                clearTimeout(timeoutSeguranca);
             }
-        } else {
-            prodDoc = await firebase.firestore().collection('empresas').doc(empresaAtiva).collection('produtos').doc(produtoUrlId).get();
         }
+
+        // 2. Carrega Configuração Pública da Vitrine
+        const configPublicaPromise = carregarConfigPublicaLoja(empresaAtiva).then(conf => {
+            if (conf) {
+                lojaConfig = conf.loja || {};
+                aplicarConfiguracoesLoja(conf.empresa || {});
+            }
+        });
+
+        // 3. Carrega o Documento Completo do Produto (com galeria fotos)
+        const prodDoc = await firebase.firestore()
+            .collection('empresas').doc(empresaAtiva)
+            .collection('produtos').doc(produtoUrlId)
+            .get();
         
+        await configPublicaPromise;
+        clearTimeout(timeoutSeguranca);
+
         if (!prodDoc || !prodDoc.exists) {
             mostrarNaoEncontrado();
             return;
@@ -119,6 +184,7 @@ async function initProduto() {
 
     } catch (error) {
         console.error("Erro ao carregar produto:", error);
+        clearTimeout(timeoutSeguranca);
         mostrarNaoEncontrado();
     }
 }
@@ -145,8 +211,36 @@ function formatarUrlSocial(valor, rede) {
     return url;
 }
 
+function formatarNumeroWhatsApp(num) {
+    if (!num) return '5562981111011';
+    let limpo = String(num).replace(/\D/g, '');
+    if (!limpo) return '5562981111011';
+    if (limpo.length === 10 || limpo.length === 11) {
+        return '55' + limpo;
+    }
+    return limpo;
+}
+window.formatarNumeroWhatsApp = formatarNumeroWhatsApp;
+
+function gerarUrlWhatsApp(numero, mensagem) {
+    const numLimpo = formatarNumeroWhatsApp(numero || (lojaConfig && lojaConfig.whatsapp) || '62981111011');
+    const msg = encodeURIComponent(mensagem || (lojaConfig && lojaConfig['whatsapp-msg']) || 'Olá! Vim pelo site da FC Móveis e gostaria de mais informações.');
+    return `https://wa.me/${numLimpo}?text=${msg}`;
+}
+window.gerarUrlWhatsApp = gerarUrlWhatsApp;
+
+function abrirWhatsAppLoja(e) {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    const wpp = (lojaConfig && lojaConfig.whatsapp) || (window.empresaConfigAtiva && window.empresaConfigAtiva.telefone) || '62981111011';
+    const msg = (lojaConfig && lojaConfig['whatsapp-msg']) || 'Olá! Vim pelo site da FC Móveis e gostaria de mais informações.';
+    const url = gerarUrlWhatsApp(wpp, msg);
+    window.open(url, '_blank', 'noopener,noreferrer');
+}
+window.abrirWhatsAppLoja = abrirWhatsAppLoja;
+
 function aplicarConfiguracoesLoja(empresaConfig = {}) {
     window.lojaConfig = lojaConfig;
+    window.empresaConfigAtiva = empresaConfig;
     const cor = lojaConfig['cor-primaria-hex'] || lojaConfig['cor-primaria'] || '#2563eb';
     document.documentElement.style.setProperty('--brand-color', cor);
     
@@ -181,15 +275,17 @@ function aplicarConfiguracoesLoja(empresaConfig = {}) {
         footCop.innerText = `© ${new Date().getFullYear()} ${lojaConfig.nome || 'Nossa Loja'}. Todos os direitos reservados.`;
     }
 
-    // Redes Sociais Footer
-    const wpp = lojaConfig.whatsapp || empresaConfig.telefone;
-    const msgPadrão = encodeURIComponent(lojaConfig['whatsapp-msg'] || 'Olá! Vim pelo site e gostaria de mais informações.');
-    let linkWpp = '#';
-    if (wpp) {
-        const numeroLimpo = String(wpp).replace(/\D/g, '');
-        if (numeroLimpo.length >= 10) {
-            linkWpp = `https://wa.me/${numeroLimpo.length === 10 || numeroLimpo.length === 11 ? '55' + numeroLimpo : numeroLimpo}?text=${msgPadrão}`;
-        }
+    // WhatsApp Navbar e Footer
+    const wpp = lojaConfig.whatsapp || empresaConfig.telefone || '62981111011';
+    const msgPadrao = lojaConfig['whatsapp-msg'] || 'Olá! Vim pelo site da FC Móveis e gostaria de mais informações.';
+    const linkWpp = gerarUrlWhatsApp(wpp, msgPadrao);
+
+    const navWpp = document.getElementById('nav-whatsapp');
+    if (navWpp) {
+        navWpp.href = linkWpp;
+        navWpp.setAttribute('target', '_blank');
+        navWpp.setAttribute('rel', 'noopener noreferrer');
+        navWpp.onclick = (e) => abrirWhatsAppLoja(e);
     }
 
     const socialContainer = document.getElementById('social-links');
@@ -204,7 +300,7 @@ function aplicarConfiguracoesLoja(empresaConfig = {}) {
             socialContainer.innerHTML += `<a href="${fbUrl}" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-full bg-gray-800 dark:bg-slate-800 flex items-center justify-center text-gray-400 hover:bg-brand hover:text-white transition-colors" title="Facebook"><i class="fa-brands fa-facebook-f"></i></a>`;
         }
         if (wpp) {
-            socialContainer.innerHTML += `<a href="${linkWpp}" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-full bg-gray-800 dark:bg-slate-800 flex items-center justify-center text-gray-400 hover:bg-[#25D366] hover:text-white transition-colors" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>`;
+            socialContainer.innerHTML += `<a href="${linkWpp}" target="_blank" rel="noopener noreferrer" onclick="abrirWhatsAppLoja(event)" class="w-10 h-10 rounded-full bg-gray-800 dark:bg-slate-800 flex items-center justify-center text-gray-400 hover:bg-[#25D366] hover:text-white transition-colors cursor-pointer" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>`;
         }
     }
 }

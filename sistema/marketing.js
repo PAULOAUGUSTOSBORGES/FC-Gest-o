@@ -641,7 +641,7 @@ window.exportarMarketingIAConsultoria = function(tipo) {
             if (typeof showToast === 'function') showToast('Permita pop-ups no navegador para gerar o PDF.', 'warning');
             return;
         }
-        win.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + titulo + '</title><style>body{font-family:Arial,sans-serif;padding:30px;line-height:1.6;color:#1e293b;}h2{color:#0f172a;}@media print{button{display:none;}}</style></head><body><h2>' + titulo + '</h2><hr style="margin-bottom:20px;"/>' + htmlConteudo + '<script>window.onload=function(){window.print();};<\/script></body></html>');
+        win.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + titulo + '</title><style>@page{size:A4 portrait;margin:10mm 12mm 12mm 12mm;}*,*::before,*::after{box-sizing:border-box!important;}html,body{font-family:Arial,sans-serif;line-height:1.6;color:#1e293b;width:100%!important;max-width:100%!important;margin:0!important;padding:0!important;background:#fff!important;}h2{color:#0f172a;}@media print{button{display:none!important;}body{padding:4mm 6mm!important;margin:0!important;box-sizing:border-box!important;}}</style></head><body><h2>' + titulo + '</h2><hr style="margin-bottom:20px;"/>' + htmlConteudo + '<script>window.onload=function(){window.print();};<\/script></body></html>');
         win.document.close();
     }
 };

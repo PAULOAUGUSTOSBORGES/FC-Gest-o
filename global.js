@@ -1,3 +1,15 @@
+// ==============================================================
+// MOTOR DE LAYOUT EXPANSIVO & SIDEBAR RETRÁTIL (GLOBAL FC GESTÃO)
+// ==============================================================
+(function() {
+    try {
+        if (window.innerWidth >= 768 && localStorage.getItem('fc_layout_expansivo') === 'true') {
+            document.documentElement.classList.add('sidebar-recolhida');
+            if (document.body) document.body.classList.add('sidebar-recolhida');
+        }
+    } catch (e) {}
+})();
+
 function escapeHtml(unsafe) {
     if (!unsafe) return '';
     return String(unsafe)
@@ -247,6 +259,34 @@ try {
 
 // Injeta os botões de tema (no rodapé da sidebar e no topo do header)
 document.addEventListener('DOMContentLoaded', function () {
+    // 0. Inicialização do Modo Expansivo (Sidebar Retrátil no Desktop)
+    try {
+        const isExpansivo = window.innerWidth >= 768 && localStorage.getItem('fc_layout_expansivo') === 'true';
+        if (isExpansivo) {
+            document.body.classList.add('sidebar-recolhida');
+            document.documentElement.classList.add('sidebar-recolhida');
+        }
+        if (typeof atualizarBotoesModoExpansivo === 'function') {
+            atualizarBotoesModoExpansivo(isExpansivo);
+        }
+    } catch(e) {}
+
+    // Injeta botão de recolher no cabeçalho da sidebar no desktop
+    const sidebarTop = document.querySelector('#sidebar .p-5.flex.items-center.justify-between');
+    if (sidebarTop && !document.getElementById('btn-recolher-sidebar-desktop')) {
+        const btnDesktop = document.createElement('button');
+        btnDesktop.id = 'btn-recolher-sidebar-desktop';
+        btnDesktop.type = 'button';
+        btnDesktop.onclick = function(e) {
+            e.stopPropagation();
+            toggleMenu();
+        };
+        btnDesktop.className = 'hidden md:flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0';
+        btnDesktop.title = 'Recolher Menu (Modo Expansivo) [Alt+M]';
+        btnDesktop.innerHTML = '<i class="fa-solid fa-angles-left text-sm"></i>';
+        sidebarTop.appendChild(btnDesktop);
+    }
+
     // 1. Botão no rodapé da Sidebar
     const sidebarBottom = document.querySelector('#sidebar .p-4.border-t');
     if (sidebarBottom && !document.getElementById('btn-tema-sistema')) {
@@ -283,15 +323,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const syncBtn = document.createElement('button');
         syncBtn.id = 'header-btn-sync';
         syncBtn.type = 'button';
-        syncBtn.onclick = function() {
+        syncBtn.onclick = function(e) {
             if (window.FCCache && typeof window.FCCache.sincronizarComFirebase === 'function') {
-                window.FCCache.sincronizarComFirebase();
+                const forcar = Boolean(e && (e.shiftKey || e.ctrlKey));
+                window.FCCache.sincronizarComFirebase(false, { forcarCompleto: forcar });
             } else if (typeof window.showToast === 'function') {
                 window.showToast('Repositório local já atualizado.', 'info');
             }
         };
         syncBtn.className = 'h-9 px-2 sm:px-3 flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg bg-slate-700 hover:bg-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-[11px] sm:text-xs font-bold tracking-wider transition-all cursor-pointer shadow-sm select-none border border-slate-600 shrink-0 relative';
-        syncBtn.title = 'Sincronizar banco de dados local com o Firebase · Automático no 1º login e às 17:30';
+        syncBtn.title = 'Sincronização Delta Inteligente com o Firebase · Segure Shift para forçar carga completa';
         syncBtn.innerHTML = `
             <span id="header-btn-sync-text" class="hidden sm:inline">SINCRONIZAR</span>
             <span id="header-btn-sync-box" class="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded bg-white/10 text-white text-xs">
@@ -899,8 +940,6 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                     try { window.currentEmpresaData = JSON.parse(cacheEmpLocal); } catch(e) {}
                 }
                 const nomeEmpresaAtiva = (window.currentEmpresaData && (window.currentEmpresaData.nomeEmpresa || window.currentEmpresaData.nome)) || localStorage.getItem('fc_nome_empresa_ativa') || (empId === 'emp_fc_moveis' ? 'FC Móveis' : 'Minha Loja');
-                const elMenuNomePre = document.getElementById('menu-empresa-nome');
-                if (elMenuNomePre) elMenuNomePre.innerText = 'FC Gestão';
                 if (typeof aplicarIdentidadeVisualGlobal === 'function') {
                     aplicarIdentidadeVisualGlobal();
                 }
@@ -924,8 +963,20 @@ function initGlobalData(funcaoDeRenderizacaoDaPagina) {
                     }
                 }
 
-                // Dispara renderização inicial instantânea
-                if (funcaoDeRenderizacaoDaPagina && !window.__preRenderizadoOtimista) {
+                // Dispara renderização inicial instantânea somente se a rota for permitida
+                const rotaPreCheck = typeof window.verificarPermissaoRota === 'function' ? window.verificarPermissaoRota(window.location.pathname, userCache) : { permitido: true };
+                if (rotaPreCheck && !rotaPreCheck.permitido) {
+                    window.__paginaBloqueadaPorPermissao = true;
+                    window.__paginaBloqueadaPorPlano = true;
+                    if (rotaPreCheck.bloqueioPlano && typeof window.aplicarBloqueioPlano === 'function') {
+                        window.aplicarBloqueioPlano(rotaPreCheck.modulo, rotaPreCheck.nomeModulo);
+                    }
+                    const main = document.querySelector('main');
+                    if (main) {
+                        main.style.visibility = 'hidden';
+                        main.innerHTML = '';
+                    }
+                } else if (funcaoDeRenderizacaoDaPagina && !window.__preRenderizadoOtimista) {
                     window.__preRenderizadoOtimista = true;
                     try {
                         funcaoDeRenderizacaoDaPagina();
@@ -1036,9 +1087,10 @@ window.isContaMasterGlobal = isContaMasterGlobal;
                     const nomeEmpresaAtiva = empData.nomeEmpresa || empData.nome || localStorage.getItem('fc_nome_empresa_ativa') || (empId === 'emp_fc_moveis' ? 'FC Móveis' : 'Minha Loja');
                     localStorage.setItem('fc_nome_empresa_ativa', nomeEmpresaAtiva);
 
-                    // Atualiza imediatamente o nome no cabeçalho/menu lateral se o elemento existir
-                    const elMenuNomePre = document.getElementById('menu-empresa-nome');
-                    if (elMenuNomePre) elMenuNomePre.innerText = 'FC Gestão';
+                    // Atualiza imediatamente a identidade no cabeçalho/menu lateral se o elemento existir
+                    if (typeof aplicarIdentidadeVisualGlobal === 'function') {
+                        aplicarIdentidadeVisualGlobal();
+                    }
                     if (document.title && empId !== 'emp_fc_moveis' && document.title.includes('FC Móveis')) {
                         document.title = document.title.replace('FC Móveis', nomeEmpresaAtiva);
                     }
@@ -1425,6 +1477,65 @@ window.podeAcessarCadastrosGerais = function(user = window.currentUserInfo) {
 
 window.verificarPermissaoRota = function(rota, user = window.currentUserInfo) {
     if (!user) return { permitido: false, motivo: 'Usuário não autenticado.' };
+
+    const email = (user.email || (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser ? firebase.auth().currentUser.email : '') || '').toLowerCase().trim();
+    const isMasterGlobal = email === 'fabricadecoresgoiania@gmail.com' || email === 'pauloaugusto.silvaborges@gmail.com';
+
+    const path = (rota || window.location.pathname).toLowerCase();
+
+    // 0. VERIFICAÇÃO ESTRITA DE MÓDULOS CONTRATADOS NO PLANO SAAS (Não burlável por admin da loja)
+    if (!isMasterGlobal) {
+        const mapaSaaS = [
+            { rotas: ['fiscal.html'], modulo: 'fiscal', nome: 'Emissor Fiscal (NF-e/NFC-e)' },
+            { rotas: ['financeiro.html', 'conciliacao.html'], modulo: 'financeiro', nome: 'Financeiro & Fluxo de Caixa' },
+            { rotas: ['compras.html'], modulo: 'compras', nome: 'Compras & NF-e XML' },
+            { rotas: ['relatorios.html'], modulo: 'relatorios', nome: 'Relatórios & DRE' },
+            { rotas: ['agenda.html'], modulo: 'agenda', nome: 'Agenda & Lembretes' },
+            { rotas: ['marketing.html'], modulo: 'ia', nome: 'Marketing & IA Comercial' },
+            { rotas: ['caixa.html', 'caixa_loja.html'], modulo: 'caixa', nome: 'Caixa Físico & Caixa da Loja' },
+            { rotas: ['pdv.html'], modulo: 'pdv', nome: 'Frente de Caixa (PDV)' },
+            { rotas: ['vendas_operacao.html', 'vendas_gestao.html', 'orcamentos.html', 'operacao.html'], modulo: 'vendas', nome: 'Vendas & Orçamentos' },
+            { rotas: ['produtos.html'], modulo: 'estoque', nome: 'Produtos & Estoque' }
+        ];
+
+        let lic = window.currentSaaSLicense || window.currentEmpresaData;
+        if (!lic) {
+            const empId = localStorage.getItem('fc_empresa_ativa');
+            if (empId) {
+                try {
+                    const c = localStorage.getItem('saas_licenca_' + empId) || localStorage.getItem('fc_empresa_cache_' + empId);
+                    if (c) lic = JSON.parse(c);
+                } catch(e) {}
+            }
+        }
+
+        const mods = (lic && lic.modulosLiberados && Array.isArray(lic.modulosLiberados) && lic.modulosLiberados.length > 0)
+            ? lic.modulosLiberados
+            : window.modulosLiberadosEmpresa;
+
+        if (mods && Array.isArray(mods)) {
+            const checar = typeof window.temPermissaoModulo === 'function' ? window.temPermissaoModulo : function(m, list) {
+                if (!list || !Array.isArray(list)) return false;
+                if (m === 'ia' || m === 'marketing') return list.includes('ia') || list.includes('marketing');
+                if (m === 'caixa' || m === 'caixa_loja') return list.includes('caixa') || list.includes('caixa_loja');
+                return list.includes(m);
+            };
+
+            for (const item of mapaSaaS) {
+                const estaNaRota = item.rotas.some(r => path.includes(r));
+                if (estaNaRota && !checar(item.modulo, mods)) {
+                    return {
+                        permitido: false,
+                        motivo: `O módulo "${item.nome}" não está incluso no plano da sua loja.`,
+                        bloqueioPlano: true,
+                        modulo: item.modulo,
+                        nomeModulo: item.nome
+                    };
+                }
+            }
+        }
+    }
+
     if (user.isAdmin) return { permitido: true };
 
     const path = (rota || window.location.pathname).toLowerCase();
@@ -1914,7 +2025,7 @@ function bloquearPaginaPorPlanoSaaS(nomeModulo, nomePlano, moduloId) {
                 <a href="index.html" style="display:inline-flex; align-items:center; gap:0.4rem; padding:0.65rem 1.5rem; background:#334155; border-radius:0.75rem; color:#f8fafc; font-size:0.8rem; font-weight:700; text-decoration:none;">
                     <i class="fa-solid fa-arrow-left"></i> Voltar ao Painel
                 </a>
-                <a href="https://wa.me/5562993341774?text=${encodeURIComponent('Ola! Gostaria de fazer o upgrade do plano da minha loja para liberar o modulo ' + nomeModulo)}" target="_blank" style="display:inline-flex; align-items:center; gap:0.4rem; padding:0.65rem 1.5rem; background:linear-gradient(135deg,#f59e0b,#eab308); border-radius:0.75rem; color:#0f172a; font-size:0.8rem; font-weight:900; text-decoration:none;">
+                <a href="https://wa.me/5562999676874?text=${encodeURIComponent('Ola! Gostaria de fazer o upgrade do plano da minha loja para liberar o modulo ' + nomeModulo)}" target="_blank" style="display:inline-flex; align-items:center; gap:0.4rem; padding:0.65rem 1.5rem; background:linear-gradient(135deg,#f59e0b,#eab308); border-radius:0.75rem; color:#0f172a; font-size:0.8rem; font-weight:900; text-decoration:none;">
                     <i class="fa-brands fa-whatsapp"></i> Falar com Suporte
                 </a>
             </div>
@@ -2135,12 +2246,16 @@ function saveDB() {
 }
 
 async function fazerLogout() {
+    // Se houver operações locais pendentes de envio à nuvem, sincroniza antes de deslogar
+    if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.enviarFilaPendente === 'function') {
+        try { await window.FCCache.enviarFilaPendente(); } catch (e) {}
+    }
     localStorage.removeItem('fc_sessao_data');
     localStorage.removeItem('fc_sessao_uid');
     localStorage.removeItem('fc_empresa_ativa');
     sessionStorage.clear();
-    // Limpa todo o cache ao fazer logout para garantir que outro usuário
-    // não veja dados em cache do usuário anterior
+    // Limpa todo o cache de leitura ao fazer logout para garantir que outro usuário
+    // não veja dados em cache do usuário anterior (fila pendente é preservada intacta)
     if (typeof window.FCCache !== 'undefined') {
         try { await window.FCCache.invalidarTudo(); } catch (e) {}
     }
@@ -2197,22 +2312,76 @@ window.abrirMinhaLojaVirtual = function() {
 };
 
 function toggleMenu() {
+    const isMobile = window.innerWidth < 768;
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebar-overlay');
-    if (sidebar && overlay) {
+    if (!sidebar) return;
+
+    if (isMobile) {
+        // Mobile: Gaveta lateral deslizante com backdrop overlay
         const isClosed = sidebar.classList.contains('-translate-x-full');
         if (isClosed) {
             sidebar.classList.remove('-translate-x-full');
-            overlay.classList.remove('hidden');
+            if (overlay) overlay.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
         } else {
             sidebar.classList.add('-translate-x-full');
-            overlay.classList.add('hidden');
+            if (overlay) overlay.classList.add('hidden');
             document.body.style.overflow = '';
         }
+    } else {
+        // Desktop: Alterna Modo Expansivo (Recolher / Expandir Menu Lateral)
+        const isRecolhido = document.body.classList.toggle('sidebar-recolhida');
+        if (isRecolhido) {
+            document.documentElement.classList.add('sidebar-recolhida');
+        } else {
+            document.documentElement.classList.remove('sidebar-recolhida');
+        }
+        try {
+            localStorage.setItem('fc_layout_expansivo', isRecolhido ? 'true' : 'false');
+        } catch(e) {}
+        if (overlay) overlay.classList.add('hidden');
+        document.body.style.overflow = '';
+        atualizarBotoesModoExpansivo(isRecolhido);
+
+        // Notifica gráficos, tabelas e janelas para recalcular largura
+        setTimeout(function() {
+            window.dispatchEvent(new Event('resize'));
+        }, 300);
     }
 }
 window.toggleMenu = toggleMenu;
+
+function atualizarBotoesModoExpansivo(isRecolhido) {
+    const btns = document.querySelectorAll('header button[onclick*="toggleMenu"]');
+    btns.forEach(function(btn) {
+        if (btn) {
+            btn.title = isRecolhido 
+                ? 'Expandir Menu Lateral [Alt+M]' 
+                : 'Recolher Menu (Modo Expansivo) [Alt+M]';
+            btn.setAttribute('aria-label', isRecolhido ? 'Expandir Menu Lateral' : 'Recolher Menu (Modo Expansivo)');
+            if (isRecolhido) {
+                btn.classList.add('btn-menu-expansivo-ativo');
+            } else {
+                btn.classList.remove('btn-menu-expansivo-ativo');
+            }
+        }
+    });
+
+    const btnSidebarDesktop = document.getElementById('btn-recolher-sidebar-desktop');
+    if (btnSidebarDesktop) {
+        btnSidebarDesktop.title = isRecolhido ? 'Expandir Menu [Alt+M]' : 'Recolher Menu (Modo Expansivo) [Alt+M]';
+    }
+}
+window.atualizarBotoesModoExpansivo = atualizarBotoesModoExpansivo;
+
+// Atalho global Alt+M para alternar Modo Expansivo no Desktop
+document.addEventListener('keydown', function(e) {
+    if (e.altKey && (e.key === 'm' || e.key === 'M')) {
+        e.preventDefault();
+        toggleMenu();
+    }
+});
 
 // Fechamento automático no mobile ao clicar em qualquer item do menu ou tecla Escape
 document.addEventListener('click', function(e) {
@@ -2242,14 +2411,44 @@ function aplicarIdentidadeVisualGlobal() {
     const elLogo = document.getElementById('menu-logo');
     const elPlaceholder = document.getElementById('menu-logo-placeholder');
 
-    // Logo e Nome do Sistema no Menu (solicitado pelo usuário)
-    if (elNome) {
-        elNome.innerText = 'FC Gestão';
+    // Recupera dados da empresa ativa (em memória ou cache local)
+    const empId = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
+    let empresaData = window.currentEmpresaData;
+    if (!empresaData && empId) {
+        try {
+            const cache = localStorage.getItem('fc_empresa_cache_' + empId);
+            if (cache) empresaData = JSON.parse(cache);
+        } catch (e) {}
+    }
+    if (!empresaData && window.db && window.db.config && window.db.config.empresa) {
+        empresaData = window.db.config.empresa;
+    }
+    if (!empresaData) {
+        empresaData = {};
     }
 
+    // Nome fantasia da empresa logada para personalização de marca (White-Label)
+    const nomeExibicao = empresaData.nomeFantasia || empresaData.nome || empresaData.fantasia || empresaData.nomeEmpresa || localStorage.getItem('fc_nome_empresa_ativa') || 'FC Gestão';
+
+    if (elNome) {
+        elNome.innerText = nomeExibicao;
+        elNome.title = nomeExibicao;
+    }
+
+    // Logotipo personalizado da empresa cadastrada ou ícone padrão do sistema
+    const logoCustom = empresaData.logo || empresaData.logotipo || empresaData.logoUrl || (window.db && window.db.config && window.db.config.empresa && window.db.config.empresa.logo);
     if (elLogo) {
         const isSubdir = window.location.pathname.includes('/sistema/');
-        elLogo.src = (isSubdir ? '../' : './') + 'icons/icone_oficial.png';
+        const defaultLogo = (isSubdir ? '../' : './') + 'icons/icone_oficial.png';
+        if (logoCustom && String(logoCustom).trim().length > 5) {
+            elLogo.src = logoCustom;
+            elLogo.onerror = function() {
+                this.onerror = null;
+                this.src = defaultLogo;
+            };
+        } else {
+            elLogo.src = defaultLogo;
+        }
         elLogo.classList.remove('hidden');
         if (elPlaceholder) elPlaceholder.classList.add('hidden');
     }
@@ -2317,53 +2516,62 @@ window.chamarGemini = async function(prompt) {
             } catch(e) {}
         }
 
-        // 2.3 Se a chave de cliente não foi configurada, processa com segurança via Cloud Function (backend)
-        if (!apiKey) {
-            try {
-                if (typeof firebase !== 'undefined' && firebase.functions) {
-                    const empIdAtual = (typeof _obterEmpresaId === 'function') ? _obterEmpresaId() : (localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis');
-                    const chamarGeminiFn = firebase.functions().httpsCallable('chamarGemini');
-                    const res = await chamarGeminiFn({ prompt: prompt, empId: empIdAtual });
-                    if (res && res.data) return res.data;
-                }
-            } catch (fnErr) {
-                console.warn("[IA] Execução remota via Cloud Function falhou:", fnErr);
-            }
+        const apiKeyOriginal = (apiKey || '').trim();
 
-            console.warn("Chave Gemini não localizada.");
-            if (typeof showToast === 'function') {
-                showToast("A Chave de Inteligência Artificial ainda não foi configurada no sistema.", 'warning');
-            }
-            return null;
+        // 2.3 Validação da chave (chaves do Google AI Studio possuem ao menos 15 caracteres)
+        let chaveValidaGoogle = false;
+        if (apiKeyOriginal && apiKeyOriginal.length >= 15) {
+            chaveValidaGoogle = true;
+            apiKey = apiKeyOriginal;
         }
 
-        // 3. Execução com os modelos operacionais da Google
-        const modelosParaTentar = [
-            'gemini-3.5-flash-lite',
-            'gemini-flash-lite-latest',
-            'gemini-3.5-flash',
-            'gemini-3.8-flash',
-            'gemini-3.6-flash',
-            'gemini-3.7-flash',
-            'gemini-flash-latest'
-        ];
+        // 3. Executa diretamente client-side com os modelos vigentes do Google Gemini
+        if (chaveValidaGoogle) {
+            const modelosParaTentar = [
+                'gemini-3.5-flash-lite',
+                'gemini-3.8-flash',
+                'gemini-3.5-flash',
+                'gemini-flash-latest'
+            ];
 
-        for (const modelo of modelosParaTentar) {
-            try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-                });
+            for (const modelo of modelosParaTentar) {
+                try {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                    });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    const txt = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (txt) return txt;
+                    if (response.ok) {
+                        const data = await response.json();
+                        const txt = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (txt) return txt;
+                    } else if (response.status === 401 || response.status === 403) {
+                        console.warn(`[IA] Chave Google Gemini rejeitada (HTTP ${response.status}). Tentando Cloud Function...`);
+                        break; // Chave inválida ou sem permissão
+                    }
+                } catch (e) {
+                    // Tenta o próximo modelo
                 }
-            } catch (e) {
-                // Tenta o próximo modelo
             }
+        }
+
+        // 4. Fallback Seguro: Se a chave local falhar ou não existir, processa via Cloud Function (backend com Chave Mestra Global do SaaS)
+        try {
+            if (typeof firebase !== 'undefined' && firebase.functions) {
+                const empIdAtual = (typeof _obterEmpresaId === 'function') ? _obterEmpresaId() : (localStorage.getItem('fc_empresa_ativa') || 'emp_fc_moveis');
+                const chamarGeminiFn = firebase.functions().httpsCallable('chamarGemini');
+                const res = await chamarGeminiFn({ prompt: prompt, empId: empIdAtual });
+                if (res && res.data) return res.data;
+            }
+        } catch (fnErr) {
+            console.warn("[IA] Execução remota via Cloud Function falhou:", fnErr);
+        }
+
+        // 5. Se nenhuma via conseguiu processar, informa claramente o usuário
+        console.warn("[IA] Chave Gemini não configurada ou serviço indisponível temporariamente.");
+        if (typeof showToast === 'function') {
+            showToast("A Chave de Inteligência Artificial do Google Gemini ainda não foi configurada ou está temporariamente indisponível.", 'warning');
         }
         return null;
     } catch (e) {
@@ -2408,7 +2616,10 @@ window.reimprimirVenda = function(id) {
     
     window.vendaAtualImpressao = v;
     const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id).slice(-4);
-    const htmlRecibo = `<div style="text-align: center; border-bottom: 1px dashed #999; padding-bottom: 10px; margin-bottom: 10px;"><h2 style="font-weight: bold; font-size: 1.2em; margin: 0;">FC MÓVEIS E INTERIORES</h2><p style="font-size: 0.9em; margin: 0;">Operação: REIMPRESSÃO</p></div><div style="border-bottom: 1px dashed #999; padding-bottom: 10px; margin-bottom: 10px; font-size: 0.9em;"><p style="margin: 2px 0;">Pedido: #${numPedStr}</p><p style="margin: 2px 0;">Data Original: ${new Date(v.data).toLocaleString('pt-BR')}</p><p style="margin: 2px 0;">Cliente: ${v.clienteNome || '-'}</p><p style="margin: 2px 0;">Vendedor: ${v.vendedor || '-'}</p></div><table style="width: 100%; text-align: left; font-size: 0.9em; border-collapse: collapse; margin-bottom: 10px;"><tr style="border-bottom: 1px solid #ccc;"><th style="padding-bottom: 4px;">Item</th><th style="padding-bottom: 4px; text-align: center;">Qtd</th><th style="padding-bottom: 4px; text-align: right;">Total</th></tr>${(v.itens || []).map(i => `<tr><td style="padding: 4px 0;">${i.nome}</td><td style="padding: 4px 0; text-align: center;">${i.qtd}</td><td style="padding: 4px 0; text-align: right;">${typeof formatMoney === 'function' ? formatMoney(i.preco*i.qtd) : (i.preco*i.qtd)}</td></tr>`).join('')}</table><div style="text-align: right; font-size: 0.9em;"><h3 style="font-weight: bold; font-size: 1.2em; margin: 5px 0 0 0;">Total Final: ${typeof formatMoney === 'function' ? formatMoney(v.tot || v.valorLiquido) : (v.tot || v.valorLiquido)}</h3></div><div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #999; text-align: center; font-size: 0.9em;"><p style="margin: 0; font-weight: bold; text-transform: uppercase;">PAGAMENTO: ${v.pag || 'Diversos'}</p></div>`;
+    const cliEndCompleto = (typeof window.formatarEnderecoCompletoCliente === 'function') 
+        ? window.formatarEnderecoCompletoCliente(v) 
+        : (v.clienteEnd || '');
+    const htmlRecibo = `<div style="text-align: center; border-bottom: 1px dashed #999; padding-bottom: 10px; margin-bottom: 10px;"><h2 style="font-weight: bold; font-size: 1.2em; margin: 0;">FC MÓVEIS E INTERIORES</h2><p style="font-size: 0.9em; margin: 0;">Operação: REIMPRESSÃO</p></div><div style="border-bottom: 1px dashed #999; padding-bottom: 10px; margin-bottom: 10px; font-size: 0.9em;"><p style="margin: 2px 0;">Pedido: #${numPedStr}</p><p style="margin: 2px 0;">Data Original: ${new Date(v.data).toLocaleString('pt-BR')}</p><p style="margin: 2px 0;">Cliente: ${v.clienteNome || '-'}</p>${cliEndCompleto && cliEndCompleto !== 'Não informado' ? `<p style="margin: 2px 0;">Endereço Completo: ${cliEndCompleto}</p>` : ''}<p style="margin: 2px 0;">Vendedor: ${v.vendedor || '-'}</p></div><table style="width: 100%; text-align: left; font-size: 0.9em; border-collapse: collapse; margin-bottom: 10px;"><tr style="border-bottom: 1px solid #ccc;"><th style="padding-bottom: 4px;">Item</th><th style="padding-bottom: 4px; text-align: center;">Qtd</th><th style="padding-bottom: 4px; text-align: right;">Total</th></tr>${(v.itens || []).map(i => `<tr><td style="padding: 4px 0;">${i.nome}</td><td style="padding: 4px 0; text-align: center;">${i.qtd}</td><td style="padding: 4px 0; text-align: right;">${typeof formatMoney === 'function' ? formatMoney(i.preco*i.qtd) : (i.preco*i.qtd)}</td></tr>`).join('')}</table><div style="text-align: right; font-size: 0.9em;"><h3 style="font-weight: bold; font-size: 1.2em; margin: 5px 0 0 0;">Total Final: ${typeof formatMoney === 'function' ? formatMoney(v.tot || v.valorLiquido) : (v.tot || v.valorLiquido)}</h3></div><div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #999; text-align: center; font-size: 0.9em;"><p style="margin: 0; font-weight: bold; text-transform: uppercase;">PAGAMENTO: ${v.pag || 'Diversos'}</p></div>`;
     
     const printArea = document.getElementById('print-area');
     const modalRecibo = document.getElementById('modal-opcoes-recibo');
@@ -2440,17 +2651,25 @@ window.printHtmlSeguro = function(htmlCompleto) {
             document.body.appendChild(printFrame);
         }
         
+        const isThermal = htmlCompleto && (htmlCompleto.includes('80mm') || htmlCompleto.includes('72mm') || htmlCompleto.includes('monospace'));
+        const pageCss = isThermal 
+            ? `@page { size: 80mm auto; margin: 2mm; } body { margin: 2mm; width: 72mm; }`
+            : `@page { size: A4 portrait; margin: 8mm 10mm 10mm 10mm; }
+        *, *::before, *::after { box-sizing: border-box !important; }
+        html, body { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; background: #fff !important; color: #000 !important; overflow: visible !important; }
+        @media print { body { margin: 0 !important; padding: 4mm 6mm !important; width: 100% !important; box-sizing: border-box !important; } }
+        .overflow-x-auto, .table-wrapper, .fc-table-wrap { overflow: visible !important; display: block !important; }
+        table { width: 100% !important; max-width: 100% !important; min-width: 0 !important; box-sizing: border-box !important; }
+        th, td { word-break: break-word !important; }`;
+
         const paginaHtml = `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
     <title>Impressão</title>
     <style>
-        @media print {
-            @page { margin: 0; }
-            body { margin: 10mm; }
-        }
-        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #fff; color: #000; }
+        ${pageCss}
+        body { font-family: Arial, sans-serif; background: #fff; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     </style>
 </head>
 <body>
@@ -2500,6 +2719,222 @@ window.printHtmlSeguro = function(htmlCompleto) {
 };
 
 // ==========================================
+// FUNÇÕES UNIVERSAIS DE FORMATAÇÃO DE ENDEREÇO COMPLETO DO CLIENTE COM CEP
+// ==========================================
+window.formatarEnderecoCompletoCliente = function(clienteOuVenda, fallbackContexto) {
+    if (!clienteOuVenda && !fallbackContexto) return 'Não informado';
+    
+    let obj = clienteOuVenda;
+    let fallback = fallbackContexto || null;
+
+    if (typeof obj === 'string') {
+        const strTrim = obj.trim();
+        if (!fallback && (!strTrim || strTrim === 'Não informado')) return 'Não informado';
+        if (fallback) {
+            obj = fallback;
+            if (!obj.clienteEnd) obj.clienteEnd = strTrim;
+        } else {
+            return strTrim;
+        }
+    }
+
+    if (!obj || typeof obj !== 'object') return 'Não informado';
+
+    let cliDb = null;
+    const cId = obj.clienteId || obj.id || (fallback && (fallback.clienteId || fallback.id));
+    const clientesList = (typeof db !== 'undefined' && Array.isArray(db.clientes)) 
+        ? db.clientes 
+        : ((typeof window.db !== 'undefined' && Array.isArray(window.db.clientes)) ? window.db.clientes : []);
+
+    if (cId && cId !== '0') {
+        cliDb = clientesList.find(x => String(x.id || x._id || '').trim() === String(cId).trim());
+    }
+    if (!cliDb && obj.clienteDoc && obj.clienteDoc !== 'Não informado') {
+        const cleanDoc = String(obj.clienteDoc).replace(/\D/g, '');
+        if (cleanDoc) {
+            cliDb = clientesList.find(x => {
+                const d = String(x.doc || x.cpf || x.cnpj || x.cpfCnpj || '').replace(/\D/g, '');
+                return d && d === cleanDoc;
+            });
+        }
+    }
+
+    const dest = obj.destinatario || (cliDb && cliDb.destinatario) || obj.cliente || {};
+
+    let rua = (cliDb?.rua || cliDb?.logradouro || cliDb?.endereco || cliDb?.end ||
+               dest?.rua || dest?.logradouro || dest?.endereco ||
+               obj.clienteRua || obj.rua || obj.logradouro || '').trim();
+
+    let numero = (cliDb?.numero || cliDb?.num ||
+                  dest?.numero ||
+                  obj.clienteNumero || obj.numero || '').trim();
+
+    let complemento = (cliDb?.complemento || cliDb?.compl ||
+                       dest?.complemento ||
+                       obj.clienteComplemento || obj.complemento || '').trim();
+
+    let bairro = (cliDb?.bairro ||
+                  dest?.bairro ||
+                  obj.clienteBairro || obj.bairro || '').trim();
+
+    let cidade = (cliDb?.cidade || cliDb?.municipio ||
+                  dest?.cidade || dest?.municipio ||
+                  obj.clienteCidade || obj.cidade || '').trim();
+
+    let uf = (cliDb?.uf || cliDb?.estado ||
+              dest?.uf || dest?.estado ||
+              obj.clienteUf || obj.uf || '').trim().toUpperCase();
+
+    let rawCep = (cliDb?.cep ||
+                  dest?.cep ||
+                  obj.clienteCep || obj.cep || '').toString().trim();
+
+    let endBase = (obj.clienteEnd && obj.clienteEnd !== 'Não informado') ? String(obj.clienteEnd).trim() : '';
+
+    if (!rua && endBase) {
+        rua = endBase;
+    }
+
+    if (cidade.includes(' - ')) {
+        const parts = cidade.split(' - ');
+        cidade = parts[0].trim();
+        if (!uf && parts[1]) uf = parts[1].trim().toUpperCase();
+    } else if (cidade.includes('/')) {
+        const parts = cidade.split('/');
+        cidade = parts[0].trim();
+        if (!uf && parts[1]) uf = parts[1].trim().toUpperCase();
+    }
+
+    let cepFmt = '';
+    const cepDigits = rawCep.replace(/\D/g, '');
+    if (cepDigits.length === 8) {
+        cepFmt = `${cepDigits.slice(0, 5)}-${cepDigits.slice(5)}`;
+    } else if (rawCep) {
+        cepFmt = rawCep;
+    }
+
+    const partes = [];
+
+    if (rua) {
+        let parteRua = rua;
+        if (numero && !parteRua.toLowerCase().includes('nº') && !parteRua.toLowerCase().includes('numero') && !parteRua.endsWith(numero)) {
+            parteRua += `, nº ${numero}`;
+        }
+        partes.push(parteRua);
+    } else if (endBase) {
+        partes.push(endBase);
+    }
+
+    if (complemento && !partes.join(', ').toLowerCase().includes(complemento.toLowerCase())) {
+        partes.push(complemento);
+    }
+
+    if (bairro) {
+        const bairroClean = bairro.replace(/^bairro\s+/i, '');
+        if (!partes.join(', ').toLowerCase().includes(bairroClean.toLowerCase())) {
+            partes.push(`Bairro ${bairroClean}`);
+        }
+    }
+
+    if (cidade) {
+        const cidUfStr = uf ? `${cidade} - ${uf}` : cidade;
+        if (!partes.join(', ').toLowerCase().includes(cidade.toLowerCase())) {
+            partes.push(cidUfStr);
+        }
+    }
+
+    if (cepFmt) {
+        const strAtual = partes.join(', ');
+        if (!strAtual.toLowerCase().includes('cep') && !strAtual.includes(cepFmt)) {
+            partes.push(`CEP: ${cepFmt}`);
+        }
+    }
+
+    if (partes.length > 0) {
+        return partes.join(', ');
+    }
+
+    if (endBase) {
+        if (cepFmt && !endBase.toLowerCase().includes('cep') && !endBase.includes(cepFmt)) {
+            return `${endBase}, CEP: ${cepFmt}`;
+        }
+        return endBase;
+    }
+
+    return 'Não informado';
+};
+window.formatarEnderecoCompleto = window.formatarEnderecoCompletoCliente;
+
+if (typeof window.obterDadosClientePDV !== 'function') {
+    window.obterDadosClientePDV = function(cId) {
+        const clientesList = (typeof db !== 'undefined' && Array.isArray(db.clientes)) 
+            ? db.clientes 
+            : ((typeof window.db !== 'undefined' && Array.isArray(window.db.clientes)) ? window.db.clientes : []);
+        const c = cId && cId !== "0" ? clientesList.find(x => String(x.id || x._id || '').trim() === String(cId).trim()) : null;
+        if(!c) return {
+            id: '',
+            nome: 'Consumidor Final',
+            doc: 'Não informado',
+            cpf: '',
+            cnpj: '',
+            tel: 'Não informado',
+            rua: '',
+            numero: '',
+            complemento: '',
+            bairro: '',
+            cidade: '',
+            uf: '',
+            cep: '',
+            ibge: '',
+            endCompleto: 'Não informado',
+            raw: null
+        };
+
+        const doc = c.cpfCnpj || c.documento || c.cnpj || c.cpf || c.doc || c.cpf_cnpj || 'Não informado';
+        const tel = c.whatsapp || c.wpp || c.celular || c.telefone || c.telefoneFixo || c.tel || 'Não informado';
+        const rua = c.rua || c.logradouro || c.endereco || c.end || '';
+        const num = c.numero || '';
+        const complemento = c.complemento || c.compl || '';
+        const bairro = c.bairro || '';
+        
+        let cidadeLimpa = (c.cidade || '').trim();
+        let ufLimpa = (c.uf || '').trim().toUpperCase();
+        if (cidadeLimpa.includes(' - ')) {
+            const parts = cidadeLimpa.split(' - ');
+            cidadeLimpa = parts[0].trim();
+            if (!ufLimpa && parts[1]) ufLimpa = parts[1].trim().toUpperCase();
+        } else if (cidadeLimpa.includes('/')) {
+            const parts = cidadeLimpa.split('/');
+            cidadeLimpa = parts[0].trim();
+            if (!ufLimpa && parts[1]) ufLimpa = parts[1].trim().toUpperCase();
+        }
+
+        const cepLimpo = (c.cep ? String(c.cep).replace(/\D/g, '') : '');
+        const ibgeLimpo = (c.ibge || '').trim();
+        const endCompleto = window.formatarEnderecoCompletoCliente(c);
+
+        return {
+            id: c.id,
+            nome: c.nome || c.razaoSocial || 'Consumidor Final',
+            doc: doc,
+            cpf: (doc.replace(/\D/g, '').length === 11) ? doc.replace(/\D/g, '') : (c.cpf ? c.cpf.replace(/\D/g, '') : ''),
+            cnpj: (doc.replace(/\D/g, '').length === 14) ? doc.replace(/\D/g, '') : (c.cnpj ? c.cnpj.replace(/\D/g, '') : ''),
+            tel: tel,
+            rua: rua,
+            numero: num || 'S/N',
+            complemento: complemento,
+            bairro: bairro,
+            cidade: cidadeLimpa,
+            uf: ufLimpa,
+            cep: cepLimpo,
+            ibge: ibgeLimpo,
+            endCompleto: endCompleto,
+            raw: c
+        };
+    };
+}
+
+// ==========================================
 // MOTOR UNIVERSAL DE VISUALIZAÇÃO E IMPRESSÃO DO CONTRATO
 // ==========================================
 window.abrirModalContrato = function(vendaOuId) {
@@ -2522,11 +2957,11 @@ window.abrirModalContrato = function(vendaOuId) {
     const emp = (typeof obterDadosEmpresa === 'function') ? obterDadosEmpresa() : { nome: fallbackNomeContr, cnpj: '', end: '', tel: '', logoHtml: '' };
     const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id || '').slice(-4);
     
-    const cliInfo = (typeof obterDadosClientePDV === 'function') ? obterDadosClientePDV(v.clienteId) : null;
+    const cliInfo = (typeof obterDadosClientePDV === 'function') ? obterDadosClientePDV(v.clienteId) : (typeof window.obterDadosClientePDV === 'function' ? window.obterDadosClientePDV(v.clienteId) : null);
     const cliNome = (cliInfo && cliInfo.nome !== 'Consumidor Final') ? cliInfo.nome : (v.clienteNome || v.cliente || 'Consumidor Final');
     const cliCpf = (cliInfo && cliInfo.doc !== 'Não informado') ? cliInfo.doc : (v.clienteDoc || 'Não informado');
     const cliTel = (cliInfo && cliInfo.tel !== 'Não informado') ? cliInfo.tel : (v.clienteTel || 'Não informado');
-    const cliEndCompleto = (cliInfo && cliInfo.endCompleto !== 'Não informado') ? cliInfo.endCompleto : (v.clienteEnd || 'Não informado');
+    const cliEndCompleto = window.formatarEnderecoCompletoCliente(v, cliInfo);
     
     // Itens
     let totalDescontoItens = 0;
@@ -2604,7 +3039,7 @@ window.abrirModalContrato = function(vendaOuId) {
             <strong>Nome completo:</strong> ${cliNome}<br>
             <strong>CPF/CNPJ:</strong> ${cliCpf}<br>
             <strong>Telefone / WhatsApp:</strong> ${cliTel}<br>
-            <strong>Endereço:</strong> ${cliEndCompleto}
+            <strong>Endereço Completo:</strong> ${cliEndCompleto}
         </p>
 
         <h3 style="font-size: 13px; font-weight: bold; background: #f1f5f9; padding: 6px 10px; border: 1px solid #cbd5e1; margin-bottom: 8px; text-transform: uppercase;">2. OBJETO DO CONTRATO</h3>
@@ -2617,9 +3052,61 @@ window.abrirModalContrato = function(vendaOuId) {
             ${temDescontoNoContrato ? `<strong>Desconto Total:</strong> - ${fm(totalDescontoGeral)}<br>` : ''}
             ${v.frete && Number(v.frete) > 0 ? `<strong>Taxas / Frete (+):</strong> ${fm(v.frete)}<br>` : ''}
             <strong>Valor Total:</strong> <span style="font-size: 15px; font-weight: bold; color: #1e3a8a;">${fm(v.tot || v.total || 0)}</span><br>
+            ${v.vendaComEntradaEntrega ? `
+            <div style="margin: 8px 0; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 5px; padding: 10px; font-size: 13px;">
+                <strong style="color: #1e3a8a; text-transform: uppercase; font-size: 12px;"><i class="fa-solid fa-truck-ramp-box"></i> Condição Acordada: Móveis com Entrada + Saldo na Entrega</strong>
+                <div style="margin-top: 6px; padding-bottom: 6px; border-bottom: 1px dashed #cbd5e1;">
+                    <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 2px;">
+                        <span>1. Entrada / Sinal (Pago no Pedido):</span>
+                        <span style="color: #15803d;">Total: ${fm(v.valorEntrada)} [QUITADO NO ATO]</span>
+                    </div>
+                    ${(v.pagamentosEntrada && v.pagamentosEntrada.length > 0)
+                        ? v.pagamentosEntrada.map(p => `
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; padding-left: 10px; color: #334155;">
+                                <span>▪ ${p.metodo}${p.parcelas > 1 ? ' (' + p.parcelas + 'x de ' + fm(p.valor / p.parcelas) + ')' : ''}</span>
+                                <strong>${fm(p.valor)}</strong>
+                            </div>
+                        `).join('')
+                        : `
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; padding-left: 10px; color: #334155;">
+                                <span>▪ ${v.formaEntrada || 'Pago'}${v.parcelasEntrada > 1 ? ' (' + v.parcelasEntrada + 'x de ' + fm(v.valorEntrada / v.parcelasEntrada) + ')' : ''}</span>
+                                <strong>${fm(v.valorEntrada)}</strong>
+                            </div>
+                        `
+                    }
+                </div>
+                <div style="margin-top: 6px;">
+                    <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 2px;">
+                        <span>2. Saldo Restante a Pagar na Entrega:</span>
+                        <span style="color: #b91c1c;">Total: ${fm(v.saldoEntrega)} ${v.saldoEntregaPago ? '<span style="color: #15803d;">[QUITADO]</span>' : '[PAGAMENTO OBRIGATÓRIO NA ENTREGA]'}</span>
+                    </div>
+                    ${(v.pagamentosEntrega && v.pagamentosEntrega.length > 0)
+                        ? v.pagamentosEntrega.map(p => `
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; padding-left: 10px; color: #334155;">
+                                <span>▪ ${p.metodo}${p.parcelas > 1 ? ' (' + p.parcelas + 'x de ' + fm(p.valor / p.parcelas) + ' na Maquininha/Entrega)' : ''}</span>
+                                <strong>${fm(p.valor)}</strong>
+                            </div>
+                        `).join('')
+                        : `
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; padding-left: 10px; color: #334155;">
+                                <span>▪ ${v.formaEntregaPrevista || 'Forma combinada'}${v.parcelasEntrega > 1 ? ' (' + v.parcelasEntrega + 'x de ' + fm(v.saldoEntrega / v.parcelasEntrega) + ' na Maquininha/Entrega)' : ''}</span>
+                                <strong>${fm(v.saldoEntrega)}</strong>
+                            </div>
+                        `
+                    }
+                </div>
+            </div>
+            ` : ''}
             <strong>Forma de Pagamento:</strong> ${v.pag || 'Conforme acordado'}<br>
             <strong>Data da Operação:</strong> ${dataEmissao}
         </p>
+
+        ${v.vendaComEntradaEntrega ? `
+        <h3 style="font-size: 13px; font-weight: bold; background: #fef3c7; color: #92400e; padding: 6px 10px; border: 1.5px solid #f59e0b; margin-bottom: 8px; margin-top: 14px; text-transform: uppercase;">CLÁUSULA DE CONDICIONAMENTO DA ENTREGA AO PAGAMENTO DO SALDO</h3>
+        <p style="margin-top: 0; margin-bottom: 14px; padding: 8px 10px; text-align: justify; font-size: 12.5px; color: #78350f; background: #fffdf5; border: 1px dashed #fcd34d; border-radius: 4px;">
+            Fica expressamente acordado entre as partes que a entrega física do(s) móvel(is) e a respectiva transferência de posse estão <strong>estritamente condicionadas à quitação integral do Saldo Restante no valor de ${fm(v.saldoEntrega)}</strong> no exato momento do recebimento/descarregamento, pela(s) forma(s) ajustada(s) (<strong>${(v.pagamentosEntrega && v.pagamentosEntrega.length > 0) ? v.pagamentosEntrega.map(p => p.metodo + (p.parcelas > 1 ? ' em ' + p.parcelas + 'x de ' + fm(p.valor / p.parcelas) : '') + ' [' + fm(p.valor) + ']').join(' + ') : (v.formaEntregaPrevista || 'conforme combinado') + (v.parcelasEntrega > 1 ? ' em ' + v.parcelasEntrega + 'x de ' + fm(v.saldoEntrega / v.parcelasEntrega) : '')}</strong>). Em caso de recusa, inadimplência ou falta de meios acordados para quitação do saldo no ato da entrega, a equipe transportadora fica desde já autorizada a <strong>reter e retornar a mercadoria</strong> à sede da empresa, respondendo o comprador pelas taxas de reentrega e novo agendamento logístico.
+        </p>
+        ` : ''}
 
         <h3 style="font-size: 13px; font-weight: bold; background: #f1f5f9; padding: 6px 10px; border: 1px solid #cbd5e1; margin-bottom: 8px; text-transform: uppercase;">4. PRAZO DE ENTREGA E GARANTIA</h3>
         <p style="margin-top: 0; margin-bottom: 10px; padding-left: 6px; text-align: justify;">O prazo de entrega válido é a <strong>Data Prevista de Entrega Acordada</strong> informada neste pedido. Havendo eventuais imprevistos operacionais, de transporte, fabricação ou intempéries, fica acordado um prazo adicional de tolerância de até 7 (sete) dias corridos.<br>O produto/serviço possui garantia legal de 90 (noventa) dias contra defeitos de fabricação.</p>
@@ -2627,7 +3114,7 @@ window.abrirModalContrato = function(vendaOuId) {
         ${dataEntregaFormatada !== '___/___/20__' ? `<p style="margin-top: 6px; font-weight: bold; background-color: #eff6ff; padding: 8px 12px; border-left: 4px solid #2563eb; border-radius: 4px;">Data Prevista de Entrega Acordada: <span style="font-size: 15px; color: #1e3a8a;">${dataEntregaFormatada}</span></p>` : ''}
 
         <h3 style="font-size: 13px; font-weight: bold; background: #f1f5f9; padding: 6px 10px; border: 1px solid #cbd5e1; margin-bottom: 8px; margin-top: 14px; text-transform: uppercase;">5. LOCAL DE ENTREGA</h3>
-        <p style="margin-top: 0; margin-bottom: 14px; padding-left: 6px;"><strong>Endereço:</strong> ${cliEndCompleto}<br><strong>Data Prevista de Entrega:</strong> <span style="font-weight: bold;">${dataEntregaFormatada}</span></p>
+        <p style="margin-top: 0; margin-bottom: 14px; padding-left: 6px;"><strong>Endereço de Entrega:</strong> ${cliEndCompleto}<br><strong>Data Prevista de Entrega:</strong> <span style="font-weight: bold;">${dataEntregaFormatada}</span></p>
 
         <h3 style="font-size: 13px; font-weight: bold; background: #f1f5f9; padding: 6px 10px; border: 1px solid #cbd5e1; margin-bottom: 8px; text-transform: uppercase;">6. TRANSPORTE E MONTAGEM</h3>
         <p style="margin-top: 0; margin-bottom: 14px; padding-left: 6px;">( ) Entrega realizada pela empresa &nbsp;&nbsp;&nbsp; ( ) Retirada pelo cliente<br>Montagem: ( ) Inclusa &nbsp;&nbsp;&nbsp; ( ) Não inclusa<br>Caso a entrega seja realizada pela empresa, o cliente deve garantir acesso adequado ao local.</p>
@@ -2668,7 +3155,7 @@ window.abrirModalContrato = function(vendaOuId) {
     if (modalAntigo) modalAntigo.remove();
 
     if (typeof printHtmlSeguro === 'function') {
-        printHtmlSeguro(`<div style="width: 210mm; margin: 0 auto; padding: 15mm; background: #fff;">${htmlContrato}</div>`);
+        printHtmlSeguro(`<div style="width: 100%; max-width: 100%; box-sizing: border-box; margin: 0 auto; padding: 0; background: #fff;">${htmlContrato}</div>`);
     } else {
         window.print();
     }
@@ -2682,7 +3169,7 @@ window.fecharModalPreviewContrato = function() {
 window.imprimirContratoDiretoModal = function() {
     if (window._htmlContratoAtual) {
         if (typeof printHtmlSeguro === 'function') {
-            printHtmlSeguro(`<div style="width: 210mm; margin: 0 auto; padding: 15mm; background: #fff;">${window._htmlContratoAtual}</div>`);
+            printHtmlSeguro(`<div style="width: 100%; max-width: 100%; box-sizing: border-box; margin: 0 auto; padding: 0; background: #fff;">${window._htmlContratoAtual}</div>`);
         } else {
             window.print();
         }
@@ -2726,8 +3213,9 @@ window.abrirOrdemProducao = function(vendaOuId) {
     const fallbackNomeContr = (window.currentEmpresaData?.nomeEmpresa) || localStorage.getItem('fc_nome_empresa_ativa') || (empAtivaIdContr === 'emp_fc_moveis' ? 'FC MÓVEIS' : 'MINHA LOJA');
     const emp = (typeof obterDadosEmpresa === 'function') ? obterDadosEmpresa() : { nome: fallbackNomeContr, cnpj: '', end: '', tel: '', logoHtml: '' };
 
-    const cliInfo = (typeof obterDadosClientePDV === 'function') ? obterDadosClientePDV(v.clienteId) : null;
+    const cliInfo = (typeof obterDadosClientePDV === 'function') ? obterDadosClientePDV(v.clienteId) : (typeof window.obterDadosClientePDV === 'function' ? window.obterDadosClientePDV(v.clienteId) : null);
     const cliNome = (cliInfo && cliInfo.nome && cliInfo.nome !== 'Consumidor Final') ? cliInfo.nome : (v.clienteNome || v.cliente || 'Consumidor Final');
+    const cliEndCompleto = window.formatarEnderecoCompletoCliente(v, cliInfo);
 
     const opAtual = (typeof window.obterOperadorAtual === 'function') ? window.obterOperadorAtual() : null;
     const vendedorNome = v.vendedorNome || v.vendedor || (opAtual && opAtual.nome) || (window.currentUserInfo && window.currentUserInfo.nome) || 'Atendente';
@@ -2855,14 +3343,15 @@ window.abrirOrdemProducao = function(vendaOuId) {
             <title>Ordem de Produção #${numPedStr}</title>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { size: A4; margin: 12mm 15mm; }
-                * { box-sizing: border-box; }
-                body {
+                @page { size: A4 portrait; margin: 10mm 12mm 12mm 12mm; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body {
                     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
                     background: #f1f5f9;
                     margin: 0;
                     padding: 20px;
                     color: #1e293b;
+                    width: 100%;
                 }
                 .barra-acoes {
                     max-width: 800px;
@@ -2890,16 +3379,18 @@ window.abrirOrdemProducao = function(vendaOuId) {
                 .btn-print:hover { background: #334155; }
                 .folha-a4 {
                     max-width: 800px;
+                    width: 100%;
                     margin: 0 auto;
                     background: #ffffff;
-                    padding: 35px 45px;
+                    padding: 30px 40px;
                     border-radius: 12px;
                     box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+                    box-sizing: border-box;
                 }
                 @media print {
-                    body { background: #fff !important; padding: 0 !important; }
+                    html, body { background: #fff !important; padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; }
                     .barra-acoes { display: none !important; }
-                    .folha-a4 { box-shadow: none !important; border-radius: 0 !important; padding: 0 !important; max-width: none !important; }
+                    .folha-a4 { box-shadow: none !important; border: none !important; border-radius: 0 !important; padding: 4mm 8mm !important; margin: 0 auto !important; max-width: 100% !important; width: 100% !important; box-sizing: border-box !important; }
                     .bloco-item-op { page-break-inside: avoid; }
                 }
             </style>
@@ -2926,10 +3417,11 @@ window.abrirOrdemProducao = function(vendaOuId) {
                     <span style="font-size: 12px; font-weight: 500; color: #64748b;">${dataExtenso}</span>
                 </div>
 
-                <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 8px;">
                     <div>Cliente: <span style="font-weight: 700; color: #0f172a;">${cliNome}</span></div>
                     <div>Vendedora: <span style="font-weight: 700; color: #0f172a;">${vendedorNome}</span></div>
                 </div>
+                ${cliEndCompleto && cliEndCompleto !== 'Não informado' ? `<div style="font-size: 12px; margin-bottom: 10px; color: #475569;"><strong>Endereço de Entrega:</strong> ${cliEndCompleto}</div>` : ''}
 
                 <div style="border-top: 1px dashed #cbd5e1; margin: 10px 0 12px 0;"></div>
                 <p style="margin: 0 0 15px 0; font-size: 12px; color: #64748b;">Segue informações e foto de referência para a produção dos móveis abaixo.</p>
@@ -2969,6 +3461,882 @@ window.imprimirOrdemProducaoObj = function(v) {
 window.imprimirOrdemProducaoById = function(id) {
     window.abrirOrdemProducao(id);
 };
+
+// ==========================================
+// MOTOR UNIVERSAL DE TERMO DE ENTREGA E RECEBIMENTO
+// ==========================================
+window.abrirTermoEntrega = function(vendaOuId) {
+    let v = vendaOuId;
+    if (typeof vendaOuId === 'string' || typeof vendaOuId === 'number') {
+        const todasVendas = (typeof db !== 'undefined' && Array.isArray(db.vendas)) 
+            ? db.vendas 
+            : ((typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) ? window.db.vendas : []);
+        v = todasVendas.find(x => String(x.id) === String(vendaOuId));
+    }
+    if (!v) {
+        showToast("Venda não encontrada para gerar o Termo de Entrega.", "error");
+        return;
+    }
+    window.vendaAtualImpressao = v;
+
+    const empAtivaIdContr = (typeof window.getEmpresaAtivaId === 'function') ? window.getEmpresaAtivaId() : localStorage.getItem('fc_empresa_ativa');
+    const fallbackNomeContr = (window.currentEmpresaData?.nomeEmpresa) || localStorage.getItem('fc_nome_empresa_ativa') || (empAtivaIdContr === 'emp_fc_moveis' ? 'FC MÓVEIS' : 'MINHA LOJA');
+    const emp = (typeof obterDadosEmpresa === 'function') ? obterDadosEmpresa() : { nome: fallbackNomeContr, cnpj: '', end: '', tel: '', logoHtml: '' };
+
+    const cliInfo = (typeof obterDadosClientePDV === 'function') ? obterDadosClientePDV(v.clienteId) : (typeof window.obterDadosClientePDV === 'function' ? window.obterDadosClientePDV(v.clienteId) : null);
+    const cliNome = (cliInfo && cliInfo.nome && cliInfo.nome !== 'Consumidor Final') ? cliInfo.nome : (v.clienteNome || v.cliente || 'Consumidor Final');
+    const cliCpf = (cliInfo && cliInfo.doc && cliInfo.doc !== 'Não informado') ? cliInfo.doc : (v.clienteDoc || 'Não informado');
+    const cliTel = (cliInfo && cliInfo.tel && cliInfo.tel !== 'Não informado') ? cliInfo.tel : (v.clienteTel || 'Não informado');
+    const cliEndCompleto = (typeof window.formatarEnderecoCompletoCliente === 'function') ? window.formatarEnderecoCompletoCliente(v, cliInfo) : ((cliInfo && cliInfo.endCompleto !== 'Não informado') ? cliInfo.endCompleto : (v.clienteEnd || 'Não informado'));
+
+    const opAtual = (typeof window.obterOperadorAtual === 'function') ? window.obterOperadorAtual() : null;
+    const vendedorNome = v.vendedorNome || v.vendedor || (opAtual && opAtual.nome) || (window.currentUserInfo && window.currentUserInfo.nome) || 'Atendente';
+
+    const numPedStr = v.numeroPedido ? String(v.numeroPedido).padStart(4, '0') : String(v.id || '').slice(-4);
+    const dataVendaStr = v.data ? new Date(v.data).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
+
+    // Previsão de entrega acordada
+    let dataEntregaFormatada = 'A combinar / Imediata';
+    const dataEntregaBruta = v.dataEntrega || (v.servicoDetalhes && v.servicoDetalhes.prazo ? v.servicoDetalhes.prazo : '');
+    if (dataEntregaBruta) {
+        if (dataEntregaBruta.includes('-')) {
+            const partes = dataEntregaBruta.split('T')[0].split('-');
+            if (partes.length === 3) dataEntregaFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+            else dataEntregaFormatada = dataEntregaBruta;
+        } else {
+            dataEntregaFormatada = dataEntregaBruta;
+        }
+    }
+
+    // Identificação Fiscal (NFC-e / NF-e / NFSe se houver)
+    let fiscalTipo = '';
+    let fiscalNum = '';
+    let fiscalSerie = '';
+    let fiscalChave = '';
+    let fiscalData = '';
+
+    if (v.nfce && (v.nfce.numero || v.nfce.chave_nfe)) {
+        fiscalTipo = 'NFC-e (Consumidor Eletrônica)';
+        fiscalNum = v.nfce.numero || '-';
+        fiscalSerie = v.nfce.serie || '1';
+        fiscalChave = v.nfce.chave_nfe || '';
+        fiscalData = v.nfce.data_emissao ? new Date(v.nfce.data_emissao).toLocaleDateString('pt-BR') : '';
+    } else if (v.nfe && (v.nfe.numero || v.nfe.chave_nfe)) {
+        fiscalTipo = 'NF-e (Nota Fiscal Eletrônica)';
+        fiscalNum = v.nfe.numero || '-';
+        fiscalSerie = v.nfe.serie || '1';
+        fiscalChave = v.nfe.chave_nfe || '';
+        fiscalData = v.nfe.data_emissao ? new Date(v.nfe.data_emissao).toLocaleDateString('pt-BR') : '';
+    } else if (v.nfse && v.nfse.numero) {
+        fiscalTipo = 'NFS-e (Serviços Eletrônica)';
+        fiscalNum = v.nfse.numero || '-';
+        fiscalSerie = '1';
+    } else if (v.numeroNF || v.notaFiscal || v.nf) {
+        fiscalTipo = 'Nota Fiscal';
+        fiscalNum = v.numeroNF || v.notaFiscal || v.nf;
+        fiscalChave = v.chaveAcesso || '';
+    }
+
+    let blocoFiscalHtml = '';
+    if (fiscalNum) {
+        blocoFiscalHtml = `
+            <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 4px; padding: 5px 10px; font-size: 10.5px; color: #166534; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div>
+                    <strong>DOCUMENTO FISCAL VINCULADO:</strong> ${fiscalTipo} Nº <strong>${fiscalNum}</strong> ${fiscalSerie ? `(Série ${fiscalSerie})` : ''} ${fiscalData ? `&nbsp;|&nbsp; Emitida em: ${fiscalData}` : ''}
+                </div>
+                ${fiscalChave ? `<div style="font-family: monospace; font-size: 9.5px; color: #15803d; letter-spacing: 0.5px;">Chave: ${fiscalChave}</div>` : ''}
+            </div>
+        `;
+    } else {
+        blocoFiscalHtml = `
+            <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 10px; font-size: 10px; color: #475569; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div><strong>DOCUMENTO FISCAL:</strong> Venda Direta / Cupom de Entrega #${numPedStr}</div>
+                <div style="font-size: 9.5px; color: #64748b; font-style: italic;">(NF a faturar ou emitida posteriormente conforme legislação)</div>
+            </div>
+        `;
+    }
+
+    // Itens
+    const prodsList = (typeof db !== 'undefined' && Array.isArray(db.produtos)) ? db.produtos : [];
+    const itens = (v.itens && v.itens.length > 0) ? v.itens : [];
+    const linhasItensHtml = itens.map((item, idx) => {
+        const prodDb = prodsList.find(p => String(p.id) === String(item.id)) || {};
+        const foto = item.foto || prodDb.foto || (prodDb.fotos && prodDb.fotos[0]) || '';
+        const qtd = Number(item.qtd) || 1;
+        const customTexto = (typeof formatarCustomizacaoContratoTexto === "function") ? formatarCustomizacaoContratoTexto(item.customizacao) : "";
+        const obsItem = item.obsVenda ? `<div style="font-size: 9.5px; color: #64748b; font-style: italic; margin-top: 2px;">Obs: ${item.obsVenda}</div>` : '';
+
+        return `
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 5px 6px; text-align: center; font-weight: bold; width: 32px; color: #475569;">${String(idx + 1).padStart(2, '0')}</td>
+            <td style="padding: 5px 6px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    ${foto ? `<img src="${foto}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px; border: 1px solid #cbd5e1; flex-shrink: 0;">` : ''}
+                    <div>
+                        <strong style="color: #0f172a; font-size: 11px;">${item.nome || 'Produto/Item'}</strong>
+                        ${customTexto ? `<div style="font-size: 9.5px; color: #475569; margin-top: 1px;">${customTexto}</div>` : ''}
+                        ${obsItem}
+                    </div>
+                </div>
+            </td>
+            <td style="padding: 5px 6px; text-align: center; font-weight: bold; width: 60px; color: #0f172a;">${qtd} un</td>
+            <td style="padding: 5px 6px; text-align: center; width: 110px;">
+                <span style="border: 1px solid #94a3b8; border-radius: 3px; padding: 2px 6px; font-size: 9.5px; font-weight: bold; color: #0f172a; background: #fff;">
+                    [ &nbsp; ] Conforme
+                </span>
+            </td>
+        </tr>
+        `;
+    }).join('');
+
+    const fm = typeof formatMoney === 'function' ? formatMoney : (x => 'R$ ' + Number(x||0).toFixed(2));
+    const totalVenda = Number(v.tot) || 0;
+    const formaPagStr = v.pag || 'Conforme Contrato';
+
+    // WhatsApp do cliente
+    let numLimpo = cliTel ? String(cliTel).replace(/\D/g, '') : '';
+    if (numLimpo && !numLimpo.startsWith('55') && numLimpo.length >= 10) numLimpo = '55' + numLimpo;
+    const msgWpp = encodeURIComponent(`Olá, ${cliNome.split(' ')[0]}! Tudo bem? Segue a notificação de entrega do seu *Pedido #${numPedStr}* pela *${emp.nome}*. O termo de recebimento e vistoria segue anexado à mercadoria. Agradecemos a preferência!`);
+    const wppLink = numLimpo ? `https://wa.me/${numLimpo}?text=${msgWpp}` : '';
+
+    const logoHtml = emp.logoHtml || (emp.logo ? `<img src="${emp.logo}" style="max-height: 60px; object-fit: contain;">` : `<h2 style="margin: 0; font-size: 18px; font-weight: 800; text-transform: uppercase; color: #1e293b;">${emp.nome}</h2>`);
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+        showToast("Por favor, permita pop-ups para imprimir o Termo de Entrega.", "warning");
+        return;
+    }
+
+    printWin.document.open();
+    printWin.document.write(`
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <title>Termo de Entrega e Recebimento #${numPedStr}</title>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+            <style>
+                @page { size: A4 portrait; margin: 8mm 12mm 12mm 12mm; }
+                *, *::before, *::after { box-sizing: border-box !important; word-break: break-word; overflow-wrap: anywhere; }
+                html, body {
+                    font-family: Arial, Helvetica, sans-serif;
+                    background: #f1f5f9;
+                    margin: 0;
+                    padding: 12px;
+                    color: #0f172a;
+                    font-size: 10.5px;
+                    line-height: 1.32;
+                    width: 100%;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                .barra-acoes {
+                    max-width: 800px;
+                    margin: 0 auto 12px auto;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    background: #1e293b;
+                    padding: 8px 14px;
+                    border-radius: 6px;
+                    color: #fff;
+                }
+                .btn-acao {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 7px 14px;
+                    border-radius: 6px;
+                    font-size: 12px;
+                    font-weight: 700;
+                    text-decoration: none;
+                    cursor: pointer;
+                    border: none;
+                    transition: all 0.2s;
+                }
+                .btn-wpp { background: #25D366; color: #fff; }
+                .btn-wpp:hover { background: #1ea952; }
+                .btn-print { background: #2563eb; color: #fff; }
+                .btn-print:hover { background: #1d4ed8; }
+                .folha-a4 {
+                    max-width: 800px;
+                    width: 100%;
+                    margin: 0 auto;
+                    background: #ffffff;
+                    padding: 16px 20px;
+                    border-radius: 8px;
+                    border: 1px solid #cbd5e1;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+                    box-sizing: border-box;
+                }
+                .secao-titulo {
+                    font-size: 10.5px;
+                    font-weight: bold;
+                    text-transform: uppercase;
+                    background-color: #f1f5f9;
+                    padding: 3px 6px;
+                    border-left: 3px solid #0f172a;
+                    margin: 6px 0 3px 0;
+                }
+                .grid-info {
+                    display: grid;
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    gap: 3px 12px;
+                    font-size: 10px;
+                    padding: 2px 0;
+                }
+                .grid-full { grid-column: span 2; }
+                .label-destaque { font-weight: bold; color: #334155; }
+                .clausula-texto {
+                    font-size: 9.5px;
+                    line-height: 1.32;
+                    color: #1e293b;
+                    text-align: justify;
+                    margin: 2px 0;
+                }
+                .bloco-juridico {
+                    border: 1px solid #cbd5e1;
+                    background-color: #fafafa;
+                    border-radius: 4px;
+                    padding: 5px 8px;
+                    margin: 5px 0;
+                }
+                .campo-ressalva {
+                    border: 1px dashed #94a3b8;
+                    padding: 4px 8px;
+                    background: #fff;
+                    border-radius: 4px;
+                    margin: 4px 0;
+                    font-size: 9.5px;
+                }
+                .bloco-recebedor {
+                    border: 1px solid #0f172a;
+                    border-radius: 4px;
+                    padding: 5px 8px;
+                    margin-top: 5px;
+                    background: #fdfdfd;
+                }
+                .assinaturas-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 20px;
+                    margin-top: 18px;
+                    text-align: center;
+                }
+                .linha-assinatura {
+                    border-top: 1px solid #0f172a;
+                    padding-top: 3px;
+                    font-size: 9.5px;
+                }
+                @media print {
+                    html, body { background: #fff !important; padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; color: #000 !important; }
+                    .barra-acoes { display: none !important; }
+                    .folha-a4 { box-shadow: none !important; border: none !important; border-radius: 0 !important; padding: 4mm 8mm !important; margin: 0 auto !important; max-width: 100% !important; width: 100% !important; box-sizing: border-box !important; }
+                    .bloco-juridico { background-color: transparent !important; border-color: #000 !important; }
+                    .secao-titulo { background-color: #eeeeee !important; border-left-color: #000 !important; }
+                    table { width: 100% !important; table-layout: fixed; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="barra-acoes">
+                <span style="font-size: 12px; font-weight: bold;">
+                    <i class="fa-solid fa-truck-ramp-box" style="color: #34d399; margin-right: 6px;"></i> Termo de Entrega & Recebimento (Pedido #${numPedStr})
+                </span>
+                <div style="display: flex; gap: 8px;">
+                    ${wppLink ? `<a href="${wppLink}" target="_blank" class="btn-acao btn-wpp"><i class="fa-brands fa-whatsapp"></i> Notificar no WhatsApp</a>` : ''}
+                    <button onclick="window.print()" class="btn-acao btn-print"><i class="fa-solid fa-print"></i> Imprimir / Salvar PDF</button>
+                </div>
+            </div>
+
+            <div class="folha-a4">
+                <!-- CABEÇALHO -->
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 8px;">
+                    <div style="flex: 1; padding-right: 15px;">
+                        ${logoHtml}
+                        <div style="font-size: 10px; color: #334155; margin-top: 2px;">
+                            ${emp.cnpj ? `<strong>CNPJ:</strong> ${emp.cnpj} &nbsp;|&nbsp; ` : ''}<strong>Tel/WhatsApp:</strong> ${emp.tel || '-'}<br>
+                            ${emp.end ? `<strong>Endereço:</strong> ${emp.end}` : ''}
+                        </div>
+                    </div>
+                    <div style="text-align: right; border-left: 2px solid #e2e8f0; padding-left: 12px; min-width: 220px;">
+                        <div style="font-size: 12px; font-weight: 900; text-transform: uppercase; color: #0f172a;">TERMO DE ENTREGA & RECEBIMENTO</div>
+                        <div style="font-size: 12px; font-weight: 800; color: #1e3a8a; margin: 2px 0;">PEDIDO Nº #${numPedStr}</div>
+                        <div style="font-size: 9.5px; color: #475569;">Vínculo: <strong>Contrato de Venda Pedido #${numPedStr}</strong></div>
+                        <div style="font-size: 9.5px; color: #475569;">Data da Venda: ${dataVendaStr} &nbsp;|&nbsp; Vend: ${vendedorNome}</div>
+                    </div>
+                </div>
+
+                <!-- BLOCO FISCAL -->
+                ${blocoFiscalHtml}
+
+                <!-- 1. DADOS DO COMPRADOR E ENTREGA -->
+                <div class="secao-titulo">1. Dados do Comprador e Local de Entrega</div>
+                <div class="grid-info">
+                    <div><span class="label-destaque">Comprador(a):</span> ${cliNome}</div>
+                    <div><span class="label-destaque">CPF / CNPJ:</span> ${cliCpf}</div>
+                    <div><span class="label-destaque">Telefone / WhatsApp:</span> ${cliTel}</div>
+                    <div><span class="label-destaque">Previsão Acordada no Contrato:</span> <strong>${dataEntregaFormatada}</strong></div>
+                    <div class="grid-full"><span class="label-destaque">Endereço de Entrega:</span> ${cliEndCompleto}</div>
+                </div>
+
+                <!-- 2. PRODUTOS ENTREGUES -->
+                <div class="secao-titulo" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>2. Relação das Mercadorias / Volumes Entregues</span>
+                    <span style="font-size: 9px; font-weight: normal; color: #64748b; text-transform: none;">Conferência no ato do descarregamento</span>
+                </div>
+                <table style="width: 100%; border-collapse: collapse; margin: 4px 0 6px 0; font-size: 10.5px;">
+                    <thead>
+                        <tr style="background-color: #f8fafc; border-bottom: 1px solid #cbd5e1;">
+                            <th style="padding: 4px; text-align: center; width: 32px; font-size: 9.5px;">Item</th>
+                            <th style="padding: 4px; text-align: left; font-size: 9.5px;">Descrição do Produto / Especificação / Acabamento</th>
+                            <th style="padding: 4px; text-align: center; width: 60px; font-size: 9.5px;">Qtd</th>
+                            <th style="padding: 4px; text-align: center; width: 110px; font-size: 9.5px;">Vistoria Física</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${linhasItensHtml}
+                    </tbody>
+                </table>
+
+                ${v.vendaComEntradaEntrega ? `
+                <!-- ALERTA DE COBRANÇA OBRIGATÓRIA NA ENTREGA -->
+                <div style="background: #fffbeb; border: 2px solid #f59e0b; border-radius: 6px; padding: 6px 10px; margin-bottom: 6px; color: #92400e;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 11px; font-weight: 900; text-transform: uppercase; color: #b45309;">
+                            <i class="fa-solid fa-triangle-exclamation" style="margin-right: 4px;"></i> COBRANÇA OBRIGATÓRIA NO ATO DA ENTREGA
+                        </span>
+                        <span style="font-size: 12px; font-weight: 900; color: #b45309;">
+                            SALDO A COBRAR: ${fm(v.saldoEntrega)}
+                        </span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 3px; font-size: 9.5px; border-top: 1px dashed #fcd34d; padding-top: 3px;">
+                        <span><strong>Entrada Recebida na Venda:</strong> ${fm(v.valorEntrada)} (${(v.pagamentosEntrada && v.pagamentosEntrada.length > 0) ? v.pagamentosEntrada.map(p => `${p.metodo}${p.parcelas > 1 ? ' ' + p.parcelas + 'x' : ''}`).join(' + ') : (v.formaEntrada || 'Pago')}) - <strong style="color: #16a34a;">QUITADA</strong></span>
+                        <span><strong>Status do Saldo:</strong> ${v.saldoEntregaPago ? '<strong style="color: #16a34a;">RECEBIDO / QUITADO</strong>' : '<strong style="color: #dc2626;">PENDENTE DE RECEBIMENTO</strong>'}</span>
+                    </div>
+                    <div style="margin-top: 3px; font-size: 9.5px;">
+                        <strong>Formas Combinadas para Recebimento na Entrega:</strong>
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px;">
+                            ${(v.pagamentosEntrega && v.pagamentosEntrega.length > 0)
+                                ? v.pagamentosEntrega.map(p => `<span style="background: #fff; border: 1px solid #fde68a; padding: 1px 6px; border-radius: 3px;">▪ <strong>${fm(p.valor)}</strong> via ${p.metodo}${p.parcelas > 1 ? ' (' + p.parcelas + 'x de ' + fm(p.valor / p.parcelas) + ')' : ''}</span>`).join('')
+                                : `<span style="background: #fff; border: 1px solid #fde68a; padding: 1px 6px; border-radius: 3px;">▪ <strong>${fm(v.saldoEntrega)}</strong> via ${v.formaEntregaPrevista || 'A Combinar'}${v.parcelasEntrega > 1 ? ' (' + v.parcelasEntrega + 'x de ' + fm(v.saldoEntrega / v.parcelasEntrega) + ' na Maquininha)' : ''}</span>`
+                            }
+                        </div>
+                    </div>
+                    ${!v.saldoEntregaPago ? `
+                    <div style="margin-top: 4px; font-size: 9px; background: #fff; border: 1px solid #fde68a; padding: 4px 6px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                        <span><strong>Quitação pelo Entregador:</strong> [ &nbsp; ] Saldo recebido em ___/___/20___ &nbsp;|&nbsp; Conferido conforme formas acima</span>
+                        <span>Visto do Entregador: ____________________________</span>
+                    </div>` : ''}
+                </div>
+                ` : ''}
+
+                <!-- RESUMO FINANCEIRO VINCULADO -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 4px 8px; font-size: 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <div><strong>Valor Total do Pedido:</strong> <span style="font-size: 11px; font-weight: bold; color: #0f172a;">${fm(totalVenda)}</span></div>
+                    ${v.vendaComEntradaEntrega ? `
+                    <div><strong>Entrada Paga:</strong> <span style="color: #16a34a; font-weight: bold;">${fm(v.valorEntrada)} [QUITADA]</span></div>
+                    <div><strong>Saldo na Entrega:</strong> <span style="color: ${v.saldoEntregaPago ? '#16a34a' : '#dc2626'}; font-weight: bold;">${fm(v.saldoEntrega)} (${v.saldoEntregaPago ? 'QUITADO' : 'PENDENTE'})</span></div>
+                    ` : `<div><strong>Condição de Pagamento:</strong> ${formaPagStr}</div>`}
+                </div>
+
+                <!-- 3. DECLARAÇÃO JURÍDICA E QUITAÇÃO -->
+                <div class="secao-titulo">3. Declaração de Vistoria, Recebimento e Quitação (Art. 26 da Lei 8.078/90 - CDC)</div>
+                <div class="bloco-juridico">
+                    <p class="clausula-texto">
+                        <strong>CLÁUSULA 1ª (CONFERÊNCIA PRESENCIAL E VÍCIOS APARENTES):</strong>
+                        O(A) RECEBEDOR(A) declara que neste ato <strong>conferiu e inspecionou presencialmente</strong> todas as mercadorias discriminadas acima, constatando que os produtos encontram-se em <strong>perfeitas condições físicas, funcionais e estéticas</strong>, livres de quebras, riscos, amassados, lascas, trincas, manchas, avarias de pintura ou tecidos e sem falta de peças/acessórios, correspondendo fielmente às especificações do Pedido de Venda e Contrato vinculado, dando <strong>plena e irrestrita quitação de entrega física</strong> quanto a vícios aparentes e de fácil constatação (Art. 26 do Código de Defesa do Consumidor).
+                    </p>
+                    <p class="clausula-texto">
+                        <strong>CLÁUSULA 2ª (RECEBIMENTO POR TERCEIRO AUTORIZADO):</strong>
+                        Caso o recebimento ocorra por cônjuge, familiar, colaborador, prestador de serviço ou encarregado de portaria/recepção no endereço indicado pelo COMPRADOR, este afirma possuir <strong>legítima autorização</strong> para conferir, inspecionar e firmar o presente recebimento com plena eficácia vinculante perante o comprador (Arts. 422 do Código Civil e 248, § 4º do CPC).
+                    </p>
+                    <p class="clausula-texto">
+                        <strong>CLÁUSULA 3ª (MANUSEIO POSTERIOR, TRANSPORTE E MONTAGEM):</strong>
+                        A EMPRESA não se responsabiliza por avarias ou quebras provocadas por movimentação interna posterior no imóvel, transporte em escadas/elevadores por terceiros, intempéries/umidade, ou por montagem/instalação efetuada por terceiros não credenciados. Permanece resguardada a garantia legal de 90 dias exclusivamente para eventuais <strong>vícios ocultos de fabricação</strong>, não cobrindo danos resultantes de mau uso, quedas ou sinistros.
+                    </p>
+                </div>
+
+                <!-- CAMPO DE RESSALVAS -->
+                <div class="campo-ressalva">
+                    <strong>Ressalvas no ato da entrega (anotar se houver alguma pendência no momento do descarregamento):</strong><br>
+                    <div style="display: flex; align-items: flex-end; gap: 12px; margin-top: 3px; width: 100%;">
+                        <span style="white-space: nowrap;">[ &nbsp; ] <strong>SEM RESSALVAS.</strong> Produto conferido, entregue 100% perfeito.</span>
+                        <div style="display: flex; align-items: flex-end; flex: 1; min-width: 0;">
+                            <span style="white-space: nowrap; margin-right: 4px;">[ &nbsp; ] <strong>COM RESSALVA:</strong></span>
+                            <span style="border-bottom: 1px solid #475569; flex: 1; height: 12px; min-width: 30px;"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. IDENTIFICAÇÃO DE QUEM RECEBEU E ASSINATURAS -->
+                <div class="bloco-recebedor">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; font-size: 10.5px;">
+                        <span style="font-weight: bold; text-transform: uppercase;">4. Dados de Quem Recebeu e Quitação</span>
+                        <span>Data da Entrega: <strong>___/___/20___</strong> &nbsp;|&nbsp; Hora: <strong>___:___</strong></span>
+                    </div>
+
+                    <div style="display: flex; flex-wrap: wrap; gap: 10px; margin: 3px 0 5px 0; font-size: 10px;">
+                        <span><strong>Relação com o Comprador:</strong></span>
+                        <span>( &nbsp; ) O Próprio Comprador</span>
+                        <span>( &nbsp; ) Cônjuge / Familiar</span>
+                        <span>( &nbsp; ) Funcionário / Preposto</span>
+                        <span>( &nbsp; ) Portaria / Recepção</span>
+                        <span>( &nbsp; ) Outro: _____________</span>
+                    </div>
+
+                    <div class="grid-info" style="margin-top: 2px;">
+                        <div style="display: flex; align-items: flex-end; min-width: 0;">
+                            <span class="label-destaque" style="white-space: nowrap; margin-right: 4px;">Nome Legível de Quem Recebeu:</span>
+                            <span style="border-bottom: 1px solid #0f172a; flex: 1; height: 12px; min-width: 30px;"></span>
+                        </div>
+                        <div style="display: flex; align-items: flex-end; min-width: 0;">
+                            <span class="label-destaque" style="white-space: nowrap; margin-right: 4px;">CPF ou RG do Recebedor:</span>
+                            <span style="border-bottom: 1px solid #0f172a; flex: 1; height: 12px; min-width: 30px;"></span>
+                        </div>
+                    </div>
+
+                    <!-- ASSINATURAS -->
+                    <div class="assinaturas-grid">
+                        <div>
+                            <div class="linha-assinatura">
+                                <strong>ASSINATURA DE QUEM RECEBEU A MERCADORIA</strong>
+                            </div>
+                            <div style="font-size: 9px; color: #475569; margin-top: 2px;">Declaro ter inspecionado e recebido os produtos em perfeito estado.</div>
+                        </div>
+
+                        <div>
+                            <div class="linha-assinatura">
+                                <strong>ASSINATURA DO ENTREGADOR / EMPRESA</strong>
+                            </div>
+                            <div style="display: flex; justify-content: center; align-items: flex-end; gap: 4px; font-size: 9px; color: #475569; margin-top: 2px;">
+                                <span style="white-space: nowrap;">Nome do Entregador:</span>
+                                <span style="border-bottom: 1px solid #0f172a; width: 140px; height: 12px; display: inline-block;"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+    `);
+    printWin.document.close();
+};
+
+window.imprimirTermoEntregaAtual = function() {
+    if (window.vendaAtualImpressao) {
+        window.abrirTermoEntrega(window.vendaAtualImpressao);
+    } else {
+        showToast("Nenhuma venda selecionada para imprimir o Termo de Entrega.", "error");
+    }
+};
+
+window.imprimirTermoEntregaObj = function(v) {
+    if (v) {
+        window.abrirTermoEntrega(v);
+    } else {
+        showToast("Nenhuma venda selecionada.", "error");
+    }
+};
+
+window.imprimirTermoEntregaById = function(id) {
+    window.abrirTermoEntrega(id);
+};
+
+// =========================================================================
+// RECEBIMENTO DE SALDO NA ENTREGA (ESPECIAL LOJA DE MÓVEIS)
+// Permite quitar o saldo pendente da entrega diretamente pelo Caixa, Vendas ou Gestão
+// =========================================================================
+window.abrirModalReceberSaldoEntrega = function(vendaOuId) {
+    let v = vendaOuId;
+    if (typeof vendaOuId === 'string' || typeof vendaOuId === 'number') {
+        const todasVendas = (typeof db !== 'undefined' && Array.isArray(db.vendas)) 
+            ? db.vendas 
+            : ((typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) ? window.db.vendas : []);
+        v = todasVendas.find(x => String(x.id) === String(vendaOuId));
+    }
+    if (!v) {
+        return showToast("Pedido não encontrado para receber o saldo.", "error");
+    }
+
+    if (v.saldoEntregaPago) {
+        return showToast("O saldo na entrega deste pedido já foi quitado!", "info");
+    }
+
+    const numPedStr = String(v.numeroPedido || v.id || '0').padStart(4, '0');
+    const cliInfo = (typeof window.obterDadosClientePDV === 'function') ? window.obterDadosClientePDV(v.clienteId) : null;
+    const cliNome = (cliInfo && cliInfo.nome !== 'Consumidor Final') ? cliInfo.nome : (v.clienteNome || v.cliente || 'Consumidor Final');
+    const cliEnd = (typeof window.formatarEnderecoCompletoCliente === 'function') ? window.formatarEnderecoCompletoCliente(v, cliInfo) : (v.clienteEnd || '');
+    const saldoTotal = Number(v.saldoEntrega) || (Number(v.tot || 0) - Number(v.valorEntrada || 0));
+    const fm = typeof formatMoney === 'function' ? formatMoney : (x => 'R$ ' + Number(x||0).toFixed(2));
+    const formaPrevista = v.formaEntregaPrevista || 'Dinheiro';
+
+    // Cria ou reutiliza o modal no DOM
+    let modal = document.getElementById('modal-receber-saldo-entrega-global');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modal-receber-saldo-entrega-global';
+        modal.className = "fixed inset-0 bg-slate-900/70 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm";
+        document.body.appendChild(modal);
+    }
+
+    modal.innerHTML = `
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <!-- HEADER -->
+            <div class="bg-gradient-to-r from-amber-600 via-amber-700 to-orange-700 p-4 md:p-5 text-white flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-xl shadow-inner">
+                        <i class="fa-solid fa-truck-ramp-box"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-base md:text-lg">Receber Saldo na Entrega</h3>
+                        <p class="text-xs text-amber-100 font-medium">Pedido #${numPedStr} &bull; ${cliNome}</p>
+                    </div>
+                </div>
+                <button type="button" onclick="document.getElementById('modal-receber-saldo-entrega-global').classList.add('hidden')" class="text-white/80 hover:text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10 transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- BODY -->
+            <div class="p-5 space-y-4">
+                <!-- RESUMO DA OPERAÇÃO -->
+                <div class="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-xl p-3.5 space-y-2">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-600 dark:text-slate-400">Total Geral da Venda:</span>
+                        <strong class="font-bold text-slate-800 dark:text-slate-100">${fm(v.tot || 0)}</strong>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-600 dark:text-slate-400">Entrada Já Paga (Sinal):</span>
+                        <strong class="text-emerald-600 dark:text-emerald-400 font-bold">${fm(v.valorEntrada || 0)} [QUITADA]</strong>
+                    </div>
+                    <div class="flex justify-between items-center text-sm pt-2 border-t border-amber-200 dark:border-amber-800">
+                        <span class="font-black text-amber-900 dark:text-amber-200 uppercase text-xs">Saldo a Receber Agora:</span>
+                        <span class="font-black text-lg text-amber-700 dark:text-amber-400">${fm(saldoTotal)}</span>
+                    </div>
+                    ${(v.pagamentosEntrega && v.pagamentosEntrega.length > 0) ? `
+                    <div class="pt-2 border-t border-amber-200/60 dark:border-amber-800/60 text-xs">
+                        <span class="text-[11px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider block mb-1">
+                            <i class="fa-solid fa-list-check mr-1"></i> Previsão Acordada para a Entrega:
+                        </span>
+                        <div class="space-y-1">
+                            ${v.pagamentosEntrega.map(p => `
+                                <div class="flex justify-between items-center bg-white/70 dark:bg-slate-900/50 px-2.5 py-1 rounded-lg text-xs">
+                                    <span class="text-slate-700 dark:text-slate-300 font-medium">▪ ${p.metodo}${p.parcelas > 1 ? ' (' + p.parcelas + 'x)' : ''}</span>
+                                    <strong class="text-amber-700 dark:text-amber-400 font-bold">${fm(p.valor)}</strong>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>` : ''}
+                    ${cliEnd && cliEnd !== 'Não informado' ? `
+                    <div class="text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-amber-100 dark:border-amber-900/30 truncate">
+                        <i class="fa-solid fa-location-dot text-amber-600 mr-1"></i>${cliEnd}
+                    </div>` : ''}
+                </div>
+
+                <!-- FORMA DE PAGAMENTO RECEBIDA -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                        <i class="fa-solid fa-credit-card text-amber-600 mr-1"></i> Forma de Pagamento Recebida pelo Entregador
+                    </label>
+                    <select id="modal-se-metodo" onchange="const m = this.value; const b = document.getElementById('modal-se-parcelas-box'); if(b){ if(m.includes('Crédito') || m.includes('Boleto') || m.includes('Fiado')) b.classList.remove('hidden'); else b.classList.add('hidden'); }" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs md:text-sm font-bold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                        <option value="Cartão Crédito" ${formaPrevista.includes('Crédito') ? 'selected' : ''}>Cartão Crédito (Maquininha Entrega)</option>
+                        <option value="Cartão Débito" ${formaPrevista.includes('Débito') ? 'selected' : ''}>Cartão Débito (Maquininha Entrega)</option>
+                        <option value="PIX" ${formaPrevista.includes('PIX') ? 'selected' : ''}>PIX</option>
+                        <option value="Dinheiro" ${formaPrevista.includes('Dinheiro') ? 'selected' : ''}>Dinheiro (Espécie)</option>
+                        <option value="Boleto" ${formaPrevista.includes('Boleto') ? 'selected' : ''}>Boleto Bancário</option>
+                        <option value="Fiado" ${formaPrevista.includes('Fiado') || formaPrevista.includes('Carnê') ? 'selected' : ''}>Fiado / Crediário</option>
+                    </select>
+
+                    <div id="modal-se-parcelas-box" class="${(formaPrevista.includes('Crédito') || formaPrevista.includes('Boleto') || formaPrevista.includes('Fiado') || formaPrevista.includes('Carnê')) ? '' : 'hidden'} mt-2.5">
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                            Parcelas na Maquininha / Recebimento
+                        </label>
+                        <select id="modal-se-parcelas" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs md:text-sm font-bold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-amber-500">
+                            ${[1,2,3,4,5,6,7,8,9,10,11,12].map(n => `<option value="${n}" ${n === (parseInt(v.parcelasEntrega) || 1) ? 'selected' : ''}>${n}x ${n > 1 ? '(' + fm(saldoTotal / n) + ' cada)' : '(À vista na entrega)'}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- VALOR RECEBIDO -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                            Valor Recebido (R$)
+                        </label>
+                        <input type="text" id="modal-se-valor" value="${saldoTotal.toFixed(2).replace('.', ',')}" oninput="if(typeof mascaraMoeda==='function') mascaraMoeda(this)" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs md:text-sm font-black text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-amber-500 focus:outline-none text-right">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                            Data do Recebimento
+                        </label>
+                        <input type="date" id="modal-se-data" value="${new Date().toISOString().split('T')[0]}" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs md:text-sm font-bold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- OBSERVAÇÃO / ENTREGADOR -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                        Nome do Entregador / Observações
+                    </label>
+                    <input type="text" id="modal-se-obs" placeholder="Ex: Entregador João - Recebido via maquininha sem ressalvas" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+            </div>
+
+            <!-- FOOTER -->
+            <div class="bg-slate-50 dark:bg-slate-800/60 p-4 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2.5">
+                <button type="button" onclick="document.getElementById('modal-receber-saldo-entrega-global').classList.add('hidden')" class="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 font-bold text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                    Cancelar
+                </button>
+                <button type="button" id="btn-confirmar-saldo-entrega-global" onclick="window.confirmarRecebimentoSaldoEntregaGlobal('${v.id}')" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-check-double"></i> Confirmar Quitação do Saldo
+                </button>
+            </div>
+        </div>
+    `;
+
+    modal.classList.remove('hidden');
+};
+
+window.confirmarRecebimentoSaldoEntregaGlobal = async function(vendaId) {
+    const btn = document.getElementById('btn-confirmar-saldo-entrega-global');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Registrando quitação...';
+    }
+
+    try {
+        const todasVendas = (typeof db !== 'undefined' && Array.isArray(db.vendas)) 
+            ? db.vendas 
+            : ((typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) ? window.db.vendas : []);
+        const v = todasVendas.find(x => String(x.id) === String(vendaId));
+        if (!v) throw new Error("Venda não encontrada.");
+
+        const metodo = document.getElementById('modal-se-metodo')?.value || 'Dinheiro';
+        const parcelasRec = parseInt(document.getElementById('modal-se-parcelas')?.value) || 1;
+        const metodoFormatado = metodo + (parcelasRec > 1 ? ' (' + parcelasRec + 'x)' : '');
+        const valDigitado = (typeof parseInputMoney === 'function' && document.getElementById('modal-se-valor'))
+            ? parseInputMoney(document.getElementById('modal-se-valor').value)
+            : (parseFloat(String(document.getElementById('modal-se-valor')?.value || '0').replace(',', '.')) || 0);
+        const valorSaldo = valDigitado > 0 ? valDigitado : (Number(v.saldoEntrega) || (Number(v.tot || 0) - Number(v.valorEntrada || 0)));
+        const dataRec = document.getElementById('modal-se-data')?.value || new Date().toISOString().split('T')[0];
+        const obsRec = document.getElementById('modal-se-obs')?.value.trim() || '';
+        const now = new Date(dataRec + 'T12:00:00').toISOString();
+
+        const opAtual = (typeof window.obterOperadorAtual === 'function') ? window.obterOperadorAtual() : null;
+        const opNome = (opAtual && opAtual.nome) || (window.currentUserInfo && window.currentUserInfo.nome) || 'Operador';
+        const opUid = (opAtual && opAtual.uid) || (window.currentUser && window.currentUser.uid) || null;
+        const numPedStr = String(v.numeroPedido || v.id || '0').padStart(4, '0');
+        const cliNome = v.clienteNome || v.cliente || 'Consumidor';
+
+        const batch = firestore.batch();
+
+        // 1. Atualizar a Venda
+        const vendaRef = window.getEmpresaRef().collection('vendas').doc(String(v.id));
+        const updateVendaObj = {
+            saldoEntregaPago: true,
+            status: 'CONCLUIDA',
+            dataPagamentoSaldoEntrega: now,
+            formaRecebimentoSaldoEntrega: metodoFormatado,
+            parcelasRecebidasSaldoEntrega: parcelasRec,
+            valorSaldoRecebido: valorSaldo,
+            obsSaldoEntrega: obsRec,
+            operadorRecebeuSaldo: opNome,
+            operadorRecebeuSaldoId: opUid,
+            ultimaAlteracao: Date.now()
+        };
+        batch.set(vendaRef, updateVendaObj, { merge: true });
+
+        // 2. Movimentar o Caixa Ativo (se aberto)
+        let cxAtual = (typeof db !== 'undefined' && db.caixa) ? db.caixa : { status: 'FECHADO', saldo: 0, historico: [] };
+        let cxHistoricoNovo = cxAtual.historico ? [...cxAtual.historico] : [];
+        let cxSaldoNovo = cxAtual.saldo || 0;
+        const caixaDocId = (typeof window.obterCaixaDocId === 'function') ? window.obterCaixaDocId() : 'caixa_atual';
+        const caixaRef = (typeof window.obterCaixaDocRef === 'function') ? window.obterCaixaDocRef() : window.getEmpresaRef().collection('caixa').doc('caixa_atual');
+
+        const descMov = `Saldo na Entrega Pedido #${numPedStr} (${metodoFormatado}) - ${cliNome}${obsRec ? ' [' + obsRec + ']' : ''}`;
+
+        if (metodo === 'Dinheiro') {
+            cxSaldoNovo += valorSaldo;
+            cxHistoricoNovo.unshift({
+                data: now,
+                tipo: 'ENTRADA',
+                metodo: 'Dinheiro',
+                desc: descMov,
+                valor: valorSaldo,
+                operador: opNome,
+                saldoApos: cxSaldoNovo
+            });
+        } else {
+            cxHistoricoNovo.unshift({
+                data: now,
+                tipo: `ENTRADA (${metodo})`,
+                metodo: metodo,
+                desc: descMov,
+                valor: valorSaldo,
+                operador: opNome,
+                saldoApos: cxSaldoNovo,
+                naoAfetaGaveta: true
+            });
+        }
+
+        const cxFinalData = { ...cxAtual, saldo: cxSaldoNovo, historico: cxHistoricoNovo.slice(0, 50) };
+        batch.set(caixaRef, cxFinalData, { merge: true });
+
+        // Subcoleção permanente 'movimentacoes'
+        const movRef = caixaRef.collection('movimentacoes').doc();
+        batch.set(movRef, {
+            id: movRef.id,
+            data: now,
+            tipo: metodo === 'Dinheiro' ? 'ENTRADA' : `ENTRADA (${metodo})`,
+            metodo: metodo,
+            desc: descMov,
+            valor: valorSaldo,
+            operador: opNome,
+            origemVendaId: String(v.id),
+            saldoApos: cxSaldoNovo
+        });
+
+        // 3. Atualizar Financeiro
+        let finAtualizadoLocal = null;
+        let finEncontrado = (typeof db !== 'undefined' && Array.isArray(db.financeiro)) 
+            ? db.financeiro.find(f => String(f.origemVendaId) === String(v.id) && (f.tipoSub === 'SALDO_ENTREGA' || f.status === 'PENDENTE'))
+            : null;
+
+        if (finEncontrado) {
+            const finRef = window.getEmpresaRef().collection('financeiro').doc(String(finEncontrado.id));
+            const finUpdate = {
+                status: 'PAGO',
+                dataPagamento: now,
+                valorPago: valorSaldo,
+                metodoPagamento: metodo,
+                obs: obsRec ? `Quitado na entrega: ${obsRec}` : 'Quitado na entrega'
+            };
+            batch.set(finRef, finUpdate, { merge: true });
+            finAtualizadoLocal = { ...finEncontrado, ...finUpdate };
+        } else {
+            const finRef = window.getEmpresaRef().collection('financeiro').doc();
+            const finObj = {
+                id: finRef.id,
+                ref: `Venda #${numPedStr} - Saldo na Entrega (${metodo})`,
+                data: now,
+                dataPagamento: now,
+                dataVencimento: now,
+                pessoa: cliNome,
+                wpp: '',
+                valor: valorSaldo,
+                valorPago: valorSaldo,
+                status: 'PAGO',
+                tipo: 'RECEITA',
+                categoria: 'Vendas',
+                metodoPagamento: metodo,
+                origemVendaId: String(v.id),
+                tipoSub: 'SALDO_ENTREGA',
+                operador: opNome
+            };
+            batch.set(finRef, finObj);
+            finAtualizadoLocal = finObj;
+        }
+
+        await batch.commit();
+
+        // 4. Atualiza Memória e Cache
+        if (typeof db !== 'undefined') {
+            db.caixa = cxFinalData;
+            const idxV = (db.vendas || []).findIndex(x => String(x.id) === String(v.id));
+            if (idxV !== -1) Object.assign(db.vendas[idxV], updateVendaObj);
+            if (finAtualizadoLocal && Array.isArray(db.financeiro)) {
+                const idxF = db.financeiro.findIndex(f => String(f.id) === String(finAtualizadoLocal.id));
+                if (idxF !== -1) db.financeiro[idxF] = finAtualizadoLocal;
+                else db.financeiro.unshift(finAtualizadoLocal);
+            }
+        }
+
+        if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.atualizarItem === 'function') {
+            await window.FCCache.atualizarItem('vendas', v.id, updateVendaObj);
+            if (finAtualizadoLocal) {
+                await window.FCCache.atualizarItem('financeiro', finAtualizadoLocal.id, finAtualizadoLocal);
+            }
+            if (typeof window.FCCache.set === 'function') {
+                window.FCCache.set('caixa', cxFinalData);
+                window.FCCache.set('fc_moveis_' + caixaDocId, cxFinalData);
+            }
+        }
+
+        try {
+            localStorage.setItem('fc_sync_trigger', Date.now());
+            window.dispatchEvent(new CustomEvent('venda-saldo-entrega-recebido', { detail: { id: v.id, saldo: valorSaldo } }));
+        } catch(e) {}
+
+        // Fecha Modal
+        const modalEl = document.getElementById('modal-receber-saldo-entrega-global');
+        if (modalEl) modalEl.classList.add('hidden');
+
+        showToast(`Saldo na entrega de ${typeof formatMoney === 'function' ? formatMoney(valorSaldo) : 'R$ ' + valorSaldo.toFixed(2)} quitado com sucesso!`, 'success');
+
+        // Atualizar telas ativas
+        if (typeof renderVendas === 'function') renderVendas();
+        if (typeof renderCaixaDiario === 'function') renderCaixaDiario();
+        if (typeof renderVendasPendentesPDV === 'function') renderVendasPendentesPDV();
+        if (typeof verDetalhesVenda === 'function' && window._detalheVendaIdAtual === v.id) verDetalhesVenda(v.id);
+
+    } catch(err) {
+        console.error("Erro ao receber saldo na entrega:", err);
+        showToast("Erro ao gravar recebimento do saldo. Tente novamente.", "error");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-check-double"></i> Confirmar Quitação do Saldo';
+        }
+    }
+};
+window.abrirModalReceberRestanteVenda = window.abrirModalReceberSaldoEntrega;
+if (!window.abrirModalReceberSaldoEntrega && window.abrirModalReceberRestanteVenda) {
+    window.abrirModalReceberSaldoEntrega = window.abrirModalReceberRestanteVenda;
+}
+
+// ==========================================
+// CÁLCULO DINÂMICO DE MARGEM E PREÇO DE VENDA (GLOBAL)
+// ==========================================
+function calcularPrecoMargin(quemMudou = 'preco') {
+    const custoEl = document.getElementById('prod-custo');
+    const margemEl = document.getElementById('prod-margem');
+    const precoEl = document.getElementById('prod-preco');
+    if (!custoEl || !margemEl || !precoEl) return;
+
+    const parseVal = (typeof parseInputMoney === 'function') 
+        ? parseInputMoney 
+        : (v => parseFloat(String(v || 0).replace(/[^\d,-]/g, '').replace(',', '.')) || 0);
+
+    const custo = parseVal(custoEl.value);
+    const margem = parseVal(margemEl.value);
+    const preco = parseVal(precoEl.value);
+
+    if (custo <= 0) return;
+
+    if (quemMudou === 'preco') {
+        if (preco > 0) {
+            const novaMargem = ((preco - custo) / custo) * 100;
+            margemEl.value = novaMargem.toFixed(2);
+        }
+    } else if (quemMudou === 'margem') {
+        const novoPreco = custo * (1 + (margem / 100));
+        precoEl.value = (typeof formatMoney === 'function' && precoEl.hasAttribute('data-mask')) 
+            ? novoPreco.toFixed(2).replace('.', ',') 
+            : novoPreco.toFixed(2);
+    } else if (quemMudou === 'custo') {
+        if (margem !== 0) {
+            const novoPreco = custo * (1 + (margem / 100));
+            precoEl.value = (typeof formatMoney === 'function' && precoEl.hasAttribute('data-mask')) 
+                ? novoPreco.toFixed(2).replace('.', ',') 
+                : novoPreco.toFixed(2);
+        } else if (preco > 0) {
+            const novaMargem = ((preco - custo) / custo) * 100;
+            margemEl.value = novaMargem.toFixed(2);
+        }
+    }
+}
+window.calcularPrecoMargin = calcularPrecoMargin;
 
 // ==========================================
 // FUNÇÕES AUXILIARES DE ESTORNO DE VENDAS
@@ -3369,7 +4737,7 @@ if ('serviceWorker' in navigator && (window.location.protocol === 'http:' || win
     window.addEventListener('load', () => {
         const swPath = window.location.pathname.includes('/sistema/') ? '../sw.js' : './sw.js';
         navigator.serviceWorker.register(swPath)
-            .then(reg => console.log('ðŸš€ PWA Service Worker ativo!'))
+            .then(reg => console.log('🚀 PWA Service Worker ativo!'))
             .catch(err => console.warn('PWA Service Worker offline/ignorado:', err));
     });
 }
@@ -3378,14 +4746,14 @@ window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPwaPrompt = e;
     window.deferredPwaPrompt = e;
-    console.log('ðŸ“² PWA: Evento de instalação pronto.');
+    console.log('📱 PWA: Evento de instalação pronto.');
     mostrarBotaoInstalarApp();
 });
 
 window.addEventListener('appinstalled', () => {
     deferredPwaPrompt = null;
     window.deferredPwaPrompt = null;
-    console.log('ðŸŽ‰ PWA: Aplicativo instalado com sucesso!');
+    console.log('🎉 PWA: Aplicativo instalado com sucesso!');
     const btn = document.getElementById('btn-instalar-pwa');
     if (btn) btn.remove();
     if (typeof showToast === 'function') {
@@ -3426,9 +4794,9 @@ window.instalarPWA = async function() {
     } else {
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         if (isIOS) {
-            alert('ðŸ“² Como instalar no iPhone / iPad:\n\n1. Toque no botão "Compartilhar" (ícone com quadrado e seta para cima na barra do Safari).\n2. Role para baixo e toque em "Adicionar à Tela de Início".\n3. Toque em "Adicionar" no topo direito.');
+            alert('📱 Como instalar no iPhone / iPad:\n\n1. Toque no botão "Compartilhar" (ícone com quadrado e seta para cima na barra do Safari).\n2. Role para baixo e toque em "Adicionar à Tela de Início".\n3. Toque em "Adicionar" no topo direito.');
         } else {
-            alert('ðŸ“² Como instalar no Computador ou Android:\n\n1. No Google Chrome ou Microsoft Edge, clique no ícone "Instalar Aplicativo" na barra de endereços (ao lado da estrela de favoritos).\n2. Ou clique nos 3 pontinhos do navegador e escolha "Instalar FC Gestão".');
+            alert('📱 Como instalar no Computador ou Android:\n\n1. No Google Chrome ou Microsoft Edge, clique no ícone "Instalar Aplicativo" na barra de endereços (ao lado da estrela de favoritos).\n2. Ou clique nos 3 pontinhos do navegador e escolha "Instalar FC Gestão".');
         }
     }
 };
@@ -4229,6 +5597,24 @@ function gerarHtmlDanfeNFeA4(v, nota, emp) {
 
     const lockSinglePage = itens.length <= 18;
 
+    let obsTexto = (v?.observacoes || v?.observacao || v?.obs || nota?.observacoes || nota?.observacao || nota?.obs || (nota?.rawAvulsa && (nota.rawAvulsa.observacoes || nota.rawAvulsa.obs)) || '').trim();
+
+    if (!obsTexto && xmlBruto && typeof xmlBruto === 'string') {
+        const mInf = xmlBruto.match(/<infCpl>([\s\S]*?)<\/infCpl>/i);
+        if (mInf && mInf[1]) {
+            let textoXml = mInf[1].trim();
+            textoXml = textoXml
+                .replace(/DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL[\.]?/gi, '')
+                .replace(/N[AÃ]O GERA DIREITO A CR[EÉ]DITO FISCAL DE IPI(\/ICMS)?[\.]?/gi, '')
+                .replace(/N[AÃ]O GERA DIREITO A CR[EÉ]DITO FISCAL DE IPI[\.]?/gi, '')
+                .replace(/N[AÃ]O GERA DIREITO A CR[EÉ]DITO FISCAL[\.]?/gi, '')
+                .trim();
+            if (textoXml) {
+                obsTexto = textoXml;
+            }
+        }
+    }
+
     return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -4237,10 +5623,10 @@ function gerarHtmlDanfeNFeA4(v, nota, emp) {
     <style>
         @page {
             size: A4 portrait;
-            margin: 4mm 5mm;
+            margin: 0;
         }
-        * {
-            box-sizing: border-box;
+        *, *::before, *::after {
+            box-sizing: border-box !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
@@ -4267,10 +5653,11 @@ function gerarHtmlDanfeNFeA4(v, nota, emp) {
             font-family: Arial, sans-serif;
         }
         .danfe-page {
-            width: 200mm;
-            ${lockSinglePage ? 'height: 287mm; max-height: 287mm;' : ''}
-            min-height: 287mm;
-            margin: 6px auto;
+            width: 198mm;
+            max-width: 100%;
+            ${lockSinglePage ? 'height: 280mm; max-height: 280mm;' : ''}
+            min-height: 278mm;
+            margin: 10px auto;
             background: #fff;
             box-shadow: 0 0 10px rgba(0,0,0,0.3);
             display: flex;
@@ -4367,18 +5754,27 @@ function gerarHtmlDanfeNFeA4(v, nota, emp) {
         }
 
         @media print {
-            body { margin: 0; padding: 0; background: #fff; }
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #fff !important;
+                width: 100% !important;
+                height: auto !important;
+                min-height: auto !important;
+                overflow: visible !important;
+            }
             .no-print { display: none !important; }
             .danfe-page {
-                width: 100% !important;
-                max-width: 100% !important;
-                ${lockSinglePage ? 'height: 287mm !important; max-height: 287mm !important;' : ''}
-                min-height: 287mm !important;
-                margin: 0 !important;
+                width: 198mm !important;
+                max-width: 198mm !important;
+                ${lockSinglePage ? 'height: 280mm !important; max-height: 280mm !important;' : ''}
+                min-height: auto !important;
+                margin: 4mm auto !important;
                 padding: 0 !important;
                 box-shadow: none !important;
                 page-break-after: avoid !important;
                 page-break-inside: avoid !important;
+                box-sizing: border-box !important;
             }
         }
     </style>
@@ -4726,7 +6122,7 @@ function gerarHtmlDanfeNFeA4(v, nota, emp) {
                         NÃO GERA DIREITO A CRÉDITO FISCAL DE IPI/ICMS.<br>
                         ${isDevolucao ? `<strong>NF-E DE DEVOLUÇÃO / ENTRADA</strong> - Emitida em estorno de operação comercial.<br>Ref. Chave de Acesso Original: <strong>${escapeHtml(nota?.chave_original || v?.nfce?.chave_nfe || v?.nfe?.chave_nfe || '')}</strong><br>` : ''}
                         ${v?.id ? `Identificador da Venda: ${v.id} | ` : ''}Vendedor: ${escapeHtml(v?.vendedor || 'BALCÃO')}<br>
-                        ${v?.observacoes ? `Observações: ${escapeHtml(v.observacoes)}<br>` : ''}
+                        ${obsTexto ? `<strong>Observações:</strong> ${escapeHtml(obsTexto)}<br>` : ''}
                         Documento emitido através do sistema FC-Gestão - SEFAZ Direto.
                     </div>
                 </div>
@@ -4767,6 +6163,21 @@ function gerarHtmlDanfeNFCe80mm(v, nota, emp, qrImgSrc) {
     const chaveFmt = chave ? chave.replace(/(\d{4})/g, '$1 ').trim() : 'EM PROCESSAMENTO';
     const logoSrc = emp?.logo || emp?.logoBase64 || v?.empresaLogo || (typeof db !== 'undefined' && db?.config?.empresa?.logo) || '';
     const isContingencia = Boolean(nota?.contingencia || nota?.tpEmis === '9' || v?.fiscal_contingencia || v?.status_fiscal === 'contingencia' || (chave && chave.length >= 35 && chave.charAt(34) === '9'));
+
+    let obsTextoNFCe = (v?.observacoes || v?.observacao || v?.obs || nota?.observacoes || nota?.observacao || nota?.obs || (nota?.rawAvulsa && (nota.rawAvulsa.observacoes || nota.rawAvulsa.obs)) || '').trim();
+    const xmlNfc = nota?.xml_conteudo || v?.fiscal_xml || nota?.xml || v?.xml || '';
+    if (!obsTextoNFCe && xmlNfc && typeof xmlNfc === 'string') {
+        const mInfN = xmlNfc.match(/<infCpl>([\s\S]*?)<\/infCpl>/i);
+        if (mInfN && mInfN[1]) {
+            let t = mInfN[1].trim()
+                .replace(/DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL[\.]?/gi, '')
+                .replace(/N[AÃ]O GERA DIREITO A CR[EÉ]DITO FISCAL DE IPI(\/ICMS)?[\.]?/gi, '')
+                .replace(/N[AÃ]O GERA DIREITO A CR[EÉ]DITO FISCAL DE IPI[\.]?/gi, '')
+                .replace(/N[AÃ]O GERA DIREITO A CR[EÉ]DITO FISCAL[\.]?/gi, '')
+                .trim();
+            if (t) obsTextoNFCe = t;
+        }
+    }
 
     const itensList = v?.itens || v?.produtos || [];
     const itensHtml = itensList.map((it, i) => {
@@ -4900,6 +6311,11 @@ function gerarHtmlDanfeNFCe80mm(v, nota, emp, qrImgSrc) {
         <div style="font-size:8px; word-break:break-all;">${(emp?.uf || 'GO').toUpperCase() === 'GO' ? 'https://www.sefaz.go.gov.br/nfce/consulta' : `https://www.fazenda.${(emp?.uf||'sp').toLowerCase()}.gov.br/nfce/consulta`}</div>
         <img src="${qrImgSrc}" alt="QR Code SEFAZ">
         <div style="font-size: 8px;">Consulte via Leitor de QR Code</div>
+    </div>` : ''}
+
+    ${obsTextoNFCe ? `
+    <div class="border-t text-left" style="font-size: 8.5px; padding: 4px 0; word-break: break-word;">
+        <strong>OBSERVAÇÕES:</strong><br>${escapeHtml(obsTextoNFCe)}
     </div>` : ''}
 
     <div class="text-center" style="font-size: 9px; margin-top: 4px;">
@@ -5569,9 +6985,10 @@ window.cadastrarOpcaoRapida = function(cat) {
             if (opts.htmlConteudo) {
                 conteudoCorpo = `<div class="p-6 bg-white rounded-xl shadow-sm border border-slate-200">${opts.htmlConteudo}</div>`;
             } else if (dados.length > 0) {
-                let ths = colunas.map(c => 
-                    `<th class="p-2.5 bg-slate-900 text-white font-bold text-[10px] md:text-xs uppercase border border-slate-700 text-${c.align || 'left'}">${c.label}</th>`
-                ).join('');
+                let ths = colunas.map(c => {
+                    const wStyle = c.width ? `width: ${c.width};` : '';
+                    return `<th style="${wStyle}" class="p-2 bg-slate-900 text-white font-bold text-[10px] md:text-xs uppercase border border-slate-700 text-${c.align || 'left'}">${c.label}</th>`;
+                }).join('');
 
                 let trs = dados.map((row, idx) => {
                     const bg = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50';
@@ -5589,8 +7006,8 @@ window.cadastrarOpcaoRapida = function(cat) {
                 }
 
                 conteudoCorpo = `
-                    <div class="overflow-x-auto">
-                        <table class="w-full border-collapse border border-slate-300">
+                    <div class="overflow-x-auto print:overflow-visible">
+                        <table class="w-full border-collapse border border-slate-300" style="table-layout: fixed; width: 100%;">
                             <thead><tr>${ths}</tr></thead>
                             <tbody>${trs}</tbody>
                             ${tfoot}
@@ -5619,8 +7036,11 @@ window.cadastrarOpcaoRapida = function(cat) {
                     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
                     <style>
                         @page {
-                            margin: 10mm 8mm;
+                            margin: 8mm 10mm 10mm 10mm;
                             size: A4 ${orientacao};
+                        }
+                        *, *::before, *::after {
+                            box-sizing: border-box !important;
                         }
                         body {
                             font-family: Arial, Helvetica, sans-serif;
@@ -5628,15 +7048,53 @@ window.cadastrarOpcaoRapida = function(cat) {
                             color: #0f172a;
                             -webkit-print-color-adjust: exact;
                             print-color-adjust: exact;
+                            width: 100%;
+                            margin: 0;
+                            padding: 0;
                         }
                         @media print {
                             .no-print { display: none !important; }
-                            body { background-color: #ffffff !important; padding: 0 !important; }
-                            .print-container { max-width: none !important; width: 100% !important; padding: 0 !important; box-shadow: none !important; border: none !important; }
-                            table { page-break-inside: auto; }
-                            tr { page-break-inside: avoid; page-break-after: auto; }
-                            thead { display: table-header-group; }
-                            tfoot { display: table-footer-group; }
+                            html, body {
+                                background-color: #ffffff !important;
+                                padding: 0 !important;
+                                margin: 0 !important;
+                                width: 100% !important;
+                                max-width: 100% !important;
+                            }
+                            .print-container {
+                                max-width: 100% !important;
+                                width: 100% !important;
+                                padding: 6mm 8mm !important;
+                                margin: 0 auto !important;
+                                box-shadow: none !important;
+                                border: none !important;
+                                box-sizing: border-box !important;
+                            }
+                            .overflow-x-auto {
+                                overflow: visible !important;
+                                display: block !important;
+                            }
+                            table {
+                                page-break-inside: auto;
+                                width: 100% !important;
+                                max-width: 100% !important;
+                                table-layout: fixed !important;
+                                border-collapse: collapse !important;
+                            }
+                            th, td {
+                                word-break: break-word !important;
+                                overflow-wrap: break-word !important;
+                            }
+                            tr {
+                                page-break-inside: avoid;
+                                page-break-after: auto;
+                            }
+                            thead {
+                                display: table-header-group;
+                            }
+                            tfoot {
+                                display: table-footer-group;
+                            }
                         }
                     </style>
                 </head>
@@ -5819,15 +7277,15 @@ window.cadastrarOpcaoRapida = function(cat) {
                 nomeArquivo: 'Relatorio_Produtos_Estoque',
                 orientacao: 'landscape',
                 colunas: [
-                    { key: 'codigo', label: 'Cód/EAN', align: 'left', tipo: 'texto' },
-                    { key: 'nome', label: 'Nome do Produto', align: 'left', tipo: 'texto' },
-                    { key: 'categoria', label: 'Categoria', align: 'left', tipo: 'texto' },
-                    { key: 'marca', label: 'Marca', align: 'left', tipo: 'texto' },
-                    { key: 'custo', label: 'Custo', align: 'right', tipo: 'moeda' },
-                    { key: 'preco', label: 'Preço Venda', align: 'right', tipo: 'moeda' },
-                    { key: 'margem', label: 'Margem', align: 'center', tipo: 'texto' },
-                    { key: 'estoque', label: 'Estoque', align: 'right', tipo: 'numero' },
-                    { key: 'status', label: 'Situação', align: 'center', tipo: 'texto' }
+                    { key: 'codigo', label: 'Cód/EAN', align: 'left', tipo: 'texto', width: '13%' },
+                    { key: 'nome', label: 'Nome do Produto', align: 'left', tipo: 'texto', width: '23%' },
+                    { key: 'categoria', label: 'Categoria', align: 'left', tipo: 'texto', width: '12%' },
+                    { key: 'marca', label: 'Marca', align: 'left', tipo: 'texto', width: '10%' },
+                    { key: 'custo', label: 'Custo', align: 'right', tipo: 'moeda', width: '9%' },
+                    { key: 'preco', label: 'Preço Venda', align: 'right', tipo: 'moeda', width: '9%' },
+                    { key: 'margem', label: 'Margem', align: 'center', tipo: 'texto', width: '8%' },
+                    { key: 'estoque', label: 'Estoque', align: 'right', tipo: 'numero', width: '8%' },
+                    { key: 'status', label: 'Situação', align: 'center', tipo: 'texto', width: '8%' }
                 ],
                 dados: dados,
                 totais: `Total de Itens: ${dados.length} • Saldo Total de Peças: ${totalPecas} un • Patrimônio em Estoque: Custo: ${formatarMoedaLocal(totalCusto)} | Venda Estimada: ${formatarMoedaLocal(totalVenda)}`
@@ -5857,13 +7315,13 @@ window.cadastrarOpcaoRapida = function(cat) {
                 nomeArquivo: 'Relatorio_Clientes',
                 orientacao: 'landscape',
                 colunas: [
-                    { key: 'nome', label: 'Nome / Razão Social', align: 'left', tipo: 'texto' },
-                    { key: 'doc', label: 'CPF / CNPJ', align: 'left', tipo: 'texto' },
-                    { key: 'contato', label: 'WhatsApp / Telefone', align: 'left', tipo: 'texto' },
-                    { key: 'email', label: 'E-mail', align: 'left', tipo: 'texto' },
-                    { key: 'cidade_uf', label: 'Cidade / UF', align: 'left', tipo: 'texto' },
-                    { key: 'endereco', label: 'Endereço', align: 'left', tipo: 'texto' },
-                    { key: 'limite', label: 'Limite de Crédito', align: 'right', tipo: 'moeda' }
+                    { key: 'nome', label: 'Nome / Razão Social', align: 'left', tipo: 'texto', width: '22%' },
+                    { key: 'doc', label: 'CPF / CNPJ', align: 'left', tipo: 'texto', width: '14%' },
+                    { key: 'contato', label: 'WhatsApp / Telefone', align: 'left', tipo: 'texto', width: '14%' },
+                    { key: 'email', label: 'E-mail', align: 'left', tipo: 'texto', width: '16%' },
+                    { key: 'cidade_uf', label: 'Cidade / UF', align: 'left', tipo: 'texto', width: '12%' },
+                    { key: 'endereco', label: 'Endereço', align: 'left', tipo: 'texto', width: '12%' },
+                    { key: 'limite', label: 'Limite de Crédito', align: 'right', tipo: 'moeda', width: '10%' }
                 ],
                 dados: dados,
                 totais: `Total de Clientes Cadastrados: ${dados.length}`
@@ -5976,12 +7434,12 @@ window.cadastrarOpcaoRapida = function(cat) {
                 nomeArquivo: 'Relatorio_Compras',
                 orientacao: 'portrait',
                 colunas: [
-                    { key: 'data_entrada', label: 'Data Entrada', align: 'center', tipo: 'texto' },
-                    { key: 'data_emissao', label: 'Data Emissão', align: 'center', tipo: 'texto' },
-                    { key: 'fornecedor', label: 'Fornecedor', align: 'left', tipo: 'texto' },
-                    { key: 'numero_nf', label: 'NF / Ref', align: 'center', tipo: 'texto' },
-                    { key: 'tipo', label: 'Origem', align: 'center', tipo: 'texto' },
-                    { key: 'valor', label: 'Valor Total', align: 'right', tipo: 'moeda' }
+                    { key: 'data_entrada', label: 'Data Entrada', align: 'center', tipo: 'texto', width: '13%' },
+                    { key: 'data_emissao', label: 'Data Emissão', align: 'center', tipo: 'texto', width: '13%' },
+                    { key: 'fornecedor', label: 'Fornecedor', align: 'left', tipo: 'texto', width: '34%' },
+                    { key: 'numero_nf', label: 'NF / Ref', align: 'center', tipo: 'texto', width: '13%' },
+                    { key: 'tipo', label: 'Origem', align: 'center', tipo: 'texto', width: '13%' },
+                    { key: 'valor', label: 'Valor Total', align: 'right', tipo: 'moeda', width: '14%' }
                 ],
                 dados: dados,
                 totais: `Total de Compras: ${dados.length} • Montante Gasto: ${formatarMoedaLocal(totalGasto)}`
@@ -6027,12 +7485,12 @@ window.cadastrarOpcaoRapida = function(cat) {
                 nomeArquivo: 'Relatorio_Vendas_Operacoes',
                 orientacao: 'landscape',
                 colunas: [
-                    { key: 'data', label: 'Data/Hora', align: 'center', tipo: 'texto' },
-                    { key: 'pedido', label: 'Pedido / ID', align: 'center', tipo: 'texto' },
-                    { key: 'cliente', label: 'Cliente', align: 'left', tipo: 'texto' },
-                    { key: 'pagamento', label: 'Forma Pagamento', align: 'left', tipo: 'texto' },
-                    { key: 'itens', label: 'Itens da Venda', align: 'left', tipo: 'texto' },
-                    { key: 'total', label: 'Valor Líquido', align: 'right', tipo: 'moeda' }
+                    { key: 'data', label: 'Data/Hora', align: 'center', tipo: 'texto', width: '13%' },
+                    { key: 'pedido', label: 'Pedido / ID', align: 'center', tipo: 'texto', width: '10%' },
+                    { key: 'cliente', label: 'Cliente', align: 'left', tipo: 'texto', width: '20%' },
+                    { key: 'pagamento', label: 'Forma Pagamento', align: 'left', tipo: 'texto', width: '14%' },
+                    { key: 'itens', label: 'Itens da Venda', align: 'left', tipo: 'texto', width: '31%' },
+                    { key: 'total', label: 'Valor Líquido', align: 'right', tipo: 'moeda', width: '12%' }
                 ],
                 dados: dados,
                 totais: `Total de Vendas: ${dados.length} • Faturamento Total: ${formatarMoedaLocal(totalFaturado)}`
@@ -6063,10 +7521,10 @@ window.cadastrarOpcaoRapida = function(cat) {
                 nomeArquivo: 'Relatorio_Marketing_Lembretes',
                 orientacao: 'portrait',
                 colunas: [
-                    { key: 'cliente', label: 'Nome do Cliente', align: 'left', tipo: 'texto' },
-                    { key: 'whatsapp', label: 'WhatsApp', align: 'left', tipo: 'texto' },
-                    { key: 'mensagem', label: 'Mensagem Configurada', align: 'left', tipo: 'texto' },
-                    { key: 'status', label: 'Status Envio', align: 'center', tipo: 'texto' }
+                    { key: 'cliente', label: 'Nome do Cliente', align: 'left', tipo: 'texto', width: '25%' },
+                    { key: 'whatsapp', label: 'WhatsApp', align: 'left', tipo: 'texto', width: '18%' },
+                    { key: 'mensagem', label: 'Mensagem Configurada', align: 'left', tipo: 'texto', width: '42%' },
+                    { key: 'status', label: 'Status Envio', align: 'center', tipo: 'texto', width: '15%' }
                 ],
                 dados: dados,
                 totais: `Total de Lembretes Configurados: ${dados.length}`

@@ -196,8 +196,10 @@ function parseCSVExtrato(rawText) {
     }
 
     if (dt && val !== null) {
+      const cleanDesc = (desc || '').replace(/[^a-zA-Z0-9]/g, '').substring(0, 15);
+      const itemId = `csv_${dt.replace(/-/g, '')}_${isDebito ? 'D' : 'C'}_${Math.round(val * 100)}_${cleanDesc}_${i}`;
       items.push({
-        id: `ext_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 6)}`,
+        id: itemId,
         data: dt,
         descricao: desc || 'Transação Bancária',
         valor: Number(val.toFixed(2)),
@@ -232,15 +234,19 @@ function parseOFXExtrato(rawText) {
     const dtPostedRaw = extrairTag(bloco, 'DTPOSTED');
     const trnAmtRaw = extrairTag(bloco, 'TRNAMT');
     const memo = extrairTag(bloco, 'MEMO') || extrairTag(bloco, 'NAME') || 'Transação Bancária';
+    const fitid = extrairTag(bloco, 'FITID') || extrairTag(bloco, 'CHECKNUM');
 
     const dataIso = parseDataIso(dtPostedRaw) || new Date().toISOString().split('T')[0];
     const valorNum = parseMoedaValor(trnAmtRaw) || 0;
     if (valorNum === 0 && !memo) continue;
 
     const isCredito = valorNum > 0 || trnType === 'CREDIT' || trnType === 'DEP';
+    const itemId = fitid 
+      ? `ofx_${fitid.trim().replace(/[^a-zA-Z0-9_-]/g, '_')}`
+      : `ext_${dataIso.replace(/-/g, '')}_${isCredito ? 'C' : 'D'}_${Math.round(Math.abs(valorNum) * 100)}_${idx++}`;
 
     items.push({
-      id: `ext_${Date.now()}_${idx++}_${Math.random().toString(36).substring(2, 6)}`,
+      id: itemId,
       data: dataIso,
       descricao: memo.trim(),
       valor: Number(Math.abs(valorNum).toFixed(2)),
@@ -286,12 +292,37 @@ window.processarArquivoExtrato = function(inputEl) {
         return;
       }
 
-      window.conciliaState.extrato = parsedItems;
-      renderizarPainelConciliacao();
-      showConciliaToast(`${parsedItems.length} transações importadas com sucesso!`, "success");
+      // Mescla com extratos existentes sem sobrescrever itens já conciliados
+      const mapa = new Map();
+      (window.conciliaState.extrato || []).forEach(e => mapa.set(e.id, e));
 
-      // Salva no banco se conectado
-      persistirExtratoNoBanco(parsedItems);
+      let novosCont = 0;
+      const itensNovosParaBanco = [];
+
+      parsedItems.forEach(pItem => {
+        if (!mapa.has(pItem.id)) {
+          mapa.set(pItem.id, pItem);
+          itensNovosParaBanco.push(pItem);
+          novosCont++;
+        } else {
+          // Se já existe e foi conciliado, preserva o status e vínculo
+          const existente = mapa.get(pItem.id);
+          if (existente.status !== "CONCILIADO") {
+            mapa.set(pItem.id, { ...existente, ...pItem });
+          }
+        }
+      });
+
+      window.conciliaState.extrato = Array.from(mapa.values()).sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+      salvarExtratoLocalmente();
+      renderizarPainelConciliacao();
+      renderizarHistorico();
+      showConciliaToast(`${parsedItems.length} transações lidas (${novosCont} novas adicionadas ao extrato)!`, "success");
+
+      // Salva no Firestore apenas os itens novos
+      if (itensNovosParaBanco.length > 0) {
+        persistirExtratoNoBanco(itensNovosParaBanco);
+      }
     } catch (err) {
       console.error("Erro ao interpretar extrato:", err);
       alert("Erro ao ler o arquivo selecionado: " + (err.message || err));
@@ -308,25 +339,183 @@ window.processarArquivoExtrato = function(inputEl) {
 };
 
 // ==========================================
-// 4. PERSISTÊNCIA EM LOTE NO BANCO (FIRESTORE)
+// 4. PERSISTÊNCIA E CARREGAMENTO DO EXTRATO BANCÁRIO
 // ==========================================
+function obterEmpresaIdAtiva() {
+  try {
+    return localStorage.getItem('fc_empresa_ativa') || 'padrao';
+  } catch (_) {
+    return 'padrao';
+  }
+}
+
+function salvarExtratoLocalmente() {
+  try {
+    const empId = obterEmpresaIdAtiva();
+    const dados = JSON.stringify(window.conciliaState.extrato || []);
+    localStorage.setItem(`fc_extrato_bancario_${empId}`, dados);
+    localStorage.setItem('fc_extrato_bancario', dados);
+  } catch (e) {
+    console.warn("Aviso ao salvar extrato local:", e);
+  }
+}
+
+function carregarExtratoLocal() {
+  try {
+    const empId = obterEmpresaIdAtiva();
+    const raw = localStorage.getItem(`fc_extrato_bancario_${empId}`) || localStorage.getItem('fc_extrato_bancario');
+    if (raw) {
+      const itens = JSON.parse(raw);
+      if (Array.isArray(itens) && itens.length > 0) {
+        window.conciliaState.extrato = itens;
+        renderizarPainelConciliacao();
+        renderizarHistorico();
+      }
+    }
+  } catch (e) {
+    console.warn("Aviso ao ler extrato do cache local:", e);
+  }
+}
+
+async function carregarExtratoDoBanco() {
+  try {
+    if (typeof window.firebase === "undefined" || typeof window.firebase.firestore !== "function") return;
+    const firestore = window.firebase.firestore();
+    const refBase = (typeof window.getEmpresaRef === "function") ? window.getEmpresaRef() : firestore;
+
+    const snap = await refBase.collection("extrato_bancario").get().catch(e => {
+      console.warn("Aviso ao buscar extrato no Firestore:", e);
+      return null;
+    });
+
+    if (snap && !snap.empty) {
+      const itemsBanco = [];
+      const finList = (window.db && Array.isArray(window.db.financeiro)) ? window.db.financeiro : [];
+
+      snap.forEach(doc => {
+        const item = { id: doc.id, ...doc.data() };
+
+        // Se porventura faltarem campos principais em registros legados, recupera do título vinculado
+        if ((!item.descricao || !item.valor) && item.vinculo) {
+          const vId = item.vinculo.origem_id || item.vinculo.origens?.[0]?.id;
+          const tit = finList.find(f => String(f.id) === String(vId) || String(f.extrato_id) === String(item.id));
+          if (tit) {
+            if (!item.descricao) item.descricao = tit.pessoa || tit.descricao || tit.desc || "Transação Conciliada";
+            if (!item.valor) item.valor = Number(tit.valorPago || tit.valor || 0);
+            if (!item.data) item.data = (tit.dataPagamento || tit.data || "").split("T")[0];
+            if (!item.tipo) item.tipo = (tit.tipo === "DESPESA" || tit.tipo === "PAGAR") ? "DEBITO" : "CREDITO";
+          }
+        }
+
+        itemsBanco.push(item);
+      });
+
+      // Mescla com os itens locais/em memória
+      const mapExt = new Map();
+      itemsBanco.forEach(b => mapExt.set(b.id, b));
+
+      if (Array.isArray(window.conciliaState.extrato)) {
+        window.conciliaState.extrato.forEach(local => {
+          if (!mapExt.has(local.id)) {
+            mapExt.set(local.id, local);
+          } else {
+            const banco = mapExt.get(local.id);
+            if (local.status === "CONCILIADO" && banco.status !== "CONCILIADO") {
+              mapExt.set(local.id, { ...banco, ...local });
+            } else if (banco.status === "CONCILIADO") {
+              mapExt.set(local.id, { ...local, ...banco });
+            }
+          }
+        });
+      }
+
+      window.conciliaState.extrato = Array.from(mapExt.values()).sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+      salvarExtratoLocalmente();
+      renderizarPainelConciliacao();
+      renderizarHistorico();
+    }
+  } catch (err) {
+    console.warn("Aviso na sincronização de extrato:", err);
+  }
+}
+
 async function persistirExtratoNoBanco(itens) {
   try {
+    if (!Array.isArray(itens) || itens.length === 0) return;
     if (typeof window.firebase !== "undefined" && typeof window.firebase.firestore === "function") {
       const firestore = window.firebase.firestore();
-      const batch = firestore.batch();
       const refBase = (typeof window.getEmpresaRef === "function") ? window.getEmpresaRef() : firestore;
       
-      itens.forEach(item => {
-        const docRef = refBase.collection("extrato_bancario").doc(item.id);
-        batch.set(docRef, item);
-      });
-      await batch.commit().catch(e => console.warn("Aviso batch extrato:", e));
+      const chunkSize = 300;
+      for (let i = 0; i < itens.length; i += chunkSize) {
+        const chunk = itens.slice(i, i + chunkSize);
+        const batch = firestore.batch();
+        chunk.forEach(item => {
+          const docRef = refBase.collection("extrato_bancario").doc(item.id);
+          batch.set(docRef, item, { merge: true });
+        });
+        await batch.commit().catch(e => console.warn("Aviso batch extrato chunk:", e));
+      }
     }
   } catch (e) {
     console.warn("Persistência de extrato em modo offline/cache:", e);
   }
 }
+
+window.removerItemExtrato = async function(id) {
+  const ext = (window.conciliaState.extrato || []).find(e => e.id === id);
+  const desc = ext ? ` "${ext.descricao}"` : '';
+  if (!confirm(`Deseja excluir a transação${desc} do extrato?`)) return;
+
+  window.conciliaState.extrato = (window.conciliaState.extrato || []).filter(e => e.id !== id);
+  if (window.conciliaState.selectedExtratoId === id) {
+    window.conciliaState.selectedExtratoId = null;
+  }
+  salvarExtratoLocalmente();
+  renderizarPainelConciliacao();
+  renderizarHistorico();
+
+  if (typeof window.firebase !== "undefined" && typeof window.firebase.firestore === "function") {
+    try {
+      const refBase = (typeof window.getEmpresaRef === "function") ? window.getEmpresaRef() : window.firebase.firestore();
+      await refBase.collection("extrato_bancario").doc(id).delete().catch(() => {});
+    } catch (_) {}
+  }
+  showConciliaToast("Transação removida do extrato.", "info");
+};
+
+window.limparExtratoPendentes = async function() {
+  const pendentes = (window.conciliaState.extrato || []).filter(e => e.status === "PENDENTE");
+  if (pendentes.length === 0) {
+    showConciliaToast("Não há transações pendentes no extrato para limpar.", "info");
+    return;
+  }
+
+  if (!confirm(`Deseja limpar ${pendentes.length} transação(ões) pendente(s) do extrato? As transações já conciliadas e o histórico serão preservados.`)) return;
+
+  window.conciliaState.extrato = (window.conciliaState.extrato || []).filter(e => e.status !== "PENDENTE");
+  window.conciliaState.selectedExtratoId = null;
+  salvarExtratoLocalmente();
+  renderizarPainelConciliacao();
+  renderizarHistorico();
+
+  if (typeof window.firebase !== "undefined" && typeof window.firebase.firestore === "function") {
+    try {
+      const firestore = window.firebase.firestore();
+      const refBase = (typeof window.getEmpresaRef === "function") ? window.getEmpresaRef() : firestore;
+      const chunkSize = 300;
+      for (let i = 0; i < pendentes.length; i += chunkSize) {
+        const chunk = pendentes.slice(i, i + chunkSize);
+        const batch = firestore.batch();
+        chunk.forEach(p => {
+          batch.delete(refBase.collection("extrato_bancario").doc(p.id));
+        });
+        await batch.commit().catch(() => {});
+      }
+    } catch (_) {}
+  }
+  showConciliaToast("Transações pendentes removidas com sucesso.", "success");
+};
 
 // ==========================================
 // 5. AUTO-MATCH
@@ -366,18 +555,33 @@ window.executarAutoMatch = async function() {
 
       pares.forEach(({ ext, sys }) => {
         const extRef = refBase.collection("extrato_bancario").doc(ext.id);
-        batch.update(extRef, {
+        batch.set(extRef, {
+          id: ext.id,
+          data: ext.data,
+          descricao: ext.descricao,
+          valor: ext.valor,
+          tipo: ext.tipo,
           status: "CONCILIADO",
-          vinculo: { origem_id: sys.id, origem_colecao: sys.colecao, data: new Date().toISOString() }
-        });
+          vinculo: {
+            origem_id: sys.id,
+            origem_colecao: sys.colecao,
+            origens: [{ id: sys.id, colecao: sys.colecao, valor: sys.valor, descricao: sys.descricao }],
+            data: new Date().toISOString()
+          }
+        }, { merge: true });
         
-        // Se for título da coleção financeiro padrão
-        const sysRef = refBase.collection(sys.colecao === "contas_a_pagar" || sys.colecao === "contas_a_receber" ? "financeiro" : sys.colecao).doc(sys.id);
-        batch.update(sysRef, {
+        // Dá baixa completa no título do financeiro
+        const targetCol = sys.colecao === "contas_a_pagar" || sys.colecao === "contas_a_receber" ? "financeiro" : sys.colecao;
+        const sysRef = refBase.collection(targetCol).doc(sys.id);
+        batch.set(sysRef, {
           status: "PAGO",
+          valorPago: Number(sys.valor || ext.valor || 0),
+          dataPagamento: ext.data ? new Date(ext.data + 'T12:00:00').toISOString() : new Date().toISOString(),
+          metodoPagamento: ext.descricao || "Extrato Bancário",
           conciliado: true,
-          extrato_id: ext.id
-        });
+          extrato_id: ext.id,
+          ultimaAlteracao: Date.now()
+        }, { merge: true });
       });
       await batch.commit();
     } catch (e) {
@@ -388,16 +592,47 @@ window.executarAutoMatch = async function() {
   // Atualização otimista
   pares.forEach(({ ext, sys }) => {
     ext.status = "CONCILIADO";
-    ext.vinculo = { origem_id: sys.id, origem_colecao: sys.colecao };
+    ext.vinculo = {
+      origem_id: sys.id,
+      origem_colecao: sys.colecao,
+      origens: [{ id: sys.id, colecao: sys.colecao, valor: sys.valor, descricao: sys.descricao }]
+    };
     sys.conciliado = true;
     sys.extrato_id = ext.id;
+
+    if (window.db && Array.isArray(window.db.financeiro)) {
+      const itemDb = window.db.financeiro.find(f => String(f.id) === String(sys.id));
+      if (itemDb) {
+        itemDb.status = "PAGO";
+        itemDb.valorPago = Number(sys.valor || ext.valor || 0);
+        itemDb.dataPagamento = ext.data ? new Date(ext.data + 'T12:00:00').toISOString() : new Date().toISOString();
+        itemDb.metodoPagamento = ext.descricao || "Extrato Bancário";
+        itemDb.conciliado = true;
+        itemDb.extrato_id = ext.id;
+        itemDb.ultimaAlteracao = Date.now();
+      }
+    }
   });
+
+  if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function' && window.db?.financeiro) {
+    try { window.FCCache.set('financeiro', window.db.financeiro); } catch (_) {}
+  }
+  try {
+    if (window.db?.financeiro) {
+      localStorage.setItem('fc_financeiro', JSON.stringify(window.db.financeiro));
+    }
+  } catch (_) {}
+
+  salvarExtratoLocalmente();
+  carregarLancamentosDoSistema();
 
   window.conciliaState.selectedExtratoId = null;
   window.conciliaState.selectedSistemaId = null;
+  window.conciliaState.checksSistema.clear();
 
   renderizarPainelConciliacao();
-  showConciliaToast(`${pares.length} transações conciliadas com sucesso!`, "success");
+  renderizarHistorico();
+  showConciliaToast(`${pares.length} transações conciliadas e baixadas com sucesso!`, "success");
 };
 
 // ==========================================
@@ -405,12 +640,63 @@ window.executarAutoMatch = async function() {
 // ==========================================
 window.vincularManual = async function() {
   const extId = window.conciliaState.selectedExtratoId;
-  const sysId = window.conciliaState.selectedSistemaId;
-  if (!extId || !sysId) return;
+  if (!extId) {
+    showConciliaToast("Selecione uma transação do Extrato Bancário à esquerda.", "warning");
+    return;
+  }
+
+  // Coleta os lançamentos do sistema selecionados (via checkboxes ou seleção direta)
+  let sysIds = Array.from(window.conciliaState.checksSistema);
+  if (sysIds.length === 0 && window.conciliaState.selectedSistemaId) {
+    sysIds = [String(window.conciliaState.selectedSistemaId)];
+  }
+
+  if (sysIds.length === 0) {
+    showConciliaToast("Selecione ao menos um lançamento do Sistema à direita.", "warning");
+    return;
+  }
 
   const ext = window.conciliaState.extrato.find(e => e.id === extId);
-  const sys = window.conciliaState.sistema.find(s => s.id === sysId);
-  if (!ext || !sys) return;
+  if (!ext || ext.status === "CONCILIADO") {
+    showConciliaToast("Transação do extrato não encontrada ou já conciliada.", "error");
+    return;
+  }
+
+  const sysItens = window.conciliaState.sistema.filter(s => sysIds.includes(String(s.id)));
+  if (sysItens.length === 0) {
+    showConciliaToast("Nenhum lançamento do sistema encontrado para vincular.", "error");
+    return;
+  }
+
+  // Validação e cálculo de diferença (Juros/Acréscimo ou Desconto)
+  const totalSys = sysItens.reduce((acc, s) => acc + Number(s.valor || 0), 0);
+  const diff = Number((ext.valor - totalSys).toFixed(2));
+  const diffAbs = Math.abs(diff);
+
+  let jurosTotal = 0;
+  let descontoTotal = 0;
+
+  if (diffAbs > 0.02) {
+    if (diff > 0) {
+      // Extrato é maior que o título: diferença lançada como Juros / Acréscimo
+      jurosTotal = diff;
+      const confirmMsg = `Diferença de valor detectada:\n\n` +
+        `• Extrato Bancário: R$ ${ext.valor.toFixed(2)} (${ext.tipo})\n` +
+        `• Lançamento(s) do Sistema: R$ ${totalSys.toFixed(2)}\n` +
+        `• Juros / Acréscimo: R$ ${jurosTotal.toFixed(2)}\n\n` +
+        `Deseja lançar a diferença de R$ ${jurosTotal.toFixed(2)} como JUROS e dar baixa no valor total de R$ ${ext.valor.toFixed(2)}?`;
+      if (!confirm(confirmMsg)) return;
+    } else {
+      // Extrato é menor que o título: diferença lançada como Desconto
+      descontoTotal = diffAbs;
+      const confirmMsg = `Diferença de valor detectada:\n\n` +
+        `• Extrato Bancário: R$ ${ext.valor.toFixed(2)} (${ext.tipo})\n` +
+        `• Lançamento(s) do Sistema: R$ ${totalSys.toFixed(2)}\n` +
+        `• Desconto / Diferença: R$ ${descontoTotal.toFixed(2)}\n\n` +
+        `Deseja lançar a diferença de R$ ${descontoTotal.toFixed(2)} como DESCONTO e dar baixa no valor de R$ ${ext.valor.toFixed(2)}?`;
+      if (!confirm(confirmMsg)) return;
+    }
+  }
 
   if (typeof window.firebase !== "undefined" && typeof window.firebase.firestore === "function") {
     try {
@@ -418,32 +704,163 @@ window.vincularManual = async function() {
       const batch = firestore.batch();
       const refBase = (typeof window.getEmpresaRef === "function") ? window.getEmpresaRef() : firestore;
 
-      batch.update(refBase.collection("extrato_bancario").doc(ext.id), {
+      const vinculoData = {
+        origem_id: sysItens[0].id,
+        origem_colecao: sysItens[0].colecao,
+        origens: sysItens.map(s => ({
+          id: s.id,
+          colecao: s.colecao,
+          valor: s.valor,
+          descricao: s.descricao
+        })),
+        data: new Date().toISOString()
+      };
+
+      batch.set(refBase.collection("extrato_bancario").doc(ext.id), {
+        id: ext.id,
+        data: ext.data,
+        descricao: ext.descricao,
+        valor: ext.valor,
+        tipo: ext.tipo,
         status: "CONCILIADO",
-        vinculo: { origem_id: sys.id, origem_colecao: sys.colecao, data: new Date().toISOString() }
+        vinculo: vinculoData
+      }, { merge: true });
+
+      sysItens.forEach(sys => {
+        let jurosItem = 0;
+        let descItem = 0;
+        let valorPagoItem = Number(sys.valor || 0);
+
+        if (jurosTotal > 0) {
+          if (sysItens.length === 1) {
+            jurosItem = jurosTotal;
+            valorPagoItem = Number((Number(sys.valor || 0) + jurosItem).toFixed(2));
+          } else {
+            const proporcao = Number(sys.valor || 0) / totalSys;
+            jurosItem = Number((jurosTotal * proporcao).toFixed(2));
+            valorPagoItem = Number((Number(sys.valor || 0) + jurosItem).toFixed(2));
+          }
+        } else if (descontoTotal > 0) {
+          if (sysItens.length === 1) {
+            descItem = descontoTotal;
+            valorPagoItem = Number((Number(sys.valor || 0) - descItem).toFixed(2));
+          } else {
+            const proporcao = Number(sys.valor || 0) / totalSys;
+            descItem = Number((descontoTotal * proporcao).toFixed(2));
+            valorPagoItem = Number((Number(sys.valor || 0) - descItem).toFixed(2));
+          }
+        }
+
+        const obsInfo = jurosItem > 0 
+          ? `[Conciliação Bancária] Juros/Acréscimo: R$ ${jurosItem.toFixed(2)}` 
+          : (descItem > 0 ? `[Conciliação Bancária] Desconto: R$ ${descItem.toFixed(2)}` : '');
+
+        const targetCol = sys.colecao === "contas_a_pagar" || sys.colecao === "contas_a_receber" ? "financeiro" : sys.colecao;
+        batch.set(refBase.collection(targetCol).doc(sys.id), {
+          status: "PAGO",
+          valorPago: valorPagoItem,
+          juros: jurosItem,
+          acrescimo: jurosItem,
+          desconto: descItem,
+          dataPagamento: ext.data ? new Date(ext.data + 'T12:00:00').toISOString() : new Date().toISOString(),
+          metodoPagamento: ext.descricao || "Extrato Bancário",
+          conciliado: true,
+          extrato_id: ext.id,
+          observacao: (sys.observacao ? sys.observacao + '\n' : '') + obsInfo,
+          ultimaAlteracao: Date.now()
+        }, { merge: true });
       });
-      const targetCol = sys.colecao === "contas_a_pagar" || sys.colecao === "contas_a_receber" ? "financeiro" : sys.colecao;
-      batch.update(refBase.collection(targetCol).doc(sys.id), {
-        status: "PAGO",
-        conciliado: true,
-        extrato_id: ext.id
-      });
+
       await batch.commit();
     } catch (e) {
       console.warn("Aviso batch manual:", e);
     }
   }
 
+  // Atualização otimista no estado da conciliação
   ext.status = "CONCILIADO";
-  ext.vinculo = { origem_id: sys.id, origem_colecao: sys.colecao };
-  sys.conciliado = true;
-  sys.extrato_id = ext.id;
+  ext.vinculo = {
+    origem_id: sysItens[0].id,
+    origem_colecao: sysItens[0].colecao,
+    origens: sysItens.map(s => ({
+      id: s.id,
+      colecao: s.colecao,
+      valor: s.valor,
+      descricao: s.descricao
+    }))
+  };
+
+  sysItens.forEach(sys => {
+    sys.conciliado = true;
+    sys.extrato_id = ext.id;
+
+    // Atualiza também no array em memória do financeiro para dar baixa completa com juros
+    if (window.db && Array.isArray(window.db.financeiro)) {
+      const itemDb = window.db.financeiro.find(f => String(f.id) === String(sys.id));
+      if (itemDb) {
+        let jurosItem = 0;
+        let descItem = 0;
+        let valorPagoItem = Number(sys.valor || 0);
+
+        if (jurosTotal > 0) {
+          if (sysItens.length === 1) {
+            jurosItem = jurosTotal;
+            valorPagoItem = Number((Number(sys.valor || 0) + jurosItem).toFixed(2));
+          } else {
+            const proporcao = Number(sys.valor || 0) / totalSys;
+            jurosItem = Number((jurosTotal * proporcao).toFixed(2));
+            valorPagoItem = Number((Number(sys.valor || 0) + jurosItem).toFixed(2));
+          }
+        } else if (descontoTotal > 0) {
+          if (sysItens.length === 1) {
+            descItem = descontoTotal;
+            valorPagoItem = Number((Number(sys.valor || 0) - descItem).toFixed(2));
+          } else {
+            const proporcao = Number(sys.valor || 0) / totalSys;
+            descItem = Number((descontoTotal * proporcao).toFixed(2));
+            valorPagoItem = Number((Number(sys.valor || 0) - descItem).toFixed(2));
+          }
+        }
+
+        const obsInfo = jurosItem > 0 
+          ? `[Conciliação Bancária] Juros/Acréscimo: R$ ${jurosItem.toFixed(2)}` 
+          : (descItem > 0 ? `[Conciliação Bancária] Desconto: R$ ${descItem.toFixed(2)}` : '');
+
+        itemDb.status = "PAGO";
+        itemDb.valorPago = valorPagoItem;
+        itemDb.juros = jurosItem;
+        itemDb.acrescimo = jurosItem;
+        itemDb.desconto = descItem;
+        itemDb.dataPagamento = ext.data ? new Date(ext.data + 'T12:00:00').toISOString() : new Date().toISOString();
+        itemDb.metodoPagamento = ext.descricao || "Extrato Bancário";
+        itemDb.conciliado = true;
+        itemDb.extrato_id = ext.id;
+        itemDb.observacao = (itemDb.observacao ? itemDb.observacao + '\n' : '') + obsInfo;
+        itemDb.ultimaAlteracao = Date.now();
+      }
+    }
+  });
+
+  // Salva no repositório FCCache do sistema para refletir imediatamente em Contas a Pagar / Receber
+  if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function' && window.db?.financeiro) {
+    try { window.FCCache.set('financeiro', window.db.financeiro); } catch (_) {}
+  }
+  try {
+    if (window.db?.financeiro) {
+      localStorage.setItem('fc_financeiro', JSON.stringify(window.db.financeiro));
+    }
+  } catch (_) {}
+
+  salvarExtratoLocalmente();
+  carregarLancamentosDoSistema();
 
   window.conciliaState.selectedExtratoId = null;
   window.conciliaState.selectedSistemaId = null;
+  window.conciliaState.checksSistema.clear();
 
   renderizarPainelConciliacao();
-  showConciliaToast("Transações vinculadas com sucesso!", "success");
+  renderizarHistorico();
+  showConciliaToast("Transações vinculadas e baixadas com sucesso!", "success");
 };
 
 // ==========================================
@@ -469,6 +886,8 @@ window.gerarAjuste = async function(extId) {
     extrato_id: ext.id
   };
 
+  const isoData = ext.data ? new Date(ext.data + 'T12:00:00').toISOString() : new Date().toISOString();
+
   if (typeof window.firebase !== "undefined" && typeof window.firebase.firestore === "function") {
     try {
       const firestore = window.firebase.firestore();
@@ -481,17 +900,31 @@ window.gerarAjuste = async function(extId) {
         pessoa: novoLancamento.descricao,
         categoria: novoLancamento.categoria,
         valor: novoLancamento.valor,
-        data: novoLancamento.data_vencimento,
-        dataPagamento: novoLancamento.data_pagamento,
+        valorPago: novoLancamento.valor,
+        data: isoData,
+        dataPagamento: isoData,
+        metodoPagamento: ext.descricao || "Extrato Bancário",
         status: "PAGO",
         conciliado: true,
-        extrato_id: ext.id
+        extrato_id: ext.id,
+        ultimaAlteracao: Date.now()
       });
 
-      batch.update(refBase.collection("extrato_bancario").doc(ext.id), {
+      batch.set(refBase.collection("extrato_bancario").doc(ext.id), {
+        id: ext.id,
+        data: ext.data,
+        descricao: ext.descricao,
+        valor: ext.valor,
+        tipo: ext.tipo,
         status: "CONCILIADO",
-        vinculo: { origem_id: newId, origem_colecao: targetCol, data: new Date().toISOString() }
-      });
+        vinculo: {
+          origem_id: newId,
+          origem_colecao: targetCol,
+          origens: [{ id: newId, colecao: targetCol, valor: ext.valor, descricao: novoLancamento.descricao }],
+          data: new Date().toISOString()
+        }
+      }, { merge: true });
+
       await batch.commit();
     } catch (e) {
       console.warn("Aviso batch ajuste:", e);
@@ -499,10 +932,40 @@ window.gerarAjuste = async function(extId) {
   }
 
   ext.status = "CONCILIADO";
-  ext.vinculo = { origem_id: newId, origem_colecao: targetCol };
+  ext.vinculo = {
+    origem_id: newId,
+    origem_colecao: targetCol,
+    origens: [{ id: newId, colecao: targetCol, valor: ext.valor, descricao: novoLancamento.descricao }]
+  };
   window.conciliaState.sistema.push(novoLancamento);
 
+  if (window.db && Array.isArray(window.db.financeiro)) {
+    window.db.financeiro.push({
+      id: newId,
+      tipo: ext.tipo === "DEBITO" ? "DESPESA" : "RECEITA",
+      pessoa: novoLancamento.descricao,
+      categoria: novoLancamento.categoria,
+      valor: novoLancamento.valor,
+      valorPago: novoLancamento.valor,
+      data: isoData,
+      dataPagamento: isoData,
+      metodoPagamento: ext.descricao || "Extrato Bancário",
+      status: "PAGO",
+      conciliado: true,
+      extrato_id: ext.id,
+      ultimaAlteracao: Date.now()
+    });
+    if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function') {
+      try { window.FCCache.set('financeiro', window.db.financeiro); } catch (_) {}
+    }
+    try { localStorage.setItem('fc_financeiro', JSON.stringify(window.db.financeiro)); } catch (_) {}
+  }
+
+  salvarExtratoLocalmente();
+  carregarLancamentosDoSistema();
+
   renderizarPainelConciliacao();
+  renderizarHistorico();
   showConciliaToast("Ajuste criado e conciliado com sucesso!", "success");
 };
 
@@ -517,7 +980,8 @@ function renderizarPainelConciliacao() {
   const badgeExtratoCount = document.getElementById("extratoCountBadge");
   const badgeSistemaCount = document.getElementById("sistemaCountBadge");
 
-  const pendentesExt = window.conciliaState.extrato.filter(e => e.status === "PENDENTE");
+  const pendentesExt = (window.conciliaState.extrato || []).filter(e => e.status === "PENDENTE");
+  const conciliadosExt = (window.conciliaState.extrato || []).filter(e => e.status === "CONCILIADO");
 
   const modo = window.conciliaState.modoVisao || "pendentes";
 
@@ -557,6 +1021,11 @@ function renderizarPainelConciliacao() {
 
   if (lblStats) lblStats.textContent = `Pendentes: ${pendentesExt.length} Extrato | ${qtdAtivosTotal} Sistema`;
   if (badgeExtratoCount) badgeExtratoCount.textContent = `${pendentesExt.length} Pendentes`;
+
+  const badgeTabPend = document.getElementById("badge-tab-pendencias");
+  const badgeTabHist = document.getElementById("badge-tab-historico");
+  if (badgeTabPend) badgeTabPend.textContent = pendentesExt.length;
+  if (badgeTabHist) badgeTabHist.textContent = conciliadosExt.length;
   
   if (badgeSistemaCount) {
     if (modo === "ocultados") {
@@ -610,8 +1079,22 @@ function renderizarPainelConciliacao() {
   if (btnReexLote) btnReexLote.disabled = qtdChecks === 0;
   if (contReex) contReex.textContent = qtdChecks;
 
+  const qtdSysSelecionados = window.conciliaState.checksSistema.size || (window.conciliaState.selectedSistemaId ? 1 : 0);
+  const temExtrato = !!window.conciliaState.selectedExtratoId;
+  const podeVincular = temExtrato && qtdSysSelecionados > 0;
+
   if (btnManualMatch) {
-    btnManualMatch.disabled = !(window.conciliaState.selectedExtratoId && window.conciliaState.selectedSistemaId);
+    btnManualMatch.disabled = !podeVincular;
+    if (podeVincular) {
+      btnManualMatch.className = "bg-emerald-600 hover:bg-emerald-500 text-white shadow-md cursor-pointer border border-emerald-500 px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ring-2 ring-emerald-500/20";
+      const relacao = qtdSysSelecionados === 1 ? "1 Extrato ↔ 1 Sistema" : `1 Extrato ↔ ${qtdSysSelecionados} Sistema`;
+      btnManualMatch.innerHTML = `<i class="fa-solid fa-link"></i> Vincular Selecionados (${relacao})`;
+      btnManualMatch.title = "Clique para vincular as transações selecionadas";
+    } else {
+      btnManualMatch.className = "bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 dark:text-slate-500 border border-slate-300 dark:border-slate-600 px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all opacity-50 cursor-not-allowed";
+      btnManualMatch.innerHTML = `<i class="fa-solid fa-link"></i> Vincular Selecionados`;
+      btnManualMatch.title = "Selecione 1 transação no Extrato e ao menos 1 no Sistema para vincular";
+    }
   }
 
   // Lista Extrato
@@ -624,9 +1107,12 @@ function renderizarPainelConciliacao() {
           <div>
             <h4 class="font-bold text-xs text-slate-800 dark:text-slate-100">${e.descricao}</h4>
             <span class="text-[11px] text-slate-500 dark:text-slate-400">Data: ${e.data}</span>
-            <div class="mt-1.5">
+            <div class="mt-1.5 flex items-center gap-2">
               <button onclick="event.stopPropagation(); window.gerarAjuste('${e.id}')" class="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300 hover:bg-blue-100 border border-blue-200 dark:border-blue-800">
                 + Gerar Ajuste
+              </button>
+              <button onclick="event.stopPropagation(); window.removerItemExtrato('${e.id}')" title="Excluir transação do extrato" class="text-[10px] font-bold px-1.5 py-0.5 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors">
+                <i class="fa-solid fa-trash-can"></i>
               </button>
             </div>
           </div>
@@ -652,6 +1138,7 @@ function renderizarPainelConciliacao() {
       elSistemaList.innerHTML = itensSys.map(s => {
         const isPagar = s.colecao === "contas_a_pagar";
         const isChecked = window.conciliaState.checksSistema.has(String(s.id));
+        const isSelected = isChecked || window.conciliaState.selectedSistemaId === String(s.id);
 
         let botoesAcao = "";
         let badgeStatus = `<span class="badge-pendente text-[10px] font-bold px-2 py-0.5 rounded-full">Pendente</span>`;
@@ -672,9 +1159,9 @@ function renderizarPainelConciliacao() {
         }
 
         return `
-          <div onclick="selecionarItemSistema('${s.id}')" class="concilia-card bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/80 hover:border-blue-500 dark:hover:border-blue-500 ${window.conciliaState.selectedSistemaId === s.id ? 'selected' : ''}" data-id="${s.id}">
+          <div onclick="selecionarItemSistema('${s.id}')" class="concilia-card bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/80 hover:border-blue-500 dark:hover:border-blue-500 ${isSelected ? 'selected' : ''}" data-id="${s.id}">
             <div class="flex items-center gap-2">
-              <input type="checkbox" onclick="event.stopPropagation(); window.alternarCheckItemSistema('${s.id}')" ${isChecked ? 'checked' : ''} class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-0 cursor-pointer">
+              <input type="checkbox" onclick="event.stopPropagation(); window.selecionarItemSistema('${s.id}')" ${isSelected ? 'checked' : ''} class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-0 cursor-pointer">
               <div>
                 <h4 class="font-bold text-xs text-slate-800 dark:text-slate-100">${s.descricao}</h4>
                 <span class="text-[11px] text-slate-500 dark:text-slate-400">Venc: ${s.data_vencimento || s.data_pagamento} • ${isPagar ? 'Contas a Pagar' : 'Contas a Receber'}</span>
@@ -694,13 +1181,6 @@ function renderizarPainelConciliacao() {
       }).join("");
     }
   }
-
-  // Atualiza badges das abas
-  const badgeTabPend = document.getElementById("badge-tab-pendencias");
-  const badgeTabHist = document.getElementById("badge-tab-historico");
-  const conciliados = window.conciliaState.extrato.filter(e => e.status === "CONCILIADO");
-  if (badgeTabPend) badgeTabPend.textContent = pendentesExt.length;
-  if (badgeTabHist) badgeTabHist.textContent = conciliados.length;
 }
 
 // ==========================================
@@ -715,24 +1195,23 @@ window.mudarVisualizacaoSistema = function(modo) {
   renderizarPainelConciliacao();
 };
 
-window.alternarCheckItemSistema = function(id) {
+window.selecionarItemSistema = function(id) {
   const sid = String(id);
   if (window.conciliaState.checksSistema.has(sid)) {
     window.conciliaState.checksSistema.delete(sid);
+    if (window.conciliaState.selectedSistemaId === sid) {
+      const nextId = window.conciliaState.checksSistema.values().next().value;
+      window.conciliaState.selectedSistemaId = nextId || null;
+    }
   } else {
     window.conciliaState.checksSistema.add(sid);
+    window.conciliaState.selectedSistemaId = sid;
   }
-  const qtd = window.conciliaState.checksSistema.size;
+  renderizarPainelConciliacao();
+};
 
-  const contOcult = document.getElementById("contagemOcultar");
-  const btnOcult = document.getElementById("btnOcultarLote");
-  if (contOcult) contOcult.textContent = qtd;
-  if (btnOcult) btnOcult.disabled = qtd === 0;
-
-  const contReex = document.getElementById("contagemReexibir");
-  const btnReex = document.getElementById("btnReexibirLote");
-  if (contReex) contReex.textContent = qtd;
-  if (btnReex) btnReex.disabled = qtd === 0;
+window.alternarCheckItemSistema = function(id) {
+  window.selecionarItemSistema(id);
 };
 
 window.alternarSelecionarTodosSistema = function(checked) {
@@ -762,8 +1241,12 @@ window.alternarSelecionarTodosSistema = function(checked) {
 
   if (checked) {
     visiveis.forEach(s => window.conciliaState.checksSistema.add(String(s.id)));
+    if (visiveis.length > 0) {
+      window.conciliaState.selectedSistemaId = String(visiveis[0].id);
+    }
   } else {
     visiveis.forEach(s => window.conciliaState.checksSistema.delete(String(s.id)));
+    window.conciliaState.selectedSistemaId = null;
   }
   renderizarPainelConciliacao();
 };
@@ -884,12 +1367,12 @@ window.renderizarHistorico = function(termoFiltro = "") {
   const elStats = document.getElementById("statsHistorico");
   if (!elList) return;
 
-  let conciliados = window.conciliaState.extrato.filter(e => e.status === "CONCILIADO");
+  let conciliados = (window.conciliaState.extrato || []).filter(e => e.status === "CONCILIADO");
 
   if (termoFiltro) {
     const t = termoFiltro.toLowerCase().trim();
     conciliados = conciliados.filter(c => 
-      c.descricao.toLowerCase().includes(t) || 
+      (c.descricao && c.descricao.toLowerCase().includes(t)) || 
       String(c.valor).includes(t) ||
       (c.data && c.data.includes(t))
     );
@@ -897,18 +1380,41 @@ window.renderizarHistorico = function(termoFiltro = "") {
 
   if (elStats) elStats.textContent = `${conciliados.length} transação(ões) no histórico`;
 
+  const badgeTabHist = document.getElementById("badge-tab-historico");
+  if (badgeTabHist) badgeTabHist.textContent = (window.conciliaState.extrato || []).filter(e => e.status === "CONCILIADO").length;
+
   if (conciliados.length === 0) {
     elList.innerHTML = `<p class="text-xs text-slate-400 text-center py-12 italic">Nenhuma transação conciliada encontrada no histórico.</p>`;
     return;
   }
 
+  const finList = (window.db && Array.isArray(window.db.financeiro)) ? window.db.financeiro : [];
+
   elList.innerHTML = conciliados.map(c => {
     // Busca informações do lançamento vinculado
     let infoVinculo = "Lançamento Vinculado";
-    if (c.vinculo && c.vinculo.origem_id) {
-      const sysItem = window.conciliaState.sistema.find(s => s.id === c.vinculo.origem_id);
-      if (sysItem) {
-        infoVinculo = `${sysItem.descricao} (R$ ${sysItem.valor.toFixed(2)})`;
+    if (c.vinculo) {
+      if (Array.isArray(c.vinculo.origens) && c.vinculo.origens.length > 0) {
+        infoVinculo = c.vinculo.origens.map(o => `${o.descricao || 'Item'} (R$ ${Number(o.valor || 0).toFixed(2)})`).join(" + ");
+      } else if (c.vinculo.origem_id) {
+        const sysItem = (window.conciliaState.sistema || []).find(s => String(s.id) === String(c.vinculo.origem_id)) ||
+                        finList.find(s => String(s.id) === String(c.vinculo.origem_id));
+        if (sysItem) {
+          const desc = sysItem.descricao || sysItem.pessoa || sysItem.desc || 'Item';
+          infoVinculo = `${desc} (R$ ${Number(sysItem.valor || 0).toFixed(2)})`;
+        }
+      }
+    }
+
+    // Fallback de descrição ou valor se ausente em registros legados
+    let descExt = c.descricao;
+    let valorExt = Number(c.valor || 0);
+    if (!descExt || valorExt === 0) {
+      const vId = c.vinculo?.origem_id || c.vinculo?.origens?.[0]?.id;
+      const fItem = finList.find(f => String(f.id) === String(vId) || String(f.extrato_id) === String(c.id));
+      if (fItem) {
+        if (!descExt) descExt = fItem.pessoa || fItem.descricao || fItem.desc || 'Transação Conciliada';
+        if (valorExt === 0) valorExt = Number(fItem.valorPago || fItem.valor || 0);
       }
     }
 
@@ -920,9 +1426,9 @@ window.renderizarHistorico = function(termoFiltro = "") {
             <i class="fa-solid ${isDebito ? 'fa-arrow-down' : 'fa-arrow-up'}"></i>
           </div>
           <div>
-            <h4 class="font-bold text-xs text-slate-800 dark:text-slate-100">${c.descricao}</h4>
+            <h4 class="font-bold text-xs text-slate-800 dark:text-slate-100">${descExt || 'Transação Bancária'}</h4>
             <p class="text-[11px] text-slate-500 dark:text-slate-400">
-              Data Extrato: <strong>${c.data}</strong> • Vinculado a: <span class="text-blue-500 font-medium">${infoVinculo}</span>
+              Data Extrato: <strong>${c.data || '-'}</strong> • Vinculado a: <span class="text-blue-500 font-medium">${infoVinculo}</span>
             </p>
           </div>
         </div>
@@ -930,7 +1436,7 @@ window.renderizarHistorico = function(termoFiltro = "") {
         <div class="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
           <div class="text-right">
             <span class="font-black text-xs ${isDebito ? 'val-debito' : 'val-credito'}">
-              ${isDebito ? '-' : '+'} R$ ${c.valor.toFixed(2)}
+              ${isDebito ? '-' : '+'} R$ ${valorExt.toFixed(2)}
             </span>
             <span class="badge-conciliado block text-[10px] font-bold px-2 py-0.5 rounded-full mt-0.5">Conciliado</span>
           </div>
@@ -956,8 +1462,9 @@ window.desfazerConciliacao = async function(extratoId) {
 
   if (!confirm(`Deseja desfazer a conciliação de "${ext.descricao}" e retornar para Pendências?`)) return;
 
-  const sysId = ext.vinculo?.origem_id;
-  const sysCol = ext.vinculo?.origem_colecao;
+  const origens = Array.isArray(ext.vinculo?.origens) && ext.vinculo.origens.length > 0
+    ? ext.vinculo.origens
+    : (ext.vinculo?.origem_id ? [{ id: ext.vinculo.origem_id, colecao: ext.vinculo.origem_colecao }] : []);
 
   // Atualiza no banco
   if (typeof window.firebase !== "undefined" && typeof window.firebase.firestore === "function") {
@@ -966,19 +1473,25 @@ window.desfazerConciliacao = async function(extratoId) {
       const batch = firestore.batch();
       const refBase = (typeof window.getEmpresaRef === "function") ? window.getEmpresaRef() : firestore;
 
-      batch.update(refBase.collection("extrato_bancario").doc(ext.id), {
+      batch.set(refBase.collection("extrato_bancario").doc(ext.id), {
         status: "PENDENTE",
         vinculo: null
-      });
+      }, { merge: true });
 
-      if (sysId) {
-        const targetCol = sysCol === "contas_a_pagar" || sysCol === "contas_a_receber" ? "financeiro" : (sysCol || "financeiro");
-        batch.update(refBase.collection(targetCol).doc(sysId), {
+      origens.forEach(orig => {
+        const targetCol = orig.colecao === "contas_a_pagar" || orig.colecao === "contas_a_receber" ? "financeiro" : (orig.colecao || "financeiro");
+        batch.set(refBase.collection(targetCol).doc(orig.id), {
           status: "PENDENTE",
           conciliado: false,
-          extrato_id: null
-        });
-      }
+          extrato_id: null,
+          valorPago: null,
+          juros: 0,
+          acrescimo: 0,
+          desconto: 0,
+          ultimaAlteracao: Date.now()
+        }, { merge: true });
+      });
+
       await batch.commit();
     } catch (e) {
       console.warn("Aviso ao desconciliar no banco:", e);
@@ -989,13 +1502,38 @@ window.desfazerConciliacao = async function(extratoId) {
   ext.status = "PENDENTE";
   ext.vinculo = null;
 
-  if (sysId) {
-    const sys = window.conciliaState.sistema.find(s => s.id === sysId);
+  origens.forEach(orig => {
+    const sys = window.conciliaState.sistema.find(s => String(s.id) === String(orig.id));
     if (sys) {
       sys.conciliado = false;
       sys.extrato_id = null;
     }
+    if (window.db && Array.isArray(window.db.financeiro)) {
+      const itemDb = window.db.financeiro.find(f => String(f.id) === String(orig.id));
+      if (itemDb) {
+        itemDb.conciliado = false;
+        itemDb.extrato_id = null;
+        itemDb.status = "PENDENTE";
+        itemDb.valorPago = null;
+        itemDb.juros = 0;
+        itemDb.acrescimo = 0;
+        itemDb.desconto = 0;
+        itemDb.ultimaAlteracao = Date.now();
+      }
+    }
+  });
+
+  if (typeof window.FCCache !== 'undefined' && typeof window.FCCache.set === 'function' && window.db?.financeiro) {
+    try { window.FCCache.set('financeiro', window.db.financeiro); } catch (_) {}
   }
+  try {
+    if (window.db?.financeiro) {
+      localStorage.setItem('fc_financeiro', JSON.stringify(window.db.financeiro));
+    }
+  } catch (_) {}
+
+  salvarExtratoLocalmente();
+  carregarLancamentosDoSistema();
 
   renderizarPainelConciliacao();
   renderizarHistorico();
@@ -1007,20 +1545,32 @@ window.selecionarItemExtrato = function(id) {
   renderizarPainelConciliacao();
 };
 
-window.selecionarItemSistema = function(id) {
-  window.conciliaState.selectedSistemaId = window.conciliaState.selectedSistemaId === id ? null : id;
-  renderizarPainelConciliacao();
-};
-
 // ==========================================
 // 12. CARREGAMENTO DOS LANÇAMENTOS DO SISTEMA
 // ==========================================
 function carregarLancamentosDoSistema() {
   const lista = [];
 
+  let fin = null;
   if (window.db && Array.isArray(window.db.financeiro) && window.db.financeiro.length > 0) {
-    window.db.financeiro.forEach(f => {
-      if (!f.conciliado) {
+    fin = window.db.financeiro;
+  } else if (window.FCCache && typeof window.FCCache.get === 'function') {
+    fin = window.FCCache.get('financeiro');
+  }
+  if (!fin || fin.length === 0) {
+    try {
+      const raw = localStorage.getItem('fc_financeiro');
+      if (raw) fin = JSON.parse(raw);
+    } catch (_) {}
+  }
+
+  if (Array.isArray(fin) && fin.length > 0) {
+    if (!window.db) window.db = {};
+    if (!window.db.financeiro) window.db.financeiro = fin;
+
+    fin.forEach(f => {
+      // Considera pendente apenas títulos que NÃO estejam conciliados e NÃO estejam pagos/cancelados
+      if (!f.conciliado && f.status !== "PAGO" && f.status !== "CANCELADO") {
         const isPagar = f.tipo === "DESPESA" || f.tipo === "PAGAR";
         lista.push({
           id: String(f.id),
@@ -1029,33 +1579,46 @@ function carregarLancamentosDoSistema() {
           valor: Number(f.valor || 0),
           data_vencimento: f.data ? f.data.split("T")[0] : "",
           data_pagamento: f.dataPagamento || null,
-          conciliado: false
+          conciliado: false,
+          observacao: f.observacao || ""
         });
       }
     });
-  }
-
-  if (lista.length === 0) {
-    const hoje = new Date().toISOString().split("T")[0];
-    lista.push(
-      { id: "cap_demo_1", colecao: "contas_a_pagar", descricao: "Fornecedor Tintas Esmalte", valor: 1250.00, data_vencimento: hoje, data_pagamento: hoje, conciliado: false },
-      { id: "cap_demo_2", colecao: "contas_a_pagar", descricao: "Energia Elétrica", valor: 340.50, data_vencimento: hoje, data_pagamento: hoje, conciliado: false },
-      { id: "car_demo_1", colecao: "contas_a_receber", descricao: "Venda #1029 Tintas", valor: 450.00, data_vencimento: hoje, data_pagamento: hoje, conciliado: false }
-    );
   }
 
   window.conciliaState.sistema = lista;
   renderizarPainelConciliacao();
 }
 
+// Inicialização imediata (offline-first com cache local)
+carregarExtratoLocal();
+carregarLancamentosDoSistema();
+
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {
+    carregarExtratoLocal();
     carregarLancamentosDoSistema();
+    carregarExtratoDoBanco();
   });
 } else {
+  carregarExtratoLocal();
   carregarLancamentosDoSistema();
+  carregarExtratoDoBanco();
 }
 
-window.addEventListener("fc_cache_pronto", carregarLancamentosDoSistema);
-setTimeout(carregarLancamentosDoSistema, 1500);
+window.addEventListener("fc_cache_pronto", () => {
+  carregarLancamentosDoSistema();
+  carregarExtratoDoBanco();
+});
+
+window.addEventListener("fc-dados-locais-atualizados", (e) => {
+  if (!e.detail || e.detail.colecao === "financeiro") {
+    carregarLancamentosDoSistema();
+  }
+});
+
+// Sincronizações progressivas após montagem e autenticação do Firebase
+setTimeout(() => { carregarLancamentosDoSistema(); carregarExtratoDoBanco(); }, 600);
+setTimeout(() => { carregarLancamentosDoSistema(); carregarExtratoDoBanco(); }, 1800);
+setTimeout(() => { carregarLancamentosDoSistema(); carregarExtratoDoBanco(); }, 3500);
 

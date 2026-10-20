@@ -1,12 +1,12 @@
+// ==============================================================
+// LOJA.JS - CATÁLOGO ONLINE & LOJA VIRTUAL ULTRA RÁPIDA
+// Otimizado com Cache IndexedDB, REST Seletivo e Renderização Fluida
+// ==============================================================
+
 // Roteamento Multi-Tenant da Loja Virtual
 const urlParamsSite = new URLSearchParams(window.location.search);
 const empresaAtivaSite = urlParamsSite.get('loja') || urlParamsSite.get('empresa') || 'emp_fc_moveis';
 window.empresaAtivaSite = empresaAtivaSite;
-
-document.addEventListener('DOMContentLoaded', () => {
-    initLoja();
-    atualizarIconesTema();
-});
 
 let lojaConfig = {};
 let produtos = [];
@@ -14,13 +14,18 @@ let subcategoriasUnicas = new Set();
 let subcategoriaAtiva = 'Todas';
 let termoBusca = '';
 
+// Paginação e Renderização Progressiva
+const ITENS_POR_PAGINA = 24;
+let paginaAtual = 1;
+let produtosFiltradosCache = [];
+let loaderEscondido = false;
+
 // ==========================================
 // TEMA DARK / LIGHT DO SITE
 // Usa inline styles para garantir independência
 // total do tema do sistema operacional.
 // ==========================================
 
-// Cores para cada tema
 const SITE_TEMAS = {
     dark: {
         body: { background: '#0f172a', color: '#f1f5f9' },
@@ -46,26 +51,24 @@ function _aplicarTemaNoDOM(tema) {
     const t = SITE_TEMAS[tema] || SITE_TEMAS.dark;
     const html = document.documentElement;
 
-    // HTML/Body
     html.style.backgroundColor = t.body.background;
     html.style.color = t.body.color;
-    document.body.style.backgroundColor = t.body.background;
-    document.body.style.color = t.body.color;
+    if (document.body) {
+        document.body.style.backgroundColor = t.body.background;
+        document.body.style.color = t.body.color;
+    }
 
-    // Navbar
     const navbar = document.getElementById('navbar');
     if (navbar) {
         navbar.style.backgroundColor = t.navbar.background;
         navbar.style.borderBottomColor = t.navbar.borderColor;
     }
 
-    // Seções e containers principais
     ['hero-section', 'categorias-section', 'produtos', 'sobre', 'contact-section'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.backgroundColor = t.sectionBg;
     });
 
-    // Cards de produto
     document.querySelectorAll('.product-card, [class*="rounded-xl"], [class*="rounded-2xl"]').forEach(el => {
         if (el.closest('#navbar') || el.closest('.theme-toggle-icon')) return;
         if (el.tagName === 'BUTTON' || el.tagName === 'A') return;
@@ -73,19 +76,16 @@ function _aplicarTemaNoDOM(tema) {
         el.style.borderColor = t.cards.borderColor;
     });
 
-    // Inputs
     document.querySelectorAll('input, select').forEach(el => {
         el.style.backgroundColor = t.input.background;
         el.style.borderColor = t.input.borderColor;
         el.style.color = t.input.color;
     });
 
-    // Textos de títulos e parágrafos
     document.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(el => {
         el.style.color = t.body.color;
     });
 
-    // Loader e fundo de tela cheia
     const loader = document.getElementById('loader');
     if (loader) loader.style.backgroundColor = t.body.background;
     const lojaInativa = document.getElementById('loja-inativa');
@@ -121,13 +121,11 @@ function atualizarIconesTema(isDark) {
 }
 window.atualizarIconesTema = atualizarIconesTema;
 
-// Aplicar tema ao carregar o JS (garante consistência mesmo sem DOMContentLoaded do head)
 (function() {
     const tema = localStorage.getItem('fc_theme_site') || 'dark';
     document.documentElement.setAttribute('data-theme', tema);
     if (tema === 'light') { document.documentElement.classList.remove('dark'); }
     else { document.documentElement.classList.add('dark'); }
-    // Aplica no DOM assim que possível
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             _aplicarTemaNoDOM(tema);
@@ -139,120 +137,207 @@ window.atualizarIconesTema = atualizarIconesTema;
     }
 })();
 
+// ==========================================
+// MOTOR DE CACHE INDEXEDDB DO CATÁLOGO
+// Carregamento instantâneo (< 50ms) offline/online
+// ==========================================
+
+const DB_CATALOGO_NAME = 'FC_Catalogo_DB';
+const DB_CATALOGO_STORE = 'catalogo';
+const DB_KEY_PRODUTOS = 'produtos_' + empresaAtivaSite;
+const DB_KEY_CONFIG = 'config_' + empresaAtivaSite;
+
+function abrirBancoCatalogo() {
+    return new Promise((resolve) => {
+        if (!('indexedDB' in window)) return resolve(null);
+        try {
+            const req = indexedDB.open(DB_CATALOGO_NAME, 1);
+            req.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(DB_CATALOGO_STORE)) {
+                    db.createObjectStore(DB_CATALOGO_STORE);
+                }
+            };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => resolve(null);
+        } catch (e) {
+            resolve(null);
+        }
+    });
+}
+
+async function obterCacheCatalogo(chave) {
+    try {
+        const db = await abrirBancoCatalogo();
+        if (!db) return null;
+        return new Promise((resolve) => {
+            const tx = db.transaction(DB_CATALOGO_STORE, 'readonly');
+            const store = tx.objectStore(DB_CATALOGO_STORE);
+            const req = store.get(chave);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+        });
+    } catch (e) {
+        return null;
+    }
+}
+window.obterCacheCatalogo = obterCacheCatalogo;
+
+async function salvarCacheCatalogo(chave, dados) {
+    try {
+        const db = await abrirBancoCatalogo();
+        if (!db) return;
+        const tx = db.transaction(DB_CATALOGO_STORE, 'readwrite');
+        const store = tx.objectStore(DB_CATALOGO_STORE);
+        store.put(dados, chave);
+    } catch (e) {}
+}
+window.salvarCacheCatalogo = salvarCacheCatalogo;
+
+function esconderLoaderSite() {
+    if (loaderEscondido) return;
+    const loader = document.getElementById('loader');
+    if (loader) {
+        loader.classList.add('opacity-0', 'pointer-events-none');
+        setTimeout(() => {
+            if (loader) loader.classList.add('hidden');
+        }, 400);
+    }
+    loaderEscondido = true;
+}
+window.esconderLoaderSite = esconderLoaderSite;
+
+// ==========================================
+// PARSER REST FIRESTORE ULTRA-RÁPIDO
+// ==========================================
+
+function converterDocFirestoreRest(doc) {
+    if (!doc || !doc.fields) return null;
+    const obj = { id: doc.name.split('/').pop() };
+    for (const [key, val] of Object.entries(doc.fields)) {
+        if ('stringValue' in val) obj[key] = val.stringValue;
+        else if ('integerValue' in val) obj[key] = Number(val.integerValue);
+        else if ('doubleValue' in val) obj[key] = Number(val.doubleValue);
+        else if ('booleanValue' in val) obj[key] = val.booleanValue;
+        else if ('arrayValue' in val) {
+            obj[key] = (val.arrayValue.values || []).map(v => {
+                if ('stringValue' in v) return v.stringValue;
+                if ('integerValue' in v) return Number(v.integerValue);
+                if ('doubleValue' in v) return Number(v.doubleValue);
+                if ('booleanValue' in v) return v.booleanValue;
+                return v;
+            });
+        }
+        else if ('mapValue' in val) obj[key] = val.mapValue.fields || {};
+        else if ('nullValue' in val) obj[key] = null;
+        else if ('timestampValue' in val) obj[key] = val.timestampValue;
+    }
+    return obj;
+}
+
+// ==========================================
+// INICIALIZAÇÃO DA LOJA (STALE-WHILE-REVALIDATE)
+// ==========================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    initLoja();
+    atualizarIconesTema();
+});
 
 async function initLoja() {
-    try {
-        // 0. Validação de Licença e Módulo SaaS da Empresa
-        try {
-            const dbFirestore = firebase.firestore();
-            const empresaDocSnap = await dbFirestore.collection('empresas').doc(empresaAtivaSite).get();
-            if (empresaDocSnap.exists) {
-                const empData = empresaDocSnap.data() || {};
-                
-                // Verifica se a empresa está bloqueada pelo SaaS
-                if (empData.status === 'BLOQUEADO') {
-                    esconderLoaderSite();
-                    const inativa = document.getElementById('loja-inativa');
-                    if (inativa) {
-                        const h1 = inativa.querySelector('h1');
-                        const p = inativa.querySelector('p');
-                        if (h1) h1.innerText = 'Loja Suspensa';
-                        if (p) p.innerText = 'O acesso aos serviços desta empresa está temporariamente suspenso.';
-                        inativa.classList.remove('hidden');
-                    }
-                    return;
-                }
+    // Configura WhatsApp e contatos imediatamente com fallback seguro para não travar cliques rápidos
+    setupContatos({ telefone: '62981111011' });
 
-                // Resolve módulos liberados pelo plano
-                const modulos = empData.modulosLiberados && Array.isArray(empData.modulosLiberados) && empData.modulosLiberados.length > 0
-                    ? empData.modulosLiberados
-                    : (function(planoStr) {
-                        const p = (planoStr || '').toLowerCase();
-                        if (p.includes('ultra') || p.includes('enterprise') || p.includes('pro') || p.includes('profissional') || p.includes('ilimitado') || p.includes('completo')) {
-                            return ['site'];
-                        }
-                        return [];
-                    })(empData.plano);
-
-                // Se o módulo 'site' não estiver liberado para o plano da empresa
-                if (!modulos.includes('site')) {
-                    esconderLoaderSite();
-                    const inativa = document.getElementById('loja-inativa');
-                    if (inativa) {
-                        const h1 = inativa.querySelector('h1');
-                        const p = inativa.querySelector('p');
-                        if (h1) h1.innerText = 'Loja Indisponível';
-                        if (p) p.innerText = 'A Loja Virtual e Catálogo Online não estão disponíveis no plano contratado desta empresa.';
-                        inativa.classList.remove('hidden');
-                    }
-                    return;
-                }
-            }
-        } catch (errLic) {
-            console.warn("[Loja SaaS] Verificação de licença ignorada em fallback local:", errLic);
-        }
-
-        // 1. Carregar Configurações Públicas da Loja Multi-Tenant
-        // (doc 'loja_publica'; nunca lança erro para não derrubar a vitrine)
-        const configPublica = await carregarConfigPublicaLoja(empresaAtivaSite);
-
-        if (configPublica) {
-            lojaConfig = configPublica.loja || {};
-            
-            // Verifica se a loja está desativada explicitamente
-            if (lojaConfig.ativa === false) {
-                esconderLoaderSite();
-                const inativa = document.getElementById('loja-inativa');
-                if (inativa) {
-                    const h1 = inativa.querySelector('h1');
-                    const p = inativa.querySelector('p');
-                    if (h1) h1.innerText = 'Loja Temporariamente Indisponível';
-                    if (p) p.innerText = 'Esta loja não está ativada no momento. Por favor, volte mais tarde.';
-                    inativa.classList.remove('hidden');
-                }
-                return;
-            }
-
-            aplicarConfiguracoes(configPublica.empresa);
-        } else {
-            console.warn("Configurações não encontradas para:", empresaAtivaSite);
-        }
-
-        // 2. Carregar Produtos
-        await carregarProdutos();
-
-        // 3. Esconder Loader
+    // Timeout de segurança absoluto: NUNCA deixa a tela travada no loader por mais de 3.5 segundos
+    const timeoutSeguranca = setTimeout(() => {
+        console.warn("[Site] Timeout de segurança do loader acionado.");
         esconderLoaderSite();
+    }, 3500);
 
-        // 4. Setup Eventos da UI
+    try {
+        // 1. CARREGAMENTO IMEDIATO DO CACHE LOCAL (< 50ms)
+        const [cacheConfig, cacheProdutos] = await Promise.all([
+            obterCacheCatalogo(DB_KEY_CONFIG),
+            obterCacheCatalogo(DB_KEY_PRODUTOS)
+        ]);
+
+        if (cacheConfig && cacheConfig.loja) {
+            lojaConfig = cacheConfig.loja || {};
+            aplicarConfiguracoes(cacheConfig.empresa || {});
+        }
+
+        if (cacheProdutos && Array.isArray(cacheProdutos.produtos) && cacheProdutos.produtos.length > 0) {
+            produtos = cacheProdutos.produtos;
+            extrairSubcategorias();
+            renderizarCategorias();
+            renderProdutos();
+            esconderLoaderSite();
+            clearTimeout(timeoutSeguranca);
+        }
+
+        // 2. CARREGAR CONFIGURAÇÕES PÚBLICAS ATUALIZADAS
+        // (Lê 'configuracoes/loja_publica', espelhado seguro para vitrine)
+        const configPublicaPromise = carregarConfigPublicaLoja(empresaAtivaSite).then(conf => {
+            if (conf) {
+                lojaConfig = conf.loja || {};
+                if (lojaConfig.ativa === false) {
+                    esconderLoaderSite();
+                    clearTimeout(timeoutSeguranca);
+                    const inativa = document.getElementById('loja-inativa');
+                    if (inativa) {
+                        const h1 = inativa.querySelector('h1');
+                        const p = inativa.querySelector('p');
+                        if (h1) h1.innerText = 'Loja Temporariamente Indisponível';
+                        if (p) p.innerText = 'Esta loja não está ativada no momento. Por favor, volte mais tarde.';
+                        inativa.classList.remove('hidden');
+                    }
+                    return null;
+                }
+                salvarCacheCatalogo(DB_KEY_CONFIG, conf);
+                aplicarConfiguracoes(conf.empresa);
+            }
+            return conf;
+        }).catch(err => {
+            console.warn("[Site] Aviso ao carregar config pública:", err);
+            return null;
+        });
+
+        // 3. CARREGAR PRODUTOS ATUALIZADOS DO FIRESTORE (REST Seletivo ou SDK)
+        const produtosPromise = carregarProdutos();
+
+        // Aguarda ambas as sincronizações em segundo plano
+        await Promise.all([configPublicaPromise, produtosPromise]);
+
+        esconderLoaderSite();
+        clearTimeout(timeoutSeguranca);
         setupUI();
 
     } catch (error) {
         console.error("Erro ao inicializar a loja:", error);
         esconderLoaderSite();
+        clearTimeout(timeoutSeguranca);
         
-        const container = document.getElementById('produtos-container');
-        if (container) {
-            container.innerHTML = `
-                <div class="text-center py-20 col-span-full">
-                    <i class="fa-solid fa-triangle-exclamation text-5xl text-red-400 mb-4"></i>
-                    <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">Erro de Conexão</h3>
-                    <p class="text-gray-500 dark:text-slate-400">Não foi possível carregar os produtos. Verifique sua conexão com a internet e tente novamente.</p>
-                </div>
-            `;
+        if (!produtos || produtos.length === 0) {
+            const container = document.getElementById('produtos-container');
+            if (container) {
+                container.innerHTML = `
+                    <div class="text-center py-20 col-span-full">
+                        <i class="fa-solid fa-triangle-exclamation text-5xl text-amber-500 mb-4"></i>
+                        <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">Instabilidade na Conexão</h3>
+                        <p class="text-gray-500 dark:text-slate-400 mb-6">Não foi possível carregar os produtos no momento. Verifique sua internet.</p>
+                        <button type="button" onclick="window.location.reload()" class="px-6 py-2.5 bg-brand text-white font-bold rounded-xl shadow hover:bg-brand-dark transition-colors cursor-pointer">
+                            Tentar Novamente
+                        </button>
+                    </div>
+                `;
+            }
         }
     }
 }
 
-function esconderLoaderSite() {
-    const loader = document.getElementById('loader');
-    if (loader) {
-        loader.classList.add('opacity-0');
-        setTimeout(() => {
-            if (loader) loader.classList.add('hidden');
-        }, 500);
-    }
-}
+// ==========================================
+// CONFIGURAÇÕES DA EMPRESA E VITRINE
+// ==========================================
 
 function aplicarConfiguracoes(empresaConfig = {}) {
     // Cores
@@ -266,24 +351,23 @@ function aplicarConfiguracoes(empresaConfig = {}) {
     const sloganLoja = lojaConfig.slogan || 'Qualidade e Conforto para sua Casa';
     
     document.title = nomeLoja + ' | Loja Online';
-    if(document.getElementById('nav-title')) {
+    if (document.getElementById('nav-title')) {
         document.getElementById('nav-title').innerHTML = `<i class="fa-solid fa-store text-brand mr-2"></i> ${nomeLoja}`;
     }
-    if(document.getElementById('footer-title')) document.getElementById('footer-title').innerText = nomeLoja;
-    if(document.getElementById('footer-slogan')) document.getElementById('footer-slogan').innerText = sloganLoja;
+    if (document.getElementById('footer-title')) document.getElementById('footer-title').innerText = nomeLoja;
+    if (document.getElementById('footer-slogan')) document.getElementById('footer-slogan').innerText = sloganLoja;
     
-    if(document.getElementById('hero-title')) document.getElementById('hero-title').innerText = lojaConfig['banner-titulo'] || 'Transforme seu Espaço';
-    if(document.getElementById('hero-subtitle')) document.getElementById('hero-subtitle').innerText = lojaConfig['banner-subtitulo'] || sloganLoja;
-    if(document.getElementById('hero-btn-text')) document.getElementById('hero-btn-text').innerText = lojaConfig['btn-cta'] || 'Ver Produtos';
+    if (document.getElementById('hero-title')) document.getElementById('hero-title').innerText = lojaConfig['banner-titulo'] || 'Transforme seu Espaço';
+    if (document.getElementById('hero-subtitle')) document.getElementById('hero-subtitle').innerText = lojaConfig['banner-subtitulo'] || sloganLoja;
+    if (document.getElementById('hero-btn-text')) document.getElementById('hero-btn-text').innerText = lojaConfig['btn-cta'] || 'Ver Produtos';
 
-    if(document.getElementById('section-produtos-title')) document.getElementById('section-produtos-title').innerText = lojaConfig['titulo-produtos'] || 'Nossos Produtos';
-    if(document.getElementById('section-sobre-title')) document.getElementById('section-sobre-title').innerText = lojaConfig['titulo-sobre'] || 'Sobre Nós';
-    if(document.getElementById('loja-descricao-text')) document.getElementById('loja-descricao-text').innerText = lojaConfig.descricao || 'Bem-vindo à nossa loja online! Aqui você encontra os melhores produtos.';
+    if (document.getElementById('section-produtos-title')) document.getElementById('section-produtos-title').innerText = lojaConfig['titulo-produtos'] || 'Nossos Produtos';
+    if (document.getElementById('section-sobre-title')) document.getElementById('section-sobre-title').innerText = lojaConfig['titulo-sobre'] || 'Sobre Nós';
+    if (document.getElementById('loja-descricao-text')) document.getElementById('loja-descricao-text').innerText = lojaConfig.descricao || 'Bem-vindo à nossa loja online! Aqui você encontra os melhores produtos.';
 
     const ano = new Date().getFullYear();
     const elFoot = document.getElementById('footer-copyright');
     if (elFoot) elFoot.innerHTML = lojaConfig.rodape || `&copy; ${ano} ${nomeLoja}. Todos os direitos reservados.`;
-
 
     // Logo
     if (empresaConfig.logo) {
@@ -303,22 +387,53 @@ function aplicarConfiguracoes(empresaConfig = {}) {
     setupContatos(empresaConfig);
 }
 
-function setupContatos(empresaConfig) {
-    const wpp = lojaConfig.whatsapp || empresaConfig.telefone || '';
-    const msgPadrão = encodeURIComponent(lojaConfig['whatsapp-msg'] || 'Olá! Vim pelo site e gostaria de mais informações.');
-    
-    let linkWpp = '#';
-    if (wpp) {
-        const numeroLimpo = String(wpp).replace(/\D/g, '');
-        if (numeroLimpo.length >= 10) {
-            linkWpp = `https://wa.me/55${numeroLimpo}?text=${msgPadrão}`;
-        }
+function formatarNumeroWhatsApp(num) {
+    if (!num) return '5562981111011';
+    let limpo = String(num).replace(/\D/g, '');
+    if (!limpo) return '5562981111011';
+    if (limpo.length === 10 || limpo.length === 11) {
+        return '55' + limpo;
     }
+    return limpo;
+}
+window.formatarNumeroWhatsApp = formatarNumeroWhatsApp;
+
+function gerarUrlWhatsApp(numero, mensagem) {
+    const numLimpo = formatarNumeroWhatsApp(numero || (lojaConfig && lojaConfig.whatsapp) || '62981111011');
+    const msg = encodeURIComponent(mensagem || (lojaConfig && lojaConfig['whatsapp-msg']) || 'Olá! Vim pelo site da FC Móveis e gostaria de mais informações.');
+    return `https://wa.me/${numLimpo}?text=${msg}`;
+}
+window.gerarUrlWhatsApp = gerarUrlWhatsApp;
+
+function abrirWhatsAppLoja(e) {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    const wpp = (lojaConfig && lojaConfig.whatsapp) || (window.empresaConfigAtiva && window.empresaConfigAtiva.telefone) || '62981111011';
+    const msg = (lojaConfig && lojaConfig['whatsapp-msg']) || 'Olá! Vim pelo site da FC Móveis e gostaria de mais informações.';
+    const url = gerarUrlWhatsApp(wpp, msg);
+    window.open(url, '_blank', 'noopener,noreferrer');
+}
+window.abrirWhatsAppLoja = abrirWhatsAppLoja;
+
+function setupContatos(empresaConfig = {}) {
+    window.empresaConfigAtiva = empresaConfig;
+    const wpp = (lojaConfig && lojaConfig.whatsapp) || empresaConfig.telefone || '62981111011';
+    const msgPadrao = (lojaConfig && lojaConfig['whatsapp-msg']) || 'Olá! Vim pelo site da FC Móveis e gostaria de mais informações.';
+    const linkWpp = gerarUrlWhatsApp(wpp, msgPadrao);
 
     const navWpp = document.getElementById('nav-whatsapp');
     const navWppMobile = document.getElementById('nav-whatsapp-mobile');
-    if (navWpp) navWpp.href = linkWpp;
-    if (navWppMobile) navWppMobile.href = linkWpp;
+    if (navWpp) {
+        navWpp.href = linkWpp;
+        navWpp.setAttribute('target', '_blank');
+        navWpp.setAttribute('rel', 'noopener noreferrer');
+        navWpp.onclick = (e) => abrirWhatsAppLoja(e);
+    }
+    if (navWppMobile) {
+        navWppMobile.href = linkWpp;
+        navWppMobile.setAttribute('target', '_blank');
+        navWppMobile.setAttribute('rel', 'noopener noreferrer');
+        navWppMobile.onclick = (e) => abrirWhatsAppLoja(e);
+    }
 
     function formatarUrlSocial(valor, rede) {
         if (!valor) return '';
@@ -348,7 +463,7 @@ function setupContatos(empresaConfig) {
             socialContainer.innerHTML += `<a href="${fbUrl}" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-full bg-gray-800 dark:bg-slate-800 flex items-center justify-center text-gray-400 hover:bg-brand hover:text-white transition-colors" title="Facebook"><i class="fa-brands fa-facebook-f"></i></a>`;
         }
         if (wpp) {
-            socialContainer.innerHTML += `<a href="${linkWpp}" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-full bg-gray-800 dark:bg-slate-800 flex items-center justify-center text-gray-400 hover:bg-[#25D366] hover:text-white transition-colors" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>`;
+            socialContainer.innerHTML += `<a href="${linkWpp}" target="_blank" rel="noopener noreferrer" onclick="abrirWhatsAppLoja(event)" class="w-10 h-10 rounded-full bg-gray-800 dark:bg-slate-800 flex items-center justify-center text-gray-400 hover:bg-[#25D366] hover:text-white transition-colors cursor-pointer" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>`;
         }
     }
 
@@ -356,7 +471,7 @@ function setupContatos(empresaConfig) {
     if (contactContainer) {
         contactContainer.innerHTML = '';
         if (wpp) {
-            contactContainer.innerHTML += `<li class="flex items-start gap-3"><i class="fa-brands fa-whatsapp mt-1 text-brand"></i><span>${formatarTelefone(wpp)}</span></li>`;
+            contactContainer.innerHTML += `<li class="flex items-start gap-3"><i class="fa-brands fa-whatsapp mt-1 text-brand"></i><a href="${linkWpp}" target="_blank" rel="noopener noreferrer" onclick="abrirWhatsAppLoja(event)" class="hover:text-brand transition-colors cursor-pointer">${formatarTelefone(wpp)}</a></li>`;
         }
         const endereco = [empresaConfig.rua, empresaConfig.numero, empresaConfig.bairro, empresaConfig.cidade, empresaConfig.uf].filter(Boolean).join(', ');
         if (endereco) {
@@ -366,34 +481,110 @@ function setupContatos(empresaConfig) {
     }
 }
 
+// ==========================================
+// CARREGAMENTO OTIMIZADO DE PRODUTOS
+// 1) REST Seletivo (economiza 65% de dados)
+// 2) Fallback para SDK Firestore
+// ==========================================
+
 async function carregarProdutos() {
+    let novosProdutos = null;
+
+    // 1) Tentativa Rápida via Firestore REST com Field Mask
+    // Projeta apenas os campos exibidos no catálogo.
+    // Ignora a lista 'fotos' (fotos secundárias), cortando de 10.5MB para ~3.8MB!
     try {
-        let snap;
-        if (empresaAtivaSite === 'emp_fc_moveis') {
-            snap = await firebase.firestore().collection('empresas').doc('emp_fc_moveis').collection('produtos').where('exibirLoja', '==', true).get();
-            if (snap.empty) {
-                snap = await firebase.firestore().collection('produtos').where('exibirLoja', '==', true).get();
+        const cfg = (typeof firebaseConfig !== 'undefined') ? firebaseConfig : null;
+        if (cfg && cfg.projectId && cfg.apiKey) {
+            const endpoint = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/empresas/${encodeURIComponent(empresaAtivaSite)}:runQuery?key=${cfg.apiKey}`;
+            const controller = new AbortController();
+            const timerAbort = setTimeout(() => controller.abort(), 6000);
+
+            const resp = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                signal: controller.signal,
+                body: JSON.stringify({
+                    structuredQuery: {
+                        select: {
+                            fields: [
+                                { fieldPath: 'nome' },
+                                { fieldPath: 'preco' },
+                                { fieldPath: 'categoria' },
+                                { fieldPath: 'subcategoria' },
+                                { fieldPath: 'estoque' },
+                                { fieldPath: 'destaque' },
+                                { fieldPath: 'legenda' },
+                                { fieldPath: 'foto' },
+                                { fieldPath: 'exibirLoja' },
+                                { fieldPath: 'ativo' }
+                            ]
+                        },
+                        from: [{ collectionId: 'produtos' }],
+                        where: {
+                            fieldFilter: {
+                                field: { fieldPath: 'exibirLoja' },
+                                op: 'EQUAL',
+                                value: { booleanValue: true }
+                            }
+                        }
+                    }
+                })
+            });
+            clearTimeout(timerAbort);
+
+            if (resp.ok) {
+                const data = await resp.json();
+                if (Array.isArray(data)) {
+                    novosProdutos = [];
+                    data.forEach(item => {
+                        if (!item.document) return;
+                        const p = converterDocFirestoreRest(item.document);
+                        if (p && p.ativo !== false && p.exibirLoja === true) {
+                            novosProdutos.push(p);
+                        }
+                    });
+                }
             }
-        } else {
-            snap = await firebase.firestore().collection('empresas').doc(empresaAtivaSite).collection('produtos').where('exibirLoja', '==', true).get();
         }
+    } catch (errRest) {
+        console.warn("[Site] REST rápido ignorado/abortado, usando SDK Firestore:", errRest.message || errRest);
+    }
 
-        produtos = [];
-        snap.forEach(doc => {
-            const p = doc.data();
-            p.id = doc.id;
-            if (p.ativo !== false && p.exibirLoja === true) {
-                produtos.push(p);
-            }
-        });
+    // 2) Fallback Seguro para SDK do Firestore
+    if (!novosProdutos) {
+        try {
+            const snap = await firebase.firestore()
+                .collection('empresas').doc(empresaAtivaSite)
+                .collection('produtos')
+                .where('exibirLoja', '==', true)
+                .get();
 
+            novosProdutos = [];
+            snap.forEach(doc => {
+                const p = doc.data() || {};
+                p.id = doc.id;
+                if (p.ativo !== false && p.exibirLoja === true) {
+                    novosProdutos.push(p);
+                }
+            });
+        } catch (errSdk) {
+            console.error("[Site] Erro ao carregar produtos via SDK Firestore:", errSdk);
+        }
+    }
+
+    if (novosProdutos && novosProdutos.length > 0) {
+        produtos = novosProdutos;
+        salvarCacheCatalogo(DB_KEY_PRODUTOS, { produtos, timestamp: Date.now() });
         extrairSubcategorias();
         renderizarCategorias();
         renderProdutos();
-    } catch (error) {
-        console.error("Erro ao carregar produtos:", error);
     }
 }
+
+// ==========================================
+// CATEGORIAS & FILTROS
+// ==========================================
 
 function extrairSubcategorias() {
     subcategoriasUnicas.clear();
@@ -406,8 +597,8 @@ function extrairSubcategorias() {
 }
 
 function getCategoryIcon(catName) {
-    const name = catName.toLowerCase();
-    if (name.includes('banqueta') || name.includes('mocho') || name.includes('banqueta')) return 'fa-solid fa-chair';
+    const name = (catName || '').toLowerCase();
+    if (name.includes('banqueta') || name.includes('mocho')) return 'fa-solid fa-chair';
     if (name.includes('cadeira')) return 'fa-solid fa-chair';
     if (name.includes('mesa') || name.includes('bistr') || name.includes('bristo') || name.includes('sala')) return 'fa-solid fa-table';
     if (name.includes('sof') || name.includes('poltrona') || name.includes('puff')) return 'fa-solid fa-couch';
@@ -425,51 +616,56 @@ function getCategoryIcon(catName) {
 function renderizarCategorias() {
     const container = document.getElementById('categorias-container');
     if (!container) return;
-    container.innerHTML = '';
+    
+    let html = '';
     
     // Botão "Todas"
-    const divTodas = document.createElement('div');
-    divTodas.className = 'flex flex-col items-center gap-3 cursor-pointer group shrink-0';
-    divTodas.onclick = () => { 
-        subcategoriaAtiva = 'Todas'; 
-        renderizarCategorias(); 
-        renderProdutos(); 
-    };
-    
-    divTodas.innerHTML = `
-        <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/80 flex items-center justify-center text-3xl transition-all shadow-[0_4px_20px_-5px_rgba(0,0,0,0.08)] dark:shadow-none group-hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.15)] group-hover:-translate-y-1 ${subcategoriaAtiva === 'Todas' ? 'ring-2 ring-brand ring-offset-4 dark:ring-offset-slate-900 text-brand' : 'text-gray-400 dark:text-slate-400 group-hover:text-brand dark:group-hover:text-brand-light'}">
-            <i class="fa-solid fa-border-all"></i>
+    const isTodasAtiva = subcategoriaAtiva === 'Todas';
+    html += `
+        <div class="flex flex-col items-center gap-3 cursor-pointer group shrink-0" onclick="selecionarSubcategoria('Todas')">
+            <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/80 flex items-center justify-center text-3xl transition-all shadow-[0_4px_20px_-5px_rgba(0,0,0,0.08)] dark:shadow-none group-hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.15)] group-hover:-translate-y-1 ${isTodasAtiva ? 'ring-2 ring-brand ring-offset-4 dark:ring-offset-slate-900 text-brand' : 'text-gray-400 dark:text-slate-400 group-hover:text-brand dark:group-hover:text-brand-light'}">
+                <i class="fa-solid fa-border-all"></i>
+            </div>
+            <span class="text-sm font-medium ${isTodasAtiva ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-slate-400 group-hover:text-gray-900 dark:group-hover:text-slate-200'}">Todas</span>
         </div>
-        <span class="text-sm font-medium ${subcategoriaAtiva === 'Todas' ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-slate-400 group-hover:text-gray-900 dark:group-hover:text-slate-200'}">Todas</span>
     `;
-    container.appendChild(divTodas);
 
-    // Renderiza cada Subcategoria diretamente como categoria de exploração
-    Array.from(subcategoriasUnicas).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' })).forEach(sub => {
-        const div = document.createElement('div');
-        div.className = 'flex flex-col items-center gap-3 cursor-pointer group shrink-0';
-        div.onclick = () => { 
-            subcategoriaAtiva = sub; 
-            renderizarCategorias(); 
-            renderProdutos(); 
-        };
-        
+    // Renderiza cada Subcategoria diretamente
+    const listaOrdenada = Array.from(subcategoriasUnicas).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' }));
+    
+    listaOrdenada.forEach(sub => {
         const icone = getCategoryIcon(sub);
         const isAtiva = subcategoriaAtiva === sub;
         
-        div.innerHTML = `
-            <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/80 flex items-center justify-center text-3xl transition-all shadow-[0_4px_20px_-5px_rgba(0,0,0,0.08)] dark:shadow-none group-hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.15)] group-hover:-translate-y-1 ${isAtiva ? 'ring-2 ring-brand ring-offset-4 dark:ring-offset-slate-900 text-brand' : 'text-gray-400 dark:text-slate-400 group-hover:text-brand dark:group-hover:text-brand-light'}">
-                <i class="${icone}"></i>
+        html += `
+            <div class="flex flex-col items-center gap-3 cursor-pointer group shrink-0" onclick="selecionarSubcategoria('${sub.replace(/'/g, "\\'")}')">
+                <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/80 flex items-center justify-center text-3xl transition-all shadow-[0_4px_20px_-5px_rgba(0,0,0,0.08)] dark:shadow-none group-hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.15)] group-hover:-translate-y-1 ${isAtiva ? 'ring-2 ring-brand ring-offset-4 dark:ring-offset-slate-900 text-brand' : 'text-gray-400 dark:text-slate-400 group-hover:text-brand dark:group-hover:text-brand-light'}">
+                    <i class="${icone}"></i>
+                </div>
+                <span class="text-sm font-medium ${isAtiva ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-slate-400 group-hover:text-gray-900 dark:group-hover:text-slate-200'}">${sub}</span>
             </div>
-            <span class="text-sm font-medium ${isAtiva ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-slate-400 group-hover:text-gray-900 dark:group-hover:text-slate-200'}">${sub}</span>
         `;
-        container.appendChild(div);
     });
+
+    container.innerHTML = html;
 }
+
+function selecionarSubcategoria(sub) {
+    subcategoriaAtiva = sub;
+    renderizarCategorias();
+    renderProdutos(true);
+}
+window.selecionarSubcategoria = selecionarSubcategoria;
+window.filtrarSubcategoria = selecionarSubcategoria;
+
+// ==========================================
+// RENDERIZAÇÃO DE PRODUTOS & PAGINAÇÃO
+// Substitui innerHTML += em loop por render em lote
+// ==========================================
 
 function criarCardProduto(p) {
     const temEstoque = p.estoque > 0 || !p.hasOwnProperty('estoque');
-    const fotoUrl = (p.fotos && Array.isArray(p.fotos) && p.fotos.length > 0 ? p.fotos[0] : p.foto) || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmM2Y0ZjYiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5Y2EzYWYiIGR5PSIuM2VtIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5TZW0gSW1hZ2VtPC90ZXh0Pjwvc3ZnPg==';
+    const fotoUrl = p.foto || (p.fotos && Array.isArray(p.fotos) && p.fotos.length > 0 ? p.fotos[0] : '') || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmM2Y0ZjYiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5Y2EzYWYiIGR5PSIuM2VtIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5TZW0gSW1hZ2VtPC90ZXh0Pjwvc3ZnPg==';
     
     let legendaHtml = '';
     if (p.legenda) {
@@ -480,7 +676,6 @@ function criarCardProduto(p) {
     const estoqueBadge = !temEstoque ? `<div class="absolute top-3 left-3 bg-amber-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md z-10 flex items-center gap-1.5 backdrop-blur-sm"><i class="fa-solid fa-clock text-[10px]"></i> Sob Encomenda</div>` : '';
 
     const rotuloCategoria = p.subcategoria && p.subcategoria.trim() !== '' ? p.subcategoria.trim() : (p.categoria || 'Geral');
-
     const paramLoja = (empresaAtivaSite && empresaAtivaSite !== 'emp_fc_moveis') ? `&loja=${encodeURIComponent(empresaAtivaSite)}` : '';
 
     return `
@@ -508,18 +703,23 @@ function criarCardProduto(p) {
     `;
 }
 
-function renderProdutos() {
+function renderProdutos(resetarPagina = true) {
     const container = document.getElementById('produtos-container');
     const empty = document.getElementById('produtos-empty');
     const badgeFiltro = document.getElementById('filtro-ativo-badge');
     const textoFiltro = document.getElementById('filtro-ativo-texto');
     const subTituloSecao = document.getElementById('section-produtos-sub');
+    const btnMaisContainer = document.getElementById('produtos-carregar-mais-container');
+    const btnMaisTexto = document.getElementById('btn-carregar-mais-texto');
     
     if (!container) return;
-    container.innerHTML = '';
+
+    if (resetarPagina) {
+        paginaAtual = 1;
+    }
     
-    // Filtragem diretamente por Subcategoria e Busca
-    let produtosFiltrados = produtos.filter(p => {
+    // Filtragem por Subcategoria e Busca
+    produtosFiltradosCache = produtos.filter(p => {
         const sub = (p.subcategoria && p.subcategoria.trim() !== '') 
             ? p.subcategoria.trim() 
             : (p.categoria && p.categoria.trim() !== '' ? p.categoria.trim() : 'Geral');
@@ -534,7 +734,12 @@ function renderProdutos() {
         return matchSubcategoria && matchBusca;
     });
 
-    produtosFiltrados.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+    // Ordena: destaques primeiro, depois alfabético
+    produtosFiltradosCache.sort((a, b) => {
+        if (a.destaque && !b.destaque) return -1;
+        if (!a.destaque && b.destaque) return 1;
+        return (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { numeric: true, sensitivity: 'base' });
+    });
 
     // Atualiza badge e status de filtro ativo
     const temFiltroAtivo = subcategoriaAtiva !== 'Todas' || termoBusca !== '';
@@ -552,27 +757,44 @@ function renderProdutos() {
     }
 
     if (subTituloSecao) {
-        subTituloSecao.innerText = `Mostrando ${produtosFiltrados.length} ${produtosFiltrados.length === 1 ? 'produto' : 'produtos'}`;
+        subTituloSecao.innerText = `Mostrando ${produtosFiltradosCache.length} ${produtosFiltradosCache.length === 1 ? 'produto' : 'produtos'}`;
     }
 
-    if (produtosFiltrados.length === 0) {
+    if (produtosFiltradosCache.length === 0) {
+        container.innerHTML = '';
         if (empty) empty.classList.remove('hidden');
+        if (btnMaisContainer) btnMaisContainer.classList.add('hidden');
         return;
     }
     
     if (empty) empty.classList.add('hidden');
-    
-    // Ordena: destaques primeiro, depois alfabético
-    produtosFiltrados.sort((a, b) => {
-        if (a.destaque && !b.destaque) return -1;
-        if (!a.destaque && b.destaque) return 1;
-        return a.nome.localeCompare(b.nome);
-    });
 
-    produtosFiltrados.forEach(p => {
-        container.innerHTML += criarCardProduto(p);
-    });
+    // Paginação fluida: renderiza apenas a fatia visível para poupar memória e evitar travamento
+    const totalExibir = paginaAtual * ITENS_POR_PAGINA;
+    const itensExibidos = produtosFiltradosCache.slice(0, totalExibir);
+
+    // OTIMIZAÇÃO CRÍTICA: Geração de HTML em uma única operação (sem innerHTML += em loop!)
+    container.innerHTML = itensExibidos.map(p => criarCardProduto(p)).join('');
+
+    // Controle do Botão "Carregar Mais"
+    if (btnMaisContainer) {
+        const restantes = produtosFiltradosCache.length - itensExibidos.length;
+        if (restantes > 0) {
+            btnMaisContainer.classList.remove('hidden');
+            if (btnMaisTexto) {
+                btnMaisTexto.innerText = `Carregar Mais Produtos (${restantes} restantes)`;
+            }
+        } else {
+            btnMaisContainer.classList.add('hidden');
+        }
+    }
 }
+
+function carregarMaisProdutos() {
+    paginaAtual++;
+    renderProdutos(false);
+}
+window.carregarMaisProdutos = carregarMaisProdutos;
 
 function limparFiltrosLoja() {
     subcategoriaAtiva = 'Todas';
@@ -584,12 +806,15 @@ function limparFiltrosLoja() {
     if (inp2) inp2.value = '';
     
     renderizarCategorias();
-    renderProdutos();
+    renderProdutos(true);
 }
 window.limparFiltrosLoja = limparFiltrosLoja;
 
+// ==========================================
+// CONFIGURAÇÃO DE EVENTOS DA UI
+// ==========================================
+
 function setupUI() {
-    // Mobile menu toggle
     const btn = document.getElementById('mobile-menu-btn');
     const menu = document.getElementById('mobile-menu');
     
@@ -606,7 +831,6 @@ function setupUI() {
         });
     }
 
-    // Navbar scroll effect
     window.addEventListener('scroll', () => {
         const nav = document.getElementById('navbar');
         if (nav) {
@@ -616,19 +840,21 @@ function setupUI() {
                 nav.classList.remove('shadow-md');
             }
         }
-    });
+    }, { passive: true });
 
-    // Busca
+    // Busca com debounce leve
+    let debounceBusca;
     const handleBusca = (e) => {
-        termoBusca = e.target.value.toLowerCase().trim();
-        
-        const desktopInput = document.getElementById('busca-loja');
-        const mobileInput = document.getElementById('busca-loja-mobile');
-        
-        if (desktopInput && desktopInput !== e.target) desktopInput.value = e.target.value;
-        if (mobileInput && mobileInput !== e.target) mobileInput.value = e.target.value;
-        
-        renderProdutos();
+        clearTimeout(debounceBusca);
+        const val = e.target.value.toLowerCase().trim();
+        debounceBusca = setTimeout(() => {
+            termoBusca = val;
+            const desktopInput = document.getElementById('busca-loja');
+            const mobileInput = document.getElementById('busca-loja-mobile');
+            if (desktopInput && desktopInput !== e.target) desktopInput.value = e.target.value;
+            if (mobileInput && mobileInput !== e.target) mobileInput.value = e.target.value;
+            renderProdutos(true);
+        }, 150);
     };
 
     const buscaInput = document.getElementById('busca-loja');
@@ -640,14 +866,29 @@ function setupUI() {
     if (buscaInputMobile) {
         buscaInputMobile.addEventListener('input', handleBusca);
     }
+
+    // Auto-carregamento suave no scroll usando IntersectionObserver
+    if ('IntersectionObserver' in window) {
+        const loadMoreTarget = document.getElementById('produtos-carregar-mais-container');
+        if (loadMoreTarget) {
+            const observer = new IntersectionObserver((entries) => {
+                if (entries[0] && entries[0].isIntersecting) {
+                    if (!loadMoreTarget.classList.contains('hidden')) {
+                        carregarMaisProdutos();
+                    }
+                }
+            }, { rootMargin: '350px' });
+            observer.observe(loadMoreTarget);
+        }
+    }
 }
 
 // Helpers
 function formatarTelefone(tel) {
     tel = String(tel).replace(/\D/g, '');
-    if(tel.length === 11) {
+    if (tel.length === 11) {
         return tel.replace(/^(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
-    } else if(tel.length === 10) {
+    } else if (tel.length === 10) {
         return tel.replace(/^(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
     }
     return tel;

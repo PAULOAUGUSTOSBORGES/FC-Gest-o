@@ -75,7 +75,9 @@ service cloud.firestore {
 
     // Funcao auxiliar para validar criacao em lote (onboarding)
     function isDonoNoOnboarding(empresaId) {
-      return isAutenticado() && existsAfter(/databases/$(database)/documents/empresas/$(empresaId)) &&
+      return isAutenticado() && 
+             !exists(/databases/$(database)/documents/empresas/$(empresaId)) &&
+             existsAfter(/databases/$(database)/documents/empresas/$(empresaId)) &&
              getAfter(/databases/$(database)/documents/empresas/$(empresaId)).data.donoUid == request.auth.uid;
     }
 
@@ -116,8 +118,9 @@ service cloud.firestore {
     // Isolamento Multi-Tenant: Empresas
     // ==========================================
     match /empresas/{empresaId} {
-      // Leitura do doc da empresa (para vitrine ou login)
-      allow read: if true;
+      // Leitura protegida: apenas usuarios autenticados da propria empresa ou Super Admin
+      // (a vitrine publica utiliza exclusivamente a subcolecao configuracoes/loja_publica)
+      allow read: if (getEmpresaUsuario() == empresaId || isSuperAdmin());
       // Permite criacao se o donoUid for o proprio usuario (onboarding) ou Super Admin
       allow create: if isAutenticado() && (request.resource.data.donoUid == request.auth.uid || isSuperAdmin());
       allow update, delete: if isSuperAdmin();
@@ -236,19 +239,23 @@ service cloud.firestore {
       }
 
       match /financeiro/{finId} {
-        allow read: if (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
+        allow read: if (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_financeiro') || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
         allow create: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
-          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao') || temPermissao(empresaId, 'perm_pdv')))
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_financeiro') || temPermissao(empresaId, 'perm_gestao') || temPermissao(empresaId, 'perm_pdv')))
         );
         allow update, delete: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
-          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao')))
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_financeiro') || temPermissao(empresaId, 'perm_gestao')))
         );
       }
 
+      match /extrato_bancario/{docId} {
+        allow read, write: if (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_financeiro') || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
+      }
+
       match /compras/{compraId} {
-        allow read: if (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
+        allow read: if (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_compras') || temPermissao(empresaId, 'perm_gestao'))) || isSuperAdmin();
         allow write: if (empresaEstaAtiva(empresaId) || isSuperAdmin()) && (
-          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_gestao')))
+          isSuperAdmin() || (getEmpresaUsuario() == empresaId && (isAdmin(empresaId) || temPermissao(empresaId, 'perm_compras') || temPermissao(empresaId, 'perm_gestao')))
         );
       }
 
@@ -353,10 +360,17 @@ service cloud.firestore {
       allow read, write: if isSuperAdmin();
     }
 
+    // Configurações públicas do SaaS (chave PIX oficial, WhatsApp de suporte do sistema)
+    match /sistemas_saas/{sistemaId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
     // FAQ Dinâmico / Base de conhecimento compartilhada
     match /faq_dinamico/{faqId} {
       allow read: if true;
       allow create: if isSuperAdmin() || (
+        isAutenticado() &&
         request.resource.data.keys().hasAll(['pergunta', 'resposta']) &&
         request.resource.data.pergunta is string &&
         request.resource.data.pergunta.size() <= 500 &&

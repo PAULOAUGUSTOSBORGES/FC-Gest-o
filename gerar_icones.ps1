@@ -1,4 +1,4 @@
-﻿# Script para gerar os ícones do PWA com alta qualidade a partir do ícone oficial
+# Script para gerar os ícones do PWA com alta qualidade a partir do ícone oficial
 Add-Type -AssemblyName System.Drawing
 
 $iconsDir = Join-Path $PSScriptRoot "icons"
@@ -46,5 +46,14 @@ Scale-Icon -sourcePath $iconeOficial -size 192 -outputPath (Join-Path $iconsDir 
 Scale-Icon -sourcePath $iconeOficial -size 180 -outputPath (Join-Path $iconsDir "icon-apple-touch.png") -maskable $false
 Scale-Icon -sourcePath $iconeOficial -size 64  -outputPath (Join-Path $iconsDir "favicon.png") -maskable $false
 Scale-Icon -sourcePath $iconeOficial -size 64  -outputPath (Join-Path $PSScriptRoot "favicon.ico") -maskable $false
+
+# Versão "v2" (nomes novos => força navegadores e o app instalado a baixarem o ícone atualizado,
+# ignorando qualquer cópia antiga guardada em cache). Para trocar o logo no futuro: gere v3 e atualize as referências.
+Scale-Icon -sourcePath $iconeOficial -size 512 -outputPath (Join-Path $iconsDir "icon-v2-512.png") -maskable $false
+Copy-Item (Join-Path $iconsDir "icon-v2-512.png") (Join-Path $iconsDir "icon-v2-maskable-512.png") -Force
+Scale-Icon -sourcePath $iconeOficial -size 192 -outputPath (Join-Path $iconsDir "icon-v2-192.png") -maskable $false
+Scale-Icon -sourcePath $iconeOficial -size 180 -outputPath (Join-Path $iconsDir "icon-v2-apple-touch.png") -maskable $false
+Scale-Icon -sourcePath $iconeOficial -size 64  -outputPath (Join-Path $iconsDir "favicon-v2.png") -maskable $false
+if (Test-Path (Join-Path $iconsDir "icon.svg")) { Copy-Item (Join-Path $iconsDir "icon.svg") (Join-Path $iconsDir "icon-v2.svg") -Force }
 
 Write-Host "Ícones PWA oficiais gerados com sucesso na pasta icons/!" -ForegroundColor Green

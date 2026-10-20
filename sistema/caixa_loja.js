@@ -475,8 +475,8 @@ function renderTabResumo() {
     }
 
     const histHoje = filterByPeriod(todosHistoricos, 'data', 'hoje');
-    const suprimentosHoje = histHoje.filter(h => h.tipo === 'SUPRIMENTO' || h.tipo === 'ABERTURA').reduce((acc, h) => acc + (Number(h.valor) || 0), 0);
-    const sangriasHoje = histHoje.filter(h => h.tipo === 'SANGRIA').reduce((acc, h) => acc + (Number(h.valor) || 0), 0);
+    const suprimentosHoje = histHoje.filter(h => h.tipo === 'SUPRIMENTO' || h.tipo === 'ABERTURA' || h.tipo === 'ENTRADA' || String(h.tipo || '').toUpperCase().startsWith('SUPRIMENTO') || String(h.tipo || '').toUpperCase().startsWith('ENTRADA')).reduce((acc, h) => acc + (Number(h.valor) || 0), 0);
+    const sangriasHoje = histHoje.filter(h => h.tipo === 'SANGRIA' || h.tipo === 'SAIDA' || String(h.tipo || '').toUpperCase().startsWith('SANGRIA') || String(h.tipo || '').toUpperCase().startsWith('SAIDA')).reduce((acc, h) => acc + (Number(h.valor) || 0), 0);
 
     // Totais calculados
     const totalVendasHoje = vendasHoje.reduce((acc, v) => acc + (parseFloat(v.tot || v.subtotal || 0)), 0);
@@ -617,8 +617,8 @@ function renderTabPeriodo() {
     });
 
     const historicoPeriodo = filterByPeriod(todosHist, 'data', currentPeriodType, cIni, cFim);
-    const suprimentosPeriodo = historicoPeriodo.filter(h => h.tipo === 'SUPRIMENTO').reduce((acc, h) => acc + (Number(h.valor) || 0), 0);
-    const sangriasPeriodo = historicoPeriodo.filter(h => h.tipo === 'SANGRIA').reduce((acc, h) => acc + (Number(h.valor) || 0), 0);
+    const suprimentosPeriodo = historicoPeriodo.filter(h => h.tipo === 'SUPRIMENTO' || h.tipo === 'ABERTURA' || h.tipo === 'ENTRADA' || String(h.tipo || '').toUpperCase().startsWith('SUPRIMENTO') || String(h.tipo || '').toUpperCase().startsWith('ENTRADA')).reduce((acc, h) => acc + (Number(h.valor) || 0), 0);
+    const sangriasPeriodo = historicoPeriodo.filter(h => h.tipo === 'SANGRIA' || h.tipo === 'SAIDA' || String(h.tipo || '').toUpperCase().startsWith('SANGRIA') || String(h.tipo || '').toUpperCase().startsWith('SAIDA')).reduce((acc, h) => acc + (Number(h.valor) || 0), 0);
 
     const totalVendas = vendasPeriodo.reduce((acc, v) => acc + (parseFloat(v.tot || v.subtotal || 0)), 0);
     const totalReceitas = receitasPeriodo.reduce((acc, f) => acc + (parseFloat(f.valorPago || f.valor || 0)), 0);
@@ -674,7 +674,7 @@ function renderTabPeriodo() {
         });
     });
 
-    historicoPeriodo.filter(h => h.tipo === 'SUPRIMENTO').forEach(h => {
+    historicoPeriodo.filter(h => h.tipo === 'SUPRIMENTO' || h.tipo === 'ENTRADA' || String(h.tipo || '').toUpperCase().startsWith('SUPRIMENTO') || String(h.tipo || '').toUpperCase().startsWith('ENTRADA')).forEach(h => {
         combined.push({
             data: new Date(h.data.toDate ? h.data.toDate() : h.data),
             tipo: 'Suprimento',
@@ -685,7 +685,7 @@ function renderTabPeriodo() {
         });
     });
 
-    historicoPeriodo.filter(h => h.tipo === 'SANGRIA').forEach(h => {
+    historicoPeriodo.filter(h => h.tipo === 'SANGRIA' || h.tipo === 'SAIDA' || String(h.tipo || '').toUpperCase().startsWith('SANGRIA') || String(h.tipo || '').toUpperCase().startsWith('SAIDA')).forEach(h => {
         combined.push({
             data: new Date(h.data.toDate ? h.data.toDate() : h.data),
             tipo: 'Sangria',
@@ -2194,7 +2194,12 @@ function imprimirArea(elementId) {
         <head>
             <title>Imprimir Mapa de Caixa</title>
             <style>
-                body { font-family: monospace, sans-serif; font-size: 12px; padding: 15px; }
+                @page { margin: 8mm 10mm 10mm 10mm; size: A4 portrait; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body { font-family: monospace, sans-serif; font-size: 12px; padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; color: #000 !important; background: #fff !important; }
+                table { width: 100% !important; max-width: 100% !important; min-width: 0 !important; border-collapse: collapse; }
+                th, td { word-break: break-word !important; }
+                @media print { body { padding: 4mm 6mm !important; margin: 0 !important; box-sizing: border-box !important; } }
             </style>
         </head>
         <body onload="window.print(); window.close();">

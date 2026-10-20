@@ -343,6 +343,7 @@ function processarNotasFiscais() {
                 xmlUrl: '',
                 xmlConteudo: v.nfse.xml_conteudo || '',
                 oficial: Boolean(v.nfse.oficial),
+                canceladoNaPrefeitura: Boolean(v.nfse.canceladoNaPrefeitura),
                 rawVenda: v,
                 rawServico: v.nfse
             });
@@ -408,6 +409,7 @@ function processarNotasFiscais() {
             xmlUrl: '',
             xmlConteudo: ns.xml_conteudo || '',
             oficial: Boolean(ns.oficial),
+            canceladoNaPrefeitura: Boolean(ns.canceladoNaPrefeitura),
             rawServico: ns
         });
     });
@@ -562,7 +564,15 @@ function renderNotasFiscais() {
         } else if (n.status === 'contingencia') {
             badgeStatus = `<span class="inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap" title="NFC-e emitida em contingência off-line. Pendente de autorização pela SEFAZ."><i class="fa-solid fa-triangle-exclamation text-[9px]"></i> Contingência</span>`;
         } else if (n.status === 'cancelado') {
-            badgeStatus = `<span class="inline-flex items-center gap-1 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-bold px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap"><i class="fa-solid fa-ban text-[9px]"></i> Cancelada</span>`;
+            if (isNFSe) {
+                if (n.canceladoNaPrefeitura) {
+                    badgeStatus = `<span class="inline-flex items-center gap-1 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-bold px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap" title="Cancelada e homologada perante a Prefeitura de Goiânia"><i class="fa-solid fa-circle-check text-[9px]"></i> Cancelada (Prefeitura)</span>`;
+                } else {
+                    badgeStatus = `<span class="inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-bold px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap" title="Cancelada internamente no sistema, mas pendente de homologação na Prefeitura de Goiânia. Clique no botão de cancelar para transmitir à SEFIN!"><i class="fa-solid fa-triangle-exclamation text-[9px]"></i> Cancelada (Pendente SEFIN)</span>`;
+                }
+            } else {
+                badgeStatus = `<span class="inline-flex items-center gap-1 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-bold px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap"><i class="fa-solid fa-ban text-[9px]"></i> Cancelada</span>`;
+            }
         } else if (n.status === 'cancelado_interno') {
             badgeStatus = `<span class="inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap" title="Cancelamento apenas interno sem transmissão para a SEFAZ. Use o botão de Devolução para estornar oficialmente na SEFAZ."><i class="fa-solid fa-triangle-exclamation text-[9px]"></i> Cancelada (Interno)</span>`;
         } else if (n.status === 'processando') {
@@ -636,11 +646,9 @@ function renderNotasFiscais() {
         if ((isNFe || n.tipo === 'NFC-e') && (n.status === 'autorizado' || n.status === 'cancelado_interno') && !n.estornadaPorDevolucao && n.status !== 'devolvido' && !isDev && !isHomol) {
             icones.push(`<button type="button" onclick="abrirModalDevolucaoVenda('${n.vendaId}', '${n.chave || ''}')" class="w-7 h-7 flex items-center justify-center rounded text-orange-500 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-900/30 transition-colors" title="Emitir NF-e de Devolução / Estorno na SEFAZ (Ref. ${n.tipo})"><i class="fa-solid fa-rotate-left text-xs"></i></button>`);
         }
-        if (n.status === 'cancelado_interno') {
-            icones.push(`<button type="button" onclick="reverterCancelamentoInterno('${n.vendaId}', '${n.tipo}')" class="w-7 h-7 flex items-center justify-center rounded text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors" title="Restaurar para Autorizada (Vincular à SEFAZ via Devolução)"><i class="fa-solid fa-arrow-rotate-left text-xs"></i></button>`);
-        }
-        if (n.status === 'autorizado' && !n.estornadaPorDevolucao && !isHomol) {
-            icones.push(`<button type="button" onclick="abrirModalCancelamento('${n.vendaId}', '${n.tipo}', '${n.numero}', '${n.chave || ''}')" class="w-7 h-7 flex items-center justify-center rounded text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="Cancelar Nota na SEFAZ"><i class="fa-solid fa-ban text-xs"></i></button>`);
+        const precisaCancelarNfsePrefeitura = isNFSe && !n.canceladoNaPrefeitura;
+        if (((n.status === 'autorizado' && !n.estornadaPorDevolucao) || precisaCancelarNfsePrefeitura) && !isHomol) {
+            icones.push(`<button type="button" onclick="abrirModalCancelamento('${n.vendaId}', '${n.tipo}', '${n.numero}', '${n.chave || ''}')" class="w-7 h-7 flex items-center justify-center rounded text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="${isNFSe ? 'Transmitir Cancelamento da NFS-e à Prefeitura de Goiânia' : 'Cancelar Nota na SEFAZ'}"><i class="fa-solid fa-ban text-xs"></i></button>`);
         }
         if (((n.status !== 'autorizado' && n.status !== 'contingencia' && n.status !== 'cancelado' && n.status !== 'devolvido') || isHomol) && !isDev) {
             icones.push(`<button type="button" onclick="excluirNotaFiscal('${n.vendaId}', '${n.tipo}')" class="w-7 h-7 flex items-center justify-center rounded text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="Excluir registro desta nota do sistema"><i class="fa-solid fa-trash-can text-xs"></i></button>`);
@@ -996,23 +1004,36 @@ function abrirModalCancelamento(vendaId, tipo, numero, chave = '') {
     const pTexto = document.getElementById('cancelar-aviso-texto');
     const pPrazos = document.getElementById('cancelar-aviso-prazos');
     const lblBtn = document.getElementById('btn-cancelar-label');
+    const nfseMotivoDiv = document.getElementById('cancelar-nfse-motivo-container');
 
     if (pTexto) {
         pTexto.textContent = isNFSe
-            ? 'O cancelamento da NFS-e (Serviços) anula o registro municipal da prestação de serviços com justificativa formal registrada no sistema.'
+            ? 'O cancelamento da NFS-e será transmitido oficialmente via Web Service para anular a nota fiscal junto à Prefeitura de Goiânia (SEFIN).'
             : 'O cancelamento fiscal na SEFAZ exige justificativa clara (mín. 15 caracteres) e obedece aos prazos regulamentares da Receita Estadual.';
     }
     if (pPrazos) {
         pPrazos.style.display = isNFSe ? 'none' : 'block';
     }
+    if (nfseMotivoDiv) {
+        if (isNFSe) {
+            nfseMotivoDiv.classList.remove('hidden');
+        } else {
+            nfseMotivoDiv.classList.add('hidden');
+        }
+    }
     if (lblBtn) {
-        lblBtn.textContent = isNFSe ? 'Confirmar Cancelamento da NFS-e' : 'Transmitir Cancelamento à SEFAZ';
+        lblBtn.textContent = isNFSe ? 'Transmitir Cancelamento à Prefeitura' : 'Transmitir Cancelamento à SEFAZ';
     }
 
     const txt = document.getElementById('cancelar-justificativa');
-    if (txt) txt.value = '';
+    if (txt) {
+        txt.value = isNFSe ? 'Cancelamento por desistência da prestação do serviço' : '';
+    }
     const elCount = document.getElementById('cancelar-char-count');
-    if (elCount) elCount.innerText = '0 / 15 caracteres';
+    if (elCount) {
+        const count = txt ? txt.value.length : 0;
+        elCount.innerText = `${count} / 15 caracteres`;
+    }
 
     document.getElementById('modal-cancelar-nota').classList.remove('hidden');
 }
@@ -1034,22 +1055,27 @@ async function confirmarCancelamentoNota() {
     const origHtml = btn ? btn.innerHTML : '';
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${isNFSe ? 'Cancelando NFS-e...' : 'Cancelando na SEFAZ...'}`;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${isNFSe ? 'Transmitindo à Prefeitura...' : 'Cancelando na SEFAZ...'}`;
     }
 
     try {
         const empIdAtual = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
         const cancelarFunc = firebase.functions().httpsCallable('cancelarNotaFiscal');
-        await cancelarFunc({
+        const codigoCancelamento = isNFSe 
+            ? (document.getElementById('cancelar-nfse-codigo')?.value || '2')
+            : undefined;
+
+        const res = await cancelarFunc({
             vendaId: notaEmCancelamento.vendaId,
             chave: notaEmCancelamento.chave || '',
             numero: notaEmCancelamento.numero || '',
             tipo: notaEmCancelamento.tipo.toLowerCase().replace('-', ''),
             justificativa: just,
+            codigoCancelamento: codigoCancelamento,
             empId: empIdAtual
         });
 
-        showToast(isNFSe ? 'NFS-e cancelada com sucesso no sistema!' : 'Nota fiscal cancelada com sucesso na SEFAZ!', 'success');
+        showToast(isNFSe ? (res?.data?.message || 'NFS-e cancelada com sucesso na Prefeitura de Goiânia!') : 'Nota fiscal cancelada com sucesso na SEFAZ!', 'success');
         fecharModalCancelamento();
         if (typeof carregarNotasFiscais === 'function') {
             await carregarNotasFiscais();
@@ -1080,7 +1106,7 @@ async function confirmarCancelamentoNota() {
             return;
         }
 
-        showToast(`Erro ao cancelar na SEFAZ: ${msg}`, 'error');
+        showToast(isNFSe ? `Erro ao cancelar na Prefeitura: ${msg}` : `Erro ao cancelar na SEFAZ: ${msg}`, 'error');
     } finally {
         if (btn) {
             btn.disabled = false;
@@ -1341,12 +1367,14 @@ function renderVendasParaFaturar() {
             ? `<span class="bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-bold px-1.5 py-0.5 rounded text-[10px] inline-flex items-center gap-1"><i class="fa-solid fa-screwdriver-wrench text-[9px]"></i> SERVIÇO</span>` 
             : `<span class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium px-1.5 py-0.5 rounded text-[10px]">VENDA</span>`;
 
+        const podeNfse = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfse') : false;
         let botoesAcao = '';
         if (isServ) {
             botoesAcao = `
+                ${podeNfse ? `
                 <button onclick="faturarComoNFSe('${v.id}')" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-2.5 py-1.5 rounded text-[11px] transition-colors flex items-center gap-1 shadow-xs" title="Emitir NFS-e Municipal para este serviço do PDV">
                     <i class="fa-solid fa-screwdriver-wrench"></i> NFS-e
-                </button>
+                </button>` : ''}
                 <button onclick="emitirNotaDireta('${v.id}', 'nfce', false)" class="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold px-2 py-1.5 rounded text-[11px] transition-colors" title="Emitir NFC-e">
                     NFC-e
                 </button>
@@ -1365,9 +1393,10 @@ function renderVendasParaFaturar() {
                 <button onclick="emitirNotaDireta('${v.id}', 'nfe')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-2.5 py-1.5 rounded text-[11px] transition-colors flex items-center gap-1" title="Emitir NF-e Completa (Mod 55)">
                     <i class="fa-solid fa-file-invoice"></i> NF-e
                 </button>
+                ${podeNfse ? `
                 <button onclick="faturarComoNFSe('${v.id}')" class="bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-bold px-2 py-1.5 rounded text-[11px] transition-colors flex items-center gap-1" title="Emitir NFS-e de Serviço">
                     <i class="fa-solid fa-screwdriver-wrench"></i> NFS-e
-                </button>
+                </button>` : ''}
             `;
         }
 
@@ -1528,6 +1557,7 @@ async function obterVendaParaImpressao(vendaId) {
                 fiscal_chave: notaAvulsa.chave_nfe || '',
                 itens: notaAvulsa.itens || [],
                 produtos: notaAvulsa.itens || [],
+                observacoes: notaAvulsa.observacoes || notaAvulsa.obs || '',
                 rawAvulsa: notaAvulsa
             };
         } else {
@@ -1537,6 +1567,9 @@ async function obterVendaParaImpressao(vendaId) {
             if (!v.pagamentos || v.pagamentos.length === 0) v.pagamentos = pags;
             if (!v.pag) v.pag = pagMetodo;
             if (!v.formaPagamento) v.formaPagamento = pagMetodo;
+            if (!v.observacoes && (notaAvulsa.observacoes || notaAvulsa.obs)) {
+                v.observacoes = notaAvulsa.observacoes || notaAvulsa.obs;
+            }
             if (notaAvulsa.destinatario) {
                 if (!v.destinatario) v.destinatario = notaAvulsa.destinatario;
                 if (!v.cliente) v.cliente = { ...notaAvulsa.destinatario };
@@ -2490,9 +2523,37 @@ function selecionarClienteAvulsa(valor) {
     }
     if (document.getElementById('avulsa-dest-cep') && cli.cep) {
         document.getElementById('avulsa-dest-cep').value = cli.cep;
+        if (!cli.ibge) {
+            buscarCepAvulsa(cli.cep);
+        }
     }
     showToast(`Cliente "${cli.nome}" selecionado!`, 'success');
 }
+
+window.buscarCepAvulsa = async function(cepVal) {
+    if (!cepVal) return;
+    const cep = String(cepVal).replace(/\D/g, '');
+    if (cep.length !== 8) return;
+    try {
+        const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        const data = await res.json();
+        if (data && !data.erro) {
+            const ruaEl = document.getElementById('avulsa-dest-rua');
+            const baiEl = document.getElementById('avulsa-dest-bairro');
+            const cidEl = document.getElementById('avulsa-dest-cidade');
+            const ufEl = document.getElementById('avulsa-dest-uf');
+            if (ruaEl && (!ruaEl.value || ruaEl.value === 'Rua, Av...')) ruaEl.value = data.logradouro || '';
+            if (baiEl && !baiEl.value) baiEl.value = data.bairro || '';
+            if (cidEl) {
+                cidEl.value = data.localidade || '';
+                cidEl.dataset.ibge = data.ibge || '';
+            }
+            if (ufEl) ufEl.value = (data.uf || 'GO').toUpperCase();
+        }
+    } catch (e) {
+        console.warn('Erro ao consultar CEP da nota avulsa:', e);
+    }
+};
 
 function selecionarProdutoAvulsa(valor) {
     if (!valor || !Array.isArray(db.produtos) || db.produtos.length === 0) return;
@@ -2708,6 +2769,18 @@ async function emitirNotaAvulsaModal() {
     let finalCep = cep || (cliCadastrado?.cep ? String(cliCadastrado.cep).replace(/\D/g, '') : '');
     let finalIbge = document.getElementById('avulsa-dest-cidade')?.dataset?.ibge || cliCadastrado?.ibge || '';
 
+    if (!finalIbge && finalCep && finalCep.length === 8) {
+        try {
+            const viaRes = await fetch(`https://viacep.com.br/ws/${finalCep}/json/`);
+            const viaData = await viaRes.json();
+            if (viaData && !viaData.erro && viaData.ibge) {
+                finalIbge = viaData.ibge;
+                if (!finalCidade) finalCidade = viaData.localidade;
+                if (!finalUf) finalUf = viaData.uf;
+            }
+        } catch (_) {}
+    }
+
     if (finalCidade.includes(' - ')) {
         const parts = finalCidade.split(' - ');
         finalCidade = parts[0]?.trim() || '';
@@ -2748,6 +2821,9 @@ async function emitirNotaAvulsaModal() {
 
         if (res.data?.data) {
             db.notasAvulsas = db.notasAvulsas || [];
+            if (!res.data.data.observacoes && observacoes) {
+                res.data.data.observacoes = observacoes;
+            }
             if (!db.notasAvulsas.some(x => x.chave_nfe === res.data.data.chave_nfe)) {
                 db.notasAvulsas.unshift(res.data.data);
             }
@@ -2917,12 +2993,12 @@ function atualizarVisibilidadeModuloNFSe() {
     const empId = window.currentEmpresaId || localStorage.getItem('fc_empresa_ativa') || '';
     const isFc = (empId === 'emp_fc_moveis' || !empId || String(emp.cnpj || '').includes('37638679'));
 
-    const podeNfse = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfse') : true;
+    const podeNfse = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfse') : false;
     const podeNfe = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfe') : true;
     const podeNfce = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfce') : true;
     const podeDevolucao = (typeof window.temPermissaoNotaFiscal === 'function') ? window.temPermissaoNotaFiscal('nfe_devolucao') : true;
 
-    const habilitadoNFSe = podeNfse && (emp.habilitarNFSe !== undefined ? Boolean(emp.habilitarNFSe) : isFc);
+    const habilitadoNFSe = Boolean(podeNfse && (emp.habilitarNFSe !== undefined ? emp.habilitarNFSe : false));
 
     const btnTop = document.getElementById('btn-top-emitir-nfse');
     if (btnTop) btnTop.style.display = habilitadoNFSe ? '' : 'none';
@@ -2954,7 +3030,7 @@ window.atualizarVisibilidadeModuloNFSe = atualizarVisibilidadeModuloNFSe;
 
 function abrirModalNFSe(vendaId = null) {
     if (typeof window.temPermissaoNotaFiscal === 'function' && !window.temPermissaoNotaFiscal('nfse')) {
-        return showToast('Seu plano atual não possui permissão para emitir NFS-e (Serviços). Fale com o suporte para upgrade!', 'warning');
+        return showToast('A emissão de NFS-e (Serviços) não está habilitada para sua licença. Entre em contato com o administrador/suporte para liberação manual deste recurso.', 'warning');
     }
     const modal = document.getElementById('modal-emitir-nfse');
     if (!modal) return showToast('Modal de NFS-e não encontrado.', 'error');
@@ -2973,6 +3049,9 @@ function abrirModalNFSe(vendaId = null) {
     if (document.getElementById('nfse-tomador-cidade')) document.getElementById('nfse-tomador-cidade').value = emp.cidade || 'Goiânia';
     if (document.getElementById('nfse-tomador-uf')) document.getElementById('nfse-tomador-uf').value = emp.uf || 'GO';
     if (document.getElementById('nfse-servico-aliq')) document.getElementById('nfse-servico-aliq').value = '2.00';
+    if (document.getElementById('nfse-num-rps')) {
+        document.getElementById('nfse-num-rps').value = emp.proximoNumeroNFSe || 1;
+    }
 
     // Ajusta opções de transmissão conforme a cidade da empresa
     const radioOficial = document.getElementById('nfse-radio-oficial');
@@ -2992,11 +3071,34 @@ function abrirModalNFSe(vendaId = null) {
 
     if (vendaId) {
         selecionarServicoPDVParaNFSe(vendaId);
+    } else {
+        atualizarAtividadeCnaeNFSe();
     }
 
     modal.classList.remove('hidden');
     modal.classList.add('flex');
 }
+
+function atualizarAtividadeCnaeNFSe(item) {
+    const sel = document.getElementById('nfse-servico-item');
+    if (!sel) return;
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt) return;
+
+    const cnae = opt.getAttribute('data-cnae');
+    const codTrib = opt.getAttribute('data-cod-trib');
+
+    const cnaeEl = document.getElementById('nfse-servico-cnae');
+    if (cnaeEl && cnae) {
+        cnaeEl.value = cnae;
+    }
+
+    const codTribEl = document.getElementById('nfse-servico-cod-trib');
+    if (codTribEl && codTrib) {
+        codTribEl.value = codTrib;
+    }
+}
+window.atualizarAtividadeCnaeNFSe = atualizarAtividadeCnaeNFSe;
 
 function fecharModalNFSe() {
     const modal = document.getElementById('modal-emitir-nfse');
@@ -3012,7 +3114,10 @@ async function emitirNFSeModal() {
     const cidade = document.getElementById('nfse-tomador-cidade')?.value?.trim() || 'Goiânia';
     const uf = (document.getElementById('nfse-tomador-uf')?.value?.trim() || 'GO').toUpperCase();
 
-    const itemListaServico = document.getElementById('nfse-servico-item')?.value || '14.01';
+    const itemListaServico = document.getElementById('nfse-servico-item')?.value || '14.05';
+    const cnae = document.getElementById('nfse-servico-cnae')?.value || '9529105';
+    const codTrib = document.getElementById('nfse-servico-cod-trib') ? document.getElementById('nfse-servico-cod-trib').value.trim() : '1405';
+    const numRps = parseInt(document.getElementById('nfse-num-rps')?.value || '1', 10);
     const valor = parseFloat(document.getElementById('nfse-servico-valor')?.value || 0);
     const aliqIss = parseFloat(document.getElementById('nfse-servico-aliq')?.value || 2.0);
     const desc = document.getElementById('nfse-servico-desc')?.value?.trim();
@@ -3043,9 +3148,12 @@ async function emitirNFSeModal() {
                 vendaId: vendaId,
                 tipoEnvio: tipoEnvio,
                 empId: empIdAtual,
+                numRps: numRps,
                 tomador: { doc, nome, email, telefone: tel, rua, cidade, uf },
                 servico: {
                     itemListaServico,
+                    codigoTributacao: codTrib,
+                    cnae: cnae,
                     descricao: desc,
                     valor,
                     aliquotaIss: aliqIss,
@@ -3128,6 +3236,9 @@ async function emitirNFSeModal() {
         const msgSucesso = dadosRetorno?.oficial
             ? `NFS-e Nº ${dadosRetorno.numero || ''} autorizada oficialmente pela Prefeitura de Goiânia!`
             : `Espelho interno de NFS-e (RPS Nº ${dadosRetorno?.numero || ''}) gerado com sucesso!`;
+        if (dadosRetorno?.rps_numero && db.config?.empresa) {
+            db.config.empresa.proximoNumeroNFSe = (parseInt(dadosRetorno.rps_numero, 10) || 1) + 1;
+        }
         showToast(msgSucesso, 'success');
         fecharModalNFSe();
         processarNotasFiscais();
@@ -3154,16 +3265,21 @@ function imprimirDanfse(numero, vendaId) {
             <meta charset="UTF-8">
             <title>NFS-e Nº ${nota?.numero || numero} - Espelho Oficial</title>
             <style>
-                body { font-family: Arial, sans-serif; margin: 20px; font-size: 12px; color: #111; }
-                .box { border: 1px solid #333; padding: 10px; margin-bottom: 10px; border-radius: 4px; }
+                @page { size: A4 portrait; margin: 10mm 12mm 12mm 12mm; }
+                *, *::before, *::after { box-sizing: border-box !important; }
+                html, body { font-family: Arial, sans-serif; font-size: 12px; color: #111; width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+                .box { border: 1px solid #333; padding: 10px; margin-bottom: 10px; border-radius: 4px; width: 100% !important; box-sizing: border-box !important; }
                 .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 12px; }
                 .header h1 { margin: 0; font-size: 16px; text-transform: uppercase; }
                 .header h2 { margin: 4px 0 0 0; font-size: 13px; color: #555; }
                 .title { font-weight: bold; background: #eee; padding: 4px 8px; margin-top: 0; font-size: 12px; border-radius: 2px; }
-                table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+                table { width: 100% !important; max-width: 100% !important; border-collapse: collapse; margin-top: 6px; }
                 td { padding: 4px; vertical-align: top; }
                 .destaque { font-weight: bold; font-size: 14px; }
-                @media print { .no-print { display: none; } }
+                @media print { 
+                    .no-print { display: none !important; } 
+                    body { margin: 0 !important; padding: 4mm 6mm !important; box-sizing: border-box !important; }
+                }
             </style>
         </head>
         <body>
@@ -3174,6 +3290,7 @@ function imprimirDanfse(numero, vendaId) {
                 <h1>PREFEITURA MUNICIPAL DE ${String(emp.cidade || 'GOIÂNIA').toUpperCase()}</h1>
                 <h2>SECRETARIA MUNICIPAL DE FINANÇAS — NOTA FISCAL DE SERVIÇOS ELETRÔNICA (NFS-e)</h2>
             </div>
+            ${!nota?.oficial ? '<div style="background:#fff3cd; color:#856404; padding:6px; text-align:center; font-weight:bold; margin-bottom:10px; border:1px solid #ffeeba; border-radius:4px; font-size:11px;">⚠️ ESPELHO INTERNO / RPS — DOCUMENTO DE CONTROLE (NÃO ENVIADO À PREFEITURA)</div>' : '<div style="background:#d4edda; color:#155724; padding:6px; text-align:center; font-weight:bold; margin-bottom:10px; border:1px solid #c3e6cb; border-radius:4px; font-size:11px;">✅ NFS-e OFICIAL HOMOLOGADA NA PREFEITURA DE GOIÂNIA (SEFIN)</div>'}
             <div class="box">
                 <table>
                     <tr>

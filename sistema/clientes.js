@@ -562,7 +562,9 @@ async function salvarCliente() {
                 const telCliente = c.wpp || c.fixo || '';
                 const ruaCliente = c.rua || '';
                 const numCliente = c.numero ? ', ' + c.numero : '';
-                const endCliente = ruaCliente ? (ruaCliente + numCliente) : '';
+                const endCliente = (typeof window.formatarEnderecoCompletoCliente === 'function')
+                    ? window.formatarEnderecoCompletoCliente(c)
+                    : (ruaCliente ? (ruaCliente + numCliente) : '');
 
                 const idStrCliente = String(id).trim();
                 let vendasAlteradas = [];
@@ -574,6 +576,13 @@ async function salvarCliente() {
                             if (docCliente) v.clienteDoc = docCliente;
                             if (telCliente) v.clienteTel = telCliente;
                             if (endCliente) v.clienteEnd = endCliente;
+                            v.clienteRua = c.rua || '';
+                            v.clienteNumero = c.numero || '';
+                            v.clienteComplemento = c.complemento || '';
+                            v.clienteBairro = c.bairro || '';
+                            v.clienteCidade = c.cidade || '';
+                            v.clienteUf = c.uf || '';
+                            v.clienteCep = c.cep || '';
                             vendasAlteradas.push(v);
                         }
                     });
@@ -597,6 +606,13 @@ async function salvarCliente() {
                                 if (docCliente) camposAtualizar.clienteDoc = docCliente;
                                 if (telCliente) camposAtualizar.clienteTel = telCliente;
                                 if (endCliente) camposAtualizar.clienteEnd = endCliente;
+                                if (c.rua) camposAtualizar.clienteRua = c.rua;
+                                if (c.numero) camposAtualizar.clienteNumero = c.numero;
+                                if (c.complemento) camposAtualizar.clienteComplemento = c.complemento;
+                                if (c.bairro) camposAtualizar.clienteBairro = c.bairro;
+                                if (c.cidade) camposAtualizar.clienteCidade = c.cidade;
+                                if (c.uf) camposAtualizar.clienteUf = c.uf;
+                                if (c.cep) camposAtualizar.clienteCep = c.cep;
                                 batchVendas.set(vRef, camposAtualizar, { merge: true });
                             }
                         });
@@ -819,7 +835,7 @@ function renderKardex() {
         let badgeClass = m.tipo.includes('ENTRADA') ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400' : (m.tipo === 'VENDA' || m.tipo === 'SAIDA' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400');
         let tipoHtml = String(m.tipo || '').split('<br>').map(t => `<span class="px-2 py-0.5 rounded text-[10px] font-bold inline-block mb-1 ${badgeClass}">${t}</span>`).join('<br>');
         let dataFormatada = (m.data && typeof formatData === 'function') ? formatData(m.data).replace(',', '') : (m.data || '-');
-        return `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 text-xs text-slate-500 dark:text-slate-400">${dataFormatada}</td><td class="p-4 whitespace-nowrap">${tipoHtml}</td><td class="p-4 font-bold text-slate-800 dark:text-slate-100">${m.prodNome}</td><td class="p-4 text-slate-600 dark:text-slate-300 text-xs">${m.ref}</td><td class="p-4 text-right font-black ${m.qtd > 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-red-500 dark:text-red-400'}">${m.qtd > 0 ? '+' + m.qtd : m.qtd}</td></tr>`;
+        return `<tr class="hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700"><td class="p-4 text-xs text-slate-500 dark:text-slate-400">${dataFormatada}</td><td class="p-4 whitespace-nowrap">${tipoHtml}</td><td class="p-4 font-bold text-slate-800 dark:text-slate-100">${m.prodNome || m.produtoNome || (m.prodId || m.produtoId ? ((db.produtos || []).find(p => String(p.id) === String(m.prodId || m.produtoId))?.nome || 'Produto') : 'Produto')}</td><td class="p-4 text-slate-600 dark:text-slate-300 text-xs">${m.ref}</td><td class="p-4 text-right font-black ${m.qtd > 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-red-500 dark:text-red-400'}">${m.qtd > 0 ? '+' + m.qtd : m.qtd}</td></tr>`;
     }).join('') || '<tr><td colspan="5" class="p-6 text-center text-slate-500 dark:text-slate-400">Nenhuma movimentao de estoque.</td></tr>';
 }
 

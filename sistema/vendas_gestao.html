@@ -34,15 +34,15 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="FC Gestão">
-    <link rel="apple-touch-icon" href="../icons/icon-apple-touch.png">
-    <link rel="icon" type="image/png" href="../icons/favicon.png">
+    <link rel="apple-touch-icon" href="../icons/icon-v2-apple-touch.png">
+    <link rel="icon" type="image/png" href="../icons/favicon-v2.png">
     <title>FC Gestão - Histórico Vendas (Gestão)</title>
         
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link rel="stylesheet" href="../style.css?v=20261009181930">
-    <link rel="stylesheet" href="../tailwind-built.css?v=20261009181930">
+    <link rel="stylesheet" href="../style.css?v=20261020085630">
+    <link rel="stylesheet" href="../tailwind-built.css?v=20261020085630">
 </head>
 <body class="flex dark:[color-scheme:dark] h-screen text-slate-800 dark:text-slate-100 overflow-hidden bg-slate-50 dark:bg-slate-900" data-modulo="vendas">
 
@@ -55,7 +55,7 @@
         <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 w-64 bg-slate-900 text-slate-300 flex flex-col h-full shrink-0 shadow-2xl z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out no-print">
             <div class="p-5 flex items-center justify-between gap-3 border-b border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors" onclick="window.location.href='index.html'">
                 <div class="flex items-center gap-3 pointer-events-none">
-                    <img id="menu-logo" src="../icons/icon.svg" class="w-8 h-8 rounded-lg object-cover bg-slate-800 shadow-md">
+                    <img id="menu-logo" src="../icons/icon-v2.svg" class="w-8 h-8 rounded-lg object-cover bg-slate-800 shadow-md">
                     <div id="menu-logo-placeholder" class="hidden w-8 h-8 bg-slate-800 border border-slate-600 rounded-lg flex items-center justify-center text-slate-400 text-base shadow-md"><i class="fa-solid fa-store"></i></div>
                     <div>
                         <h1 id="menu-empresa-nome" class="font-bold text-white text-sm tracking-wide leading-tight">FC Gestão</h1>
@@ -873,6 +873,7 @@
                         <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><i class="fa-solid fa-user text-4xl"></i></div>
                         <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Cliente</p>
                         <p class="font-black text-slate-800 dark:text-slate-100 text-sm md:text-base truncate relative z-10" id="det-venda-cliente">-</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 font-medium relative z-10 mt-1 break-words hidden" id="det-venda-endereco"></p>
                     </div>
                     <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700/50 hover:shadow-md transition-shadow relative overflow-hidden group">
                         <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><i class="fa-regular fa-calendar text-4xl"></i></div>
@@ -919,8 +920,14 @@
                     <button id="btn-iniciar-edicao-custo" type="button" onclick="habilitarEdicaoCustoVenda()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold px-4 py-2 rounded-xl text-xs sm:text-sm shadow-sm transition-all flex items-center gap-2 active:scale-95 cursor-pointer" title="Editar custos dos itens e anotações desta venda">
                         <i class="fa-solid fa-pen-to-square"></i> <span>Ajustar Custos & Observações</span>
                     </button>
+                    <button type="button" onclick="if(window.__vendaDetalheAtual) window.imprimirContratoObj(window.__vendaDetalheAtual)" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-800 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold px-4 py-2 rounded-xl text-xs sm:text-sm shadow-sm transition-all flex items-center gap-2 active:scale-95 cursor-pointer" title="Imprimir Contrato de Compra e Venda deste pedido">
+                        <i class="fa-solid fa-file-contract text-indigo-600"></i> <span>Contrato</span>
+                    </button>
                     <button type="button" onclick="if(window.__vendaDetalheAtual) window.imprimirOrdemProducaoObj(window.__vendaDetalheAtual)" class="bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-bold px-4 py-2 rounded-xl text-xs sm:text-sm shadow-sm transition-all flex items-center gap-2 active:scale-95 cursor-pointer" title="Imprimir Ordem de Produção deste pedido">
                         <i class="fa-solid fa-industry text-amber-600"></i> <span>Ordem de Produção</span>
+                    </button>
+                    <button type="button" onclick="if(window.__vendaDetalheAtual) window.imprimirTermoEntregaObj(window.__vendaDetalheAtual)" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-bold px-4 py-2 rounded-xl text-xs sm:text-sm shadow-sm transition-all flex items-center gap-2 active:scale-95 cursor-pointer" title="Imprimir Termo de Entrega e Recebimento deste pedido">
+                        <i class="fa-solid fa-truck-ramp-box text-emerald-600"></i> <span>Termo de Entrega</span>
                     </button>
                     <div id="acoes-edicao-custo" class="hidden flex items-center gap-2">
                         <button id="btn-cancelar-edicao-custo" type="button" onclick="cancelarEdicaoCustoVenda()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 font-bold px-4 py-2 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer">
@@ -952,11 +959,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="../sistema/config_banco.js?v=20261009181930"></script>
-    <script src="saas_licenca.js?v=20261009181930"></script>
-    <script src="../global.js?v=20261009181930"></script>
-    <script src="fc_cache.js?v=20261009181930"></script>
-    <script src="vendas_gestao.js?v=20261009181930"></script>
+    <script src="../sistema/config_banco.js?v=20261020085630"></script>
+    <script src="saas_licenca.js?v=20261020085630"></script>
+    <script src="../global.js?v=20261020085630"></script>
+    <script src="fc_cache.js?v=20261020085630"></script>
+    <script src="vendas_gestao.js?v=20261020085630"></script>
 </body>
 </html>
 

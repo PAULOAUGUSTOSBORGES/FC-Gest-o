@@ -190,21 +190,80 @@
         function _sanitizarDadosSensiveis(dados) {
         if (!dados || typeof dados !== 'object') return dados;
         if (Array.isArray(dados)) {
-            return dados.map(item => _sanitizarDadosSensiveis(item));
+            // Copy-on-write: só cria um novo array se algum item precisou ser sanitizado
+            let alterado = false;
+            const saida = new Array(dados.length);
+            for (let i = 0; i < dados.length; i++) {
+                const r = _sanitizarDadosSensiveis(dados[i]);
+                saida[i] = r;
+                if (r !== dados[i]) alterado = true;
+            }
+            return alterado ? saida : dados;
         }
-        const seguro = Object.assign({}, dados);
         const campos = [
             'certificadoBase64', 'certificadoSenha', 'cscToken', 'sefazSenha',
             'senhaCertificado', 'tokenPrivado', 'sefaz_token', 'senha_certificado'
         ];
-        campos.forEach(c => { if (c in seguro) delete seguro[c]; });
-        if (seguro.empresa && typeof seguro.empresa === 'object') {
-            seguro.empresa = _sanitizarDadosSensiveis(seguro.empresa);
+        let seguro = null;
+        for (let i = 0; i < campos.length; i++) {
+            if (campos[i] in dados) {
+                if (!seguro) seguro = Object.assign({}, dados);
+                delete seguro[campos[i]];
+            }
         }
-        if (seguro.fiscal && typeof seguro.fiscal === 'object') {
-            seguro.fiscal = _sanitizarDadosSensiveis(seguro.fiscal);
+        const base = seguro || dados;
+        if (base.empresa && typeof base.empresa === 'object') {
+            const emp = _sanitizarDadosSensiveis(base.empresa);
+            if (emp !== base.empresa) {
+                if (!seguro) seguro = Object.assign({}, dados);
+                seguro.empresa = emp;
+            }
         }
-        return seguro;
+        if (base.fiscal && typeof base.fiscal === 'object') {
+            const fis = _sanitizarDadosSensiveis(base.fiscal);
+            if (fis !== base.fiscal) {
+                if (!seguro) seguro = Object.assign({}, dados);
+                seguro.fiscal = fis;
+            }
+        }
+        return seguro || dados;
+    }
+
+
+    // Carimbos (ts) conhecidos por esta aba: última versão gravada/lida de cada coleção no IndexedDB.
+    // Permitem detectar alterações feitas por OUTRAS abas lendo apenas um metadado minúsculo,
+    // em vez de reler (e clonar) coleções inteiras como 'vendas' a cada poucos segundos.
+    const _tsConhecido = {};
+
+    async function _idbLerTsMeta(colecao) {
+        try {
+            const db = await _abrirIndexedDB();
+            if (!db) return null;
+            const chave = _chave(colecao);
+            return new Promise(function (resolve) {
+                try {
+                    const tx = db.transaction('metadados', 'readonly');
+                    const req = tx.objectStore('metadados').get('ts_' + chave);
+                    req.onsuccess = function () { resolve(req.result ? req.result.valor : null); };
+                    req.onerror = function () { resolve(null); };
+                } catch (e) {
+                    resolve(null);
+                }
+            });
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // true se outra aba gravou a coleção desde a última leitura/gravação feita por esta aba
+    async function _idbColecaoMudou(colecao) {
+        const chave = _chave(colecao);
+        const meta = await _idbLerTsMeta(colecao);
+        if (meta === null || meta === undefined) {
+            // Sem metadado (dados gravados por versão antiga): só lê se esta aba ainda nunca leu
+            return _tsConhecido[chave] === undefined;
+        }
+        return meta !== _tsConhecido[chave];
     }
 
     async function _idbSalvarColecao(colecao, dados) {
@@ -214,19 +273,21 @@
 
             const chave = _chave(colecao);
             const empId = _obterEmpresaId();
+            const ts = Date.now();
 
             return new Promise(function (resolve) {
                 try {
-                    const tx = db.transaction('colecoes', 'readwrite');
+                    const tx = db.transaction(['colecoes', 'metadados'], 'readwrite');
                     const store = tx.objectStore('colecoes');
                     store.put({
                         chave: chave,
                         empId: empId,
                         colecao: colecao,
                         dados: _sanitizarDadosSensiveis(dados),
-                        ts: Date.now()
+                        ts: ts
                     });
-                    tx.oncomplete = function () { resolve(true); };
+                    tx.objectStore('metadados').put({ chave: 'ts_' + chave, valor: ts, ts: ts });
+                    tx.oncomplete = function () { _tsConhecido[chave] = ts; resolve(true); };
                     tx.onerror = function () { resolve(false); };
                 } catch (e) {
                     resolve(false);
@@ -250,6 +311,7 @@
                     const store = tx.objectStore('colecoes');
                     const req = store.get(chave);
                     req.onsuccess = function () {
+                        if (req.result && req.result.ts) _tsConhecido[chave] = req.result.ts;
                         resolve(req.result ? req.result.dados : null);
                     };
                     req.onerror = function () { resolve(null); };
@@ -257,6 +319,7 @@
                     resolve(null);
                 }
             });
+
         } catch (e) {
             return null;
         }
@@ -270,6 +333,9 @@
             const empId = _obterEmpresaId();
             // Identificador único composto: previne duplicidade garantindo chave primária exata
             const uuid = `${empId}_${colecao}_${docId}`;
+            if (dados && typeof dados === 'object') {
+                dados.atualizadoEm = new Date().toISOString();
+            }
 
             return new Promise(function (resolve) {
                 try {
@@ -520,6 +586,8 @@
         setInterval(async function () {
             try {
                 if (typeof document !== 'undefined' && document.hidden) return;
+                // Otimização: consulta apenas o carimbo (metadado) da coleção; só relê 'vendas' inteira se mudou
+                if (!(await _idbColecaoMudou('vendas'))) return;
                 const vIdb = await _idbLerColecao('vendas');
                 if (Array.isArray(vIdb) && vIdb.length > 0) {
                     const vMem = _memoria['vendas'];
@@ -565,6 +633,7 @@
         try {
             for (let i = 0; i < PRINCIPAIS_COLECOES.length; i++) {
                 const col = PRINCIPAIS_COLECOES[i];
+                if (!(await _idbColecaoMudou(col))) continue;
                 const dados = await _idbLerColecao(col);
                 if (dados !== null && Array.isArray(dados)) {
                     _memoria[col] = dados;
@@ -738,11 +807,140 @@
     // 5. Motor de Sincronização Inteligente (PUSH + PULL + Zero Duplicidade)
     // ----------------------------------------------------------------------
 
+    let _enviarFilaTimer = null;
+    function _agendarEnvioFilaPendente(delayMs = 1500) {
+        if (typeof window === 'undefined' || !navigator.onLine) return;
+        // Envio automático suave em segundo plano quando online (gravação consome menos de 0.5% da cota)
+        // Garante que vendas feitas no Dispositivo A subam para a nuvem e fiquem disponíveis para o Dispositivo B
+        if (_enviarFilaTimer) clearTimeout(_enviarFilaTimer);
+        _enviarFilaTimer = setTimeout(() => {
+            _enviarFilaPendente().catch(e => console.warn('[FCRepo] Envio automático em background falhou suavemente:', e));
+        }, delayMs);
+    }
+
+    async function _registrarTelemetriaSaaS(empRef, agoraIso) {
+        try {
+            if (!empRef) return;
+            const vTotal = Array.isArray(_memoria['vendas']) ? _memoria['vendas'].length : 0;
+            const ts = (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue)
+                ? firebase.firestore.FieldValue.serverTimestamp()
+                : agoraIso;
+            empRef.set({
+                ultimaSincronizacaoIso: agoraIso,
+                ultimaSincronizacao: ts,
+                statusOperacional: 'ONLINE',
+                totalVendas: vTotal,
+                versaoCache: '3.0.0',
+                modoEconomia: (typeof FCCache !== 'undefined' && typeof FCCache.isModoEconomia === 'function') ? FCCache.isModoEconomia() : false
+            }, { merge: true }).catch(() => {});
+        } catch (eTel) {}
+    }
+
+    async function _enviarFilaPendente(empRefParam) {
+        try {
+            let empRef = empRefParam;
+            if (!empRef) {
+                if (typeof window.getEmpresaRef === 'function') {
+                    empRef = window.getEmpresaRef();
+                } else if (typeof firestore !== 'undefined') {
+                    const empId = _obterEmpresaId();
+                    empRef = firestore.collection('empresas').doc(empId);
+                }
+            }
+            if (!empRef || typeof firestore === 'undefined') return 0;
+
+            const fila = await _idbListarFila();
+            if (!fila || fila.length === 0) {
+                await _atualizarBadgePendencias();
+                return 0;
+            }
+
+            console.log(`[FCRepo] 📤 Enviando ${fila.length} mutação(ões) pendente(s) ao Firebase...`);
+
+            for (let i = 0; i < fila.length; i++) {
+                const item = fila[i];
+                try {
+                    let refDoc;
+                    if (item.colecao === 'fc_moveis_caixa' || item.colecao === 'caixa') {
+                        refDoc = empRef.collection('caixa').doc('caixa_atual');
+                    } else if (item.colecao === 'fc_moveis_config' || item.colecao === 'configuracoes') {
+                        refDoc = empRef.collection('configuracoes').doc('config');
+                    } else {
+                        refDoc = empRef.collection(item.colecao).doc(String(item.docId));
+                    }
+
+                    if (item.operacao === 'delete') {
+                        await _withTimeout(refDoc.delete(), 5000, `Delete ${item.docId}`);
+                    } else {
+                        // Prevenção de conflito de numeração de venda na subida para a nuvem
+                        if (item.colecao === 'vendas' && item.dados && item.dados.numeroPedido) {
+                            try {
+                                const conflitoSnap = await _withTimeout(
+                                    empRef.collection('vendas').where('numeroPedido', '==', item.dados.numeroPedido).get(),
+                                    3000,
+                                    'Verificação conflito numeração'
+                                );
+                                const outroDoc = conflitoSnap.docs.find(d => d.id !== String(item.docId));
+                                if (outroDoc) {
+                                    // Conflito detectado! Renumera para o próximo número livre
+                                    const topoSnap = await _withTimeout(
+                                        empRef.collection('vendas').orderBy('numeroPedido', 'desc').limit(1).get(),
+                                        3000,
+                                        'Topo numeração'
+                                    );
+                                    const topoNum = topoSnap.empty ? 1 : (Number(topoSnap.docs[0].data().numeroPedido) || 0);
+                                    const novoNum = topoNum + 1;
+                                    const velhoStr = String(item.dados.numeroPedido).padStart(4, '0');
+                                    const novoStr = String(novoNum).padStart(4, '0');
+
+                                    console.warn(`[FCRepo] ⚠️ Conflito de numeração evitado na nuvem: Pedido #${velhoStr} readequado para #${novoStr}`);
+
+                                    item.dados.numeroPedido = novoNum;
+                                    if (item.dados.ref) {
+                                        item.dados.ref = item.dados.ref.replace(new RegExp('#' + velhoStr, 'g'), '#' + novoStr);
+                                    }
+                                    if (typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) {
+                                        const vLocal = window.db.vendas.find(x => String(x.id) === String(item.docId));
+                                        if (vLocal) vLocal.numeroPedido = novoNum;
+                                    }
+                                }
+                            } catch (confErr) {
+                                console.warn('[FCRepo] Verificação de conflito de numeração ignorada:', confErr);
+                            }
+                        }
+
+                        // IDEMPOTÊNCIA TOTAL: .set com { merge: true } garante que o mesmo docId
+                        // jamais será duplicado, mesmo que a sincronização seja disparada repetidamente.
+                        if (item.dados && typeof item.dados === 'object') {
+                            item.dados.atualizadoEm = new Date().toISOString();
+                        }
+                        await _withTimeout(refDoc.set(item.dados, { merge: true }), 5000, `Set ${item.docId}`);
+                    }
+
+                    // Remove da fila pendente após envio bem-sucedido
+                    await _idbRemoverDaFila(item.colecao, item.docId);
+                } catch (pushErr) {
+                    console.error(`[FCRepo] Falha ao enviar item pendente (${item.uuid}):`, pushErr);
+                    // Mantém na fila para tentar novamente na próxima sincronização
+                }
+            }
+
+            await _atualizarBadgePendencias();
+            if (empRef) {
+                _registrarTelemetriaSaaS(empRef, new Date().toISOString());
+            }
+            return fila.length;
+        } catch (errFila) {
+            console.error('[FCRepo] Erro ao processar fila pendente:', errFila);
+            return 0;
+        }
+    }
+
     async function sincronizarComFirebase(silencioso, options = {}) {
         if (_isSyncing) {
             const agora = Date.now();
-            if (_syncStartTime && agora - _syncStartTime > 12000) {
-                console.warn('[FCRepo] ⚠️ Sincronização anterior travada há mais de 12s. Forçando desbloqueio...');
+            if (_syncStartTime && agora - _syncStartTime > 35000) {
+                console.warn('[FCRepo] ⚠️ Sincronização anterior travada há mais de 35s. Forçando desbloqueio...');
                 _isSyncing = false;
                 _syncStartTime = 0;
                 _notificarSyncState({ syncing: false });
@@ -775,96 +973,108 @@
 
             // --------------------------------------------------------------
             // FASE 1: PUSH — Enviar Fila Pendente (Vendas, Atualizações Offline)
+            // (lógica movida para _enviarFilaPendente para ser reutilizada no envio automático)
             // --------------------------------------------------------------
-            const fila = await _idbListarFila();
-            if (fila.length > 0) {
-                console.log(`[FCRepo] 📤 Enviando ${fila.length} mutação(ões) pendente(s) ao Firebase...`);
-
-                for (let i = 0; i < fila.length; i++) {
-                    const item = fila[i];
-                    try {
-                        let refDoc;
-                        if (item.colecao === 'fc_moveis_caixa' || item.colecao === 'caixa') {
-                            refDoc = empRef.collection('caixa').doc('caixa_atual');
-                        } else if (item.colecao === 'fc_moveis_config' || item.colecao === 'configuracoes') {
-                            refDoc = empRef.collection('configuracoes').doc('config');
-                        } else {
-                            refDoc = empRef.collection(item.colecao).doc(String(item.docId));
-                        }
-
-                        if (item.operacao === 'delete') {
-                            await _withTimeout(refDoc.delete(), 5000, `Delete ${item.docId}`);
-                        } else {
-                            // Prevenção de conflito de numeração de venda na subida para a nuvem
-                            if (item.colecao === 'vendas' && item.dados && item.dados.numeroPedido) {
-                                try {
-                                    const conflitoSnap = await _withTimeout(
-                                        empRef.collection('vendas').where('numeroPedido', '==', item.dados.numeroPedido).get(),
-                                        3000,
-                                        'Verificação conflito numeração'
-                                    );
-                                    const outroDoc = conflitoSnap.docs.find(d => d.id !== String(item.docId));
-                                    if (outroDoc) {
-                                        // Conflito detectado! Renumera para o próximo número livre
-                                        const topoSnap = await _withTimeout(
-                                            empRef.collection('vendas').orderBy('numeroPedido', 'desc').limit(1).get(),
-                                            3000,
-                                            'Topo numeração'
-                                        );
-                                        const topoNum = topoSnap.empty ? 1 : (Number(topoSnap.docs[0].data().numeroPedido) || 0);
-                                        const novoNum = topoNum + 1;
-                                        const velhoStr = String(item.dados.numeroPedido).padStart(4, '0');
-                                        const novoStr = String(novoNum).padStart(4, '0');
-
-                                        console.warn(`[FCRepo] ⚠️ Conflito de numeração evitado na nuvem: Pedido #${velhoStr} readequado para #${novoStr}`);
-
-                                        item.dados.numeroPedido = novoNum;
-                                        if (item.dados.ref) {
-                                            item.dados.ref = item.dados.ref.replace(new RegExp('#' + velhoStr, 'g'), '#' + novoStr);
-                                        }
-                                        if (typeof window.db !== 'undefined' && Array.isArray(window.db.vendas)) {
-                                            const vLocal = window.db.vendas.find(x => String(x.id) === String(item.docId));
-                                            if (vLocal) vLocal.numeroPedido = novoNum;
-                                        }
-                                    }
-                                } catch (confErr) {
-                                    console.warn('[FCRepo] Verificação de conflito de numeração ignorada:', confErr);
-                                }
-                            }
-
-                            // IDEMPOTÊNCIA TOTAL: .set com { merge: true } garante que o mesmo docId
-                            // jamais será duplicado, mesmo que a sincronização seja disparada repetidamente.
-                            await _withTimeout(refDoc.set(item.dados, { merge: true }), 5000, `Set ${item.docId}`);
-                        }
-
-                        // Remove da fila pendente após envio bem-sucedido
-                        await _idbRemoverDaFila(item.colecao, item.docId);
-                    } catch (pushErr) {
-                        console.error(`[FCRepo] Falha ao enviar item pendente (${item.uuid}):`, pushErr);
-                        // Mantém na fila para tentar novamente na próxima sincronização
-                    }
-                }
-            }
+            await _enviarFilaPendente(empRef);
 
             // --------------------------------------------------------------
             // FASE 2: PULL — Baixar Atualizações Remotas do Firestore
             // --------------------------------------------------------------
             console.log('[FCRepo] 📥 Baixando dados atualizados do Firebase Firestore...');
 
-            const pullPromessas = PRINCIPAIS_COLECOES.map(async function (col) {
+            // Sincronização em 2 ondas inteligentes com timeout generoso (18s por requisição):
+            // Onda 1: Dados vitais operacionais (produtos, vendas, financeiro, clientes, caixa, categorias, fornecedores)
+            const COLECOES_ONDA1 = ['produtos', 'vendas', 'financeiro', 'clientes', 'caixa', 'categorias', 'fornecedores'];
+            // Onda 2: Dados secundários e históricos
+            const COLECOES_ONDA2 = PRINCIPAIS_COLECOES.filter(c => !COLECOES_ONDA1.includes(c));
+
+            let totalSucessos = 0;
+            let totalFalhas = 0;
+
+            async function _processarColecaoPull(col) {
                 try {
-                    // Otimização: limitar busca de coleções de histórico volumoso para conter leituras
-                    let queryRef = empRef.collection(col);
-                    if (col === 'movimentacoes') {
-                        queryRef = queryRef.orderBy('data', 'desc').limit(200);
-                    } else if (col === 'marketing_historico' || col === 'relatorios_ia_historico') {
-                        queryRef = queryRef.orderBy('data', 'desc').limit(100);
+                    let docsRemotos = [];
+                    let dadosIdb = [];
+                    try {
+                        dadosIdb = await _idbLerColecao(col);
+                    } catch (eIdb) {
+                        dadosIdb = [];
                     }
 
-                    const snap = await _withTimeout(queryRef.get(), 6000, `PULL colecao "${col}"`);
-                    const docsRemotos = snap.docs.map(function (doc) {
-                        return Object.assign({ id: doc.id }, doc.data());
-                    });
+                    const temDadosLocais = (Array.isArray(dadosIdb) && dadosIdb.length > 0) || (Array.isArray(_memoria[col]) && _memoria[col].length > 0);
+                    const ultimaSincStr = localStorage.getItem('fc_ultima_sincronizacao');
+                    let dataCorteIso = null;
+                    if (ultimaSincStr) {
+                        const t = new Date(ultimaSincStr).getTime();
+                        // Margem de segurança de 10 minutos contra pequenas divergências de relógio
+                        if (!isNaN(t) && t > 0) {
+                            dataCorteIso = new Date(t - (10 * 60 * 1000)).toISOString();
+                        }
+                    }
+
+                    const forcarCompleto = Boolean(options && (options.forcarCompleto || options.modo === 'completo'));
+                    const podeSerIncremental = temDadosLocais && Boolean(dataCorteIso) && !forcarCompleto;
+
+                    if (podeSerIncremental) {
+                        // ==============================================================
+                        // MODO DELTA / INCREMENTAL: Baixa APENAS dados novos ou alterados
+                        // Economiza até 99% das leituras do Firebase Firestore!
+                        // ==============================================================
+                        const mapaNovos = new Map();
+
+                        // 1. Busca por atualizadoEm (cobre qualquer alteração ou criação com carimbo moderno)
+                        try {
+                            const snapAtualizado = await _withTimeout(
+                                empRef.collection(col).where('atualizadoEm', '>=', dataCorteIso).get(),
+                                12000,
+                                `PULL delta atualizadoEm "${col}"`
+                            );
+                            snapAtualizado.docs.forEach(function (doc) {
+                                mapaNovos.set(String(doc.id), Object.assign({ id: doc.id }, doc.data()));
+                            });
+                        } catch (eDelta) {
+                            console.warn(`[FCRepo] Query delta atualizadoEm em "${col}":`, eDelta.message || eDelta);
+                        }
+
+                        // 2. Para coleções com campo de data operacional, busca também novos registros pelo campo 'data'
+                        if (['vendas', 'financeiro', 'compras', 'movimentacoes'].includes(col)) {
+                            try {
+                                const snapData = await _withTimeout(
+                                    empRef.collection(col).where('data', '>=', dataCorteIso).get(),
+                                    12000,
+                                    `PULL delta data "${col}"`
+                                );
+                                snapData.docs.forEach(function (doc) {
+                                    if (!mapaNovos.has(String(doc.id))) {
+                                        mapaNovos.set(String(doc.id), Object.assign({ id: doc.id }, doc.data()));
+                                    }
+                                });
+                            } catch (eData) {
+                                console.warn(`[FCRepo] Query delta data em "${col}":`, eData.message || eData);
+                            }
+                        }
+
+                        docsRemotos = Array.from(mapaNovos.values());
+                        if (docsRemotos.length > 0) {
+                            console.log(`[FCRepo] ⚡ [Delta:${col}] ${docsRemotos.length} item(ns) alterado(s) recebido(s) do Firebase.`);
+                        }
+                    } else {
+                        // ==============================================================
+                        // MODO COMPLETO (Primeiro acesso na máquina ou forçado)
+                        // ==============================================================
+                        let queryRef = empRef.collection(col);
+                        if (col === 'movimentacoes') {
+                            queryRef = queryRef.orderBy('data', 'desc').limit(200);
+                        } else if (col === 'marketing_historico' || col === 'relatorios_ia_historico') {
+                            queryRef = queryRef.orderBy('data', 'desc').limit(100);
+                        }
+
+                        const snap = await _withTimeout(queryRef.get(), 18000, `PULL carga completa "${col}"`);
+                        docsRemotos = snap.docs.map(function (doc) {
+                            return Object.assign({ id: doc.id }, doc.data());
+                        });
+                        console.log(`[FCRepo] 📦 [Completo:${col}] ${docsRemotos.length} documento(s) carregado(s).`);
+                    }
 
                     // Deduplicação estrita via Map por ID único - preservando dados locais existentes
                     const mapa = new Map();
@@ -877,23 +1087,20 @@
                     }
 
                     // 2. Carrega dados do IndexedDB (que podem conter vendas/registros salvos por outra aba, ex: PDV)
-                    try {
-                        const dadosIdb = await _idbLerColecao(col);
-                        if (Array.isArray(dadosIdb)) {
-                            dadosIdb.forEach(function (doc) {
-                                if (doc && doc.id) {
-                                    const anterior = mapa.get(String(doc.id));
-                                    if (!anterior) {
-                                        mapa.set(String(doc.id), doc);
-                                    } else {
-                                        mapa.set(String(doc.id), Object.assign({}, anterior, doc));
-                                    }
+                    if (Array.isArray(dadosIdb)) {
+                        dadosIdb.forEach(function (doc) {
+                            if (doc && doc.id) {
+                                const anterior = mapa.get(String(doc.id));
+                                if (!anterior) {
+                                    mapa.set(String(doc.id), doc);
+                                } else {
+                                    mapa.set(String(doc.id), Object.assign({}, anterior, doc));
                                 }
-                            });
-                        }
-                    } catch (eIdb) {}
+                            }
+                        });
+                    }
 
-                    // 3. Documentos remotos do Firestore
+                    // 3. Documentos remotos do Firestore (novos/alterados sobrescrevem o cache local)
                     docsRemotos.forEach(function (doc) {
                         if (doc && doc.id) {
                             mapa.set(String(doc.id), doc);
@@ -925,95 +1132,118 @@
                         if (col === 'produtos') window._produtosCarregados = true;
                     }
 
-                    // Notifica a tela que estiver aberta
+                    // Notifica a tela que estiver aberta de imediato
                     _notificarListeners(col, deduplicado);
                     if (typeof window !== 'undefined') {
                         window.dispatchEvent(new CustomEvent('fc-dados-locais-atualizados', { detail: { colecao: col, dados: deduplicado } }));
                     }
+                    totalSucessos++;
+                    return true;
                 } catch (colErr) {
+                    totalFalhas++;
                     console.warn(`[FCRepo] Aviso na sincronização da coleção "${col}":`, colErr.message || colErr);
+                    return false;
                 }
-            });
+            }
 
-            // Baixa doc de caixa com suporte a todos os aliases
-            pullPromessas.push((async function () {
-                try {
-                    const cxSnap = await _withTimeout(empRef.collection('caixa').doc('caixa_atual').get(), 5000, 'PULL caixa_atual');
-                    if (cxSnap && cxSnap.exists) {
-                        const cxData = cxSnap.data();
-                        ['caixa', 'fc_moveis_caixa', 'caixa_caixa_atual', 'caixa_atual'].forEach(k => {
-                            _memoria[k] = cxData;
-                            _salvarSession(k, cxData);
-                            _idbSalvarColecao(k, cxData);
-                            _notificarListeners(k, cxData);
-                        });
-                        if (typeof window.db !== 'undefined') window.db.caixa = cxData;
-                    }
-                } catch (e) {}
-            })());
+            // Executa Onda 1 (Prioridade máxima de carregamento operacional)
+            await Promise.all(COLECOES_ONDA1.map(_processarColecaoPull));
 
-            // Baixa doc de configurações com suporte a todos os aliases e fallback legado
-            pullPromessas.push((async function () {
-                try {
-                    let cfgSnap = await _withTimeout(empRef.collection('configuracoes').doc('config').get(), 5000, 'PULL config');
-                    if (cfgSnap && (!cfgSnap.exists || !cfgSnap.data()?.empresa?.logo) && _obterEmpresaId() === 'emp_fc_moveis') {
-                        try {
-                            const legSnap = await _withTimeout(firestore.collection('fc_moveis').doc('config').get(), 4000, 'PULL config legado');
-                            if (legSnap && legSnap.exists && legSnap.data()) {
-                                const legD = legSnap.data();
-                                const atualD = (cfgSnap && cfgSnap.exists) ? cfgSnap.data() : {};
-                                const merged = { ...legD, ...atualD, empresa: { ...(legD.empresa || {}), ...(atualD.empresa || {}) }, loja: { ...(legD.loja || {}), ...(atualD.loja || {}) } };
-                                cfgSnap = { exists: true, data: () => merged };
-                                empRef.collection('configuracoes').doc('config').set(merged, { merge: true }).catch(() => {});
+            // Onda 2 inicia em paralelo com os documentos especiais (reduz o tempo total de sincronização)
+            const promessaOnda2 = Promise.all(COLECOES_ONDA2.map(_processarColecaoPull));
+
+            // Executa Documentos Especiais em paralelo
+            await Promise.all([
+                // Baixa doc de caixa com suporte a todos os aliases
+                (async function () {
+                    try {
+                        const cxSnap = await _withTimeout(empRef.collection('caixa').doc('caixa_atual').get(), 12000, 'PULL caixa_atual');
+                        if (cxSnap && cxSnap.exists) {
+                            const cxData = cxSnap.data();
+                            ['caixa', 'fc_moveis_caixa', 'caixa_caixa_atual', 'caixa_atual'].forEach(k => {
+                                _memoria[k] = cxData;
+                                _salvarSession(k, cxData);
+                                _idbSalvarColecao(k, cxData);
+                                _notificarListeners(k, cxData);
+                            });
+                            if (typeof window.db !== 'undefined') window.db.caixa = cxData;
+                            if (typeof window !== 'undefined') {
+                                window.dispatchEvent(new CustomEvent('fc-dados-locais-atualizados', { detail: { colecao: 'caixa', dados: cxData } }));
                             }
-                        } catch(e) {}
-                    }
-                    if (cfgSnap && cfgSnap.exists) {
-                        const cfgData = cfgSnap.data();
-                        ['config', 'fc_moveis_config', 'configuracoes_config', 'configuracoes'].forEach(k => {
-                            _memoria[k] = cfgData;
-                            _salvarSession(k, cfgData);
-                            _idbSalvarColecao(k, cfgData);
-                            _notificarListeners(k, cfgData);
-                        });
-                        if (typeof window.db !== 'undefined') window.db.config = cfgData;
-                        if (typeof window.aplicarIdentidadeVisualGlobal === 'function') window.aplicarIdentidadeVisualGlobal();
-                        if (typeof window.carregarConfiguracoesNaTela === 'function') window.carregarConfiguracoesNaTela();
-                    }
-                } catch (e) {}
-            })());
-
-            // Baixa permissões do funcionário atual para o cache
-            pullPromessas.push((async function () {
-                try {
-                    const u = window.currentUser || (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser);
-                    if (u && u.uid) {
-                        const uSnap = await _withTimeout(empRef.collection('funcionarios').doc(u.uid).get(), 5000, 'PULL funcionario');
-                        if (uSnap && uSnap.exists) {
-                            const uData = uSnap.data();
-                            window.currentUserInfo = uData;
-                            const uKey = 'funcionario_' + u.uid;
-                            _memoria[uKey] = uData;
-                            _salvarSession(uKey, uData);
-                            await _idbSalvarColecao(uKey, uData);
-                            try { localStorage.setItem('fc_user_cache_' + u.uid, JSON.stringify(uData)); } catch(e) {}
                         }
-                    }
-                } catch (e) {}
-            })());
+                    } catch (e) {}
+                })(),
 
-            // Atualiza licença SaaS Master no cache local
-            pullPromessas.push((async function () {
-                try {
-                    const empId = _obterEmpresaId();
-                    if (empId && typeof window.consultarLicencaCentral === 'function') {
-                        const lic = await _withTimeout(window.consultarLicencaCentral(empId, 'fc_gestao', true), 5000, 'PULL licença central');
-                        if (lic) window.currentEmpresaData = lic;
-                    }
-                } catch (e) {}
-            })());
+                // Baixa doc de configurações com suporte a todos os aliases e fallback legado
+                (async function () {
+                    try {
+                        let cfgSnap = await _withTimeout(empRef.collection('configuracoes').doc('config').get(), 12000, 'PULL config');
+                        if (cfgSnap && (!cfgSnap.exists || !cfgSnap.data()?.empresa?.logo) && _obterEmpresaId() === 'emp_fc_moveis') {
+                            try {
+                                const legSnap = await _withTimeout(firestore.collection('fc_moveis').doc('config').get(), 6000, 'PULL config legado');
+                                if (legSnap && legSnap.exists && legSnap.data()) {
+                                    const legD = legSnap.data();
+                                    const atualD = (cfgSnap && cfgSnap.exists) ? cfgSnap.data() : {};
+                                    const merged = { ...legD, ...atualD, empresa: { ...(legD.empresa || {}), ...(atualD.empresa || {}) }, loja: { ...(legD.loja || {}), ...(atualD.loja || {}) } };
+                                    cfgSnap = { exists: true, data: () => merged };
+                                    empRef.collection('configuracoes').doc('config').set(merged, { merge: true }).catch(() => {});
+                                }
+                            } catch(e) {}
+                        }
+                        if (cfgSnap && cfgSnap.exists) {
+                            const cfgData = cfgSnap.data();
+                            ['config', 'fc_moveis_config', 'configuracoes_config', 'configuracoes'].forEach(k => {
+                                _memoria[k] = cfgData;
+                                _salvarSession(k, cfgData);
+                                _idbSalvarColecao(k, cfgData);
+                                _notificarListeners(k, cfgData);
+                            });
+                            if (typeof window.db !== 'undefined') window.db.config = cfgData;
+                            if (typeof window.aplicarIdentidadeVisualGlobal === 'function') window.aplicarIdentidadeVisualGlobal();
+                            if (typeof window.carregarConfiguracoesNaTela === 'function') window.carregarConfiguracoesNaTela();
+                        }
+                    } catch (e) {}
+                })(),
 
-            await _withTimeout(Promise.all(pullPromessas), 12000, 'PULL total promessas');
+                // Baixa permissões do funcionário atual para o cache
+                (async function () {
+                    try {
+                        const u = window.currentUser || (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser);
+                        if (u && u.uid) {
+                            const uSnap = await _withTimeout(empRef.collection('funcionarios').doc(u.uid).get(), 10000, 'PULL funcionario');
+                            if (uSnap && uSnap.exists) {
+                                const uData = uSnap.data();
+                                window.currentUserInfo = uData;
+                                const uKey = 'funcionario_' + u.uid;
+                                _memoria[uKey] = uData;
+                                _salvarSession(uKey, uData);
+                                await _idbSalvarColecao(uKey, uData);
+                                try { localStorage.setItem('fc_user_cache_' + u.uid, JSON.stringify(uData)); } catch(e) {}
+                            }
+                        }
+                    } catch (e) {}
+                })(),
+
+                // Atualiza licença SaaS Master no cache local
+                (async function () {
+                    try {
+                        const empId = _obterEmpresaId();
+                        if (empId && typeof window.consultarLicencaCentral === 'function') {
+                            const lic = await _withTimeout(window.consultarLicencaCentral(empId, 'fc_gestao', true), 10000, 'PULL licença central');
+                            if (lic) window.currentEmpresaData = lic;
+                        }
+                    } catch (e) {}
+                })()
+            ]);
+
+            // Executa Onda 2 (Secundárias e Históricos volumosos em background)
+            await promessaOnda2;
+
+            const houveSucesso = totalSucessos > 0 || (totalFalhas === 0);
+            if (!houveSucesso) {
+                console.warn('[FCRepo] ⚠️ Todas as coleções remotas sofreram timeout. Os dados locais continuam seguros e operando.');
+                return false;
+            }
 
             // --------------------------------------------------------------
             // FASE 3: Conclusão e Feedback
@@ -1025,6 +1255,9 @@
             } catch (e) {}
 
             await _atualizarBadgePendencias();
+            if (empRef) {
+                _registrarTelemetriaSaaS(empRef, agoraIso);
+            }
 
             _isSyncing = false;
             _syncStartTime = 0;
@@ -1123,7 +1356,7 @@
             localStorage.setItem(chavePrimeiroLogin, hojeStr);
             try { sessionStorage.removeItem('fc_recem_logado'); } catch(e) {}
 
-            const sucesso = await sincronizarComFirebase(false, {
+            const sucesso = await sincronizarComFirebase(true, {
                 motivo: 'primeiro_login',
                 mensagemSucesso: 'Primeiro acesso do dia: banco de dados sincronizado com sucesso!'
             });
@@ -1162,7 +1395,7 @@
             console.log(`[FCRepo] ⏰ [AutoSync:${origem}] Horário das 17:30 atingido! Sincronizando dados com o Firebase...`);
             localStorage.setItem(chave1730, hojeStr);
 
-            const sucesso1730 = await sincronizarComFirebase(false, {
+            const sucesso1730 = await sincronizarComFirebase(true, {
                 motivo: 'agendado_1730',
                 mensagemSucesso: 'Sincronização automática das 17:30 concluída com sucesso!'
             });
@@ -1248,9 +1481,10 @@
             try {
                 const db = await _abrirIndexedDB();
                 if (db) {
-                    const tx = db.transaction(['colecoes', 'fila_pendente', 'metadados'], 'readwrite');
+                    const tx = db.transaction(['colecoes', 'metadados'], 'readwrite');
                     tx.objectStore('colecoes').clear();
-                    tx.objectStore('fila_pendente').clear();
+                    // IMPORTANTE: JAMAIS limpar 'fila_pendente' em invalidarTudo!
+                    // A fila pendente armazena operações locais (ex: vendas offline) que ainda precisam subir para a nuvem.
                     tx.objectStore('metadados').clear();
                 }
             } catch (idbErr) {
@@ -1287,7 +1521,12 @@
          * Enfileira uma mutação pendente (para vendas ou cadastros offline)
          */
         enfileirarOperacao: function (colecao, docId, operacao, dados) {
-            return _idbEnfileirar(colecao, docId, operacao, dados);
+            if (dados && typeof dados === 'object') {
+                dados.atualizadoEm = new Date().toISOString();
+            }
+            const prom = _idbEnfileirar(colecao, docId, operacao, dados);
+            _agendarEnvioFilaPendente(1500);
+            return prom;
         },
 
         /**
@@ -1295,6 +1534,9 @@
          */
         salvarOtimista: async function (colecao, docId, dados, operacao = 'set') {
             const idStr = String(docId);
+            if (dados && typeof dados === 'object') {
+                dados.atualizadoEm = new Date().toISOString();
+            }
             // 1. Atualiza memória global window.db
             if (typeof window.db !== 'undefined' && Array.isArray(window.db[colecao])) {
                 const idx = window.db[colecao].findIndex(x => String(x.id) === idStr);
@@ -1328,6 +1570,7 @@
             await _atualizarBadgePendencias();
             _notificarListeners(colecao, _memoria[colecao] || (window.db ? window.db[colecao] : []));
             _notificarOutrasAbas(colecao);
+            _agendarEnvioFilaPendente(1500);
         },
 
         /**
@@ -1342,6 +1585,9 @@
          */
         atualizarItem: async function (colecao, docId, dados) {
             const idStr = String(docId);
+            if (dados && typeof dados === 'object') {
+                dados.atualizadoEm = new Date().toISOString();
+            }
             if (typeof window.db !== 'undefined' && Array.isArray(window.db[colecao])) {
                 const idx = window.db[colecao].findIndex(x => String(x.id) === idStr);
                 if (idx >= 0) {
@@ -1453,15 +1699,14 @@
         },
 
         /**
-         * Retorna se o Modo Economia de Firebase está ativo (padrão: true)
-         * No Modo Economia, operações são persistidas localmente no IndexedDB
-         * e sincronizadas sob demanda via botão SINCRONIZAR para poupar leituras/gravações.
+         * Retorna se o Modo Economia de Firebase está ativo (padrão: false para persistência e sincronização nativas do Firestore)
+         * No Modo Economia, operações são persistidas localmente no IndexedDB e sobem para a nuvem quando solicitado.
          */
         isModoEconomia: function () {
             try {
-                return localStorage.getItem('fc_modo_economia_firebase') !== 'false';
+                return localStorage.getItem('fc_modo_economia_firebase') === 'true';
             } catch (e) {
-                return true;
+                return false;
             }
         },
 
@@ -1475,6 +1720,13 @@
             if (typeof window !== 'undefined') {
                 window.dispatchEvent(new CustomEvent('fc-modo-economia-alterado', { detail: { ativo: !!ativo } }));
             }
+        },
+
+        /**
+         * Processa e envia a fila de operações pendentes ao Firebase
+         */
+        enviarFilaPendente: function (empRef) {
+            return _enviarFilaPendente(empRef);
         },
 
         /**
@@ -1587,7 +1839,7 @@
             }
         }
 
-        ref.get().then(async function (snap) {
+        _withTimeout(ref.get(), 15000, 'Busca remota ' + colecao).then(async function (snap) {
             const docsRemotos = snap.docs.map(doc => Object.assign({ id: doc.id }, doc.data()));
 
             // Mescla com itens locais pendentes para NUNCA perder vendas feitas offline
@@ -1626,6 +1878,9 @@
 
             // Notifica listeners com a lista COMPLETA de vendas/produtos
             _notificarListeners(colecao, dadosCompletos);
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('fc-dados-locais-atualizados', { detail: { colecao: colecao, dados: dadosCompletos } }));
+            }
         }).catch(function (err) {
             console.warn(`[FCRepo] Não foi possível atualizar "${colecao}" da nuvem (modo offline mantido):`, err);
         });
@@ -1649,14 +1904,19 @@
 
         // 1. Tenta servir da memória imediatamente (síncrono, 0ms)
         const emMemoria = _memoria[colecao];
-        if (emMemoria !== undefined && emMemoria !== null && !opcoes.semCache && !opcoes.forcarRemoto) {
+        const temEmMemoria = Array.isArray(emMemoria) ? emMemoria.length > 0 : (emMemoria !== undefined && emMemoria !== null);
+        if (temEmMemoria && !opcoes.semCache && !opcoes.forcarRemoto) {
             try {
                 callback(emMemoria);
             } catch (e) {
                 console.error('[FCRepo] Erro ao servir da memória para "' + colecao + '":', e);
             }
             // Verifica o IndexedDB em segundo plano para garantir integridade com outras abas
-            _idbLerColecao(colecao).then(function (dadosIdb) {
+            // (otimizado: só relê a coleção inteira se o carimbo indicar que outra aba gravou algo novo)
+            _idbColecaoMudou(colecao).then(function (mudou) {
+                if (!mudou) return null;
+                return _idbLerColecao(colecao);
+            }).then(function (dadosIdb) {
                 if (dadosIdb !== null && Array.isArray(dadosIdb) && (!Array.isArray(emMemoria) || dadosIdb.length !== emMemoria.length)) {
                     _memoria[colecao] = dadosIdb;
                     _salvarSession(colecao, dadosIdb);
@@ -1670,7 +1930,8 @@
         } else {
             // 2. Tenta ler do IndexedDB (assíncrono, ~15ms)
             _idbLerColecao(colecao).then(function (dadosIdb) {
-                if (dadosIdb !== null && !opcoes.semCache && !opcoes.forcarRemoto) {
+                const temNoIdb = Array.isArray(dadosIdb) ? dadosIdb.length > 0 : (dadosIdb !== null);
+                if (temNoIdb && !opcoes.semCache && !opcoes.forcarRemoto) {
                     _memoria[colecao] = dadosIdb;
                     _salvarSession(colecao, dadosIdb);
                     if (typeof window.db !== 'undefined') {
@@ -1682,9 +1943,11 @@
                     } catch (e) {
                         console.error('[FCRepo] Erro ao servir do IndexedDB para "' + colecao + '":', e);
                     }
-                    // Repositório local persistente atendido: ZERO leituras no Firebase!
                 } else if (typeof firestore !== 'undefined') {
-                    // 3. Primeira vez neste dispositivo/navegador (repositório vazio) ou forçado: busca do Firebase uma vez para popular
+                    // Se o cache estiver vazio ou nunca foi populado, busca do Firebase de imediato
+                    if (Array.isArray(dadosIdb)) {
+                        try { callback(dadosIdb); } catch (e) {}
+                    }
                     _buscarAtualizacaoRemota(colecao, opcoes);
                 }
             });
